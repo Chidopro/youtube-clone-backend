@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const FormData = require('form-data');
+const fetch = require('node-fetch');
 require('dotenv').config();
 
 const app = express();
@@ -33,7 +34,7 @@ app.post('/api/send-subscription-email', async (req, res) => {
 
     try {
         // Generate approval link
-        const approvalLink = `http://localhost:5173/approve-subscription?email=${encodeURIComponent(email)}&token=${Date.now()}`;
+        const approvalLink = `https://screenmerch.com/approve-subscription?email=${encodeURIComponent(email)}&token=${Date.now()}`;
         
         // Prepare email data using form-data package
         const formData = new FormData();
