@@ -8,7 +8,6 @@ import requests
 import stripe
 from urllib.parse import urlencode
 import json
-from supabase_storage import storage
 from supabase import create_client, Client
 from twilio.rest import Client
 from pathlib import Path
