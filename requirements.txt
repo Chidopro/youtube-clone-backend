@@ -5,3 +5,4 @@ requests==2.31.0
 stripe==7.6.0
 supabase==2.0.2 
 twilio==8.10.0
+gunicorn==21.2.0
