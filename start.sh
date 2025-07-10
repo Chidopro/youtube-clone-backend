@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Install Python dependencies (if needed)
-pip install --no-cache-dir flask flask-cors python-dotenv requests stripe supabase twilio gunicorn
+# Install Python dependencies from requirements.txt
+pip install --no-cache-dir -r backend/requirements.txt
 
 # Do NOT start the app here! Render will use the Start Command. 
