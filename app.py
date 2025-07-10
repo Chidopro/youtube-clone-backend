@@ -11,6 +11,7 @@ import json
 from supabase import create_client, Client
 from twilio.rest import Client
 from pathlib import Path
+import sys
 
 # NEW: Import Printful integration
 # from printful_integration import ScreenMerchPrintfulIntegration
@@ -18,12 +19,24 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-load_dotenv()
+# Robust .env loading
+env_paths = [
+    Path(__file__).parent / '.env',
+    Path(__file__).parent.parent / '.env',
+    Path.cwd() / '.env'
+]
+for env_path in env_paths:
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)
+        print(f"Loaded .env from: {env_path}")
 
-# Also try loading from backend directory
-backend_env = Path(__file__).parent / '.env'
-if backend_env.exists():
-    load_dotenv(backend_env)
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_ANON_KEY")
+print("SUPABASE_URL:", "✓" if supabase_url else "✗")
+print("SUPABASE_ANON_KEY:", "✓" if supabase_key else "✗")
+if not supabase_url or not supabase_key:
+    print("ERROR: Missing Supabase environment variables. Check your .env file location and content.", file=sys.stderr)
+    sys.exit(1)
 
 # Twilio setup
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
@@ -121,12 +134,6 @@ app = Flask(__name__,
 CORS(app, resources={r"/api/*": {"origins": ["chrome-extension://*", "http://localhost:5173", "http://127.0.0.1:5000"]}})
 
 # Initialize Supabase client for database operations
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_ANON_KEY")
-
-if not supabase_url or not supabase_key:
-    raise ValueError("Missing Supabase environment variables")
-
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # NEW: Initialize Printful integration

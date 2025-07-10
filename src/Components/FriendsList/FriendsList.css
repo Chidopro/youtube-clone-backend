@@ -1,0 +1,214 @@
+.friends-list-container {
+    width: 180px;
+    background: #fff;
+    border-right: 1px solid #e0e0e0;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.06);
+    padding-top: 0;
+    transition: width 0.2s cubic-bezier(.4,0,.2,1);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.friends-list-container.collapsed {
+    width: 32px;
+    min-width: 32px;
+    max-width: 32px;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+}
+
+.friends-collapse-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: #f0f0f0;
+    color: #333;
+    border-radius: 50%;
+    margin: 10px auto 10px 2px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    transition: background 0.2s;
+    z-index: 2;
+}
+.friends-collapse-btn:hover {
+    background: #e0e0e0;
+}
+
+.friends-list-container.collapsed .friends-collapse-btn {
+    margin: auto 0;
+    position: absolute;
+    top: 50%;
+    left: 2px;
+    transform: translateY(-50%);
+}
+
+.friends-list-container.collapsed .friends-list-header,
+.friends-list-container.collapsed .friends-list,
+.friends-list-container.collapsed .friends-actions {
+    display: none;
+}
+
+.friends-list-header {
+    padding: 16px 10px 10px 10px;
+    border-bottom: 1px solid #e0e0e0;
+    background: #f8f9fa;
+}
+
+.friends-list-header h3 {
+    margin: 0 0 5px 0;
+    font-size: 1rem;
+    color: #333;
+    font-weight: 600;
+}
+
+.friends-subtitle {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.friends-list {
+    padding: 6px 0;
+}
+
+.friend-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.friend-item:hover {
+    background-color: #f8f9fa;
+}
+
+.unsubscribe-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    opacity: 0;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.friend-item:hover .unsubscribe-btn {
+    opacity: 1;
+}
+
+.unsubscribe-btn:hover {
+    background: #c82333;
+}
+
+.friend-avatar-container {
+    position: relative;
+    margin-right: 8px;
+}
+
+.friend-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.online-indicator {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid #fff;
+}
+
+.online-indicator.online {
+    background-color: #28a745;
+}
+
+.online-indicator.offline {
+    background-color: #6c757d;
+}
+
+.friend-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.friend-name {
+    margin: 0 0 2px 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.friend-stats {
+    margin: 0;
+    font-size: 0.7rem;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.friends-actions {
+    padding: 10px;
+    border-top: 1px solid #e0e0e0;
+    background: #f8f9fa;
+}
+
+.invite-friend-btn {
+    width: 100%;
+    padding: 7px 0;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.invite-friend-btn:hover {
+    background: #0056b3;
+}
+
+.friends-loading {
+    padding: 10px;
+    text-align: center;
+    color: #666;
+    font-size: 0.8rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .friends-list-container {
+        width: 100%;
+        position: relative;
+        height: auto;
+        border-right: none;
+        border-top: 1px solid #e0e0e0;
+    }
+} 
