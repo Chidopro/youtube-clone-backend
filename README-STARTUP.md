@@ -1,6 +1,6 @@
-# 🚀 VidTube Startup Guide
+# 🚀 ScreenMerch Startup Guide
 
-## Easy Way to Start Both Servers
+## Easy Way to Start the Application
 
 ### Step 1: Start Backend Server
 **Double-click** the `start-backend.bat` file in your main project folder.
@@ -8,7 +8,7 @@
 You should see:
 ```
 ========================================
-  VidTube Backend Server
+  ScreenMerch Backend Server
   Port: 3001
   Health Check: http://localhost:3001/health
 ========================================
