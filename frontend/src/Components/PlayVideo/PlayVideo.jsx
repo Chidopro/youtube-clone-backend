@@ -48,6 +48,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         fetchVideo();
     }, [videoId, setThumbnail]);
 
+    // Reset video element when videoId changes
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.load();
+        }
+        // Clear screenshots when video changes
+        setScreenshots([]);
+    }, [videoId, setScreenshots]);
+
     // Grab Screenshot handler
     const handleGrabScreenshot = () => {
         const video = videoRef.current;
@@ -94,7 +103,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 <button className="screenmerch-btn" onClick={handleGrabScreenshot}>Grab Screenshot</button>
                 <button className="screenmerch-btn" onClick={handleMakeMerch}>Make Merch</button>
             </div>
-            <video ref={videoRef} controls width="100%" style={{background: '#000'}} poster={video.thumbnail || ''} src={"/WIN_20231111_15_05_23_Pro.mp4"}>
+            <video 
+                key={videoId} 
+                ref={videoRef} 
+                controls 
+                width="100%" 
+                style={{background: '#000'}} 
+                poster={video.thumbnail || ''} 
+                src={video.video_url}
+            >
                 Your browser does not support the video tag.
             </video>
             <h3>{video.title}</h3>

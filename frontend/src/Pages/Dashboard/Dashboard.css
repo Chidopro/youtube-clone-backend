@@ -641,6 +641,7 @@
 
 .dashboard-video-info {
     padding: 15px;
+    position: relative;
 }
 
 .dashboard-video-info h4 {
@@ -659,6 +660,37 @@
 .video-views {
     color: #999;
     font-size: 0.85rem;
+}
+
+.delete-video-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    opacity: 0;
+    transform: scale(0.8);
+    z-index: 10;
+}
+
+.dashboard-video-card:hover .delete-video-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.delete-video-btn:hover {
+    background: rgba(220, 53, 69, 1);
+    transform: scale(1.1);
 }
 
 .no-videos-placeholder {

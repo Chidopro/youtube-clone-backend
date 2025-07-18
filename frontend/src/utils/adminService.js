@@ -262,12 +262,53 @@ export class AdminService {
    */
   static async deleteVideo(videoId) {
     try {
-      const { error } = await supabase
+      // First get the video details to check if it has uploaded files
+      const { data: video, error: fetchError } = await supabase
+        .from('videos2')
+        .select('*')
+        .eq('id', videoId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Delete from database
+      const { error: deleteError } = await supabase
         .from('videos2')
         .delete()
         .eq('id', videoId);
 
-      if (error) throw error;
+      if (deleteError) throw deleteError;
+
+      // If the video has uploaded files (not YouTube URLs), try to delete them from storage
+      if (video && video.video_url && !video.video_url.includes('youtube.com')) {
+        try {
+          // Extract file path from URL and delete from storage
+          const videoPath = video.video_url.split('/storage/v1/object/public/')[1];
+          if (videoPath) {
+            await supabase.storage
+              .from('videos2')
+              .remove([videoPath]);
+          }
+        } catch (storageError) {
+          console.warn('Could not delete video file from storage:', storageError);
+          // Don't fail the entire operation if storage deletion fails
+        }
+      }
+
+      // If there's a thumbnail that's not from YouTube, try to delete it
+      if (video && video.thumbnail && !video.thumbnail.includes('ytimg.com')) {
+        try {
+          const thumbnailPath = video.thumbnail.split('/storage/v1/object/public/')[1];
+          if (thumbnailPath) {
+            await supabase.storage
+              .from('thumbnails')
+              .remove([thumbnailPath]);
+          }
+        } catch (storageError) {
+          console.warn('Could not delete thumbnail from storage:', storageError);
+          // Don't fail the entire operation if storage deletion fails
+        }
+      }
 
       // Log admin action
       await this.logAdminAction('delete_video', 'video', videoId, {

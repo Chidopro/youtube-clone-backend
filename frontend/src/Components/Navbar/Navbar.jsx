@@ -29,7 +29,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     id: user.id,
                     username: user.user_metadata?.name?.replace(/\s+/g, '').toLowerCase() || user.email,
                     display_name: user.user_metadata?.name || user.email,
-                    email: user.email
+                    email: user.email,
+                    role: 'creator'  // Set default role for all users
                 };
                 console.log('Upserting user profile with:', upsertPayload);
                 const result = await upsertUserProfile(upsertPayload);

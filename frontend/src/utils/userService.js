@@ -43,6 +43,7 @@ export class UserService {
       const profileToUpsert = {
         id: user.id,
         email: user.email,
+        role: 'creator',  // Ensure all users get creator role
         ...profileData,
         updated_at: new Date().toISOString()
       };

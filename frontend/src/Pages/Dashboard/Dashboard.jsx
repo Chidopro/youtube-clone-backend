@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
 import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
+import { AdminService } from '../../utils/adminService';
 
 const Dashboard = ({ sidebar }) => {
     const [user, setUser] = useState(null);
@@ -208,9 +209,38 @@ const Dashboard = ({ sidebar }) => {
         navigate('/channel-friend');
     };
 
+    const handleDeleteVideo = async (videoId, videoTitle, event) => {
+        // Prevent the card click event from triggering
+        event.stopPropagation();
+        
+        // Show confirmation dialog
+        const isConfirmed = window.confirm(`Are you sure you want to delete "${videoTitle}"? This action cannot be undone.`);
+        
+        if (!isConfirmed) {
+            return;
+        }
+
+        try {
+            const result = await AdminService.deleteVideo(videoId);
+            
+            if (result.success) {
+                // Remove the video from the local state
+                setVideos(prevVideos => prevVideos.filter(video => video.id !== videoId));
+                alert('Video deleted successfully!');
+            } else {
+                alert(`Failed to delete video: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Error deleting video:', error);
+            alert('Failed to delete video. Please try again.');
+        }
+    };
+
     const canInviteFriends = subscription && SubscriptionService.getTierConfig(subscription.tier).canInviteFriends;
 
-    if (currentUser && currentUser.role !== 'creator') {
+    // Temporarily allow all authenticated users to access dashboard
+    // TODO: Implement proper role-based access control
+    if (currentUser && currentUser.role && currentUser.role !== 'creator') {
         return <div className="dashboard-error">Access denied. Only creators can view this page.</div>;
     }
 
@@ -426,6 +456,9 @@ const Dashboard = ({ sidebar }) => {
                                                 <p>{new Date(video.created_at).toLocaleDateString()}</p>
                                                 <span className="video-views">0 views</span>
                                             </div>
+                                            <button className="delete-video-btn" onClick={(e) => handleDeleteVideo(video.id, video.title, e)} title="Delete Video">
+                                                🗑️
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
