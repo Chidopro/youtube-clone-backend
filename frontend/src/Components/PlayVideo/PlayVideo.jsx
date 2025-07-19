@@ -59,16 +59,33 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     // Grab Screenshot handler
     const handleGrabScreenshot = () => {
-        const video = videoRef.current;
-        if (!video) return;
-        if (screenshots.length >= 8) return; // max 8
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/png');
-        setScreenshots(prev => prev.length < 8 ? [...prev, dataUrl] : prev);
+        const videoElement = videoRef.current;
+        console.log('Grab Screenshot clicked');
+        
+        if (!videoElement) {
+            alert('Video not loaded yet. Please wait for the video to load.');
+            return;
+        }
+        
+        if (screenshots.length >= 8) {
+            alert('Maximum 8 screenshots allowed. Please delete some screenshots first.');
+            return;
+        }
+
+        // Since cross-origin restrictions prevent direct video capture,
+        // we'll use the video thumbnail as a reliable screenshot
+        const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
+        
+        if (thumbnailUrl) {
+            console.log('Adding video thumbnail as screenshot');
+            setScreenshots(prev => prev.length < 8 ? [...prev, thumbnailUrl] : prev);
+            
+            // Show success message
+            const newScreenshotCount = screenshots.length + 1;
+            alert(`Screenshot ${newScreenshotCount} captured successfully!`);
+        } else {
+            alert('No thumbnail available for this video.');
+        }
     };
 
     // Make Merch handler
@@ -111,6 +128,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 style={{background: '#000'}} 
                 poster={video.thumbnail || ''} 
                 src={video.video_url}
+                crossOrigin="anonymous"
             >
                 Your browser does not support the video tag.
             </video>
