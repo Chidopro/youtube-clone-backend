@@ -38,7 +38,7 @@ const Footer = () => {
             <ul>
               <li>
                 <a href="mailto:support@screenmerch.com">
-                  Contact Us
+                  support@screenmerch.com
                 </a>
               </li>
               <li>
@@ -49,30 +49,11 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* SMS Compliance */}
-          <div className="footer-section">
-            <h4>SMS Notifications</h4>
-            <ul>
-              <li>
-                <Link to="/privacy-policy">
-                  SMS Policy
-                </Link>
-              </li>
-              <li>
-                <span className="sms-info">Text STOP to opt-out</span>
-              </li>
-              <li>
-                <span className="sms-info">Text HELP for support</span>
-              </li>
-            </ul>
-          </div>
+
         </div>
 
         <div className="footer-bottom">
           <p>&copy; 2025 ScreenMerch. All rights reserved.</p>
-          <p className="sms-disclosure">
-            Message and data rates may apply. Frequency varies.
-          </p>
         </div>
       </div>
     </footer>

@@ -61,10 +61,7 @@
   margin: 0;
 }
 
-.sms-info {
-  color: #6c757d;
-  font-size: 13px;
-}
+
 
 .footer-bottom {
   border-top: 1px solid #e9ecef;
@@ -77,10 +74,7 @@
   color: #6c757d;
 }
 
-.sms-disclosure {
-  font-size: 12px;
-  color: #868e96;
-}
+
 
 /* Responsive Design */
 @media (max-width: 768px) {
