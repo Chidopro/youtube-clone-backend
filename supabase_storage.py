@@ -7,8 +7,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Initialize Supabase client
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_ANON_KEY")
+# Try VITE_ prefixed variables first, then fall back to non-prefixed
+supabase_url = os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("VITE_SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
 
 if not supabase_url or not supabase_key:
     raise ValueError("Missing Supabase environment variables")

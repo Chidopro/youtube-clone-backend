@@ -1,0 +1,71 @@
+{
+  "name": "screenmerch-backend",
+  "description": "ScreenMerch Flask Backend API",
+  "repository": "https://github.com/yourusername/your-repo-name",
+  "keywords": ["python", "flask", "api"],
+  "env": {
+    "SUPABASE_URL": {
+      "description": "Your Supabase URL",
+      "required": true
+    },
+    "SUPABASE_ANON_KEY": {
+      "description": "Your Supabase anonymous key",
+      "required": true
+    },
+    "STRIPE_SECRET_KEY": {
+      "description": "Your Stripe secret key",
+      "required": true
+    },
+    "STRIPE_WEBHOOK_SECRET": {
+      "description": "Your Stripe webhook secret",
+      "required": true
+    },
+    "TWILIO_ACCOUNT_SID": {
+      "description": "Your Twilio account SID",
+      "required": true
+    },
+    "TWILIO_AUTH_TOKEN": {
+      "description": "Your Twilio auth token",
+      "required": true
+    },
+    "TWILIO_PHONE_NUMBER": {
+      "description": "Your Twilio phone number",
+      "required": true
+    },
+    "YOUR_PHONE_NUMBER": {
+      "description": "Your admin phone number",
+      "required": true
+    },
+    "MAILGUN_API_KEY": {
+      "description": "Your Mailgun API key",
+      "required": true
+    },
+    "MAILGUN_DOMAIN": {
+      "description": "Your Mailgun domain",
+      "required": true
+    },
+    "MAILGUN_FROM": {
+      "description": "Your Mailgun from email",
+      "required": true
+    },
+    "MAIL_TO": {
+      "description": "Your admin email",
+      "required": true
+    },
+    "PRINTFUL_API_KEY": {
+      "description": "Your Printful API key",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ]
+} 
