@@ -10,10 +10,7 @@ const ChannelHeader = ({
   bio,
   canEdit = false,
   onEditCover,
-  onEditAvatar,
-  showFriendButton = false,
-  onBeAFriend,
-  isRequesting = false
+  onEditAvatar
 }) => (
   <div className="channel-header">
     <div className="channel-cover-container">
@@ -32,11 +29,7 @@ const ChannelHeader = ({
           <h1 className="channel-name">{displayName}</h1>
           <p className="channel-username">@{username}</p>
           {bio && <p className="channel-bio">{bio}</p>}
-          {showFriendButton && (
-            <button className="be-a-friend-btn" onClick={onBeAFriend} disabled={isRequesting}>
-              {isRequesting ? 'Requesting...' : 'BE A FRIEND'}
-            </button>
-          )}
+
         </div>
       </div>
     </div>

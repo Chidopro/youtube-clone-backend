@@ -6,6 +6,7 @@ import './Upload.css'; // Import new styles
 
 const Upload = ({ sidebar }) => {
     const [user, setUser] = useState(null);
+    const [userProfile, setUserProfile] = useState(null);
     const [loadingUser, setLoadingUser] = useState(true);
     const navigate = useNavigate();
 
@@ -21,9 +22,60 @@ const Upload = ({ sidebar }) => {
         const fetchUser = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    setMessage('❌ Please log in to upload videos');
+                    setLoadingUser(false);
+                    return;
+                }
                 setUser(user);
+                
+                // Fetch user profile from database
+                const { data: profile, error: profileError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                
+                if (profile) {
+                    setUserProfile(profile);
+                } else if (profileError && profileError.code === 'PGRST116') {
+                    // User doesn't exist in users table, create them
+                    const { data: newProfile, error: createError } = await supabase
+                        .from('users')
+                        .upsert({
+                            id: user.id,
+                            email: user.email,
+                            username: user.email?.split('@')[0] || 'user',
+                            display_name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+                            role: 'creator',
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        }, {
+                            onConflict: 'id',
+                            ignoreDuplicates: false
+                        })
+                        .select()
+                        .single();
+                    
+                    if (createError && createError.message.includes('duplicate key')) {
+                        // If duplicate key error, try to get existing user
+                        console.log('Duplicate key detected, fetching existing user');
+                        const { data: existingProfile, error: fetchError } = await supabase
+                            .from('users')
+                            .select('*')
+                            .eq('id', user.id)
+                            .single();
+                        
+                        if (existingProfile) {
+                            setUserProfile(existingProfile);
+                        }
+                    } else if (newProfile) {
+                        setUserProfile(newProfile);
+                    }
+                }
             } catch (error) {
                 console.error('Error fetching user:', error);
+                setMessage('❌ Authentication error. Please log in again.');
             } finally {
                 setLoadingUser(false);
             }
@@ -103,9 +155,35 @@ const Upload = ({ sidebar }) => {
             return;
         }
 
+        if (!user || !user.id) {
+            setMessage('❌ Please log in to upload videos');
+            return;
+        }
+
         setLoading(true);
         try {
             console.log('Starting upload process...');
+            console.log('User ID:', user.id);
+            
+            // Ensure user exists in database before upload
+            const ensureUserResponse = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/users/ensure-exists', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: user.id,
+                    email: user.email,
+                    display_name: userProfile?.display_name || user.user_metadata?.name
+                })
+            });
+            
+            if (!ensureUserResponse.ok) {
+                throw new Error('Failed to ensure user exists in database');
+            }
+            
+            const ensureUserResult = await ensureUserResponse.json();
+            console.log('User ensured:', ensureUserResult);
             
             // 1. Upload video
             setUploadProgress(10);
@@ -160,7 +238,7 @@ const Upload = ({ sidebar }) => {
                 description: description.trim(),
                 video_url: videoUrlData.publicUrl,
                 thumbnail: thumbUrlData.publicUrl,
-                channelTitle: user.user_metadata?.name || user.email || 'Unknown Creator',
+                channelTitle: userProfile?.display_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Unknown Creator',
                 user_id: user.id,
                 verification_status: 'verified_via_supabase_auth',
                 created_at: new Date().toISOString(),
@@ -250,8 +328,8 @@ const Upload = ({ sidebar }) => {
             <div style={{ maxWidth: 700, margin: '20px auto', background: '#fff', padding: 24, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                 <h2>Upload a New Video</h2>
                 <div className="uploader-info">
-                    <img src={user.user_metadata?.picture || '/default-avatar.jpg'} alt="Your avatar" />
-                    <p>You are uploading as: <strong>{user.user_metadata?.name || user.email || 'Your Channel'}</strong></p>
+                    <img src={userProfile?.profile_image_url || user.user_metadata?.picture || '/default-avatar.jpg'} alt="Your avatar" />
+                    <p>You are uploading as: <strong>{userProfile?.display_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Your Channel'}</strong></p>
                 </div>
 
                 <form onSubmit={handleSubmit}>

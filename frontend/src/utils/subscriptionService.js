@@ -86,10 +86,7 @@ export class SubscriptionService {
           'Standard features',
           'Community access'
         ],
-        maxFriends: 0,
-        revenueShare: 0,
-        canInviteFriends: false,
-        showFriendsSidebar: false
+        revenueShare: 0
       },
       premium: {
         name: 'Premium Tier',
@@ -101,27 +98,19 @@ export class SubscriptionService {
           'Custom branding',
           'Enhanced upload limits'
         ],
-        maxFriends: 0,
-        revenueShare: 0,
-        canInviteFriends: false,
-        showFriendsSidebar: false
+        revenueShare: 0
       },
       creator_network: {
         name: 'Creator Network Tier',
         price: '$29.99/month',
         features: [
           'Everything in Premium',
-          'Invite friends to create content',
-          'Friends list sidebar',
-          'Revenue sharing (15%)',
           'Advanced creator tools',
           'Network analytics',
-          'Up to 50 friends'
+          'Enhanced revenue sharing',
+          'Priority support'
         ],
-        maxFriends: 50,
-        revenueShare: 0.15,
-        canInviteFriends: true,
-        showFriendsSidebar: true
+        revenueShare: 0.15
       }
     };
 

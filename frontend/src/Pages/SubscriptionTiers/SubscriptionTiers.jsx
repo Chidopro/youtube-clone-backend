@@ -41,12 +41,12 @@ const SubscriptionTiers = () => {
             price: '$29.99/month',
             features: [
                 'Everything in Premium',
-                'Invite friends to create content',
-                'Friends list sidebar',
                 'Revenue sharing (15%)',
                 'Advanced creator tools',
                 'Network analytics',
-                'Up to 50 friends'
+                'Priority creator support',
+                'Custom channel branding',
+                'Enhanced monetization options'
             ],
             color: '#28a745',
             popular: true
@@ -360,21 +360,21 @@ const SubscriptionTiers = () => {
                         </div>
                         
                         {tier.name === 'Creator Network Tier' && (
-                            <div className="network-highlight" id="be-a-friend-breakdown">
+                            <div className="network-highlight" id="creator-network-breakdown">
                                 <h4>🎯 Creator Network Benefits</h4>
-                                <p>Invite friends to create content and earn 15% of their sales!</p>
+                                <p>Advanced creator tools and enhanced revenue sharing!</p>
                                 <div className="network-features">
                                     <div className="network-feature">
-                                        <span className="icon">👥</span>
-                                        <span>Friends List Sidebar</span>
-                                    </div>
-                                    <div className="network-feature">
                                         <span className="icon">💰</span>
-                                        <span>Revenue Sharing</span>
+                                        <span>Revenue Sharing (15%)</span>
                                     </div>
                                     <div className="network-feature">
                                         <span className="icon">📊</span>
-                                        <span>Network Analytics</span>
+                                        <span>Advanced Analytics</span>
+                                    </div>
+                                    <div className="network-feature">
+                                        <span className="icon">🎨</span>
+                                        <span>Custom Branding</span>
                                     </div>
                                 </div>
                             </div>

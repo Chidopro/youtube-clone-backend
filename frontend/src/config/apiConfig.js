@@ -31,7 +31,10 @@ export const API_CONFIG = {
     CREATE_PRODUCT: `${currentConfig.API_BASE_URL}/api/create-product`,
     SEND_SUBSCRIPTION_EMAIL: `${currentConfig.EMAIL_API_URL}/api/send-subscription-email`,
     VERIFY_SUBSCRIPTION: `${currentConfig.SUBSCRIPTION_API_URL}/api/verify-subscription`,
-    USER_SUBSCRIPTION: `${currentConfig.SUBSCRIPTION_API_URL}/api/users`
+    USER_SUBSCRIPTION: `${currentConfig.SUBSCRIPTION_API_URL}/api/users`,
+    CAPTURE_SCREENSHOT: `${currentConfig.API_BASE_URL}/api/capture-screenshot`,
+    CAPTURE_MULTIPLE_SCREENSHOTS: `${currentConfig.API_BASE_URL}/api/capture-multiple-screenshots`,
+    VIDEO_INFO: `${currentConfig.API_BASE_URL}/api/video-info`
   }
 };
 

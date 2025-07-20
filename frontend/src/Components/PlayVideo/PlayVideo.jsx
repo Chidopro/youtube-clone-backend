@@ -58,7 +58,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     }, [videoId, setScreenshots]);
 
     // Grab Screenshot handler
-    const handleGrabScreenshot = () => {
+    const handleGrabScreenshot = async () => {
         const videoElement = videoRef.current;
         console.log('Grab Screenshot clicked');
         
@@ -72,19 +72,55 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             return;
         }
 
-        // Since cross-origin restrictions prevent direct video capture,
-        // we'll use the video thumbnail as a reliable screenshot
-        const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
-        
-        if (thumbnailUrl) {
-            console.log('Adding video thumbnail as screenshot');
-            setScreenshots(prev => prev.length < 8 ? [...prev, thumbnailUrl] : prev);
+        try {
+            // Use server-side screenshot capture to avoid cross-origin issues
+            const currentTime = videoElement.currentTime || 0;
+            const videoUrl = video.video_url;
             
-            // Show success message
-            const newScreenshotCount = screenshots.length + 1;
-            alert(`Screenshot ${newScreenshotCount} captured successfully!`);
-        } else {
-            alert('No thumbnail available for this video.');
+            console.log(`Capturing screenshot at ${currentTime}s from ${videoUrl}`);
+            
+            const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    video_url: videoUrl,
+                    timestamp: currentTime,
+                    quality: 85
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.screenshot) {
+                console.log('Screenshot captured successfully via server');
+                setScreenshots(prev => prev.length < 8 ? [...prev, result.screenshot] : prev);
+                
+                // Show success message for server-side capture
+                const newScreenshotCount = screenshots.length + 1;
+                alert(`Screenshot ${newScreenshotCount} captured successfully!`);
+            } else {
+                console.error('Server screenshot capture failed:', result.error);
+                throw new Error(result.error || 'Failed to capture screenshot');
+            }
+            
+        } catch (error) {
+            console.log('Server capture failed, using thumbnail fallback:', error);
+            
+            // Fallback to thumbnail if server capture fails
+            const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
+            
+            if (thumbnailUrl) {
+                console.log('Adding video thumbnail as screenshot');
+                setScreenshots(prev => prev.length < 8 ? [...prev, thumbnailUrl] : prev);
+                
+                // Show success message for thumbnail fallback
+                const newScreenshotCount = screenshots.length + 1;
+                alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
+            } else {
+                alert('No thumbnail available for this video.');
+            }
         }
     };
 
