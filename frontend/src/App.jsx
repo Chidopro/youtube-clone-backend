@@ -19,7 +19,7 @@ import TermsOfService from "./Pages/TermsOfService/TermsOfService";
 import { API_CONFIG } from "./config/apiConfig";
 
 const App = () => {
-  const [sidebar, setSidebar] = useState(true);
+  const [sidebar, setSidebar] = useState(false);
   const [category, setCategory] = useState(0);
   const [currentProfileTier, setCurrentProfileTier] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
