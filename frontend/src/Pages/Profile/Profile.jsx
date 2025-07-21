@@ -11,8 +11,7 @@ const Profile = () => {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [friendRequestStatus, setFriendRequestStatus] = useState('');
-  const [isRequesting, setIsRequesting] = useState(false);
+
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
@@ -60,9 +59,7 @@ const Profile = () => {
     fetchCurrentUser();
   }, []);
 
-  const handleBeAFriend = () => {
-    navigate('/channel-friend');
-  };
+
 
   if (currentUser && currentUser.role !== 'creator') {
     return <Navigate to="/" replace />;
@@ -97,25 +94,7 @@ const Profile = () => {
               {profile.bio && (
                 <p className="channel-bio">{profile.bio}</p>
               )}
-              <button
-                className="be-a-friend-btn"
-                onClick={handleBeAFriend}
-                disabled={isRequesting}
-              >
-                {isRequesting ? 'Requesting...' : 'Be A FRIEND'}
-              </button>
-              {friendRequestStatus === 'pending' && (
-                <div style={{ color: '#ffc107', marginTop: 8 }}>You have already applied. Please wait for approval.</div>
-              )}
-              {friendRequestStatus === 'already_friend' && (
-                <div style={{ color: '#28a745', marginTop: 8 }}>You are already friends with this channel!</div>
-              )}
-              {friendRequestStatus === 'success' && (
-                <div style={{ color: '#28a745', marginTop: 8 }}>Request sent! The channel owner will review your application.</div>
-              )}
-              {friendRequestStatus === 'error' && (
-                <div style={{ color: '#dc3545', marginTop: 8 }}>Failed to send request. Please try again.</div>
-              )}
+
             </div>
           </div>
         </div>

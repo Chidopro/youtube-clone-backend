@@ -111,17 +111,15 @@ export class SubscriptionService {
         price: '$29.99/month',
         features: [
           'Everything in Premium',
-          'Invite friends to create content',
-          'Friends list sidebar',
-          'Revenue sharing (15%)',
           'Advanced creator tools',
           'Network analytics',
-          'Up to 50 friends'
+          'Enhanced revenue sharing',
+          'Priority support'
         ],
-        maxFriends: 50,
+        maxFriends: 0,
         revenueShare: 0.15,
-        canInviteFriends: true,
-        showFriendsSidebar: true
+        canInviteFriends: false,
+        showFriendsSidebar: false
       }
     };
 

@@ -79,8 +79,6 @@ export const useSubscription = () => {
     if (!subscription?.config) return false;
     
     const featureMap = {
-      'friends_sidebar': subscription.config.showFriendsSidebar,
-      'invite_friends': subscription.config.canInviteFriends,
       'revenue_sharing': subscription.config.revenueShare > 0,
       'advanced_analytics': subscription.tier !== 'basic',
       'priority_support': subscription.tier === 'premium' || subscription.tier === 'creator_network',

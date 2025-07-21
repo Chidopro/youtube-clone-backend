@@ -23,8 +23,7 @@ const Dashboard = ({ sidebar }) => {
         cover: null,
         profile: null
     });
-    const [friendRequestStatus, setFriendRequestStatus] = useState('');
-    const [isRequesting, setIsRequesting] = useState(false);
+
     const [isEditingCover, setIsEditingCover] = useState(false);
     const [isEditingAvatar, setIsEditingAvatar] = useState(false);
     const [activeTab, setActiveTab] = useState('videos');
@@ -205,9 +204,7 @@ const Dashboard = ({ sidebar }) => {
         }
     };
 
-    const handleBeAFriend = () => {
-        navigate('/channel-friend');
-    };
+
 
     const handleDeleteVideo = async (videoId, videoTitle, event) => {
         // Prevent the card click event from triggering
@@ -238,10 +235,100 @@ const Dashboard = ({ sidebar }) => {
 
     const canInviteFriends = subscription && SubscriptionService.getTierConfig(subscription.tier).canInviteFriends;
 
-    // Temporarily allow all authenticated users to access dashboard
-    // TODO: Implement proper role-based access control
-    if (currentUser && currentUser.role && currentUser.role !== 'creator') {
-        return <div className="dashboard-error">Access denied. Only creators can view this page.</div>;
+    // Check if user has proper role or needs to be created/updated
+    if (currentUser && (!currentUser.role || currentUser.role !== 'creator')) {
+        console.log('User role issue:', currentUser.role, 'User:', currentUser);
+        return <div className="dashboard-error">
+            Access denied. Only creators can view this page.
+            <br />
+            <button onClick={async () => {
+                try {
+                    console.log('Fixing role for user:', currentUser.id);
+                    
+                    // First check if user exists in users table
+                    const { data: existingUser, error: checkError } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', currentUser.id)
+                        .single();
+                    
+                    if (checkError && checkError.code === 'PGRST116') {
+                        // User doesn't exist, create them
+                        console.log('User not found, creating new user record');
+                        const { data: newUser, error: createError } = await supabase
+                            .from('users')
+                            .upsert({
+                                id: currentUser.id,
+                                email: currentUser.email,
+                                username: currentUser.email?.split('@')[0] || 'user',
+                                display_name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+                                role: 'creator',
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                            }, {
+                                onConflict: 'id',
+                                ignoreDuplicates: false
+                            })
+                            .select();
+                        
+                        if (createError) {
+                            console.error('Error creating user:', createError);
+                            // If it's a duplicate key error, try to update instead
+                            if (createError.message.includes('duplicate key')) {
+                                console.log('Duplicate key detected, updating existing user');
+                                const { data: updatedUser, error: updateError } = await supabase
+                                    .from('users')
+                                    .update({
+                                        role: 'creator',
+                                        updated_at: new Date().toISOString()
+                                    })
+                                    .eq('id', currentUser.id)
+                                    .select();
+                                
+                                if (updateError) {
+                                    console.error('Error updating user:', updateError);
+                                    alert('Failed to update user: ' + updateError.message);
+                                } else {
+                                    console.log('User updated successfully:', updatedUser);
+                                    alert('User updated! Reloading page...');
+                                    window.location.reload();
+                                }
+                            } else {
+                                alert('Failed to create user: ' + createError.message);
+                            }
+                        } else {
+                            console.log('User created successfully:', newUser);
+                            alert('User created! Reloading page...');
+                            window.location.reload();
+                        }
+                    } else if (existingUser) {
+                        // User exists, update their role
+                        const { data, error } = await supabase
+                            .from('users')
+                            .update({ role: 'creator' })
+                            .eq('id', currentUser.id)
+                            .select();
+                        
+                        if (error) {
+                            console.error('Error updating role:', error);
+                            alert('Failed to update role: ' + error.message);
+                        } else {
+                            console.log('Role updated successfully:', data);
+                            alert('Role updated! Reloading page...');
+                            window.location.reload();
+                        }
+                    } else {
+                        console.error('Unexpected error checking user:', checkError);
+                        alert('Error checking user: ' + checkError.message);
+                    }
+                } catch (err) {
+                    console.error('Error in role fix:', err);
+                    alert('Error fixing role: ' + err.message);
+                }
+            }} style={{marginTop: '10px', padding: '8px 16px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'}}>
+                Fix Role & Reload
+            </button>
+        </div>;
     }
 
     if (loading) {
@@ -365,21 +452,7 @@ const Dashboard = ({ sidebar }) => {
                                     {userProfile?.bio && (
                                         <p className="channel-bio">{userProfile.bio}</p>
                                     )}
-                                    <button className="be-a-friend-btn" onClick={handleBeAFriend} disabled={isRequesting} style={{display:'inline-block', width:'auto', minWidth:'unset', textAlign:'center', padding:'10px 18px'}}>
-                                        {isRequesting ? 'Requesting...' : 'Be A FRIEND'}
-                                    </button>
-                                    {friendRequestStatus === 'pending' && (
-                                        <div style={{ color: '#ffc107', marginTop: 8 }}>You have already applied. Please wait for approval.</div>
-                                    )}
-                                    {friendRequestStatus === 'already_friend' && (
-                                        <div style={{ color: '#28a745', marginTop: 8 }}>You are already friends with this channel!</div>
-                                    )}
-                                    {friendRequestStatus === 'success' && (
-                                        <div style={{ color: '#28a745', marginTop: 8 }}>Request sent! The channel owner will review your application.</div>
-                                    )}
-                                    {friendRequestStatus === 'error' && (
-                                        <div style={{ color: '#dc3545', marginTop: 8 }}>Failed to send request. Please try again.</div>
-                                    )}
+
                                 </>
                             )}
                         </div>

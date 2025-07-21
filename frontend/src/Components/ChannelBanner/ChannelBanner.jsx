@@ -9,10 +9,7 @@ const ChannelBanner = ({
   bio,
   showEditIcons = false,
   onEditCover,
-  onEditAvatar,
-  onBeAFriend,
-  isRequesting,
-  friendRequestStatus
+  onEditAvatar
 }) => (
   <div className="channel-header">
     <div className="channel-cover-container">
@@ -31,23 +28,7 @@ const ChannelBanner = ({
           <h1 className="channel-name">{displayName}</h1>
           <p className="channel-username">@{username}</p>
           {bio && <p className="channel-bio">{bio}</p>}
-          {onBeAFriend && (
-            <button className="be-a-friend-btn" onClick={onBeAFriend} disabled={isRequesting}>
-              {isRequesting ? 'Requesting...' : 'Be A FRIEND'}
-            </button>
-          )}
-          {friendRequestStatus === 'pending' && (
-            <div style={{ color: '#ffc107', marginTop: 8 }}>You have already applied. Please wait for approval.</div>
-          )}
-          {friendRequestStatus === 'already_friend' && (
-            <div style={{ color: '#28a745', marginTop: 8 }}>You are already friends with this channel!</div>
-          )}
-          {friendRequestStatus === 'success' && (
-            <div style={{ color: '#28a745', marginTop: 8 }}>Request sent! The channel owner will review your application.</div>
-          )}
-          {friendRequestStatus === 'error' && (
-            <div style={{ color: '#dc3545', marginTop: 8 }}>Failed to send request. Please try again.</div>
-          )}
+
         </div>
       </div>
     </div>

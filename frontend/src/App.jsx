@@ -12,7 +12,7 @@ import SubscriptionTiers from "./Pages/SubscriptionTiers/SubscriptionTiers";
 import SubscriptionSuccess from "./Pages/SubscriptionSuccess/SubscriptionSuccess";
 import Sidebar from "./Components/Sidebar/Sidebar";
 import ComingSoon from "./Pages/ComingSoon/ComingSoon";
-import ChannelFriend from "./Pages/ChannelFriend/ChannelFriend";
+
 import Admin from "./Pages/Admin/Admin";
 import AuthForm from "./Components/AuthForm";
 import PrivacyPolicy from "./Pages/PrivacyPolicy/PrivacyPolicy";
@@ -75,8 +75,7 @@ const App = () => {
               <Route path="/subscription-tiers" element={<SubscriptionTiers />} />
               <Route path="/subscription-success" element={<SubscriptionSuccess />} />
               <Route path="/coming-soon" element={<ComingSoon />} />
-              <Route path="/channel-friend" element={<ChannelFriend />} />
-              <Route path="/channel-friend/:channelUsername" element={<ChannelFriend />} />
+
               <Route path="/admin" element={<Admin />} />
               <Route path="/auth" element={<AuthForm />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
