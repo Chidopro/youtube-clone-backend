@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './Footer.css';
+import screenMerchLogo from '../../assets/screenmerch_logo.png.png';
 
 const Footer = () => {
   return (
@@ -9,7 +10,7 @@ const Footer = () => {
         <div className="footer-content">
           {/* Company Info */}
           <div className="footer-section">
-            <img src="/logo.png" alt="ScreenMerch" className="footer-logo" />
+            <img src={screenMerchLogo} alt="ScreenMerch" className="footer-logo" />
             <p className="footer-description">
               Create custom merchandise from your favorite video moments
             </p>
