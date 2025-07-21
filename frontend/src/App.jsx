@@ -19,6 +19,7 @@ import TermsOfService from "./Pages/TermsOfService/TermsOfService";
 import { API_CONFIG } from "./config/apiConfig";
 
 const App = () => {
+  // Sidebar starts closed by default for better UX
   const [sidebar, setSidebar] = useState(false);
   const [category, setCategory] = useState(0);
   const [currentProfileTier, setCurrentProfileTier] = useState(null);
