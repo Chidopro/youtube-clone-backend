@@ -1,12 +1,119 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ScreenMerch - Create Custom Merchandise from Video Content</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScreenMerch - Custom Printing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .logo {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .tagline {
+            font-size: 1.5rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+        .status {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+        .products {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        .product {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .product h3 {
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+        .product p {
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+        .price {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ffd700;
+            margin: 20px 0;
+        }
+        .btn {
+            background: #ff6b6b;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">ScreenMerch</div>
+        <div class="tagline">Custom Printing & Merchandise</div>
+        
+        <div class="status">
+            ✅ Site is live and ready for Twilio testing
+        </div>
+
+        <div class="products">
+            <div class="product">
+                <h3>All Over Pajama Top</h3>
+                <p>Comfortable all-over print pajama top with custom designs</p>
+                <div class="price">$29.99</div>
+                <button class="btn">Add to Cart</button>
+            </div>
+            
+            <div class="product">
+                <h3>All Over Tote Bag</h3>
+                <p>Stylish all-over print tote bag perfect for everyday use</p>
+                <div class="price">$24.99</div>
+                <button class="btn">Add to Cart</button>
+            </div>
+            
+            <div class="product">
+                <h3>Unisex Classic T-Shirt</h3>
+                <p>Classic unisex t-shirt with custom prints and designs</p>
+                <div class="price">$19.99</div>
+                <button class="btn">Add to Cart</button>
+            </div>
+        </div>
+        
+        <div style="margin-top: 50px; opacity: 0.7;">
+            <p>Contact: support@screenmerch.com</p>
+            <p>Phone: Available for SMS notifications</p>
+        </div>
+    </div>
+</body>
 </html>

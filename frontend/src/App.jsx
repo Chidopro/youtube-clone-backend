@@ -12,7 +12,6 @@ import SubscriptionTiers from "./Pages/SubscriptionTiers/SubscriptionTiers";
 import SubscriptionSuccess from "./Pages/SubscriptionSuccess/SubscriptionSuccess";
 import Sidebar from "./Components/Sidebar/Sidebar";
 import ComingSoon from "./Pages/ComingSoon/ComingSoon";
-
 import Admin from "./Pages/Admin/Admin";
 import AuthForm from "./Components/AuthForm";
 import PrivacyPolicy from "./Pages/PrivacyPolicy/PrivacyPolicy";
@@ -20,7 +19,7 @@ import TermsOfService from "./Pages/TermsOfService/TermsOfService";
 import { API_CONFIG } from "./config/apiConfig";
 
 const App = () => {
-  const [sidebar, setSidebar] = useState(true);
+  const [sidebar, setSidebar] = useState(false);
   const [category, setCategory] = useState(0);
   const [currentProfileTier, setCurrentProfileTier] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -75,7 +74,6 @@ const App = () => {
               <Route path="/subscription-tiers" element={<SubscriptionTiers />} />
               <Route path="/subscription-success" element={<SubscriptionSuccess />} />
               <Route path="/coming-soon" element={<ComingSoon />} />
-
               <Route path="/admin" element={<Admin />} />
               <Route path="/auth" element={<AuthForm />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />

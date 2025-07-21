@@ -32,9 +32,7 @@
   margin-top: 0;
 }
 
-.profile-content.with-friends-sidebar {
-  width: auto;
-}
+
 
 .profile-banner img {
   width: 100%;
@@ -208,9 +206,7 @@
     padding-right: 5%;
   }
   
-  .profile-content.with-friends-sidebar {
-    width: 100%;
-  }
+
   
   .profile-header {
     flex-direction: column;
@@ -444,7 +440,3 @@
 
 /* Remove old .profile-info overlap styles if present */
 .profile-info { display: none; }
-
-.FriendsList_sidebar {
-  margin-top: 48px;
-} 

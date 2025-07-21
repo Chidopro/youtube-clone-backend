@@ -86,10 +86,7 @@ export class SubscriptionService {
           'Standard features',
           'Community access'
         ],
-        maxFriends: 0,
-        revenueShare: 0,
-        canInviteFriends: false,
-        showFriendsSidebar: false
+        revenueShare: 0
       },
       premium: {
         name: 'Premium Tier',
@@ -101,10 +98,7 @@ export class SubscriptionService {
           'Custom branding',
           'Enhanced upload limits'
         ],
-        maxFriends: 0,
-        revenueShare: 0,
-        canInviteFriends: false,
-        showFriendsSidebar: false
+        revenueShare: 0
       },
       creator_network: {
         name: 'Creator Network Tier',
@@ -116,10 +110,7 @@ export class SubscriptionService {
           'Enhanced revenue sharing',
           'Priority support'
         ],
-        maxFriends: 0,
-        revenueShare: 0.15,
-        canInviteFriends: false,
-        showFriendsSidebar: false
+        revenueShare: 0.15
       }
     };
 

@@ -1,6 +1,6 @@
 # 🚀 ScreenMerch Startup Guide
 
-## Easy Way to Start the Application
+## Easy Way to Start Both Servers
 
 ### Step 1: Start Backend Server
 **Double-click** the `start-backend.bat` file in your main project folder.

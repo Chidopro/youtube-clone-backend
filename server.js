@@ -16,11 +16,8 @@ app.use(express.json());
 
 // A more robust CORS configuration
 const allowedOrigins = [
-    'http://localhost:5173', 
-    'http://localhost:5174', 
-    'http://localhost:5175',
-    'http://localhost:5176', // Adding a few more for future-proofing
-    'https://screenmerch.com' // Your production domain
+    'https://screenmerch.com', // Your production domain
+    'https://www.screenmerch.com' // Also allow www subdomain
 ];
 
 app.use(cors({
@@ -46,7 +43,7 @@ app.use(session({
     saveUninitialized: false,
     store: store,
     cookie: {
-        secure: false, // Set to true if using HTTPS
+        secure: true, // Set to true for HTTPS in production
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
@@ -55,7 +52,7 @@ app.use(session({
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    'http://localhost:3002/api/callback'
+    'https://backend-hidden-firefly-7865.fly.dev/api/callback'
 );
 
 // 1. Login
@@ -131,7 +128,7 @@ app.get('/api/callback', async (req, res) => {
         };
         req.session.user = user;
 
-        res.redirect('http://localhost:5174/dashboard');
+        res.redirect('https://screenmerch.com/dashboard');
 
     } catch (error) {
         console.error('Error during Google Auth callback:', error);
@@ -423,8 +420,8 @@ app.post('/api/create-premium-checkout', async (req, res) => {
                 },
                 quantity: 1
             }],
-            success_url: `${process.env.FRONTEND_URL || 'http://localhost:5176'}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5176'}/subscription-tiers`,
+            success_url: `${process.env.FRONTEND_URL || 'https://screenmerch.com'}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${process.env.FRONTEND_URL || 'https://screenmerch.com'}/subscription-tiers`,
             metadata: {
                 userId: userId,
                 tier: tier
@@ -574,8 +571,8 @@ app.post('/api/create-creator-network-checkout', async (req, res) => {
                 },
                 quantity: 1
             }],
-            success_url: `${process.env.FRONTEND_URL || 'http://localhost:5176'}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5176'}/subscription-tiers`,
+            success_url: `${process.env.FRONTEND_URL || 'https://screenmerch.com'}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${process.env.FRONTEND_URL || 'https://screenmerch.com'}/subscription-tiers`,
             metadata: {
                 userId: userId,
                 tier: 'creator_network'
@@ -599,6 +596,10 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+// Friendly root route
+app.get('/', (req, res) => {
+  res.send('Backend API is running!');
+});
 // --- Video Upload Endpoint ---
 app.post('/api/upload', async (req, res) => {
     if (!req.session.user || !req.session.user.youtube) {

@@ -1,0 +1,346 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../supabaseClient';
+import '../Home/Home.css'; // For layout
+import './Upload.css'; // Import new styles
+
+const Upload = ({ sidebar }) => {
+    const [user, setUser] = useState(null);
+    const [loadingUser, setLoadingUser] = useState(true);
+    const navigate = useNavigate();
+
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [file, setFile] = useState(null);
+    const [thumbnail, setThumbnail] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
+    const [uploadProgress, setUploadProgress] = useState(0);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                setUser(user);
+            } catch (error) {
+                console.error('Error fetching user:', error);
+            } finally {
+                setLoadingUser(false);
+            }
+        };
+        fetchUser();
+    }, []);
+
+    const validateFile = (file, type) => {
+        if (!file) return 'No file selected';
+        
+        if (type === 'video') {
+            if (!file.type.startsWith('video/')) {
+                return 'Please select a valid video file';
+            }
+            if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                return 'Video file size must be less than 100MB';
+            }
+        } else if (type === 'image') {
+            if (!file.type.startsWith('image/')) {
+                return 'Please select a valid image file';
+            }
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                return 'Image file size must be less than 10MB';
+            }
+        }
+        
+        return null;
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        const error = validateFile(file, 'video');
+        if (error) {
+            setMessage(`❌ ${error}`);
+            setFile(null);
+        } else {
+            setFile(file);
+            setMessage('');
+        }
+    };
+
+    const handleThumbnailChange = (e) => {
+        const file = e.target.files[0];
+        const error = validateFile(file, 'image');
+        if (error) {
+            setMessage(`❌ ${error}`);
+            setThumbnail(null);
+        } else {
+            setThumbnail(file);
+            setMessage('');
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setMessage('');
+        setUploadProgress(0);
+
+        // Validation
+        if (!title.trim()) {
+            setMessage('❌ Please enter a video title');
+            return;
+        }
+
+        if (!description.trim()) {
+            setMessage('❌ Please enter a video description');
+            return;
+        }
+
+        if (!file) {
+            setMessage('❌ Please select a video file');
+            return;
+        }
+
+        if (!thumbnail) {
+            setMessage('❌ Please select a thumbnail image');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            console.log('Starting upload process...');
+            
+            // 1. Upload video
+            setUploadProgress(10);
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+            console.log('Uploading video to:', fileName);
+            
+            const { error: storageError, data: videoData } = await supabase.storage
+                .from('videos2')
+                .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+                
+            if (storageError) {
+                console.error('Video upload error:', storageError);
+                throw new Error(`Video upload failed: ${storageError.message}`);
+            }
+            
+            setUploadProgress(50);
+            const { data: videoUrlData } = supabase.storage.from('videos2').getPublicUrl(fileName);
+            console.log('Video uploaded successfully:', videoUrlData.publicUrl);
+
+            // 2. Upload thumbnail
+            setUploadProgress(60);
+            const thumbExt = thumbnail.name.split('.').pop();
+            const thumbName = `${user.id}/${Date.now()}_thumb.${thumbExt}`;
+            console.log('Uploading thumbnail to:', thumbName);
+            
+            const { error: thumbError, data: thumbData } = await supabase.storage
+                .from('thumbnails')
+                .upload(thumbName, thumbnail, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+                
+            if (thumbError) {
+                console.error('Thumbnail upload error:', thumbError);
+                throw new Error(`Thumbnail upload failed: ${thumbError.message}`);
+            }
+            
+            setUploadProgress(80);
+            const { data: thumbUrlData } = supabase.storage.from('thumbnails').getPublicUrl(thumbName);
+            console.log('Thumbnail uploaded successfully:', thumbUrlData.publicUrl);
+
+            // 3. Insert metadata into database
+            setUploadProgress(90);
+            console.log('Inserting video metadata into database...');
+            
+            const videoMetadata = {
+                title: title.trim(),
+                description: description.trim(),
+                video_url: videoUrlData.publicUrl,
+                thumbnail: thumbUrlData.publicUrl,
+                channelTitle: user.user_metadata?.name || user.email || 'Unknown Creator',
+                user_id: user.id,
+                verification_status: 'verified_via_supabase_auth',
+                created_at: new Date().toISOString(),
+            };
+            
+            console.log('Video metadata:', videoMetadata);
+            
+            const { error: dbError, data: dbData } = await supabase
+                .from('videos2')
+                .insert([videoMetadata])
+                .select();
+                
+            if (dbError) {
+                console.error('Database insert error:', dbError);
+                throw new Error(`Database error: ${dbError.message}`);
+            }
+            
+            setUploadProgress(100);
+            console.log('Video uploaded and saved successfully:', dbData);
+
+            setMessage('✅ Video uploaded successfully! Redirecting you to the homepage...');
+            setTitle('');
+            setDescription('');
+            setFile(null);
+            setThumbnail(null);
+
+            // Redirect to home page after 2 seconds
+            setTimeout(() => {
+                navigate('/');
+            }, 2000);
+
+        } catch (err) {
+            console.error('Upload error:', err);
+            setMessage(`❌ Upload failed: ${err.message}`);
+            
+            // If video was uploaded but database insert failed, try to clean up
+            if (err.message.includes('Database error') && file) {
+                try {
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+                    await supabase.storage.from('videos2').remove([fileName]);
+                    console.log('Cleaned up uploaded video file');
+                } catch (cleanupError) {
+                    console.error('Failed to cleanup video file:', cleanupError);
+                }
+            }
+        } finally {
+            setLoading(false);
+            setUploadProgress(0);
+        }
+    };
+
+    if (loadingUser) {
+        return <div className={`container ${sidebar ? "" : " large-container"}`}><h2>Loading...</h2></div>;
+    }
+
+    if (!user) {
+        return (
+            <div className={`container ${sidebar ? "" : " large-container"}`} style={{textAlign: 'center', paddingTop: '5rem'}}>
+                <h2>Please Log In to Upload</h2>
+                <p>You must sign in with Google to upload videos.</p>
+                <button 
+                    className="sign-in-btn" 
+                    onClick={async () => {
+                        const { error } = await supabase.auth.signInWithOAuth({ 
+                            provider: 'google',
+                            options: {
+                                redirectTo: `${window.location.origin}/upload`,
+                                queryParams: {
+                                    prompt: 'select_account'
+                                }
+                            }
+                        });
+                        if (error) {
+                            alert('Login failed: ' + error.message);
+                        }
+                    }}
+                >
+                    Sign In with Google
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className={`container ${sidebar ? "" : " large-container"}`}>
+            <div style={{ maxWidth: 700, margin: '20px auto', background: '#fff', padding: 24, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <h2>Upload a New Video</h2>
+                <div className="uploader-info">
+                    <img src={user.user_metadata?.picture || '/default-avatar.jpg'} alt="Your avatar" />
+                    <p>You are uploading as: <strong>{user.user_metadata?.name || user.email || 'Your Channel'}</strong></p>
+                </div>
+
+                <form onSubmit={handleSubmit}>
+                    <div style={{ marginBottom: 16 }}>
+                        <label>Title *</label>
+                        <input 
+                            type="text" 
+                            value={title} 
+                            onChange={e => setTitle(e.target.value)} 
+                            required 
+                            style={{ width: '100%', padding: 8, marginTop: 4 }}
+                            placeholder="Enter video title"
+                        />
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                        <label>Description *</label>
+                        <textarea 
+                            value={description} 
+                            onChange={e => setDescription(e.target.value)} 
+                            required 
+                            style={{ width: '100%', padding: 8, marginTop: 4 }} 
+                            rows={4}
+                            placeholder="Enter video description"
+                        />
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                        <label>Video File * (Max 100MB)</label>
+                        <input 
+                            type="file" 
+                            accept="video/*" 
+                            onChange={handleFileChange} 
+                            required 
+                            style={{ display: 'block', marginTop: 4 }} 
+                        />
+                        {file && (
+                            <small style={{ color: '#666', marginTop: 4, display: 'block' }}>
+                                Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                            </small>
+                        )}
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                        <label>Thumbnail Image * (Max 10MB)</label>
+                        <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleThumbnailChange} 
+                            required 
+                            style={{ display: 'block', marginTop: 4 }} 
+                        />
+                        {thumbnail && (
+                            <small style={{ color: '#666', marginTop: 4, display: 'block' }}>
+                                Selected: {thumbnail.name} ({(thumbnail.size / 1024 / 1024).toFixed(2)} MB)
+                            </small>
+                        )}
+                    </div>
+
+                    {uploadProgress > 0 && (
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ 
+                                width: '100%', 
+                                backgroundColor: '#f0f0f0', 
+                                borderRadius: 4, 
+                                overflow: 'hidden',
+                                marginTop: 8
+                            }}>
+                                <div style={{
+                                    width: `${uploadProgress}%`,
+                                    height: 20,
+                                    backgroundColor: '#4CAF50',
+                                    transition: 'width 0.3s ease'
+                                }}></div>
+                            </div>
+                            <small style={{ color: '#666' }}>Upload Progress: {uploadProgress}%</small>
+                        </div>
+                    )}
+
+                    {message && (
+                        <div className={`upload-message ${message.includes('✅') ? 'success' : 'error'}`}>
+                            {message}
+                        </div>
+                    )}
+
+                    <button type="submit" className="upload-btn" disabled={loading}>
+                        {loading ? 'Uploading...' : 'Upload Video'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+export default Upload;

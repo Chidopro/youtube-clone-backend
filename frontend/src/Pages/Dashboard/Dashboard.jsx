@@ -233,7 +233,7 @@ const Dashboard = ({ sidebar }) => {
         }
     };
 
-    const canInviteFriends = subscription && SubscriptionService.getTierConfig(subscription.tier).canInviteFriends;
+
 
     // Check if user has proper role or needs to be created/updated
     if (currentUser && (!currentUser.role || currentUser.role !== 'creator')) {
@@ -482,14 +482,7 @@ const Dashboard = ({ sidebar }) => {
                 >
                     📊 Analytics
                 </button>
-                {canInviteFriends && (
-                    <button 
-                        className={`tab-button ${activeTab === 'friends' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('friends')}
-                    >
-                        👥 Friends Revenue
-                    </button>
-                )}
+
             </div>
 
             {/* Tab Content */}
@@ -557,12 +550,7 @@ const Dashboard = ({ sidebar }) => {
                                     <h4>📹 Upload Content</h4>
                                     <p>Start sharing your videos and build your audience.</p>
                                 </div>
-                                {canInviteFriends && (
-                                    <div className="tip-card">
-                                        <h4>👥 Invite Friends</h4>
-                                        <p>With Creator Network tier, invite friends to collaborate and earn revenue!</p>
-                                    </div>
-                                )}
+
                                 <div className="tip-card">
                                     <h4>⬆️ Upgrade Your Plan</h4>
                                     <p>
@@ -753,123 +741,7 @@ const Dashboard = ({ sidebar }) => {
                     </div>
                 )}
 
-                {/* Friends Revenue Tab */}
-                {activeTab === 'friends' && canInviteFriends && (
-                    <div className="friends-tab">
-                        {/* Friends/Collaborators Section */}
-                        <div className="friends-management-section">
-                            <h2>Invited Friends & Collaborators</h2>
-                            <p>Manage your content creator network</p>
-                            {/* Friends management component would go here */}
-                            <div className="friends-placeholder">
-                                <p>Feature coming soon: Invite friends to collaborate on your content!</p>
-                            </div>
-                        </div>
 
-                        {/* Friends Revenue Analytics Section */}
-                        <div className="friends-revenue-section">
-                            <div className="section-header">
-                                <h2>Friends Revenue Analytics</h2>
-                                <div className="revenue-summary">
-                                    <span className="total-revenue">Total Friend Revenue: $1,247.50</span>
-                                    <span className="your-share">Your Share (15%): $187.13</span>
-                                </div>
-                            </div>
-                            
-                            <div className="revenue-dashboard">
-                                <div className="revenue-overview-cards">
-                                    <div className="revenue-card">
-                                        <h4>📊 This Month</h4>
-                                        <div className="revenue-amount">$324.75</div>
-                                        <div className="revenue-change">+23.5% vs last month</div>
-                                    </div>
-                                    <div className="revenue-card">
-                                        <h4>👥 Active Friends</h4>
-                                        <div className="revenue-amount">8</div>
-                                        <div className="revenue-change">2 new this month</div>
-                                    </div>
-                                    <div className="revenue-card">
-                                        <h4>🎯 Conversion Rate</h4>
-                                        <div className="revenue-amount">12.3%</div>
-                                        <div className="revenue-change">+2.1% improvement</div>
-                                    </div>
-                                    <div className="revenue-card">
-                                        <h4>💰 Avg Revenue/Friend</h4>
-                                        <div className="revenue-amount">$155.94</div>
-                                        <div className="revenue-change">+$12.45 vs last month</div>
-                                    </div>
-                                </div>
-                                
-                                <div className="friends-performance-table">
-                                    <h3>Friend Performance</h3>
-                                    <div className="table-header">
-                                        <div>Friend</div>
-                                        <div>Sales Generated</div>
-                                        <div>Revenue</div>
-                                        <div>Your Share (15%)</div>
-                                        <div>Conversion Rate</div>
-                                        <div>Status</div>
-                                    </div>
-                                    
-                                    {/* Mock data - replace with real data later */}
-                                    <div className="table-row">
-                                        <div className="friend-info">
-                                            <img src="/default-avatar.jpg" alt="Friend" className="friend-avatar-small" />
-                                            <span>Alex Johnson</span>
-                                        </div>
-                                        <div>24 sales</div>
-                                        <div>$487.50</div>
-                                        <div className="revenue-share">$73.13</div>
-                                        <div>18.2%</div>
-                                        <div><span className="status-active">Active</span></div>
-                                    </div>
-                                    
-                                    <div className="table-row">
-                                        <div className="friend-info">
-                                            <img src="/default-avatar.jpg" alt="Friend" className="friend-avatar-small" />
-                                            <span>Sarah Chen</span>
-                                        </div>
-                                        <div>18 sales</div>
-                                        <div>$356.25</div>
-                                        <div className="revenue-share">$53.44</div>
-                                        <div>15.7%</div>
-                                        <div><span className="status-active">Active</span></div>
-                                    </div>
-                                    
-                                    <div className="table-row">
-                                        <div className="friend-info">
-                                            <img src="/default-avatar.jpg" alt="Friend" className="friend-avatar-small" />
-                                            <span>Mike Rodriguez</span>
-                                        </div>
-                                        <div>12 sales</div>
-                                        <div>$234.50</div>
-                                        <div className="revenue-share">$35.18</div>
-                                        <div>9.8%</div>
-                                        <div><span className="status-inactive">Inactive</span></div>
-                                    </div>
-                                    
-                                    <div className="table-row">
-                                        <div className="friend-info">
-                                            <img src="/default-avatar.jpg" alt="Friend" className="friend-avatar-small" />
-                                            <span>Emma Wilson</span>
-                                        </div>
-                                        <div>8 sales</div>
-                                        <div>$169.25</div>
-                                        <div className="revenue-share">$25.39</div>
-                                        <div>21.5%</div>
-                                        <div><span className="status-new">New</span></div>
-                                    </div>
-                                </div>
-                                
-                                <div className="revenue-actions">
-                                    <button className="action-btn primary">Export Revenue Report</button>
-                                    <button className="action-btn secondary">Manage Revenue Splits</button>
-                                    <button className="action-btn secondary">View Detailed Analytics</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
