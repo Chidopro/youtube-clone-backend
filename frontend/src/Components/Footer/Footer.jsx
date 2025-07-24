@@ -11,9 +11,6 @@ const Footer = () => {
           {/* Company Info */}
           <div className="footer-section">
             <img src={screenMerchLogo} alt="ScreenMerch" className="footer-logo" />
-            <p className="footer-description">
-              Create custom merchandise from your favorite video moments
-            </p>
           </div>
 
           {/* Legal Links */}

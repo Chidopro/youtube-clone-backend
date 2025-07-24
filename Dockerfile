@@ -16,7 +16,7 @@ COPY . .
 
 EXPOSE 8080
 
-ENV FLASK_APP=app.py \
+ENV FLASK_APP=backend/app.py \
     FLASK_RUN_PORT=8080 \
     FLASK_RUN_HOST=0.0.0.0
 

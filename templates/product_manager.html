@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScreenMerch Product Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3f51b5 0%, #2196f3 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3f51b5;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #3f51b5;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #303f9f;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            font-size: 12px;
+            padding: 6px 12px;
+            margin-top: 5px;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #388e3c;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #f57c00;
+            transform: translateY(-2px);
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .product-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .product-card:hover {
+            border-color: #3f51b5;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .product-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .product-price {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4caf50;
+        }
+
+        .product-options {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .option-tag {
+            display: inline-block;
+            background: #3f51b5;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin: 2px;
+        }
+
+        .edit-form {
+            margin-top: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3f51b5;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+        }
+
+        .save-btn {
+            background: #4caf50;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .save-btn:hover {
+            background: #388e3c;
+        }
+
+        .size-pricing-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .size-pricing-section h4 {
+            margin-bottom: 15px;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .size-pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 8px;
+        }
+
+        .size-price-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .size-price-item label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .size-price-item input {
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .size-price-item input:focus {
+            outline: none;
+            border-color: #3f51b5;
+            box-shadow: 0 0 0 2px rgba(63, 81, 181, 0.2);
+        }
+
+        .color-management-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .color-management-section h4 {
+            margin-bottom: 15px;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .color-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .color-category {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px;
+            background: white;
+        }
+
+        .color-category h5 {
+            margin-bottom: 10px;
+            color: #495057;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 5px;
+        }
+
+        .color-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+        }
+
+        .color-item input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .color-item label {
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .color-summary {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .color-summary strong {
+            color: #495057;
+        }
+
+        .color-summary span {
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .printful-colors-info {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 6px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .printful-colors-info p {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+        }
+
+        .printful-colors-info button {
+            font-size: 11px;
+            padding: 4px 8px;
+        }
+
+        .status-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .status-success {
+            background: #4caf50;
+        }
+
+        .status-error {
+            background: #f44336;
+        }
+
+        .status-show {
+            transform: translateX(0);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3f51b5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛍️ ScreenMerch Product Manager</h1>
+            <p>Manage your product catalog, prices, and availability</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalProducts">0</div>
+                <div class="stat-label">Total Products</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalValue">$0.00</div>
+                <div class="stat-label">Total Value</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avgPrice">$0.00</div>
+                <div class="stat-label">Average Price</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="availableProducts">0</div>
+                <div class="stat-label">Available</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="saveAllChanges()">💾 Save All Changes</button>
+            <button class="btn btn-success" onclick="exportProducts()">📤 Export Products</button>
+            <button class="btn btn-warning" onclick="refreshProducts()">🔄 Refresh</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Saving changes...</p>
+        </div>
+
+        <div class="products-grid" id="productsGrid">
+            <!-- Products will be loaded here -->
+        </div>
+    </div>
+
+    <div class="status-message" id="statusMessage"></div>
+
+    <script>
+        let products = [];
+
+        // Load products on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProducts();
+        });
+
+        async function loadProducts() {
+            try {
+                const response = await fetch('/api/products');
+                products = await response.json();
+                renderProducts();
+                updateStats();
+            } catch (error) {
+                showStatus('Error loading products: ' + error.message, 'error');
+            }
+        }
+
+        function renderProducts() {
+            const grid = document.getElementById('productsGrid');
+            grid.innerHTML = '';
+
+            products.forEach((product, index) => {
+                const card = createProductCard(product, index);
+                grid.appendChild(card);
+            });
+        }
+
+        function createProductCard(product, index) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            // Generate size pricing HTML if product has sizes
+            let sizePricingHTML = '';
+            if (product.has_size) {
+                const sizePricing = product.size_pricing || {
+                    'XS': product.price,
+                    'S': product.price + 2.00,
+                    'M': product.price + 4.00,
+                    'L': product.price + 6.00,
+                    'XL': product.price + 8.00,
+                    '2XL': product.price + 10.00,
+                    '3XL': product.price + 12.00,
+                    '4XL': product.price + 14.00,
+                    '5XL': product.price + 16.00
+                };
+                
+                sizePricingHTML = `
+                    <div class="size-pricing-section">
+                        <h4>📏 Size-Based Pricing:</h4>
+                        <div class="size-pricing-grid">
+                            ${Object.entries(sizePricing).map(([size, price]) => `
+                                <div class="size-price-item">
+                                    <label>${size}:</label>
+                                    <input type="number" step="0.01" min="0" value="${price.toFixed(2)}" 
+                                           onchange="updateSizePrice(${index}, '${size}', parseFloat(this.value))">
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            card.innerHTML = `
+                <div class="product-header">
+                    <div class="product-name">${product.name}</div>
+                    <div class="product-price">$${product.price.toFixed(2)} (Base)</div>
+                </div>
+                
+                <div class="product-options">
+                    ${product.has_color ? '<span class="option-tag">🎨 Colors</span>' : ''}
+                    ${product.has_size ? '<span class="option-tag">📏 Sizes</span>' : ''}
+                    ${!product.has_color && !product.has_size ? '<span class="option-tag">📝 Notes Only</span>' : ''}
+                </div>
+
+                <div class="edit-form">
+                    <div class="form-group">
+                        <label>Product Name:</label>
+                        <input type="text" value="${product.name}" onchange="updateProduct(${index}, 'name', this.value)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Base Price ($) - Smallest Size:</label>
+                        <input type="number" step="0.01" min="0" value="${product.price}" onchange="updateProduct(${index}, 'price', parseFloat(this.value))">
+                    </div>
+
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="color_${index}" ${product.has_color ? 'checked' : ''} onchange="updateProduct(${index}, 'has_color', this.checked)">
+                            <label for="color_${index}">Has Colors</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="size_${index}" ${product.has_size ? 'checked' : ''} onchange="updateProduct(${index}, 'has_size', this.checked)">
+                            <label for="size_${index}">Has Sizes</label>
+                        </div>
+                    </div>
+
+                    ${product.has_color ? `
+                    <div class="color-management-section">
+                        <h4>🎨 Color Management:</h4>
+                        ${product.printful_colors && product.printful_colors.length > 0 ? `
+                            <div class="printful-colors-info">
+                                <p><strong>✅ Printful Colors Available:</strong> ${product.printful_colors.length} colors</p>
+                                <button class="btn btn-secondary" onclick="loadPrintfulColors(${index}, '${product.name}')">
+                                    🔄 Refresh Printful Colors
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="printful-colors-info">
+                                <p><strong>⚠️ No Printful colors found</strong> - Using default colors</p>
+                                <button class="btn btn-secondary" onclick="loadPrintfulColors(${index}, '${product.name}')">
+                                    🔍 Fetch Printful Colors
+                                </button>
+                            </div>
+                        `}
+                        
+                        <div class="color-options">
+                            <div class="color-category">
+                                <h5>${product.printful_colors && product.printful_colors.length > 0 ? 'Printful Available Colors:' : 'Default Colors:'}</h5>
+                                <div class="color-grid">
+                                    ${(product.printful_colors || ['Black', 'White', 'Gray', 'Navy', 'Red', 'Green', 'Blue', 'Pink', 'Purple', 'Yellow', 'Orange', 'Brown', 'Cream']).map(color => `
+                                        <div class="color-item">
+                                            <input type="checkbox" id="color_${index}_${color}" 
+                                                   ${(product.available_colors || []).includes(color) ? 'checked' : ''} 
+                                                   onchange="toggleColor(${index}, '${color}', this.checked)">
+                                            <label for="color_${index}_${color}">${color}</label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                
+                                <!-- Custom Color Input -->
+                                <div class="custom-color-section" style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                                    <h6 style="margin-bottom: 10px; color: #495057;">➕ Add Custom Color</h6>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <input type="text" 
+                                               id="customColor_${index}" 
+                                               placeholder="Enter color name (e.g., Forest Green, Sapphire)" 
+                                               onkeypress="if(event.key === 'Enter') addCustomColor(${index})"
+                                               style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                        <button onclick="addCustomColor(${index})" 
+                                                style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                                            Add Color
+                                        </button>
+                                    </div>
+                                    <p style="margin-top: 8px; font-size: 12px; color: #6c757d;">
+                                        💡 Tip: Add any color name you want to offer, even if not in Printful's catalog
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="color-summary">
+                            <strong>Selected Colors (${(product.available_colors || []).length}):</strong> 
+                            <span>${(product.available_colors || []).join(', ') || 'None selected'}</span>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    ${sizePricingHTML}
+
+                    <button class="save-btn" onclick="saveProduct(${index})">Save Changes</button>
+                </div>
+            `;
+            return card;
+        }
+
+        function updateProduct(index, field, value) {
+            products[index][field] = value;
+            
+            // If size checkbox is checked, initialize size pricing
+            if (field === 'has_size' && value === true) {
+                if (!products[index].size_pricing) {
+                    products[index].size_pricing = {
+                        'XS': products[index].price,
+                        'S': products[index].price + 2.00,
+                        'M': products[index].price + 4.00,
+                        'L': products[index].price + 6.00,
+                        'XL': products[index].price + 8.00,
+                        '2XL': products[index].price + 10.00,
+                        '3XL': products[index].price + 12.00,
+                        '4XL': products[index].price + 14.00,
+                        '5XL': products[index].price + 16.00
+                    };
+                }
+            }
+            
+            // Re-render the product card to show/hide size pricing
+            if (field === 'has_size') {
+                renderProducts();
+            }
+        }
+
+        function updateSizePrice(index, size, price) {
+            if (!products[index].size_pricing) {
+                products[index].size_pricing = {};
+            }
+            products[index].size_pricing[size] = price;
+        }
+
+        function toggleColor(index, color, isSelected) {
+            if (!products[index].available_colors) {
+                products[index].available_colors = [];
+            }
+            
+            if (isSelected) {
+                if (!products[index].available_colors.includes(color)) {
+                    products[index].available_colors.push(color);
+                }
+            } else {
+                products[index].available_colors = products[index].available_colors.filter(c => c !== color);
+            }
+            
+            // Re-render to update the color summary
+            renderProducts();
+        }
+
+        function addCustomColor(index) {
+            const input = document.getElementById(`customColor_${index}`);
+            const colorName = input.value.trim();
+            
+            if (!colorName) {
+                showStatus('Please enter a color name', 'error');
+                return;
+            }
+            
+            // Initialize arrays if they don't exist
+            if (!products[index].printful_colors) {
+                products[index].printful_colors = [];
+            }
+            if (!products[index].available_colors) {
+                products[index].available_colors = [];
+            }
+            
+            // Check if color already exists
+            if (products[index].printful_colors.includes(colorName)) {
+                showStatus(`Color "${colorName}" already exists`, 'error');
+                return;
+            }
+            
+            // Add the custom color to both arrays
+            products[index].printful_colors.push(colorName);
+            products[index].available_colors.push(colorName);
+            
+            // Clear the input
+            input.value = '';
+            
+            // Show success message
+            showStatus(`✅ Added custom color: "${colorName}"`, 'success');
+            
+            // Re-render to show the new color
+            renderProducts();
+        }
+
+        async function loadPrintfulColors(index, productName) {
+            try {
+                showStatus('Loading Printful colors...', 'info');
+                
+                const response = await fetch(`/api/printful-colors?product_name=${encodeURIComponent(productName)}`);
+                const data = await response.json();
+                
+                if (data.colors && data.colors.length > 0) {
+                    products[index].printful_colors = data.colors;
+                    showStatus(`✅ Loaded ${data.colors.length} Printful colors for ${productName}`, 'success');
+                } else {
+                    showStatus(`⚠️ No Printful colors found for ${productName}`, 'error');
+                }
+                
+                renderProducts();
+            } catch (error) {
+                showStatus(`Error loading Printful colors: ${error.message}`, 'error');
+            }
+        }
+
+        async function saveProduct(index) {
+            try {
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ products: products })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showStatus('Product saved successfully!', 'success');
+                    updateStats();
+                } else {
+                    showStatus('Error saving product: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showStatus('Error saving product: ' + error.message, 'error');
+            }
+        }
+
+        async function saveAllChanges() {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ products: products })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showStatus('All changes saved successfully!', 'success');
+                    updateStats();
+                } else {
+                    showStatus('Error saving changes: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showStatus('Error saving changes: ' + error.message, 'error');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        async function exportProducts() {
+            try {
+                const response = await fetch('/api/export');
+                const result = await response.json();
+                if (result.success) {
+                    showStatus('Products exported successfully!', 'success');
+                } else {
+                    showStatus('Error exporting products: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showStatus('Error exporting products: ' + error.message, 'error');
+            }
+        }
+
+        function refreshProducts() {
+            loadProducts();
+            showStatus('Products refreshed!', 'success');
+        }
+
+        function updateStats() {
+            const totalProducts = products.length;
+            const totalValue = products.reduce((sum, p) => sum + (p.price || 0), 0);
+            const avgPrice = totalProducts > 0 ? totalValue / totalProducts : 0;
+            const availableProducts = products.filter(p => p.available !== false).length;
+
+            document.getElementById('totalProducts').textContent = totalProducts;
+            document.getElementById('totalValue').textContent = '$' + totalValue.toFixed(2);
+            document.getElementById('avgPrice').textContent = '$' + avgPrice.toFixed(2);
+            document.getElementById('availableProducts').textContent = availableProducts;
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = `status-message status-${type}`;
+            statusEl.classList.add('status-show');
+
+            setTimeout(() => {
+                statusEl.classList.remove('status-show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html> 
