@@ -12,9 +12,9 @@ const config = {
     SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
   },
   production: {
-    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://api.screenmerch.com',
-    EMAIL_API_URL: import.meta.env.VITE_EMAIL_API_URL || 'https://api.screenmerch.com',
-    SUBSCRIPTION_API_URL: import.meta.env.VITE_SUBSCRIPTION_API_URL || 'https://api.screenmerch.com',
+    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://backend-hidden-firefly-7865.fly.dev',
+    EMAIL_API_URL: import.meta.env.VITE_EMAIL_API_URL || 'https://backend-hidden-firefly-7865.fly.dev',
+    SUBSCRIPTION_API_URL: import.meta.env.VITE_SUBSCRIPTION_API_URL || 'https://backend-hidden-firefly-7865.fly.dev',
     SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
     SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
   }

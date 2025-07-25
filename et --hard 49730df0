@@ -1,0 +1,46 @@
+[33m2eb663e3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Replace VidTube logo with ScreenMerch logo in footer
+[33m49730df0[m Fix frontend index.html - restore correct YouTube clone content
+[33ma7428543[m Update Netlify config to fix submodule deployment issue
+[33mdf090ce8[m Add empty .gitmodules file to fix Netlify deployment
+[33m1320f582[m Trigger Netlify deployment - ensure sidebar starts closed
+[33m939bd670[m Fix sidebar to start closed by default instead of open
+[33m09f38145[m Resolve merge conflicts and clean up node_modules tracking
+[33mc14dea42[m Update frontend components and configurations
+[33m79350e63[m EMERGENCY FIX - STATIC VERSION FOR TWILIO
+[33m9e3d4ac9[m BUILD WORKING VERSION FOR TWILIO
+[33m1ade2262[m RESTORE ORIGINAL WORKING VERSION
+[33m7087144a[m Create simple static version for Twilio testing
+[33m64ba12b2[m Remove .netlify folder to clear cached configuration
+[33me61dc70f[m Remove .env file from tracking and add to .gitignore
+[33m380a920d[m Re-add backend files and create product configuration
+[33mfa65b62f[m Remove backend temporarily to fix deployment
+[33m931d8965[m Remove .env file from tracking to fix GitHub push protection
+[33m2bf46dde[m Completely remove and re-add backend to fix submodule issue
+[33m0082f2a3[m Fix submodule issue and update frontend
+[33mb9d98b7c[m Fix Contact Us link and sidebar default state
+[33m4486319f[m Fix Contact Us link - show email address directly
+[33m5a84c2ae[m Remove all friend functionality from frontend - clean channel system
+[33m9d80a67c[m Update screenshot button to use server-side FFmpeg capture
+[33m0c5be97d[m Update screenshot capture to try canvas first, fallback to thumbnail
+[33m2beaa0ba[m Rebuild frontend with updated screenshot functionality
+[33m930cb2ba[m Remove hardcoded Mailgun API keys - now using Resend
+[33m825cdf87[m Fix screenshot button - use thumbnail instead of canvas capture
+[33m30634aff[m Add delete button to dashboard videos and fix video player source
+[33m181565e8[m Fix footer logo by using public path instead of import
+[33mbd0ac389[m Convert backend from submodule to regular directory
+[33m1483e9ab[m Resolve merge conflicts and prepare backend for Railway
+[33mfec85461[m Add render.yaml to force pip install for Python backend
+[33mabd3377f[m Remove start.sh to use Render's default pip install
+[33mb81efd89[m Fix: use root requirements.txt for Render deployment
+[33m3b15451c[m Your commit message here
+[33m884f614f[m Use requirements.txt for dependency install on Render
+[33m9819de31[m Fix start.sh: only install dependencies, do not start Flask
+[33m7b51f0d2[m Remove unused supabase_storage import
+[33m081b8a22[m Install packages at runtime in startup script
+[33m11c163d8[m Add startup script to find correct Python environment
+[33mebca948c[m Fix app.py for production - use PORT env var and bind to 0.0.0.0
+[33m7caec86d[m Add runtime.txt to specify Python version for Render
+[33meb5f03ca[m Copy backend files to root for Render deployment
+[33md9a3ef3b[m Add requirements.txt with all dependencies
+[33mb71f5035[m Initial backend commit
+[33m9355d17d[m Prepare backend for Heroku deployment
