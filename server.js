@@ -367,8 +367,8 @@ app.delete('/api/users/:userId/delete-account', async (req, res) => {
 
 // --- Stripe Subscription Endpoints ---
 
-// Create Premium Tier Checkout Session
-app.post('/api/create-premium-checkout', async (req, res) => {
+// Create Pro Tier Checkout Session with 7-day free trial
+app.post('/api/create-pro-checkout', async (req, res) => {
     try {
         const { userId, userEmail, userName, tier } = req.body;
 
@@ -401,7 +401,7 @@ app.post('/api/create-premium-checkout', async (req, res) => {
             return res.status(500).json({ error: 'Failed to create customer' });
         }
 
-        // Create checkout session
+        // Create checkout session with 7-day trial
         const session = await stripe.checkout.sessions.create({
             customer: customer.id,
             payment_method_types: ['card'],
@@ -410,8 +410,8 @@ app.post('/api/create-premium-checkout', async (req, res) => {
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: 'ScreenMerch Premium Tier',
-                        description: 'Advanced analytics, priority support, custom branding, and enhanced upload limits'
+                        name: 'ScreenMerch Pro',
+                        description: 'Priority support, custom branding, enhanced upload limits, ad-free experience, early access to new features, and monetization tools'
                     },
                     unit_amount: 999, // $9.99 in cents
                     recurring: {
@@ -420,6 +420,13 @@ app.post('/api/create-premium-checkout', async (req, res) => {
                 },
                 quantity: 1
             }],
+            subscription_data: {
+                trial_period_days: 7, // 7-day free trial
+                metadata: {
+                    userId: userId,
+                    tier: tier
+                }
+            },
             success_url: `${process.env.FRONTEND_URL || 'https://screenmerch.com'}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${process.env.FRONTEND_URL || 'https://screenmerch.com'}/subscription-tiers`,
             metadata: {
@@ -457,6 +464,9 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
                 const { userId, tier } = session.metadata;
                 const subscription = await stripe.subscriptions.retrieve(session.subscription);
                 
+                // Calculate trial end date
+                const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null;
+                
                 const { error } = await supabase
                     .from('user_subscriptions')
                     .upsert({
@@ -467,6 +477,7 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
                         stripe_customer_id: session.customer,
                         current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
                         current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                        trial_end: trialEnd ? trialEnd.toISOString() : null,
                         updated_at: new Date().toISOString()
                     }, { 
                         onConflict: 'user_id' 

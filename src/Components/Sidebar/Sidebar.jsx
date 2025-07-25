@@ -68,39 +68,35 @@ const Sidebar = ({sidebar, category, setCategory}) => {
   }, [location.pathname]);
 
   const fetchPlatformSubscribers = async () => {
-    // Fetch users who have active subscriptions to the platform
+    // Fetch all creators from the users table for the platform community
     const { data, error } = await supabase
-      .from('user_subscriptions')
+      .from('users')
       .select(`
-        user_id,
-        tier,
-        status,
-        created_at,
-        users:user_id (
-          id,
-          username,
-          display_name,
-          profile_image_url
-        )
+        id,
+        username,
+        display_name,
+        profile_image_url,
+        created_at
       `)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
+      .not('username', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(10); // Limit to 10 most recent creators
 
     if (error) {
+      console.error('Error fetching platform creators:', error);
       setSubscribers([]);
     } else {
-      const platformSubs = data
-        .filter(sub => sub.users) // Only include users with valid profile data
-        .map(sub => ({
-          id: sub.user_id,
-          username: sub.users.username,
-          name: sub.users.display_name || sub.users.username,
-          avatar: sub.users.profile_image_url,
-          tier: sub.tier,
-          joinedAt: sub.created_at,
+      const platformCreators = data
+        .filter(user => user.username) // Only include users with valid usernames
+        .map(user => ({
+          id: user.id,
+          username: user.username,
+          name: user.display_name || user.username,
+          avatar: user.profile_image_url,
+          joinedAt: user.created_at,
           type: 'platform'
         }));
-      setSubscribers(platformSubs);
+      setSubscribers(platformCreators);
     }
   };
 
@@ -222,7 +218,7 @@ const Sidebar = ({sidebar, category, setCategory}) => {
       </div>
       <div className="subscribed-list">
         <h3 style={{ cursor: 'pointer' }} onClick={() => setShowSubs(s => !s)}>
-          {subscriberType === 'platform' ? 'SCREENMERCH COMMUNITY' : 
+          {subscriberType === 'platform' ? 'CREATORS' : 
            subscriberType === 'channel' ? 'Channel Friends' :
            'SUBSCRIBERS'} {showSubs ? '▲' : '▼'}
         </h3>
@@ -233,7 +229,7 @@ const Sidebar = ({sidebar, category, setCategory}) => {
             ) : subscribers.length === 0 ? (
               <div className="no-subs">
                 {subscriberType === 'platform' ? 
-                  'No platform subscribers yet.' : 
+                  'No creators yet.' : 
                   'No channel friends yet.'}
               </div>
             ) : (

@@ -31,8 +31,8 @@ const Dashboard = ({ sidebar }) => {
     const navigate = useNavigate();
 
     // Sales data for the chart
-    const salesData = [2, 4, 1, 3, 5, 2, 4, 6, 3, 2, 5, 4, 3, 2, 1, 4, 6, 3, 5, 2, 4, 3, 2, 1, 3, 4, 5, 2, 3, 4];
-    const maxSales = Math.max(...salesData);
+    const salesData = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const maxSales = Math.max(...salesData) || 1;
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -572,8 +572,8 @@ const Dashboard = ({ sidebar }) => {
                             <div className="section-header">
                                 <h2>📊 Sales Analytics</h2>
                                 <div className="analytics-summary">
-                                    <span className="total-sales">Total Sales: 47</span>
-                                    <span className="total-revenue">Total Revenue: $1,247.50</span>
+                                    <span className="total-sales">Total Sales: 0</span>
+                                    <span className="total-revenue">Total Revenue: $0.00</span>
                                 </div>
                             </div>
                             
@@ -582,23 +582,23 @@ const Dashboard = ({ sidebar }) => {
                                 <div className="analytics-overview-cards">
                                     <div className="analytics-card">
                                         <h4>📈 Sales Per Day</h4>
-                                        <div className="analytics-amount">3.2</div>
-                                        <div className="analytics-change">+0.8 vs last week</div>
+                                        <div className="analytics-amount">0</div>
+                                        <div className="analytics-change">No data yet</div>
                                     </div>
                                     <div className="analytics-card">
                                         <h4>🛍️ Products Sold</h4>
-                                        <div className="analytics-amount">47</div>
-                                        <div className="analytics-change">+12 this month</div>
+                                        <div className="analytics-amount">0</div>
+                                        <div className="analytics-change">No data yet</div>
                                     </div>
                                     <div className="analytics-card">
                                         <h4>🎬 Videos with Sales</h4>
-                                        <div className="analytics-amount">8</div>
-                                        <div className="analytics-change">3 new this month</div>
+                                        <div className="analytics-amount">0</div>
+                                        <div className="analytics-change">No data yet</div>
                                     </div>
                                     <div className="analytics-card">
                                         <h4>💰 Avg Order Value</h4>
-                                        <div className="analytics-amount">$26.54</div>
-                                        <div className="analytics-change">+$3.21 vs last month</div>
+                                        <div className="analytics-amount">$0.00</div>
+                                        <div className="analytics-change">No data yet</div>
                                     </div>
                                 </div>
                                 
@@ -639,52 +639,16 @@ const Dashboard = ({ sidebar }) => {
                                         <div>Image</div>
                                     </div>
                                     
-                                    {/* Mock data - replace with real data from sales table */}
-                                    <div className="table-row">
+                                    {/* No sales data yet - will populate when sales occur */}
+                                    <div className="table-row empty-state">
                                         <div className="product-info">
-                                            <span>Soft Tee</span>
+                                            <span>No products sold yet</span>
                                         </div>
-                                        <div>12</div>
-                                        <div>$299.88</div>
-                                        <div>My Gaming Setup Tour</div>
+                                        <div>0</div>
+                                        <div>$0.00</div>
+                                        <div>No videos yet</div>
                                         <div className="product-image">
-                                            <img src="/static/images/guidonteepreview.png" alt="Soft Tee" />
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="table-row">
-                                        <div className="product-info">
-                                            <span>Unisex Classic Tee</span>
-                                        </div>
-                                        <div>8</div>
-                                        <div>$199.92</div>
-                                        <div>React Tutorial Series</div>
-                                        <div className="product-image">
-                                            <img src="/static/images/unisexclassicteepreview.png" alt="Unisex Classic Tee" />
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="table-row">
-                                        <div className="product-info">
-                                            <span>Cropped Hoodie</span>
-                                        </div>
-                                        <div>6</div>
-                                        <div>$239.94</div>
-                                        <div>Fitness Motivation Video</div>
-                                        <div className="product-image">
-                                            <img src="/static/images/croppedhoodiepreview.png" alt="Cropped Hoodie" />
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="table-row">
-                                        <div className="product-info">
-                                            <span>Canvas Tote</span>
-                                        </div>
-                                        <div>5</div>
-                                        <div>$94.95</div>
-                                        <div>Travel Vlog</div>
-                                        <div className="product-image">
-                                            <img src="/static/images/allovertotebagpreview.png" alt="Canvas Tote" />
+                                            <span>No image</span>
                                         </div>
                                     </div>
                                 </div>
@@ -693,39 +657,11 @@ const Dashboard = ({ sidebar }) => {
                                 <div className="video-sources-section">
                                     <h3>🎬 Video Sources</h3>
                                     <div className="video-sources-grid">
-                                        <div className="video-source-card">
-                                            <img src="/static/images/guidonteepreview.png" alt="Video thumbnail" className="video-source-thumbnail" />
+                                        <div className="video-source-card empty-state">
                                             <div className="video-source-info">
-                                                <h4>My Gaming Setup Tour</h4>
-                                                <p>12 sales • $299.88 revenue</p>
-                                                <span className="video-date">Uploaded: Dec 15, 2024</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="video-source-card">
-                                            <img src="/static/images/unisexclassicteepreview.png" alt="Video thumbnail" className="video-source-thumbnail" />
-                                            <div className="video-source-info">
-                                                <h4>React Tutorial Series</h4>
-                                                <p>8 sales • $199.92 revenue</p>
-                                                <span className="video-date">Uploaded: Dec 10, 2024</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="video-source-card">
-                                            <img src="/static/images/croppedhoodiepreview.png" alt="Video thumbnail" className="video-source-thumbnail" />
-                                            <div className="video-source-info">
-                                                <h4>Fitness Motivation Video</h4>
-                                                <p>6 sales • $239.94 revenue</p>
-                                                <span className="video-date">Uploaded: Dec 5, 2024</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="video-source-card">
-                                            <img src="/static/images/allovertotebagpreview.png" alt="Video thumbnail" className="video-source-thumbnail" />
-                                            <div className="video-source-info">
-                                                <h4>Travel Vlog</h4>
-                                                <p>5 sales • $94.95 revenue</p>
-                                                <span className="video-date">Uploaded: Nov 28, 2024</span>
+                                                <h4>No videos with sales yet</h4>
+                                                <p>0 sales • $0.00 revenue</p>
+                                                <span className="video-date">Upload your first video to start earning!</span>
                                             </div>
                                         </div>
                                     </div>

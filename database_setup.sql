@@ -37,17 +37,18 @@ CREATE TABLE IF NOT EXISTS videos2 (
 CREATE TABLE IF NOT EXISTS user_subscriptions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    tier VARCHAR(50) NOT NULL DEFAULT 'basic',
+    tier VARCHAR(50) NOT NULL DEFAULT 'free',
     status VARCHAR(20) NOT NULL DEFAULT 'active',
     stripe_subscription_id VARCHAR(255),
     stripe_customer_id VARCHAR(255),
     current_period_start TIMESTAMP WITH TIME ZONE,
     current_period_end TIMESTAMP WITH TIME ZONE,
+    trial_end TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
     CONSTRAINT unique_user_subscription UNIQUE(user_id),
-    CONSTRAINT valid_tier CHECK (tier IN ('basic', 'premium', 'creator_network')),
+    CONSTRAINT valid_tier CHECK (tier IN ('free', 'pro')),
     CONSTRAINT valid_status CHECK (status IN ('active', 'canceled', 'past_due', 'unpaid'))
 );
 

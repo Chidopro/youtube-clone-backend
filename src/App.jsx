@@ -10,6 +10,7 @@ import ApproveSubscription from "./Pages/ApproveSubscription/ApproveSubscription
 import Dashboard from "./Pages/Dashboard/Dashboard";
 import SubscriptionTiers from "./Pages/SubscriptionTiers/SubscriptionTiers";
 import SubscriptionSuccess from "./Pages/SubscriptionSuccess/SubscriptionSuccess";
+import OrderSuccess from "./Pages/OrderSuccess/OrderSuccess";
 import Sidebar from "./Components/Sidebar/Sidebar";
 import ComingSoon from "./Pages/ComingSoon/ComingSoon";
 import ChannelFriend from "./Pages/ChannelFriend/ChannelFriend";
@@ -74,6 +75,7 @@ const App = () => {
               <Route path="/dashboard" element={<Dashboard sidebar={sidebar} />} />
               <Route path="/subscription-tiers" element={<SubscriptionTiers />} />
               <Route path="/subscription-success" element={<SubscriptionSuccess />} />
+              <Route path="/success" element={<OrderSuccess />} />
               <Route path="/coming-soon" element={<ComingSoon />} />
               <Route path="/channel-friend" element={<ChannelFriend />} />
               <Route path="/channel-friend/:channelUsername" element={<ChannelFriend />} />

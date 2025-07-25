@@ -1,0 +1,42 @@
+redirectsOrigin = "config"
+plugins = []
+headers = []
+
+[functions]
+
+[functions."*"]
+
+[build]
+publish = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone\\frontend\\frontend\\dist"
+publishOrigin = "config"
+commandOrigin = "config"
+base = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone\\frontend"
+command = "npm install && npm run build"
+
+[build.environment]
+NODE_VERSION = "18"
+
+[build.processing]
+skip_processing = false
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]

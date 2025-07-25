@@ -1,0 +1,455 @@
+{
+  "products": [
+    {
+      "name": "Soft Tee",
+      "current_price": 24.99,
+      "suggested_price": 24.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "White",
+          "Gray"
+        ],
+        "size": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Unisex Classic Tee",
+      "current_price": 24.99,
+      "suggested_price": 24.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "White",
+          "Gray",
+          "Navy"
+        ],
+        "size": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Men's Tank Top",
+      "current_price": 19.99,
+      "suggested_price": 19.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "White",
+          "Gray"
+        ],
+        "size": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Unisex Hoodie",
+      "current_price": 22.99,
+      "suggested_price": 22.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "White"
+        ],
+        "size": [
+          "S",
+          "M",
+          "L"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Cropped Hoodie",
+      "current_price": 39.99,
+      "suggested_price": 39.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "Gray",
+          "Navy"
+        ],
+        "size": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Unisex Champion Hoodie",
+      "current_price": 29.99,
+      "suggested_price": 29.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "Gray"
+        ],
+        "size": [
+          "13 inch",
+          "15 inch"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Women's Ribbed Neck",
+      "current_price": 25.99,
+      "suggested_price": 25.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "White",
+          "Gray",
+          "Pink"
+        ],
+        "size": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Women's Shirt",
+      "current_price": 26.99,
+      "suggested_price": 26.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "White",
+          "Gray",
+          "Pink"
+        ],
+        "size": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Women's HD Shirt",
+      "current_price": 28.99,
+      "suggested_price": 28.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "White",
+          "Gray",
+          "Navy"
+        ],
+        "size": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Kids Shirt",
+      "current_price": 19.99,
+      "suggested_price": 19.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "White",
+          "Gray",
+          "Pink"
+        ],
+        "size": [
+          "XS",
+          "S",
+          "M",
+          "L"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Kids Hoodie",
+      "current_price": 29.99,
+      "suggested_price": 29.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "White",
+          "Gray",
+          "Navy"
+        ],
+        "size": [
+          "XS",
+          "S",
+          "M",
+          "L"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Kids Long Sleeve",
+      "current_price": 24.99,
+      "suggested_price": 24.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "White",
+          "Gray",
+          "Pink"
+        ],
+        "size": [
+          "XS",
+          "S",
+          "M",
+          "L"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Men's Long Sleeve",
+      "current_price": 29.99,
+      "suggested_price": 29.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "clothing",
+      "options": {
+        "color": [
+          "Black",
+          "White",
+          "Gray"
+        ],
+        "size": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      "notes": ""
+    },
+    {
+      "name": "Canvas Tote",
+      "current_price": 18.99,
+      "suggested_price": 18.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "accessories",
+      "options": {
+        "color": [
+          "Natural",
+          "Black"
+        ],
+        "size": []
+      },
+      "notes": ""
+    },
+    {
+      "name": "Tote Bag",
+      "current_price": 21.99,
+      "suggested_price": 21.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "accessories",
+      "options": {
+        "color": [
+          "White",
+          "Black",
+          "Blue"
+        ],
+        "size": []
+      },
+      "notes": ""
+    },
+    {
+      "name": "Large Canvas Bag",
+      "current_price": 24.99,
+      "suggested_price": 24.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "accessories",
+      "options": {
+        "color": [
+          "Natural",
+          "Black",
+          "Navy"
+        ],
+        "size": []
+      },
+      "notes": ""
+    },
+    {
+      "name": "Greeting Card",
+      "current_price": 22.99,
+      "suggested_price": 22.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "home",
+      "options": {
+        "color": [
+          "White",
+          "Cream"
+        ],
+        "size": []
+      },
+      "notes": ""
+    },
+    {
+      "name": "Notebook",
+      "current_price": 14.99,
+      "suggested_price": 14.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "home",
+      "options": {
+        "color": [
+          "Black",
+          "Blue"
+        ],
+        "size": []
+      },
+      "notes": ""
+    },
+    {
+      "name": "Coasters",
+      "current_price": 13.99,
+      "suggested_price": 13.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "home",
+      "options": {
+        "color": [
+          "Wood",
+          "Cork",
+          "Black"
+        ],
+        "size": []
+      },
+      "notes": ""
+    },
+    {
+      "name": "Sticker Pack",
+      "current_price": 8.99,
+      "suggested_price": 8.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "other",
+      "options": {
+        "color": [],
+        "size": []
+      },
+      "notes": ""
+    },
+    {
+      "name": "Dog Bowl",
+      "current_price": 12.99,
+      "suggested_price": 12.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "other",
+      "options": {
+        "color": [],
+        "size": []
+      },
+      "notes": ""
+    },
+    {
+      "name": "Magnet Set",
+      "current_price": 11.99,
+      "suggested_price": 11.99,
+      "cost_estimate": 0.0,
+      "profit_margin": 0.0,
+      "available": true,
+      "category": "other",
+      "options": {
+        "color": [],
+        "size": []
+      },
+      "notes": ""
+    }
+  ],
+  "profit_margin_target": 0.45,
+  "shipping_cost": 0.0,
+  "tax_rate": 0.0
+}

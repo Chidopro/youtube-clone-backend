@@ -128,41 +128,24 @@
     <h2>You're Almost Done!</h2>
     <div id="cart-items"></div>
     
-    <!-- A2P 10DLC SMS Consent Section -->
-    <div class="sms-consent-section">
+    <!-- Email Notification Section -->
+    <div class="email-notification-section" style="background: #f8f9ff; border: 1px solid #e0e6ff; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: left;">
       <h3 style="color: #3f51b5; margin-top: 0;">Order Notifications</h3>
-      <div class="sms-checkbox">
-        <input type="checkbox" id="sms-consent" required>
-        <label for="sms-consent" class="sms-consent-text">
-          <span class="required-text">* Required:</span> I consent to receive SMS notifications from <strong>ScreenMerch</strong> regarding my order status, shipping updates, and customer service communications. Message frequency varies. Reply <strong>STOP</strong> to opt-out, <strong>HELP</strong> for support. Message and data rates may apply.
-        </label>
-      </div>
-      <div class="compliance-info">
-        <strong>SMS Disclosure:</strong><br>
-        <strong>Who:</strong> ScreenMerch<br>
-        <strong>What:</strong> Order notifications and customer service<br>
-        <strong>When:</strong> Order updates and as needed<br>
-        <strong>Where:</strong> <a href="/privacy-policy" target="_blank">Privacy Policy</a><br>
-        <strong>How:</strong> Reply STOP to unsubscribe, HELP for assistance<br>
-        <strong>Cost:</strong> Message and data rates may apply
+      <div style="background: #e8f5e8; border: 1px solid #4CAF50; border-radius: 6px; padding: 12px; margin-top: 10px; font-size: 14px; color: #2e7d32; text-align: center;">
+        <strong>📧 Email Notifications:</strong><br>
+        You will receive order updates and shipping notifications via email.
       </div>
     </div>
     
-    <button class="checkout-btn" id="proceed-btn" onclick="finalizeOrder()" disabled>Proceed to Payment</button>
+    <button class="checkout-btn" id="proceed-btn" onclick="finalizeOrder()">Proceed to Payment</button>
   </div>
 
   <script>
     const productId = '{{ product_id }}';
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
-    // A2P 10DLC Compliance: Enable checkout only when SMS consent is given
-    const smsConsentCheckbox = document.getElementById('sms-consent');
+    // Email notifications - no consent required
     const proceedBtn = document.getElementById('proceed-btn');
-    
-    smsConsentCheckbox.addEventListener('change', function() {
-      proceedBtn.disabled = !this.checked;
-      proceedBtn.style.background = this.checked ? '#4CAF50' : '#ccc';
-    });
 
     function renderCart() {
       const container = document.getElementById('cart-items');
@@ -207,17 +190,11 @@
     }
 
     function finalizeOrder() {
-      // A2P 10DLC Compliance: Check SMS consent before proceeding
-      if (!smsConsentCheckbox.checked) {
-        alert('Please consent to SMS notifications to complete your order.');
-        return;
-      }
-
-      // Include SMS consent in the order data
+      // Email notifications - no consent required
       const orderData = {
         cart: cart,
         product_id: productId,
-        sms_consent: true,
+        sms_consent: false, // No SMS consent needed for email notifications
         phone_number: '', // Will be collected by Stripe
         timestamp: new Date().toISOString()
       };

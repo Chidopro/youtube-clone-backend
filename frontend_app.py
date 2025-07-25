@@ -158,14 +158,6 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 PRINTFUL_API_KEY = os.getenv("PRINTFUL_API_KEY")
 
 PRODUCTS = [
-    # Products with both COLOR and SIZE options
-    {
-        "name": "Soft Tee",
-        "price": 24.99,
-        "filename": "guidonteepreview.png",
-        "main_image": "guidontee.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
-    },
     {
         "name": "Unisex Classic Tee",
         "price": 24.99,
@@ -174,143 +166,32 @@ PRODUCTS = [
         "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["S", "M", "L", "XL"]}
     },
     {
-        "name": "Men's Tank Top",
-        "price": 19.99,
-        "filename": "randompreview.png",
-        "main_image": "random.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
-    },
-    {
         "name": "Unisex Hoodie",
-        "price": 22.99,
-        "filename": "testedpreview.png",
-        "main_image": "tested.png",
-        "options": {"color": ["Black", "White"], "size": ["S", "M", "L"]}
-    },
-    {
-        "name": "Cropped Hoodie",
         "price": 39.99,
         "filename": "croppedhoodiepreview.png",
         "main_image": "croppedhoodie.png",
-        "options": {"color": ["Black", "Gray", "Navy"], "size": ["S", "M", "L", "XL"]}
-    },
-    {
-        "name": "Unisex Champion Hoodie",
-        "price": 29.99,
-        "filename": "hoodiechampionpreview.jpg",
-        "main_image": "hoodiechampion.png",
-        "options": {"color": ["Black", "Gray"], "size": ["13 inch", "15 inch"]}
-    },
-    {
-        "name": "Women's Ribbed Neck",
-        "price": 25.99,
-        "filename": "womensribbedneckpreview.jpg",
-        "main_image": "womensribbedneck.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White"], "size": ["S", "M", "L"]}
     },
     {
         "name": "Women's Shirt",
-        "price": 26.99,
-        "filename": "womensshirtkevin.png",
+        "price": 24.99,
+        "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
     },
     {
         "name": "Women's HD Shirt",
-        "price": 28.99,
+        "price": 24.99,
         "filename": "womenshdshirtpreview.png",
         "main_image": "womenshdshirt.png",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
     },
     {
-        "name": "Kids Shirt",
-        "price": 19.99,
-        "filename": "kidshirtpreview.jpg",
-        "main_image": "kidshirt.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}
-    },
-    {
-        "name": "Kids Hoodie",
-        "price": 29.99,
-        "filename": "kidhoodiepreview.jpg",
-        "main_image": "kidhoodie.png",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L"]}
-    },
-    {
-        "name": "Kids Long Sleeve",
+        "name": "Women's Ribbed Neck",
         "price": 24.99,
-        "filename": "kidlongsleevepreview.jpg",
-        "main_image": "kidlongsleeve.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}
-    },
-    
-    # Products with COLOR only
-    {
-        "name": "Canvas Tote",
-        "price": 18.99,
-        "filename": "allovertotebagpreview.png",
-        "main_image": "allovertotebag.png",
-        "options": {"color": ["Natural", "Black"], "size": []}
-    },
-    {
-        "name": "Tote Bag",
-        "price": 21.99,
-        "filename": "drawstringbagpreview.png",
-        "main_image": "drawstringbag.png",
-        "options": {"color": ["White", "Black", "Blue"], "size": []}
-    },
-    {
-        "name": "Large Canvas Bag",
-        "price": 24.99,
-        "filename": "largecanvasbagpreview.png",
-        "main_image": "largecanvasbag.png",
-        "options": {"color": ["Natural", "Black", "Navy"], "size": []}
-    },
-    {
-        "name": "Greeting Card",
-        "price": 22.99,
-        "filename": "greetingcardpreview.png",
-        "main_image": "greetingcard.png",
-        "options": {"color": ["White", "Cream"], "size": []}
-    },
-    {
-        "name": "Notebook",
-        "price": 14.99,
-        "filename": "hardcovernotebookpreview.png",
-        "main_image": "hardcovernotebook.png",
-        "options": {"color": ["Black", "Blue"], "size": []}
-    },
-    {
-        "name": "Coasters",
-        "price": 13.99,
-        "filename": "coasterpreview.jpg",
-        "main_image": "coaster.png",
-        "options": {"color": ["Wood", "Cork", "Black"], "size": []}
-    },
-    
-    # Products with COLOR only
-    
-    # Products with NOTES only (no color/size options)
-    {
-        "name": "Sticker Pack",
-        "price": 8.99,
-        "filename": "stickerspreview.png",
-        "main_image": "stickers.png",
-        "options": {"color": [], "size": []}
-    },
-    {
-        "name": "Dog Bowl",
-        "price": 12.99,
-        "filename": "dogbowlpreview.png",
-        "main_image": "dogbowl.png",
-        "options": {"color": [], "size": []}
-    },
-    {
-        "name": "Magnet Set",
-        "price": 11.99,
-        "filename": "magnetpreview.png",
-        "main_image": "magnet.png",
-        "options": {"color": [], "size": []}
+        "filename": "womensribbedneckpreview.jpg",
+        "main_image": "womensribbedneck.png",
+        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
     },
     {
         "name": "Men's Long Sleeve",
@@ -320,39 +201,165 @@ PRODUCTS = [
         "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
     },
     {
+        "name": "Kid's Shirt",
+        "price": 19.99,
+        "filename": "kidshirtpreview.jpg",
+        "main_image": "kidshirt.png",
+        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L"]}
+    },
+    {
+        "name": "Kid's Hoodie",
+        "price": 29.99,
+        "filename": "kidhoodiepreview.jpg",
+        "main_image": "kidhoodie.png",
+        "options": {"color": ["Black", "White"], "size": ["S", "M", "L"]}
+    },
+    {
+        "name": "Kid's Long Sleeve",
+        "price": 24.99,
+        "filename": "kidlongsleevepreview.jpg",
+        "main_image": "kidlongsleeve.png",
+        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L"]}
+    },
+    {
         "name": "Women's Tank",
-        "price": 22.99,
+        "price": 19.99,
         "filename": "womenstankpreview.jpg",
         "main_image": "womenstank.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
     },
     {
-        "name": "Women's Tee",
-        "price": 23.99,
-        "filename": "womensteepreview.jpg",
-        "main_image": "womenstee.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["S", "M", "L", "XL"]}
+        "name": "All Over Tote Bag",
+        "price": 19.99,
+        "filename": "allovertotebagpreview.png",
+        "main_image": "allovertotebag.png",
+        "options": {"color": ["Black", "White"], "size": []}
     },
     {
-        "name": "Distressed Dad Hat",
+        "name": "All Over Utility Bag",
         "price": 24.99,
-        "filename": "distresseddadhatpreview.jpg",
-        "main_image": "distresseddadhat.jpg",
-        "options": {"color": ["Black", "Navy", "Gray"], "size": ["One Size"]}
+        "filename": "alloverutilitybagpreview.png",
+        "main_image": "alloverutilitybag.png",
+        "options": {"color": ["Black", "White"], "size": []}
+    },
+    {
+        "name": "Drawstring Bag",
+        "price": 14.99,
+        "filename": "drawstringbagpreview.png",
+        "main_image": "drawstringbag.png",
+        "options": {"color": ["Black", "White"], "size": []}
+    },
+    {
+        "name": "Crossbody Bag",
+        "price": 19.99,
+        "filename": "crossbodybagpreview.png",
+        "main_image": "crossbodybag.png",
+        "options": {"color": ["Black", "White"], "size": []}
+    },
+    {
+        "name": "Large Canvas Bag",
+        "price": 24.99,
+        "filename": "largecanvasbagpreview.png",
+        "main_image": "largecanvasbag.png",
+        "options": {"color": ["Black", "White"], "size": []}
+    },
+    {
+        "name": "All Over Pajama Top",
+        "price": 29.99,
+        "filename": "alloverpajamatoppreview.png",
+        "main_image": "alloverpajamatop.png",
+        "options": {"color": ["Black", "White"], "size": ["S", "M", "L", "XL"]}
     },
     {
         "name": "Snapback Hat",
-        "price": 25.99,
+        "price": 19.99,
         "filename": "snapbackhatpreview.png",
         "main_image": "snapbackhat.png",
-        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["One Size"]}
     },
     {
         "name": "Five Panel Trucker Hat",
-        "price": 26.99,
+        "price": 19.99,
         "filename": "fivepaneltruckerhatpreview.jpg",
         "main_image": "fivepaneltruckerhat.png",
-        "options": {"color": ["Black", "White", "Navy"], "size": ["One Size"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["One Size"]}
+    },
+    {
+        "name": "Distressed Dad Hat",
+        "price": 19.99,
+        "filename": "distresseddadhatpreview.jpg",
+        "main_image": "distresseddadhat.jpg",
+        "options": {"color": ["Black", "White", "Gray"], "size": ["One Size"]}
+    },
+    {
+        "name": "Flat Bill Cap",
+        "price": 19.99,
+        "filename": "flatbillcappreview.png",
+        "main_image": "flatbillcap.png",
+        "options": {"color": ["Black", "White", "Gray"], "size": ["One Size"]}
+    },
+    {
+        "name": "Mug",
+        "price": 14.99,
+        "filename": "mug1preview.jpg",
+        "main_image": "mug1.jpg",
+        "options": {"color": ["White"], "size": []}
+    },
+    {
+        "name": "Coaster",
+        "price": 9.99,
+        "filename": "coasterpreview.jpg",
+        "main_image": "coaster.png",
+        "options": {"color": ["White"], "size": []}
+    },
+    {
+        "name": "Stickers",
+        "price": 4.99,
+        "filename": "stickerspreview.png",
+        "main_image": "stickers.png",
+        "options": {"color": ["White"], "size": []}
+    },
+    {
+        "name": "Magnet",
+        "price": 4.99,
+        "filename": "magnetpreview.png",
+        "main_image": "magnet.png",
+        "options": {"color": ["White"], "size": []}
+    },
+    {
+        "name": "Greeting Card",
+        "price": 4.99,
+        "filename": "greetingcardpreview.png",
+        "main_image": "greetingcard.png",
+        "options": {"color": ["White"], "size": []}
+    },
+    {
+        "name": "Baby Bib",
+        "price": 9.99,
+        "filename": "babybibpreview.jpg",
+        "main_image": "babybib.png",
+        "options": {"color": ["White"], "size": []}
+    },
+    {
+        "name": "Dog Bowl",
+        "price": 14.99,
+        "filename": "dogbowlpreview.png",
+        "main_image": "dogbowl.png",
+        "options": {"color": ["White"], "size": []}
+    },
+    {
+        "name": "Hard Cover Notebook",
+        "price": 19.99,
+        "filename": "hardcovernotebookpreview.png",
+        "main_image": "hardcovernotebook.png",
+        "options": {"color": ["Black", "White"], "size": []}
+    },
+    {
+        "name": "iPhone Case",
+        "price": 19.99,
+        "filename": "iphoneimagepreview.png",
+        "main_image": "iphoneimage.png",
+        "options": {"color": ["Black", "White"], "size": []}
     }
 ]
 
@@ -549,9 +556,8 @@ def create_checkout_session():
         if not cart:
             return jsonify({"error": "Cart is empty"}), 400
 
-        # A2P 10DLC Compliance: Require SMS consent
-        if not sms_consent:
-            return jsonify({"error": "SMS consent is required to complete your order"}), 400
+        # Email notifications - SMS consent not required
+        # sms_consent is kept for backward compatibility but not enforced
 
         # Generate a unique order ID and store the full cart (with images) and SMS consent
         order_id = str(uuid.uuid4())
