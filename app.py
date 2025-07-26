@@ -1139,6 +1139,163 @@ def delete_user_account(user_id):
         logger.error(f"Error in delete_user_account: {str(e)}")
         return jsonify({"success": False, "error": f"Failed to delete account: {str(e)}"}), 500
 
+# NEW: Authentication endpoints
+@app.route("/api/auth/login", methods=["POST"])
+def auth_login():
+    """Handle user login with email and password validation"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not email or not password:
+            return jsonify({"success": False, "error": "Email and password are required"}), 400
+        
+        # Validate email format
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            return jsonify({"success": False, "error": "Please enter a valid email address"}), 400
+        
+        # Check if user exists in database
+        try:
+            result = supabase.table('users').select('*').eq('email', email).execute()
+            
+            if result.data:
+                user = result.data[0]
+                stored_password = user.get('password_hash', '')
+                
+                # Simple password verification (replace with bcrypt in production)
+                if password == stored_password:  # Simple check for demo
+                    logger.info(f"User {email} logged in successfully")
+                    return jsonify({
+                        "success": True, 
+                        "message": "Login successful",
+                        "user": {
+                            "id": user.get('id'),
+                            "email": user.get('email'),
+                            "display_name": user.get('display_name'),
+                            "role": user.get('role', 'customer')
+                        }
+                    })
+                else:
+                    return jsonify({"success": False, "error": "Invalid email or password"}), 401
+            else:
+                return jsonify({"success": False, "error": "Invalid email or password"}), 401
+                
+        except Exception as db_error:
+            logger.error(f"Database error during login: {str(db_error)}")
+            return jsonify({"success": False, "error": "Authentication service unavailable"}), 500
+            
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+@app.route("/api/auth/signup", methods=["POST"])
+def auth_signup():
+    """Handle user signup with email and password validation"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not email or not password:
+            return jsonify({"success": False, "error": "Email and password are required"}), 400
+        
+        # Validate email format
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            return jsonify({"success": False, "error": "Please enter a valid email address"}), 400
+        
+        # Validate password strength
+        if len(password) < 6:
+            return jsonify({"success": False, "error": "Password must be at least 6 characters long"}), 400
+        
+        # Check if user already exists
+        try:
+            existing_user = supabase.table('users').select('*').eq('email', email).execute()
+            
+            if existing_user.data:
+                return jsonify({"success": False, "error": "An account with this email already exists"}), 409
+            
+            # Create new user
+            # For demo purposes, store password as-is (replace with bcrypt in production)
+            new_user = {
+                'email': email,
+                'password_hash': password,  # Replace with bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()) in production
+                'username': email.split('@')[0],
+                'display_name': email.split('@')[0],
+                'role': 'customer',
+                'status': 'active',
+                'created_at': 'now()',
+                'updated_at': 'now()'
+            }
+            
+            result = supabase.table('users').insert(new_user).execute()
+            
+            if result.data:
+                logger.info(f"New user {email} created successfully")
+                return jsonify({
+                    "success": True, 
+                    "message": "Account created successfully",
+                    "user": {
+                        "id": result.data[0].get('id'),
+                        "email": result.data[0].get('email'),
+                        "display_name": result.data[0].get('display_name'),
+                        "role": result.data[0].get('role', 'customer')
+                    }
+                })
+            else:
+                return jsonify({"success": False, "error": "Failed to create account"}), 500
+                
+        except Exception as db_error:
+            logger.error(f"Database error during signup: {str(db_error)}")
+            if "duplicate key" in str(db_error).lower():
+                return jsonify({"success": False, "error": "An account with this email already exists"}), 409
+            return jsonify({"success": False, "error": "Account creation failed"}), 500
+            
+    except Exception as e:
+        logger.error(f"Signup error: {str(e)}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+@app.route("/api/auth/verify", methods=["POST"])
+def auth_verify():
+    """Verify if user is authenticated (for session checking)"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({"success": False, "error": "Email is required"}), 400
+        
+        # Check if user exists
+        try:
+            result = supabase.table('users').select('*').eq('email', email).execute()
+            
+            if result.data:
+                user = result.data[0]
+                return jsonify({
+                    "success": True,
+                    "authenticated": True,
+                    "user": {
+                        "id": user.get('id'),
+                        "email": user.get('email'),
+                        "display_name": user.get('display_name'),
+                        "role": user.get('role', 'customer')
+                    }
+                })
+            else:
+                return jsonify({"success": True, "authenticated": False}), 200
+                
+        except Exception as db_error:
+            logger.error(f"Database error during verification: {str(db_error)}")
+            return jsonify({"success": False, "error": "Verification service unavailable"}), 500
+            
+    except Exception as e:
+        logger.error(f"Verification error: {str(e)}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))

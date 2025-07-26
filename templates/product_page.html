@@ -198,8 +198,8 @@
   <!-- Transparent Email Auth Overlay -->
   <div id="email-auth-overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.7);z-index:2000;display:flex;align-items:center;justify-content:center;">
     <div style="background:rgba(255,255,255,0.95);border-radius:16px;box-shadow:0 4px 32px #0002;padding:32px 32px 24px 32px;min-width:320px;max-width:90vw;text-align:center;position:relative;">
-      <button onclick="document.getElementById('email-auth-overlay').style.display='none'" style="position:absolute;top:10px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#888;">&times;</button>
-      <h2 style="margin-bottom:18px;color:#3f51b5;">Sign In or Create Account</h2>
+      <h2 style="margin-bottom:18px;color:#3f51b5;">Sign In Required</h2>
+      <p style="margin-bottom:20px;color:#666;font-size:14px;">You must sign in to access the product page and make purchases.</p>
       <form id="email-auth-form" onsubmit="return false;" style="margin-bottom: 10px;">
         <input type="email" id="auth-email" placeholder="Email" required style="padding: 10px; width: 90%; margin-bottom: 10px; border-radius:6px; border:1px solid #bbb;" />
         <input type="password" id="auth-password" placeholder="Password" required style="padding: 10px; width: 90%; margin-bottom: 10px; border-radius:6px; border:1px solid #bbb;" />
@@ -208,7 +208,7 @@
         <button type="button" onclick="handleEmailSignup()" style="padding: 10px 20px; border-radius:6px; background:#4CAF50; color:white; border:none;">Create Account</button>
       </form>
       <div id="email-auth-message" style="color: #e53935; margin-bottom: 8px;"></div>
-      <div style="font-size:13px;color:#666;margin-top:10px;">You can browse products while this window is open.<br>Close this window to continue as guest.</div>
+      <div style="font-size:13px;color:#666;margin-top:10px;">Authentication is required to proceed.<br>Please sign in or create an account.</div>
     </div>
   </div>
 
@@ -542,40 +542,107 @@
       const email = document.getElementById('auth-email').value.trim();
       const password = document.getElementById('auth-password').value;
       const messageDiv = document.getElementById('email-auth-message');
+      const loginBtn = document.querySelector('button[onclick="handleEmailLogin()"]');
+      const signupBtn = document.querySelector('button[onclick="handleEmailSignup()"]');
+      
       messageDiv.style.color = '#e53935';
       if (!email || !password) {
         messageDiv.textContent = 'Please enter both email and password.';
         return;
       }
-      // Simulate login (replace with real backend call)
-      setTimeout(() => {
-        setCartEmail(email);
-        messageDiv.style.color = '#4CAF50';
-        messageDiv.textContent = 'Login successful! Email saved.';
-        setTimeout(() => {
-          document.getElementById('email-auth-overlay').style.display = 'none';
-        }, 1000);
-      }, 500);
+
+      // Disable buttons during authentication
+      loginBtn.disabled = true;
+      signupBtn.disabled = true;
+      loginBtn.textContent = 'Logging in...';
+      
+      // Real authentication call
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          setCartEmail(email);
+          messageDiv.style.color = '#4CAF50';
+          messageDiv.textContent = 'Login successful! Email saved.';
+          setTimeout(() => {
+            document.getElementById('email-auth-overlay').style.display = 'none';
+          }, 1000);
+        } else {
+          messageDiv.textContent = data.error || 'Login failed. Please check your credentials.';
+        }
+      })
+      .catch(error => {
+        console.error('Login error:', error);
+        messageDiv.textContent = 'Login failed. Please try again.';
+      })
+      .finally(() => {
+        // Re-enable buttons
+        loginBtn.disabled = false;
+        signupBtn.disabled = false;
+        loginBtn.textContent = 'Login';
+      });
     }
 
     function handleEmailSignup() {
       const email = document.getElementById('auth-email').value.trim();
       const password = document.getElementById('auth-password').value;
       const messageDiv = document.getElementById('email-auth-message');
+      const loginBtn = document.querySelector('button[onclick="handleEmailLogin()"]');
+      const signupBtn = document.querySelector('button[onclick="handleEmailSignup()"]');
+      
       messageDiv.style.color = '#e53935';
       if (!email || !password) {
         messageDiv.textContent = 'Please enter both email and password.';
         return;
       }
-      // Simulate signup (replace with real backend call)
-      setTimeout(() => {
-        setCartEmail(email);
-        messageDiv.style.color = '#4CAF50';
-        messageDiv.textContent = 'Account created and email saved!';
-        setTimeout(() => {
-          document.getElementById('email-auth-overlay').style.display = 'none';
-        }, 1000);
-      }, 500);
+
+      if (password.length < 6) {
+        messageDiv.textContent = 'Password must be at least 6 characters long.';
+        return;
+      }
+
+      // Disable buttons during authentication
+      loginBtn.disabled = true;
+      signupBtn.disabled = true;
+      signupBtn.textContent = 'Creating Account...';
+      
+      // Real signup call
+      fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          setCartEmail(email);
+          messageDiv.style.color = '#4CAF50';
+          messageDiv.textContent = 'Account created and email saved!';
+          setTimeout(() => {
+            document.getElementById('email-auth-overlay').style.display = 'none';
+          }, 1000);
+        } else {
+          messageDiv.textContent = data.error || 'Account creation failed. Please try again.';
+        }
+      })
+      .catch(error => {
+        console.error('Signup error:', error);
+        messageDiv.textContent = 'Account creation failed. Please try again.';
+      })
+      .finally(() => {
+        // Re-enable buttons
+        loginBtn.disabled = false;
+        signupBtn.disabled = false;
+        signupBtn.textContent = 'Create Account';
+      });
     }
     // --- End Email Auth Functions ---
   </script>
