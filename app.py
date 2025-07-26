@@ -640,9 +640,7 @@ def create_checkout_session():
         if not cart:
             return jsonify({"error": "Cart is empty"}), 400
 
-        # A2P 10DLC Compliance: Require SMS consent
-        if not sms_consent:
-            return jsonify({"error": "SMS consent is required to complete your order"}), 400
+        # SMS consent is no longer required (removed Twilio integration)
 
         # Generate a unique order ID and store the full cart (with images) and SMS consent
         order_id = str(uuid.uuid4())
@@ -679,8 +677,6 @@ def create_checkout_session():
             line_items=line_items,
             success_url=f"https://screenmerch.com/success",
             cancel_url=f"https://screenmerch.com/checkout/{product_id}",
-            # A2P 10DLC Compliance: Collect phone number for SMS notifications
-            phone_number_collection={"enabled": True},
             metadata={
                 "order_id": order_id  # Only store the small order ID in Stripe
             }
