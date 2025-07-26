@@ -150,6 +150,14 @@
     color: #666;
 }
 
+.trial-text {
+    color: #28a745;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-top: 5px;
+    text-align: center;
+}
+
 .tier-features {
     margin-bottom: 30px;
 }
@@ -203,6 +211,29 @@
 }
 
 .subscribe-btn:disabled {
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.7;
+}
+
+.tier-button {
+    width: 100%;
+    padding: 15px 30px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tier-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.tier-button.disabled {
     cursor: not-allowed;
     transform: none;
     opacity: 0.7;

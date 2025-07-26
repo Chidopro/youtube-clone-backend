@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { SubscriptionService } from '../utils/subscriptionService';
 import { supabase } from '../supabaseClient';
+import { SubscriptionService } from '../utils/subscriptionService';
 
 export const useSubscription = () => {
   const [subscription, setSubscription] = useState(null);
@@ -10,16 +10,9 @@ export const useSubscription = () => {
   const fetchSubscription = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setSubscription(null);
-        return;
-      }
-
-      const subscriptionData = await SubscriptionService.getUserSubscriptionWithConfig();
+      const subscriptionData = await SubscriptionService.getCurrentUserSubscription();
       setSubscription(subscriptionData);
+      setError(null);
     } catch (err) {
       console.error('Error fetching subscription:', err);
       setError(err.message);
@@ -30,31 +23,34 @@ export const useSubscription = () => {
 
   useEffect(() => {
     fetchSubscription();
-
-    // Listen for auth state changes
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchSubscription();
-    });
-
-    return () => authSubscription.unsubscribe();
   }, []);
 
-  const subscribeToBasic = async () => {
+  const subscribeToFree = async () => {
     try {
-      setError(null);
-      const result = await SubscriptionService.subscribeToBasicTier();
-      
+      const result = await SubscriptionService.subscribeToFreeTier();
       if (result.success) {
-        await fetchSubscription(); // Refresh subscription data
-        return { success: true, subscription: result.subscription };
+        setSubscription(result.subscription);
+        return result;
       } else {
-        setError(result.error);
-        return { success: false, error: result.error };
+        throw new Error(result.error);
       }
     } catch (err) {
-      console.error('Error subscribing to basic tier:', err);
-      setError(err.message);
-      return { success: false, error: err.message };
+      console.error('Error subscribing to free tier:', err);
+      throw err;
+    }
+  };
+
+  const subscribeToPro = async () => {
+    try {
+      const result = await SubscriptionService.subscribeToProTier();
+      if (result.success) {
+        return result;
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err) {
+      console.error('Error subscribing to pro tier:', err);
+      throw err;
     }
   };
 
@@ -76,29 +72,52 @@ export const useSubscription = () => {
   };
 
   const canAccessFeature = (feature) => {
-    if (!subscription?.config) return false;
+    if (!subscription) return false;
     
     const featureMap = {
-      'friends_sidebar': subscription.config.showFriendsSidebar,
-      'invite_friends': subscription.config.canInviteFriends,
-      'revenue_sharing': subscription.config.revenueShare > 0,
-      'advanced_analytics': subscription.tier !== 'basic',
-      'priority_support': subscription.tier === 'premium' || subscription.tier === 'creator_network',
-      'custom_branding': subscription.tier === 'premium' || subscription.tier === 'creator_network',
+      'priority_support': subscription.tier === 'pro',
+      'custom_branding': subscription.tier === 'pro',
+      'enhanced_uploads': subscription.tier === 'pro',
+      'ad_free': subscription.tier === 'pro',
+      'early_access': subscription.tier === 'pro',
+      'monetization_tools': subscription.tier === 'pro',
+      'basic_uploads': subscription.tier === 'free' || subscription.tier === 'pro',
+      'basic_analytics': subscription.tier === 'free' || subscription.tier === 'pro',
     };
 
     return featureMap[feature] || false;
+  };
+
+  const isInTrialPeriod = async () => {
+    try {
+      return await SubscriptionService.isInTrialPeriod();
+    } catch (err) {
+      console.error('Error checking trial period:', err);
+      return false;
+    }
+  };
+
+  const getTrialDaysRemaining = async () => {
+    try {
+      return await SubscriptionService.getTrialDaysRemaining();
+    } catch (err) {
+      console.error('Error getting trial days remaining:', err);
+      return 0;
+    }
   };
 
   return {
     subscription,
     loading,
     error,
-    subscribeToBasic,
+    subscribeToFree,
+    subscribeToPro,
     hasMinimumTier,
     getTierConfig,
     isCurrentTier,
     canAccessFeature,
+    isInTrialPeriod,
+    getTrialDaysRemaining,
     refetch: fetchSubscription
   };
 }; 

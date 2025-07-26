@@ -1,0 +1,200 @@
+[
+  {
+    "name": "Unisex Hoodie",
+    "base_price": 45.0,
+    "category": "Hoodies",
+    "description": "Comfortable unisex hoodie with custom design",
+    "main_image": "hoodie_main.png",
+    "filename": "hoodie_preview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Navy",
+        "Gray"
+      ],
+      "size": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Navy",
+      "Gray"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 2,
+      "XXL": 3,
+      "XXXL": 4
+    },
+    "created_at": "2025-07-26T14:25:16.714159"
+  },
+  {
+    "name": "Unisex Champion Hoodie",
+    "base_price": 55.0,
+    "category": "Hoodies",
+    "description": "Premium Champion brand hoodie",
+    "main_image": "champion_hoodie_main.png",
+    "filename": "champion_hoodie_preview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Navy"
+      ],
+      "size": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Navy"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 3,
+      "XXL": 4,
+      "XXXL": 5
+    },
+    "created_at": "2025-07-26T14:25:16.714159"
+  },
+  {
+    "name": "Women's Shirt",
+    "base_price": 25.0,
+    "category": "Shirts",
+    "description": "Comfortable women's shirt",
+    "main_image": "womens_shirt_main.png",
+    "filename": "womens_shirt_preview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Pink",
+        "Light Blue"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Pink",
+      "Light Blue"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 1,
+      "XXL": 2,
+      "XXXL": 3
+    },
+    "created_at": "2025-07-26T14:25:16.714159"
+  },
+  {
+    "name": "Women's HD Shirt",
+    "base_price": 30.0,
+    "category": "Shirts",
+    "description": "High-definition print women's shirt",
+    "main_image": "womens_hd_shirt_main.png",
+    "filename": "womens_hd_shirt_preview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Navy",
+        "Red"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Navy",
+      "Red"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 2,
+      "XXL": 3,
+      "XXXL": 4
+    },
+    "created_at": "2025-07-26T14:25:16.714159"
+  },
+  {
+    "name": "Women's Ribbed Neck",
+    "base_price": 28.0,
+    "category": "Shirts",
+    "description": "Women's shirt with ribbed neck design",
+    "main_image": "womens_ribbed_main.png",
+    "filename": "womens_ribbed_preview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray",
+        "Burgundy"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray",
+      "Burgundy"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 1,
+      "XXL": 2,
+      "XXXL": 3
+    },
+    "created_at": "2025-07-26T14:25:16.714159"
+  }
+]
