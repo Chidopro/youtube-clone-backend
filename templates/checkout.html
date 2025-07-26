@@ -227,14 +227,25 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData)
       })
-      .then(res => res.json())
+      .then(res => {
+        console.log("Response status:", res.status);
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
+        console.log("Response data:", data);
         if (data.url) {
           localStorage.removeItem("cart");
           window.location.href = data.url;
         } else {
           alert("Error creating Stripe checkout session.");
         }
+      })
+      .catch(error => {
+        console.error("Fetch error:", error);
+        alert("Error creating Stripe checkout session: " + error.message);
       });
     }
 
