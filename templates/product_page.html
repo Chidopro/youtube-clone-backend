@@ -212,6 +212,8 @@
     </div>
   </div>
 
+  <!-- Hidden content that only shows after authentication -->
+  <div id="authenticated-content" style="display: none;">
   <div class="product-row">
     {% for product in products %}
     <div class="product-card">
@@ -258,8 +260,38 @@
     <div id="cart-items"></div>
     <button class="checkout-btn" onclick="goToCheckout()">Proceed to Checkout</button>
   </div>
+  </div>
 
   <script>
+    // Authentication check on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if user is already authenticated
+      const savedEmail = localStorage.getItem('cartEmail');
+      if (!savedEmail) {
+        // Force authentication modal to stay visible
+        document.getElementById('email-auth-overlay').style.display = 'flex';
+        document.getElementById('authenticated-content').style.display = 'none';
+        
+        // Prevent any attempts to hide the modal
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            return false;
+          }
+        });
+        
+        // Prevent right-click context menu
+        document.addEventListener('contextmenu', function(e) {
+          e.preventDefault();
+          return false;
+        });
+      } else {
+        // User is authenticated, show content
+        document.getElementById('email-auth-overlay').style.display = 'none';
+        document.getElementById('authenticated-content').style.display = 'block';
+      }
+    });
+
     // --- Auto-crop function ---
     function autoCropImage(url, callback) {
       const img = new Image();
@@ -572,6 +604,7 @@
           messageDiv.textContent = 'Login successful! Email saved.';
           setTimeout(() => {
             document.getElementById('email-auth-overlay').style.display = 'none';
+            document.getElementById('authenticated-content').style.display = 'block'; // Show authenticated content
           }, 1000);
         } else {
           messageDiv.textContent = data.error || 'Login failed. Please check your credentials.';
@@ -628,6 +661,7 @@
           messageDiv.textContent = 'Account created and email saved!';
           setTimeout(() => {
             document.getElementById('email-auth-overlay').style.display = 'none';
+            document.getElementById('authenticated-content').style.display = 'block'; // Show authenticated content
           }, 1000);
         } else {
           messageDiv.textContent = data.error || 'Account creation failed. Please try again.';
