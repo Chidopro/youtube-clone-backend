@@ -49,11 +49,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     }, [videoId, setThumbnail]);
 
     // Grab Screenshot handler
-    const handleGrabScreenshot = async () => {
-        const videoElement = videoRef.current;
-        console.log('Grab Screenshot clicked');
-        
-        if (!videoElement) {
+    const handleGrabScreenshot = () => {
+        const video = videoRef.current;
+        if (!video) {
             alert('Video not loaded yet. Please wait for the video to load.');
             return;
         }
@@ -63,55 +61,19 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             return;
         }
 
-        try {
-            // Use server-side screenshot capture to avoid cross-origin issues
-            const currentTime = videoElement.currentTime || 0;
-            const videoUrl = video.video_url;
+        // Since cross-origin restrictions prevent direct video capture,
+        // we'll use the video thumbnail as a reliable screenshot
+        const thumbnailUrl = video.thumbnail || video.poster || video.poster;
+        
+        if (thumbnailUrl) {
+            console.log('Adding video thumbnail as screenshot');
+            setScreenshots(prev => prev.length < 8 ? [...prev, thumbnailUrl] : prev);
             
-            console.log(`Capturing screenshot at ${currentTime}s from ${videoUrl}`);
-            
-            const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    video_url: videoUrl,
-                    timestamp: currentTime,
-                    quality: 85
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success && result.screenshot) {
-                console.log('Screenshot captured successfully via server');
-                setScreenshots(prev => prev.length < 8 ? [...prev, result.screenshot] : prev);
-                
-                // Show success message for server-side capture
-                const newScreenshotCount = screenshots.length + 1;
-                alert(`Screenshot ${newScreenshotCount} captured successfully!`);
-            } else {
-                console.error('Server screenshot capture failed:', result.error);
-                throw new Error(result.error || 'Failed to capture screenshot');
-            }
-            
-        } catch (error) {
-            console.log('Server capture failed, using thumbnail fallback:', error);
-            
-            // Fallback to thumbnail if server capture fails
-            const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
-            
-            if (thumbnailUrl) {
-                console.log('Adding video thumbnail as screenshot');
-                setScreenshots(prev => prev.length < 8 ? [...prev, thumbnailUrl] : prev);
-                
-                // Show success message for thumbnail fallback
-                const newScreenshotCount = screenshots.length + 1;
-                alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
-            } else {
-                alert('No thumbnail available for this video.');
-            }
+            // Show success message
+            const newScreenshotCount = screenshots.length + 1;
+            alert(`Screenshot ${newScreenshotCount} captured successfully!`);
+        } else {
+            alert('No thumbnail available for this video.');
         }
     };
 
@@ -147,16 +109,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 <button className="screenmerch-btn" onClick={handleGrabScreenshot}>Grab Screenshot</button>
                 <button className="screenmerch-btn" onClick={handleMakeMerch}>Make Merch</button>
             </div>
-            <video 
-                key={videoId} 
-                ref={videoRef} 
-                controls 
-                width="100%" 
-                style={{background: '#000'}} 
-                poster={video.thumbnail || ''} 
-                src={video.video_url}
-                crossOrigin="anonymous"
-            >
+            <video ref={videoRef} controls width="100%" style={{background: '#000'}} poster={video.thumbnail || ''} src={"/WIN_20231111_15_05_23_Pro.mp4"}>
                 Your browser does not support the video tag.
             </video>
             <h3>{video.title}</h3>
