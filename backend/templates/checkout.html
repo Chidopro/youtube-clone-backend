@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Checkout</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 40px;
+      text-align: center;
+    }
+    .container {
+      background: #fff;
+      border-radius: 12px;
+      padding: 30px;
+      width: 90%;
+      max-width: 500px;
+      margin: auto;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #3f51b5;
+      margin-bottom: 20px;
+      background: #f0f0f0;
+      padding: 12px 0;
+      border-radius: 8px;
+      border: 1.5px solid #e0e0e0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      text-align: center;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    .cart-item {
+      text-align: left;
+      padding: 15px;
+      border-bottom: 1px solid #ddd;
+    }
+    .cart-item img {
+      width: 100%;
+      max-width: 100%;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .remove-btn {
+      background: #e53935;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      margin-top: 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .checkout-btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      margin-top: 20px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .checkout-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    /* A2P 10DLC Compliance Styles */
+    .sms-consent-section {
+      background: #f8f9ff;
+      border: 1px solid #e0e6ff;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: left;
+    }
+    .sms-checkbox {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 15px;
+    }
+    .sms-checkbox input[type="checkbox"] {
+      margin-right: 10px;
+      margin-top: 4px;
+      transform: scale(1.2);
+    }
+    .sms-consent-text {
+      font-size: 14px;
+      line-height: 1.4;
+      color: #333;
+    }
+    .required-text {
+      color: #d32f2f;
+      font-weight: bold;
+    }
+    .compliance-info {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #856404;
+      text-align: center;
+    }
+    #logo-sidebar {
+      position: absolute;
+      top: 40px;
+      left: 0;
+      width: 160px;
+      background: transparent;
+      box-shadow: none;
+      padding: 0;
+      min-height: unset;
+      border-radius: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="logo-sidebar">
+    <img src="/static/icons/screenmerch_logo.png" alt="ScreenMerch Logo" style="width:90px; display:block; margin:auto; background:none; box-shadow:none;">
+  </div>
+  <div class="container">
+    <h2>You're Almost Done!</h2>
+    <div id="cart-items"></div>
+    
+    <!-- Email Notification Section -->
+    <div class="email-notification-section" style="background: #f8f9ff; border: 1px solid #e0e6ff; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: left;">
+      <h3 style="color: #3f51b5; margin-top: 0;">Order Notifications</h3>
+      <div style="background: #e8f5e8; border: 1px solid #4CAF50; border-radius: 6px; padding: 12px; margin-top: 10px; font-size: 14px; color: #2e7d32; text-align: center;">
+        <strong>📧 Email Notifications:</strong><br>
+        You will receive order updates and shipping notifications via email.
+      </div>
+    </div>
+    
+    <button class="checkout-btn" id="proceed-btn" onclick="finalizeOrder()">Proceed to Payment</button>
+  </div>
+
+  <script>
+    const productId = '{{ product_id }}';
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+    // Email notifications - no consent required
+    const proceedBtn = document.getElementById('proceed-btn');
+
+    function renderCart() {
+      const container = document.getElementById('cart-items');
+      container.innerHTML = '';
+
+      cart.forEach((item, index) => {
+        let imagesHtml = '';
+        // Show the main image (thumbnail or selected)
+        if (!item.screenshots || item.screenshots.length === 0) {
+          // Thumbnail only
+          imagesHtml += `<div style="margin-bottom:10px;">
+            <img src="${item.img}" alt="Preview" style="max-width:100px;display:block;">
+            <div><strong>Video Name:</strong> ${item.videoName || 'N/A'}</div>
+          </div>`;
+        } else {
+          // Screenshot selected
+          item.screenshots.forEach((shot, i) => {
+            imagesHtml += `<div style="margin-bottom:10px;">
+              <img src="${shot.img}" alt="Screenshot ${i+1}" style="max-width:100px;display:block;">
+              <div><strong>Timestamp:</strong> ${shot.timestamp || ''}</div>
+              <div><strong>Video Name:</strong> ${shot.videoName || 'N/A'}</div>
+            </div>`;
+          });
+        }
+        const div = document.createElement('div');
+        div.className = 'cart-item';
+        div.innerHTML = `
+          <p><strong>Product:</strong> ${item.product}</p>
+          <p><strong>Email:</strong> ${item.email}</p>
+          <p><strong>Note:</strong> ${item.note || 'None'}</p>
+          ${imagesHtml}
+          <button class="remove-btn" onclick="removeItem(${index})">Remove</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function removeItem(index) {
+      cart.splice(index, 1);
+      localStorage.setItem('cart', JSON.stringify(cart));
+      renderCart();
+    }
+
+    function finalizeOrder() {
+      // Email notifications - no consent required
+      const orderData = {
+        cart: cart,
+        product_id: productId,
+        sms_consent: false, // No SMS consent needed for email notifications
+        phone_number: '', // Will be collected by Stripe
+        timestamp: new Date().toISOString()
+      };
+
+      fetch("/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderData)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.url) {
+          localStorage.removeItem("cart");
+          window.location.href = data.url;
+        } else {
+          alert("Error creating Stripe checkout session.");
+        }
+      });
+    }
+
+    renderCart();
+  </script>
+</body>
+</html>

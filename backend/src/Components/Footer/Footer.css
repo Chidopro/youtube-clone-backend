@@ -1,0 +1,109 @@
+.site-footer {
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  margin-top: auto;
+  padding: 40px 0 20px 0;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.footer-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+.footer-section h4 {
+  color: #495057;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  margin-top: 0;
+}
+
+.footer-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-section ul li {
+  margin-bottom: 8px;
+}
+
+.footer-section ul li a {
+  color: #6c757d;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer-section ul li a:hover {
+  color: #3f51b5;
+  text-decoration: underline;
+}
+
+.footer-logo {
+  width: 80px;
+  height: auto;
+  margin-bottom: 10px;
+}
+
+.footer-description {
+  color: #6c757d;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.sms-info {
+  color: #6c757d;
+  font-size: 13px;
+}
+
+.footer-bottom {
+  border-top: 1px solid #e9ecef;
+  padding-top: 20px;
+  text-align: center;
+}
+
+.footer-bottom p {
+  margin: 5px 0;
+  color: #6c757d;
+}
+
+.sms-disclosure {
+  font-size: 12px;
+  color: #868e96;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .site-footer {
+    padding: 30px 0 15px 0;
+  }
+  
+  .footer-container {
+    padding: 0 15px;
+  }
+}
+
+/* Privacy Policy Link Emphasis */
+.footer-section ul li a[href="/privacy-policy"] {
+  font-weight: 500;
+  color: #3f51b5;
+}
+
+.footer-section ul li a[href="/privacy-policy"]:hover {
+  color: #2c387e;
+} 
