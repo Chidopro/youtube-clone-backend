@@ -9,46 +9,39 @@ const SubscriptionTiers = () => {
     const location = useLocation();
     const tiers = [
         {
-            id: 'basic',
-            name: 'Basic Tier',
+            id: 'free',
+            name: 'Free for Fans',
             price: 'Free',
             features: [
-                'Upload videos',
+                'Upload videos (up to 100MB, 10 minutes)',
                 'Basic analytics',
                 'Standard features',
-                'Community access'
+                'Community access',
+                'Grab screenshots',
+                'Preview merch',
+                'Buy merchandise'
             ],
             color: '#6c757d',
             popular: false
         },
         {
-            id: 'premium',
-            name: 'Premium Tier',
+            id: 'pro',
+            name: 'Pro Plan for Creators',
             price: '$9.99/month',
+            trialText: '7-day free trial',
             features: [
-                'Everything in Basic',
-                'Advanced analytics',
+                'Everything in Free',
                 'Priority support',
                 'Custom branding',
-                'Enhanced upload limits'
+                'Enhanced upload limits (2GB, 60 minutes)',
+                'Ad-free experience',
+                'Early access to new features',
+                'Monetization tools',
+                'Revenue tracking',
+                'Custom channel colors',
+                'Branded merchandise'
             ],
             color: '#007bff',
-            popular: false
-        },
-        {
-            id: 'creator_network',
-            name: 'Creator Network Tier',
-            price: '$29.99/month',
-            features: [
-                'Everything in Premium',
-                'Revenue sharing (15%)',
-                'Advanced creator tools',
-                'Network analytics',
-                'Priority creator support',
-                'Custom channel branding',
-                'Enhanced monetization options'
-            ],
-            color: '#28a745',
             popular: true
         }
     ];
@@ -64,7 +57,7 @@ const SubscriptionTiers = () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 setCurrentUser(user);
-                
+
                 if (user) {
                     const subscription = await SubscriptionService.getCurrentUserSubscription();
                     setUserSubscription(subscription);
@@ -75,165 +68,80 @@ const SubscriptionTiers = () => {
                 setLoading(false);
             }
         };
-        
+
         fetchUserData();
     }, []);
 
-    useEffect(() => {
-        if (location.hash) {
-            const el = document.getElementById(location.hash.replace('#', ''));
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-    }, [location]);
-
-    const handleBasicTierSignup = async () => {
-        if (!currentUser) {
-            // Redirect to login first
-            setActionLoading(true);
-            setMessage('Redirecting to Google login...');
-            
-            const { error } = await supabase.auth.signInWithOAuth({ 
-                provider: 'google',
-                options: {
-                    redirectTo: `${window.location.origin}/subscription-tiers`,
-                    queryParams: {
-                        prompt: 'select_account'
-                    }
-                }
-            });
-            
-            if (error) {
-                setMessage('Login failed. Please try again.');
-                setActionLoading(false);
-                return;
-            }
-            return;
-        }
-
+    const handleFreeTierSignup = async () => {
         setActionLoading(true);
-        setMessage('Setting up your Basic tier subscription...');
+        setMessage('');
 
         try {
-            const result = await SubscriptionService.subscribeToBasicTier();
+            if (!currentUser) {
+                // Redirect to signup if not logged in
+                navigate('/signup', { 
+                    state: { 
+                        from: location.pathname,
+                        message: 'Sign up to get started with ScreenMerch!' 
+                    } 
+                });
+                return;
+            }
+
+            const result = await SubscriptionService.subscribeToFreeTier();
             
             if (result.success) {
                 setUserSubscription(result.subscription);
-                setMessage('Welcome to ScreenMerch! Your Basic tier subscription is now active.');
+                setMessage('Welcome to ScreenMerch! You now have access to all free features.');
                 
-                // Redirect to dashboard after a moment
                 setTimeout(() => {
                     navigate('/dashboard');
                 }, 2000);
             } else {
-                setMessage(result.error || 'Failed to activate subscription. Please try again.');
+                setMessage(result.error || 'Failed to activate free tier. Please try again.');
             }
         } catch (error) {
-            console.error('Error subscribing to basic tier:', error);
+            console.error('Error subscribing to free tier:', error);
             setMessage('An error occurred. Please try again.');
         } finally {
             setActionLoading(false);
         }
     };
 
-    const handlePremiumTier = async () => {
-        if (!currentUser) {
-            // Redirect to login first
-            setActionLoading(true);
-            setMessage('Redirecting to Google login...');
-            
-            const { error } = await supabase.auth.signInWithOAuth({ 
-                provider: 'google',
-                options: {
-                    redirectTo: `${window.location.origin}/subscription-tiers`,
-                    queryParams: {
-                        prompt: 'select_account'
-                    }
-                }
-            });
-            
-            if (error) {
-                setMessage('Login failed. Please try again.');
-                setActionLoading(false);
-                return;
-            }
-            return;
-        }
-
+    const handleProTier = async () => {
         setActionLoading(true);
-        setMessage('Redirecting to secure payment...');
+        setMessage('');
 
         try {
-            const result = await SubscriptionService.subscribeToPremiumTier();
+            if (!currentUser) {
+                // Redirect to signup if not logged in
+                navigate('/signup', { 
+                    state: { 
+                        from: location.pathname,
+                        message: 'Sign up to start your Pro trial!' 
+                    } 
+                });
+                return;
+            }
+
+            const result = await SubscriptionService.subscribeToProTier();
             
             if (result.success) {
                 if (result.redirecting) {
-                    setMessage('Redirecting to Stripe checkout...');
+                    setMessage('Redirecting to secure payment setup...');
                 } else {
                     setUserSubscription(result.subscription);
-                    setMessage('Welcome to Premium! Your subscription is now active.');
+                    setMessage('Welcome to Pro! Your 7-day free trial is now active.');
                     
                     setTimeout(() => {
                         navigate('/dashboard');
                     }, 2000);
                 }
             } else {
-                setMessage(result.error || 'Failed to start subscription process. Please try again.');
+                setMessage(result.error || 'Failed to start trial. Please try again.');
             }
         } catch (error) {
-            console.error('Error subscribing to premium tier:', error);
-            setMessage('An error occurred. Please try again.');
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
-    const handleCreatorNetworkTier = async () => {
-        if (!currentUser) {
-            // Redirect to login first
-            setActionLoading(true);
-            setMessage('Redirecting to Google login...');
-            
-            const { error } = await supabase.auth.signInWithOAuth({ 
-                provider: 'google',
-                options: {
-                    redirectTo: `${window.location.origin}/subscription-tiers`,
-                    queryParams: {
-                        prompt: 'select_account'
-                    }
-                }
-            });
-            
-            if (error) {
-                setMessage('Login failed. Please try again.');
-                setActionLoading(false);
-                return;
-            }
-            return;
-        }
-
-        setActionLoading(true);
-        setMessage('Redirecting to secure payment...');
-
-        try {
-            const result = await SubscriptionService.subscribeToCreatorNetworkTier();
-            
-            if (result.success) {
-                if (result.redirecting) {
-                    setMessage('Redirecting to Stripe checkout...');
-                } else {
-                    setUserSubscription(result.subscription);
-                    setMessage('Welcome to Creator Network! Your subscription is now active.');
-                    setTimeout(() => {
-                        navigate('/dashboard');
-                    }, 2000);
-                }
-            } else {
-                setMessage(result.error || 'Failed to start subscription process. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error subscribing to creator network tier:', error);
+            console.error('Error subscribing to pro tier:', error);
             setMessage('An error occurred. Please try again.');
         } finally {
             setActionLoading(false);
@@ -242,14 +150,11 @@ const SubscriptionTiers = () => {
 
     const handleTierAction = (tierId) => {
         switch (tierId) {
-            case 'basic':
-                handleBasicTierSignup();
+            case 'free':
+                handleFreeTierSignup();
                 break;
-            case 'premium':
-                handlePremiumTier();
-                break;
-            case 'creator_network':
-                handleCreatorNetworkTier();
+            case 'pro':
+                handleProTier();
                 break;
             default:
                 setMessage('Invalid tier selection.');
@@ -260,14 +165,14 @@ const SubscriptionTiers = () => {
         if (actionLoading) return 'Processing...';
         
         if (userSubscription?.tier === tier.id) {
-            return 'Current Plan';
+            return tier.id === 'pro' ? 'Current Plan' : 'Current Plan';
         }
         
-        if (tier.id === 'basic') {
+        if (tier.id === 'free') {
             return currentUser ? 'Get Started' : 'Sign Up & Get Started';
         }
         
-        return 'Subscribe Now';
+        return 'Start Free Trial';
     };
 
     const isButtonDisabled = (tier) => {
@@ -276,37 +181,25 @@ const SubscriptionTiers = () => {
 
     if (loading) {
         return (
-            <div className="subscription-tiers-page">
-                <div className="tiers-header">
-                    <h1>Loading...</h1>
-                </div>
+            <div className="subscription-tiers">
+                <div className="loading">Loading subscription options...</div>
             </div>
         );
     }
 
     return (
-        <div className="subscription-tiers-page">
+        <div className="subscription-tiers">
             <div className="tiers-header">
-                <h1>Choose Your Subscription Tier</h1>
-                <p>Unlock your potential with our three-tier subscription system</p>
-                {currentUser && userSubscription && (
-                    <p className="current-tier-info">
-                        Current plan: <strong>{SubscriptionService.getTierConfig(userSubscription.tier).name}</strong>
-                    </p>
-                )}
-                {!currentUser && (
-                    <p className="auth-notice" style={{ color: '#666', fontSize: '14px', marginTop: '10px' }}>
-                        Sign in with Google to manage your subscription
-                    </p>
-                )}
+                <h1>Choose Your Plan</h1>
+                <p>Start creating and monetizing your content with ScreenMerch</p>
             </div>
-            
+
             {message && (
-                <div className={`message ${message.includes('Welcome') || message.includes('active') ? 'success' : 'info'}`}>
+                <div className={`message ${message.includes('error') || message.includes('Failed') ? 'error' : 'success'}`}>
                     {message}
                 </div>
             )}
-            
+
             <div className="tiers-container">
                 {tiers.map((tier, index) => (
                     <div 
@@ -332,6 +225,9 @@ const SubscriptionTiers = () => {
                                 <span className="price">{tier.price}</span>
                                 {tier.price !== 'Free' && <span className="period">/month</span>}
                             </div>
+                            {tier.trialText && (
+                                <div className="trial-text">{tier.trialText}</div>
+                            )}
                         </div>
                         
                         <div className="tier-features">
@@ -346,49 +242,29 @@ const SubscriptionTiers = () => {
                         </div>
                         
                         <div className="tier-action">
-                            <button 
-                                className="subscribe-btn"
-                                style={{ 
-                                    backgroundColor: isButtonDisabled(tier) ? '#ccc' : tier.color,
-                                    cursor: isButtonDisabled(tier) ? 'not-allowed' : 'pointer'
-                                }}
+                            <button
+                                className={`tier-button ${tier.popular ? 'popular' : ''}`}
                                 onClick={() => handleTierAction(tier.id)}
                                 disabled={isButtonDisabled(tier)}
+                                style={{ backgroundColor: tier.color }}
                             >
                                 {getButtonText(tier)}
                             </button>
                         </div>
-                        
-                        {tier.name === 'Creator Network Tier' && (
-                            <div className="network-highlight" id="creator-network-breakdown">
-                                <h4>🎯 Creator Network Benefits</h4>
-                                <p>Advanced creator tools and enhanced revenue sharing!</p>
-                                <div className="network-features">
-                                    <div className="network-feature">
-                                        <span className="icon">💰</span>
-                                        <span>Revenue Sharing (15%)</span>
-                                    </div>
-                                    <div className="network-feature">
-                                        <span className="icon">📊</span>
-                                        <span>Advanced Analytics</span>
-                                    </div>
-                                    <div className="network-feature">
-                                        <span className="icon">🎨</span>
-                                        <span>Custom Branding</span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 ))}
             </div>
-            
+
             <div className="tiers-footer">
-                <div style={{ marginTop: 32 }}>
-                    <Link to="/" className="back-home-btn">
-                        Back to Home
-                    </Link>
-                </div>
+                <p>
+                    <strong>Free for Fans:</strong> Perfect for viewers who want to grab screenshots, preview merch, and make purchases without any friction.
+                </p>
+                <p>
+                    <strong>Pro Plan for Creators:</strong> Ideal for content creators who want to monetize their audience, customize their branding, and access advanced features.
+                </p>
+                <p className="trial-info">
+                    <strong>7-Day Free Trial:</strong> Start your Pro trial today. No charges during the trial period. Cancel anytime before the trial ends.
+                </p>
             </div>
         </div>
     );

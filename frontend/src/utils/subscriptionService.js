@@ -1,9 +1,9 @@
-import { supabase } from '../supabaseClient.js';
+import { supabase } from '../supabaseClient';
 
 export class SubscriptionService {
   /**
-   * Get current user's subscription tier
-   * @returns {Promise<Object|null>} Subscription data or null if not found
+   * Get current user's subscription
+   * @returns {Promise<Object>} Subscription data
    */
   static async getCurrentUserSubscription() {
     try {
@@ -16,57 +16,121 @@ export class SubscriptionService {
         .eq('user_id', user.id)
         .single();
 
-      if (error) {
-        console.error('Error fetching user subscription:', error);
-        return null;
+      if (error && error.code !== 'PGRST116') {
+        throw error;
       }
 
-      return data;
+      return data || { tier: 'free', status: 'active' };
     } catch (error) {
-      console.error('Error in getCurrentUserSubscription:', error);
-      return null;
+      console.error('Error fetching subscription:', error);
+      return { tier: 'free', status: 'active' };
     }
   }
 
   /**
-   * Create or update user subscription tier
-   * @param {string} tier - Tier name ('basic', 'premium', 'creator_network')
-   * @param {Object} additionalData - Additional subscription data
-   * @returns {Promise<Object|null>} Updated subscription or null on error
+   * Subscribe to free tier
+   * @returns {Promise<Object>} Result
    */
-  static async upsertUserSubscription(tier, additionalData = {}) {
+  static async subscribeToFreeTier() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        throw new Error('No authenticated user');
+        throw new Error('User not authenticated');
       }
-
-      const subscriptionData = {
-        user_id: user.id,
-        tier,
-        status: 'active',
-        updated_at: new Date().toISOString(),
-        ...additionalData
-      };
 
       const { data, error } = await supabase
         .from('user_subscriptions')
-        .upsert(subscriptionData, { 
-          onConflict: 'user_id',
-          ignoreDuplicates: false 
+        .upsert({
+          user_id: user.id,
+          tier: 'free',
+          status: 'active',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
         })
         .select()
         .single();
 
-      if (error) {
-        console.error('Error upserting user subscription:', error);
-        return null;
+      if (error) throw error;
+
+      return {
+        success: true,
+        subscription: data
+      };
+    } catch (error) {
+      console.error('Error subscribing to free tier:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Subscribe to pro tier (starts 7-day trial)
+   * @returns {Promise<Object>} Result
+   */
+  static async subscribeToProTier() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
       }
 
-      return data;
+      // Create Stripe checkout session for Pro tier with 7-day trial
+      const response = await fetch('/api/create-pro-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          tier: 'pro'
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.url) {
+        // Redirect to Stripe checkout
+        window.location.href = result.url;
+        return {
+          success: true,
+          redirecting: true
+        };
+      } else {
+        throw new Error(result.error || 'Failed to create checkout session');
+      }
     } catch (error) {
-      console.error('Error in upsertUserSubscription:', error);
-      return null;
+      console.error('Error subscribing to pro tier:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Check if user has minimum tier requirement
+   * @param {string} requiredTier - Required tier
+   * @returns {Promise<boolean>} Has minimum tier
+   */
+  static async hasMinimumTier(requiredTier) {
+    try {
+      const subscription = await this.getCurrentUserSubscription();
+      
+      const tierHierarchy = {
+        'free': 0,
+        'pro': 1
+      };
+
+      const userTierLevel = tierHierarchy[subscription?.tier || 'free'];
+      const requiredTierLevel = tierHierarchy[requiredTier];
+
+      return userTierLevel >= requiredTierLevel;
+    } catch (error) {
+      console.error('Error checking tier requirement:', error);
+      return false;
     }
   }
 
@@ -77,252 +141,92 @@ export class SubscriptionService {
    */
   static getTierConfig(tier) {
     const tierConfigs = {
-      basic: {
-        name: 'Basic Tier',
+      free: {
+        name: 'Free for Fans',
         price: 'Free',
         features: [
-          'Upload videos',
+          'Upload videos (up to 100MB, 10 minutes)',
           'Basic analytics',
           'Standard features',
-          'Community access'
+          'Community access',
+          'Grab screenshots',
+          'Preview merch',
+          'Buy merchandise'
         ],
-        revenueShare: 0
+        maxUploadSize: '100MB',
+        maxVideoLength: '10 minutes'
       },
-      premium: {
-        name: 'Premium Tier',
+      pro: {
+        name: 'Pro Plan for Creators',
         price: '$9.99/month',
+        trialDays: 7,
         features: [
-          'Everything in Basic',
-          'Advanced analytics',
+          'Everything in Free',
           'Priority support',
           'Custom branding',
-          'Enhanced upload limits'
+          'Enhanced upload limits (2GB, 60 minutes)',
+          'Ad-free experience',
+          'Early access to new features',
+          'Monetization tools',
+          'Revenue tracking',
+          'Custom channel colors',
+          'Branded merchandise'
         ],
-        revenueShare: 0
-      },
-      creator_network: {
-        name: 'Creator Network Tier',
-        price: '$29.99/month',
-        features: [
-          'Everything in Premium',
-          'Advanced creator tools',
-          'Network analytics',
-          'Enhanced revenue sharing',
-          'Priority support'
-        ],
-        revenueShare: 0.15
+        maxUploadSize: '2GB',
+        maxVideoLength: '60 minutes'
       }
     };
 
-    return tierConfigs[tier] || tierConfigs.basic;
+    return tierConfigs[tier] || tierConfigs.free;
   }
 
   /**
-   * Subscribe user to basic (free) tier
-   * @returns {Promise<Object>} Operation result
+   * Check if user is in trial period
+   * @returns {Promise<boolean>} Is in trial
    */
-  static async subscribeToBasicTier() {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: false, error: 'User not authenticated' };
-      }
-
-      const subscription = await this.upsertUserSubscription('basic', {
-        current_period_start: new Date().toISOString(),
-        // Basic tier doesn't expire
-        current_period_end: null
-      });
-
-      if (subscription) {
-        return { 
-          success: true, 
-          subscription,
-          tier: this.getTierConfig('basic')
-        };
-      } else {
-        return { success: false, error: 'Failed to create subscription' };
-      }
-    } catch (error) {
-      console.error('Error subscribing to basic tier:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Subscribe user to premium tier with Stripe
-   * @returns {Promise<Object>} Operation result
-   */
-  static async subscribeToPremiumTier() {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: false, error: 'User not authenticated' };
-      }
-
-      // Create Stripe checkout session
-      const response = await fetch('http://localhost:3002/api/create-premium-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          userEmail: user.email,
-          userName: user.user_metadata?.name || 'User',
-          tier: 'premium'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create checkout session');
-      }
-
-      const { url } = await response.json();
-      
-      // Redirect to Stripe checkout
-      window.location.href = url;
-      
-      return { success: true, redirecting: true };
-    } catch (error) {
-      console.error('Error subscribing to premium tier:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Subscribe user to creator network tier with Stripe
-   * @returns {Promise<Object>} Operation result
-   */
-  static async subscribeToCreatorNetworkTier() {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: false, error: 'User not authenticated' };
-      }
-
-      // Create Stripe checkout session for Creator Network
-      const response = await fetch('http://localhost:3002/api/create-creator-network-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          userEmail: user.email,
-          userName: user.user_metadata?.name || 'User',
-          tier: 'creator_network'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create checkout session');
-      }
-
-      const { url } = await response.json();
-      
-      // Redirect to Stripe checkout
-      window.location.href = url;
-      
-      return { success: true, redirecting: true };
-    } catch (error) {
-      console.error('Error subscribing to creator network tier:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Handle successful premium subscription
-   * @param {string} stripeSubscriptionId - Stripe subscription ID
-   * @param {string} stripeCustomerId - Stripe customer ID
-   * @returns {Promise<Object>} Operation result
-   */
-  static async activatePremiumSubscription(stripeSubscriptionId, stripeCustomerId) {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: false, error: 'User not authenticated' };
-      }
-
-      const subscription = await this.upsertUserSubscription('premium', {
-        stripe_subscription_id: stripeSubscriptionId,
-        stripe_customer_id: stripeCustomerId,
-        current_period_start: new Date().toISOString(),
-        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-      });
-
-      if (subscription) {
-        return { 
-          success: true, 
-          subscription,
-          tier: this.getTierConfig('premium')
-        };
-      } else {
-        return { success: false, error: 'Failed to activate subscription' };
-      }
-    } catch (error) {
-      console.error('Error activating premium subscription:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Check if user has a specific tier or higher
-   * @param {string} requiredTier - Required tier level
-   * @returns {Promise<boolean>} Whether user meets tier requirement
-   */
-  static async hasMinimumTier(requiredTier) {
+  static async isInTrialPeriod() {
     try {
       const subscription = await this.getCurrentUserSubscription();
-      if (!subscription) return false;
+      
+      if (!subscription || subscription.tier !== 'pro') {
+        return false;
+      }
 
-      const tierHierarchy = {
-        basic: 1,
-        premium: 2,
-        creator_network: 3
-      };
+      if (!subscription.trial_end) {
+        return false;
+      }
 
-      const userTierLevel = tierHierarchy[subscription.tier] || 0;
-      const requiredTierLevel = tierHierarchy[requiredTier] || 0;
+      const trialEnd = new Date(subscription.trial_end);
+      const now = new Date();
 
-      return userTierLevel >= requiredTierLevel;
+      return now < trialEnd;
     } catch (error) {
-      console.error('Error checking tier requirement:', error);
+      console.error('Error checking trial period:', error);
       return false;
     }
   }
 
   /**
-   * Get user subscription with tier config
-   * @returns {Promise<Object|null>} Combined subscription and tier data
+   * Get remaining trial days
+   * @returns {Promise<number>} Days remaining
    */
-  static async getUserSubscriptionWithConfig() {
+  static async getTrialDaysRemaining() {
     try {
       const subscription = await this.getCurrentUserSubscription();
-      if (!subscription) return null;
+      
+      if (!subscription || subscription.tier !== 'pro' || !subscription.trial_end) {
+        return 0;
+      }
 
-      const tierConfig = this.getTierConfig(subscription.tier);
+      const trialEnd = new Date(subscription.trial_end);
+      const now = new Date();
+      const diffTime = trialEnd - now;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      return {
-        ...subscription,
-        config: tierConfig
-      };
+      return Math.max(0, diffDays);
     } catch (error) {
-      console.error('Error getting subscription with config:', error);
-      return null;
+      console.error('Error getting trial days remaining:', error);
+      return 0;
     }
   }
-}
-
-// Export individual functions for convenience
-export const {
-  getCurrentUserSubscription,
-  upsertUserSubscription,
-  getTierConfig,
-  subscribeToBasicTier,
-  subscribeToPremiumTier,
-  subscribeToCreatorNetworkTier,
-  activatePremiumSubscription,
-  hasMinimumTier,
-  getUserSubscriptionWithConfig
-} = SubscriptionService; 
+} 
