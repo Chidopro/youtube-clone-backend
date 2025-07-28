@@ -9,25 +9,9 @@ const SubscriptionTiers = () => {
     const location = useLocation();
     const tiers = [
         {
-            id: 'free',
-            name: 'Free for Fans',
-            price: 'Free',
-            features: [
-                'Upload videos (up to 100MB, 10 minutes)',
-                'Basic analytics',
-                'Standard features',
-                'Community access',
-                'Grab screenshots',
-                'Preview merch',
-                'Buy merchandise'
-            ],
-            color: '#6c757d',
-            popular: false
-        },
-        {
             id: 'pro',
-            name: 'Pro Plan for Creators',
-            price: '$9.99/month',
+            name: 'Creator Pro Plan',
+            price: '$9.99',
             trialText: '7-day free trial',
             features: [
                 'Everything in Free',
@@ -42,7 +26,7 @@ const SubscriptionTiers = () => {
                 'Branded merchandise'
             ],
             color: '#007bff',
-            popular: true
+            popular: false
         }
     ];
 
@@ -71,42 +55,6 @@ const SubscriptionTiers = () => {
 
         fetchUserData();
     }, []);
-
-    const handleFreeTierSignup = async () => {
-        setActionLoading(true);
-        setMessage('');
-
-        try {
-            if (!currentUser) {
-                // Redirect to signup if not logged in
-                navigate('/signup', { 
-                    state: { 
-                        from: location.pathname,
-                        message: 'Sign up to get started with ScreenMerch!' 
-                    } 
-                });
-                return;
-            }
-
-            const result = await SubscriptionService.subscribeToFreeTier();
-            
-            if (result.success) {
-                setUserSubscription(result.subscription);
-                setMessage('Welcome to ScreenMerch! You now have access to all free features.');
-                
-                setTimeout(() => {
-                    navigate('/dashboard');
-                }, 2000);
-            } else {
-                setMessage(result.error || 'Failed to activate free tier. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error subscribing to free tier:', error);
-            setMessage('An error occurred. Please try again.');
-        } finally {
-            setActionLoading(false);
-        }
-    };
 
     const handleProTier = async () => {
         setActionLoading(true);
@@ -148,28 +96,11 @@ const SubscriptionTiers = () => {
         }
     };
 
-    const handleTierAction = (tierId) => {
-        switch (tierId) {
-            case 'free':
-                handleFreeTierSignup();
-                break;
-            case 'pro':
-                handleProTier();
-                break;
-            default:
-                setMessage('Invalid tier selection.');
-        }
-    };
-
     const getButtonText = (tier) => {
         if (actionLoading) return 'Processing...';
         
         if (userSubscription?.tier === tier.id) {
-            return tier.id === 'pro' ? 'Current Plan' : 'Current Plan';
-        }
-        
-        if (tier.id === 'free') {
-            return currentUser ? 'Get Started' : 'Sign Up & Get Started';
+            return 'Current Plan';
         }
         
         return 'Start Free Trial';
@@ -190,8 +121,8 @@ const SubscriptionTiers = () => {
     return (
         <div className="subscription-tiers">
             <div className="tiers-header">
-                <h1>Choose Your Plan</h1>
-                <p>Start creating and monetizing your content with ScreenMerch</p>
+                <h1>Creator Pro Plan</h1>
+                <p>Unlock your full potential as a content creator with ScreenMerch</p>
             </div>
 
             {message && (
@@ -204,15 +135,9 @@ const SubscriptionTiers = () => {
                 {tiers.map((tier, index) => (
                     <div 
                         key={index} 
-                        className={`tier-card ${tier.popular ? 'popular' : ''} ${userSubscription?.tier === tier.id ? 'current' : ''}`}
+                        className={`tier-card ${userSubscription?.tier === tier.id ? 'current' : ''}`}
                         style={{ borderColor: tier.color }}
                     >
-                        {tier.popular && (
-                            <div className="popular-badge" style={{ backgroundColor: tier.color }}>
-                                Most Popular
-                            </div>
-                        )}
-                        
                         {userSubscription?.tier === tier.id && (
                             <div className="current-badge">
                                 Current Plan
@@ -223,7 +148,7 @@ const SubscriptionTiers = () => {
                             <h2>{tier.name}</h2>
                             <div className="tier-price">
                                 <span className="price">{tier.price}</span>
-                                {tier.price !== 'Free' && <span className="period">/month</span>}
+                                <span className="period">/month</span>
                             </div>
                             {tier.trialText && (
                                 <div className="trial-text">{tier.trialText}</div>
@@ -243,8 +168,8 @@ const SubscriptionTiers = () => {
                         
                         <div className="tier-action">
                             <button
-                                className={`tier-button ${tier.popular ? 'popular' : ''}`}
-                                onClick={() => handleTierAction(tier.id)}
+                                className="tier-button"
+                                onClick={() => handleProTier()}
                                 disabled={isButtonDisabled(tier)}
                                 style={{ backgroundColor: tier.color }}
                             >
@@ -257,10 +182,10 @@ const SubscriptionTiers = () => {
 
             <div className="tiers-footer">
                 <p>
-                    <strong>Free for Fans:</strong> Perfect for viewers who want to grab screenshots, preview merch, and make purchases without any friction.
+                    <strong>Always free for fans:</strong> Viewers can grab screenshots, preview merch, and make purchases without any subscription required.
                 </p>
                 <p>
-                    <strong>Pro Plan for Creators:</strong> Ideal for content creators who want to monetize their audience, customize their branding, and access advanced features.
+                    <strong>Creator Pro Plan:</strong> Perfect for content creators who want to monetize their audience, customize their branding, and access advanced features.
                 </p>
                 <p className="trial-info">
                     <strong>7-Day Free Trial:</strong> Start your Pro trial today. No charges during the trial period. Cancel anytime before the trial ends.
