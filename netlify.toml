@@ -5,6 +5,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  NETLIFY_USE_YARN = "false"
 
 # Ignore submodules to fix deployment
 [build.processing]
