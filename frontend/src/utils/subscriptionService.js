@@ -78,7 +78,7 @@ export class SubscriptionService {
       }
 
       // Create Stripe checkout session for Pro tier with 7-day trial
-      const response = await fetch('/api/create-pro-checkout', {
+      const response = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/create-pro-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
