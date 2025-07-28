@@ -367,38 +367,39 @@ app.delete('/api/users/:userId/delete-account', async (req, res) => {
 
 // --- Stripe Subscription Endpoints ---
 
-// Create Pro Tier Checkout Session with 7-day free trial
+// Create Pro checkout session with 7-day trial
 app.post('/api/create-pro-checkout', async (req, res) => {
+    const { userId, tier } = req.body;
+
+    if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+    }
+
     try {
-        const { userId, userEmail, userName, tier } = req.body;
-
-        if (!userId || !userEmail) {
-            return res.status(400).json({ error: 'User ID and email are required' });
-        }
-
-        // Create or retrieve Stripe customer
+        // Get or create Stripe customer
         let customer;
-        try {
-            const existingCustomers = await stripe.customers.list({
-                email: userEmail,
-                limit: 1
+        const { data: existingCustomer } = await supabase
+            .from('user_subscriptions')
+            .select('stripe_customer_id')
+            .eq('user_id', userId)
+            .single();
+
+        if (existingCustomer?.stripe_customer_id) {
+            customer = await stripe.customers.retrieve(existingCustomer.stripe_customer_id);
+        } else {
+            const { data: user } = await supabase
+                .from('users')
+                .select('email, display_name')
+                .eq('id', userId)
+                .single();
+
+            customer = await stripe.customers.create({
+                email: user.email,
+                name: user.display_name,
+                metadata: {
+                    userId: userId
+                }
             });
-            
-            if (existingCustomers.data.length > 0) {
-                customer = existingCustomers.data[0];
-            } else {
-                customer = await stripe.customers.create({
-                    email: userEmail,
-                    name: userName,
-                    metadata: {
-                        userId: userId,
-                        tier: tier
-                    }
-                });
-            }
-        } catch (customerError) {
-            console.error('Error creating/retrieving customer:', customerError);
-            return res.status(500).json({ error: 'Failed to create customer' });
         }
 
         // Create checkout session with 7-day trial
@@ -410,7 +411,7 @@ app.post('/api/create-pro-checkout', async (req, res) => {
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: 'ScreenMerch Pro',
+                        name: 'ScreenMerch Pro Plan',
                         description: 'Priority support, custom branding, enhanced upload limits, ad-free experience, early access to new features, and monetization tools'
                     },
                     unit_amount: 999, // $9.99 in cents
@@ -485,27 +486,76 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
 
                 if (error) {
                     console.error('Error updating subscription in database:', error);
+                } else {
+                    console.log(`Subscription activated for user ${userId} with tier ${tier}`);
                 }
             } catch (dbError) {
                 console.error('Database error in webhook:', dbError);
             }
             break;
-            
+
         case 'invoice.payment_succeeded':
-            // Handle successful recurring payment
-            console.log('Payment succeeded for subscription:', event.data.object.subscription);
-            break;
+            const invoice = event.data.object;
             
-        case 'invoice.payment_failed':
-            // Handle failed payment
-            console.log('Payment failed for subscription:', event.data.object.subscription);
+            // Handle successful payment after trial
+            try {
+                const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+                const { userId } = subscription.metadata;
+                
+                if (userId) {
+                    const { error } = await supabase
+                        .from('user_subscriptions')
+                        .update({
+                            status: 'active',
+                            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+                            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('user_id', userId);
+
+                    if (error) {
+                        console.error('Error updating subscription payment:', error);
+                    } else {
+                        console.log(`Payment processed for user ${userId}`);
+                    }
+                }
+            } catch (dbError) {
+                console.error('Database error in payment webhook:', dbError);
+            }
             break;
+
+        case 'customer.subscription.deleted':
+            const deletedSubscription = event.data.object;
             
+            // Handle subscription cancellation
+            try {
+                const { userId } = deletedSubscription.metadata;
+                
+                if (userId) {
+                    const { error } = await supabase
+                        .from('user_subscriptions')
+                        .update({
+                            status: 'canceled',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('user_id', userId);
+
+                    if (error) {
+                        console.error('Error updating canceled subscription:', error);
+                    } else {
+                        console.log(`Subscription canceled for user ${userId}`);
+                    }
+                }
+            } catch (dbError) {
+                console.error('Database error in cancellation webhook:', dbError);
+            }
+            break;
+
         default:
             console.log(`Unhandled event type ${event.type}`);
     }
 
-    res.json({received: true});
+    res.json({ received: true });
 });
 
 // Verify subscription success
@@ -594,6 +644,29 @@ app.post('/api/create-creator-network-checkout', async (req, res) => {
     } catch (error) {
         console.error('Error creating checkout session:', error);
         res.status(500).json({ error: 'Failed to create checkout session' });
+    }
+});
+
+// Get user subscription
+app.get('/api/users/:userId/subscription', async (req, res) => {
+    const { userId } = req.params;
+    
+    try {
+        const { data, error } = await supabase
+            .from('user_subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            throw error;
+        }
+
+        const subscription = data || { tier: 'free', status: 'active' };
+        res.json(subscription);
+    } catch (error) {
+        console.error('Error fetching subscription:', error);
+        res.status(500).json({ error: 'Failed to fetch subscription' });
     }
 });
 

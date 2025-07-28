@@ -6,9 +6,17 @@ Test script for Resend email integration
 import os
 import requests
 from dotenv import load_dotenv
+from pathlib import Path
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from backend folder
+backend_env_path = Path(__file__).parent / "backend" / ".env"
+if backend_env_path.exists():
+    load_dotenv(dotenv_path=backend_env_path)
+    print(f"✅ Loaded .env from: {backend_env_path}")
+else:
+    # Fallback to current directory
+    load_dotenv()
+    print("⚠️ Backend .env not found, using current directory")
 
 def test_resend_connection():
     """Test basic connection to Resend API"""

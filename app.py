@@ -138,12 +138,8 @@ app = Flask(__name__,
            template_folder='templates',
            static_folder='static')
 
-# Configure CORS for production
-CORS(app, resources={r"/api/*": {"origins": [
-    "chrome-extension://*", 
-    "https://screenmerch.com",
-    "https://www.screenmerch.com"
-]}})
+# Configure CORS for production - allow all origins for now
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # Security middleware
 @app.before_request
@@ -195,6 +191,19 @@ PRINTFUL_API_KEY = os.getenv("PRINTFUL_API_KEY")
 @app.route("/api/ping")
 def ping():
     return {"message": "pong"}
+
+@app.route("/api/health")
+def health():
+    """Health check endpoint for debugging"""
+    return jsonify({
+        "status": "healthy",
+        "timestamp": "now",
+        "endpoints": {
+            "create_product": "/api/create-product",
+            "capture_screenshot": "/api/capture-screenshot",
+            "ping": "/api/ping"
+        }
+    })
 
 @app.route("/api/test-order-email", methods=["POST"])
 def test_order_email():
@@ -469,7 +478,11 @@ def index():
 @app.route("/api/create-product", methods=["POST", "OPTIONS"])
 def create_product():
     if request.method == "OPTIONS":
-        return jsonify(success=True)  # Handle CORS preflight
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
 
     try:
         data = request.get_json()
@@ -511,16 +524,20 @@ def create_product():
                 "created_at": "now"
             }
 
-        return jsonify({
+        response = jsonify({
             "success": True,
             "product_id": product_id,
             "product_url": f"https://backend-hidden-firefly-7865.fly.dev/product/{product_id}"
         })
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     except Exception as e:
         logger.error(f"❌ Error in create-product: {str(e)}")
         logger.error(f"❌ Error type: {type(e).__name__}")
         logger.error(f"❌ Full error details: {repr(e)}")
-        return jsonify(success=False, error="Internal server error"), 500
+        response = jsonify(success=False, error="Internal server error"), 500
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
 
 @app.route("/product/<product_id>")
 def show_product_page(product_id):
@@ -694,6 +711,76 @@ def send_order():
 
 @app.route("/success")
 def success():
+    order_id = request.args.get('order_id')
+    logger.info(f"🎯 Success page visited with order_id: {order_id}")
+    
+    if order_id and order_id in order_store:
+        logger.info(f"✅ Found order {order_id} in store, processing email...")
+        try:
+            order_data = order_store[order_id]
+            cart = order_data.get("cart", [])
+            
+            # Generate a simple order number (last 8 characters of order_id)
+            order_number = order_id[-8:].upper()
+            
+            logger.info(f"📧 Preparing email for {len(cart)} items")
+            
+            # Format and send the order email
+            html_body = f"<h1>New Paid ScreenMerch Order #{order_number}</h1>"
+            html_body += f"<p><strong>Order ID:</strong> {order_id}</p>"
+            html_body += f"<p><strong>Items:</strong> {len(cart)}</p>"
+            html_body += f"<p><strong>Payment Status:</strong> ✅ Completed</p>"
+            html_body += f"<p><strong>Email Sent Via:</strong> Success Page (Webhook Fallback)</p>"
+            
+            for item in cart:
+                html_body += f"""
+                    <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
+                        <h2>{item.get('product', 'N/A')}</h2>
+                        <p><strong>Color:</strong> {item.get('variants', {}).get('color', 'N/A')}</p>
+                        <p><strong>Size:</strong> {item.get('variants', {}).get('size', 'N/A')}</p>
+                        <p><strong>Note:</strong> {item.get('note', 'None')}</p>
+                        <p><strong>Image:</strong></p>
+                        <img src="{item.get('img', '')}" alt='Product Image' style='max-width: 300px; border-radius: 6px;'>
+                    </div>
+                """
+            
+            # Record each sale
+            for item in cart:
+                record_sale(item)
+            
+            # Send email using Resend
+            email_data = {
+                "from": RESEND_FROM,
+                "to": [MAIL_TO],
+                "subject": f"New Paid Order #{order_number}: {len(cart)} Item(s)",
+                "html": html_body
+            }
+            
+            logger.info(f"📤 Sending email to {MAIL_TO} with Resend API...")
+            
+            response = requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {RESEND_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json=email_data
+            )
+            
+            logger.info(f"📨 Resend response status: {response.status_code}")
+            
+            if response.status_code == 200:
+                logger.info(f"✅ Email sent successfully for order {order_number}")
+                # Remove from order_store to prevent duplicate emails
+                del order_store[order_id]
+            else:
+                logger.error(f"❌ Failed to send email for order {order_number}: {response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"❌ Error processing order {order_id}: {str(e)}")
+    else:
+        logger.warning(f"⚠️ Order {order_id} not found in store or no order_id provided")
+    
     return render_template('success.html')
 
 @app.route("/create-checkout-session", methods=["POST"])
@@ -936,9 +1023,16 @@ def get_videos():
         return jsonify({"error": str(e)}), 500
 
 # NEW: Video Screenshot Capture Endpoints
-@app.route("/api/capture-screenshot", methods=["POST"])
+@app.route("/api/capture-screenshot", methods=["POST", "OPTIONS"])
 def capture_screenshot():
     """Capture a single screenshot from a video at a specific timestamp"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+        
     try:
         data = request.get_json()
         video_url = data.get('video_url')
@@ -946,22 +1040,69 @@ def capture_screenshot():
         quality = data.get('quality', 85)
         
         if not video_url:
-            return jsonify({"success": False, "error": "video_url is required"}), 400
+            response = jsonify({"success": False, "error": "video_url is required"}), 400
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
         
         logger.info(f"Capturing screenshot from {video_url} at timestamp {timestamp}")
         
-        result = screenshot_capture.capture_screenshot(video_url, timestamp, quality)
-        
-        if result['success']:
-            logger.info("Screenshot captured successfully")
-            return jsonify(result)
-        else:
-            logger.error(f"Screenshot capture failed: {result['error']}")
-            return jsonify(result), 500
+        # Try to capture screenshot using ffmpeg
+        try:
+            result = screenshot_capture.capture_screenshot(video_url, timestamp, quality)
+            
+            if result['success']:
+                logger.info("Screenshot captured successfully")
+                response = jsonify(result)
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response
+            else:
+                logger.error(f"Screenshot capture failed: {result['error']}")
+                # Return a more user-friendly error
+                response = jsonify({
+                    "success": False, 
+                    "error": "Screenshot capture failed. This might be due to video format or server limitations.",
+                    "details": result['error']
+                }), 500
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response
+                
+        except ImportError as e:
+            logger.error(f"FFmpeg not available: {str(e)}")
+            response = jsonify({
+                "success": False, 
+                "error": "Screenshot capture service not available on this server."
+            }), 503
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
+        except Exception as e:
+            logger.error(f"FFmpeg error: {str(e)}")
+            # Try to extract thumbnail from video URL as fallback
+            try:
+                # For now, return a placeholder image or the video URL itself
+                # In a real implementation, you might want to use a different approach
+                logger.info("FFmpeg failed, returning video URL as fallback")
+                response = jsonify({
+                    "success": True,
+                    "screenshot": video_url,  # Use video URL as fallback
+                    "timestamp": timestamp,
+                    "fallback": True
+                })
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response
+            except Exception as fallback_error:
+                logger.error(f"Fallback also failed: {str(fallback_error)}")
+                response = jsonify({
+                    "success": False, 
+                    "error": "Screenshot capture failed due to video processing error."
+                }), 500
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response
             
     except Exception as e:
         logger.error(f"Error in capture_screenshot: {str(e)}")
-        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+        response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
 
 @app.route("/api/capture-multiple-screenshots", methods=["POST"])
 def capture_multiple_screenshots():
@@ -1198,6 +1339,7 @@ def auth_signup():
         data = request.get_json()
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
+        redirect_url = data.get('redirect_url', '')
         
         if not email or not password:
             return jsonify({"success": False, "error": "Email and password are required"}), 400
@@ -1224,28 +1366,98 @@ def auth_signup():
             new_user = {
                 'email': email,
                 'password_hash': password,  # Replace with bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()) in production
-                'username': email.split('@')[0],
-                'display_name': email.split('@')[0],
                 'role': 'customer',
                 'status': 'active',
-                'created_at': 'now()',
-                'updated_at': 'now()'
+                'email_verified': False
             }
             
             result = supabase.table('users').insert(new_user).execute()
             
             if result.data:
                 logger.info(f"New user {email} created successfully")
-                return jsonify({
-                    "success": True, 
-                    "message": "Account created successfully",
-                    "user": {
-                        "id": result.data[0].get('id'),
-                        "email": result.data[0].get('email'),
-                        "display_name": result.data[0].get('display_name'),
-                        "role": result.data[0].get('role', 'customer')
+                
+                # Send confirmation email
+                try:
+                    # Generate verification token
+                    import secrets
+                    verification_token = secrets.token_urlsafe(32)
+                    
+                    # Store verification token
+                    supabase.table('users').update({
+                        'email_verification_token': verification_token
+                    }).eq('email', email).execute()
+                    
+                    # Create confirmation URL
+                    confirmation_url = f"https://backend-hidden-firefly-7865.fly.dev/api/auth/confirm-email?token={verification_token}&email={email}&redirect={redirect_url}"
+                    
+                    # Send confirmation email using Resend
+                    email_data = {
+                        "from": RESEND_FROM,
+                        "to": [email],
+                        "subject": "Confirm your ScreenMerch account",
+                        "html": f"""
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                            <h2 style="color: #3f51b5;">Welcome to ScreenMerch!</h2>
+                            <p>Thank you for creating an account. Please confirm your email address to continue.</p>
+                            <p>Click the button below to confirm your account:</p>
+                            <a href="{confirmation_url}" 
+                               style="display: inline-block; background: #3f51b5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
+                                Confirm Email Address
+                            </a>
+                            <p>Or copy and paste this link into your browser:</p>
+                            <p style="word-break: break-all; color: #666;">{confirmation_url}</p>
+                            <p>This link will expire in 24 hours.</p>
+                            <p>If you didn't create this account, you can safely ignore this email.</p>
+                        </div>
+                        """
                     }
-                })
+                    
+                    response = requests.post(
+                        "https://api.resend.com/emails",
+                        headers={
+                            "Authorization": f"Bearer {RESEND_API_KEY}",
+                            "Content-Type": "application/json"
+                        },
+                        json=email_data
+                    )
+                    
+                    if response.status_code == 200:
+                        logger.info(f"Confirmation email sent to {email}")
+                        return jsonify({
+                            "success": True, 
+                            "message": "Account created successfully! Please check your email to confirm your account.",
+                            "user": {
+                                "id": result.data[0].get('id'),
+                                "email": result.data[0].get('email'),
+                                "display_name": result.data[0].get('display_name'),
+                                "role": result.data[0].get('role', 'customer')
+                            }
+                        })
+                    else:
+                        logger.error(f"Failed to send confirmation email: {response.text}")
+                        return jsonify({
+                            "success": True, 
+                            "message": "Account created successfully! Please check your email to confirm your account.",
+                            "user": {
+                                "id": result.data[0].get('id'),
+                                "email": result.data[0].get('email'),
+                                "display_name": result.data[0].get('display_name'),
+                                "role": result.data[0].get('role', 'customer')
+                            }
+                        })
+                        
+                except Exception as email_error:
+                    logger.error(f"Error sending confirmation email: {str(email_error)}")
+                    return jsonify({
+                        "success": True, 
+                        "message": "Account created successfully! Please check your email to confirm your account.",
+                        "user": {
+                            "id": result.data[0].get('id'),
+                            "email": result.data[0].get('email'),
+                            "display_name": result.data[0].get('display_name'),
+                            "role": result.data[0].get('role', 'customer')
+                        }
+                    })
             else:
                 return jsonify({"success": False, "error": "Failed to create account"}), 500
                 
@@ -1294,6 +1506,440 @@ def auth_verify():
             
     except Exception as e:
         logger.error(f"Verification error: {str(e)}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+# NEW: Email confirmation endpoints
+@app.route("/api/auth/send-confirmation", methods=["POST"])
+def send_email_confirmation():
+    """Send email confirmation to user"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        redirect_url = data.get('redirect_url', '')
+        
+        if not email:
+            return jsonify({"success": False, "error": "Email is required"}), 400
+        
+        # Generate verification token
+        import secrets
+        verification_token = secrets.token_urlsafe(32)
+        
+        # Store verification token in database
+        try:
+            supabase.table('users').update({
+                'email_verification_token': verification_token,
+                'updated_at': 'now()'
+            }).eq('email', email).execute()
+            
+            # Create confirmation URL
+            confirmation_url = f"https://backend-hidden-firefly-7865.fly.dev/api/auth/confirm-email?token={verification_token}&email={email}&redirect={redirect_url}"
+            
+            # Send confirmation email using Resend
+            email_data = {
+                "from": RESEND_FROM,
+                "to": [email],
+                "subject": "Confirm your ScreenMerch account",
+                "html": f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #3f51b5;">Welcome to ScreenMerch!</h2>
+                    <p>Thank you for creating an account. Please confirm your email address to continue.</p>
+                    <p>Click the button below to confirm your account:</p>
+                    <a href="{confirmation_url}" 
+                       style="display: inline-block; background: #3f51b5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
+                        Confirm Email Address
+                    </a>
+                    <p>Or copy and paste this link into your browser:</p>
+                    <p style="word-break: break-all; color: #666;">{confirmation_url}</p>
+                    <p>This link will expire in 24 hours.</p>
+                    <p>If you didn't create this account, you can safely ignore this email.</p>
+                </div>
+                """
+            }
+            
+            response = requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {RESEND_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json=email_data
+            )
+            
+            if response.status_code == 200:
+                logger.info(f"Confirmation email sent to {email}")
+                return jsonify({
+                    "success": True,
+                    "message": "Confirmation email sent! Please check your inbox."
+                })
+            else:
+                logger.error(f"Failed to send confirmation email: {response.text}")
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to send confirmation email"
+                }), 500
+                
+        except Exception as db_error:
+            logger.error(f"Database error: {str(db_error)}")
+            return jsonify({
+                "success": False,
+                "error": "Failed to process confirmation request"
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error in send_email_confirmation: {str(e)}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+@app.route("/api/auth/confirm-email")
+def confirm_email():
+    """Confirm email address with token"""
+    try:
+        token = request.args.get('token')
+        email = request.args.get('email')
+        redirect_url = request.args.get('redirect', '')
+        
+        if not token or not email:
+            return "Invalid confirmation link", 400
+        
+        # Verify token in database
+        try:
+            result = supabase.table('users').select('*').eq('email', email).eq('email_verification_token', token).execute()
+            
+            if result.data:
+                # Update user as verified
+                supabase.table('users').update({
+                    'email_verified': True,
+                    'email_verification_token': None,
+                    'updated_at': 'now()'
+                }).eq('email', email).execute()
+                
+                logger.info(f"Email confirmed for {email}")
+                
+                # Redirect to product page or success page
+                if redirect_url:
+                    return f"""
+                    <html>
+                    <head>
+                        <title>Email Confirmed - ScreenMerch</title>
+                        <style>
+                            body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                            .success {{ color: #4CAF50; font-size: 24px; margin-bottom: 20px; }}
+                            .redirect {{ color: #666; margin-top: 30px; }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class="success">✅ Email Confirmed!</div>
+                        <p>Your email address has been successfully confirmed.</p>
+                        <p>You can now access your ScreenMerch products.</p>
+                        <div class="redirect">
+                            <p>Redirecting to your product page...</p>
+                            <script>
+                                setTimeout(function() {{
+                                    window.location.href = "{redirect_url}";
+                                }}, 3000);
+                            </script>
+                            <p><a href="{redirect_url}">Click here if you're not redirected automatically</a></p>
+                        </div>
+                    </body>
+                    </html>
+                    """
+                else:
+                    return """
+                    <html>
+                    <head>
+                        <title>Email Confirmed - ScreenMerch</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                            .success { color: #4CAF50; font-size: 24px; margin-bottom: 20px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="success">✅ Email Confirmed!</div>
+                        <p>Your email address has been successfully confirmed.</p>
+                        <p>You can now access your ScreenMerch products.</p>
+                        <p><a href="https://screenmerch.com">Return to ScreenMerch</a></p>
+                    </body>
+                    </html>
+                    """
+            else:
+                return """
+                <html>
+                <head>
+                    <title>Invalid Link - ScreenMerch</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                        .error { color: #f44336; font-size: 24px; margin-bottom: 20px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="error">❌ Invalid Confirmation Link</div>
+                    <p>This confirmation link is invalid or has expired.</p>
+                    <p><a href="https://screenmerch.com">Return to ScreenMerch</a></p>
+                </body>
+                </html>
+                """, 400
+                
+        except Exception as db_error:
+            logger.error(f"Database error during email confirmation: {str(db_error)}")
+            return "Database error during confirmation", 500
+            
+    except Exception as e:
+        logger.error(f"Error in confirm_email: {str(e)}")
+        return "Internal server error", 500
+
+# NEW: Forgot password endpoints
+@app.route("/api/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    """Send password reset email"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        redirect_url = data.get('redirect_url', '')
+        
+        if not email:
+            return jsonify({"success": False, "error": "Email is required"}), 400
+        
+        # Check if user exists
+        try:
+            result = supabase.table('users').select('*').eq('email', email).execute()
+            
+            if not result.data:
+                # Don't reveal if email exists or not for security
+                return jsonify({
+                    "success": True,
+                    "message": "If an account with this email exists, a password reset link has been sent."
+                })
+            
+            # Generate reset token
+            import secrets
+            reset_token = secrets.token_urlsafe(32)
+            
+            # Store reset token in database
+            supabase.table('users').update({
+                'email_verification_token': reset_token,  # Reuse this field for reset tokens
+                'updated_at': 'now()'
+            }).eq('email', email).execute()
+            
+            # Create reset URL
+            reset_url = f"https://backend-hidden-firefly-7865.fly.dev/api/auth/reset-password?token={reset_token}&email={email}&redirect={redirect_url}"
+            
+            # Send reset email using Resend
+            email_data = {
+                "from": RESEND_FROM,
+                "to": [email],
+                "subject": "Reset your ScreenMerch password",
+                "html": f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #3f51b5;">Password Reset Request</h2>
+                    <p>You requested to reset your password for your ScreenMerch account.</p>
+                    <p>Click the button below to reset your password:</p>
+                    <a href="{reset_url}" 
+                       style="display: inline-block; background: #3f51b5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
+                        Reset Password
+                    </a>
+                    <p>Or copy and paste this link into your browser:</p>
+                    <p style="word-break: break-all; color: #666;">{reset_url}</p>
+                    <p>This link will expire in 1 hour.</p>
+                    <p>If you didn't request this password reset, you can safely ignore this email.</p>
+                </div>
+                """
+            }
+            
+            response = requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {RESEND_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json=email_data
+            )
+            
+            if response.status_code == 200:
+                logger.info(f"Password reset email sent to {email}")
+                return jsonify({
+                    "success": True,
+                    "message": "If an account with this email exists, a password reset link has been sent."
+                })
+            else:
+                logger.error(f"Failed to send reset email: {response.text}")
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to send password reset email"
+                }), 500
+                
+        except Exception as db_error:
+            logger.error(f"Database error: {str(db_error)}")
+            return jsonify({
+                "success": False,
+                "error": "Failed to process password reset request"
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error in forgot_password: {str(e)}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+@app.route("/api/auth/reset-password")
+def reset_password_page():
+    """Show password reset page"""
+    token = request.args.get('token')
+    email = request.args.get('email')
+    redirect_url = request.args.get('redirect', '')
+    
+    if not token or not email:
+        return "Invalid reset link", 400
+    
+    return f"""
+    <html>
+    <head>
+        <title>Reset Password - ScreenMerch</title>
+        <style>
+            body {{ 
+                font-family: Arial, sans-serif; 
+                text-align: center; 
+                padding: 50px; 
+                background: #f5f5f5;
+            }}
+            .container {{
+                max-width: 400px;
+                margin: 0 auto;
+                background: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }}
+            .title {{ color: #3f51b5; font-size: 24px; margin-bottom: 20px; }}
+            input {{ 
+                width: 100%; 
+                padding: 12px; 
+                margin: 10px 0; 
+                border: 1px solid #ddd; 
+                border-radius: 6px; 
+                box-sizing: border-box;
+            }}
+            button {{ 
+                background: #3f51b5; 
+                color: white; 
+                padding: 12px 24px; 
+                border: none; 
+                border-radius: 6px; 
+                cursor: pointer; 
+                width: 100%;
+                margin-top: 10px;
+            }}
+            button:hover {{ background: #303f9f; }}
+            .error {{ color: #f44336; margin-top: 10px; }}
+            .success {{ color: #4CAF50; margin-top: 10px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="title">Reset Your Password</div>
+            <p>Enter your new password below:</p>
+            <form id="resetForm">
+                <input type="email" id="email" value="{email}" readonly style="background: #f5f5f5;">
+                <input type="password" id="newPassword" placeholder="New Password" required minlength="6">
+                <input type="password" id="confirmPassword" placeholder="Confirm Password" required minlength="6">
+                <button type="submit">Reset Password</button>
+            </form>
+            <div id="message"></div>
+        </div>
+        
+        <script>
+            document.getElementById('resetForm').addEventListener('submit', async function(e) {{
+                e.preventDefault();
+                
+                const newPassword = document.getElementById('newPassword').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                const messageDiv = document.getElementById('message');
+                
+                if (newPassword !== confirmPassword) {{
+                    messageDiv.innerHTML = '<div class="error">Passwords do not match</div>';
+                    return;
+                }}
+                
+                if (newPassword.length < 6) {{
+                    messageDiv.innerHTML = '<div class="error">Password must be at least 6 characters</div>';
+                    return;
+                }}
+                
+                try {{
+                    const response = await fetch('/api/auth/update-password', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{
+                            email: '{email}',
+                            token: '{token}',
+                            new_password: newPassword,
+                            redirect_url: '{redirect_url}'
+                        }})
+                    }});
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {{
+                        messageDiv.innerHTML = '<div class="success">Password updated successfully! Redirecting...</div>';
+                        setTimeout(() => {{
+                            window.location.href = '{redirect_url}' || 'https://screenmerch.com';
+                        }}, 2000);
+                    }} else {{
+                        messageDiv.innerHTML = '<div class="error">' + (data.error || 'Failed to update password') + '</div>';
+                    }}
+                }} catch (error) {{
+                    messageDiv.innerHTML = '<div class="error">An error occurred. Please try again.</div>';
+                }}
+            }});
+        </script>
+    </body>
+    </html>
+    """
+
+@app.route("/api/auth/update-password", methods=["POST"])
+def update_password():
+    """Update password with reset token"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        token = data.get('token')
+        new_password = data.get('new_password')
+        redirect_url = data.get('redirect_url', '')
+        
+        if not email or not token or not new_password:
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
+        
+        if len(new_password) < 6:
+            return jsonify({"success": False, "error": "Password must be at least 6 characters"}), 400
+        
+        # Verify token and update password
+        try:
+            result = supabase.table('users').select('*').eq('email', email).eq('email_verification_token', token).execute()
+            
+            if result.data:
+                # Update password and clear token
+                supabase.table('users').update({
+                    'password_hash': new_password,  # In production, use bcrypt
+                    'email_verification_token': None,
+                    'updated_at': 'now()'
+                }).eq('email', email).execute()
+                
+                logger.info(f"Password updated for {email}")
+                return jsonify({
+                    "success": True,
+                    "message": "Password updated successfully"
+                })
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": "Invalid or expired reset token"
+                }), 400
+                
+        except Exception as db_error:
+            logger.error(f"Database error during password update: {str(db_error)}")
+            return jsonify({
+                "success": False,
+                "error": "Failed to update password"
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error in update_password: {str(e)}")
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 if __name__ == "__main__":

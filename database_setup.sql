@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS videos2 (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create user_subscriptions table to store subscription tier information
+-- Create user_subscriptions table for subscription management
 CREATE TABLE IF NOT EXISTS user_subscriptions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

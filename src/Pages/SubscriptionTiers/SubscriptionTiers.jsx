@@ -10,30 +10,36 @@ const SubscriptionTiers = () => {
     const tiers = [
         {
             id: 'free',
-            name: 'Free',
+            name: 'Free for Fans',
             price: 'Free',
             features: [
-                'Upload videos',
+                'Upload videos (up to 100MB, 10 minutes)',
                 'Basic analytics',
                 'Standard features',
-                'Community access'
+                'Community access',
+                'Grab screenshots',
+                'Preview merch',
+                'Buy merchandise'
             ],
             color: '#6c757d',
             popular: false
         },
         {
             id: 'pro',
-            name: 'Pro',
+            name: 'Pro Plan for Creators',
             price: '$9.99/month',
             trialText: '7-day free trial',
             features: [
                 'Everything in Free',
                 'Priority support',
                 'Custom branding',
-                'Enhanced upload limits',
+                'Enhanced upload limits (2GB, 60 minutes)',
                 'Ad-free experience',
                 'Early access to new features',
-                'Monetization tools'
+                'Monetization tools',
+                'Revenue tracking',
+                'Custom channel colors',
+                'Branded merchandise'
             ],
             color: '#007bff',
             popular: true
@@ -51,7 +57,7 @@ const SubscriptionTiers = () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 setCurrentUser(user);
-                
+
                 if (user) {
                     const subscription = await SubscriptionService.getCurrentUserSubscription();
                     setUserSubscription(subscription);
@@ -62,61 +68,40 @@ const SubscriptionTiers = () => {
                 setLoading(false);
             }
         };
-        
+
         fetchUserData();
     }, []);
 
-    useEffect(() => {
-        if (location.hash) {
-            const el = document.getElementById(location.hash.replace('#', ''));
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-    }, [location]);
-
     const handleFreeTierSignup = async () => {
-        if (!currentUser) {
-            // Redirect to login first
-            setActionLoading(true);
-            setMessage('Redirecting to Google login...');
-            
-            const { error } = await supabase.auth.signInWithOAuth({ 
-                provider: 'google',
-                options: {
-                    redirectTo: `${window.location.origin}/subscription-tiers`,
-                    queryParams: {
-                        prompt: 'select_account'
-                    }
-                }
-            });
-            
-            if (error) {
-                setMessage('Login failed. Please try again.');
-                setActionLoading(false);
-                return;
-            }
-            return;
-        }
-
         setActionLoading(true);
-        setMessage('Setting up your free account...');
+        setMessage('');
 
         try {
+            if (!currentUser) {
+                // Redirect to signup if not logged in
+                navigate('/signup', { 
+                    state: { 
+                        from: location.pathname,
+                        message: 'Sign up to get started with ScreenMerch!' 
+                    } 
+                });
+                return;
+            }
+
             const result = await SubscriptionService.subscribeToFreeTier();
             
             if (result.success) {
                 setUserSubscription(result.subscription);
-                setMessage('Welcome! Your free account is now active.');
+                setMessage('Welcome to ScreenMerch! You now have access to all free features.');
                 
                 setTimeout(() => {
                     navigate('/dashboard');
                 }, 2000);
             } else {
-                setMessage(result.error || 'Failed to set up free account. Please try again.');
+                setMessage(result.error || 'Failed to activate free tier. Please try again.');
             }
         } catch (error) {
-            console.error('Error setting up free tier:', error);
+            console.error('Error subscribing to free tier:', error);
             setMessage('An error occurred. Please try again.');
         } finally {
             setActionLoading(false);
@@ -124,33 +109,21 @@ const SubscriptionTiers = () => {
     };
 
     const handleProTier = async () => {
-        if (!currentUser) {
-            // Redirect to login first
-            setActionLoading(true);
-            setMessage('Redirecting to Google login...');
-            
-            const { error } = await supabase.auth.signInWithOAuth({ 
-                provider: 'google',
-                options: {
-                    redirectTo: `${window.location.origin}/subscription-tiers`,
-                    queryParams: {
-                        prompt: 'select_account'
-                    }
-                }
-            });
-            
-            if (error) {
-                setMessage('Login failed. Please try again.');
-                setActionLoading(false);
-                return;
-            }
-            return;
-        }
-
         setActionLoading(true);
-        setMessage('Starting your 7-day free trial...');
+        setMessage('');
 
         try {
+            if (!currentUser) {
+                // Redirect to signup if not logged in
+                navigate('/signup', { 
+                    state: { 
+                        from: location.pathname,
+                        message: 'Sign up to start your Pro trial!' 
+                    } 
+                });
+                return;
+            }
+
             const result = await SubscriptionService.subscribeToProTier();
             
             if (result.success) {
@@ -208,23 +181,21 @@ const SubscriptionTiers = () => {
 
     if (loading) {
         return (
-            <div className="subscription-tiers-page">
-                <div className="tiers-header">
-                    <h1>Loading...</h1>
-                </div>
+            <div className="subscription-tiers">
+                <div className="loading">Loading subscription options...</div>
             </div>
         );
     }
 
     return (
-        <div className="subscription-tiers-page">
+        <div className="subscription-tiers">
             <div className="tiers-header">
                 <h1>Choose Your Plan</h1>
-                <p>Start creating and sharing your content with the perfect plan for you</p>
+                <p>Start creating and monetizing your content with ScreenMerch</p>
             </div>
 
             {message && (
-                <div className={`message ${message.includes('error') ? 'error' : 'success'}`}>
+                <div className={`message ${message.includes('error') || message.includes('Failed') ? 'error' : 'success'}`}>
                     {message}
                 </div>
             )}
@@ -270,21 +241,30 @@ const SubscriptionTiers = () => {
                             </ul>
                         </div>
                         
-                        <button
-                            className={`tier-button ${isButtonDisabled(tier) ? 'disabled' : ''}`}
-                            onClick={() => handleTierAction(tier.id)}
-                            disabled={isButtonDisabled(tier)}
-                            style={{ backgroundColor: tier.color }}
-                        >
-                            {getButtonText(tier)}
-                        </button>
+                        <div className="tier-action">
+                            <button
+                                className={`tier-button ${tier.popular ? 'popular' : ''}`}
+                                onClick={() => handleTierAction(tier.id)}
+                                disabled={isButtonDisabled(tier)}
+                                style={{ backgroundColor: tier.color }}
+                            >
+                                {getButtonText(tier)}
+                            </button>
+                        </div>
                     </div>
                 ))}
             </div>
 
             <div className="tiers-footer">
-                <p>All plans include secure payment processing and 24/7 support</p>
-                <p>Cancel anytime. No long-term commitments.</p>
+                <p>
+                    <strong>Free for Fans:</strong> Perfect for viewers who want to grab screenshots, preview merch, and make purchases without any friction.
+                </p>
+                <p>
+                    <strong>Pro Plan for Creators:</strong> Ideal for content creators who want to monetize their audience, customize their branding, and access advanced features.
+                </p>
+                <p className="trial-info">
+                    <strong>7-Day Free Trial:</strong> Start your Pro trial today. No charges during the trial period. Cancel anytime before the trial ends.
+                </p>
             </div>
         </div>
     );

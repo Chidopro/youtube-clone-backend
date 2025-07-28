@@ -208,6 +208,9 @@
         <button type="button" onclick="handleEmailSignup()" style="padding: 10px 20px; border-radius:6px; background:#4CAF50; color:white; border:none;">Create Account</button>
       </form>
       <div id="email-auth-message" style="color: #e53935; margin-bottom: 8px;"></div>
+      <div style="font-size:13px;color:#666;margin-top:10px;">
+        <a href="#" onclick="handleForgotPassword()" style="color: #3f51b5; text-decoration: none;">Forgot Password?</a>
+      </div>
       <div style="font-size:13px;color:#666;margin-top:10px;">Authentication is required to proceed.<br>Please sign in or create an account.</div>
     </div>
   </div>
@@ -267,24 +270,12 @@
     document.addEventListener('DOMContentLoaded', function() {
       // Check if user is already authenticated
       const savedEmail = localStorage.getItem('cartEmail');
-      if (!savedEmail) {
-        // Force authentication modal to stay visible
+      const isAuthenticated = sessionStorage.getItem('authenticated');
+      
+      if (!savedEmail && !isAuthenticated) {
+        // Show authentication modal
         document.getElementById('email-auth-overlay').style.display = 'flex';
         document.getElementById('authenticated-content').style.display = 'none';
-        
-        // Prevent any attempts to hide the modal
-        document.addEventListener('keydown', function(e) {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            return false;
-          }
-        });
-        
-        // Prevent right-click context menu
-        document.addEventListener('contextmenu', function(e) {
-          e.preventDefault();
-          return false;
-        });
       } else {
         // User is authenticated, show content
         document.getElementById('email-auth-overlay').style.display = 'none';
@@ -600,6 +591,7 @@
       .then(data => {
         if (data.success) {
           setCartEmail(email);
+          sessionStorage.setItem('authenticated', 'true');
           messageDiv.style.color = '#4CAF50';
           messageDiv.textContent = 'Login successful! Email saved.';
           setTimeout(() => {
@@ -645,24 +637,30 @@
       signupBtn.disabled = true;
       signupBtn.textContent = 'Creating Account...';
       
-      // Real signup call
+      // Real signup call with redirect URL
       fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ 
+          email, 
+          password,
+          redirect_url: window.location.href // Pass current page URL for redirect after confirmation
+        })
       })
       .then(response => response.json())
       .then(data => {
         if (data.success) {
           setCartEmail(email);
+          sessionStorage.setItem('authenticated', 'true');
           messageDiv.style.color = '#4CAF50';
-          messageDiv.textContent = 'Account created and email saved!';
+          messageDiv.textContent = data.message || 'Account created! Please check your email to confirm your account.';
+          // Don't hide the modal immediately - let user know to check email
           setTimeout(() => {
             document.getElementById('email-auth-overlay').style.display = 'none';
             document.getElementById('authenticated-content').style.display = 'block'; // Show authenticated content
-          }, 1000);
+          }, 3000); // Give user time to read the message
         } else {
           messageDiv.textContent = data.error || 'Account creation failed. Please try again.';
         }
@@ -676,6 +674,47 @@
         loginBtn.disabled = false;
         signupBtn.disabled = false;
         signupBtn.textContent = 'Create Account';
+      });
+    }
+
+    function handleForgotPassword() {
+      const email = document.getElementById('auth-email').value.trim();
+      const messageDiv = document.getElementById('email-auth-message');
+      
+      if (!email) {
+        messageDiv.style.color = '#e53935';
+        messageDiv.textContent = 'Please enter your email address first.';
+        return;
+      }
+      
+      messageDiv.style.color = '#666';
+      messageDiv.textContent = 'Sending password reset email...';
+      
+      // Call forgot password API
+      fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email: email,
+          redirect_url: window.location.href
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          messageDiv.style.color = '#4CAF50';
+          messageDiv.textContent = data.message || 'Password reset email sent! Please check your inbox.';
+        } else {
+          messageDiv.style.color = '#e53935';
+          messageDiv.textContent = data.error || 'Failed to send password reset email.';
+        }
+      })
+      .catch(error => {
+        console.error('Forgot password error:', error);
+        messageDiv.style.color = '#e53935';
+        messageDiv.textContent = 'Failed to send password reset email. Please try again.';
       });
     }
     // --- End Email Auth Functions ---

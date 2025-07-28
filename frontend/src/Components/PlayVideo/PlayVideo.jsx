@@ -73,11 +73,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
 
         try {
-            // Use server-side screenshot capture to avoid cross-origin issues
+            // First try server-side screenshot capture
             const currentTime = videoElement.currentTime || 0;
             const videoUrl = video.video_url;
             
-            console.log(`Capturing screenshot at ${currentTime}s from ${videoUrl}`);
+            console.log(`Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
             
             const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
                 method: 'POST',
@@ -91,18 +91,36 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 })
             });
             
+            if (!response.ok) {
+                throw new Error(`Server responded with status: ${response.status}`);
+            }
+            
             const result = await response.json();
             
             if (result.success && result.screenshot) {
-                console.log('Screenshot captured successfully via server');
-                setScreenshots(prev => prev.length < 8 ? [...prev, result.screenshot] : prev);
+                console.log('Server-side screenshot captured successfully');
                 
-                // Show success message for server-side capture
-                const newScreenshotCount = screenshots.length + 1;
-                alert(`Screenshot ${newScreenshotCount} captured successfully!`);
+                // Check if this is a fallback response
+                if (result.fallback) {
+                    console.log('Server returned fallback response, using thumbnail instead');
+                    // Use thumbnail as fallback
+                    const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
+                    if (thumbnailUrl) {
+                        setScreenshots(prev => prev.length < 8 ? [...prev, thumbnailUrl] : prev);
+                        const newScreenshotCount = screenshots.length + 1;
+                        alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
+                    } else {
+                        alert('No thumbnail available for this video.');
+                    }
+                } else {
+                    setScreenshots(prev => prev.length < 8 ? [...prev, result.screenshot] : prev);
+                    const newScreenshotCount = screenshots.length + 1;
+                    alert(`Screenshot ${newScreenshotCount} captured successfully!`);
+                }
+                return;
             } else {
                 console.error('Server screenshot capture failed:', result.error);
-                throw new Error(result.error || 'Failed to capture screenshot');
+                throw new Error(result.error || 'Server failed to capture screenshot');
             }
             
         } catch (error) {
@@ -115,7 +133,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 console.log('Adding video thumbnail as screenshot');
                 setScreenshots(prev => prev.length < 8 ? [...prev, thumbnailUrl] : prev);
                 
-                // Show success message for thumbnail fallback
                 const newScreenshotCount = screenshots.length + 1;
                 alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
             } else {
@@ -127,23 +144,46 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Make Merch handler
     const handleMakeMerch = async () => {
         try {
+            console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
+            
+            const requestData = {
+                thumbnail,
+                videoUrl: window.location.href,
+                screenshots: screenshots.slice(0, 5),
+            };
+            
+            console.log('Request data:', requestData);
+            
             const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    thumbnail,
-                    videoUrl: window.location.href,
-                    screenshots: screenshots.slice(0, 5),
-                })
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestData)
             });
+            
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Server error response:', errorText);
+                throw new Error(`Server error: ${response.status} - ${errorText}`);
+            }
+            
             const data = await response.json();
+            console.log('Response data:', data);
+            
             if (data.success && data.product_url) {
                 window.open(data.product_url, '_blank');
             } else {
-                alert('Failed to create merch product page.');
+                console.error('Failed to create product:', data);
+                alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
             }
         } catch (err) {
-            alert('Error connecting to merch server. Make sure Flask is running.');
+            console.error('Make Merch error:', err);
+            alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
         }
     };
 
