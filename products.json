@@ -1,0 +1,1093 @@
+[
+  {
+    "name": "Soft Tee",
+    "base_price": 24.99,
+    "category": "T-Shirts",
+    "description": "Comfortable soft t-shirt with custom design",
+    "main_image": "guidontee.png",
+    "filename": "guidonteepreview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 1,
+      "XXL": 2,
+      "XXXL": 3
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Unisex Classic Tee",
+    "base_price": 24.99,
+    "category": "T-Shirts",
+    "description": "Classic unisex t-shirt",
+    "main_image": "unisexclassictee.png",
+    "filename": "unisexclassicteepreview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray",
+        "Navy"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray",
+      "Navy"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 1,
+      "XXL": 2,
+      "XXXL": 3
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Men's Tank Top",
+    "base_price": 19.99,
+    "category": "Tank Tops",
+    "description": "Comfortable men's tank top",
+    "main_image": "random.png",
+    "filename": "randompreview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 1,
+      "XXL": 2,
+      "XXXL": 3
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Unisex Hoodie",
+    "base_price": 22.99,
+    "category": "Hoodies",
+    "description": "Comfortable unisex hoodie",
+    "main_image": "tested.png",
+    "filename": "testedpreview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 2,
+      "XXL": 3,
+      "XXXL": 4
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Cropped Hoodie",
+    "base_price": 39.99,
+    "category": "Hoodies",
+    "description": "Stylish cropped hoodie",
+    "main_image": "croppedhoodie.png",
+    "filename": "croppedhoodiepreview.png",
+    "options": {
+      "color": [
+        "Black",
+        "Gray",
+        "Navy"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "Gray",
+      "Navy"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 3,
+      "XXL": 4,
+      "XXXL": 5
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Unisex Champion Hoodie",
+    "base_price": 29.99,
+    "category": "Hoodies",
+    "description": "Premium Champion brand hoodie",
+    "main_image": "hoodiechampion.png",
+    "filename": "hoodiechampionpreview.jpg",
+    "options": {
+      "color": [
+        "Black",
+        "Gray"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "Gray"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 3,
+      "XXL": 4,
+      "XXXL": 5
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Women's Ribbed Neck",
+    "base_price": 25.99,
+    "category": "Women's Shirts",
+    "description": "Women's shirt with ribbed neck design",
+    "main_image": "womensribbedneck.png",
+    "filename": "womensribbedneckpreview.jpg",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray",
+        "Pink"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray",
+      "Pink"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 1,
+      "XXL": 2,
+      "XXXL": 3
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Women's Shirt",
+    "base_price": 26.99,
+    "category": "Women's Shirts",
+    "description": "Comfortable women's shirt",
+    "main_image": "womensshirt.png",
+    "filename": "womensshirtkevin.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray",
+        "Pink"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray",
+      "Pink"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 1,
+      "XXL": 2,
+      "XXXL": 3
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Women's HD Shirt",
+    "base_price": 28.99,
+    "category": "Women's Shirts",
+    "description": "High-definition print women's shirt",
+    "main_image": "womenshdshirt.png",
+    "filename": "womenshdshirtpreview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray",
+        "Navy"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray",
+      "Navy"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 2,
+      "XXL": 3,
+      "XXXL": 4
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Kids Shirt",
+    "base_price": 19.99,
+    "category": "Kids",
+    "description": "Comfortable kids t-shirt",
+    "main_image": "kidshirt.png",
+    "filename": "kidshirtpreview.jpg",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray",
+        "Pink"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray",
+      "Pink"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 1,
+      "XXL": 2,
+      "XXXL": 3
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Kids Hoodie",
+    "base_price": 29.99,
+    "category": "Kids",
+    "description": "Warm kids hoodie",
+    "main_image": "kidhoodie.png",
+    "filename": "kidhoodiepreview.jpg",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray",
+        "Navy"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray",
+      "Navy"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 2,
+      "XXL": 3,
+      "XXXL": 4
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Kids Long Sleeve",
+    "base_price": 24.99,
+    "category": "Kids",
+    "description": "Comfortable kids long sleeve shirt",
+    "main_image": "kidlongsleeve.png",
+    "filename": "kidlongsleevepreview.jpg",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray",
+        "Pink"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray",
+      "Pink"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 1,
+      "XXL": 2,
+      "XXXL": 3
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Canvas Tote",
+    "base_price": 18.99,
+    "category": "Bags",
+    "description": "Eco-friendly canvas tote bag",
+    "main_image": "allovertotebag.png",
+    "filename": "allovertotebagpreview.png",
+    "options": {
+      "color": [
+        "Natural",
+        "Black"
+      ],
+      "size": []
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Natural",
+      "Black"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Tote Bag",
+    "base_price": 21.99,
+    "category": "Bags",
+    "description": "Versatile tote bag",
+    "main_image": "drawstringbag.png",
+    "filename": "drawstringbagpreview.png",
+    "options": {
+      "color": [
+        "White",
+        "Black",
+        "Blue"
+      ],
+      "size": []
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "White",
+      "Black",
+      "Blue"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Large Canvas Bag",
+    "base_price": 24.99,
+    "category": "Bags",
+    "description": "Large canvas bag for all your needs",
+    "main_image": "largecanvasbag.png",
+    "filename": "largecanvasbagpreview.png",
+    "options": {
+      "color": [
+        "Natural",
+        "Black",
+        "Navy"
+      ],
+      "size": []
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Natural",
+      "Black",
+      "Navy"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Greeting Card",
+    "base_price": 22.99,
+    "category": "Stationery",
+    "description": "Beautiful greeting card",
+    "main_image": "greetingcard.png",
+    "filename": "greetingcardpreview.png",
+    "options": {
+      "color": [
+        "White",
+        "Cream"
+      ],
+      "size": []
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "White",
+      "Cream"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Notebook",
+    "base_price": 14.99,
+    "category": "Stationery",
+    "description": "Hardcover notebook",
+    "main_image": "hardcovernotebook.png",
+    "filename": "hardcovernotebookpreview.png",
+    "options": {
+      "color": [
+        "Black",
+        "Blue"
+      ],
+      "size": []
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "Blue"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Coasters",
+    "base_price": 13.99,
+    "category": "Home & Living",
+    "description": "Set of custom coasters",
+    "main_image": "coaster.png",
+    "filename": "coasterpreview.jpg",
+    "options": {
+      "color": [
+        "Wood",
+        "Cork",
+        "Black"
+      ],
+      "size": []
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Wood",
+      "Cork",
+      "Black"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Sticker Pack",
+    "base_price": 8.99,
+    "category": "Accessories",
+    "description": "Set of custom stickers",
+    "main_image": "stickers.png",
+    "filename": "stickerspreview.png",
+    "options": {
+      "color": [],
+      "size": []
+    },
+    "printful_product_type_id": null,
+    "colors": [],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Dog Bowl",
+    "base_price": 12.99,
+    "category": "Pet Supplies",
+    "description": "Custom dog bowl",
+    "main_image": "dogbowl.png",
+    "filename": "dogbowlpreview.png",
+    "options": {
+      "color": [],
+      "size": []
+    },
+    "printful_product_type_id": null,
+    "colors": [],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Magnet Set",
+    "base_price": 11.99,
+    "category": "Accessories",
+    "description": "Set of custom magnets",
+    "main_image": "magnet.png",
+    "filename": "magnetpreview.png",
+    "options": {
+      "color": [],
+      "size": []
+    },
+    "printful_product_type_id": null,
+    "colors": [],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Men's Long Sleeve",
+    "base_price": 29.99,
+    "category": "Men's Shirts",
+    "description": "Comfortable men's long sleeve shirt",
+    "main_image": "menslongsleeve.png",
+    "filename": "menslongsleevepreview.jpg",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 2,
+      "XXL": 3,
+      "XXXL": 4
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Women's Tank",
+    "base_price": 22.99,
+    "category": "Women's Shirts",
+    "description": "Comfortable women's tank top",
+    "main_image": "womenstank.png",
+    "filename": "womenstankpreview.jpg",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray",
+        "Pink"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray",
+      "Pink"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 1,
+      "XXL": 2,
+      "XXXL": 3
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Women's Tee",
+    "base_price": 23.99,
+    "category": "Women's Shirts",
+    "description": "Comfortable women's t-shirt",
+    "main_image": "womenstee.png",
+    "filename": "womensteepreview.jpg",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Gray",
+        "Pink"
+      ],
+      "size": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Gray",
+      "Pink"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 1,
+      "XXL": 2,
+      "XXXL": 3
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Distressed Dad Hat",
+    "base_price": 24.99,
+    "category": "Hats",
+    "description": "Stylish distressed dad hat",
+    "main_image": "distresseddadhat.jpg",
+    "filename": "distresseddadhatpreview.jpg",
+    "options": {
+      "color": [
+        "Black",
+        "Navy",
+        "Gray"
+      ],
+      "size": [
+        "One Size"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "Navy",
+      "Gray"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Snapback Hat",
+    "base_price": 25.99,
+    "category": "Hats",
+    "description": "Classic snapback hat",
+    "main_image": "snapbackhat.png",
+    "filename": "snapbackhatpreview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Navy",
+        "Gray"
+      ],
+      "size": [
+        "One Size"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Navy",
+      "Gray"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Five Panel Trucker Hat",
+    "base_price": 26.99,
+    "category": "Hats",
+    "description": "Five panel trucker hat",
+    "main_image": "fivepaneltruckerhat.png",
+    "filename": "fivepaneltruckerhatpreview.jpg",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Navy"
+      ],
+      "size": [
+        "One Size"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Navy"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Flat Bill Cap",
+    "base_price": 24.99,
+    "category": "Hats",
+    "description": "Flat bill cap",
+    "main_image": "flatbillcap.png",
+    "filename": "flatbillcappreview.png",
+    "options": {
+      "color": [
+        "Black",
+        "White",
+        "Navy",
+        "Gray"
+      ],
+      "size": [
+        "One Size"
+      ]
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "White",
+      "Navy",
+      "Gray"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Crossbody Bag",
+    "base_price": 32.99,
+    "category": "Bags",
+    "description": "Stylish crossbody bag",
+    "main_image": "crossbodybag.png",
+    "filename": "crossbodybagpreview.png",
+    "options": {
+      "color": [
+        "Black",
+        "Brown",
+        "Tan"
+      ],
+      "size": []
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "Black",
+      "Brown",
+      "Tan"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  },
+  {
+    "name": "Baby Bib",
+    "base_price": 16.99,
+    "category": "Baby",
+    "description": "Custom baby bib",
+    "main_image": "babybib.png",
+    "filename": "babybibpreview.jpg",
+    "options": {
+      "color": [
+        "White",
+        "Pink",
+        "Blue"
+      ],
+      "size": []
+    },
+    "printful_product_type_id": null,
+    "colors": [
+      "White",
+      "Pink",
+      "Blue"
+    ],
+    "size_pricing": {
+      "XS": 0,
+      "S": 0,
+      "M": 0,
+      "L": 0,
+      "XL": 0,
+      "XXL": 0,
+      "XXXL": 0
+    },
+    "created_at": "2025-07-26T14:32:17.276594"
+  }
+]
