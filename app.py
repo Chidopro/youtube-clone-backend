@@ -882,13 +882,37 @@ def stripe_webhook():
             logger.error(f"Order ID {order_id} not found in order_store")
             return "", 200
 
-        # Get customer phone number from Stripe session
-        customer_phone = session.get("customer_details", {}).get("phone", "")
+        # Get customer details from Stripe session
+        customer_details = session.get("customer_details", {})
+        customer_phone = customer_details.get("phone", "")
+        customer_email = customer_details.get("email", "")
+        customer_name = customer_details.get("name", "")
+        
+        # Get shipping address from Stripe session
+        shipping_address = customer_details.get("address", {})
+        shipping_line1 = shipping_address.get("line1", "")
+        shipping_line2 = shipping_address.get("line2", "")
+        shipping_city = shipping_address.get("city", "")
+        shipping_state = shipping_address.get("state", "")
+        shipping_postal_code = shipping_address.get("postal_code", "")
+        shipping_country = shipping_address.get("country", "")
+        
+        # Format complete shipping address
+        shipping_address_formatted = f"{shipping_line1}"
+        if shipping_line2:
+            shipping_address_formatted += f"<br>{shipping_line2}"
+        shipping_address_formatted += f"<br>{shipping_city}, {shipping_state} {shipping_postal_code}"
+        shipping_address_formatted += f"<br>{shipping_country}"
         
         # Format and send the order email
         html_body = f"<h1>New Paid ScreenMerch Order #{order_id}</h1>"
-        html_body += f"<p><strong>SMS Consent:</strong> {'Yes' if sms_consent else 'No'}</p>"
+        html_body += f"<p><strong>Order ID:</strong> {order_id}</p>"
+        html_body += f"<p><strong>Items:</strong> {len(cart)}</p>"
+        html_body += f"<p><strong>Customer Name:</strong> {customer_name}</p>"
+        html_body += f"<p><strong>Customer Email:</strong> {customer_email}</p>"
         html_body += f"<p><strong>Customer Phone:</strong> {customer_phone}</p>"
+        html_body += f"<p><strong>Shipping Address:</strong><br>{shipping_address_formatted}</p>"
+        html_body += f"<p><strong>SMS Consent:</strong> {'Yes' if sms_consent else 'No'}</p>"
         
         for item in cart:
             html_body += f"""
@@ -918,8 +942,11 @@ def stripe_webhook():
         # Send admin notification SMS
         admin_sms_body = f"New ScreenMerch Order #{order_id}!\n"
         admin_sms_body += f"Items: {len(cart)}\n"
+        admin_sms_body += f"Customer: {customer_name}\n"
+        admin_sms_body += f"Phone: {customer_phone}\n"
+        admin_sms_body += f"Email: {customer_email}\n"
+        admin_sms_body += f"Address: {shipping_line1}, {shipping_city}, {shipping_state}\n"
         admin_sms_body += f"SMS Consent: {'Yes' if sms_consent else 'No'}\n"
-        admin_sms_body += f"Customer: {customer_phone}\n"
         for item in cart:
             admin_sms_body += f"• {item.get('product', 'N/A')} ({item.get('variants', {}).get('color', 'N/A')}, {item.get('variants', {}).get('size', 'N/A')})\n"
         send_order_sms(admin_sms_body)
