@@ -915,14 +915,47 @@ def stripe_webhook():
         html_body += f"<p><strong>SMS Consent:</strong> {'Yes' if sms_consent else 'No'}</p>"
         
         for item in cart:
+            # Enhanced image information display
+            image_info = ""
+            video_name = item.get('videoName', 'N/A')
+            
+            # Check if this item has screenshots (detailed selection)
+            if item.get('screenshots') and len(item.get('screenshots', [])) > 0:
+                image_info += f"<p><strong>📸 Screenshot Selection:</strong></p>"
+                image_info += f"<p><strong>Video:</strong> {video_name}</p>"
+                
+                for i, screenshot in enumerate(item.get('screenshots', []), 1):
+                    timestamp = screenshot.get('timestamp', 'N/A')
+                    # Format timestamp if it's a number
+                    if isinstance(timestamp, (int, float)):
+                        minutes = int(timestamp // 60)
+                        seconds = int(timestamp % 60)
+                        formatted_time = f"{minutes:02d}:{seconds:02d}"
+                    else:
+                        formatted_time = str(timestamp)
+                    
+                    image_info += f"""
+                        <div style='border: 1px solid #eee; padding: 10px; margin: 10px 0; border-radius: 6px; background: #f9f9f9;'>
+                            <p><strong>Screenshot {i}:</strong></p>
+                            <p><strong>⏱️ Timestamp:</strong> {formatted_time}</p>
+                            <p><strong>🎬 Video:</strong> {screenshot.get('videoName', video_name)}</p>
+                            <img src="{screenshot.get('img', '')}" alt='Screenshot {i}' style='max-width: 250px; border-radius: 4px; border: 2px solid #ddd;'>
+                        </div>
+                    """
+            else:
+                # Thumbnail selection (fallback)
+                image_info += f"<p><strong>🖼️ Thumbnail Selection:</strong></p>"
+                image_info += f"<p><strong>Video:</strong> {video_name}</p>"
+                image_info += f"<p><strong>Image:</strong></p>"
+                image_info += f"<img src='{item.get('img', '')}' alt='Thumbnail' style='max-width: 300px; border-radius: 6px; border: 2px solid #ddd;'>"
+            
             html_body += f"""
                 <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
                     <h2>{item.get('product', 'N/A')}</h2>
                     <p><strong>Color:</strong> {item.get('variants', {}).get('color', 'N/A')}</p>
                     <p><strong>Size:</strong> {item.get('variants', {}).get('size', 'N/A')}</p>
                     <p><strong>Note:</strong> {item.get('note', 'None')}</p>
-                    <p><strong>Image:</strong></p>
-                    <img src="{item.get('img', '')}" alt='Product Image' style='max-width: 300px; border-radius: 6px;'>
+                    {image_info}
                 </div>
             """
         
@@ -948,7 +981,16 @@ def stripe_webhook():
         admin_sms_body += f"Address: {shipping_line1}, {shipping_city}, {shipping_state}\n"
         admin_sms_body += f"SMS Consent: {'Yes' if sms_consent else 'No'}\n"
         for item in cart:
-            admin_sms_body += f"• {item.get('product', 'N/A')} ({item.get('variants', {}).get('color', 'N/A')}, {item.get('variants', {}).get('size', 'N/A')})\n"
+            product_info = f"• {item.get('product', 'N/A')} ({item.get('variants', {}).get('color', 'N/A')}, {item.get('variants', {}).get('size', 'N/A')})"
+            
+            # Add screenshot info if available
+            if item.get('screenshots') and len(item.get('screenshots', [])) > 0:
+                screenshot_count = len(item.get('screenshots', []))
+                video_name = item.get('videoName', 'N/A')
+                admin_sms_body += f"{product_info}\n  📸 {screenshot_count} screenshot(s) from '{video_name}'\n"
+            else:
+                video_name = item.get('videoName', 'N/A')
+                admin_sms_body += f"{product_info}\n  🖼️ Thumbnail from '{video_name}'\n"
         send_order_sms(admin_sms_body)
         
         # Send email using Resend
