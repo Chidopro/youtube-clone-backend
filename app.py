@@ -939,7 +939,7 @@ def stripe_webhook():
                             <p><strong>Screenshot {i}:</strong></p>
                             <p><strong>⏱️ Timestamp:</strong> {formatted_time}</p>
                             <p><strong>🎬 Video:</strong> {screenshot.get('videoName', video_name)}</p>
-                            <img src="{screenshot.get('img', '')}" alt='Screenshot {i}' style='max-width: 250px; border-radius: 4px; border: 2px solid #ddd;'>
+                            <img src="{screenshot.get('img', '')}" alt='Screenshot {i}' style='max-width: 150px; max-height: 150px; border-radius: 4px; border: 2px solid #ddd; object-fit: contain;'>
                         </div>
                     """
             else:
@@ -947,7 +947,7 @@ def stripe_webhook():
                 image_info += f"<p><strong>🖼️ Thumbnail Selection:</strong></p>"
                 image_info += f"<p><strong>Video:</strong> {video_name}</p>"
                 image_info += f"<p><strong>Image:</strong></p>"
-                image_info += f"<img src='{item.get('img', '')}' alt='Thumbnail' style='max-width: 300px; border-radius: 6px; border: 2px solid #ddd;'>"
+                image_info += f"<img src='{item.get('img', '')}' alt='Thumbnail' style='max-width: 180px; max-height: 180px; border-radius: 6px; border: 2px solid #ddd; object-fit: contain;'>"
             
             html_body += f"""
                 <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
