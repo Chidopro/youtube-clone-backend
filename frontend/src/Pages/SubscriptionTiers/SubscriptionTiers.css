@@ -1,157 +1,222 @@
-.subscription-tiers-page {
+.subscription-tiers {
     min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
     padding: 40px 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.subscription-tiers::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="10" cy="60" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="90" cy="40" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    opacity: 0.3;
+    pointer-events: none;
 }
 
 .tiers-header {
     text-align: center;
     color: white;
     margin-bottom: 50px;
+    position: relative;
+    z-index: 1;
 }
 
 .tiers-header h1 {
-    font-size: 3rem;
-    margin-bottom: 10px;
-    font-weight: 700;
+    font-size: 3.5rem;
+    margin-bottom: 15px;
+    font-weight: 800;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    background: linear-gradient(45deg, #fff, #f0f0f0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from { filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); }
+    to { filter: drop-shadow(0 0 20px rgba(255,255,255,0.8)); }
 }
 
 .tiers-header p {
-    font-size: 1.2rem;
-    opacity: 0.9;
-}
-
-.current-tier-info {
-    font-size: 1.1rem;
-    margin-top: 10px;
-    padding: 10px 20px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    display: inline-block;
+    font-size: 1.3rem;
+    opacity: 0.95;
+    font-weight: 300;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
 }
 
 .message {
     max-width: 1200px;
     margin: 0 auto 30px;
     padding: 15px 20px;
-    border-radius: 8px;
+    border-radius: 12px;
     text-align: center;
     font-weight: 500;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
 }
 
 .message.success {
-    background: #d4edda;
+    background: rgba(212, 237, 218, 0.9);
     color: #155724;
-    border: 1px solid #c3e6cb;
+    border: 1px solid rgba(195, 230, 203, 0.8);
 }
 
 .message.info {
-    background: #d1ecf1;
+    background: rgba(209, 236, 241, 0.9);
     color: #0c5460;
-    border: 1px solid #bee5eb;
+    border: 1px solid rgba(190, 229, 235, 0.8);
 }
 
 .message.error {
-    background: #f8d7da;
+    background: rgba(248, 215, 218, 0.9);
     color: #721c24;
-    border: 1px solid #f1b0b7;
+    border: 1px solid rgba(241, 176, 183, 0.8);
 }
 
 .tiers-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 30px;
+    display: flex;
+    justify-content: center;
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
+    position: relative;
+    z-index: 1;
 }
 
 .tier-card {
-    background: white;
-    border-radius: 16px;
-    padding: 30px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     border: 3px solid transparent;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     overflow: hidden;
+    backdrop-filter: blur(10px);
+    max-width: 500px;
+    width: 100%;
+}
+
+.tier-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+    border-radius: 24px 24px 0 0;
 }
 
 .tier-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25);
 }
 
 .tier-card.popular {
     transform: scale(1.05);
-    border-color: #28a745;
+    border-color: #667eea;
+    box-shadow: 0 25px 70px rgba(102, 126, 234, 0.3);
 }
 
 .tier-card.current {
     border-color: #007bff;
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 255, 0.95) 100%);
 }
 
 .popular-badge {
     position: absolute;
-    top: 0;
-    right: 0;
-    background: #28a745;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
-    padding: 8px 16px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    border-radius: 0 16px 0 16px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 20px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 
 .current-badge {
     position: absolute;
-    top: 0;
-    left: 0;
-    background: #007bff;
+    top: 20px;
+    left: 20px;
+    background: linear-gradient(135deg, #007bff, #0056b3);
     color: white;
-    padding: 8px 16px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    border-radius: 16px 0 16px 0;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 20px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
 }
 
 .tier-header {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 40px;
 }
 
 .tier-header h2 {
-    font-size: 1.8rem;
-    margin-bottom: 15px;
+    font-size: 2.2rem;
+    margin-bottom: 20px;
     color: #333;
-    font-weight: 700;
+    font-weight: 800;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .tier-price {
     display: flex;
     align-items: baseline;
     justify-content: center;
-    gap: 5px;
+    gap: 8px;
+    margin-bottom: 15px;
 }
 
 .price {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: #333;
+    font-size: 3rem;
+    font-weight: 800;
+    color: #667eea;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
 }
 
 .period {
-    font-size: 1rem;
+    font-size: 1.2rem;
     color: #666;
+    font-weight: 500;
+}
+
+.trial-text {
+    font-size: 1.1rem;
+    color: #28a745;
+    font-weight: 600;
+    text-align: center;
+    padding: 8px 16px;
+    background: rgba(40, 167, 69, 0.1);
+    border-radius: 20px;
+    border: 2px solid rgba(40, 167, 69, 0.3);
 }
 
 .tier-features {
-    margin-bottom: 30px;
+    margin-bottom: 40px;
 }
 
 .tier-features ul {
@@ -163,10 +228,19 @@
 .tier-features li {
     display: flex;
     align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid #f0f0f0;
-    font-size: 1rem;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    font-size: 1.1rem;
     color: #555;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.tier-features li:hover {
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px;
+    padding-left: 10px;
+    transform: translateX(5px);
 }
 
 .tier-features li:last-child {
@@ -176,14 +250,9 @@
 .checkmark {
     color: #28a745;
     font-weight: bold;
-    margin-right: 12px;
-    font-size: 1.2rem;
-}
-
-.tier-features li.strikethrough {
-    text-decoration: line-through;
-    color: #999;
-    opacity: 0.7;
+    margin-right: 15px;
+    font-size: 1.4rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
 }
 
 .tier-action {
@@ -193,151 +262,87 @@
 
 .tier-button {
     width: 100%;
-    padding: 15px 30px;
+    padding: 18px 30px;
     border: none;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: 600;
+    border-radius: 15px;
+    font-size: 1.2rem;
+    font-weight: 700;
     color: white;
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .tier-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
+    background: linear-gradient(135deg, #5a6fd8, #6a4190);
 }
 
 .tier-button:disabled {
     cursor: not-allowed;
     transform: none;
     opacity: 0.7;
+    box-shadow: none;
 }
 
 .tier-button.popular {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-}
-
-.subscribe-btn {
-    width: 100%;
-    padding: 15px 30px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: white;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.subscribe-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.subscribe-btn:disabled {
-    cursor: not-allowed;
-    transform: none;
-    opacity: 0.7;
-}
-
-.network-highlight {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 12px;
-    padding: 20px;
-    margin-top: 20px;
-    border: 2px solid #28a745;
-}
-
-.network-highlight h4 {
-    color: #28a745;
-    margin: 0 0 10px 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-}
-
-.network-highlight p {
-    color: #666;
-    margin: 0 0 15px 0;
-    font-size: 0.95rem;
-}
-
-.network-features {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.network-feature {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
-    color: #555;
-}
-
-.network-feature .icon {
-    font-size: 1.2rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
 
 .tiers-footer {
     text-align: center;
-    margin-top: 50px;
+    margin-top: 60px;
     color: white;
+    position: relative;
+    z-index: 1;
 }
 
 .tiers-footer p {
-    font-size: 1.2rem;
-    margin-bottom: 20px;
-    opacity: 0.9;
+    font-size: 1.3rem;
+    margin-bottom: 25px;
+    opacity: 0.95;
+    font-weight: 400;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
 }
 
-.back-home-btn {
-    display: inline-block;
-    padding: 12px 30px;
-    background: white;
-    color: #667eea;
-    text-decoration: none;
-    border-radius: 8px;
+.trial-info {
+    font-size: 1.1rem;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    margin-top: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     font-weight: 600;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.back-home-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
 @media (max-width: 768px) {
-    .subscription-tiers-page {
+    .subscription-tiers {
         padding: 20px 10px;
     }
     
     .tiers-header h1 {
-        font-size: 2rem;
-        margin-bottom: 8px;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
     }
     
     .tiers-header p {
-        font-size: 1rem;
+        font-size: 1.1rem;
         line-height: 1.4;
     }
     
-    .current-tier-info {
-        font-size: 0.9rem;
-        padding: 8px 16px;
-        margin-top: 8px;
-    }
-    
     .tiers-container {
-        grid-template-columns: 1fr;
-        gap: 20px;
         padding: 0 10px;
     }
     
     .tier-card {
-        padding: 20px;
-        margin-bottom: 10px;
+        padding: 30px 20px;
+        margin-bottom: 20px;
     }
     
     .tier-card.popular {
@@ -345,56 +350,47 @@
     }
     
     .tier-header h2 {
-        font-size: 1.5rem;
-        margin-bottom: 10px;
-    }
-    
-    .tier-price {
-        margin-bottom: 10px;
+        font-size: 1.8rem;
+        margin-bottom: 15px;
     }
     
     .price {
-        font-size: 2rem;
+        font-size: 2.5rem;
     }
     
     .period {
-        font-size: 0.9rem;
+        font-size: 1rem;
     }
     
     .trial-text {
-        font-size: 0.9rem;
-        margin-top: 5px;
-    }
-    
-    .tier-features ul {
-        padding-left: 20px;
+        font-size: 1rem;
+        margin-top: 10px;
     }
     
     .tier-features li {
-        font-size: 0.9rem;
-        margin-bottom: 8px;
-        line-height: 1.3;
+        font-size: 1rem;
+        margin-bottom: 10px;
+        line-height: 1.4;
     }
     
     .tier-action {
-        margin-top: 20px;
+        margin-top: 25px;
     }
     
-    .tier-button,
-    .subscribe-btn {
+    .tier-button {
         width: 100%;
-        padding: 12px 20px;
-        font-size: 1rem;
+        padding: 15px 25px;
+        font-size: 1.1rem;
     }
     
     .popular-badge {
         font-size: 0.8rem;
-        padding: 4px 8px;
+        padding: 8px 16px;
     }
     
     .current-badge {
         font-size: 0.8rem;
-        padding: 4px 8px;
+        padding: 8px 16px;
     }
     
     .message {
@@ -404,58 +400,55 @@
     }
     
     .tiers-footer {
-        margin-top: 30px;
+        margin-top: 40px;
         padding: 0 10px;
     }
     
     .tiers-footer p {
-        font-size: 1rem;
-        margin-bottom: 15px;
+        font-size: 1.1rem;
+        margin-bottom: 20px;
         line-height: 1.4;
     }
     
     .trial-info {
-        font-size: 0.9rem;
-        padding: 10px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
+        font-size: 1rem;
+        padding: 15px;
         margin-top: 15px;
     }
 }
 
 @media (max-width: 480px) {
-    .subscription-tiers-page {
+    .subscription-tiers {
         padding: 15px 5px;
     }
     
     .tiers-header h1 {
-        font-size: 1.8rem;
+        font-size: 2rem;
     }
     
     .tiers-header p {
-        font-size: 0.9rem;
+        font-size: 1rem;
     }
     
     .tier-card {
-        padding: 15px;
+        padding: 25px 15px;
     }
     
     .tier-header h2 {
-        font-size: 1.3rem;
+        font-size: 1.6rem;
     }
     
     .price {
-        font-size: 1.8rem;
+        font-size: 2.2rem;
     }
     
     .tier-features li {
-        font-size: 0.85rem;
+        font-size: 0.95rem;
     }
     
-    .tier-button,
-    .subscribe-btn {
-        padding: 10px 15px;
-        font-size: 0.9rem;
+    .tier-button {
+        padding: 12px 20px;
+        font-size: 1rem;
     }
     
     .message {
@@ -464,6 +457,6 @@
     }
     
     .tiers-footer p {
-        font-size: 0.9rem;
+        font-size: 1rem;
     }
 } 

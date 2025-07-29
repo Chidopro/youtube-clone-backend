@@ -9,35 +9,21 @@ const SubscriptionTiers = () => {
     const location = useLocation();
     const tiers = [
         {
-            id: 'free',
-            name: 'Free for Fans',
-            price: 'Free',
-            features: [
-                { text: 'Upload videos (up to 100MB, 10 minutes)', strikethrough: true },
-                { text: 'Basic analytics', strikethrough: true },
-                { text: 'Standard features', strikethrough: true },
-                { text: 'Community access', strikethrough: true },
-                { text: 'Grab screenshots', strikethrough: false },
-                { text: 'Preview merch', strikethrough: false },
-                { text: 'Buy merchandise', strikethrough: false }
-            ],
-            color: '#6c757d',
-            popular: false
-        },
-        {
             id: 'pro',
             name: 'Pro Plan for Creators',
             price: '$9.99/month',
             trialText: '7-day free trial',
             features: [
-                { text: 'Everything in Free', strikethrough: true },
-                { text: 'Priority support', strikethrough: false },
-                { text: 'Custom branding', strikethrough: false },
-                { text: 'Enhanced upload limits (2GB, 60 minutes)', strikethrough: true },
-                { text: 'Ad-free experience', strikethrough: false },
-                { text: 'Early access to new features', strikethrough: true },
-                { text: 'Monetization tools', strikethrough: false },
-                { text: 'Revenue tracking', strikethrough: false }
+                'Upload and share your videos',
+                'Create custom product pages',
+                'Sell merchandise with revenue sharing',
+                'Priority customer support',
+                'Custom branding and channel colors',
+                'Enhanced upload limits (2GB, 60 minutes)',
+                'Analytics and sales tracking',
+                'Creator dashboard and tools',
+                'Ad-free viewing experience',
+                'Early access to new features'
             ],
             color: '#007bff',
             popular: true
@@ -188,7 +174,7 @@ const SubscriptionTiers = () => {
     return (
         <div className="subscription-tiers">
             <div className="tiers-header">
-                <h1>Creator Plans</h1>
+                <h1>Creator Pro Plan</h1>
                 <p>Start monetizing your content and selling products with ScreenMerch</p>
             </div>
 
@@ -231,9 +217,9 @@ const SubscriptionTiers = () => {
                         <div className="tier-features">
                             <ul>
                                 {tier.features.map((feature, featureIndex) => (
-                                    <li key={featureIndex} className={feature.strikethrough ? 'strikethrough' : ''}>
+                                    <li key={featureIndex}>
                                         <span className="checkmark">✓</span>
-                                        {feature.text}
+                                        {feature}
                                     </li>
                                 ))}
                             </ul>
@@ -255,10 +241,7 @@ const SubscriptionTiers = () => {
 
             <div className="tiers-footer">
                 <p>
-                    <strong>Free:</strong> Perfect for viewers who want to browse content, grab screenshots, and purchase products from creators.
-                </p>
-                <p>
-                    <strong>Creator Pro Plan:</strong> Everything you need to monetize your audience, create custom product pages, and earn from merchandise sales with our revenue sharing program.
+                    <strong>Pro Plan for Creators:</strong> Everything you need to monetize your audience, create custom product pages, and earn from merchandise sales with our revenue sharing program.
                 </p>
                 <p className="trial-info">
                     <strong>7-Day Free Trial:</strong> Start your Pro trial today. No charges during the trial period. Cancel anytime before the trial ends.
