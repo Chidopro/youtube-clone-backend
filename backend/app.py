@@ -833,77 +833,180 @@ def stripe_webhook():
         logger.error(f"Webhook error: {str(e)}")
         return "Webhook error", 400
 
+    # Handle product orders
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         logger.info(f"Payment received for session: {session.get('id')}")
         order_id = session.get("metadata", {}).get("order_id")
-        if not order_id:
-            logger.error("Order ID not found in session metadata")
-            return "", 200
-
-        try:
-            order_data = order_store[order_id]
-            cart = order_data.get("cart", [])
-            sms_consent = order_data.get("sms_consent", False)
-        except KeyError:
-            logger.error(f"Order ID {order_id} not found in order_store")
-            return "", 200
-
-        # Get customer phone number from Stripe session
-        customer_phone = session.get("customer_details", {}).get("phone", "")
         
-        # Format and send the order email
-        html_body = f"<h1>New Paid ScreenMerch Order #{order_id}</h1>"
-        html_body += f"<p><strong>SMS Consent:</strong> {'Yes' if sms_consent else 'No'}</p>"
-        html_body += f"<p><strong>Customer Phone:</strong> {customer_phone}</p>"
+        # Handle product orders
+        if order_id:
+            try:
+                order_data = order_store[order_id]
+                cart = order_data.get("cart", [])
+                sms_consent = order_data.get("sms_consent", False)
+            except KeyError:
+                logger.error(f"Order ID {order_id} not found in order_store")
+                return "", 200
+
+            # Get customer phone number from Stripe session
+            customer_phone = session.get("customer_details", {}).get("phone", "")
+            
+            # Format and send the order email
+            html_body = f"<h1>New Paid ScreenMerch Order #{order_id}</h1>"
+            html_body += f"<p><strong>SMS Consent:</strong> {'Yes' if sms_consent else 'No'}</p>"
+            html_body += f"<p><strong>Customer Phone:</strong> {customer_phone}</p>"
+            
+            for item in cart:
+                html_body += f"""
+                    <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
+                        <h2>{item.get('product', 'N/A')}</h2>
+                        <p><strong>Color:</strong> {item.get('variants', {}).get('color', 'N/A')}</p>
+                        <p><strong>Size:</strong> {item.get('variants', {}).get('size', 'N/A')}</p>
+                        <p><strong>Note:</strong> {item.get('note', 'None')}</p>
+                        <p><strong>Image:</strong></p>
+                        <img src="{item.get('img', '')}" alt='Product Image' style='max-width: 300px; border-radius: 6px;'>
+                    </div>
+                """
+            
+            # Record each sale
+            for item in cart:
+                record_sale(item)
+                
+            # Email notifications only - no SMS
+            logger.info("📧 Order notifications will be sent via email")
+                
+            # Send admin notification email
+            admin_email_body = f"New ScreenMerch Order #{order_id}!\n"
+            admin_email_body += f"Items: {len(cart)}\n"
+            admin_email_body += f"Customer Phone: {customer_phone}\n"
+            for item in cart:
+                admin_email_body += f"• {item.get('product', 'N/A')} ({item.get('variants', {}).get('color', 'N/A')}, {item.get('variants', {}).get('size', 'N/A')})\n"
+            send_order_email(admin_email_body)
+            
+            # Send email using Resend
+            email_data = {
+                "from": RESEND_FROM,
+                "to": [MAIL_TO],
+                "subject": f"New Paid Order #{order_id}: {len(cart)} Item(s)",
+                "html": html_body
+            }
+            
+            response = requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {RESEND_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json=email_data
+            )
+            if response.status_code != 200:
+                logger.error(f"Resend API error: {response.text}")
+            else:
+                logger.info(f"Order email sent successfully via Resend")
         
-        for item in cart:
-            html_body += f"""
-                <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
-                    <h2>{item.get('product', 'N/A')}</h2>
-                    <p><strong>Color:</strong> {item.get('variants', {}).get('color', 'N/A')}</p>
-                    <p><strong>Size:</strong> {item.get('variants', {}).get('size', 'N/A')}</p>
-                    <p><strong>Note:</strong> {item.get('note', 'None')}</p>
-                    <p><strong>Image:</strong></p>
-                    <img src="{item.get('img', '')}" alt='Product Image' style='max-width: 300px; border-radius: 6px;'>
-                </div>
+        # Handle subscription events
+        elif session.get("mode") == "subscription":
+            logger.info(f"Subscription checkout completed: {session.get('id')}")
+            
+            # Get subscription details
+            subscription_id = session.get("subscription")
+            customer_email = session.get("customer_details", {}).get("email", "No email provided")
+            user_id = session.get("metadata", {}).get("user_id", "guest")
+            tier = session.get("metadata", {}).get("tier", "pro")
+            
+            # Send admin notification for new subscriber
+            admin_subscription_email = f"""
+            🎉 NEW SCREENMERCH PRO SUBSCRIBER!
+            
+            Subscription Details:
+            - Customer Email: {customer_email}
+            - User ID: {user_id}
+            - Tier: {tier}
+            - Subscription ID: {subscription_id}
+            - Session ID: {session.get('id')}
+            
+            This customer has started their 7-day free trial and will be charged $9.99/month after the trial period.
             """
-        
-        # Record each sale
-        for item in cart:
-            record_sale(item)
             
-        # Email notifications only - no SMS
-        logger.info("📧 Order notifications will be sent via email")
+            # Send admin notification email
+            admin_email_data = {
+                "from": RESEND_FROM,
+                "to": [MAIL_TO],
+                "subject": f"🎉 New ScreenMerch Pro Subscriber: {customer_email}",
+                "html": f"""
+                <h1>🎉 New ScreenMerch Pro Subscriber!</h1>
+                <div style="background: #f0f8ff; padding: 20px; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                    <h2>Subscription Details:</h2>
+                    <p><strong>Customer Email:</strong> {customer_email}</p>
+                    <p><strong>User ID:</strong> {user_id}</p>
+                    <p><strong>Tier:</strong> {tier}</p>
+                    <p><strong>Subscription ID:</strong> {subscription_id}</p>
+                    <p><strong>Session ID:</strong> {session.get('id')}</p>
+                    <p><strong>Trial Status:</strong> 7-day free trial activated</p>
+                    <p><strong>Billing:</strong> $9.99/month after trial period</p>
+                </div>
+                <p>This customer has started their 7-day free trial and will be charged $9.99/month after the trial period.</p>
+                """
+            }
             
-        # Send admin notification email
-        admin_email_body = f"New ScreenMerch Order #{order_id}!\n"
-        admin_email_body += f"Items: {len(cart)}\n"
-        admin_email_body += f"Customer Phone: {customer_phone}\n"
-        for item in cart:
-            admin_email_body += f"• {item.get('product', 'N/A')} ({item.get('variants', {}).get('color', 'N/A')}, {item.get('variants', {}).get('size', 'N/A')})\n"
-        send_order_email(admin_email_body)
-        
-        # Send email using Resend
-        email_data = {
-            "from": RESEND_FROM,
-            "to": [MAIL_TO],
-            "subject": f"New Paid Order #{order_id}: {len(cart)} Item(s)",
-            "html": html_body
-        }
-        
-        response = requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {RESEND_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json=email_data
-        )
-        if response.status_code != 200:
-            logger.error(f"Resend API error: {response.text}")
-        else:
-            logger.info(f"Order email sent successfully via Resend")
+            try:
+                response = requests.post(
+                    "https://api.resend.com/emails",
+                    headers={
+                        "Authorization": f"Bearer {RESEND_API_KEY}",
+                        "Content-Type": "application/json"
+                    },
+                    json=admin_email_data
+                )
+                if response.status_code == 200:
+                    logger.info(f"✅ Admin notification sent for new subscriber: {customer_email}")
+                else:
+                    logger.error(f"❌ Failed to send admin notification: {response.text}")
+            except Exception as e:
+                logger.error(f"❌ Error sending admin notification: {str(e)}")
+            
+            # Also send welcome email to customer
+            if customer_email and customer_email != "No email provided":
+                try:
+                    customer_welcome_email = {
+                        "from": RESEND_FROM,
+                        "to": [customer_email],
+                        "subject": "Welcome to ScreenMerch Pro! 🎉",
+                        "html": f"""
+                        <h1>Welcome to ScreenMerch Pro!</h1>
+                        <p>Your 7-day free trial has started. You now have access to all Pro features:</p>
+                        <ul>
+                            <li>✅ Upload and share your videos</li>
+                            <li>✅ Create custom product pages</li>
+                            <li>✅ Sell merchandise with revenue sharing</li>
+                            <li>✅ Priority customer support</li>
+                            <li>✅ Custom branding and channel colors</li>
+                            <li>✅ Enhanced upload limits (2GB, 60 minutes)</li>
+                            <li>✅ Analytics and sales tracking</li>
+                            <li>✅ Creator dashboard and tools</li>
+                            <li>✅ Ad-free viewing experience</li>
+                            <li>✅ Early access to new features</li>
+                        </ul>
+                        <p>Your trial ends in 7 days. You can cancel anytime before then.</p>
+                        <p>Start creating amazing content!</p>
+                        """
+                    }
+                    
+                    response = requests.post(
+                        "https://api.resend.com/emails",
+                        headers={
+                            "Authorization": f"Bearer {RESEND_API_KEY}",
+                            "Content-Type": "application/json"
+                        },
+                        json=customer_welcome_email
+                    )
+                    if response.status_code == 200:
+                        logger.info(f"✅ Welcome email sent to {customer_email}")
+                    else:
+                        logger.error(f"❌ Failed to send welcome email: {response.text}")
+                except Exception as e:
+                    logger.error(f"❌ Error sending welcome email: {str(e)}")
 
     return "", 200
 
@@ -1267,6 +1370,83 @@ def test_stripe():
         return jsonify({
             "error": f"Stripe configuration error: {str(e)}",
             "stripe_key_configured": bool(os.getenv("STRIPE_SECRET_KEY"))
+        }), 500
+
+@app.route("/api/test-email-config", methods=["GET"])
+def test_email_config():
+    """Test email configuration and send a test notification"""
+    try:
+        # Check environment variables
+        mail_to = os.getenv("MAIL_TO")
+        resend_api_key = os.getenv("RESEND_API_KEY")
+        resend_from = os.getenv("RESEND_FROM")
+        
+        config_status = {
+            "MAIL_TO": mail_to or "NOT SET",
+            "RESEND_API_KEY": "✓ SET" if resend_api_key else "✗ NOT SET",
+            "RESEND_FROM": resend_from or "NOT SET"
+        }
+        
+        # Send test email if all config is present
+        if mail_to and resend_api_key and resend_from:
+            test_email_data = {
+                "from": resend_from,
+                "to": [mail_to],
+                "subject": "🧪 ScreenMerch Email Configuration Test",
+                "html": f"""
+                <h1>✅ ScreenMerch Email Configuration Test</h1>
+                <p>This is a test email to verify that your email notifications are working properly.</p>
+                <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h3>Configuration Status:</h3>
+                    <p><strong>Admin Email:</strong> {mail_to}</p>
+                    <p><strong>From Email:</strong> {resend_from}</p>
+                    <p><strong>Resend API:</strong> ✓ Configured</p>
+                </div>
+                <p>You will receive notifications at <strong>{mail_to}</strong> when:</p>
+                <ul>
+                    <li>🎉 New subscribers sign up for Pro plan</li>
+                    <li>🛍️ New product orders are placed</li>
+                    <li>📧 System notifications and alerts</li>
+                </ul>
+                <p>If you receive this email, your notification system is working correctly!</p>
+                """
+            }
+            
+            response = requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {resend_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json=test_email_data
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                return jsonify({
+                    "success": True,
+                    "message": "Test email sent successfully!",
+                    "email_id": result.get('id'),
+                    "config_status": config_status,
+                    "admin_email": mail_to
+                })
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": f"Failed to send test email: {response.status_code} - {response.text}",
+                    "config_status": config_status
+                }), 500
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Email configuration incomplete",
+                "config_status": config_status
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Email configuration test failed: {str(e)}"
         }), 500
 
 if __name__ == "__main__":
