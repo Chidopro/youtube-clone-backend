@@ -73,6 +73,44 @@
     font-size: 1rem;
 }
 
+.trial-notice {
+    background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
+    border: 2px solid #28a745;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 25px 0;
+    text-align: left;
+}
+
+.trial-notice h3 {
+    color: #28a745;
+    font-size: 1.3rem;
+    margin: 0 0 15px 0;
+    text-align: center;
+    font-weight: 700;
+}
+
+.trial-notice p {
+    color: #333;
+    font-size: 1.1rem;
+    margin: 0 0 15px 0;
+    text-align: center;
+    font-weight: 600;
+}
+
+.trial-notice ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.trial-notice li {
+    color: #28a745;
+    font-weight: 500;
+    margin: 8px 0;
+    font-size: 1rem;
+}
+
 .redirect-notice {
     color: #007bff !important;
     font-weight: 500;

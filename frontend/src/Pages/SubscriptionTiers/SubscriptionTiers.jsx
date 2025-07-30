@@ -101,7 +101,7 @@ const SubscriptionTiers = () => {
             
             if (result.success) {
                 if (result.redirecting) {
-                    setMessage('Redirecting to secure payment setup...');
+                    setMessage('Redirecting to Stripe checkout... You will be charged $9.99/month after your 7-day free trial ends.');
                 } else {
                     setUserSubscription(result.subscription);
                     setMessage('Welcome to Pro! Your 7-day free trial is now active.');
@@ -232,9 +232,16 @@ const SubscriptionTiers = () => {
                 <p>
                     <strong>Pro Plan for Creators:</strong> Everything you need to monetize your audience, create custom product pages, and earn from merchandise sales with our revenue sharing program.
                 </p>
-                <p className="trial-info">
-                    <strong>7-Day Free Trial:</strong> Start your Pro trial today. No charges during the trial period. Cancel anytime before the trial ends.
-                </p>
+                <div className="trial-notice">
+                    <h3>🎉 7-Day Free Trial</h3>
+                    <p><strong>Start your Pro trial today!</strong></p>
+                    <ul>
+                        <li>✅ No charges during the 7-day trial period</li>
+                        <li>✅ Cancel anytime before the trial ends</li>
+                        <li>✅ After 7 days, you'll be charged $9.99/month</li>
+                        <li>✅ Full access to all Pro features during trial</li>
+                    </ul>
+                </div>
             </div>
         </div>
     );

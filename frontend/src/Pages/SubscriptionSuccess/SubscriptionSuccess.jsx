@@ -90,18 +90,36 @@ const SubscriptionSuccess = () => {
         <div className="subscription-success-page">
             <div className="success-container">
                 <div className="success-icon">🎉</div>
-                <h2>Welcome to Premium!</h2>
-                <p>Your subscription has been successfully activated.</p>
+                <h2>Welcome to Pro!</h2>
+                <p>Your 7-day free trial has been successfully activated.</p>
+                
+                <div className="trial-notice">
+                    <h3>🎁 7-Day Free Trial Active</h3>
+                    <p><strong>You're now in your free trial period!</strong></p>
+                    <ul>
+                        <li>✅ No charges for the next 7 days</li>
+                        <li>✅ Full access to all Pro features</li>
+                        <li>✅ Cancel anytime before trial ends</li>
+                        <li>✅ After 7 days, you'll be charged $9.99/month</li>
+                    </ul>
+                </div>
+                
                 <div className="premium-features">
                     <h3>You now have access to:</h3>
                     <ul>
-                        <li>✅ Advanced analytics</li>
-                        <li>✅ Priority support</li>
-                        <li>✅ Custom branding</li>
-                        <li>✅ Enhanced upload limits</li>
-                        <li>✅ All Premium features</li>
+                        <li>✅ Upload and share your videos</li>
+                        <li>✅ Create custom product pages</li>
+                        <li>✅ Sell merchandise with revenue sharing</li>
+                        <li>✅ Priority customer support</li>
+                        <li>✅ Custom branding and channel colors</li>
+                        <li>✅ Enhanced upload limits (2GB, 60 minutes)</li>
+                        <li>✅ Analytics and sales tracking</li>
+                        <li>✅ Creator dashboard and tools</li>
+                        <li>✅ Ad-free viewing experience</li>
+                        <li>✅ Early access to new features</li>
                     </ul>
                 </div>
+                
                 <p className="redirect-notice">
                     Redirecting to your dashboard in 3 seconds...
                 </p>

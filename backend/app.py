@@ -1199,83 +1199,75 @@ def create_pro_checkout():
         data = request.get_json()
         user_id = data.get('userId')
         tier = data.get('tier', 'pro')
+        email = data.get('email')
         
-        if not user_id:
-            return jsonify({"error": "User ID is required"}), 400
+        # Allow guest checkout - user_id can be null
+        # Stripe will collect email during checkout if not provided
         
-        # Get or create Stripe customer
-        try:
-            # Check if user already has a Stripe customer ID
-            result = supabase.table('user_subscriptions').select('stripe_customer_id').eq('user_id', user_id).execute()
-            
-            if result.data and result.data[0].get('stripe_customer_id'):
-                customer = stripe.Customer.retrieve(result.data[0]['stripe_customer_id'])
-            else:
-                # Get user info from database
-                user_result = supabase.table('users').select('email, display_name').eq('id', user_id).execute()
-                
-                if not user_result.data:
-                    return jsonify({"error": "User not found"}), 404
-                
-                user = user_result.data[0]
-                
-                # Create new Stripe customer
-                customer = stripe.Customer.create(
-                    email=user['email'],
-                    name=user.get('display_name', 'User'),
-                    metadata={'userId': user_id}
-                )
-                
-                # Store customer ID in database
-                supabase.table('user_subscriptions').upsert({
-                    'user_id': user_id,
-                    'stripe_customer_id': customer.id,
-                    'tier': tier,
-                    'created_at': 'now()'
-                }).execute()
-                
-        except Exception as e:
-            logger.error(f"Error with customer creation/retrieval: {str(e)}")
-            return jsonify({"error": "Failed to process customer"}), 500
-
-        # Create checkout session with 7-day trial
+        # Create Stripe checkout session for Pro subscription with 7-day trial
         session = stripe.checkout.Session.create(
-            customer=customer.id,
-            payment_method_types=['card'],
-            mode='subscription',
+            payment_method_types=["card"],
+            mode="subscription",
             line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {
-                        'name': 'ScreenMerch Pro Plan',
-                        'description': 'Priority support, custom branding, enhanced upload limits, ad-free experience, early access to new features, and monetization tools'
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": "ScreenMerch Pro Plan",
+                        "description": "Creator Pro Plan with 7-day free trial - You will be charged $9.99/month after the trial period"
                     },
-                    'unit_amount': 999,  # $9.99 in cents
-                    'recurring': {
-                        'interval': 'month'
+                    "unit_amount": 999,  # $9.99 in cents
+                    "recurring": {
+                        "interval": "month"
                     }
                 },
-                'quantity': 1
+                "quantity": 1,
             }],
             subscription_data={
-                'trial_period_days': 7,  # 7-day free trial
-                'metadata': {
-                    'userId': user_id,
-                    'tier': tier
+                "trial_period_days": 7,
+                "metadata": {
+                    "user_id": user_id or "guest",
+                    "tier": tier
                 }
             },
-            success_url=f"{os.getenv('FRONTEND_URL', 'https://screenmerch.com')}/subscription-success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{os.getenv('FRONTEND_URL', 'https://screenmerch.com')}/subscription-tiers",
+            success_url="https://screenmerch.com/subscription-success?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url="https://screenmerch.com/subscription-tiers",
+            customer_email=email,  # Pre-fill email if available
             metadata={
-                'userId': user_id,
-                'tier': tier
+                "user_id": user_id or "guest",
+                "tier": tier
             }
         )
-
+        
+        logger.info(f"Created Pro checkout session for user {user_id or 'guest'}")
         return jsonify({"url": session.url})
-    except Exception as error:
-        logger.error(f"Error creating checkout session: {str(error)}")
-        return jsonify({"error": "Failed to create checkout session"}), 500
+        
+    except Exception as e:
+        logger.error(f"Error creating checkout session: {str(e)}")
+        return jsonify({"error": f"Failed to create checkout session: {str(e)}"}), 500
+
+# Test endpoint to verify Stripe configuration
+@app.route("/api/test-stripe", methods=["GET"])
+def test_stripe():
+    try:
+        # Test Stripe configuration
+        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+        if not stripe.api_key:
+            return jsonify({"error": "Stripe secret key not configured"}), 500
+        
+        # Test basic Stripe API call
+        account = stripe.Account.retrieve()
+        
+        return jsonify({
+            "success": True,
+            "message": "Stripe configuration is working",
+            "account_id": account.id,
+            "stripe_key_configured": bool(stripe.api_key)
+        })
+    except Exception as e:
+        return jsonify({
+            "error": f"Stripe configuration error: {str(e)}",
+            "stripe_key_configured": bool(os.getenv("STRIPE_SECRET_KEY"))
+        }), 500
 
 if __name__ == "__main__":
     import os
