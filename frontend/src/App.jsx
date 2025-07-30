@@ -73,7 +73,7 @@ const App = () => {
               <Route path="/profile/:username" element={<Profile sidebar={sidebar} />} />
               <Route path="/approve-subscription" element={<ApproveSubscription />} />
               <Route path="/dashboard" element={<Dashboard sidebar={sidebar} />} />
-              <Route path="/subscription-tiers" element={<SubscriptionTiers />} />
+              <Route path="/subscription" element={<SubscriptionTiers />} />
               <Route path="/subscription-success" element={<SubscriptionSuccess />} />
               <Route path="/success" element={<OrderSuccess />} />
               <Route path="/coming-soon" element={<ComingSoon />} />

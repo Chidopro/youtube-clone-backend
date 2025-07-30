@@ -73,10 +73,7 @@ export class SubscriptionService {
   static async subscribeToProTier() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
+      
       // Create Stripe checkout session for Pro tier with 7-day trial
       const response = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/create-pro-checkout', {
         method: 'POST',
@@ -84,8 +81,9 @@ export class SubscriptionService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.id,
-          tier: 'pro'
+          userId: user?.id || null, // Allow null for guest checkout
+          tier: 'pro',
+          email: user?.email || null
         })
       });
 

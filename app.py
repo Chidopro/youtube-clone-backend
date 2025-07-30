@@ -2168,9 +2168,10 @@ def create_pro_checkout():
         data = request.get_json()
         user_id = data.get('userId')
         tier = data.get('tier', 'pro')
+        email = data.get('email')
         
-        if not user_id:
-            return jsonify({"error": "userId is required"}), 400
+        # Allow guest checkout - user_id can be null
+        # Stripe will collect email during checkout if not provided
         
         # Create Stripe checkout session for Pro subscription
         session = stripe.checkout.Session.create(
@@ -2193,20 +2194,20 @@ def create_pro_checkout():
             subscription_data={
                 "trial_period_days": 7,
                 "metadata": {
-                    "user_id": user_id,
+                    "user_id": user_id or "guest",
                     "tier": tier
                 }
             },
             success_url="https://screenmerch.com/subscription-success?session_id={CHECKOUT_SESSION_ID}",
             cancel_url="https://screenmerch.com/subscription",
-            customer_email=data.get('email'),  # Pre-fill email if available
+            customer_email=email,  # Pre-fill email if available
             metadata={
-                "user_id": user_id,
+                "user_id": user_id or "guest",
                 "tier": tier
             }
         )
         
-        logger.info(f"Created Pro checkout session for user {user_id}")
+        logger.info(f"Created Pro checkout session for user {user_id or 'guest'}")
         return jsonify({"url": session.url})
         
     except Exception as e:

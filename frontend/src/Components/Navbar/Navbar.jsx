@@ -104,7 +104,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
 
     const handleSubscribeClick = () => {
         // Always redirect to tiers page for new user signups
-        navigate('/subscription-tiers');
+        navigate('/subscription');
     };
 
     const handleSubscribeModalClick = () => {

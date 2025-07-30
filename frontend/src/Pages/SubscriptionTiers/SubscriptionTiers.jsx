@@ -97,17 +97,6 @@ const SubscriptionTiers = () => {
         setMessage('');
 
         try {
-            if (!currentUser) {
-                // Redirect to auth if not logged in
-                navigate('/auth', { 
-                    state: { 
-                        from: location.pathname,
-                        message: 'Sign up to start your Pro trial!' 
-                    } 
-                });
-                return;
-            }
-
             const result = await SubscriptionService.subscribeToProTier();
             
             if (result.success) {

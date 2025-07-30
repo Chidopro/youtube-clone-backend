@@ -554,7 +554,7 @@ const Dashboard = ({ sidebar }) => {
                                 <div className="tip-card">
                                     <h4>⬆️ Upgrade Your Plan</h4>
                                     <p>
-                                        <button onClick={() => navigate('/subscription-tiers')} className="upgrade-link">
+                                        <button onClick={() => navigate('/subscription')} className="upgrade-link">
                                             Explore subscription tiers
                                         </button> for more features.
                                     </p>

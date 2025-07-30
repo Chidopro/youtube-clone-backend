@@ -1,0 +1,5 @@
+[33m2d79140cd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Add API endpoints for product variants and all products - Get all color/size combinations and pricing for product manager tool
+[33m3a93533a7[m Enhanced order email notifications with comprehensive screenshot information - Video name, timestamp, and image confirmation for Printful fulfillment
+[33m88cfd9f2e[m Fix order email notifications to include complete shipping information
+[33m3ea6b8fc9[m Rebuild frontend with 5XL sizes
+[33m132baa05d[m Add 5XL sizes to clothing products

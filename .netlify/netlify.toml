@@ -7,7 +7,7 @@ headers = []
 [functions."*"]
 
 [build]
-publish = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone\\frontend\\frontend\\dist"
+publish = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone\\frontend\\dist"
 publishOrigin = "config"
 commandOrigin = "config"
 base = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone\\frontend"

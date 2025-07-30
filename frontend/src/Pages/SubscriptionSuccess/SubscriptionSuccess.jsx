@@ -76,7 +76,7 @@ const SubscriptionSuccess = () => {
                     <h2>Subscription Error</h2>
                     <p>{error}</p>
                     <button 
-                        onClick={() => navigate('/subscription-tiers')}
+                        onClick={() => navigate('/subscription')}
                         className="retry-btn"
                     >
                         Try Again

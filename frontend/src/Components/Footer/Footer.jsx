@@ -40,7 +40,7 @@ const Footer = () => {
                 </a>
               </li>
               <li>
-                <Link to="/subscription-tiers">
+                <Link to="/subscription">
                   Subscription Plans
                 </Link>
               </li>
