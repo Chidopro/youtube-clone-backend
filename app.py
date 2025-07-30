@@ -869,18 +869,82 @@ def stripe_webhook():
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         logger.info(f"Payment received for session: {session.get('id')}")
-        order_id = session.get("metadata", {}).get("order_id")
-        if not order_id:
-            logger.error("Order ID not found in session metadata")
-            return "", 200
+        
+        # Check if this is a subscription or one-time payment
+        if session.get("mode") == "subscription":
+            # Handle subscription creation
+            user_id = session.get("metadata", {}).get("user_id")
+            tier = session.get("metadata", {}).get("tier", "pro")
+            
+            if user_id:
+                try:
+                    # Update user subscription in database
+                    subscription_data = {
+                        "user_id": user_id,
+                        "tier": tier,
+                        "status": "active",
+                        "stripe_subscription_id": session.get("subscription"),
+                        "trial_end": None,  # Will be set by Stripe
+                        "updated_at": "now()"
+                    }
+                    
+                    # Upsert subscription data
+                    result = supabase.table('user_subscriptions').upsert(
+                        subscription_data,
+                        on_conflict='user_id'
+                    ).execute()
+                    
+                    logger.info(f"Subscription created for user {user_id}: {result.data}")
+                    
+                    # Send welcome email for subscription
+                    customer_email = session.get("customer_details", {}).get("email")
+                    if customer_email:
+                        try:
+                            resend.emails.send({
+                                "from": "ScreenMerch <noreply@screenmerch.com>",
+                                "to": [customer_email],
+                                "subject": "Welcome to ScreenMerch Pro! 🎉",
+                                "html": f"""
+                                <h1>Welcome to ScreenMerch Pro!</h1>
+                                <p>Your 7-day free trial has started. You now have access to all Pro features:</p>
+                                <ul>
+                                    <li>✅ Upload and share your videos</li>
+                                    <li>✅ Create custom product pages</li>
+                                    <li>✅ Sell merchandise with revenue sharing</li>
+                                    <li>✅ Priority customer support</li>
+                                    <li>✅ Custom branding and channel colors</li>
+                                    <li>✅ Enhanced upload limits (2GB, 60 minutes)</li>
+                                    <li>✅ Analytics and sales tracking</li>
+                                    <li>✅ Creator dashboard and tools</li>
+                                    <li>✅ Ad-free viewing experience</li>
+                                    <li>✅ Early access to new features</li>
+                                </ul>
+                                <p>Your trial ends in 7 days. You can cancel anytime before then.</p>
+                                <p>Start creating amazing content!</p>
+                                """
+                            })
+                            logger.info(f"Welcome email sent to {customer_email}")
+                        except Exception as email_error:
+                            logger.error(f"Failed to send welcome email: {email_error}")
+                    
+                except Exception as sub_error:
+                    logger.error(f"Error creating subscription: {sub_error}")
+            else:
+                logger.error("User ID not found in subscription metadata")
+        else:
+            # Handle one-time payment (existing order logic)
+            order_id = session.get("metadata", {}).get("order_id")
+            if not order_id:
+                logger.error("Order ID not found in session metadata")
+                return "", 200
 
-        try:
-            order_data = order_store[order_id]
-            cart = order_data.get("cart", [])
-            sms_consent = order_data.get("sms_consent", False)
-        except KeyError:
-            logger.error(f"Order ID {order_id} not found in order_store")
-            return "", 200
+            try:
+                order_data = order_store[order_id]
+                cart = order_data.get("cart", [])
+                sms_consent = order_data.get("sms_consent", False)
+            except KeyError:
+                logger.error(f"Order ID {order_id} not found in order_store")
+                return "", 200
 
         # Get customer details from Stripe session
         customer_details = session.get("customer_details", {})
@@ -1013,6 +1077,80 @@ def stripe_webhook():
             logger.error(f"Resend API error: {response.text}")
         else:
             logger.info(f"Order email sent successfully via Resend")
+
+    # Handle subscription events
+    elif event["type"] == "customer.subscription.created":
+        subscription = event["data"]["object"]
+        user_id = subscription.get("metadata", {}).get("user_id")
+        if user_id:
+            try:
+                # Update subscription status
+                subscription_data = {
+                    "user_id": user_id,
+                    "tier": "pro",
+                    "status": subscription.get("status"),
+                    "stripe_subscription_id": subscription.get("id"),
+                    "trial_end": subscription.get("trial_end"),
+                    "current_period_end": subscription.get("current_period_end"),
+                    "updated_at": "now()"
+                }
+                
+                result = supabase.table('user_subscriptions').upsert(
+                    subscription_data,
+                    on_conflict='user_id'
+                ).execute()
+                
+                logger.info(f"Subscription created for user {user_id}")
+            except Exception as e:
+                logger.error(f"Error handling subscription creation: {e}")
+    
+    elif event["type"] == "customer.subscription.updated":
+        subscription = event["data"]["object"]
+        user_id = subscription.get("metadata", {}).get("user_id")
+        if user_id:
+            try:
+                # Update subscription status
+                subscription_data = {
+                    "user_id": user_id,
+                    "tier": "pro",
+                    "status": subscription.get("status"),
+                    "stripe_subscription_id": subscription.get("id"),
+                    "trial_end": subscription.get("trial_end"),
+                    "current_period_end": subscription.get("current_period_end"),
+                    "updated_at": "now()"
+                }
+                
+                result = supabase.table('user_subscriptions').upsert(
+                    subscription_data,
+                    on_conflict='user_id'
+                ).execute()
+                
+                logger.info(f"Subscription updated for user {user_id}")
+            except Exception as e:
+                logger.error(f"Error handling subscription update: {e}")
+    
+    elif event["type"] == "customer.subscription.deleted":
+        subscription = event["data"]["object"]
+        user_id = subscription.get("metadata", {}).get("user_id")
+        if user_id:
+            try:
+                # Update subscription status to cancelled
+                subscription_data = {
+                    "user_id": user_id,
+                    "tier": "free",  # Downgrade to free
+                    "status": "cancelled",
+                    "stripe_subscription_id": subscription.get("id"),
+                    "updated_at": "now()"
+                }
+                
+                result = supabase.table('user_subscriptions').upsert(
+                    subscription_data,
+                    on_conflict='user_id'
+                ).execute()
+                
+                logger.info(f"Subscription cancelled for user {user_id}")
+            except Exception as e:
+                logger.error(f"Error handling subscription cancellation: {e}")
 
     return "", 200
 
@@ -2022,6 +2160,58 @@ def update_password():
     except Exception as e:
         logger.error(f"Error in update_password: {str(e)}")
         return jsonify({"success": False, "error": "Internal server error"}), 500
+
+@app.route("/api/create-pro-checkout", methods=["POST"])
+def create_pro_checkout():
+    """Create Stripe checkout session for Pro subscription with 7-day trial"""
+    try:
+        data = request.get_json()
+        user_id = data.get('userId')
+        tier = data.get('tier', 'pro')
+        
+        if not user_id:
+            return jsonify({"error": "userId is required"}), 400
+        
+        # Create Stripe checkout session for Pro subscription
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="subscription",
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": "ScreenMerch Pro Plan",
+                        "description": "Creator Pro Plan with 7-day free trial"
+                    },
+                    "unit_amount": 999,  # $9.99 in cents
+                    "recurring": {
+                        "interval": "month"
+                    }
+                },
+                "quantity": 1,
+            }],
+            subscription_data={
+                "trial_period_days": 7,
+                "metadata": {
+                    "user_id": user_id,
+                    "tier": tier
+                }
+            },
+            success_url="https://screenmerch.com/subscription-success?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url="https://screenmerch.com/subscription",
+            customer_email=data.get('email'),  # Pre-fill email if available
+            metadata={
+                "user_id": user_id,
+                "tier": tier
+            }
+        )
+        
+        logger.info(f"Created Pro checkout session for user {user_id}")
+        return jsonify({"url": session.url})
+        
+    except Exception as e:
+        logger.error(f"Error creating Pro checkout session: {str(e)}")
+        return jsonify({"error": "Failed to create checkout session"}), 500
 
 
 
