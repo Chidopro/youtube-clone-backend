@@ -98,8 +98,8 @@ const SubscriptionTiers = () => {
 
         try {
             if (!currentUser) {
-                // Redirect to signup if not logged in
-                navigate('/signup', { 
+                // Redirect to auth if not logged in
+                navigate('/auth', { 
                     state: { 
                         from: location.pathname,
                         message: 'Sign up to start your Pro trial!' 
