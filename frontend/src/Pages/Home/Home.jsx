@@ -51,6 +51,35 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   return (
     <>
       <div className={`container ${sidebar ? "" : " large-container"}`}>
+        {/* User Flow Section */}
+        <div className="user-flow-section">
+          <div className="flow-steps">
+            <div className="flow-step">
+              <div className="step-number">1</div>
+              <div className="step-content">
+                <h3>Choose Video</h3>
+                <p>Browse and select your favorite video content</p>
+              </div>
+            </div>
+            <div className="flow-arrow">→</div>
+            <div className="flow-step">
+              <div className="step-number">2</div>
+              <div className="step-content">
+                <h3>Pick Screenshot</h3>
+                <p>Select the perfect moment to capture</p>
+              </div>
+            </div>
+            <div className="flow-arrow">→</div>
+            <div className="flow-step">
+              <div className="step-number">3</div>
+              <div className="step-content">
+                <h3>Make Merchandise</h3>
+                <p>Create custom products with your screenshot</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Category Tabs */}
         <div className="category-tabs">
           {categories.map(cat => (

@@ -1,7 +1,7 @@
 .container {
   background: #f9f9f9;
-  padding-top: 20px;
-  padding-bottom: 20px;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .large-container {
@@ -16,14 +16,103 @@
   }
 }
 
+/* User Flow Section Styles */
+.user-flow-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin: -10px -20px 20px -20px;
+  padding: 20px 20px;
+  color: white;
+  text-align: center;
+}
+
+.flow-steps {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 130px;
+}
+
+.step-number {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 6px;
+  transition: all 0.3s ease;
+}
+
+.flow-step:hover .step-number {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.step-content h3 {
+  margin: 0 0 3px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+}
+
+.step-content p {
+  margin: 0;
+  font-size: 0.7rem;
+  opacity: 0.9;
+  line-height: 1.1;
+}
+
+.flow-arrow {
+  font-size: 1.3rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: bold;
+  margin: 0 6px;
+}
+
+/* Mobile Responsive for Flow */
+@media (max-width: 768px) {
+  .flow-steps {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .flow-arrow {
+    transform: rotate(90deg);
+    margin: 4px 0;
+  }
+  
+  .flow-step {
+    min-width: 110px;
+  }
+  
+  .user-flow-section {
+    padding: 15px 15px;
+  }
+}
+
 .category-tabs {
   display: flex;
   overflow-x: auto;
-  gap: 12px;
-  padding: 16px 0 12px 0;
-  background: #fff;
+  gap: 10px;
+  padding: 12px 0 8px 0;
+  background: transparent;
   border-bottom: 1px solid #eee;
-  margin-bottom: 18px;
+  margin-bottom: 8px;
   scrollbar-width: none;
 }
 .category-tabs::-webkit-scrollbar {
@@ -33,8 +122,8 @@
   background: #f2f2f2;
   border: none;
   border-radius: 18px;
-  padding: 8px 22px;
-  font-size: 1rem;
+  padding: 6px 18px;
+  font-size: 0.9rem;
   color: #222;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;

@@ -143,9 +143,6 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             title="Sign in to upload videos"
                         />
                     )}
-                    <Link to="/privacy-policy" className="privacy-link" title="Privacy Policy">
-                        🔒
-                    </Link>
                     <button 
                         className="subscribe-btn"
                         onClick={handleSubscribeClick}

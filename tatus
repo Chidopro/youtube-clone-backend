@@ -3,3 +3,6 @@
 [33m88cfd9f2e[m Fix order email notifications to include complete shipping information
 [33m3ea6b8fc9[m Rebuild frontend with 5XL sizes
 [33m132baa05d[m Add 5XL sizes to clothing products
+[33m380a920da[m Re-add backend files and create product configuration
+[33m181565e88[m Fix footer logo by using public path instead of import
+[33m3b15451c7[m Your commit message here

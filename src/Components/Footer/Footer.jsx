@@ -8,69 +8,22 @@ const Footer = () => {
     <footer className="site-footer">
       <div className="footer-container">
         <div className="footer-content">
-          {/* Company Info */}
-          <div className="footer-section">
+          {/* Logo */}
+          <div className="footer-logo-section">
             <img src={screenMerchLogo} alt="ScreenMerch" className="footer-logo" />
           </div>
 
-          {/* Legal Links */}
-          <div className="footer-section">
-            <h4>Legal</h4>
-            <ul>
-              <li>
-                <Link to="/privacy-policy">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link to="/terms-of-service">
-                  Terms of Service
-                </Link>
-              </li>
-            </ul>
+          {/* Links */}
+          <div className="footer-links-section">
+            <Link to="/privacy-policy">Privacy Policy</Link>
+            <Link to="/terms-of-service">Terms of Service</Link>
+            <a href="mailto:support@screenmerch.com">Contact Us</a>
           </div>
 
-          {/* Support */}
-          <div className="footer-section">
-            <h4>Support</h4>
-            <ul>
-              <li>
-                <a href="mailto:support@screenmerch.com">
-                  Contact Us
-                </a>
-              </li>
-              <li>
-                <Link to="/subscription-tiers">
-                  Subscription Plans
-                </Link>
-              </li>
-            </ul>
+          {/* Copyright */}
+          <div className="footer-copyright">
+            <p>&copy; 2025 ScreenMerch. All rights reserved.</p>
           </div>
-
-          {/* SMS Compliance */}
-          <div className="footer-section">
-            <h4>SMS Notifications</h4>
-            <ul>
-              <li>
-                <Link to="/privacy-policy">
-                  SMS Policy
-                </Link>
-              </li>
-              <li>
-                <span className="sms-info">Text STOP to opt-out</span>
-              </li>
-              <li>
-                <span className="sms-info">Text HELP for support</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="footer-bottom">
-          <p>&copy; 2025 ScreenMerch. All rights reserved.</p>
-          <p className="sms-disclosure">
-            Message and data rates may apply. Frequency varies.
-          </p>
         </div>
       </div>
     </footer>
