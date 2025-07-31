@@ -4,30 +4,142 @@
   <title>Customize Your Product</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; background: #f8f8f8; text-align: center; padding: 40px; margin-right: 320px; margin-left: 180px; }
+    body { font-family: Arial, sans-serif; background: #f9f9f9; text-align: center; padding: 0; margin: 0; }
     h1 { color: #3f51b5; }
+    
+    /* User Flow Section Styles - Matching Home Page */
+    .user-flow-section {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 20px 20px;
+      color: white;
+      text-align: center;
+    }
+
+    .flow-steps {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: 12px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      min-width: 130px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .flow-step:hover {
+      transform: scale(1.05);
+    }
+
+    .step-number {
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: bold;
+      margin-bottom: 6px;
+      transition: all 0.3s ease;
+    }
+
+    .flow-step:hover .step-number {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+
+    .step-content h3 {
+      margin: 0 0 3px 0;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    .step-content p {
+      margin: 0;
+      font-size: 0.7rem;
+      opacity: 0.9;
+      line-height: 1.1;
+    }
+
+    .flow-arrow {
+      font-size: 1.3rem;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: bold;
+      margin: 0 6px;
+    }
+
+    /* Main Layout Container */
+    .main-container {
+      display: flex;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    /* Left Column - Video Viewer */
+    .video-viewer {
+      flex: 1;
+      min-width: 300px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    /* Middle Column - Screenshots */
+    .screenshots-section {
+      flex: 1;
+      min-width: 300px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    /* Right Column - Products */
+    .products-section {
+      flex: 1;
+      min-width: 300px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
     .preview-image {
-      max-width: 360px;
-      width: 360px;
+      max-width: 100%;
+      width: 100%;
       height: auto;
       margin-bottom: 10px;
       border-radius: 10px;
       cursor: pointer;
       box-sizing: border-box;
       display: block;
-      margin-left: auto;
-      margin-right: auto;
     }
     .screenshot-preview-row { 
-      display: flex; 
-      justify-content: center; 
+      display: grid; 
+      grid-template-columns: repeat(3, 1fr);
       gap: 10px; 
-      max-width: 800px; 
-      margin: 10px auto 30px auto;
-      flex-wrap: wrap;
+      margin: 10px 0 30px 0;
     }
     .screenshot-preview-row img {
-      width: 120px;
+      width: 100%;
       height: auto;
       border-radius: 4px;
       border: 2px solid #ccc;
@@ -43,246 +155,271 @@
     .product-row { 
       display: grid; 
       grid-template-columns: repeat(3, 1fr); 
-      gap: 20px; 
-      margin-top: 30px; 
+      gap: 15px; 
+      margin-top: 20px; 
       justify-items: center;
-      max-width: 800px;
-      margin-left: auto;
-      margin-right: auto;
     }
-    .product-card { background: #fff; padding: 20px; border-radius: 12px; width: 240px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .product-card { background: #fff; padding: 15px; border-radius: 8px; width: 100%; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #eee; }
     .product-card img { width: 100%; height: auto; border-radius: 6px; margin-bottom: 10px; }
-    .product-title { font-weight: bold; margin: 10px 0 5px; }
-    .product-price { color: #444; margin-bottom: 10px; }
-    .note-input { width: 100%; padding: 6px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px; }
+    .product-title { font-weight: bold; margin: 10px 0 5px; font-size: 14px; }
+    .product-price { color: #444; margin-bottom: 10px; font-size: 12px; }
+    .note-input { width: 100%; padding: 6px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
     .variant-selector { margin-bottom: 12px; background: #f0f4ff; border: 1px solid #bfcfff; border-radius: 6px; padding: 10px; }
-    .variant-selector label { display: block; text-align: left; margin-bottom: 4px; color: #3f51b5; font-weight: bold; }
-    .variant-selector select { width: 100%; padding: 6px; border: 1.5px solid #3f51b5; border-radius: 4px; background: #fff; }
-    .btn { background: #3f51b5; color: white; padding: 10px 16px; border: none; border-radius: 4px; cursor: pointer; }
+    .variant-selector label { display: block; text-align: left; margin-bottom: 4px; color: #3f51b5; font-weight: bold; font-size: 12px; }
+    .variant-selector select { width: 100%; padding: 6px; border: 1.5px solid #3f51b5; border-radius: 4px; background: #fff; font-size: 12px; }
+    .btn { background: #3f51b5; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
     .btn:hover { background: #2c3cb5; }
+    
+    /* Remove the old cart sidebar */
     #cart-sidebar { 
-      position: fixed;
-      top: 40px;
-      right: 0; 
-      width: 300px; 
-      background: white; 
-      box-shadow: -2px 0 10px rgba(0,0,0,0.1); 
-      padding: 20px 20px 20px 20px;
-      overflow-y: auto; 
-      box-sizing: border-box;
-      min-height: 120px;
-      border-radius: 0 0 12px 12px;
-      z-index: 1000;
-    }
-    #cart-sidebar h2 {
-      font-size: 20px;
-      margin-bottom: 10px;
-      color: #3f51b5;
-      background: #f0f0f0;         /* Light grey background */
-      padding: 12px 0;
-      border-radius: 8px;
-      border: 1.5px solid #e0e0e0; /* Subtle border */
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04); /* Optional subtle shadow */
-      text-align: center;
-      font-weight: bold;
-      letter-spacing: 1px;
-    }
-    .cart-item { text-align: left; border-bottom: 1px solid #eee; padding: 10px 0; }
-    .cart-item img {
-      width: 120px;
-      height: auto;
-      border-radius: 4px;
-      margin-bottom: 6px;
-      object-fit: cover;
-      box-sizing: border-box;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .checkout-btn { 
-      /* position: fixed; 
-      bottom: 30px; 
-      right: 40px; */
-      width: 100%;
-      padding: 12px; 
-      background: #4CAF50; 
-      color: white; 
-      border: none; 
-      border-radius: 4px; 
-      font-size: 16px; 
-      margin-top: 20px;
-      z-index: 1001;
-    }
-    .cart-delete-btn {
-      background: #e53935;
-      color: white;
-      border: none;
-      border-radius: 3px;
-      font-size: 12px;
-      padding: 4px 10px;
-      margin: 4px 0 6px 0;
-      cursor: pointer;
-      display: block;
-      width: 60px;
-      transition: background 0.2s;
-    }
-    .cart-delete-btn:hover {
-      background: #b71c1c;
-    }
-    .resolution-notice {
-      background-color: #FFF3CD;
-      color: #856404;
-      padding: 10px;
-      border-radius: 5px;
-      margin: 10px auto;
-      max-width: 600px;
-      border-left: 4px solid #FFD700;
-      text-align: left;
       display: none;
     }
-    #logo-sidebar {
-      position: absolute;
-      top: 40px;
-      left: 0;
-      width: 160px;
-      background: transparent;
-      box-shadow: none;
-      padding: 0;
-      min-height: unset;
-      border-radius: 0;
-      z-index: 1000;
+    
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .main-container {
+        flex-direction: column;
+        padding: 10px;
+      }
+      
+      .flow-steps {
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .flow-arrow {
+        transform: rotate(90deg);
+        margin: 4px 0;
+      }
+      
+      .flow-step {
+        min-width: 110px;
+      }
+      
+      .user-flow-section {
+        padding: 15px 15px;
+      }
+    }
+
+    /* Product Header Styles */
+    .product-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-logo {
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 10px;
     }
-    .image-gallery {
-      margin: 30px auto 20px auto;
-      max-width: 800px;
+
+    .header-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: white;
     }
-    .gallery-row {
+
+    .header-info {
       display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      justify-content: center;
+      gap: 20px;
+      align-items: center;
     }
-    .gallery-image {
-      width: 120px;
-      height: auto;
-      border-radius: 6px;
-      border: 2px solid #ccc;
-      cursor: pointer;
-      transition: border 0.2s, box-shadow 0.2s;
+
+    .info-item {
+      font-size: 0.9rem;
+      opacity: 0.9;
     }
-    .gallery-image.selected-image {
-      border: 4px solid #4CAF50 !important;
-      box-shadow: 0 0 8px #4CAF50;
-    }
-    .hoodie-position {
-      object-position: center top !important;
+
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      
+      .header-info {
+        flex-direction: column;
+        gap: 5px;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="logo-sidebar">
-    <img src="/static/icons/screenmerch_logo.png" alt="ScreenMerch Logo" style="width:90px; display:block; margin:auto; background:none; box-shadow:none;">
-  </div>
-  <!-- Thumbnail -->
-  <img id="thumbnailImage" class="preview-image" alt="Selected Thumbnail">
-  <div class="screenshot-preview-row" id="screenshotPreviewRow"></div>
-  <div id="resolutionNotice" class="resolution-notice">
-    <strong>Notice:</strong> Maximum resolution is not available. Please select a lower resolution option from the thumbnails below.
-  </div>
-
-  <h1>Customize Your Product</h1>
-
-  <!-- Shipping Information Notice -->
-  <div style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: left;">
-    <h3 style="margin: 0 0 10px 0; color: #1976d2;">🌍 Shipping Information</h3>
-    <div style="font-size: 14px; line-height: 1.5;">
-      <p><strong>✅ Available Worldwide:</strong> We ship to all countries including India, Middle East, Europe, Asia, and more.</p>
-      <p><strong>📦 Fulfillment:</strong> Products are fulfilled from US/Mexico for maximum color and size availability.</p>
-      <p><strong>⏱️ Delivery:</strong> 7-14 business days for international orders.</p>
-      <p><strong>💡 Tip:</strong> Core colors (Black, White, Gray, Navy) are always available globally.</p>
-    </div>
-  </div>
-
-  <!-- Transparent Email Auth Overlay -->
-  <div id="email-auth-overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.7);z-index:2000;display:flex;align-items:center;justify-content:center;">
-    <div style="background:rgba(255,255,255,0.95);border-radius:16px;box-shadow:0 4px 32px #0002;padding:32px 32px 24px 32px;min-width:320px;max-width:90vw;text-align:center;position:relative;">
-      <h2 style="margin-bottom:18px;color:#3f51b5;">Sign In Required</h2>
-      <p style="margin-bottom:20px;color:#666;font-size:14px;">You must sign in to access the product page and make purchases.</p>
-      <form id="email-auth-form" onsubmit="return false;" style="margin-bottom: 10px;">
-        <input type="email" id="auth-email" placeholder="Email" required style="padding: 10px; width: 90%; margin-bottom: 10px; border-radius:6px; border:1px solid #bbb;" />
-        <input type="password" id="auth-password" placeholder="Password" required style="padding: 10px; width: 90%; margin-bottom: 10px; border-radius:6px; border:1px solid #bbb;" />
-        <br />
-        <button type="button" onclick="handleEmailLogin()" style="padding: 10px 20px; margin-right: 8px; border-radius:6px; background:#3f51b5; color:white; border:none;">Login</button>
-        <button type="button" onclick="handleEmailSignup()" style="padding: 10px 20px; border-radius:6px; background:#4CAF50; color:white; border:none;">Create Account</button>
-      </form>
-      <div id="email-auth-message" style="color: #e53935; margin-bottom: 8px;"></div>
-      <div style="font-size:13px;color:#666;margin-top:10px;">
-        <a href="#" onclick="handleForgotPassword()" style="color: #3f51b5; text-decoration: none;">Forgot Password?</a>
+  <!-- User Flow Section -->
+  <div class="user-flow-section">
+    <div class="flow-steps">
+      <div class="flow-step" onclick="scrollToScreenshots()">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3>Pick Screenshot</h3>
+          <p>Select the perfect moment to capture</p>
+        </div>
       </div>
-      <div style="font-size:13px;color:#666;margin-top:10px;">Authentication is required to proceed.<br>Please sign in or create an account.</div>
-    </div>
-  </div>
-
-  <!-- Hidden content that only shows after authentication -->
-  <div id="authenticated-content" style="display: none;">
-  <div class="product-row">
-    {% for product in products %}
-    <div class="product-card">
-            <!-- Main product image -->      <img src="{{ url_for('static', filename='images/' + product.main_image) }}" alt="{{ product.name }}" style="width:100%;height:180px;object-fit:cover;border-radius:6px;" class="{% if product.name == 'Unisex Hoodie' or product.name == 'Unisex Champion Hoodie' or product.name == 'Women\'s Shirt' or product.name == 'Women\'s HD Shirt' or product.name == 'Women\'s Ribbed Neck' %}hoodie-position{% endif %}">
-      <div class="product-title">{{ product.name }}</div>
-      <div class="product-price">${{ '%.2f'|format(product.price) }}</div>
-      {% if product.options.color %}
-      <div style="font-weight:bold; color:#3f51b5; margin-bottom:6px;">Choose Color & Size:</div>
-      <div class="variant-selector">
-        <label>Color:</label>
-        <select class="variant-select color-select">
-          {% for color in product.options.color %}
-          <option value="{{ color }}">{{ color }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      {% endif %}
-      {% if product.options.size %}
-      <div class="variant-selector">
-        <label>Size:</label>
-        <select class="variant-select size-select">
-          {% for size in product.options.size %}
-          <option value="{{ size }}">{{ size }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      {% endif %}
-      <textarea class="note-input" placeholder="Add a note (optional)"></textarea>
-      
-      <!-- Color Availability Notice -->
-      <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 8px; margin: 8px 0; font-size: 12px; color: #856404;">
-        <strong>💡 Color Note:</strong> Core colors (Black, White, Gray, Navy) are available worldwide. Some colors may have limited availability in certain regions.
-      </div>
-      
-      <button class="btn add-to-cart-btn">Add {{ product.name }} to Cart</button>
-      <!-- Preview window -->
-      <div class="preview-label" style="margin-top:10px;font-size:13px;color:#888;">Preview</div>
-      <div class="product-preview-thumb" style="width:80px;height:80px;margin:0 auto;position:relative;cursor:pointer;">
-        <img src="{{ url_for('static', filename='images/' + product.filename) }}" alt="Preview" style="width:100%;height:100%;object-fit:cover;border-radius:6px;border:1.5px solid #bbb;box-shadow:0 1px 4px #0001;">
-        <div class="enlarged-preview" style="display:none;position:absolute;top:-10px;left:90px;width:220px;height:220px;z-index:10;background:white;border-radius:10px;box-shadow:0 4px 16px #0002;border:2px solid #4CAF50;align-items:center;justify-content:center;overflow:hidden;">
-          <img src="{{ url_for('static', filename='images/' + product.filename) }}" alt="Preview Large" style="width:100%;height:100%;object-fit:contain;">
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" onclick="scrollToProducts()">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h3>Make Merchandise</h3>
+          <p>Create custom products with your screenshot</p>
         </div>
       </div>
     </div>
-    {% endfor %}
   </div>
 
-  <div id="cart-sidebar">
-    <h2>Your Cart</h2>
-    <div id="cart-items"></div>
-    <button class="checkout-btn" onclick="goToCheckout()">Proceed to Checkout</button>
+  <!-- Header Section -->
+  <div class="product-header">
+    <div class="header-content">
+      <div class="header-logo">
+        <img src="/static/icons/screenmerch_logo.png" alt="ScreenMerch Logo" style="width: 40px; height: auto;">
+        <span class="header-title">ScreenMerch</span>
+      </div>
+      <div class="header-info">
+        <div class="info-item">🌍 Available Worldwide</div>
+        <div class="info-item">📦 US/Mexico Fulfillment</div>
+        <div class="info-item">⏱️ 7-14 Day Delivery</div>
+      </div>
+    </div>
   </div>
+
+  <!-- Main Layout -->
+  <div class="main-container">
+    <!-- Left Column - Video Viewer -->
+    <div class="video-viewer">
+      <h3>Video Preview</h3>
+      <img id="thumbnailImage" class="preview-image" alt="Selected Thumbnail">
+    </div>
+
+    <!-- Middle Column - Screenshots -->
+    <div class="screenshots-section" id="screenshotsSection">
+      <h3>Screenshot Selection</h3>
+      <div class="screenshot-preview-row" id="screenshotPreviewRow"></div>
+      <div id="resolutionNotice" class="resolution-notice">
+        <strong>Notice:</strong> Maximum resolution is not available. Please select a lower resolution option from the thumbnails below.
+      </div>
+    </div>
+
+    <!-- Right Column - Products -->
+    <div class="products-section" id="productsSection">
+      <h3>Available Products</h3>
+      <div class="product-row" id="productRow"></div>
+    </div>
   </div>
 
   <script>
+    // JavaScript functions for clickable flow steps
+    function scrollToScreenshots() {
+      document.getElementById('screenshotsSection').scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+
+    function scrollToProducts() {
+      document.getElementById('productsSection').scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set the thumbnail image
+      const thumbnailImage = document.getElementById('thumbnailImage');
+      const img = '{{ img_url }}';
+      if (img) {
+        thumbnailImage.src = img;
+      }
+
+      // Populate screenshots
+      const screenshots = [];
+      {% if screenshots %}
+        {% for screenshot in screenshots %}
+          screenshots.push('{{ screenshot }}');
+        {% endfor %}
+      {% endif %}
+
+      // Display screenshots
+      const row = document.getElementById("screenshotPreviewRow");
+      screenshots.forEach(src => {
+        const img = document.createElement("img");
+        img.src = src;
+        img.addEventListener('click', function() {
+          setSelectedImage(img, src);
+        });
+        row.appendChild(img);
+      });
+
+      // Populate products
+      const products = [];
+      {% if products %}
+        {% for product in products %}
+          products.push({
+            name: '{{ product.name }}',
+            price: {{ product.price }},
+            main_image: '{{ product.main_image }}',
+            filename: '{{ product.filename }}',
+            options: {{ product.options | tojson }}
+          });
+        {% endfor %}
+      {% endif %}
+
+      // Display products
+      const productRow = document.getElementById("productRow");
+      products.forEach(product => {
+        const productCard = document.createElement("div");
+        productCard.className = "product-card";
+        productCard.innerHTML = `
+          <img src="/static/images/${product.main_image}" alt="${product.name}" style="width:100%;height:180px;object-fit:cover;border-radius:6px;">
+          <div class="product-title">${product.name}</div>
+          <div class="product-price">$${product.price.toFixed(2)}</div>
+          ${product.options.color ? `
+            <div style="font-weight:bold; color:#3f51b5; margin-bottom:6px;">Choose Color & Size:</div>
+            <div class="variant-selector">
+              <label>Color:</label>
+              <select class="variant-select color-select">
+                ${product.options.color.map(color => `<option value="${color}">${color}</option>`).join('')}
+              </select>
+            </div>
+          ` : ''}
+          ${product.options.size ? `
+            <div class="variant-selector">
+              <label>Size:</label>
+              <select class="variant-select size-select">
+                ${product.options.size.map(size => `<option value="${size}">${size}</option>`).join('')}
+              </select>
+            </div>
+          ` : ''}
+          <textarea class="note-input" placeholder="Add a note (optional)"></textarea>
+          <hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;">
+          <button class="btn add-to-cart-btn">Add ${product.name} to Cart</button>
+        `;
+        productRow.appendChild(productCard);
+      });
+
+      // Image selection logic
+      let selectedImageUrl = null;
+      function setSelectedImage(imgEl, src) {
+        document.querySelectorAll('.selected-image').forEach(el => el.classList.remove('selected-image'));
+        imgEl.classList.add('selected-image');
+        selectedImageUrl = src;
+      }
+
+      // Set default selected image
+      if (screenshots.length > 0) {
+        setSelectedImage(row.firstChild, screenshots[0]);
+      }
+    });
+
     // Authentication check on page load
     document.addEventListener('DOMContentLoaded', function() {
       // Check if user is already authenticated
@@ -472,269 +609,3 @@
           if (item.variants.size) variantText += `Size: ${item.variants.size}<br>`;
         }
         div.innerHTML = `
-          <img src="${item.img}" alt="Selected" style="width: 120px !important; height: auto; border-radius: 4px; margin-bottom: 6px; object-fit: cover; display: block; margin-left: auto; margin-right: auto;">
-          <button class="cart-delete-btn" data-index="${idx}">Delete</button>
-          <strong>${item.product}</strong><br>
-          ${variantText}
-          Note: ${item.note || 'None'}<br>
-        `;
-        cartItemsContainer.appendChild(div);
-      });
-      // Add event listeners for delete buttons
-      document.querySelectorAll('.cart-delete-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const idx = parseInt(this.getAttribute('data-index'));
-          cart.splice(idx, 1);
-          localStorage.setItem('cart', JSON.stringify(cart));
-          updateCartSidebar();
-        });
-      });
-    }
-
-    function goToCheckout() {
-      if (cart.length === 0) return alert("Cart is empty");
-      window.location.href = `/checkout/{{ product_id }}`;
-    }
-
-    // Add this Imgur upload function to the script
-    async function uploadToImgur(base64Image) {
-      const response = await fetch("https://api.imgur.com/3/image", {
-        method: "POST",
-        headers: {
-          Authorization: "Client-ID 792f7248acd8df0",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          image: base64Image.split(',')[1],
-          type: "base64"
-        })
-      });
-      const contentType = response.headers.get('Content-Type') || '';
-      if (!contentType.includes('application/json')) {
-        const text = await response.text();
-        throw new Error("Imgur upload failed: " + (text.includes('<') ? 'Imgur may be rate limited or returned an error.' : text));
-      }
-      const data = await response.json();
-      if (!data.success) throw new Error("Imgur upload failed: " + (data.data?.error || 'Unknown error'));
-      return data.data.link;
-    }
-
-    // Add-to-cart logic for all product cards
-    document.querySelectorAll('.add-to-cart-btn').forEach(button => {
-      button.addEventListener('click', async () => {
-        if (!selectedImageUrl) {
-          alert("Please select a thumbnail or screenshot from the top first!");
-          return;
-        }
-        const card = button.closest('.product-card');
-        const product = card.querySelector('.product-title').innerText;
-        const note = card.querySelector('.note-input').value;
-        const imgToStore = selectedImageUrl;
-        let variants = {};
-        const colorSelect = card.querySelector('.color-select');
-        const sizeSelect = card.querySelector('.size-select');
-        if (colorSelect) variants.color = colorSelect.value;
-        if (sizeSelect) variants.size = sizeSelect.value;
-        cart.push({ product, note, email, img: imgToStore, variants });
-        localStorage.setItem('cart', JSON.stringify(cart));
-        updateCartSidebar();
-      });
-    });
-
-    updateCartSidebar();
-
-    // Make gallery images selectable and update selectedImageUrl
-    document.addEventListener('DOMContentLoaded', function() {
-      const galleryImages = document.querySelectorAll('.gallery-image');
-      galleryImages.forEach(img => {
-        img.addEventListener('click', function() {
-          galleryImages.forEach(el => el.classList.remove('selected-image'));
-          img.classList.add('selected-image');
-          selectedImageUrl = img.getAttribute('data-img');
-        });
-      });
-      // Select the first image by default if none selected
-      if (galleryImages.length > 0 && !selectedImageUrl) {
-        galleryImages[0].classList.add('selected-image');
-        selectedImageUrl = galleryImages[0].getAttribute('data-img');
-      }
-    });
-
-    // Preview enlarge on hover logic
-    document.querySelectorAll('.product-preview-thumb').forEach(function(preview) {
-      const enlarged = preview.querySelector('.enlarged-preview');
-      preview.addEventListener('mouseenter', function() {
-        enlarged.style.display = 'flex';
-      });
-      preview.addEventListener('mouseleave', function() {
-        enlarged.style.display = 'none';
-      });
-    });
-
-    // --- Email Auth Functions (moved here to avoid linter errors) ---
-    function setCartEmail(email) {
-      cart.forEach(item => { item.email = email; });
-      localStorage.setItem('cart', JSON.stringify(cart));
-      updateCartSidebar();
-    }
-
-    function handleEmailLogin() {
-      const email = document.getElementById('auth-email').value.trim();
-      const password = document.getElementById('auth-password').value;
-      const messageDiv = document.getElementById('email-auth-message');
-      const loginBtn = document.querySelector('button[onclick="handleEmailLogin()"]');
-      const signupBtn = document.querySelector('button[onclick="handleEmailSignup()"]');
-      
-      messageDiv.style.color = '#e53935';
-      if (!email || !password) {
-        messageDiv.textContent = 'Please enter both email and password.';
-        return;
-      }
-
-      // Disable buttons during authentication
-      loginBtn.disabled = true;
-      signupBtn.disabled = true;
-      loginBtn.textContent = 'Logging in...';
-      
-      // Real authentication call
-      fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          setCartEmail(email);
-          sessionStorage.setItem('authenticated', 'true');
-          messageDiv.style.color = '#4CAF50';
-          messageDiv.textContent = 'Login successful! Email saved.';
-          setTimeout(() => {
-            document.getElementById('email-auth-overlay').style.display = 'none';
-            document.getElementById('authenticated-content').style.display = 'block'; // Show authenticated content
-          }, 1000);
-        } else {
-          messageDiv.textContent = data.error || 'Login failed. Please check your credentials.';
-        }
-      })
-      .catch(error => {
-        console.error('Login error:', error);
-        messageDiv.textContent = 'Login failed. Please try again.';
-      })
-      .finally(() => {
-        // Re-enable buttons
-        loginBtn.disabled = false;
-        signupBtn.disabled = false;
-        loginBtn.textContent = 'Login';
-      });
-    }
-
-    function handleEmailSignup() {
-      const email = document.getElementById('auth-email').value.trim();
-      const password = document.getElementById('auth-password').value;
-      const messageDiv = document.getElementById('email-auth-message');
-      const loginBtn = document.querySelector('button[onclick="handleEmailLogin()"]');
-      const signupBtn = document.querySelector('button[onclick="handleEmailSignup()"]');
-      
-      messageDiv.style.color = '#e53935';
-      if (!email || !password) {
-        messageDiv.textContent = 'Please enter both email and password.';
-        return;
-      }
-
-      if (password.length < 6) {
-        messageDiv.textContent = 'Password must be at least 6 characters long.';
-        return;
-      }
-
-      // Disable buttons during authentication
-      loginBtn.disabled = true;
-      signupBtn.disabled = true;
-      signupBtn.textContent = 'Creating Account...';
-      
-      // Real signup call with redirect URL
-      fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          email, 
-          password,
-          redirect_url: window.location.href // Pass current page URL for redirect after confirmation
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          setCartEmail(email);
-          sessionStorage.setItem('authenticated', 'true');
-          messageDiv.style.color = '#4CAF50';
-          messageDiv.textContent = data.message || 'Account created! Please check your email to confirm your account.';
-          // Don't hide the modal immediately - let user know to check email
-          setTimeout(() => {
-            document.getElementById('email-auth-overlay').style.display = 'none';
-            document.getElementById('authenticated-content').style.display = 'block'; // Show authenticated content
-          }, 3000); // Give user time to read the message
-        } else {
-          messageDiv.textContent = data.error || 'Account creation failed. Please try again.';
-        }
-      })
-      .catch(error => {
-        console.error('Signup error:', error);
-        messageDiv.textContent = 'Account creation failed. Please try again.';
-      })
-      .finally(() => {
-        // Re-enable buttons
-        loginBtn.disabled = false;
-        signupBtn.disabled = false;
-        signupBtn.textContent = 'Create Account';
-      });
-    }
-
-    function handleForgotPassword() {
-      const email = document.getElementById('auth-email').value.trim();
-      const messageDiv = document.getElementById('email-auth-message');
-      
-      if (!email) {
-        messageDiv.style.color = '#e53935';
-        messageDiv.textContent = 'Please enter your email address first.';
-        return;
-      }
-      
-      messageDiv.style.color = '#666';
-      messageDiv.textContent = 'Sending password reset email...';
-      
-      // Call forgot password API
-      fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          email: email,
-          redirect_url: window.location.href
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          messageDiv.style.color = '#4CAF50';
-          messageDiv.textContent = data.message || 'Password reset email sent! Please check your inbox.';
-        } else {
-          messageDiv.style.color = '#e53935';
-          messageDiv.textContent = data.error || 'Failed to send password reset email.';
-        }
-      })
-      .catch(error => {
-        console.error('Forgot password error:', error);
-        messageDiv.style.color = '#e53935';
-        messageDiv.textContent = 'Failed to send password reset email. Please try again.';
-      });
-    }
-    // --- End Email Auth Functions ---
-  </script>
-</body>
-</html> 

@@ -10,14 +10,14 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
 
-const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots }) => {
+const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef }) => {
     // Use prop if provided, otherwise fallback to URL param
     const params = useParams();
     const videoId = propVideoId || params.videoId;
     const [video, setVideo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const videoRef = useRef(null);
+    const videoRef = propVideoRef || useRef(null);
 
     useEffect(() => {
         if (!videoId) {
@@ -192,10 +192,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     return (
         <div className="play-video">
-            <div className="screenmerch-actions">
-                <button className="screenmerch-btn" onClick={handleGrabScreenshot}>Grab Screenshot</button>
-                <button className="screenmerch-btn" onClick={handleMakeMerch}>Make Merch</button>
-            </div>
             <video 
                 key={videoId} 
                 ref={videoRef} 

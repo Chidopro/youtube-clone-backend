@@ -174,13 +174,28 @@ def add_security_headers(response):
     return response
 
 # Initialize Supabase client for database operations
-supabase: Client = create_client(supabase_url, supabase_key)
+try:
+    supabase: Client = create_client(supabase_url, supabase_key)
+    logger.info("✅ Supabase client initialized successfully")
+except Exception as e:
+    logger.warning(f"⚠️ Failed to initialize Supabase client: {e}")
+    logger.info("🔄 Continuing with dummy values for development...")
+    supabase = None
 
 # NEW: Initialize Printful integration
 printful_integration = ScreenMerchPrintfulIntegration()
 
 # Keep in-memory storage as fallback, but prioritize database
-product_data_store = {}
+product_data_store = {
+    "test123": {
+        "thumbnail": "https://via.placeholder.com/400x300/4CAF50/FFFFFF?text=Test+Video",
+        "screenshots": [
+            "https://via.placeholder.com/200x150/2196F3/FFFFFF?text=Screenshot+1",
+            "https://via.placeholder.com/200x150/FF9800/FFFFFF?text=Screenshot+2",
+            "https://via.placeholder.com/200x150/9C27B0/FFFFFF?text=Screenshot+3"
+        ]
+    }
+}
 order_store = {}  # In-memory store for demo; use a database for production
 
 # --- Resend Email Configuration ---
