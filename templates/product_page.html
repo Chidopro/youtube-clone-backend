@@ -195,6 +195,17 @@
 
   <h1>Customize Your Product</h1>
 
+  <!-- Shipping Information Notice -->
+  <div style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: left;">
+    <h3 style="margin: 0 0 10px 0; color: #1976d2;">🌍 Shipping Information</h3>
+    <div style="font-size: 14px; line-height: 1.5;">
+      <p><strong>✅ Available Worldwide:</strong> We ship to all countries including India, Middle East, Europe, Asia, and more.</p>
+      <p><strong>📦 Fulfillment:</strong> Products are fulfilled from US/Mexico for maximum color and size availability.</p>
+      <p><strong>⏱️ Delivery:</strong> 7-14 business days for international orders.</p>
+      <p><strong>💡 Tip:</strong> Core colors (Black, White, Gray, Navy) are always available globally.</p>
+    </div>
+  </div>
+
   <!-- Transparent Email Auth Overlay -->
   <div id="email-auth-overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.7);z-index:2000;display:flex;align-items:center;justify-content:center;">
     <div style="background:rgba(255,255,255,0.95);border-radius:16px;box-shadow:0 4px 32px #0002;padding:32px 32px 24px 32px;min-width:320px;max-width:90vw;text-align:center;position:relative;">
@@ -245,6 +256,12 @@
       </div>
       {% endif %}
       <textarea class="note-input" placeholder="Add a note (optional)"></textarea>
+      
+      <!-- Color Availability Notice -->
+      <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 8px; margin: 8px 0; font-size: 12px; color: #856404;">
+        <strong>💡 Color Note:</strong> Core colors (Black, White, Gray, Navy) are available worldwide. Some colors may have limited availability in certain regions.
+      </div>
+      
       <button class="btn add-to-cart-btn">Add {{ product.name }} to Cart</button>
       <!-- Preview window -->
       <div class="preview-label" style="margin-top:10px;font-size:13px;color:#888;">Preview</div>

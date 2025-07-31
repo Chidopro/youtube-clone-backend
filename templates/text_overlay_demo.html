@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Text Overlay Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .control-group input,
+        .control-group select,
+        .control-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .control-group input:focus,
+        .control-group select:focus,
+        .control-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .color-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .color-input input[type="color"] {
+            width: 50px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 10px 20px rgba(108, 117, 125, 0.3);
+        }
+
+        .preview-area {
+            text-align: center;
+        }
+
+        .image-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .upload-area {
+            border: 3px dashed #dee2e6;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: border-color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e3f2fd;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+
+        .style-presets {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .style-preset {
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .style-preset:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .style-preset.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Image Text Overlay</h1>
+            <p>Add stylish text overlays to your images with multiple effects and customization options</p>
+        </div>
+
+        <div class="content">
+            <div class="controls">
+                <h3 style="margin-bottom: 20px; color: #495057;">Customization Options</h3>
+                
+                <div class="control-group">
+                    <label for="textInput">Text to Overlay:</label>
+                    <textarea id="textInput" rows="3" placeholder="Enter your text here...">Sample Text</textarea>
+                </div>
+
+                <div class="control-group">
+                    <label for="styleSelect">Style Preset:</label>
+                    <select id="styleSelect">
+                        <option value="modern">Modern</option>
+                        <option value="vintage">Vintage</option>
+                        <option value="bold">Bold</option>
+                        <option value="elegant">Elegant</option>
+                        <option value="fun">Fun</option>
+                        <option value="minimal">Minimal</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="positionSelect">Position:</label>
+                    <select id="positionSelect">
+                        <option value="center">Center</option>
+                        <option value="top">Top</option>
+                        <option value="bottom">Bottom</option>
+                        <option value="top-left">Top Left</option>
+                        <option value="top-right">Top Right</option>
+                        <option value="bottom-left">Bottom Left</option>
+                        <option value="bottom-right">Bottom Right</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="fontSizeInput">Font Size:</label>
+                    <input type="range" id="fontSizeInput" min="20" max="100" value="48">
+                    <span id="fontSizeValue">48px</span>
+                </div>
+
+                <div class="control-group">
+                    <label>Text Color:</label>
+                    <div class="color-input">
+                        <input type="color" id="fontColorInput" value="#ffffff">
+                        <span>White</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Stroke Color:</label>
+                    <div class="color-input">
+                        <input type="color" id="strokeColorInput" value="#000000">
+                        <span>Black</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="strokeWidthInput">Stroke Width:</label>
+                    <input type="range" id="strokeWidthInput" min="0" max="8" value="2">
+                    <span id="strokeWidthValue">2px</span>
+                </div>
+
+                <div class="control-group">
+                    <label for="opacityInput">Opacity:</label>
+                    <input type="range" id="opacityInput" min="0" max="100" value="100">
+                    <span id="opacityValue">100%</span>
+                </div>
+
+                <div class="control-group">
+                    <label for="rotationInput">Rotation:</label>
+                    <input type="range" id="rotationInput" min="-45" max="45" value="0">
+                    <span id="rotationValue">0°</span>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="shadowCheck">
+                    <label for="shadowCheck">Add Shadow</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="glowCheck">
+                    <label for="glowCheck">Add Glow</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="backgroundCheck">
+                    <label for="backgroundCheck">Add Background</label>
+                </div>
+
+                <div class="control-group" id="backgroundColorGroup" style="display: none;">
+                    <label>Background Color:</label>
+                    <div class="color-input">
+                        <input type="color" id="backgroundColorInput" value="#000000">
+                        <span>Black</span>
+                    </div>
+                </div>
+
+                <div class="control-group" id="backgroundOpacityGroup" style="display: none;">
+                    <label for="backgroundOpacityInput">Background Opacity:</label>
+                    <input type="range" id="backgroundOpacityInput" min="0" max="100" value="70">
+                    <span id="backgroundOpacityValue">70%</span>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button class="btn" onclick="addTextOverlay()">Add Text Overlay</button>
+                    <button class="btn btn-secondary" onclick="previewTextOverlay()">Preview</button>
+                    <button class="btn btn-secondary" onclick="resetImage()">Reset</button>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Processing image...</p>
+                </div>
+
+                <div class="error" id="error"></div>
+                <div class="success" id="success"></div>
+            </div>
+
+            <div class="preview-area">
+                <h3 style="margin-bottom: 20px; color: #495057;">Image Preview</h3>
+                
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📁</div>
+                    <p>Click to upload an image or drag and drop</p>
+                    <p style="font-size: 12px; color: #6c757d; margin-top: 10px;">Supports: JPG, PNG, GIF</p>
+                </div>
+
+                <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileUpload(event)">
+
+                <div class="image-container" id="imageContainer" style="display: none;">
+                    <img id="previewImage" alt="Preview">
+                </div>
+
+                <div class="style-presets">
+                    <div class="style-preset" data-style="modern">Modern</div>
+                    <div class="style-preset" data-style="vintage">Vintage</div>
+                    <div class="style-preset" data-style="bold">Bold</div>
+                    <div class="style-preset" data-style="elegant">Elegant</div>
+                    <div class="style-preset" data-style="fun">Fun</div>
+                    <div class="style-preset" data-style="minimal">Minimal</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentImageData = null;
+        let originalImageData = null;
+
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            loadStylePresets();
+        });
+
+        function setupEventListeners() {
+            // File upload
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0]);
+                }
+            });
+
+            // Range inputs
+            document.getElementById('fontSizeInput').addEventListener('input', updateFontSizeValue);
+            document.getElementById('strokeWidthInput').addEventListener('input', updateStrokeWidthValue);
+            document.getElementById('opacityInput').addEventListener('input', updateOpacityValue);
+            document.getElementById('rotationInput').addEventListener('input', updateRotationValue);
+            document.getElementById('backgroundOpacityInput').addEventListener('input', updateBackgroundOpacityValue);
+
+            // Checkboxes
+            document.getElementById('backgroundCheck').addEventListener('change', toggleBackgroundOptions);
+            document.getElementById('styleSelect').addEventListener('change', updateStylePreset);
+
+            // Style presets
+            document.querySelectorAll('.style-preset').forEach(preset => {
+                preset.addEventListener('click', () => {
+                    document.querySelectorAll('.style-preset').forEach(p => p.classList.remove('active'));
+                    preset.classList.add('active');
+                    document.getElementById('styleSelect').value = preset.dataset.style;
+                    updateStylePreset();
+                });
+            });
+        }
+
+        function updateFontSizeValue() {
+            const value = document.getElementById('fontSizeInput').value;
+            document.getElementById('fontSizeValue').textContent = value + 'px';
+        }
+
+        function updateStrokeWidthValue() {
+            const value = document.getElementById('strokeWidthInput').value;
+            document.getElementById('strokeWidthValue').textContent = value + 'px';
+        }
+
+        function updateOpacityValue() {
+            const value = document.getElementById('opacityInput').value;
+            document.getElementById('opacityValue').textContent = value + '%';
+        }
+
+        function updateRotationValue() {
+            const value = document.getElementById('rotationInput').value;
+            document.getElementById('rotationValue').textContent = value + '°';
+        }
+
+        function updateBackgroundOpacityValue() {
+            const value = document.getElementById('backgroundOpacityInput').value;
+            document.getElementById('backgroundOpacityValue').textContent = value + '%';
+        }
+
+        function toggleBackgroundOptions() {
+            const backgroundCheck = document.getElementById('backgroundCheck');
+            const backgroundColorGroup = document.getElementById('backgroundColorGroup');
+            const backgroundOpacityGroup = document.getElementById('backgroundOpacityGroup');
+
+            if (backgroundCheck.checked) {
+                backgroundColorGroup.style.display = 'block';
+                backgroundOpacityGroup.style.display = 'block';
+            } else {
+                backgroundColorGroup.style.display = 'none';
+                backgroundOpacityGroup.style.display = 'none';
+            }
+        }
+
+        function updateStylePreset() {
+            const style = document.getElementById('styleSelect').value;
+            document.querySelectorAll('.style-preset').forEach(p => p.classList.remove('active'));
+            document.querySelector(`[data-style="${style}"]`).classList.add('active');
+        }
+
+        function loadStylePresets() {
+            fetch('/api/image/text-styles')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Available styles:', data.styles);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading styles:', error);
+                });
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please select a valid image file.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageData = e.target.result;
+                currentImageData = imageData;
+                originalImageData = imageData;
+                
+                const previewImage = document.getElementById('previewImage');
+                previewImage.src = imageData;
+                
+                document.getElementById('uploadArea').style.display = 'none';
+                document.getElementById('imageContainer').style.display = 'block';
+                
+                showSuccess('Image uploaded successfully!');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function addTextOverlay() {
+            if (!currentImageData) {
+                showError('Please upload an image first.');
+                return;
+            }
+
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                showError('Please enter some text.');
+                return;
+            }
+
+            showLoading(true);
+            hideMessages();
+
+            const requestData = {
+                image_data: currentImageData,
+                text: text,
+                position: document.getElementById('positionSelect').value,
+                font_size: parseInt(document.getElementById('fontSizeInput').value),
+                font_color: hexToRgb(document.getElementById('fontColorInput').value),
+                stroke_color: hexToRgb(document.getElementById('strokeColorInput').value),
+                stroke_width: parseInt(document.getElementById('strokeWidthInput').value),
+                style: document.getElementById('styleSelect').value,
+                opacity: parseInt(document.getElementById('opacityInput').value) / 100,
+                rotation: parseInt(document.getElementById('rotationInput').value),
+                shadow: document.getElementById('shadowCheck').checked,
+                glow: document.getElementById('glowCheck').checked,
+                background: document.getElementById('backgroundCheck').checked,
+                background_color: document.getElementById('backgroundCheck').checked ? 
+                    hexToRgb(document.getElementById('backgroundColorInput').value) : null,
+                background_opacity: parseInt(document.getElementById('backgroundOpacityInput').value) / 100
+            };
+
+            fetch('/api/image/add-text-overlay', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                if (data.success) {
+                    currentImageData = data.image_data;
+                    document.getElementById('previewImage').src = data.image_data;
+                    showSuccess('Text overlay added successfully!');
+                } else {
+                    showError(data.error || 'Failed to add text overlay.');
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                showError('Network error: ' + error.message);
+            });
+        }
+
+        function previewTextOverlay() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                showError('Please enter some text for preview.');
+                return;
+            }
+
+            showLoading(true);
+            hideMessages();
+
+            const requestData = {
+                text: text,
+                style: document.getElementById('styleSelect').value,
+                position: document.getElementById('positionSelect').value
+            };
+
+            fetch('/api/image/preview-text-overlay', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                if (data.success) {
+                    if (!currentImageData) {
+                        currentImageData = data.preview_image;
+                        originalImageData = data.preview_image;
+                        document.getElementById('uploadArea').style.display = 'none';
+                        document.getElementById('imageContainer').style.display = 'block';
+                    }
+                    document.getElementById('previewImage').src = data.preview_image;
+                    showSuccess('Preview generated successfully!');
+                } else {
+                    showError(data.error || 'Failed to generate preview.');
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                showError('Network error: ' + error.message);
+            });
+        }
+
+        function resetImage() {
+            if (originalImageData) {
+                currentImageData = originalImageData;
+                document.getElementById('previewImage').src = originalImageData;
+                showSuccess('Image reset to original.');
+            } else {
+                showError('No original image to reset to.');
+            }
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? [
+                parseInt(result[1], 16),
+                parseInt(result[2], 16),
+                parseInt(result[3], 16)
+            ] : [255, 255, 255];
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function hideMessages() {
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('success').style.display = 'none';
+        }
+    </script>
+</body>
+</html> 

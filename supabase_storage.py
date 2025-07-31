@@ -12,9 +12,16 @@ supabase_url = os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("VITE_SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
 
 if not supabase_url or not supabase_key:
-    raise ValueError("Missing Supabase environment variables")
+    print("Warning: Missing Supabase environment variables - some features may not work")
+    # Set dummy values to prevent crashes
+    supabase_url = "https://dummy.supabase.co"
+    supabase_key = "dummy_key"
 
-supabase: Client = create_client(supabase_url, supabase_key)
+try:
+    supabase: Client = create_client(supabase_url, supabase_key)
+except Exception as e:
+    print(f"Warning: Could not initialize Supabase client: {e}")
+    supabase = None
 
 class SupabaseStorage:
     def __init__(self):

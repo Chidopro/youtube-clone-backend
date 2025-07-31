@@ -20,11 +20,17 @@ from printful_integration import ScreenMerchPrintfulIntegration
 # NEW: Import video screenshot capture
 from video_screenshot import screenshot_capture
 
+# NEW: Import image text overlay
+from image_text_overlay import ImageTextOverlay
+
 # NEW: Import security manager
 from security_config import security_manager, SECURITY_HEADERS, validate_file_upload
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Initialize image text overlay service
+image_text_overlay = ImageTextOverlay()
 
 # Robust .env loading
 env_paths = [
@@ -43,8 +49,10 @@ supabase_key = os.getenv("VITE_SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_K
 print("SUPABASE_URL:", "✓" if supabase_url else "✗")
 print("SUPABASE_ANON_KEY:", "✓" if supabase_key else "✗")
 if not supabase_url or not supabase_key:
-    print("ERROR: Missing Supabase environment variables. Check your .env file location and content.", file=sys.stderr)
-    sys.exit(1)
+    print("WARNING: Missing Supabase environment variables. Some features may not work.")
+    print("Continuing with dummy values for development...")
+    supabase_url = "https://dummy.supabase.co"
+    supabase_key = "dummy_key"
 
 # Twilio setup
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
@@ -266,69 +274,68 @@ def test_order_email():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 PRODUCTS = [
-    # Products with both COLOR and SIZE options
     {
         "name": "Soft Tee",
         "price": 24.99,
         "filename": "guidonteepreview.png",
         "main_image": "guidontee.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Unisex Classic Tee",
         "price": 24.99,
         "filename": "unisexclassicteepreview.png",
         "main_image": "unisexclassictee.png",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Men's Tank Top",
         "price": 19.99,
         "filename": "randompreview.png",
         "main_image": "random.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Unisex Hoodie",
         "price": 22.99,
         "filename": "testedpreview.png",
         "main_image": "tested.png",
-        "options": {"color": ["Black", "White"], "size": ["S", "M", "L"]}
+        "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Cropped Hoodie",
         "price": 39.99,
         "filename": "croppedhoodiepreview.png",
         "main_image": "croppedhoodie.png",
-        "options": {"color": ["Black", "Gray", "Navy"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Unisex Champion Hoodie",
         "price": 29.99,
         "filename": "hoodiechampionpreview.jpg",
         "main_image": "hoodiechampion.png",
-        "options": {"color": ["Black", "Gray"], "size": ["13 inch", "15 inch"]}
+        "options": {"color": ["Black", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Ribbed Neck",
         "price": 25.99,
         "filename": "womensribbedneckpreview.jpg",
         "main_image": "womensribbedneck.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Shirt",
         "price": 26.99,
         "filename": "womensshirtkevin.png",
         "main_image": "womensshirt.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's HD Shirt",
         "price": 28.99,
         "filename": "womenshdshirtpreview.png",
         "main_image": "womenshdshirt.png",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kids Shirt",
@@ -351,8 +358,6 @@ PRODUCTS = [
         "main_image": "kidlongsleeve.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}
     },
-    
-    # Products with COLOR only
     {
         "name": "Canvas Tote",
         "price": 18.99,
@@ -395,8 +400,6 @@ PRODUCTS = [
         "main_image": "coaster.png",
         "options": {"color": ["Wood", "Cork", "Black"], "size": []}
     },
-    
-    # Products with NOTES only (no color/size options)
     {
         "name": "Sticker Pack",
         "price": 8.99,
@@ -423,21 +426,21 @@ PRODUCTS = [
         "price": 29.99,
         "filename": "menslongsleevepreview.jpg",
         "main_image": "menslongsleeve.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Tank",
         "price": 22.99,
         "filename": "womenstankpreview.jpg",
         "main_image": "womenstank.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Tee",
         "price": 23.99,
         "filename": "womensteepreview.jpg",
         "main_image": "womenstee.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Distressed Dad Hat",
@@ -486,6 +489,11 @@ PRODUCTS = [
 @app.route("/")
 def index():
     return "Flask Backend is Running!"
+
+@app.route("/text-overlay-demo")
+def text_overlay_demo():
+    """Demo page for image text overlay functionality"""
+    return render_template("text_overlay_demo.html")
 
 @app.route("/api/create-product", methods=["POST", "OPTIONS"])
 def create_product():
@@ -2214,6 +2222,233 @@ def create_pro_checkout():
         logger.error(f"Error creating Pro checkout session: {str(e)}")
         return jsonify({"error": "Failed to create checkout session"}), 500
 
+
+# ============================================================================
+# IMAGE TEXT OVERLAY API ENDPOINTS
+# ============================================================================
+
+@app.route("/api/image/add-text-overlay", methods=["POST", "OPTIONS"])
+def add_text_overlay():
+    """Add stylish text overlay to an image"""
+    if request.method == "OPTIONS":
+        return jsonify({"success": True}), 200
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+        
+        # Required fields
+        image_data = data.get('image_data')
+        text = data.get('text')
+        
+        if not image_data or not text:
+            return jsonify({"success": False, "error": "Missing required fields: image_data and text"}), 400
+        
+        # Optional fields with defaults
+        position = data.get('position', 'center')
+        font_size = data.get('font_size')
+        font_color = data.get('font_color')
+        stroke_color = data.get('stroke_color')
+        stroke_width = data.get('stroke_width')
+        style = data.get('style', 'modern')
+        opacity = data.get('opacity', 1.0)
+        rotation = data.get('rotation', 0)
+        shadow = data.get('shadow', False)
+        glow = data.get('glow', False)
+        background = data.get('background', False)
+        background_color = data.get('background_color')
+        background_opacity = data.get('background_opacity', 0.7)
+        
+        # Convert color tuples if provided as lists
+        if font_color and isinstance(font_color, list):
+            font_color = tuple(font_color)
+        if stroke_color and isinstance(stroke_color, list):
+            stroke_color = tuple(stroke_color)
+        if background_color and isinstance(background_color, list):
+            background_color = tuple(background_color)
+        
+        # Add text overlay
+        result_image = image_text_overlay.add_text_overlay(
+            image_data=image_data,
+            text=text,
+            position=position,
+            font_size=font_size,
+            font_color=font_color,
+            stroke_color=stroke_color,
+            stroke_width=stroke_width,
+            style=style,
+            opacity=opacity,
+            rotation=rotation,
+            shadow=shadow,
+            glow=glow,
+            background=background,
+            background_color=background_color,
+            background_opacity=background_opacity
+        )
+        
+        logger.info(f"Text overlay added successfully: '{text}' with style '{style}'")
+        return jsonify({
+            "success": True,
+            "image_data": result_image,
+            "message": "Text overlay added successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error adding text overlay: {str(e)}")
+        return jsonify({"success": False, "error": f"Failed to add text overlay: {str(e)}"}), 500
+
+
+@app.route("/api/image/add-multiple-text-overlays", methods=["POST", "OPTIONS"])
+def add_multiple_text_overlays():
+    """Add multiple text overlays to an image"""
+    if request.method == "OPTIONS":
+        return jsonify({"success": True}), 200
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+        
+        # Required fields
+        image_data = data.get('image_data')
+        text_elements = data.get('text_elements')
+        
+        if not image_data or not text_elements:
+            return jsonify({"success": False, "error": "Missing required fields: image_data and text_elements"}), 400
+        
+        if not isinstance(text_elements, list):
+            return jsonify({"success": False, "error": "text_elements must be a list"}), 400
+        
+        # Process color tuples for each text element
+        for element in text_elements:
+            if 'font_color' in element and isinstance(element['font_color'], list):
+                element['font_color'] = tuple(element['font_color'])
+            if 'stroke_color' in element and isinstance(element['stroke_color'], list):
+                element['stroke_color'] = tuple(element['stroke_color'])
+            if 'background_color' in element and isinstance(element['background_color'], list):
+                element['background_color'] = tuple(element['background_color'])
+        
+        # Add multiple text overlays
+        result_image = image_text_overlay.add_multiple_text_overlays(
+            image_data=image_data,
+            text_elements=text_elements
+        )
+        
+        logger.info(f"Multiple text overlays added successfully: {len(text_elements)} elements")
+        return jsonify({
+            "success": True,
+            "image_data": result_image,
+            "message": f"Added {len(text_elements)} text overlays successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error adding multiple text overlays: {str(e)}")
+        return jsonify({"success": False, "error": f"Failed to add text overlays: {str(e)}"}), 500
+
+
+@app.route("/api/image/text-styles", methods=["GET"])
+def get_text_styles():
+    """Get available text styles and their configurations"""
+    try:
+        styles = image_text_overlay.get_preset_styles()
+        
+        # Add additional style information
+        style_info = {
+            "available_styles": list(styles.keys()),
+            "positions": ["top", "center", "bottom", "top-left", "top-right", "bottom-left", "bottom-right"],
+            "effects": ["shadow", "glow", "background", "rotation", "opacity"],
+            "preset_styles": styles
+        }
+        
+        return jsonify({
+            "success": True,
+            "styles": style_info
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting text styles: {str(e)}")
+        return jsonify({"success": False, "error": f"Failed to get text styles: {str(e)}"}), 500
+
+
+@app.route("/api/image/preview-text-overlay", methods=["POST", "OPTIONS"])
+def preview_text_overlay():
+    """Preview text overlay on a sample image"""
+    if request.method == "OPTIONS":
+        return jsonify({"success": True}), 200
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+        
+        # Create a sample image for preview
+        sample_image = create_sample_image()
+        
+        # Get text overlay parameters
+        text = data.get('text', 'Sample Text')
+        style = data.get('style', 'modern')
+        position = data.get('position', 'center')
+        
+        # Get style configuration
+        styles = image_text_overlay.get_preset_styles()
+        style_config = styles.get(style, styles['modern'])
+        
+        # Add text overlay to sample image
+        result_image = image_text_overlay.add_text_overlay(
+            image_data=sample_image,
+            text=text,
+            position=position,
+            **style_config
+        )
+        
+        return jsonify({
+            "success": True,
+            "preview_image": result_image,
+            "style_config": style_config
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating preview: {str(e)}")
+        return jsonify({"success": False, "error": f"Failed to create preview: {str(e)}"}), 500
+
+
+def create_sample_image():
+    """Create a sample image for preview purposes"""
+    try:
+        # Create a simple gradient image
+        width, height = 400, 300
+        image = Image.new('RGB', (width, height))
+        draw = ImageDraw.Draw(image)
+        
+        # Create a gradient background
+        for y in range(height):
+            r = int(255 * (1 - y / height))
+            g = int(128 * (y / height))
+            b = int(255 * (y / height))
+            draw.line([(0, y), (width, y)], fill=(r, g, b))
+        
+        # Convert to base64
+        buffer = io.BytesIO()
+        image.save(buffer, format='PNG')
+        buffer.seek(0)
+        
+        result_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        return f"data:image/png;base64,{result_data}"
+        
+    except Exception as e:
+        logger.error(f"Error creating sample image: {str(e)}")
+        # Return a simple colored rectangle as fallback
+        image = Image.new('RGB', (400, 300), (100, 150, 200))
+        buffer = io.BytesIO()
+        image.save(buffer, format='PNG')
+        buffer.seek(0)
+        
+        result_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        return f"data:image/png;base64,{result_data}"
 
 
 if __name__ == "__main__":
