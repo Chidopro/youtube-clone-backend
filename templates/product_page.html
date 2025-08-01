@@ -1,20 +1,181 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Customize Your Product</title>
+  <title>🎯 UPDATED v2.0 - Customize Your Product</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <style>
     body { font-family: Arial, sans-serif; background: #f9f9f9; text-align: center; padding: 0; margin: 0; }
     h1 { color: #3f51b5; }
     
-    /* User Flow Section Styles - Matching Home Page */
-    .user-flow-section {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      margin: 0;
-      padding: 20px 20px;
-      color: white;
-      text-align: center;
+         /* Simple Logo Header - Bigger Logo, Less Height */
+     .simple-header {
+       background: white;
+       padding: 5px 2%;
+       position: relative;
+       z-index: 10;
+       border-bottom: 1px solid #eee;
+     }
+
+    .simple-header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
     }
+
+    .simple-logo {
+      display: flex;
+      align-items: center;
+    }
+
+    .simple-logo .logo-img {
+      width: 40px;
+      height: 40px;
+      display: block;
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .menu-icon {
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .menu-icon span {
+      width: 100%;
+      height: 3px;
+      background: #333;
+      border-radius: 2px;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-img {
+      width: 32px;
+      height: 32px;
+      display: block;
+    }
+
+    .logo-text {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .search-container {
+      flex: 1;
+      max-width: 500px;
+      margin: 0 20px;
+      position: relative;
+    }
+
+    .search-input {
+      width: 500px;
+      padding: 12px 18px;
+      border: 1px solid #ccc;
+      border-radius: 30px;
+      font-size: 16px;
+      background: transparent;
+      outline: 0;
+      transition: border-color 0.2s ease;
+    }
+
+    .search-input:focus {
+      border-color: #065fd4;
+    }
+
+    .search-icon {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: #666;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .subscribe-btn {
+      background: #cc0000;
+      color: white;
+      border: 1px solid #cc0000;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+    }
+
+    .subscribe-btn:hover {
+      background: #a00000;
+      transform: translateY(-1px);
+    }
+
+    .signin-btn {
+      background: #065fd4;
+      color: white;
+      border: 1px solid #065fd4;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .signin-btn:hover {
+      background: #0448a0;
+      transform: translateY(-1px);
+    }
+    
+         /* User Flow Section Styles - Matching Home Page */
+     .user-flow-section {
+       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+       margin: 0;
+       padding: 40px 20px;
+       color: white;
+       text-align: center;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       position: relative;
+       width: 100%;
+       box-sizing: border-box;
+       min-height: 120px;
+     }
 
     .flow-steps {
       display: flex;
@@ -33,52 +194,80 @@
       text-align: center;
       min-width: 130px;
       cursor: pointer;
-      transition: transform 0.2s ease;
+      transition: all 0.3s ease;
     }
 
     .flow-step:hover {
-      transform: scale(1.05);
+      transform: translateY(-2px);
     }
 
-    .step-number {
-      background: rgba(255, 255, 255, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      font-weight: bold;
-      margin-bottom: 6px;
-      transition: all 0.3s ease;
-    }
+                   .step-number {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        font-weight: bold;
+        margin-bottom: 6px;
+        transition: all 0.3s ease;
+      }
 
     .flow-step:hover .step-number {
       background: rgba(255, 255, 255, 0.3);
       transform: scale(1.1);
     }
 
-    .step-content h3 {
-      margin: 0 0 3px 0;
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: white;
-    }
+                   .step-content h3 {
+        margin: 0 0 3px 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: white;
+      }
 
-    .step-content p {
-      margin: 0;
-      font-size: 0.7rem;
-      opacity: 0.9;
-      line-height: 1.1;
-    }
+      .step-content p {
+        margin: 0;
+        font-size: 0.7rem;
+        opacity: 0.9;
+        line-height: 1.1;
+      }
 
     .flow-arrow {
       font-size: 1.3rem;
       color: rgba(255, 255, 255, 0.7);
       font-weight: bold;
       margin: 0 6px;
+    }
+
+         /* Shipping Information */
+     .shipping-info {
+       display: flex;
+       gap: 20px;
+       align-items: center;
+       margin-top: 0;
+       position: absolute;
+       top: 10px;
+       right: 20px;
+       z-index: 5;
+     }
+
+    .shipping-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: white;
+      font-size: 0.8rem;
+    }
+
+    .shipping-icon {
+      font-size: 1rem;
+    }
+
+    .shipping-text {
+      font-weight: 500;
     }
 
     /* Main Layout Container */
@@ -90,35 +279,45 @@
       gap: 20px;
     }
 
-    /* Left Column - Video Viewer */
-    .video-viewer {
+    /* Left Column - Two Stacked Windows (Video Preview Removed) */
+    .left-column {
       flex: 1;
-      min-width: 300px;
+      min-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 500px; /* Give more space to products on the right */
+      height: 100%; /* Ensure full height */
+    }
+
+    /* Screenshots Selected Window */
+    .screenshots-selected {
       background: #fff;
       border-radius: 12px;
       padding: 20px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
 
-    /* Middle Column - Screenshots */
-    .screenshots-section {
-      flex: 1;
-      min-width: 300px;
+    /* Products Selected Window */
+    .products-selected {
       background: #fff;
       border-radius: 12px;
       padding: 20px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      min-height: 150px; /* Ensure minimum height */
+      display: flex;
+      flex-direction: column;
     }
 
-    /* Right Column - Products */
+    /* Right Column - Available Products */
     .products-section {
       flex: 1;
-      min-width: 300px;
+      min-width: 400px;
       background: #fff;
       border-radius: 12px;
       padding: 20px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      max-height: 80vh;
+      max-height: 600px;
       overflow-y: auto;
     }
 
@@ -132,11 +331,46 @@
       box-sizing: border-box;
       display: block;
     }
-    .screenshot-preview-row { 
-      display: grid; 
+         .screenshot-preview-row { 
+       display: flex; 
+       flex-direction: column;
+       gap: 10px; 
+       margin: 10px 0 15px 0;
+       min-height: 120px; /* Reduced height to make box smaller */
+     }
+    
+         /* Video thumbnail styling - Much smaller size */
+     .video-thumbnail {
+       width: 100%;
+       height: 40px;
+       object-fit: cover;
+       border-radius: 6px;
+       margin-bottom: 4px;
+       border: 2px solid #4CAF50;
+       cursor: pointer;
+     }
+    
+    /* Screenshot thumbnails container - fits 5 screenshots */
+    .screenshot-thumbnails {
+      display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 10px; 
-      margin: 10px 0 30px 0;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    
+    /* Individual screenshot styling */
+    .screenshot-thumbnail {
+      width: 100%;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 1px solid #ddd;
+      transition: border-color 0.2s;
+    }
+    
+    .screenshot-thumbnail:hover {
+      border-color: #4CAF50;
     }
     .screenshot-preview-row img {
       width: 100%;
@@ -175,140 +409,262 @@
       display: none;
     }
     
-    /* Mobile Responsive */
-    @media (max-width: 768px) {
-      .main-container {
-        flex-direction: column;
-        padding: 10px;
-      }
-      
-      .flow-steps {
-        flex-direction: column;
-        gap: 8px;
-      }
-      
-      .flow-arrow {
-        transform: rotate(90deg);
-        margin: 4px 0;
-      }
-      
-      .flow-step {
-        min-width: 110px;
-      }
-      
-      .user-flow-section {
-        padding: 15px 15px;
-      }
-    }
-
-    /* Product Header Styles */
-    .product-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 15px 20px;
-      margin-bottom: 20px;
-    }
-
-    .header-content {
-      max-width: 1400px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .header-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .header-title {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: white;
-    }
-
-    .header-info {
-      display: flex;
-      gap: 20px;
-      align-items: center;
-    }
-
-    .info-item {
-      font-size: 0.9rem;
-      opacity: 0.9;
-    }
-
-    @media (max-width: 768px) {
-      .header-content {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-      }
-      
-      .header-info {
-        flex-direction: column;
-        gap: 5px;
-      }
-    }
+         /* Mobile Responsive */
+     @media (max-width: 768px) {
+       .main-container {
+         flex-direction: column;
+         padding: 10px;
+         gap: 15px;
+       }
+       
+       .left-column {
+         min-width: auto;
+         max-width: 100%;
+       }
+       
+       .right-column {
+         min-width: auto;
+       }
+       
+       .screenshots-selected,
+       .products-selected,
+       .products-section {
+         padding: 15px;
+         margin-bottom: 15px;
+       }
+       
+       .screenshot-preview-row {
+         min-height: 100px;
+         margin: 8px 0 10px 0;
+       }
+       
+       .video-thumbnail {
+         height: 30px;
+         margin-bottom: 3px;
+       }
+       
+       .screenshot-thumbnails {
+         grid-template-columns: repeat(2, 1fr);
+         gap: 6px;
+         margin-top: 8px;
+       }
+       
+       .screenshot-thumbnail {
+         height: 50px;
+       }
+       
+       .product-row {
+         grid-template-columns: 1fr;
+         gap: 12px;
+         margin-top: 15px;
+       }
+       
+       .product-card {
+         padding: 12px;
+       }
+       
+       .product-card img {
+         height: 150px;
+       }
+       
+       .variant-selector {
+         padding: 8px;
+         margin-bottom: 10px;
+       }
+       
+       .variant-selector label {
+         font-size: 11px;
+       }
+       
+       .variant-selector select {
+         padding: 5px;
+         font-size: 11px;
+       }
+       
+       .note-input {
+         padding: 5px;
+         font-size: 11px;
+         margin-bottom: 10px;
+       }
+       
+       .btn {
+         padding: 10px 16px;
+         font-size: 14px;
+         width: 100%;
+       }
+       
+       .user-flow-section {
+         padding: 20px 15px;
+         min-height: 100px;
+         flex-direction: column;
+         gap: 15px;
+       }
+       
+       .flow-steps {
+         position: static !important;
+         transform: none !important;
+         left: auto !important;
+         margin: 0 auto;
+       }
+       
+       .shipping-info {
+         position: static !important;
+         top: auto !important;
+         right: auto !important;
+         justify-content: center;
+         flex-wrap: wrap;
+         gap: 10px;
+         margin-top: 10px;
+       }
+       
+       .shipping-item {
+         font-size: 0.7rem;
+         gap: 3px;
+       }
+       
+       .shipping-icon {
+         font-size: 0.9rem;
+       }
+       
+       .step-number {
+         width: 28px;
+         height: 28px;
+         font-size: 0.9rem;
+       }
+       
+       .step-content h3 {
+         font-size: 0.8rem;
+       }
+       
+       .step-content p {
+         font-size: 0.6rem;
+       }
+       
+       /* Touch-friendly interactions */
+       .screenshot-thumbnail,
+       .video-thumbnail,
+       .btn,
+       .variant-selector select {
+         min-height: 44px;
+         touch-action: manipulation;
+       }
+       
+       .screenshot-thumbnail:hover,
+       .video-thumbnail:hover {
+         transform: scale(1.05);
+       }
+       
+       /* Better spacing for mobile */
+       h3 {
+         font-size: 1.1rem;
+         margin-bottom: 10px;
+       }
+       
+       .selected-products {
+         min-height: 60px;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+       }
+     }
+     
+     /* Extra small mobile devices */
+     @media (max-width: 480px) {
+       .main-container {
+         padding: 8px;
+         gap: 12px;
+       }
+       
+       .screenshots-selected,
+       .products-selected,
+       .products-section {
+         padding: 12px;
+       }
+       
+       .screenshot-thumbnails {
+         grid-template-columns: repeat(2, 1fr);
+         gap: 4px;
+       }
+       
+       .product-card img {
+         height: 120px;
+       }
+       
+       .user-flow-section {
+         padding: 15px 10px;
+       }
+       
+       .shipping-info {
+         gap: 8px;
+       }
+       
+       .shipping-item {
+         font-size: 0.6rem;
+       }
+     }
   </style>
 </head>
 <body>
-  <!-- User Flow Section -->
-  <div class="user-flow-section">
-    <div class="flow-steps">
-      <div class="flow-step" onclick="scrollToScreenshots()">
-        <div class="step-number">2</div>
-        <div class="step-content">
-          <h3>Pick Screenshot</h3>
-          <p>Select the perfect moment to capture</p>
-        </div>
-      </div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-step" onclick="scrollToProducts()">
-        <div class="step-number">3</div>
-        <div class="step-content">
-          <h3>Make Merchandise</h3>
-          <p>Create custom products with your screenshot</p>
-        </div>
-      </div>
-    </div>
-  </div>
+  
 
-  <!-- Header Section -->
-  <div class="product-header">
-    <div class="header-content">
-      <div class="header-logo">
-        <img src="/static/icons/screenmerch_logo.png" alt="ScreenMerch Logo" style="width: 40px; height: auto;">
-        <span class="header-title">ScreenMerch</span>
+     <!-- User Flow Section - Only Step 3 since we're already at merchandise page -->
+   <div class="user-flow-section">
+           <!-- Make Merchandise Section - Now positioned above Screenshots Selected -->
+      <div class="flow-steps" style="position: absolute; left: 25%; transform: translateX(-50%); z-index: 5;">
+        <div class="flow-step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h3>Make Merchandise</h3>
+            <p>Create custom products with your screenshot</p>
+          </div>
+        </div>
       </div>
-      <div class="header-info">
-        <div class="info-item">🌍 Available Worldwide</div>
-        <div class="info-item">📦 US/Mexico Fulfillment</div>
-        <div class="info-item">⏱️ 7-14 Day Delivery</div>
-      </div>
-    </div>
-  </div>
+     
+     <!-- Shipping Information - Now on the UPPER RIGHT -->
+     <div class="shipping-info">
+       <div class="shipping-item">
+         <span class="shipping-icon">🌍</span>
+         <span class="shipping-text">Global Shipping</span>
+       </div>
+       <div class="shipping-item">
+         <span class="shipping-icon">📦</span>
+         <span class="shipping-text">US/Mexico Fulfillment</span>
+       </div>
+       <div class="shipping-item">
+         <span class="shipping-icon">🎨</span>
+         <span class="shipping-text">Core Colors Available</span>
+       </div>
+       <div class="shipping-item">
+         <span class="shipping-icon">✅</span>
+         <span class="shipping-text">3-14 Day Delivery</span>
+       </div>
+     </div>
+   </div>
 
   <!-- Main Layout -->
   <div class="main-container">
-    <!-- Left Column - Video Viewer -->
-    <div class="video-viewer">
-      <h3>Video Preview</h3>
-      <img id="thumbnailImage" class="preview-image" alt="Selected Thumbnail">
-    </div>
-
-    <!-- Middle Column - Screenshots -->
-    <div class="screenshots-section" id="screenshotsSection">
-      <h3>Screenshot Selection</h3>
-      <div class="screenshot-preview-row" id="screenshotPreviewRow"></div>
-      <div id="resolutionNotice" class="resolution-notice">
-        <strong>Notice:</strong> Maximum resolution is not available. Please select a lower resolution option from the thumbnails below.
+    <!-- Left Column - Two Stacked Windows (Video Preview Removed) -->
+    <div class="left-column">
+      <!-- Top Window: Screenshots Selected -->
+      <div class="screenshots-selected" id="screenshotsSelected">
+        <h3>Screenshots Selected</h3>
+        <div class="screenshot-preview-row" id="screenshotPreviewRow">
+          <!-- Video thumbnail will be auto-inserted here -->
+        </div>
+        
+      </div>
+      
+      <!-- Bottom Window: Products Selected -->
+      <div class="products-selected" id="productsSelected">
+        <h3>Products Selected</h3>
+        <div class="selected-products" id="selectedProducts">
+          <p>No products selected yet</p>
+        </div>
+        <button class="btn checkout-btn" onclick="goToCheckout()" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
       </div>
     </div>
 
-    <!-- Right Column - Products -->
+    <!-- Right Column - Available Products -->
     <div class="products-section" id="productsSection">
       <h3>Available Products</h3>
       <div class="product-row" id="productRow"></div>
@@ -317,30 +673,24 @@
 
   <script>
     // JavaScript functions for clickable flow steps
-    function scrollToScreenshots() {
-      document.getElementById('screenshotsSection').scrollIntoView({ 
+    function scrollToProducts() {
+      document.getElementById('productsSelected').scrollIntoView({ 
         behavior: 'smooth',
         block: 'start'
       });
     }
 
-    function scrollToProducts() {
-      document.getElementById('productsSection').scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'start'
-      });
+    function goToCheckout() {
+      // Add checkout logic here
+      alert('Checkout functionality will be implemented');
     }
 
     // Initialize the page
     document.addEventListener('DOMContentLoaded', function() {
-      // Set the thumbnail image
-      const thumbnailImage = document.getElementById('thumbnailImage');
-      const img = '{{ img_url }}';
-      if (img) {
-        thumbnailImage.src = img;
-      }
+      // Video preview removed - now auto-insert video thumbnail and screenshots
 
-      // Populate screenshots
+      // Get video thumbnail and screenshots
+      const videoThumbnail = '{{ img_url }}'; // Video thumbnail from backend
       const screenshots = [];
       {% if screenshots %}
         {% for screenshot in screenshots %}
@@ -348,16 +698,38 @@
         {% endfor %}
       {% endif %}
 
-      // Display screenshots
+      // Display video thumbnail and screenshots in the top window
       const row = document.getElementById("screenshotPreviewRow");
+      
+      // Auto-insert video thumbnail first
+      if (videoThumbnail) {
+        const thumbnailImg = document.createElement("img");
+        thumbnailImg.src = videoThumbnail + '?v=' + Date.now(); // Add timestamp to prevent caching
+        thumbnailImg.className = "video-thumbnail";
+                 thumbnailImg.style.cssText = "width: 100%; height: 40px; object-fit: cover; border-radius: 6px; margin-bottom: 4px; border: 2px solid #4CAF50;";
+        thumbnailImg.addEventListener('click', function() {
+          setSelectedImage(thumbnailImg, videoThumbnail);
+        });
+        row.appendChild(thumbnailImg);
+      }
+
+      // Create screenshot thumbnails container
+      const thumbnailsContainer = document.createElement("div");
+      thumbnailsContainer.className = "screenshot-thumbnails";
+      
+      // Add screenshots below video thumbnail in grid layout
       screenshots.forEach(src => {
         const img = document.createElement("img");
-        img.src = src;
+        img.src = src + '?v=' + Date.now(); // Add timestamp to prevent caching
+        img.className = "screenshot-thumbnail";
         img.addEventListener('click', function() {
           setSelectedImage(img, src);
         });
-        row.appendChild(img);
+        thumbnailsContainer.appendChild(img);
       });
+      
+      // Add the thumbnails container to the row
+      row.appendChild(thumbnailsContainer);
 
       // Populate products
       const products = [];
@@ -399,8 +771,8 @@
               </select>
             </div>
           ` : ''}
-          <textarea class="note-input" placeholder="Add a note (optional)"></textarea>
-          <hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;">
+                     <textarea class="note-input" placeholder="Add a note (optional)"></textarea>
+           <hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;">
           <button class="btn add-to-cart-btn">Add ${product.name} to Cart</button>
         `;
         productRow.appendChild(productCard);
@@ -437,175 +809,31 @@
       }
     });
 
-    // --- Auto-crop function ---
+        // --- Auto-crop function ---
     function autoCropImage(url, callback) {
       const img = new Image();
-      img.crossOrigin = "Anonymous";
-      img.onload = function () {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
+      img.crossOrigin = "anonymous";
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size to match image
         canvas.width = img.width;
         canvas.height = img.height;
+        
+        // Draw image on canvas
         ctx.drawImage(img, 0, 0);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const { data, width, height } = imageData;
-        let top = 0, bottom = height, left = 0, right = width;
-        const isWhiteOrBlack = (r, g, b) =>
-          (r > 230 && g > 230 && b > 230) || (r < 25 && g < 25 && b < 25);
-        function scanTop() {
-          for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-              const i = (y * width + x) * 4;
-              if (!isWhiteOrBlack(data[i], data[i+1], data[i+2])) {
-                top = y;
-                return;
-              }
-            }
-          }
-        }
-        function scanBottom() {
-          for (let y = height - 1; y >= 0; y--) {
-            for (let x = 0; x < width; x++) {
-              const i = (y * width + x) * 4;
-              if (!isWhiteOrBlack(data[i], data[i+1], data[i+2])) {
-                bottom = y;
-                return;
-              }
-            }
-          }
-        }
-        function scanLeft() {
-          for (let x = 0; x < width; x++) {
-            for (let y = 0; y < height; y++) {
-              const i = (y * width + x) * 4;
-              if (!isWhiteOrBlack(data[i], data[i+1], data[i+2])) {
-                left = x;
-                return;
-              }
-            }
-          }
-        }
-        function scanRight() {
-          for (let x = width - 1; x >= 0; x--) {
-            for (let y = 0; y < height; y++) {
-              const i = (y * width + x) * 4;
-              if (!isWhiteOrBlack(data[i], data[i+1], data[i+2])) {
-                right = x;
-                return;
-              }
-            }
-          }
-        }
-        scanTop(); scanBottom(); scanLeft(); scanRight();
-        const croppedW = right - left;
-        const croppedH = bottom - top;
-        const croppedCanvas = document.createElement("canvas");
-        croppedCanvas.width = croppedW;
-        croppedCanvas.height = croppedH;
-        const croppedCtx = croppedCanvas.getContext("2d");
-        croppedCtx.drawImage(canvas, left, top, croppedW, croppedH, 0, 0, croppedW, croppedH);
-        callback(croppedCanvas.toDataURL());
+        
+        // Convert to data URL and callback
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        callback(dataUrl);
+      };
+      img.onerror = function() {
+        // If image fails to load, just use the original URL
+        callback(url);
       };
       img.src = url;
     }
-    // --- End auto-crop function ---
-
-    // Get data from template variables or URL parameters (for backwards compatibility)
-    const email = '{{ email }}' || new URLSearchParams(window.location.search).get('email') || '';
-    const img = '{{ img_url }}' || new URLSearchParams(window.location.search).get('img') || '';
-    const screenParam = new URLSearchParams(window.location.search).get('screens');
-    const channel = '{{ channel_id }}' || new URLSearchParams(window.location.search).get('channel') || window.location.pathname.split('/')[2];
-    const maxResAvailable = new URLSearchParams(window.location.search).get('maxres') !== 'false';
-    const resolutionNotice = document.getElementById('resolutionNotice');
-
-    // Show resolution notice if max resolution is not available
-    if (!maxResAvailable) {
-      resolutionNotice.style.display = 'block';
-    }
-
-    // --- Cart reset logic ---
-    const lastChannel = localStorage.getItem('lastChannel');
-    if (channel && channel !== lastChannel) {
-      localStorage.removeItem('cart');
-    }
-    localStorage.setItem('lastChannel', channel);
-    // --- End cart reset logic ---
-
-    // Set and crop the main thumbnail
-    const thumbnailImage = document.getElementById("thumbnailImage");
-    autoCropImage(img, function(croppedDataUrl) {
-      thumbnailImage.src = croppedDataUrl;
-    });
-
-    // Add click event to select the thumbnail
-    thumbnailImage.addEventListener('click', function() {
-      setSelectedImage(thumbnailImage, thumbnailImage.src);
-    });
-
-    // Get screenshots from template or URL parameters
-    let screenshots = [];
-    {% if screenshots %}
-      // Use screenshots passed from template
-      {% for screenshot in screenshots %}
-        screenshots.push('{{ screenshot }}');
-      {% endfor %}
-    {% else %}
-      // Fallback to reading from URL parameters
-      for (let i = 1; i <= 5; i++) {
-        const url = new URLSearchParams(window.location.search).get(`screen${i}`);
-        if (url) screenshots.push(url);
-      }
-    {% endif %}
-    
-    console.log("Email:", email);
-    console.log("Main image:", img);
-    console.log("Screenshots array:", screenshots);
-
-    // Image selection logic
-    let selectedImageUrl = null;
-    const row = document.getElementById("screenshotPreviewRow");
-    row.innerHTML = "";
-
-    function setSelectedImage(imgEl, src) {
-      document.querySelectorAll('.selected-image').forEach(el => el.classList.remove('selected-image'));
-      imgEl.classList.add('selected-image');
-      selectedImageUrl = src;
-    }
-
-    // Crop and display screenshots
-    screenshots.forEach(src => {
-      autoCropImage(src, function(croppedDataUrl) {
-        const img = document.createElement("img");
-        img.src = croppedDataUrl;
-        img.addEventListener('click', function() {
-          setSelectedImage(img, croppedDataUrl);
-        });
-        row.appendChild(img);
-        // By default, select the thumbnail
-        if (!selectedImageUrl) {
-          setSelectedImage(thumbnailImage, thumbnailImage.src);
-        }
-      });
-    });
-
-    // By default, select the thumbnail after it loads
-    thumbnailImage.addEventListener('load', function() {
-      if (!selectedImageUrl) {
-        setSelectedImage(thumbnailImage, thumbnailImage.src);
-      }
-    });
-
-    const cartItemsContainer = document.getElementById('cart-items');
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
-
-    function updateCartSidebar() {
-      cartItemsContainer.innerHTML = '';
-      cart.forEach((item, idx) => {
-        const div = document.createElement('div');
-        div.className = 'cart-item';
-        let variantText = '';
-        if (item.variants) {
-          if (item.variants.color) variantText += `Color: ${item.variants.color}<br>`;
-          if (item.variants.size) variantText += `Size: ${item.variants.size}<br>`;
-        }
-        div.innerHTML = `
+  </script>
+</body>
+</html>

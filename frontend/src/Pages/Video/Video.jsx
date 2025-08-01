@@ -11,7 +11,20 @@ const Video = () => {
   // State for thumbnail/screenshots
   const [thumbnail, setThumbnail] = useState(null);
   const [screenshots, setScreenshots] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
   const videoRef = useRef(null);
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleDeleteScreenshot = (idx) => {
     setScreenshots(screenshots => screenshots.filter((_, i) => i !== idx));
@@ -105,7 +118,19 @@ const Video = () => {
       console.log('Response data:', data);
       
       if (data.success && data.product_url) {
-        window.open(data.product_url, '_blank');
+        // Check if we're on mobile and handle accordingly
+        if (window.innerWidth <= 768) {
+          // On mobile, try to open in same window or show a message
+          try {
+            window.location.href = data.product_url;
+          } catch (e) {
+            // Fallback: show URL for user to copy
+            alert(`Your merch page is ready! Please visit: ${data.product_url}`);
+          }
+        } else {
+          // On desktop, open in new tab
+          window.open(data.product_url, '_blank');
+        }
       } else {
         console.error('Failed to create product:', data);
         alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
@@ -120,7 +145,12 @@ const Video = () => {
   const scrollToScreenshots = () => {
     const screenshotsSection = document.getElementById('screenshotsSection');
     if (screenshotsSection) {
-      screenshotsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // On mobile, scroll more smoothly
+      if (window.innerWidth <= 768) {
+        screenshotsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        screenshotsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
     // Also trigger screenshot capture
     setTimeout(() => handleGrabScreenshot(), 500);
@@ -134,10 +164,18 @@ const Video = () => {
 
   return (
     <div className="video-page-container">
-      {/* User Flow Section */}
+      {/* User Flow Section - Matching Home Page */}
       <div className="user-flow-section">
         <div className="flow-steps">
-          <div className="flow-step" onClick={scrollToScreenshots}>
+          <div 
+            className="flow-step" 
+            onClick={scrollToScreenshots}
+            style={{ 
+              cursor: 'pointer',
+              userSelect: 'none',
+              WebkitTapHighlightColor: 'transparent'
+            }}
+          >
             <div className="step-number">2</div>
             <div className="step-content">
               <h3>Pick Screenshot</h3>
@@ -145,7 +183,15 @@ const Video = () => {
             </div>
           </div>
           <div className="flow-arrow">→</div>
-          <div className="flow-step" onClick={scrollToProducts}>
+          <div 
+            className="flow-step" 
+            onClick={scrollToProducts}
+            style={{ 
+              cursor: 'pointer',
+              userSelect: 'none',
+              WebkitTapHighlightColor: 'transparent'
+            }}
+          >
             <div className="step-number">3</div>
             <div className="step-content">
               <h3>Make Merchandise</h3>

@@ -1,7 +1,7 @@
 /* User Flow Section Styles - Matching Home Page */
 .user-flow-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  margin: 0;
+  margin: -10px -20px 20px -20px;
   padding: 20px 20px;
   color: white;
   text-align: center;
@@ -24,11 +24,11 @@
   text-align: center;
   min-width: 130px;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .flow-step:hover {
-  transform: scale(1.05);
+  transform: translateY(-2px);
 }
 
 .step-number {
@@ -72,46 +72,44 @@
   margin: 0 6px;
 }
 
-/* Main Layout Container */
+/* Video Page Container */
 .video-page-container {
   background: #f9f9f9;
-  min-height: 100vh;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .main-container {
   display: flex;
+  gap: 20px;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 20px;
-  gap: 20px;
+  padding: 0 20px;
 }
 
-/* Left Column - Video Viewer */
 .video-viewer {
   flex: 2;
-  min-width: 400px;
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  overflow: hidden;
 }
 
-/* Middle Column - Screenshots */
 .screenshots-section {
   flex: 1;
-  min-width: 300px;
-  max-width: 400px;
-  background: #fff;
-  border-radius: 12px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   padding: 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  max-height: 600px;
+  overflow-y: auto;
 }
 
 .screenshots-section h3 {
-  margin-top: 0;
-  margin-bottom: 15px;
-  color: #3f51b5;
+  margin: 0 0 15px 0;
+  color: #333;
   font-size: 1.2rem;
+  font-weight: 600;
 }
 
 /* Legacy styles for backward compatibility */
@@ -145,7 +143,23 @@
 @media (max-width: 768px) {
   .main-container {
     flex-direction: column;
-    padding: 10px;
+    padding: 0 10px;
+    gap: 15px;
+  }
+  
+  .video-viewer {
+    order: 1;
+  }
+  
+  .screenshots-section {
+    order: 2;
+    max-height: none;
+    padding: 15px;
+  }
+  
+  .screenshots-section h3 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
   }
   
   .flow-steps {
@@ -163,24 +177,128 @@
   }
   
   .user-flow-section {
-    padding: 15px 15px;
+    margin: -10px -10px 20px -10px;
+    padding: 15px 10px;
   }
   
-  .product-grid {
+  /* Touch-friendly interactions */
+  .flow-step,
+  .screenshot-item {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  
+  .flow-step:hover {
+    transform: translateY(-1px);
+  }
+  
+  /* Better spacing for mobile */
+  .play-container {
+    padding: 10px;
+    flex-direction: column;
+  }
+  
+  .main-video-col {
+    min-width: auto;
+    max-width: 100%;
+    margin-bottom: 15px;
+  }
+  
+  .screenmerch-sidebar {
+    min-width: auto;
+    max-width: 100%;
+    padding: 15px;
+  }
+  
+  /* Screenshot grid for mobile */
+  .screenshots-grid {
+    display: grid;
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  
+  .screenshot-item {
+    aspect-ratio: 16/9;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+  
+  .screenshot-item:hover {
+    transform: scale(1.05);
+  }
+  
+  .screenshot-item.selected {
+    border: 3px solid #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+  }
+  
+  /* Make Merch button mobile optimization */
+  .make-merch-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+    border-radius: 8px;
+    margin-top: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    touch-action: manipulation;
+  }
+  
+  .make-merch-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+  
+  .make-merch-btn:active {
+    transform: translateY(0);
   }
 }
 
-@media (max-width: 900px){
-  .play-container{
-    flex-direction: column;
-    padding-left: 5%;
-    padding-right: 5%;
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  .main-container {
+    padding: 0 8px;
+    gap: 12px;
   }
-  .main-video-col, .screenmerch-sidebar {
-    max-width: 100%;
-    min-width: 0;
-    padding-left: 0;
-    padding-right: 0;
+  
+  .screenshots-section {
+    padding: 12px;
+  }
+  
+  .screenshots-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .user-flow-section {
+    padding: 12px 8px;
+  }
+  
+  .flow-step {
+    min-width: 100px;
+  }
+  
+  .step-number {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+  }
+  
+  .step-content h3 {
+    font-size: 0.8rem;
+  }
+  
+  .step-content p {
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .main-container {
+    padding: 0 10px;
   }
 }
