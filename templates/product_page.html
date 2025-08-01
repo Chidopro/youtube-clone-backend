@@ -646,13 +646,12 @@
     <!-- Left Column - Two Stacked Windows (Video Preview Removed) -->
     <div class="left-column">
       <!-- Top Window: Screenshots Selected -->
-      <div class="screenshots-selected" id="screenshotsSelected">
-        <h3>Screenshots Selected</h3>
-        <div class="screenshot-preview-row" id="screenshotPreviewRow">
-          <!-- Video thumbnail will be auto-inserted here -->
-        </div>
-        
-      </div>
+               <div class="screenshots-selected" id="screenshotsSelected">
+           <h3>Screenshots Selected</h3>
+           <div class="screenshot-preview-row" id="screenshotPreviewRow">
+             <!-- Video thumbnail will be auto-inserted here -->
+           </div>
+         </div>
       
       <!-- Bottom Window: Products Selected -->
       <div class="products-selected" id="productsSelected">
@@ -728,8 +727,14 @@
         thumbnailsContainer.appendChild(img);
       });
       
-      // Add the thumbnails container to the row
-      row.appendChild(thumbnailsContainer);
+             // Add the thumbnails container to the row
+       row.appendChild(thumbnailsContainer);
+       
+       // Remove any resolution notice if it exists
+       const resolutionNotice = document.getElementById('resolutionNotice');
+       if (resolutionNotice) {
+         resolutionNotice.remove();
+       }
 
       // Populate products
       const products = [];
