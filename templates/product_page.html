@@ -634,10 +634,14 @@
          <span class="shipping-icon">🎨</span>
          <span class="shipping-text">Core Colors Available</span>
        </div>
-       <div class="shipping-item">
-         <span class="shipping-icon">✅</span>
-         <span class="shipping-text">3-14 Day Delivery</span>
-       </div>
+               <div class="shipping-item">
+          <span class="shipping-icon">🎨</span>
+          <span class="shipping-text">Core Colors Available</span>
+        </div>
+        <div class="shipping-item">
+          <span class="shipping-icon">✅</span>
+          <span class="shipping-text">3-14 Day Delivery</span>
+        </div>
      </div>
    </div>
 
@@ -684,9 +688,23 @@
       alert('Checkout functionality will be implemented');
     }
 
-    // Initialize the page
-    document.addEventListener('DOMContentLoaded', function() {
-      // Video preview removed - now auto-insert video thumbnail and screenshots
+         // Initialize the page
+     document.addEventListener('DOMContentLoaded', function() {
+       // Remove resolution notice immediately
+       const resolutionNotice = document.getElementById('resolutionNotice');
+       if (resolutionNotice) {
+         resolutionNotice.remove();
+       }
+       
+       // Also remove any text containing "Maximum resolution"
+       const allElements = document.querySelectorAll('*');
+       allElements.forEach(element => {
+         if (element.textContent && element.textContent.includes('Maximum resolution')) {
+           element.remove();
+         }
+       });
+       
+       // Video preview removed - now auto-insert video thumbnail and screenshots
 
       // Get video thumbnail and screenshots
       const videoThumbnail = '{{ img_url }}'; // Video thumbnail from backend
