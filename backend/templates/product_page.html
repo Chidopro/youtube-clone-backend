@@ -90,10 +90,25 @@
       gap: 20px;
     }
 
-    /* Left Column - Video Viewer */
-    .video-viewer {
+    /* Left Column - Two Stacked Windows */
+    .left-column {
       flex: 1;
-      min-width: 300px;
+      min-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Screenshots Selected Window */
+    .screenshots-selected {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    /* Products Selected Window */
+    .products-selected {
       background: #fff;
       border-radius: 12px;
       padding: 20px;
@@ -200,20 +215,122 @@
         padding: 15px 15px;
       }
     }
+    /* Site Header Styles */
+    .site-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 20px;
+      margin-bottom: 0;
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-info {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .info-item {
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    /* Footer Styles */
+    .site-footer {
+      background: #f8f9fa;
+      padding: 20px 0;
+      margin-top: 40px;
+      border-top: 1px solid #e9ecef;
+    }
+
+    .footer-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+    }
+
+    .footer-logo-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .footer-copyright {
+      color: #6c757d;
+      font-size: 0.9rem;
+    }
+
+    .footer-links-section {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .footer-links-section a {
+      color: #6c757d;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links-section a:hover {
+      color: #3f51b5;
+    }
+
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      
+      .header-info {
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .footer-content {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+      }
+    }
   </style>
 </head>
 <body>
+  <!-- Header Section -->
+  <header class="site-header">
+    <div class="header-content">
+      <div class="header-logo">
+        <img src="/static/icons/screenmerch_logo.png" alt="ScreenMerch Logo" style="width: 40px; height: auto;">
+      </div>
+      <div class="header-info">
+        <div class="info-item">🌍 Available Worldwide</div>
+        <div class="info-item">📦 US/Mexico Fulfillment</div>
+        <div class="info-item">⏱️ 7-14 Day Delivery</div>
+      </div>
+    </div>
+  </header>
+
   <!-- User Flow Section -->
   <div class="user-flow-section">
     <div class="flow-steps">
-      <div class="flow-step" onclick="scrollToScreenshots()">
-        <div class="step-number">2</div>
-        <div class="step-content">
-          <h3>Pick Screenshot</h3>
-          <p>Select the perfect moment to capture</p>
-        </div>
-      </div>
-      <div class="flow-arrow">→</div>
       <div class="flow-step" onclick="scrollToProducts()">
         <div class="step-number">3</div>
         <div class="step-content">
@@ -226,42 +343,55 @@
 
   <!-- Main Layout -->
   <div class="main-container">
-    <!-- Left Column - Video Viewer -->
-    <div class="video-viewer">
-      <h3>Video Preview</h3>
-      <img id="thumbnailImage" class="preview-image" alt="Selected Thumbnail">
-    </div>
+    <!-- Left Column - Two Stacked Windows -->
+    <div class="left-column">
+      <div class="screenshots-selected" id="screenshotsSelected">
+        <h3>Screenshots Selected</h3>
+        <div class="screenshot-preview-row" id="screenshotPreviewRow"></div>
 
-    <!-- Middle Column - Screenshots -->
-    <div class="screenshots-section" id="screenshotsSection">
-      <h3>Screenshot Selection</h3>
-      <div class="screenshot-preview-row" id="screenshotPreviewRow"></div>
-      <div id="resolutionNotice" class="resolution-notice">
-        <strong>Notice:</strong> Maximum resolution is not available. Please select a lower resolution option from the thumbnails below.
+      </div>
+      <div class="products-selected" id="productsSelected">
+        <h3>Products Selected</h3>
+        <div class="selected-products" id="selectedProducts">
+          <p>No products selected yet</p>
+        </div>
+        <button class="btn checkout-btn" onclick="goToCheckout()" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
       </div>
     </div>
 
-    <!-- Right Column - Products -->
+    <!-- Right Column - Available Products -->
     <div class="products-section" id="productsSection">
       <h3>Available Products</h3>
       <div class="product-row" id="productRow"></div>
     </div>
   </div>
 
+  <!-- Footer Section -->
+  <footer class="site-footer">
+    <div class="footer-content">
+      <div class="footer-logo-section">
+        <img src="/static/icons/screenmerch_logo.png" alt="ScreenMerch Logo" style="width: 30px; height: auto;">
+        <span class="footer-copyright">© 2024 ScreenMerch. All rights reserved.</span>
+      </div>
+      <div class="footer-links-section">
+        <a href="/terms-of-service">Terms of Service</a>
+        <a href="/privacy-policy">Privacy Policy</a>
+      </div>
+    </div>
+  </footer>
+
   <script>
     // JavaScript functions for clickable flow steps
-    function scrollToScreenshots() {
-      document.getElementById('screenshotsSection').scrollIntoView({ 
+    function scrollToProducts() {
+      document.getElementById('productsSelected').scrollIntoView({ 
         behavior: 'smooth',
         block: 'start'
       });
     }
 
-    function scrollToProducts() {
-      document.getElementById('productsSection').scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'start'
-      });
+    function goToCheckout() {
+      // Add checkout logic here
+      alert('Checkout functionality will be implemented');
     }
 
     // Initialize the page
