@@ -228,7 +228,7 @@ PRODUCTS = [
     {
         "name": "Soft Tee",
         "price": 24.99,
-        "filename": "guidonteepreview.png",
+        "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
     },
