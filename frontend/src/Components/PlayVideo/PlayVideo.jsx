@@ -232,14 +232,6 @@ export default PlayVideo
 
 export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot }) => (
     <div className="screenmerch-images-grid">
-        <div className="screenmerch-image-box">
-            <h4>Thumbnail</h4>
-            {thumbnail ? (
-                <img src={thumbnail} alt="Thumbnail" className="screenmerch-preview" />
-            ) : (
-                <div className="screenmerch-placeholder">No thumbnail</div>
-            )}
-        </div>
         {[0,1,2,3,4].map(idx => (
             <div className="screenmerch-image-box" key={idx}>
                 <h4>Screenshot {idx + 1}</h4>
