@@ -718,18 +718,8 @@
        if (row) {
          row.innerHTML = '';
          
-                   // Add video thumbnail
-          if (videoThumbnail && videoThumbnail !== 'None' && videoThumbnail !== '') {
-            const thumbnailImg = document.createElement("img");
-            thumbnailImg.src = videoThumbnail;
-            thumbnailImg.className = "video-thumbnail";
-            thumbnailImg.alt = "Video Thumbnail";
-            thumbnailImg.addEventListener('click', function() {
-              selectScreenshot(thumbnailImg, videoThumbnail);
-            });
-            row.appendChild(thumbnailImg);
-            console.log('✅ Video thumbnail added');
-          }
+                                     // Video thumbnail removed to prevent duplicates
+         // The thumbnail is already included in the screenshots array
          
                    // Add screenshots
           const thumbnailsContainer = document.createElement("div");
@@ -752,8 +742,7 @@
           
           screenshotsToShow.forEach((src, index) => {
             console.log(`📸 Screenshot ${index + 1}:`, src);
-            // Skip if this screenshot is the same as the video thumbnail (avoid duplicates)
-            if (src && src !== 'None' && src !== '' && src !== videoThumbnail) {
+            if (src && src !== 'None' && src !== '') {
               const img = document.createElement("img");
               img.src = src;
               img.className = "screenshot-thumbnail";
@@ -764,7 +753,7 @@
               thumbnailsContainer.appendChild(img);
               console.log(`✅ Added screenshot ${index + 1}`);
             } else {
-              console.log(`⚠️ Skipping screenshot ${index + 1} - duplicate or invalid source:`, src);
+              console.log(`⚠️ Skipping screenshot ${index + 1} - invalid source:`, src);
             }
           });
           
