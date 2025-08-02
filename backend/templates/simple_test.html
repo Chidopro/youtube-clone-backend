@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Test Page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #f9f9f9; 
+      padding: 20px; 
+      margin: 0; 
+    }
+    
+    .debug-fallback {
+      background: #ff0000;
+      color: white;
+      padding: 20px;
+      margin: 20px;
+      border: 3px solid #000;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .test-content {
+      background: #fff;
+      padding: 20px;
+      margin: 20px;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+    }
+    
+    .success-message {
+      color: green;
+      background: yellow;
+      padding: 20px;
+      margin: 20px;
+      border: 2px solid green;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  
+  <!-- Debug fallback - should be visible if page loads -->
+  <div class="debug-fallback">
+    🚨 DEBUG: Page is loading! If you see this, the page is working.
+  </div>
+
+  <!-- Test content -->
+  <div class="test-content">
+    <h1>Simple Test Page</h1>
+    <p>This is a simple test page to check if JavaScript is working.</p>
+    <p>If you can see this content, the page is loading correctly.</p>
+  </div>
+
+  <!-- JavaScript test area -->
+  <div id="js-test-area" class="test-content">
+    <h2>JavaScript Test Area</h2>
+    <p>This area will be populated by JavaScript if it's working.</p>
+  </div>
+
+  <script>
+    console.log('🚀 Simple test script loaded');
+    
+    // Simple test function
+    function testJavaScript() {
+      console.log('✅ JavaScript function called');
+      
+      const testArea = document.getElementById('js-test-area');
+      if (testArea) {
+        testArea.innerHTML = `
+          <h2>JavaScript Test Area</h2>
+          <div class="success-message">
+            ✅ JavaScript is working! This content was added by JavaScript.
+          </div>
+          <p>Timestamp: ${new Date().toLocaleString()}</p>
+        `;
+        console.log('✅ Test area updated');
+      } else {
+        console.error('❌ Test area not found');
+      }
+    }
+    
+    // Run test when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('✅ DOM loaded successfully');
+      testJavaScript();
+    });
+    
+    // Also run immediately if DOM is already loaded
+    if (document.readyState === 'loading') {
+      console.log('📝 DOM still loading, waiting...');
+    } else {
+      console.log('📝 DOM already loaded, running test immediately');
+      testJavaScript();
+    }
+  </script>
+</body>
+</html> 

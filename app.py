@@ -578,6 +578,23 @@ def create_product():
 def show_product_page(product_id):
     logger.info(f"🔍 Attempting to show product page for ID: {product_id}")
     
+    # Quick debug: Always render template for test123
+    if product_id == "test123":
+        logger.info(f"🎯 Rendering test product page")
+        return render_template(
+            'product_page.html',
+            img_url="https://via.placeholder.com/400x300/4CAF50/FFFFFF?text=Test+Video",
+            screenshots=[
+                "https://via.placeholder.com/200x150/2196F3/FFFFFF?text=Screenshot+1",
+                "https://via.placeholder.com/200x150/FF9800/FFFFFF?text=Screenshot+2",
+                "https://via.placeholder.com/200x150/9C27B0/FFFFFF?text=Screenshot+3"
+            ],
+            products=PRODUCTS,
+            product_id=product_id,
+            email='',
+            channel_id=''
+        )
+    
     try:
         # Try to get from Supabase first
         try:

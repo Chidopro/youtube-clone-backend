@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Merchandise Page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #f9f9f9; 
+      padding: 0; 
+      margin: 0; 
+    }
+    
+    .debug-fallback {
+      background: #ff0000;
+      color: white;
+      padding: 20px;
+      margin: 20px;
+      border: 3px solid #000;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .main-container {
+      display: flex;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      gap: 20px;
+    }
+    
+    .left-column {
+      flex: 1;
+      min-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 500px;
+    }
+    
+    .screenshots-selected {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .products-selected {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      min-height: 150px;
+    }
+    
+    .products-section {
+      flex: 1;
+      min-width: 400px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .screenshot-preview-row {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 10px 0 15px 0;
+      min-height: 120px;
+    }
+    
+    .video-thumbnail {
+      width: 100%;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      border: 2px solid #4CAF50;
+    }
+    
+    .screenshot-thumbnails {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+    
+    .screenshot-thumbnail {
+      width: 100%;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    
+    .product-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .product-card {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border: 1px solid #eee;
+    }
+    
+    .product-card img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    
+    .product-title {
+      font-weight: bold;
+      margin: 10px 0 5px;
+      font-size: 14px;
+    }
+    
+    .product-price {
+      color: #444;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+    
+    .btn {
+      background: #3f51b5;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  
+  <!-- Debug fallback -->
+  <div class="debug-fallback">
+    🚨 SIMPLE MERCHANDISE: If you see this, the page is loading!
+  </div>
+
+  <!-- Main Layout -->
+  <div class="main-container">
+    <!-- Left Column -->
+    <div class="left-column">
+      <!-- Screenshots Selected -->
+      <div class="screenshots-selected">
+        <h3>Screenshots Selected</h3>
+        <div class="screenshot-preview-row" id="screenshotPreviewRow">
+          <!-- Will be populated by simple JavaScript -->
+        </div>
+      </div>
+      
+      <!-- Products Selected -->
+      <div class="products-selected">
+        <h3>Products Selected</h3>
+        <div id="selectedProducts">
+          <p>No products selected yet</p>
+        </div>
+        <button class="btn" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="products-section">
+      <h3>Available Products</h3>
+      <div class="product-row" id="productRow">
+        <!-- Will be populated by simple JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    console.log('🚀 Simple merchandise script loaded');
+    
+    // Simple initialization
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('✅ DOM loaded successfully');
+      
+      // Get data from backend
+      const videoThumbnail = '{{ img_url }}';
+      const screenshots = [];
+      {% if screenshots %}
+        {% for screenshot in screenshots %}
+          screenshots.push('{{ screenshot }}');
+        {% endfor %}
+      {% endif %}
+      
+      console.log('📸 Video thumbnail:', videoThumbnail);
+      console.log('📸 Screenshots:', screenshots);
+      
+      // Display screenshots
+      const row = document.getElementById("screenshotPreviewRow");
+      if (row) {
+        row.innerHTML = '';
+        
+        // Add video thumbnail
+        if (videoThumbnail && videoThumbnail !== 'None' && videoThumbnail !== '') {
+          const thumbnailImg = document.createElement("img");
+          thumbnailImg.src = videoThumbnail;
+          thumbnailImg.className = "video-thumbnail";
+          thumbnailImg.alt = "Video Thumbnail";
+          row.appendChild(thumbnailImg);
+          console.log('✅ Video thumbnail added');
+        }
+        
+        // Add screenshots
+        const thumbnailsContainer = document.createElement("div");
+        thumbnailsContainer.className = "screenshot-thumbnails";
+        
+        screenshots.forEach((src, index) => {
+          if (src && src !== 'None' && src !== '') {
+            const img = document.createElement("img");
+            img.src = src;
+            img.className = "screenshot-thumbnail";
+            img.alt = `Screenshot ${index + 1}`;
+            thumbnailsContainer.appendChild(img);
+          }
+        });
+        
+        row.appendChild(thumbnailsContainer);
+        console.log(`✅ Added ${screenshots.length} screenshots`);
+      }
+      
+      // Display products
+      const productRow = document.getElementById("productRow");
+      if (productRow) {
+        productRow.innerHTML = '<p style="text-align:center; color:#666; padding:20px;">Products will be loaded here...</p>';
+        console.log('✅ Product area ready');
+      }
+      
+      console.log('✅ Simple merchandise page initialized');
+    });
+  </script>
+</body>
+</html> 
