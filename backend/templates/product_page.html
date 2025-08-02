@@ -752,7 +752,8 @@
           
           screenshotsToShow.forEach((src, index) => {
             console.log(`📸 Screenshot ${index + 1}:`, src);
-            if (src && src !== 'None' && src !== '') {
+            // Skip if this screenshot is the same as the video thumbnail (avoid duplicates)
+            if (src && src !== 'None' && src !== '' && src !== videoThumbnail) {
               const img = document.createElement("img");
               img.src = src;
               img.className = "screenshot-thumbnail";
@@ -763,7 +764,7 @@
               thumbnailsContainer.appendChild(img);
               console.log(`✅ Added screenshot ${index + 1}`);
             } else {
-              console.log(`⚠️ Skipping screenshot ${index + 1} - invalid source:`, src);
+              console.log(`⚠️ Skipping screenshot ${index + 1} - duplicate or invalid source:`, src);
             }
           });
           
