@@ -3,7 +3,7 @@ import base64
 import tempfile
 import os
 import logging
-from PIL import Image
+from PIL import Image, ImageFilter, ImageEnhance
 import io
 import requests
 from urllib.parse import urlparse
@@ -15,14 +15,14 @@ class VideoScreenshotCapture:
         self.temp_dir = tempfile.mkdtemp()
         logger.info(f"Video screenshot capture initialized with temp dir: {self.temp_dir}")
     
-    def capture_screenshot(self, video_url, timestamp=0, quality=85):
+    def capture_screenshot(self, video_url, timestamp=0, quality=95):
         """
         Capture a screenshot from a video at a specific timestamp
         
         Args:
             video_url (str): URL of the video to capture from
             timestamp (float): Timestamp in seconds (default: 0 for first frame)
-            quality (int): JPEG quality (1-100, default: 85)
+            quality (int): JPEG quality (1-100, default: 95 for maximum quality)
         
         Returns:
             dict: {
@@ -39,9 +39,9 @@ class VideoScreenshotCapture:
                 screenshot_path = temp_file.name
             
             try:
-                # Use ffmpeg to capture the frame
+                # Use ffmpeg to capture the frame with maximum quality
                 stream = ffmpeg.input(video_url, ss=timestamp)
-                stream = ffmpeg.output(stream, screenshot_path, vframes=1, **{'q:v': 2})
+                stream = ffmpeg.output(stream, screenshot_path, vframes=1, **{'q:v': 1, 'pix_fmt': 'yuv420p'})
                 
                 # Run the ffmpeg command
                 ffmpeg.run(stream, overwrite_output=True, quiet=True)
@@ -70,6 +70,72 @@ class VideoScreenshotCapture:
                     'screenshot': f"data:image/jpeg;base64,{base64_image}",
                     'timestamp': timestamp
                 }
+    
+    def create_shirt_ready_image(self, image_data, feather_radius=10, enhance_quality=True):
+        """
+        Process an image to be shirt-print ready with feathered edges
+        
+        Args:
+            image_data (str): Base64 encoded image data
+            feather_radius (int): Radius for edge feathering (default: 10)
+            enhance_quality (bool): Whether to enhance image quality (default: True)
+        
+        Returns:
+            str: Base64 encoded processed image
+        """
+        try:
+            # Decode base64 image
+            if image_data.startswith('data:image'):
+                image_data = image_data.split(',')[1]
+            
+            image_bytes = base64.b64decode(image_data)
+            image = Image.open(io.BytesIO(image_bytes))
+            
+            # Convert to RGBA if not already
+            if image.mode != 'RGBA':
+                image = image.convert('RGBA')
+            
+            # Create a mask for feathering
+            mask = Image.new('L', image.size, 0)
+            
+            # Create a gradient mask for smooth edges
+            for y in range(image.size[1]):
+                for x in range(image.size[0]):
+                    # Calculate distance from edge
+                    dist_x = min(x, image.size[0] - x - 1)
+                    dist_y = min(y, image.size[1] - y - 1)
+                    dist = min(dist_x, dist_y)
+                    
+                    # Apply feathering
+                    if dist < feather_radius:
+                        alpha = int(255 * (dist / feather_radius))
+                        mask.putpixel((x, y), alpha)
+                    else:
+                        mask.putpixel((x, y), 255)
+            
+            # Apply the mask to the image
+            image.putalpha(mask)
+            
+            # Enhance quality if requested
+            if enhance_quality:
+                # Sharpen the image slightly
+                enhancer = ImageEnhance.Sharpness(image)
+                image = enhancer.enhance(1.2)
+                
+                # Enhance contrast slightly
+                enhancer = ImageEnhance.Contrast(image)
+                image = enhancer.enhance(1.1)
+            
+            # Convert back to base64
+            buffer = io.BytesIO()
+            image.save(buffer, format='PNG', optimize=True, quality=95)
+            processed_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            
+            return f"data:image/png;base64,{processed_image}"
+            
+        except Exception as e:
+            logger.error(f"Error processing shirt image: {str(e)}")
+            return image_data  # Return original if processing fails
                 
             except Exception as e:
                 # Clean up on error
@@ -92,7 +158,7 @@ class VideoScreenshotCapture:
                 'error': error_msg
             }
     
-    def capture_multiple_screenshots(self, video_url, timestamps=None, quality=85):
+    def capture_multiple_screenshots(self, video_url, timestamps=None, quality=95):
         """
         Capture multiple screenshots from a video at different timestamps
         

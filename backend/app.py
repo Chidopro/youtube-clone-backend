@@ -1224,7 +1224,7 @@ def capture_screenshot():
         data = request.get_json()
         video_url = data.get('video_url')
         timestamp = data.get('timestamp', 0)
-        quality = data.get('quality', 85)
+        quality = data.get('quality', 95)
         
         if not video_url:
             return jsonify({"success": False, "error": "video_url is required"}), 400
@@ -1251,7 +1251,7 @@ def capture_multiple_screenshots():
         data = request.get_json()
         video_url = data.get('video_url')
         timestamps = data.get('timestamps', [0, 2, 4, 6, 8])
-        quality = data.get('quality', 85)
+        quality = data.get('quality', 95)
         
         if not video_url:
             return jsonify({"success": False, "error": "video_url is required"}), 400
@@ -1294,6 +1294,40 @@ def get_video_info():
             
     except Exception as e:
         logger.error(f"Error in get_video_info: {str(e)}")
+        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+
+@app.route("/api/process-shirt-image", methods=["POST", "OPTIONS"])
+def process_shirt_image():
+    """Process an image to be shirt-print ready with feathered edges"""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    
+    try:
+        data = request.get_json()
+        image_data = data.get("image_data")
+        feather_radius = data.get("feather_radius", 10)
+        enhance_quality = data.get("enhance_quality", True)
+        
+        if not image_data:
+            return jsonify({"success": False, "error": "image_data is required"}), 400
+        
+        logger.info(f"Processing shirt image with feather_radius={feather_radius}, enhance_quality={enhance_quality}")
+        
+        # Process the image for shirt printing
+        processed_image = screenshot_capture.create_shirt_ready_image(
+            image_data, 
+            feather_radius=feather_radius, 
+            enhance_quality=enhance_quality
+        )
+        
+        logger.info("Shirt image processed successfully")
+        return jsonify({
+            "success": True,
+            "processed_image": processed_image
+        })
+            
+    except Exception as e:
+        logger.error(f"Error processing shirt image: {str(e)}")
         return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
 
 @app.route("/api/users/ensure-exists", methods=["POST"])
