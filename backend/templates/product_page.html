@@ -921,25 +921,37 @@
           return;
         }
         
-        // Collect all selected products for checkout
-        const products = [];
-        selectedProducts.querySelectorAll('div').forEach(item => {
-          const nameElement = item.querySelector('div');
-          const detailsElement = item.querySelector('div:nth-child(2)');
-          const imageElement = item.querySelector('img');
-          
-          if (nameElement && detailsElement) {
-            const productName = nameElement.textContent;
-            const details = detailsElement.textContent;
-            const image = imageElement ? imageElement.src : '';
-            
-            products.push({
-              name: productName,
-              details: details,
-              image: image
-            });
-          }
-        });
+                 // Collect all selected products for checkout
+         const products = [];
+         console.log('🛒 Collecting products from DOM...');
+         
+         selectedProducts.querySelectorAll('div').forEach((item, index) => {
+           console.log(`🛒 Processing item ${index + 1}:`, item);
+           
+           const nameElement = item.querySelector('div');
+           const detailsElement = item.querySelector('div:nth-child(2)');
+           const imageElement = item.querySelector('img');
+           
+           console.log(`🛒 Name element:`, nameElement);
+           console.log(`🛒 Details element:`, detailsElement);
+           console.log(`🛒 Image element:`, imageElement);
+           
+           if (nameElement && detailsElement) {
+             const productName = nameElement.textContent;
+             const details = detailsElement.textContent;
+             const image = imageElement ? imageElement.src : '';
+             
+             console.log(`🛒 Adding product: ${productName} - ${details}`);
+             
+             products.push({
+               name: productName,
+               details: details,
+               image: image
+             });
+           } else {
+             console.log(`🛒 Skipping item ${index + 1} - missing name or details`);
+           }
+         });
         
         console.log('🛒 Proceeding to checkout with:', products);
         

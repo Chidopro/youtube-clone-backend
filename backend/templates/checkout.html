@@ -139,27 +139,39 @@
     // Try to get cart data from multiple sources
     let cart = [];
     
-    // First try sessionStorage (from product page)
-    const sessionCartData = sessionStorage.getItem('cartData');
-    if (sessionCartData) {
-      try {
-        const sessionCart = JSON.parse(sessionCartData);
-        // Convert session cart format to expected format
-        cart = sessionCart.map(item => ({
-          product: item.name,
-          email: '', // Will be filled from user email
-          note: '',
-          img: item.image,
-          variants: {
-            color: item.details.includes('Color:') ? item.details.split('Color:')[1].split('|')[0].trim() : 'Default',
-            size: item.details.includes('Size:') ? item.details.split('Size:')[1].split('|')[0].trim() : 'Default'
-          }
-        }));
-        console.log('✅ Found cart data in sessionStorage:', cart);
-      } catch (e) {
-        console.error('Error parsing session cart data:', e);
-      }
-    }
+             // First try sessionStorage (from product page)
+         const sessionCartData = sessionStorage.getItem('cartData');
+         console.log('🛒 Raw sessionStorage data:', sessionCartData);
+         
+         if (sessionCartData) {
+           try {
+             const sessionCart = JSON.parse(sessionCartData);
+             console.log('🛒 Parsed sessionCart:', sessionCart);
+             
+             // Convert session cart format to expected format
+             cart = sessionCart.map((item, index) => {
+               console.log(`🛒 Converting item ${index + 1}:`, item);
+               
+               const convertedItem = {
+                 product: item.name,
+                 email: '', // Will be filled from user email
+                 note: '',
+                 img: item.image,
+                 variants: {
+                   color: item.details.includes('Color:') ? item.details.split('Color:')[1].split('|')[0].trim() : 'Default',
+                   size: item.details.includes('Size:') ? item.details.split('Size:')[1].split('|')[0].trim() : 'Default'
+                 }
+               };
+               
+               console.log(`🛒 Converted item ${index + 1}:`, convertedItem);
+               return convertedItem;
+             });
+             
+             console.log('✅ Found cart data in sessionStorage:', cart);
+           } catch (e) {
+             console.error('Error parsing session cart data:', e);
+           }
+         }
     
     // Fallback to localStorage if sessionStorage is empty
     if (cart.length === 0) {
