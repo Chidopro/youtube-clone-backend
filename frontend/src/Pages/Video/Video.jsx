@@ -117,10 +117,16 @@ const Video = () => {
     try {
       console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
       
+      // Get authentication state from localStorage
+      const isAuthenticated = localStorage.getItem('user_authenticated');
+      const userEmail = localStorage.getItem('user_email');
+      
       const requestData = {
         thumbnail,
         videoUrl: window.location.href,
         screenshots: screenshots.slice(0, 6),
+        isAuthenticated: isAuthenticated === 'true',
+        userEmail: userEmail || ''
       };
       
       console.log('Request data:', requestData);
