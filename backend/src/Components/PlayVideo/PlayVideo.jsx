@@ -56,8 +56,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             return;
         }
         
-        if (screenshots.length >= 8) {
-            alert('Maximum 8 screenshots allowed. Please delete some screenshots first.');
+        if (screenshots.length >= 6) {
+            alert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
             return;
         }
 
@@ -67,7 +67,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         
         if (thumbnailUrl) {
             console.log('Adding video thumbnail as screenshot');
-            setScreenshots(prev => prev.length < 8 ? [...prev, thumbnailUrl] : prev);
+            setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
             
             // Show success message
             const newScreenshotCount = screenshots.length + 1;
@@ -80,13 +80,31 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Make Merch handler
     const handleMakeMerch = async () => {
         try {
+            // Check if user is authenticated
+            const isAuthenticated = localStorage.getItem('user_authenticated');
+            
+            if (!isAuthenticated) {
+                // Store screenshot data for after login
+                const merchData = {
+                    thumbnail,
+                    videoUrl: window.location.href,
+                    screenshots: screenshots.slice(0, 6),
+                };
+                localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+                
+                // Redirect to login page
+                window.location.href = '/login?redirect=merch';
+                return;
+            }
+            
+            // User is authenticated, proceed with merch creation
             const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     thumbnail,
                     videoUrl: window.location.href,
-                    screenshots: screenshots.slice(0, 5),
+                    screenshots: screenshots.slice(0, 6),
                 })
             });
             const data = await response.json();
@@ -148,7 +166,7 @@ export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot }
                 <div className="screenmerch-placeholder">No thumbnail</div>
             )}
         </div>
-        {[0,1,2,3,4].map(idx => (
+        {[0,1,2,3,4,5].map(idx => (
             <div className="screenmerch-image-box" key={idx}>
                 <h4>Screenshot {idx + 1}</h4>
                 {screenshots[idx] ? (
