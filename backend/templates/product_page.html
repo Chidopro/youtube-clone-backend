@@ -726,17 +726,10 @@
           
           console.log('📸 Processing screenshots:', screenshots);
           
-          // If no screenshots, create placeholder screenshots for testing
+          // Use actual screenshots only - no placeholders
           let screenshotsToShow = screenshots;
           if (screenshots.length === 0) {
-            console.log('⚠️ No screenshots found, creating placeholders for testing');
-            screenshotsToShow = [
-              'https://via.placeholder.com/300x200/FF5722/FFFFFF?text=Screenshot+1',
-              'https://via.placeholder.com/300x200/4CAF50/FFFFFF?text=Screenshot+2',
-              'https://via.placeholder.com/300x200/2196F3/FFFFFF?text=Screenshot+3',
-              'https://via.placeholder.com/300x200/FF9800/FFFFFF?text=Screenshot+4',
-              'https://via.placeholder.com/300x200/9C27B0/FFFFFF?text=Screenshot+5'
-            ];
+            console.log('📸 No screenshots found - will use video thumbnail only');
           }
           
           screenshotsToShow.forEach((src, index) => {
