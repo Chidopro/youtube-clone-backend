@@ -187,12 +187,12 @@
       const isAuthenticated = localStorage.getItem('user_authenticated');
       const userEmail = localStorage.getItem('user_email');
       
-      if (!isAuthenticated || !userEmail) {
-        alert('Please log in to complete your purchase. You will be redirected to the main site.');
-        // Redirect to the main frontend site instead of a backend login page
-        window.location.href = 'https://screenmerch.netlify.app';
-        return;
-      }
+                  if (!isAuthenticated || !userEmail) {
+                alert('Please log in to complete your purchase. You will be redirected to the main site.');
+                // Redirect to the main frontend site instead of a backend login page
+                window.location.href = 'https://screenmerch.com';
+                return;
+            }
       
       // Email notifications - no consent required
       const orderData = {
