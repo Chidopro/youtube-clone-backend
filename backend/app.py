@@ -105,15 +105,8 @@ app = Flask(__name__,
            template_folder='templates',
            static_folder='static')
 
-# Configure CORS for production - more permissive for debugging
-CORS(app, resources={
-    r"/api/*": {
-        "origins": "*",
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization", "Accept"],
-        "supports_credentials": True
-    }
-})
+# Configure CORS for production
+CORS(app, origins=["*"])
 
 # Security middleware
 @app.before_request
@@ -137,14 +130,6 @@ def add_security_headers(response):
     """Add security headers to all responses"""
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
-    
-    # Add CORS headers to all API responses
-    if request.path.startswith('/api/'):
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-    
     return response
 
 # Initialize Supabase client for database operations
@@ -1229,11 +1214,7 @@ def get_videos():
 @app.route("/api/capture-screenshot", methods=["POST", "OPTIONS"])
 def capture_screenshot():
     if request.method == "OPTIONS":
-        response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        return response
+        return jsonify(success=True)
     """Capture a single screenshot from a video at a specific timestamp"""
     try:
         data = request.get_json()
@@ -1250,26 +1231,14 @@ def capture_screenshot():
         
         if result['success']:
             logger.info("Screenshot captured successfully")
-            response = jsonify(result)
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-            response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-            return response
+            return jsonify(result)
         else:
             logger.error(f"Screenshot capture failed: {result['error']}")
-            response = jsonify(result)
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-            response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-            return response, 500
+            return jsonify(result), 500
             
     except Exception as e:
         logger.error(f"Error in capture_screenshot: {str(e)}")
-        response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        return response, 500
+        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
 
 @app.route("/api/capture-multiple-screenshots", methods=["POST"])
 def capture_multiple_screenshots():
