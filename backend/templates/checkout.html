@@ -153,7 +153,9 @@
                console.log(`🛒 Converting item ${index + 1}:`, item);
                
                                // Extract just the product name (before any newlines or extra details)
-                const cleanProductName = item.name.split('\n')[0].trim();
+                // Handle case where name starts with newline
+                const nameParts = item.name.split('\n').filter(part => part.trim() !== '');
+                const cleanProductName = nameParts.length > 0 ? nameParts[0].trim() : 'Unknown Product';
                 
                 const convertedItem = {
                   product: cleanProductName, // Use clean product name only
