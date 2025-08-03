@@ -857,7 +857,12 @@ def create_checkout_session():
         product_id = data.get("product_id")
         sms_consent = data.get("sms_consent", False)
 
+        logger.info(f"🛒 Received checkout request - Cart: {cart}")
+        logger.info(f"🛒 Product ID: {product_id}")
+        logger.info(f"🛒 SMS Consent: {sms_consent}")
+
         if not cart:
+            logger.error("❌ Cart is empty")
             return jsonify({"error": "Cart is empty"}), 400
 
         # Email notifications - SMS consent not required
@@ -874,10 +879,13 @@ def create_checkout_session():
 
         line_items = []
         for item in cart:
+            logger.info(f"🛒 Processing item: {item}")
             product_info = next((p for p in PRODUCTS if p["name"] == item.get("product")), None)
             if not product_info:
-                logger.error(f"Could not find price for product: {item.get('product')}")
+                logger.error(f"❌ Could not find price for product: {item.get('product')}")
+                logger.info(f"🛒 Available products: {[p['name'] for p in PRODUCTS]}")
                 continue
+            logger.info(f"✅ Found product info: {product_info}")
             line_items.append({
                 "price_data": {
                     "currency": "usd",
@@ -889,7 +897,9 @@ def create_checkout_session():
                 "quantity": 1,
             })
 
+        logger.info(f"🛒 Created line items: {line_items}")
         if not line_items:
+            logger.error("❌ No valid items in cart to check out")
             return jsonify({"error": "No valid items in cart to check out."}), 400
 
         session = stripe.checkout.Session.create(

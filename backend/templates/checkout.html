@@ -241,17 +241,19 @@
         return;
       }
       
-      // Email notifications - no consent required
-      const orderData = {
-        cart: cart,
-        product_id: productId,
-        user_email: userEmail,
-        sms_consent: false, // No SMS consent needed for email notifications
-        phone_number: '', // Will be collected by Stripe
-        timestamp: new Date().toISOString()
-      };
+             // Email notifications - no consent required
+       const orderData = {
+         cart: cart,
+         product_id: productId,
+         user_email: userEmail,
+         sms_consent: false, // No SMS consent needed for email notifications
+         phone_number: '', // Will be collected by Stripe
+         timestamp: new Date().toISOString()
+       };
 
-      fetch("https://backend-hidden-firefly-7865.fly.dev/create-checkout-session", {
+       console.log('🛒 Sending order data to backend:', JSON.stringify(orderData, null, 2));
+
+       fetch("https://backend-hidden-firefly-7865.fly.dev/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData)
