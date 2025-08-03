@@ -106,7 +106,11 @@ app = Flask(__name__,
            static_folder='static')
 
 # Configure CORS for production
-CORS(app, origins=["*"])
+CORS(app, resources={r"/api/*": {"origins": [
+    "chrome-extension://*",
+    "https://screenmerch.com",
+    "https://www.screenmerch.com"
+]}})
 
 # Security middleware
 @app.before_request
@@ -1214,7 +1218,7 @@ def get_videos():
 @app.route("/api/capture-screenshot", methods=["POST", "OPTIONS"])
 def capture_screenshot():
     if request.method == "OPTIONS":
-        return jsonify(success=True)
+        return "", 200
     """Capture a single screenshot from a video at a specific timestamp"""
     try:
         data = request.get_json()
