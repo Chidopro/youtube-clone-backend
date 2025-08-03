@@ -183,16 +183,24 @@
     }
 
     function finalizeOrder() {
-      // Check if user is authenticated
-      const isAuthenticated = localStorage.getItem('user_authenticated');
-      const userEmail = localStorage.getItem('user_email');
+      // Check if user is authenticated - try multiple sources
+      let isAuthenticated = localStorage.getItem('user_authenticated');
+      let userEmail = localStorage.getItem('user_email');
       
-                  if (!isAuthenticated || !userEmail) {
-                alert('Please log in to complete your purchase. You will be redirected to the main site.');
-                // Redirect to the main frontend site instead of a backend login page
-                window.location.href = 'https://screenmerch.com';
-                return;
-            }
+      // If not found in localStorage, check URL parameters (passed from frontend)
+      if (!isAuthenticated || !userEmail) {
+        const urlParams = new URLSearchParams(window.location.search);
+        isAuthenticated = urlParams.get('authenticated') || isAuthenticated;
+        userEmail = urlParams.get('email') || userEmail;
+      }
+      
+      // If still not authenticated, redirect to frontend
+      if (!isAuthenticated || !userEmail) {
+        alert('Please log in to complete your purchase. You will be redirected to the main site.');
+        // Redirect to the main frontend site instead of a backend login page
+        window.location.href = 'https://screenmerch.com';
+        return;
+      }
       
       // Email notifications - no consent required
       const orderData = {
