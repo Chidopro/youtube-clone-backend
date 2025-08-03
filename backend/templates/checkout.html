@@ -135,7 +135,46 @@
 
   <script>
     const productId = '{{ product_id }}';
-    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    
+    // Try to get cart data from multiple sources
+    let cart = [];
+    
+    // First try sessionStorage (from product page)
+    const sessionCartData = sessionStorage.getItem('cartData');
+    if (sessionCartData) {
+      try {
+        const sessionCart = JSON.parse(sessionCartData);
+        // Convert session cart format to expected format
+        cart = sessionCart.map(item => ({
+          product: item.name,
+          email: '', // Will be filled from user email
+          note: '',
+          img: item.image,
+          variants: {
+            color: item.details.includes('Color:') ? item.details.split('Color:')[1].split('|')[0].trim() : 'Default',
+            size: item.details.includes('Size:') ? item.details.split('Size:')[1].split('|')[0].trim() : 'Default'
+          }
+        }));
+        console.log('✅ Found cart data in sessionStorage:', cart);
+      } catch (e) {
+        console.error('Error parsing session cart data:', e);
+      }
+    }
+    
+    // Fallback to localStorage if sessionStorage is empty
+    if (cart.length === 0) {
+      const localCart = localStorage.getItem('cart');
+      if (localCart) {
+        try {
+          cart = JSON.parse(localCart);
+          console.log('✅ Found cart data in localStorage:', cart);
+        } catch (e) {
+          console.error('Error parsing local cart data:', e);
+        }
+      }
+    }
+    
+    console.log('🛒 Final cart data:', cart);
 
     // Email notifications - no consent required
     const proceedBtn = document.getElementById('proceed-btn');
