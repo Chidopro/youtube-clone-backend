@@ -161,211 +161,241 @@ PRODUCTS = [
     {
         "name": "Soft Tee",
         "price": 24.99,
-        "filename": "guidonteepreview.png",
+        "filename": "guidontee.png",
         "main_image": "guidontee.png",
+        "preview_image": "guidonpreview.png",
         "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Unisex Classic Tee",
         "price": 24.99,
-        "filename": "unisexclassicteepreview.png",
+        "filename": "unisexclassictee.png",
         "main_image": "unisexclassictee.png",
+        "preview_image": "unisexclassicteepreview.png",
         "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Men's Tank Top",
         "price": 19.99,
-        "filename": "randompreview.png",
+        "filename": "random.png",
         "main_image": "random.png",
+        "preview_image": "randompreview.png",
         "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Unisex Hoodie",
         "price": 22.99,
-        "filename": "testedpreview.png",
+        "filename": "tested.png",
         "main_image": "tested.png",
+        "preview_image": "testedpreview.png",
         "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Cropped Hoodie",
         "price": 39.99,
-        "filename": "croppedhoodiepreview.png",
+        "filename": "croppedhoodie.png",
         "main_image": "croppedhoodie.png",
+        "preview_image": "croppedhoodiepreview.png",
         "options": {"color": ["Black", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Unisex Champion Hoodie",
         "price": 29.99,
-        "filename": "hoodiechampionpreview.jpg",
+        "filename": "hoodiechampion.png",
         "main_image": "hoodiechampion.png",
+        "preview_image": "hoodiechampionpreview.jpg",
         "options": {"color": ["Black", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Ribbed Neck",
         "price": 25.99,
-        "filename": "womensribbedneckpreview.jpg",
+        "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
+        "preview_image": "womensribbedneckpreview.jpg",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Shirt",
         "price": 26.99,
-        "filename": "womensshirtkevin.png",
+        "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
+        "preview_image": "womensshirtkevin.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's HD Shirt",
         "price": 28.99,
-        "filename": "womenshdshirtpreview.png",
+        "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
+        "preview_image": "womenshdshirtpreview.png",
         "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kids Shirt",
         "price": 19.99,
-        "filename": "kidshirtpreview.jpg",
+        "filename": "kidshirt.png",
         "main_image": "kidshirt.png",
+        "preview_image": "kidshirtpreview.jpg",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}
     },
     {
         "name": "Kids Hoodie",
         "price": 29.99,
-        "filename": "kidhoodiepreview.jpg",
+        "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
+        "preview_image": "kidhoodiepreview.jpg",
         "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L"]}
     },
     {
         "name": "Kids Long Sleeve",
         "price": 24.99,
-        "filename": "kidlongsleevepreview.jpg",
+        "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
+        "preview_image": "kidlongsleevepreview.jpg",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}
     },
     {
         "name": "Canvas Tote",
         "price": 18.99,
-        "filename": "allovertotebagpreview.png",
+        "filename": "allovertotebag.png",
         "main_image": "allovertotebag.png",
+        "preview_image": "allovertotebagpreview.png",
         "options": {"color": ["Natural", "Black"], "size": []}
     },
     {
         "name": "Tote Bag",
         "price": 21.99,
-        "filename": "drawstringbagpreview.png",
+        "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
+        "preview_image": "drawstringbagpreview.png",
         "options": {"color": ["White", "Black", "Blue"], "size": []}
     },
     {
         "name": "Large Canvas Bag",
         "price": 24.99,
-        "filename": "largecanvasbagpreview.png",
+        "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
+        "preview_image": "largecanvasbagpreview.png",
         "options": {"color": ["Natural", "Black", "Navy"], "size": []}
     },
     {
         "name": "Greeting Card",
         "price": 22.99,
-        "filename": "greetingcardpreview.png",
+        "filename": "greetingcard.png",
         "main_image": "greetingcard.png",
+        "preview_image": "greetingcardpreview.png",
         "options": {"color": ["White", "Cream"], "size": []}
     },
     {
         "name": "Notebook",
         "price": 14.99,
-        "filename": "hardcovernotebookpreview.png",
+        "filename": "hardcovernotebook.png",
         "main_image": "hardcovernotebook.png",
+        "preview_image": "hardcovernotebookpreview.png",
         "options": {"color": ["Black", "Blue"], "size": []}
     },
     {
         "name": "Coasters",
         "price": 13.99,
-        "filename": "coasterpreview.jpg",
+        "filename": "coaster.png",
         "main_image": "coaster.png",
+        "preview_image": "coasterpreview.jpg",
         "options": {"color": ["Wood", "Cork", "Black"], "size": []}
     },
     {
         "name": "Sticker Pack",
         "price": 8.99,
-        "filename": "stickerspreview.png",
+        "filename": "stickers.png",
         "main_image": "stickers.png",
+        "preview_image": "stickerspreview.png",
         "options": {"color": [], "size": []}
     },
     {
         "name": "Dog Bowl",
         "price": 12.99,
-        "filename": "dogbowlpreview.png",
+        "filename": "dogbowl.png",
         "main_image": "dogbowl.png",
+        "preview_image": "dogbowlpreview.png",
         "options": {"color": [], "size": []}
     },
     {
         "name": "Magnet Set",
         "price": 11.99,
-        "filename": "magnetpreview.png",
+        "filename": "magnet.png",
         "main_image": "magnet.png",
+        "preview_image": "magnetpreview.png",
         "options": {"color": [], "size": []}
     },
     {
         "name": "Men's Long Sleeve",
         "price": 29.99,
-        "filename": "menslongsleevepreview.jpg",
+        "filename": "menslongsleeve.png",
         "main_image": "menslongsleeve.png",
+        "preview_image": "menslongsleevepreview.jpg",
         "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Tank",
         "price": 22.99,
-        "filename": "womenstankpreview.jpg",
+        "filename": "womenstank.png",
         "main_image": "womenstank.png",
+        "preview_image": "womenstankpreview.jpg",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Tee",
         "price": 23.99,
-        "filename": "womensteepreview.jpg",
+        "filename": "womenstee.png",
         "main_image": "womenstee.png",
+        "preview_image": "womensteepreview.jpg",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Distressed Dad Hat",
         "price": 24.99,
-        "filename": "distresseddadhatpreview.jpg",
+        "filename": "distresseddadhat.jpg",
         "main_image": "distresseddadhat.jpg",
+        "preview_image": "distresseddadhatpreview.jpg",
         "options": {"color": ["Black", "Navy", "Gray"], "size": ["One Size"]}
     },
     {
         "name": "Snapback Hat",
         "price": 25.99,
-        "filename": "snapbackhatpreview.png",
+        "filename": "snapbackhat.png",
         "main_image": "snapbackhat.png",
+        "preview_image": "snapbackhatpreview.png",
         "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}
     },
     {
         "name": "Five Panel Trucker Hat",
         "price": 26.99,
-        "filename": "fivepaneltruckerhatpreview.jpg",
+        "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
+        "preview_image": "fivepaneltruckerhatpreview.jpg",
         "options": {"color": ["Black", "White", "Navy"], "size": ["One Size"]}
     },
     {
         "name": "Flat Bill Cap",
         "price": 24.99,
-        "filename": "flatbillcappreview.png",
+        "filename": "flatbillcap.png",
         "main_image": "flatbillcap.png",
+        "preview_image": "flatbillcappreview.png",
         "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}
     },
     {
         "name": "Crossbody Bag",
         "price": 32.99,
-        "filename": "crossbodybagpreview.png",
+        "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
+        "preview_image": "crossbodybagpreview.png",
         "options": {"color": ["Black", "Brown", "Tan"], "size": []}
     },
     {
         "name": "Baby Bib",
         "price": 16.99,
-        "filename": "babybibpreview.jpg",
+        "filename": "babybib.png",
         "main_image": "babybib.png",
+        "preview_image": "babybibpreview.jpg",
         "options": {"color": ["White", "Pink", "Blue"], "size": []}
     },
 ], "size": ["S", "M", "L", "XL"]}

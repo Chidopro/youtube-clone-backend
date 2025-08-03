@@ -265,10 +265,21 @@
     }
 
     function finalizeOrder() {
+      // Check if user is authenticated
+      const isAuthenticated = localStorage.getItem('user_authenticated');
+      const userEmail = localStorage.getItem('user_email');
+      
+      if (!isAuthenticated || !userEmail) {
+        alert('Please log in to complete your purchase.');
+        window.location.href = '/login?redirect=checkout';
+        return;
+      }
+      
       // Email notifications - no consent required
       const orderData = {
         cart: cart,
         product_id: productId,
+        user_email: userEmail,
         sms_consent: false, // No SMS consent needed for email notifications
         phone_number: '', // Will be collected by Stripe
         timestamp: new Date().toISOString()
@@ -285,8 +296,12 @@
           localStorage.removeItem("cart");
           window.location.href = data.url;
         } else {
-          alert("Error creating Stripe checkout session.");
+          alert("Error creating Stripe checkout session: " + (data.error || 'Unknown error'));
         }
+      })
+      .catch(error => {
+        console.error('Checkout error:', error);
+        alert("Error creating checkout session. Please try again.");
       });
     }
 

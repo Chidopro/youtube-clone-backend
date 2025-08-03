@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import PlayVideo, { ScreenmerchImages } from "../../Components/PlayVideo/PlayVideo";
 import Recommended from "../../Components/Recommended/Recommended";
+import AuthModal from "../../Components/AuthModal/AuthModal";
 import './Video.css'
 import { useParams } from "react-router-dom";
 import { API_CONFIG } from '../../config/apiConfig'
@@ -12,6 +13,7 @@ const Video = () => {
   const [thumbnail, setThumbnail] = useState(null);
   const [screenshots, setScreenshots] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const videoRef = useRef(null);
 
   // Check if device is mobile
@@ -48,8 +50,8 @@ const Video = () => {
       return;
     }
     
-    if (screenshots.length >= 8) {
-      alert('Maximum 8 screenshots allowed. Please delete some screenshots first.');
+    if (screenshots.length >= 6) {
+      alert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
       return;
     }
 
@@ -97,13 +99,28 @@ const Video = () => {
 
   // Make Merch handler
   const handleMakeMerch = async () => {
+    // Check if user is authenticated
+    const isAuthenticated = localStorage.getItem('user_authenticated');
+    
+    if (!isAuthenticated) {
+      // Show auth modal instead of redirecting
+      setShowAuthModal(true);
+      return;
+    }
+    
+    // User is authenticated, proceed with merch creation
+    await createMerchProduct();
+  };
+
+  // Create merch product function
+  const createMerchProduct = async () => {
     try {
       console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
       
       const requestData = {
         thumbnail,
         videoUrl: window.location.href,
-        screenshots: screenshots.slice(0, 5),
+        screenshots: screenshots.slice(0, 6),
       };
       
       console.log('Request data:', requestData);
@@ -234,6 +251,13 @@ const Video = () => {
           <ScreenmerchImages thumbnail={thumbnail} screenshots={screenshots} onDeleteScreenshot={handleDeleteScreenshot} />
         </div>
       </div>
+
+      {/* Authentication Modal */}
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={createMerchProduct}
+      />
     </div>
   );
 };

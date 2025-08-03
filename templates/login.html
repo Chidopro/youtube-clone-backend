@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🎯 ScreenMerch - Login Required</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0; 
+      padding: 0; 
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .login-container {
+      background: white;
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    
+    .logo {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 1.8rem;
+    }
+    
+    .message {
+      background: #e3f2fd;
+      border: 1px solid #2196f3;
+      color: #1976d2;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+      font-size: 0.9rem;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 500;
+    }
+    
+    input {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+      box-sizing: border-box;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+    
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .toggle-form {
+      margin-top: 20px;
+      color: #666;
+    }
+    
+    .toggle-form button {
+      background: none;
+      border: none;
+      color: #667eea;
+      cursor: pointer;
+      text-decoration: underline;
+      font-size: 14px;
+    }
+    
+    .error {
+      background: #ffebee;
+      border: 1px solid #f44336;
+      color: #c62828;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    
+    .success {
+      background: #e8f5e8;
+      border: 1px solid #4caf50;
+      color: #2e7d32;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">🎯</div>
+    <h1>ScreenMerch Login</h1>
+    
+    <div class="message">
+      <strong>Login Required</strong><br>
+      To create merchandise, please log in or create an account with your email address.
+    </div>
+    
+    <form id="authForm">
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" required placeholder="Enter your email">
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required placeholder="Enter your password">
+      </div>
+      
+      <button type="submit" class="btn" id="submitBtn">
+        <span id="btnText">Login</span>
+      </button>
+    </form>
+    
+    <div class="toggle-form">
+      <span id="toggleText">Don't have an account?</span>
+      <button type="button" id="toggleBtn">Sign Up</button>
+    </div>
+    
+    <div id="message"></div>
+  </div>
+
+  <script>
+    let isLoginMode = true;
+    const redirectTo = new URLSearchParams(window.location.search).get('redirect');
+    
+    // Update form based on mode
+    function updateForm() {
+      const submitBtn = document.getElementById('submitBtn');
+      const btnText = document.getElementById('btnText');
+      const toggleText = document.getElementById('toggleText');
+      const toggleBtn = document.getElementById('toggleBtn');
+      
+      if (isLoginMode) {
+        btnText.textContent = 'Login';
+        toggleText.textContent = "Don't have an account? ";
+        toggleBtn.textContent = 'Sign Up';
+      } else {
+        btnText.textContent = 'Sign Up';
+        toggleText.textContent = 'Already have an account? ';
+        toggleBtn.textContent = 'Login';
+      }
+    }
+    
+    // Toggle between login and signup
+    document.getElementById('toggleBtn').addEventListener('click', function() {
+      isLoginMode = !isLoginMode;
+      updateForm();
+      document.getElementById('message').innerHTML = '';
+    });
+    
+    // Handle form submission
+    document.getElementById('authForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const submitBtn = document.getElementById('submitBtn');
+      const btnText = document.getElementById('btnText');
+      const messageDiv = document.getElementById('message');
+      
+      // Show loading state
+      submitBtn.disabled = true;
+      btnText.innerHTML = '<span class="loading"></span>Processing...';
+      
+      try {
+        const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email,
+            password: password,
+            redirect_url: redirectTo
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Store authentication state
+          localStorage.setItem('user_authenticated', 'true');
+          localStorage.setItem('user_email', email);
+          
+          messageDiv.innerHTML = `<div class="success">${data.message}</div>`;
+          
+          // If there's pending merch data, proceed with merch creation
+          const pendingMerchData = localStorage.getItem('pending_merch_data');
+          if (pendingMerchData && redirectTo === 'merch') {
+            setTimeout(() => {
+              // Create the merch product
+              createMerchProduct(JSON.parse(pendingMerchData));
+            }, 1500);
+          } else {
+            // Redirect to home or specified page
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 1500);
+          }
+        } else {
+          messageDiv.innerHTML = `<div class="error">${data.error}</div>`;
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+        messageDiv.innerHTML = '<div class="error">Network error. Please try again.</div>';
+      } finally {
+        // Reset button state
+        submitBtn.disabled = false;
+        updateForm();
+      }
+    });
+    
+    // Function to create merch product after successful login
+    async function createMerchProduct(merchData) {
+      try {
+        const response = await fetch('/api/create-product', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(merchData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.product_url) {
+          // Clear pending merch data
+          localStorage.removeItem('pending_merch_data');
+          
+          // Redirect to product page
+          window.location.href = data.product_url;
+        } else {
+          alert(`Failed to create merch product: ${data.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Merch creation error:', error);
+        alert('Error creating merch product. Please try again.');
+      }
+    }
+    
+    // Initialize form
+    updateForm();
+  </script>
+</body>
+</html> 

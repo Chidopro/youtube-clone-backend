@@ -185,8 +185,8 @@
     margin-bottom: 24px;
 }
 .screenmerch-preview {
-    width: 140px;
-    height: 90px;
+    width: 120px;
+    height: 80px;
     object-fit: cover;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -198,20 +198,37 @@
     color: #888;
     border: 1px dashed #ccc;
     border-radius: 8px;
-    width: 140px;
-    height: 90px;
+    width: 120px;
+    height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     margin-top: 8px;
+    font-size: 0.8rem;
 }
 .screenmerch-images-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
     width: 100%;
     align-items: start;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.screenmerch-image-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.screenmerch-image-box h4 {
+    font-size: 0.9rem;
+    margin: 0 0 8px 0;
+    color: #333;
+    font-weight: 600;
 }
 .screenmerch-col {
     display: contents;

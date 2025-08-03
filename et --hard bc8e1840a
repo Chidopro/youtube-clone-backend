@@ -1,0 +1,5 @@
+[33me49a2911b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Fix product images - add custom static route and update PRODUCTS array
+[33mbc8e1840a[m Restore correct mobile-friendly template with all requested changes
+[33m2820b1e67[m Remove resolution notice from backend template
+[33md3b759fa9[m Final fixes: Add Core Colors Available and completely remove resolution notice
+[33mb4f467528[m Remove resolution notice and apply final layout fixes

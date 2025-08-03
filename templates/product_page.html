@@ -634,10 +634,6 @@
          <span class="shipping-icon">🎨</span>
          <span class="shipping-text">Core Colors Available</span>
        </div>
-               <div class="shipping-item">
-          <span class="shipping-icon">🎨</span>
-          <span class="shipping-text">Core Colors Available</span>
-        </div>
         <div class="shipping-item">
           <span class="shipping-icon">✅</span>
           <span class="shipping-text">3-14 Day Delivery</span>
@@ -684,8 +680,55 @@
     }
 
     function goToCheckout() {
-      // Add checkout logic here
-      alert('Checkout functionality will be implemented');
+      console.log('🛒 goToCheckout function called');
+      
+      const selectedProducts = document.getElementById('selectedProducts');
+      console.log('🛒 selectedProducts element:', selectedProducts);
+      console.log('🛒 selectedProducts children length:', selectedProducts ? selectedProducts.children.length : 'element not found');
+      
+      if (!selectedProducts) {
+        alert('Error: Could not find selected products container');
+        return;
+      }
+      
+      if (selectedProducts.children.length === 0) {
+        alert('Please add some products to your cart first!');
+        return;
+      }
+      
+      // Collect all selected products for checkout
+      const products = [];
+      selectedProducts.querySelectorAll('div').forEach(item => {
+        const nameElement = item.querySelector('div');
+        const detailsElement = item.querySelector('div:nth-child(2)');
+        const imageElement = item.querySelector('img');
+        
+        if (nameElement && detailsElement) {
+          const productName = nameElement.textContent;
+          const details = detailsElement.textContent;
+          const image = imageElement ? imageElement.src : '';
+          
+          products.push({
+            name: productName,
+            details: details,
+            image: image
+          });
+        }
+      });
+      
+      console.log('🛒 Proceeding to checkout with:', products);
+      
+      // Redirect to checkout page with product data
+      const productId = '{{ product_id }}';
+      const checkoutUrl = `/checkout/${productId}`;
+      
+      console.log('🛒 Redirecting to:', checkoutUrl);
+      
+      // Store cart data in sessionStorage for checkout page
+      sessionStorage.setItem('cartData', JSON.stringify(products));
+      
+      // Redirect to checkout
+      window.location.href = checkoutUrl;
     }
 
          // Initialize the page

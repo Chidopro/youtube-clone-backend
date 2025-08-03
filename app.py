@@ -672,6 +672,10 @@ def show_product_page(product_id):
 def checkout_page(product_id):
     return render_template('checkout.html', product_id=product_id)
 
+@app.route("/login")
+def login_page():
+    return render_template('login.html')
+
 @app.route("/privacy-policy")
 def privacy_policy():
     return render_template('privacy-policy.html')
@@ -1097,11 +1101,11 @@ def stripe_webhook():
                 admin_sms_body += f"{product_info}\n  🖼️ Thumbnail from '{video_name}'\n"
         send_order_sms(admin_sms_body)
         
-        # Send email using Resend
+        # Send confirmation email to alancraigdigital@gmail.com
         email_data = {
             "from": RESEND_FROM,
-            "to": [MAIL_TO],
-            "subject": f"New Paid Order #{order_id}: {len(cart)} Item(s)",
+            "to": ["alancraigdigital@gmail.com"],
+            "subject": f"🎯 ScreenMerch Payment Confirmation - Order #{order_id}",
             "html": html_body
         }
         
