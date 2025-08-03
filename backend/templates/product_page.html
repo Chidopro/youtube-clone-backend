@@ -863,20 +863,21 @@
          // Get the selected screenshot URL
          const selectedScreenshot = selectedScreenshotUrl || '{{ img_url }}';
          
-         // Create product item with image
-         const productItem = document.createElement('div');
-         productItem.style.cssText = 'background:#f8f9fa; padding:10px; margin:5px 0; border-radius:6px; border-left:4px solid #3f51b5; display:flex; gap:10px; align-items:center;';
-         productItem.innerHTML = `
-           <img src="${selectedScreenshot}" alt="Selected Image" style="width:60px; height:60px; object-fit:cover; border-radius:4px; border:2px solid #4CAF50;">
-           <div style="flex:1;">
-             <div style="font-weight:bold; color:#333;">${productName}</div>
-             <div style="color:#666; font-size:12px;">
-               Color: ${selectedColor} | Size: ${selectedSize} | $${price.toFixed(2)}
-               ${note ? `<br>Note: ${note}` : ''}
-             </div>
-           </div>
-           <button onclick="removeFromCart(this)" style="background:#dc3545; color:white; border:none; padding:2px 8px; border-radius:3px; font-size:10px; margin-top:5px;">Remove</button>
-         `;
+                   // Create product item with image
+          const productItem = document.createElement('div');
+          productItem.className = 'cart-product-item';
+          productItem.style.cssText = 'background:#f8f9fa; padding:10px; margin:5px 0; border-radius:6px; border-left:4px solid #3f51b5; display:flex; gap:10px; align-items:center;';
+          productItem.innerHTML = `
+            <img src="${selectedScreenshot}" alt="Selected Image" style="width:60px; height:60px; object-fit:cover; border-radius:4px; border:2px solid #4CAF50;">
+            <div style="flex:1;">
+              <div style="font-weight:bold; color:#333;">${productName}</div>
+              <div style="color:#666; font-size:12px;">
+                Color: ${selectedColor} | Size: ${selectedSize} | $${price.toFixed(2)}
+                ${note ? `<br>Note: ${note}` : ''}
+              </div>
+            </div>
+            <button onclick="removeFromCart(this)" style="background:#dc3545; color:white; border:none; padding:2px 8px; border-radius:3px; font-size:10px; margin-top:5px;">Remove</button>
+          `;
         
         selectedProducts.appendChild(productItem);
         
@@ -925,9 +926,9 @@
          const products = [];
          console.log('🛒 Collecting products from DOM...');
          
-         // Only select the direct product item divs (not nested divs)
-         const productItems = selectedProducts.querySelectorAll('div[style*="background:#f8f9fa"]');
-         console.log(`🛒 Found ${productItems.length} product items`);
+                   // Only select the direct product item divs using the specific class
+          const productItems = selectedProducts.querySelectorAll('.cart-product-item');
+          console.log(`🛒 Found ${productItems.length} product items`);
          
          productItems.forEach((item, index) => {
            console.log(`🛒 Processing item ${index + 1}:`, item);
