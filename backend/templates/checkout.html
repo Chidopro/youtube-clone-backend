@@ -252,6 +252,15 @@
         console.log('🔐 URL params - email:', urlEmail);
         console.log('🔐 Full URL search params:', window.location.search);
         
+        // Debug alert for Incognito mode
+        alert(`DEBUG INFO:
+URL: ${window.location.href}
+Search params: ${window.location.search}
+URL authenticated: ${urlAuthenticated}
+URL email: ${urlEmail}
+localStorage authenticated: ${isAuthenticated}
+localStorage email: ${userEmail}`);
+        
         isAuthenticated = urlAuthenticated || isAuthenticated;
         userEmail = urlEmail || userEmail;
       }
