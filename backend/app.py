@@ -105,18 +105,13 @@ app = Flask(__name__,
            template_folder='templates',
            static_folder='static')
 
-# Configure CORS for production
+# Configure CORS for production - more permissive for debugging
 CORS(app, resources={
     r"/api/*": {
-        "origins": [
-            "chrome-extension://*",
-            "https://screenmerch.com",
-            "https://www.screenmerch.com",
-            "http://localhost:3000",
-            "http://localhost:5173"
-        ],
+        "origins": "*",
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization", "Accept"],
+        "supports_credentials": True
     }
 })
 
@@ -142,6 +137,14 @@ def add_security_headers(response):
     """Add security headers to all responses"""
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
+    
+    # Add CORS headers to all API responses
+    if request.path.startswith('/api/'):
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+    
     return response
 
 # Initialize Supabase client for database operations
