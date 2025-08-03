@@ -106,11 +106,19 @@ app = Flask(__name__,
            static_folder='static')
 
 # Configure CORS for production
-CORS(app, resources={r"/api/*": {"origins": [
-    "chrome-extension://*",
-    "https://screenmerch.com",
-    "https://www.screenmerch.com"
-]}})
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "chrome-extension://*",
+            "https://screenmerch.com",
+            "https://www.screenmerch.com",
+            "http://localhost:3000",
+            "http://localhost:5173"
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 # Security middleware
 @app.before_request
@@ -1218,7 +1226,11 @@ def get_videos():
 @app.route("/api/capture-screenshot", methods=["POST", "OPTIONS"])
 def capture_screenshot():
     if request.method == "OPTIONS":
-        return jsonify(success=True)
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
     """Capture a single screenshot from a video at a specific timestamp"""
     try:
         data = request.get_json()
@@ -1300,7 +1312,11 @@ def get_video_info():
 def process_shirt_image():
     """Process an image to be shirt-print ready with feathered edges"""
     if request.method == "OPTIONS":
-        return jsonify(success=True)
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
     
     try:
         data = request.get_json()
