@@ -963,9 +963,13 @@
         // Redirect to checkout page with product data
         const productId = '{{ product_id }}';
         
-        // Get authentication state from localStorage
-        const isAuthenticated = localStorage.getItem('user_authenticated');
-        const userEmail = localStorage.getItem('user_email');
+        // Get authentication state from URL parameters (passed from frontend)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAuthenticated = urlParams.get('authenticated') || localStorage.getItem('user_authenticated');
+        const userEmail = urlParams.get('email') || localStorage.getItem('user_email');
+        
+        console.log('🔐 Authentication check - isAuthenticated:', isAuthenticated);
+        console.log('🔐 Authentication check - userEmail:', userEmail);
         
         // Build checkout URL with authentication parameters
         let checkoutUrl = `/checkout/${productId}`;

@@ -573,10 +573,19 @@ def create_product():
                 "created_at": "now"
             }
 
+        # Get authentication data from request
+        is_authenticated = data.get("isAuthenticated", False)
+        user_email = data.get("userEmail", "")
+        
+        # Build product URL with authentication parameters
+        product_url = f"https://backend-hidden-firefly-7865.fly.dev/product/{product_id}"
+        if is_authenticated and user_email:
+            product_url += f"?authenticated=true&email={user_email}"
+        
         return jsonify({
             "success": True,
             "product_id": product_id,
-            "product_url": f"https://backend-hidden-firefly-7865.fly.dev/product/{product_id}"
+            "product_url": product_url
         })
     except Exception as e:
         logger.error(f"❌ Error in create-product: {str(e)}")
