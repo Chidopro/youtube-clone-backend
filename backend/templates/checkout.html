@@ -152,16 +152,19 @@
              cart = sessionCart.map((item, index) => {
                console.log(`🛒 Converting item ${index + 1}:`, item);
                
-               const convertedItem = {
-                 product: item.name.trim(), // Clean whitespace from product name
-                 email: '', // Will be filled from user email
-                 note: '',
-                 img: item.image,
-                 variants: {
-                   color: item.details.includes('Color:') ? item.details.split('Color:')[1].split('|')[0].trim() : 'Default',
-                   size: item.details.includes('Size:') ? item.details.split('Size:')[1].split('|')[0].trim() : 'Default'
-                 }
-               };
+                               // Extract just the product name (before any newlines or extra details)
+                const cleanProductName = item.name.split('\n')[0].trim();
+                
+                const convertedItem = {
+                  product: cleanProductName, // Use clean product name only
+                  email: '', // Will be filled from user email
+                  note: '',
+                  img: item.image,
+                  variants: {
+                    color: item.details.includes('Color:') ? item.details.split('Color:')[1].split('|')[0].trim() : 'Default',
+                    size: item.details.includes('Size:') ? item.details.split('Size:')[1].split('|')[0].trim() : 'Default'
+                  }
+                };
                
                console.log(`🛒 Converted item ${index + 1}:`, convertedItem);
                return convertedItem;
