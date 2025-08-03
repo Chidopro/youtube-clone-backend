@@ -238,20 +238,36 @@
       let isAuthenticated = localStorage.getItem('user_authenticated');
       let userEmail = localStorage.getItem('user_email');
       
+      console.log('🔐 Checking authentication...');
+      console.log('🔐 localStorage - isAuthenticated:', isAuthenticated);
+      console.log('🔐 localStorage - userEmail:', userEmail);
+      
       // If not found in localStorage, check URL parameters (passed from frontend)
       if (!isAuthenticated || !userEmail) {
         const urlParams = new URLSearchParams(window.location.search);
-        isAuthenticated = urlParams.get('authenticated') || isAuthenticated;
-        userEmail = urlParams.get('email') || userEmail;
+        const urlAuthenticated = urlParams.get('authenticated');
+        const urlEmail = urlParams.get('email');
+        
+        console.log('🔐 URL params - authenticated:', urlAuthenticated);
+        console.log('🔐 URL params - email:', urlEmail);
+        
+        isAuthenticated = urlAuthenticated || isAuthenticated;
+        userEmail = urlEmail || userEmail;
       }
+      
+      console.log('🔐 Final auth check - isAuthenticated:', isAuthenticated);
+      console.log('🔐 Final auth check - userEmail:', userEmail);
       
       // If still not authenticated, redirect to frontend
       if (!isAuthenticated || !userEmail) {
+        console.log('❌ Not authenticated, redirecting to frontend');
         alert('Please log in to complete your purchase. You will be redirected to the main site.');
         // Redirect to the main frontend site instead of a backend login page
         window.location.href = 'https://screenmerch.com';
         return;
       }
+      
+      console.log('✅ Authentication confirmed, proceeding with checkout');
       
              // Email notifications - no consent required
        const orderData = {
