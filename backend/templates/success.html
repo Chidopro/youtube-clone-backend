@@ -4,96 +4,310 @@
   <title>Order Successful - ScreenMerch</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      text-align: center; 
-      padding: 40px; 
-      background: #f8f8f8;
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 40px;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #4CAF50, #45a049, #4CAF50);
+      animation: shimmer 2s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 30px;
+      box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+      animation: bounce 0.6s ease-out;
+    }
+    
+    @keyframes bounce {
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.05); }
+      70% { transform: scale(0.9); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    .success-icon::before {
+      content: '✓';
+      color: white;
+      font-size: 40px;
+      font-weight: bold;
+    }
+    
+    .success-message {
+      color: #2c3e50;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 15px;
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .subtitle {
+      color: #7f8c8d;
+      font-size: 18px;
+      margin-bottom: 30px;
+      line-height: 1.5;
+    }
+    
+    .next-steps {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 15px;
+      padding: 25px;
+      margin: 30px 0;
+      text-align: left;
+      border-left: 4px solid #4CAF50;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+    
+    .next-steps h3 {
+      color: #2c3e50;
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0 0 15px 0;
+      display: flex;
+      align-items: center;
+    }
+    
+    .next-steps h3::before {
+      content: '🚀';
+      margin-right: 10px;
+      font-size: 24px;
+    }
+    
+    .step-list {
+      list-style: none;
+      padding: 0;
       margin: 0;
     }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background: white;
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    
+    .step-list li {
+      color: #5a6c7d;
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 12px;
+      padding-left: 25px;
+      position: relative;
     }
-    .success-message { 
-      color: #4CAF50; 
-      font-size: 28px; 
-      margin-bottom: 20px;
+    
+    .step-list li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: #4CAF50;
       font-weight: bold;
+      font-size: 18px;
     }
-    .success-icon {
-      font-size: 48px;
-      margin-bottom: 20px;
-    }
-    .tracking-info { 
-      background: #f8f8f8; 
-      padding: 20px; 
-      border-radius: 8px; 
-      margin: 20px 0;
+    
+    .tracking-info {
+      background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+      border-radius: 15px;
+      padding: 25px;
+      margin: 25px 0;
       text-align: left;
+      border-left: 4px solid #2196F3;
+      box-shadow: 0 4px 15px rgba(33, 150, 243, 0.1);
+      display: none;
     }
-    .tracking-link { 
-      color: #3f51b5; 
-      text-decoration: none;
-      font-weight: bold;
+    
+    .tracking-info h3 {
+      color: #1565c0;
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0 0 15px 0;
+      display: flex;
+      align-items: center;
     }
-    .tracking-link:hover {
-      text-decoration: underline;
+    
+    .tracking-info h3::before {
+      content: '📦';
+      margin-right: 10px;
+      font-size: 24px;
     }
+    
     .order-details {
-      background: #e8f5e8;
-      padding: 15px;
-      border-radius: 6px;
-      margin: 15px 0;
-      border-left: 4px solid #4CAF50;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 15px;
     }
-    .home-link {
+    
+    .order-details p {
+      margin: 8px 0;
+      color: #37474f;
+      font-size: 15px;
+    }
+    
+    .order-details strong {
+      color: #1565c0;
+    }
+    
+    .tracking-link {
+      color: #2196F3;
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+    
+    .tracking-link:hover {
+      color: #1565c0;
+      transform: translateX(5px);
+    }
+    
+    .tracking-link::after {
+      content: ' →';
+      margin-left: 5px;
+      transition: transform 0.3s ease;
+    }
+    
+    .tracking-link:hover::after {
+      transform: translateX(3px);
+    }
+    
+    .home-button {
       display: inline-block;
       margin-top: 30px;
-      padding: 12px 24px;
-      background: #3f51b5;
+      padding: 15px 35px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
       color: white;
       text-decoration: none;
-      border-radius: 6px;
-      font-weight: bold;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+      position: relative;
+      overflow: hidden;
     }
-    .home-link:hover {
-      background: #303f9f;
+    
+    .home-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
     }
-    .processing-note {
-      color: #666;
-      font-style: italic;
-      margin: 20px 0;
+    
+    .home-button:hover::before {
+      left: 100%;
+    }
+    
+    .home-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+    }
+    
+    .logo-sidebar {
+      position: absolute;
+      top: 40px;
+      left: 0;
+      width: 160px;
+      background: transparent;
+      box-shadow: none;
+      padding: 0;
+      min-height: unset;
+      border-radius: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        margin: 20px;
+        padding: 30px 20px;
+      }
+      
+      .success-message {
+        font-size: 28px;
+      }
+      
+      .subtitle {
+        font-size: 16px;
+      }
+      
+      .next-steps, .tracking-info {
+        padding: 20px;
+      }
     }
   </style>
 </head>
 <body>
+  <div class="logo-sidebar">
+    <img src="/static/icons/screenmerch_logo.png" alt="ScreenMerch Logo" style="width:90px; display:block; margin:auto; background:none; box-shadow:none;">
+  </div>
+  
   <div class="container">
-    <div class="success-icon">✅</div>
+    <div class="success-icon"></div>
     <div class="success-message">Order Successful!</div>
     
-    <p>Thank you for your order. Your custom merchandise is being created!</p>
-    
-    <div class="processing-note">
-      <strong>What happens next:</strong><br>
-      • Your order is being processed automatically<br>
-      • Products will be created and fulfilled by Printful<br>
-      • You'll receive tracking information once shipped
+    <div class="subtitle">
+      Thank you for your order. Your custom merchandise is being created!
     </div>
     
-    <div class="tracking-info" id="tracking-info" style="display: none;">
-      <h3>📦 Order Tracking</h3>
+    <div class="next-steps">
+      <h3>What happens next:</h3>
+      <ul class="step-list">
+        <li>Your order is being processed automatically</li>
+        <li>Products will be created and fulfilled by Printful</li>
+        <li>You'll receive tracking information once shipped</li>
+      </ul>
+    </div>
+    
+    <div class="tracking-info" id="tracking-info">
+      <h3>Order Tracking</h3>
       <div class="order-details">
         <p><strong>Order ID:</strong> <span id="order-id"></span></p>
-        <p><strong>Track your order:</strong> <a href="#" id="tracking-link" class="tracking-link">View Order Status →</a></p>
+        <p><strong>Track your order:</strong> <a href="#" id="tracking-link" class="tracking-link">View Order Status</a></p>
       </div>
     </div>
     
-    <a href="https://screenmerch.com" class="home-link">Return to Home</a>
+    <a href="https://screenmerch.com" class="home-button">Return to Home</a>
   </div>
   
   <script>
@@ -119,17 +333,50 @@
       }
     }
     
-    // Add some animation
+    // Enhanced animations
     document.addEventListener('DOMContentLoaded', function() {
       const container = document.querySelector('.container');
+      const successIcon = document.querySelector('.success-icon');
+      const successMessage = document.querySelector('.success-message');
+      const subtitle = document.querySelector('.subtitle');
+      const nextSteps = document.querySelector('.next-steps');
+      const homeButton = document.querySelector('.home-button');
+      
+      // Initial state
       container.style.opacity = '0';
-      container.style.transform = 'translateY(20px)';
+      container.style.transform = 'translateY(30px) scale(0.95)';
+      
+      // Animate container
+      setTimeout(() => {
+        container.style.transition = 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        container.style.opacity = '1';
+        container.style.transform = 'translateY(0) scale(1)';
+      }, 100);
+      
+      // Animate elements sequentially
+      setTimeout(() => {
+        successMessage.style.transition = 'all 0.6s ease';
+        successMessage.style.opacity = '1';
+        successMessage.style.transform = 'translateY(0)';
+      }, 400);
       
       setTimeout(() => {
-        container.style.transition = 'all 0.5s ease';
-        container.style.opacity = '1';
-        container.style.transform = 'translateY(0)';
-      }, 100);
+        subtitle.style.transition = 'all 0.6s ease';
+        subtitle.style.opacity = '1';
+        subtitle.style.transform = 'translateY(0)';
+      }, 600);
+      
+      setTimeout(() => {
+        nextSteps.style.transition = 'all 0.6s ease';
+        nextSteps.style.opacity = '1';
+        nextSteps.style.transform = 'translateY(0)';
+      }, 800);
+      
+      setTimeout(() => {
+        homeButton.style.transition = 'all 0.6s ease';
+        homeButton.style.opacity = '1';
+        homeButton.style.transform = 'translateY(0)';
+      }, 1000);
     });
   </script>
 </body>
