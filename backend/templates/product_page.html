@@ -925,7 +925,11 @@
          const products = [];
          console.log('🛒 Collecting products from DOM...');
          
-         selectedProducts.querySelectorAll('div').forEach((item, index) => {
+         // Only select the direct product item divs (not nested divs)
+         const productItems = selectedProducts.querySelectorAll('div[style*="background:#f8f9fa"]');
+         console.log(`🛒 Found ${productItems.length} product items`);
+         
+         productItems.forEach((item, index) => {
            console.log(`🛒 Processing item ${index + 1}:`, item);
            
            const nameElement = item.querySelector('div');
