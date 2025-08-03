@@ -14,20 +14,37 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
     setIsLoading(true);
     setMessage('');
 
-          try {
-        const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
-        const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-            password: password
-          })
-        });
+    try {
+      const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
+      const url = `${API_CONFIG.BASE_URL}${endpoint}`;
+      
+      console.log('Attempting auth request to:', url);
+      console.log('Mode:', isLoginMode ? 'login' : 'signup');
+      console.log('Email:', email.trim());
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password
+        })
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+      }
 
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (data.success) {
         // Store authentication state
@@ -42,11 +59,14 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
           onClose();
         }, 1500);
       } else {
-        setMessage({ type: 'error', text: data.error });
+        setMessage({ type: 'error', text: data.error || 'Authentication failed' });
       }
     } catch (error) {
       console.error('Auth error:', error);
-      setMessage({ type: 'error', text: 'Network error. Please try again.' });
+      setMessage({ 
+        type: 'error', 
+        text: `Network error: ${error.message}. Please check the console for details.` 
+      });
     } finally {
       setIsLoading(false);
     }
