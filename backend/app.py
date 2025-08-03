@@ -880,12 +880,23 @@ def create_checkout_session():
         line_items = []
         for item in cart:
             logger.info(f"🛒 Processing item: {item}")
+            logger.info(f"🛒 Item product name: '{item.get('product')}'")
+            logger.info(f"🛒 Available products: {[p['name'] for p in PRODUCTS]}")
+            
+            # Try exact match first
             product_info = next((p for p in PRODUCTS if p["name"] == item.get("product")), None)
             if not product_info:
-                logger.error(f"❌ Could not find price for product: {item.get('product')}")
-                logger.info(f"🛒 Available products: {[p['name'] for p in PRODUCTS]}")
-                continue
-            logger.info(f"✅ Found product info: {product_info}")
+                # Try case-insensitive match
+                product_info = next((p for p in PRODUCTS if p["name"].lower() == item.get("product", "").lower()), None)
+                if product_info:
+                    logger.info(f"✅ Found product info (case-insensitive): {product_info}")
+                else:
+                    logger.error(f"❌ Could not find price for product: '{item.get('product')}'")
+                    logger.error(f"❌ Product names in PRODUCTS: {[p['name'] for p in PRODUCTS]}")
+                    continue
+            else:
+                logger.info(f"✅ Found product info (exact match): {product_info}")
+            
             line_items.append({
                 "price_data": {
                     "currency": "usd",
