@@ -188,8 +188,9 @@
       const userEmail = localStorage.getItem('user_email');
       
       if (!isAuthenticated || !userEmail) {
-        alert('Please log in to complete your purchase.');
-        window.location.href = '/login?redirect=checkout';
+        alert('Please log in to complete your purchase. You will be redirected to the main site.');
+        // Redirect to the main frontend site instead of a backend login page
+        window.location.href = 'https://screenmerch.netlify.app';
         return;
       }
       
@@ -203,7 +204,7 @@
         timestamp: new Date().toISOString()
       };
 
-      fetch("/create-checkout-session", {
+      fetch("https://backend-hidden-firefly-7865.fly.dev/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData)
