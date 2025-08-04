@@ -19,6 +19,6 @@ img{
 
 .main-content-area {
   flex-grow: 1;
-  padding: 20px;
+  padding: 20px 20px 20px 0px;
   width: 100%; /* Ensure it takes full width */
 }
