@@ -16,35 +16,4 @@
   }
 }
 
-.category-tabs {
-  display: flex;
-  overflow-x: auto;
-  gap: 12px;
-  padding: 16px 0 12px 0;
-  background: #fff;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 18px;
-  scrollbar-width: none;
-}
-.category-tabs::-webkit-scrollbar {
-  display: none;
-}
-.category-tab {
-  background: #f2f2f2;
-  border: none;
-  border-radius: 18px;
-  padding: 8px 22px;
-  font-size: 1rem;
-  color: #222;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-  white-space: nowrap;
-}
-.category-tab.active {
-  background: #222;
-  color: #fff;
-  font-weight: 600;
-}
-.category-tab:hover:not(.active) {
-  background: #e0e0e0;
-}
+

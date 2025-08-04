@@ -531,7 +531,11 @@ def simple_merchandise_page(product_id):
 @app.route("/api/create-product", methods=["POST", "OPTIONS"])
 def create_product():
     if request.method == "OPTIONS":
-        return jsonify(success=True)
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
 
     try:
         data = request.get_json()
@@ -1218,7 +1222,12 @@ def get_videos():
 @app.route("/api/capture-screenshot", methods=["POST", "OPTIONS"])
 def capture_screenshot():
     if request.method == "OPTIONS":
-        return "", 200
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
     """Capture a single screenshot from a video at a specific timestamp"""
     try:
         data = request.get_json()
@@ -1227,7 +1236,9 @@ def capture_screenshot():
         quality = data.get('quality', 95)
         
         if not video_url:
-            return jsonify({"success": False, "error": "video_url is required"}), 400
+            response = jsonify({"success": False, "error": "video_url is required"})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 400
         
         logger.info(f"Capturing screenshot from {video_url} at timestamp {timestamp}")
         
@@ -1235,17 +1246,29 @@ def capture_screenshot():
         
         if result['success']:
             logger.info("Screenshot captured successfully")
-            return jsonify(result)
+            response = jsonify(result)
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
         else:
             logger.error(f"Screenshot capture failed: {result['error']}")
-            return jsonify(result), 500
+            response = jsonify(result)
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 500
             
     except Exception as e:
         logger.error(f"Error in capture_screenshot: {str(e)}")
-        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+        response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
-@app.route("/api/capture-multiple-screenshots", methods=["POST"])
+@app.route("/api/capture-multiple-screenshots", methods=["POST", "OPTIONS"])
 def capture_multiple_screenshots():
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
     """Capture multiple screenshots from a video at different timestamps"""
     try:
         data = request.get_json()
@@ -1271,8 +1294,14 @@ def capture_multiple_screenshots():
         logger.error(f"Error in capture_multiple_screenshots: {str(e)}")
         return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
 
-@app.route("/api/video-info", methods=["POST"])
+@app.route("/api/video-info", methods=["POST", "OPTIONS"])
 def get_video_info():
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
     """Get video information including duration and dimensions"""
     try:
         data = request.get_json()
@@ -1607,8 +1636,14 @@ def test_email_config():
         }), 500
 
 # Authentication endpoints
-@app.route("/api/auth/login", methods=["POST"])
+@app.route("/api/auth/login", methods=["POST", "OPTIONS"])
 def auth_login():
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
     """Handle user login with email and password validation"""
     try:
         data = request.get_json()
@@ -1658,8 +1693,14 @@ def auth_login():
         logger.error(f"Login error: {str(e)}")
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
-@app.route("/api/auth/signup", methods=["POST"])
+@app.route("/api/auth/signup", methods=["POST", "OPTIONS"])
 def auth_signup():
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
     """Handle user signup with email and password validation"""
     try:
         data = request.get_json()

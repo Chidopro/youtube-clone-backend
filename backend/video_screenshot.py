@@ -38,38 +38,58 @@ class VideoScreenshotCapture:
             with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False, dir=self.temp_dir) as temp_file:
                 screenshot_path = temp_file.name
             
-            try:
-                # Use ffmpeg to capture the frame with maximum quality
-                stream = ffmpeg.input(video_url, ss=timestamp)
-                stream = ffmpeg.output(stream, screenshot_path, vframes=1, **{'q:v': 1, 'pix_fmt': 'yuv420p'})
-                
-                # Run the ffmpeg command
-                ffmpeg.run(stream, overwrite_output=True, quiet=True)
-                
-                # Check if the screenshot was created
-                if not os.path.exists(screenshot_path):
-                    return {
-                        'success': False,
-                        'error': 'Failed to create screenshot file'
-                    }
-                
-                # Read the image and convert to base64
-                with open(screenshot_path, 'rb') as f:
-                    image_data = f.read()
-                
-                # Convert to base64
-                base64_image = base64.b64encode(image_data).decode('utf-8')
-                
-                # Clean up temporary file
-                os.unlink(screenshot_path)
-                
-                logger.info(f"Screenshot captured successfully, size: {len(base64_image)} chars")
-                
+            # Use ffmpeg to capture the frame with maximum quality
+            stream = ffmpeg.input(video_url, ss=timestamp)
+            stream = ffmpeg.output(stream, screenshot_path, vframes=1, **{'q:v': 1, 'pix_fmt': 'yuv420p'})
+            
+            # Run the ffmpeg command
+            ffmpeg.run(stream, overwrite_output=True, quiet=True)
+            
+            # Check if the screenshot was created
+            if not os.path.exists(screenshot_path):
                 return {
-                    'success': True,
-                    'screenshot': f"data:image/jpeg;base64,{base64_image}",
-                    'timestamp': timestamp
+                    'success': False,
+                    'error': 'Failed to create screenshot file'
                 }
+            
+            # Read the image and convert to base64
+            with open(screenshot_path, 'rb') as f:
+                image_data = f.read()
+            
+            # Convert to base64
+            base64_image = base64.b64encode(image_data).decode('utf-8')
+            
+            # Clean up temporary file
+            os.unlink(screenshot_path)
+            
+            logger.info(f"Screenshot captured successfully, size: {len(base64_image)} chars")
+            
+            return {
+                'success': True,
+                'screenshot': f"data:image/jpeg;base64,{base64_image}",
+                'timestamp': timestamp
+            }
+                
+        except ffmpeg.Error as e:
+            error_msg = f"FFmpeg error: {str(e)}"
+            logger.error(error_msg)
+            # Clean up on error
+            if os.path.exists(screenshot_path):
+                os.unlink(screenshot_path)
+            return {
+                'success': False,
+                'error': error_msg
+            }
+        except Exception as e:
+            error_msg = f"Unexpected error: {str(e)}"
+            logger.error(error_msg)
+            # Clean up on error
+            if os.path.exists(screenshot_path):
+                os.unlink(screenshot_path)
+            return {
+                'success': False,
+                'error': error_msg
+            }
     
     def create_shirt_ready_image(self, image_data, feather_radius=10, enhance_quality=True):
         """
@@ -136,27 +156,6 @@ class VideoScreenshotCapture:
         except Exception as e:
             logger.error(f"Error processing shirt image: {str(e)}")
             return image_data  # Return original if processing fails
-                
-            except Exception as e:
-                # Clean up on error
-                if os.path.exists(screenshot_path):
-                    os.unlink(screenshot_path)
-                raise e
-                
-        except ffmpeg.Error as e:
-            error_msg = f"FFmpeg error: {str(e)}"
-            logger.error(error_msg)
-            return {
-                'success': False,
-                'error': error_msg
-            }
-        except Exception as e:
-            error_msg = f"Unexpected error: {str(e)}"
-            logger.error(error_msg)
-            return {
-                'success': False,
-                'error': error_msg
-            }
     
     def capture_multiple_screenshots(self, video_url, timestamps=None, quality=95):
         """

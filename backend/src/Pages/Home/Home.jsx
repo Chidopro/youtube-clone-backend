@@ -3,20 +3,7 @@ import Feed from "../../Components/Feed/Feed";
 import './Home.css';
 import { useNavigate } from 'react-router-dom';
 
-const categories = [
-  'All',
-  'Comedy',
-  'Education',
-  'Gaming',
-  'Health & Fitness',
-  'Music',
-  'News & Politics',
-  'Sports',
-  'Tech & Gadgets',
-  'Travel',
-  'Vlogs & Lifestyle',
-  'More'
-];
+
 
 const Home = ({ sidebar, category, selectedCategory, setSelectedCategory }) => {
   const [videos, setVideos] = useState([]);
@@ -46,21 +33,7 @@ const Home = ({ sidebar, category, selectedCategory, setSelectedCategory }) => {
   return (
     <>
       <div className={`container ${sidebar ? "" : " large-container"}`}>
-        {/* Category Tabs */}
-        <div className="category-tabs">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              className={`category-tab${selectedCategory === cat ? ' active' : ''}`}
-              onClick={() => {
-                if (cat === 'All') setSelectedCategory('All');
-                else navigate('/coming-soon');
-              }}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+
         {/* Videos Feed */}
         {loading && <div style={{ padding: 24 }}>Loading videos...</div>}
         {error && <div style={{ padding: 24, color: 'red' }}>{error}</div>}

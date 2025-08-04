@@ -218,7 +218,19 @@ app.get('/api/users/:username/videos', async (req, res) => {
 });
 
 // 7. Get User Subscription Tier
+app.options('/api/users/:username/subscription', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+    res.status(200).send();
+});
+
 app.get('/api/users/:username/subscription', async (req, res) => {
+    // Add CORS headers
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+    
     const { username } = req.params;
     
     try {
