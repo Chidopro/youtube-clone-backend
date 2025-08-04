@@ -18,6 +18,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const videoRef = propVideoRef || useRef(null);
+    
+    // Crop functionality state
+    const [videoOrientation, setVideoOrientation] = useState('landscape'); // 'landscape' or 'portrait'
+    const [cropMode, setCropMode] = useState('fit'); // 'fit', 'fill', 'crop'
+    const [showCropControls, setShowCropControls] = useState(false);
+    const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
 
     useEffect(() => {
         if (!videoId) {
@@ -55,7 +61,111 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
         // Clear screenshots when video changes
         setScreenshots([]);
+        // Reset crop settings
+        setCropMode('fit');
+        setShowCropControls(false);
     }, [videoId, setScreenshots]);
+
+    // Detect video orientation when video loads
+    const handleVideoLoad = () => {
+        const videoElement = videoRef.current;
+        if (videoElement) {
+            const { videoWidth, videoHeight } = videoElement;
+            setVideoDimensions({ width: videoWidth, height: videoHeight });
+            
+            // Determine orientation
+            const isPortrait = videoHeight > videoWidth;
+            setVideoOrientation(isPortrait ? 'portrait' : 'landscape');
+            setShowCropControls(isPortrait);
+            
+            console.log(`Video loaded: ${videoWidth}x${videoHeight}, orientation: ${isPortrait ? 'portrait' : 'landscape'}`);
+        }
+    };
+
+    // Get video container styles based on crop mode
+    const getVideoContainerStyles = () => {
+        const baseStyles = {
+            width: '100%',
+            maxHeight: '405px',
+            background: '#000',
+            position: 'relative',
+            overflow: 'hidden',
+            borderRadius: '8px'
+        };
+
+        if (videoOrientation === 'portrait') {
+            switch (cropMode) {
+                case 'fit':
+                    return {
+                        ...baseStyles,
+                        objectFit: 'contain',
+                        aspectRatio: '9/16',
+                        maxHeight: '600px'
+                    };
+                case 'fill':
+                    return {
+                        ...baseStyles,
+                        objectFit: 'cover',
+                        aspectRatio: '16/9',
+                        maxHeight: '405px'
+                    };
+                case 'crop':
+                    return {
+                        ...baseStyles,
+                        objectFit: 'cover',
+                        aspectRatio: '16/9',
+                        maxHeight: '405px'
+                    };
+                default:
+                    return baseStyles;
+            }
+        } else {
+            // Landscape videos always use fit mode
+            return {
+                ...baseStyles,
+                objectFit: 'contain',
+                aspectRatio: '16/9'
+            };
+        }
+    };
+
+    // Get video element styles based on crop mode
+    const getVideoStyles = () => {
+        if (videoOrientation === 'portrait') {
+            switch (cropMode) {
+                case 'fit':
+                    return {
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain'
+                    };
+                case 'fill':
+                    return {
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                    };
+                case 'crop':
+                    return {
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                    };
+                default:
+                    return {
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain'
+                    };
+            }
+        } else {
+            return {
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain'
+            };
+        }
+    };
 
     // Grab Screenshot handler
     const handleGrabScreenshot = async () => {
@@ -131,7 +241,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             
             if (thumbnailUrl) {
                 console.log('Adding video thumbnail as screenshot');
-                                        setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
+                setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
                 
                 const newScreenshotCount = screenshots.length + 1;
                 alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
@@ -210,18 +320,73 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     return (
         <div className="play-video">
-            <video 
-                key={videoId} 
-                ref={videoRef} 
-                controls 
-                width="100%" 
-                style={{background: '#000'}} 
-                poster={video.thumbnail || ''} 
-                src={video.video_url}
-                crossOrigin="anonymous"
-            >
-                Your browser does not support the video tag.
-            </video>
+            {/* Crop Controls for Portrait Videos */}
+            {showCropControls && (
+                <div className="crop-controls">
+                    <div className="crop-controls-header">
+                        <span className="crop-label">Portrait Video - Choose Display Mode:</span>
+                        <button 
+                            className="crop-toggle-btn"
+                            onClick={() => setShowCropControls(!showCropControls)}
+                        >
+                            {showCropControls ? 'Hide' : 'Show'} Controls
+                        </button>
+                    </div>
+                    <div className="crop-mode-buttons">
+                        <button 
+                            className={`crop-mode-btn ${cropMode === 'fit' ? 'active' : ''}`}
+                            onClick={() => setCropMode('fit')}
+                        >
+                            Fit (Show Full Video)
+                        </button>
+                        <button 
+                            className={`crop-mode-btn ${cropMode === 'fill' ? 'active' : ''}`}
+                            onClick={() => setCropMode('fill')}
+                        >
+                            Fill (Crop to Fit)
+                        </button>
+                        <button 
+                            className={`crop-mode-btn ${cropMode === 'crop' ? 'active' : ''}`}
+                            onClick={() => setCropMode('crop')}
+                        >
+                            Crop (Center Focus)
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Video Container */}
+            <div className="video-container" style={getVideoContainerStyles()}>
+                <video 
+                    key={videoId} 
+                    ref={videoRef} 
+                    controls 
+                    style={getVideoStyles()}
+                    poster={video.thumbnail || ''} 
+                    src={video.video_url}
+                    crossOrigin="anonymous"
+                    onLoadedMetadata={handleVideoLoad}
+                >
+                    Your browser does not support the video tag.
+                </video>
+                
+                {/* Show crop controls toggle for portrait videos */}
+                {videoOrientation === 'portrait' && !showCropControls && (
+                    <button 
+                        className="crop-toggle-overlay"
+                        onClick={() => setShowCropControls(true)}
+                    >
+                        ⚙️ Crop Options
+                    </button>
+                )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="screenmerch-actions">
+                <button className="screenmerch-btn" onClick={handleGrabScreenshot}>Grab Screenshot</button>
+                <button className="screenmerch-btn" onClick={handleMakeMerch}>Make Merch</button>
+            </div>
+
             <h3>{video.title}</h3>
             <div className="play-video-info">
                 <p>{moment(video.created_at).fromNow()}</p>
