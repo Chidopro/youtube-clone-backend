@@ -1020,12 +1020,32 @@
              const details = detailsElement.textContent;
              const image = imageElement ? imageElement.src : '';
              
-             console.log(`🛒 Adding product: ${productName} - ${details}`);
+             // Extract price from details text (format: "Color: X | Size: Y | $Z.ZZ")
+             let price = 24.99; // Default price
+             const priceMatch = details.match(/\$(\d+\.\d+)/);
+             if (priceMatch) {
+               price = parseFloat(priceMatch[1]);
+             }
+             
+             // Extract color and size from details
+             let color = 'Default';
+             let size = 'Default';
+             const colorMatch = details.match(/Color:\s*([^|]+)/);
+             const sizeMatch = details.match(/Size:\s*([^|]+)/);
+             if (colorMatch) color = colorMatch[1].trim();
+             if (sizeMatch) size = sizeMatch[1].trim();
+             
+             console.log(`🛒 Adding product: ${productName} - ${details} - Price: $${price}`);
              
              products.push({
                name: productName,
                details: details,
                image: image,
+               price: price,
+               variants: {
+                 color: color,
+                 size: size
+               },
                video_title: '{{ video_title }}',
                creator_name: '{{ creator_name }}'
              });
