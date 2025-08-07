@@ -1914,9 +1914,9 @@ def get_analytics():
                 
                 sales_result = query.execute()
             else:
-                # If no filters, get all sales with a simpler query
-                logger.info("🔍 Getting all sales (no filters provided)")
-                sales_result = supabase.table('sales').select('id,product_name,amount').execute()
+                # If no filters, get only sales with non-zero amounts (faster query)
+                logger.info("🔍 Getting sales with non-zero amounts (no filters provided)")
+                sales_result = supabase.table('sales').select('id,product_name,amount').gt('amount', 0).execute()
             logger.info(f"📊 Found {len(sales_result.data)} sales records in database")
             
             # Debug: Log the first few sales to see what we're getting
