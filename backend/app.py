@@ -978,8 +978,8 @@ def create_checkout_session():
             "sms_consent": sms_consent,
             "timestamp": data.get("timestamp"),
             "order_id": order_id,
-            "video_title": data.get("videoTitle", "Unknown Video"),
-            "creator_name": data.get("creatorName", "Unknown Creator")
+            "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+            "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
         }
 
         line_items = []
