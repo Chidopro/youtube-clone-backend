@@ -818,8 +818,16 @@
           }
         }
        
-               console.log('✅ Merchandise page initialized');
-      });
+                        console.log('✅ Merchandise page initialized');
+         
+         // Test function to manually trigger price update
+         window.testPriceUpdate = function() {
+           console.log('🧪 Testing price update...');
+           if (window.products && window.products.length > 0) {
+             updatePrice(0, window.products[0].name, 'XXXXXL');
+           }
+         };
+       });
       
              // Screenshot selection functionality
        let selectedScreenshotUrl = null;
@@ -845,34 +853,49 @@
           console.log('🎯 Screenshot selected for preview only');
         }
        
-       // Dynamic pricing function
-       function updatePrice(productIndex, productName, selectedSize) {
-         const priceElement = document.getElementById(`price-${productIndex}`);
-         if (!priceElement) return;
-         
-         // Size pricing adjustments
-         const sizeAdjustments = {
-           "XS": 0, "S": 0, "M": 0, "L": 0,
-           "XL": 2, "XXL": 3, "XXXL": 4, "XXXXL": 5, "XXXXXL": 6
-         };
-         
-         // Find base price from products array
-         const product = window.products.find(p => p.name === productName);
-         if (!product) return;
-         
-         const basePrice = product.price;
-         const adjustment = sizeAdjustments[selectedSize] || 0;
-         const newPrice = basePrice + adjustment;
-         
-         priceElement.textContent = `$${newPrice.toFixed(2)}`;
-         
-         // Update the button price for cart
-         const card = priceElement.closest('.product-card');
-         const addButton = card.querySelector('.add-to-cart-btn');
-         if (addButton) {
-           addButton.setAttribute('data-price', newPrice);
-         }
-       }
+               // Dynamic pricing function
+        function updatePrice(productIndex, productName, selectedSize) {
+          console.log(`🔄 updatePrice called: productIndex=${productIndex}, productName=${productName}, selectedSize=${selectedSize}`);
+          
+          const priceElement = document.getElementById(`price-${productIndex}`);
+          if (!priceElement) {
+            console.log(`❌ Price element not found for index ${productIndex}`);
+            return;
+          }
+          
+          // Size pricing adjustments
+          const sizeAdjustments = {
+            "XS": 0, "S": 0, "M": 0, "L": 0,
+            "XL": 2, "XXL": 3, "XXXL": 4, "XXXXL": 5, "XXXXXL": 6
+          };
+          
+          console.log(`📊 Available products:`, window.products);
+          
+          // Find base price from products array
+          const product = window.products.find(p => p.name === productName);
+          if (!product) {
+            console.log(`❌ Product not found: ${productName}`);
+            return;
+          }
+          
+          const basePrice = product.price;
+          const adjustment = sizeAdjustments[selectedSize] || 0;
+          const newPrice = basePrice + adjustment;
+          
+          console.log(`💰 Price calculation: basePrice=${basePrice}, adjustment=${adjustment}, newPrice=${newPrice}`);
+          
+          priceElement.textContent = `$${newPrice.toFixed(2)}`;
+          
+          // Update the button price for cart
+          const card = priceElement.closest('.product-card');
+          const addButton = card.querySelector('.add-to-cart-btn');
+          if (addButton) {
+            addButton.setAttribute('data-price', newPrice);
+            console.log(`✅ Updated button data-price to ${newPrice}`);
+          }
+          
+          console.log(`✅ Price updated to $${newPrice.toFixed(2)}`);
+        }
        
        // Add to cart functionality
               function addToCart(productName, price, button) {
