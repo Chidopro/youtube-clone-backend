@@ -1974,19 +1974,31 @@ def get_analytics():
         
         # Get unique products sold
         products_sold = {}
-        videos_with_sales = set()
+        videos_with_sales = {}
         
         for order in all_orders:
+            # Skip orders with $0 value
+            if order.get('total_value', 0) <= 0:
+                continue
+                
             for item in order.get('cart', []):
                 product_name = item.get('product', 'Unknown')
                 if product_name not in products_sold:
                     products_sold[product_name] = 0
                 products_sold[product_name] += 1
                 
-                # Track video sources (if available)
+                # Track video sources with revenue
                 video_name = item.get('video_title', 'Unknown Video')
                 creator_name = item.get('creator_name', 'Unknown Creator')
-                videos_with_sales.add(f"{creator_name} - {video_name}")
+                video_key = f"{creator_name} - {video_name}"
+                
+                if video_key not in videos_with_sales:
+                    videos_with_sales[video_key] = {
+                        'sales_count': 0,
+                        'revenue': 0
+                    }
+                videos_with_sales[video_key]['sales_count'] += 1
+                videos_with_sales[video_key]['revenue'] += order.get('total_value', 0)
         
         # Generate sales data for chart (last 30 days)
         from datetime import datetime, timedelta
@@ -2021,11 +2033,11 @@ def get_analytics():
             ],
             'videos_with_sales': [
                 {
-                    'video_name': video,
-                    'sales_count': 1,
-                    'revenue': 25.00  # Assuming $25 per sale
+                    'video_name': video_name,
+                    'sales_count': video_data['sales_count'],
+                    'revenue': video_data['revenue']
                 }
-                for video in videos_with_sales
+                for video_name, video_data in videos_with_sales.items()
             ]
         }
         
