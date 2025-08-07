@@ -1916,7 +1916,7 @@ def get_analytics():
             else:
                 # If no filters, get all sales (removed amount filter to see all sales)
                 logger.info("🔍 Getting all sales (no filters provided)")
-                sales_result = supabase.table('sales').select('id,product_name,amount,image_url,user_id,channel_id,video_title,creator_name').execute()
+                sales_result = supabase.table('sales').select('id,product_name,amount,image_url,user_id,channel_id,video_title').execute()
             logger.info(f"📊 Found {len(sales_result.data)} sales records in database")
             
             # Debug: Log the first few sales to see what we're getting
@@ -1938,7 +1938,7 @@ def get_analytics():
                         'note': '',
                         'img': sale.get('image_url', ''),
                         'video_title': sale.get('video_title', 'Unknown Video'),
-                        'creator_name': sale.get('creator_name', 'Unknown Creator')
+                        'creator_name': 'Unknown Creator'
                     }],
                     'status': 'completed',
                     'created_at': 'N/A',  # created_at column doesn't exist
