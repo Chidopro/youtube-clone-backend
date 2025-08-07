@@ -234,8 +234,10 @@
         div.className = 'cart-item';
         div.innerHTML = `
           <p><strong>Product:</strong> ${item.product}</p>
+          <p><strong>Size:</strong> ${item.variants?.size || 'Default'}</p>
+          <p><strong>Color:</strong> ${item.variants?.color || 'Default'}</p>
+          <p><strong>Price:</strong> $${item.price?.toFixed(2) || '24.99'}</p>
           <p><strong>Email:</strong> ${item.email}</p>
-          <p><strong>Note:</strong> ${item.note || 'None'}</p>
           ${imagesHtml}
           <button class="remove-btn" onclick="removeItem(${index})">Remove</button>
         `;
