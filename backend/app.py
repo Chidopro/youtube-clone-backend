@@ -1914,9 +1914,9 @@ def get_analytics():
                 
                 sales_result = query.execute()
             else:
-                # If no filters, get all sales (removed amount filter to see all sales)
+                # If no filters, get all sales with a simpler query
                 logger.info("🔍 Getting all sales (no filters provided)")
-                sales_result = supabase.table('sales').select('id,product_name,amount,image_url,user_id,channel_id,video_title').execute()
+                sales_result = supabase.table('sales').select('id,product_name,amount').execute()
             logger.info(f"📊 Found {len(sales_result.data)} sales records in database")
             
             # Debug: Log the first few sales to see what we're getting
@@ -1936,15 +1936,15 @@ def get_analytics():
                         'product': sale.get('product_name', 'Unknown Product'),
                         'variants': {'color': 'N/A', 'size': 'N/A'},
                         'note': '',
-                        'img': sale.get('image_url', ''),
-                        'video_title': sale.get('video_title', 'Unknown Video'),
+                        'img': '',
+                        'video_title': 'Unknown Video',
                         'creator_name': 'Unknown Creator'
                     }],
                     'status': 'completed',
                     'created_at': 'N/A',  # created_at column doesn't exist
                     'total_value': sale.get('amount', 0),
-                    'user_id': sale.get('user_id'),
-                    'channel_id': sale.get('channel_id')
+                    'user_id': None,
+                    'channel_id': None
                 }
                 all_orders.append(order_data)
                 logger.info(f"✅ Added sale to analytics: {sale.get('product_name')} - ${sale.get('amount')}")
