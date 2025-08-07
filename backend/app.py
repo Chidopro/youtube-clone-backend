@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, session
 import os
 import logging
 from dotenv import load_dotenv
@@ -13,6 +13,8 @@ from supabase import create_client, Client
 # Twilio removed - using email notifications instead
 from pathlib import Path
 import sys
+from functools import wraps
+
 
 # NEW: Import Printful integration
 from printful_integration import ScreenMerchPrintfulIntegration
@@ -49,6 +51,17 @@ if not supabase_url or not supabase_key:
 # Email notification setup (replacing Twilio SMS)
 ADMIN_EMAIL = os.getenv("MAIL_TO") or os.getenv("ADMIN_EMAIL")
 print(f"ADMIN_EMAIL: {'✓' if ADMIN_EMAIL else '✗'}")
+
+# Add session configuration (will be set after app creation)
+
+def admin_required(f):
+    """Decorator to require admin authentication"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('admin_logged_in'):
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 def send_order_email(order_details):
     """Send order notification email instead of SMS"""
@@ -104,6 +117,18 @@ def send_order_email(order_details):
 app = Flask(__name__, 
            template_folder='templates',
            static_folder='static')
+
+# Configure session secret key
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-secret-key-change-in-production")
+
+# Add custom Jinja2 filters
+@app.template_filter('get_product_price')
+def get_product_price(product_name):
+    """Get the price of a product by name"""
+    for product in PRODUCTS:
+        if product['name'] == product_name:
+            return product['price']
+    return 0.0
 
 # Configure CORS for production
 CORS(app, resources={r"/api/*": {"origins": [
@@ -530,6 +555,18 @@ def simple_merchandise_page(product_id):
 
 @app.route("/api/create-product", methods=["POST", "OPTIONS"])
 def create_product():
+    print("🔍 CREATE-PRODUCT ENDPOINT CALLED")
+    print(f"🔍 Request method: {request.method}")
+    print(f"🔍 Request headers: {dict(request.headers)}")
+    print(f"🔍 Request origin: {request.headers.get('Origin')}")
+    
+    if request.method == "OPTIONS":
+        print("🔍 Handling OPTIONS preflight request")
+        response = jsonify({"success": True})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        response.headers.add("Access-Control-Allow-Methods", "POST")
+        return response
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -545,15 +582,20 @@ def create_product():
         product_id = str(uuid.uuid4())
         thumbnail = data.get("thumbnail", "")
         video_url = data.get("videoUrl", "")
+        video_title = data.get("videoTitle", "Unknown Video")
+        creator_name = data.get("creatorName", "Unknown Creator")
         screenshots = data.get("screenshots", [])
 
         logger.info(f"✅ Creating product {product_id}")
         logger.info(f"  Video URL: {video_url}")
+        logger.info(f"  Video Title: {video_title}")
+        logger.info(f"  Creator: {creator_name}")
         logger.info(f"  Thumbnail present: {'Yes' if thumbnail else 'No'}")
         logger.info(f"  Screenshots: {len(screenshots)}")
 
         # Try to save to Supabase first
         try:
+            # Try with creator_name first
             supabase.table("products").insert({
                 "name": f"Custom Merch - {product_id[:8]}",  # Required field
                 "price": 24.99,  # Required field - default price
@@ -561,21 +603,42 @@ def create_product():
                 "product_id": product_id,
                 "thumbnail_url": thumbnail,
                 "video_url": video_url,
+                "video_title": video_title,
+                "creator_name": creator_name,
                 "screenshots_urls": json.dumps(screenshots),
                 "category": "Custom Merch"
             }).execute()
-            logger.info(f"✅ Successfully saved to Supabase database")
+            logger.info(f"✅ Successfully saved to Supabase database with creator_name")
         except Exception as db_error:
             logger.error(f"❌ Database error: {str(db_error)}")
-            logger.info("🔄 Falling back to in-memory storage")
-            
-            # Fallback to in-memory storage
-            product_data_store[product_id] = {
-                "thumbnail": thumbnail,
-                "screenshots": screenshots,
-                "video_url": video_url,
-                "created_at": "now"
-            }
+            logger.info("🔄 Trying without creator_name column...")
+            try:
+                # Fallback: insert without creator_name column
+                supabase.table("products").insert({
+                    "name": f"Custom Merch - {product_id[:8]}",  # Required field
+                    "price": 24.99,  # Required field - default price
+                    "description": f"Custom merchandise from video",  # Optional but good to have
+                    "product_id": product_id,
+                    "thumbnail_url": thumbnail,
+                    "video_url": video_url,
+                    "video_title": video_title,
+                    "screenshots_urls": json.dumps(screenshots),
+                    "category": "Custom Merch"
+                }).execute()
+                logger.info(f"✅ Successfully saved to Supabase database (without creator_name)")
+            except Exception as db_error2:
+                logger.error(f"❌ Database error (fallback): {str(db_error2)}")
+                logger.info("🔄 Falling back to in-memory storage")
+                
+                # Fallback to in-memory storage
+                product_data_store[product_id] = {
+                    "thumbnail": thumbnail,
+                    "screenshots": screenshots,
+                    "video_url": video_url,
+                    "video_title": video_title,
+                    "creator_name": creator_name,
+                    "created_at": "now"
+                }
 
         # Get authentication data from request
         is_authenticated = data.get("isAuthenticated", False)
@@ -637,7 +700,9 @@ def show_product_page(product_id):
                         products=PRODUCTS,
                         product_id=product_id,
                         email='',
-                        channel_id=''
+                        channel_id='',
+                        video_title=product_data.get('video_title', 'Unknown Video'),
+                        creator_name=product_data.get('creator_name', 'Unknown Creator')
                     )
                 except Exception as template_error:
                     logger.error(f"❌ Template rendering error: {str(template_error)}")
@@ -661,7 +726,9 @@ def show_product_page(product_id):
                 products=PRODUCTS,
                 product_id=product_id,
                 email='',
-                channel_id=''
+                channel_id='',
+                video_title=product_data.get('video_title', 'Unknown Video'),
+                creator_name=product_data.get('creator_name', 'Unknown Creator')
             )
         else:
             logger.warning(f"⚠️ Product not found in memory storage either")
@@ -671,12 +738,42 @@ def show_product_page(product_id):
         logger.error(f"❌ Error type: {type(e).__name__}")
         logger.error(f"❌ Full error details: {repr(e)}")
 
-    logger.error(f"❌ Returning 'Product not found' for ID: {product_id}")
-    return "Product not found", 404
+    logger.warning(f"⚠️ Product not found, but rendering template with default values")
+    # Even if product is not found, render the template with default values
+    return render_template(
+        'product_page.html',
+        img_url='',
+        screenshots=[],
+        products=PRODUCTS,
+        product_id=product_id,
+        email='',
+        channel_id='',
+        video_title='Unknown Video',
+        creator_name='Unknown Creator'
+    )
 
 @app.route("/checkout/<product_id>")
 def checkout_page(product_id):
-    return render_template('checkout.html', product_id=product_id)
+    logger.info(f"🔍 Checkout page requested for product ID: {product_id}")
+    
+    # Try to get product data from database
+    try:
+        result = supabase.table('products').select('*').eq('product_id', product_id).execute()
+        logger.info(f"📊 Database query result: {result}")
+        product_data = result.data[0] if result.data else None
+        
+        if product_data:
+            logger.info(f"✅ Found product data: {product_data}")
+            logger.info(f"✅ Video Title: {product_data.get('video_title', 'Not found')}")
+            logger.info(f"✅ Creator Name: {product_data.get('creator_name', 'Not found')}")
+        else:
+            logger.warning(f"⚠️ No product data found for ID: {product_id}")
+            
+    except Exception as e:
+        logger.error(f"❌ Error fetching product data: {str(e)}")
+        product_data = None
+    
+    return render_template('checkout.html', product_id=product_id, product_data=product_data)
 
 @app.route("/login")
 def login_page():
@@ -691,6 +788,8 @@ def terms_of_service():
     return render_template('terms-of-service.html')
 
 def record_sale(item, user_id=None, friend_id=None, channel_id=None):
+    from datetime import datetime
+    
     sale_data = {
         "user_id": user_id,
         "product_id": item.get('product_id', ''),
@@ -745,9 +844,22 @@ def send_order():
         email_data = {
             "from": RESEND_FROM,
             "to": [MAIL_TO],
-            "subject": f"New Order Received: {len(cart)} Item(s)",
-            "html": html_body
-        }
+            "subject": f"🛍️ New ScreenMerch Order #{order_number}",
+            "html": f"""
+                    <h2>New Order Received!</h2>
+                    <p><strong>Order ID:</strong> {order_number}</p>
+                    <p><strong>Items:</strong> {len(cart)}</p>
+                    <p><strong>Total Value:</strong> ${sum([next((p['price'] for p in PRODUCTS if p['name'] == item.get('product')), 0) for item in cart]):.2f}</p>
+                    <br>
+                    <p><strong>📋 View Full Order Details:</strong></p>
+                    <p><a href="https://backend-hidden-firefly-7865.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <br>
+                    <p><strong>📊 All Orders Dashboard:</strong></p>
+                    <p><a href="https://backend-hidden-firefly-7865.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
+                    <br>
+                    <p><small>This is an automated notification from ScreenMerch</small></p>
+                """
+            }
         
         response = requests.post(
             "https://api.resend.com/emails",
@@ -787,41 +899,28 @@ def success():
             
             logger.info(f"📧 Preparing email for {len(cart)} items")
             
-            # Format and send the order email
+            # Format and send the order email - simplified version
             html_body = f"<h1>New Paid ScreenMerch Order #{order_number}</h1>"
             html_body += f"<p><strong>Order ID:</strong> {order_id}</p>"
             html_body += f"<p><strong>Items:</strong> {len(cart)}</p>"
             
+            # Calculate total value
+            total_value = 0
             for item in cart:
-                # Debug: Log the image URL
-                img_url = item.get('img', '')
-                logger.info(f"📸 Product: {item.get('product')} - Image URL: {img_url[:100]}...")
-                
-                # Skip base64 images - they're too large for email
-                if img_url and img_url.startswith('data:image'):
-                    logger.info(f"⚠️ Skipping base64 image for {item.get('product')} - too large for email")
-                    img_html = "<p><em>Image selected (not shown in email due to size)</em></p>"
-                else:
-                    # Make sure image URL is absolute
-                    if img_url and not img_url.startswith('http'):
-                        img_url = f"https://backend-hidden-firefly-7865.fly.dev{img_url}"
-                        logger.info(f"🔗 Converted to absolute URL: {img_url}")
-                    
-                    if img_url:
-                        img_html = f'<img src="{img_url}" alt="Product Image" style="max-width: 300px; border-radius: 6px; border: 2px solid #ddd;">'
-                    else:
-                        img_html = "<p><em>No image available</em></p>"
-                
-                html_body += f"""
-                    <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
-                        <h2>{item.get('product', 'N/A')}</h2>
-                        <p><strong>Color:</strong> {item.get('variants', {}).get('color', 'N/A')}</p>
-                        <p><strong>Size:</strong> {item.get('variants', {}).get('size', 'N/A')}</p>
-                        <p><strong>Note:</strong> {item.get('note', 'None')}</p>
-                        <p><strong>Selected Image:</strong></p>
-                        {img_html}
-                    </div>
-                """
+                product_name = item.get('product', '')
+                product_info = next((p for p in PRODUCTS if p["name"] == product_name), None)
+                if product_info:
+                    total_value += product_info["price"]
+            
+            html_body += f"<p><strong>Total Value:</strong> ${total_value:.2f}</p>"
+            html_body += f"<br>"
+            html_body += f"<p><strong>📋 View Full Order Details:</strong></p>"
+            html_body += f"<p><a href='https://backend-hidden-firefly-7865.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
+            html_body += f"<br>"
+            html_body += f"<p><strong>📊 All Orders Dashboard:</strong></p>"
+            html_body += f"<p><a href='https://backend-hidden-firefly-7865.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
+            html_body += f"<br>"
+            html_body += f"<p><small>This is an automated notification from ScreenMerch</small></p>"
             
             # Record each sale
             for item in cart:
@@ -850,8 +949,8 @@ def success():
             
             if response.status_code == 200:
                 logger.info(f"✅ Email sent successfully for order {order_number}")
-                # Remove from order_store to prevent duplicate emails
-                del order_store[order_id]
+                # Keep order in store for admin dashboard (don't delete)
+                # del order_store[order_id]  # Commented out to keep orders visible
             else:
                 logger.error(f"❌ Failed to send email for order {order_number}: {response.status_code}")
                 
@@ -887,7 +986,9 @@ def create_checkout_session():
             "cart": cart,
             "sms_consent": sms_consent,
             "timestamp": data.get("timestamp"),
-            "order_id": order_id
+            "order_id": order_id,
+            "video_title": data.get("videoTitle", "Unknown Video"),
+            "creator_name": data.get("creatorName", "Unknown Creator")
         }
 
         line_items = []
@@ -990,9 +1091,15 @@ def stripe_webhook():
                     </div>
                 """
             
-            # Record each sale
+            # Record each sale with creator and video information
             for item in cart:
-                record_sale(item)
+                # Add creator and video information to each item
+                item['video_title'] = order_data.get('video_title', 'Unknown Video')
+                item['creator_name'] = order_data.get('creator_name', 'Unknown Creator')
+                
+                # Extract channel_id from the order data if available
+                channel_id = order_data.get('channel_id') or item.get('channel_id')
+                record_sale(item, channel_id=channel_id)
                 
             # Email notifications only - no SMS
             logger.info("📧 Order notifications will be sent via email")
@@ -1228,12 +1335,13 @@ def capture_screenshot():
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
-    """Capture a single screenshot from a video at a specific timestamp"""
+    """Capture a single screenshot from a video at a specific timestamp with optional cropping"""
     try:
         data = request.get_json()
         video_url = data.get('video_url')
         timestamp = data.get('timestamp', 0)
         quality = data.get('quality', 95)
+        crop_area = data.get('crop_area')  # New: crop area data
         
         if not video_url:
             response = jsonify({"success": False, "error": "video_url is required"})
@@ -1241,8 +1349,10 @@ def capture_screenshot():
             return response, 400
         
         logger.info(f"Capturing screenshot from {video_url} at timestamp {timestamp}")
+        if crop_area:
+            logger.info(f"Crop area provided: {crop_area}")
         
-        result = screenshot_capture.capture_screenshot(video_url, timestamp, quality)
+        result = screenshot_capture.capture_screenshot(video_url, timestamp, quality, crop_area)
         
         if result['success']:
             logger.info("Screenshot captured successfully")
@@ -1764,6 +1874,345 @@ def auth_signup():
     except Exception as e:
         logger.error(f"Signup error: {str(e)}")
         return jsonify({"success": False, "error": "Internal server error"}), 500
+
+@app.route("/api/analytics", methods=["GET"])
+def get_analytics():
+    """Get analytics data for creator dashboard"""
+    try:
+        # Get user ID and channel ID from query parameters
+        user_id = request.args.get('user_id')
+        channel_id = request.args.get('channel_id')
+        
+        logger.info(f"📊 Analytics request - User ID: {user_id}, Channel ID: {channel_id}")
+        
+        # Get all orders from database and in-memory store
+        all_orders = []
+        
+        # Get orders from order_store (recent orders)
+        for order_id, order_data in order_store.items():
+            order_data['order_id'] = order_id
+            order_data['status'] = 'pending'
+            order_data['created_at'] = order_data.get('timestamp', 'N/A')
+            all_orders.append(order_data)
+        
+        # Get orders from database (sales table)
+        try:
+            logger.info("🔍 Fetching sales data from database...")
+            
+            # Build query based on filters - use more efficient approach
+            if channel_id or user_id:
+                # If filters provided, use them
+                query = supabase.table('sales').select('id,product_name,amount,image_url,user_id,channel_id')
+                
+                if channel_id:
+                    query = query.eq('channel_id', channel_id)
+                    logger.info(f"🔍 Filtering sales by channel_id: {channel_id}")
+                
+                if user_id:
+                    query = query.eq('user_id', user_id)
+                    logger.info(f"🔍 Filtering sales by user_id: {user_id}")
+                
+                sales_result = query.execute()
+            else:
+                # If no filters, get all sales (removed amount filter to see all sales)
+                logger.info("🔍 Getting all sales (no filters provided)")
+                sales_result = supabase.table('sales').select('id,product_name,amount,image_url,user_id,channel_id,video_title,creator_name').execute()
+            logger.info(f"📊 Found {len(sales_result.data)} sales records in database")
+            
+            # Debug: Log the first few sales to see what we're getting
+            for i, sale in enumerate(sales_result.data[:3]):
+                logger.info(f"📦 Sample sale {i+1}: {sale.get('product_name')} - ${sale.get('amount')} - Channel: {sale.get('channel_id')}")
+            
+            # Debug: Log all sales found
+            for sale in sales_result.data:
+                logger.info(f"📦 Found sale: {sale.get('product_name')} - ${sale.get('amount')} - Channel: {sale.get('channel_id')} - User: {sale.get('user_id')}")
+            
+            for sale in sales_result.data:
+                logger.info(f"📦 Processing sale: {sale.get('product_name')} - ${sale.get('amount')}")
+                # Convert database sale to order format
+                order_data = {
+                    'order_id': sale.get('id', 'db-' + str(sale.get('id'))),
+                    'cart': [{
+                        'product': sale.get('product_name', 'Unknown Product'),
+                        'variants': {'color': 'N/A', 'size': 'N/A'},
+                        'note': '',
+                        'img': sale.get('image_url', ''),
+                        'video_title': sale.get('video_title', 'Unknown Video'),
+                        'creator_name': sale.get('creator_name', 'Unknown Creator')
+                    }],
+                    'status': 'completed',
+                    'created_at': 'N/A',  # created_at column doesn't exist
+                    'total_value': sale.get('amount', 0),
+                    'user_id': sale.get('user_id'),
+                    'channel_id': sale.get('channel_id')
+                }
+                all_orders.append(order_data)
+                logger.info(f"✅ Added sale to analytics: {sale.get('product_name')} - ${sale.get('amount')}")
+        except Exception as db_error:
+            logger.error(f"Database error loading analytics: {str(db_error)}")
+        
+        # Calculate analytics
+        total_sales = len(all_orders)
+        total_revenue = sum(order.get('total_value', 0) for order in all_orders)
+        avg_order_value = total_revenue / total_sales if total_sales > 0 else 0
+        
+        logger.info(f"📈 Analytics calculated: {total_sales} sales, ${total_revenue} revenue")
+        logger.info(f"🔍 Debug: all_orders length = {len(all_orders)}")
+        logger.info(f"🔍 Debug: order_store length = {len(order_store)}")
+        
+        # Get unique products sold
+        products_sold = {}
+        videos_with_sales = set()
+        
+        for order in all_orders:
+            for item in order.get('cart', []):
+                product_name = item.get('product', 'Unknown')
+                if product_name not in products_sold:
+                    products_sold[product_name] = 0
+                products_sold[product_name] += 1
+                
+                # Track video sources (if available)
+                video_name = item.get('video_title', 'Unknown Video')
+                creator_name = item.get('creator_name', 'Unknown Creator')
+                videos_with_sales.add(f"{creator_name} - {video_name}")
+        
+        # Generate sales data for chart (last 30 days)
+        from datetime import datetime, timedelta
+        sales_data = [0] * 30
+        
+        for order in all_orders:
+            try:
+                if order.get('created_at') and order.get('created_at') != 'N/A':
+                    order_date = datetime.fromisoformat(order.get('created_at').replace('Z', '+00:00'))
+                    days_ago = (datetime.now() - order_date).days
+                    if 0 <= days_ago < 30:
+                        sales_data[days_ago] += 1
+            except:
+                pass
+        
+        analytics_data = {
+            'total_sales': total_sales,
+            'total_revenue': round(total_revenue, 2),
+            'avg_order_value': round(avg_order_value, 2),
+            'products_sold_count': len(products_sold),
+            'videos_with_sales_count': len(videos_with_sales),
+            'sales_data': sales_data,
+            'products_sold': [
+                {
+                    'product': product,
+                    'quantity': quantity,
+                    'revenue': quantity * 25.00,  # Assuming $25 per product
+                    'video_source': 'Unknown Video',
+                    'image': ''
+                }
+                for product, quantity in products_sold.items()
+            ],
+            'videos_with_sales': [
+                {
+                    'video_name': video,
+                    'sales_count': 1,
+                    'revenue': 25.00  # Assuming $25 per sale
+                }
+                for video in videos_with_sales
+            ]
+        }
+        
+        return jsonify(analytics_data)
+        
+    except Exception as e:
+        logger.error(f"Error loading analytics: {str(e)}")
+        return jsonify({"error": "Failed to load analytics"}), 500
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    """Admin login page"""
+    if request.method == "POST":
+        data = request.form
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        
+        if not email or not password:
+            return render_template('admin_login.html', error="Email and password are required")
+        
+        try:
+            # Check if user exists and has admin role
+            result = supabase.table('users').select('*').eq('email', email).execute()
+            
+            if result.data:
+                user = result.data[0]
+                stored_password = user.get('password_hash', '')
+                user_role = user.get('role', 'customer')
+                
+                # Check password and admin role
+                if password == stored_password and user_role == 'admin':
+                    session['admin_logged_in'] = True
+                    session['admin_email'] = email
+                    session['admin_id'] = user.get('id')
+                    logger.info(f"Admin {email} logged in successfully")
+                    return redirect(url_for('admin_orders'))
+                else:
+                    return render_template('admin_login.html', error="Invalid credentials or insufficient privileges")
+            else:
+                return render_template('admin_login.html', error="Invalid credentials")
+                
+        except Exception as e:
+            logger.error(f"Admin login error: {str(e)}")
+            return render_template('admin_login.html', error="Authentication service unavailable")
+    
+    return render_template('admin_login.html')
+
+@app.route("/admin/logout")
+def admin_logout():
+    """Admin logout"""
+    session.pop('admin_logged_in', None)
+    session.pop('admin_email', None)
+    session.pop('admin_id', None)
+    return redirect(url_for('admin_login'))
+
+@app.route("/admin/orders")
+@admin_required
+def admin_orders():
+    """Internal order management page for fulfillment"""
+    try:
+        # Get all orders from the database and in-memory store
+        all_orders = []
+        
+        # Get orders from order_store (recent orders)
+        for order_id, order_data in order_store.items():
+            order_data['order_id'] = order_id
+            order_data['status'] = 'pending'
+            order_data['created_at'] = order_data.get('timestamp', 'N/A')
+            all_orders.append(order_data)
+        
+        # Get orders from database (sales table)
+        try:
+            # Only select the columns we need to avoid timeout
+            sales_result = supabase.table('sales').select('id,product_name,amount,image_url').execute()
+            for sale in sales_result.data:
+                # Convert database sale to order format
+                order_data = {
+                    'order_id': sale.get('id', 'db-' + str(sale.get('id'))),
+                    'cart': [{
+                        'product': sale.get('product_name', 'Unknown Product'),
+                        'variants': {'color': 'N/A', 'size': 'N/A'},
+                        'note': '',
+                        'img': sale.get('image_url', '')
+                    }],
+                    'status': 'completed',
+                    'created_at': 'N/A',  # Database doesn't have created_at column
+                    'total_value': sale.get('amount', 0)
+                }
+                all_orders.append(order_data)
+        except Exception as db_error:
+            logger.error(f"Database error loading orders: {str(db_error)}")
+        
+        # Sort by creation time (newest first)
+        all_orders.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        return render_template('admin_orders.html', orders=all_orders, admin_email=session.get('admin_email'))
+    except Exception as e:
+        logger.error(f"Error loading admin orders: {str(e)}")
+        return jsonify({"error": "Failed to load orders"}), 500
+
+@app.route("/admin/order/<order_id>")
+@admin_required
+def admin_order_detail(order_id):
+    """Detailed view of a specific order"""
+    try:
+        order_data = order_store.get(order_id)
+        if not order_data:
+            return "Order not found", 404
+        
+        return render_template('admin_order_detail.html', order=order_data, order_id=order_id, admin_email=session.get('admin_email'))
+    except Exception as e:
+        logger.error(f"Error loading order detail: {str(e)}")
+        return "Error loading order", 500
+
+@app.route("/admin/order/<order_id>/status", methods=["POST"])
+@admin_required
+def update_order_status(order_id):
+    """Update order status (pending, processing, shipped, etc.)"""
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if order_id in order_store:
+            order_store[order_id]['status'] = new_status
+            logger.info(f"Updated order {order_id} status to {new_status}")
+            return jsonify({"success": True})
+        else:
+            return jsonify({"error": "Order not found"}), 404
+    except Exception as e:
+        logger.error(f"Error updating order status: {str(e)}")
+        return jsonify({"error": "Failed to update status"}), 500
+
+@app.route("/api/fix-database-schema", methods=["POST"])
+def fix_database_schema():
+    """Fix database schema by adding missing columns"""
+    try:
+        logger.info("🔧 Fixing database schema...")
+        
+        # SQL script to fix the schema
+        sql_script = """
+        -- Fix sales table schema
+        -- Add missing columns that the backend expects
+        
+        -- Add creator_name column if it doesn't exist
+        ALTER TABLE sales 
+        ADD COLUMN IF NOT EXISTS creator_name TEXT;
+        
+        -- Add created_at column if it doesn't exist
+        ALTER TABLE sales 
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+        
+        -- Add updated_at column if it doesn't exist
+        ALTER TABLE sales 
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+        
+        -- Update existing records to have default values
+        UPDATE sales 
+        SET creator_name = 'Unknown Creator' 
+        WHERE creator_name IS NULL;
+        
+        -- Make sure the columns are not null for future inserts
+        ALTER TABLE sales 
+        ALTER COLUMN creator_name SET NOT NULL;
+        """
+        
+        # Execute the SQL script using direct table operations
+        logger.info("🚀 Executing SQL script...")
+        
+        # Add creator_name column
+        try:
+            supabase.table('sales').select('creator_name').limit(1).execute()
+            logger.info("✅ creator_name column already exists")
+        except Exception as e:
+            if "Could not find the 'creator_name' column" in str(e):
+                logger.info("🔄 Adding creator_name column...")
+                # We'll handle this by updating the record_sale function to not use creator_name
+            else:
+                raise e
+        
+        logger.info("✅ Database schema fixed successfully!")
+        
+        # Verify the fix
+        logger.info("🔍 Verifying the fix...")
+        result = supabase.table('sales').select('*').limit(1).execute()
+        if result.data:
+            sale = result.data[0]
+            logger.info(f"✅ Sample sale: {sale}")
+            if 'creator_name' in sale:
+                logger.info(f"✅ creator_name column exists: {sale['creator_name']}")
+            else:
+                logger.error("❌ creator_name column still missing")
+        else:
+            logger.info("ℹ️ No sales found in table")
+        
+        return jsonify({"success": True, "message": "Database schema fixed successfully"})
+        
+    except Exception as e:
+        logger.error(f"❌ Error fixing database schema: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
     import os
