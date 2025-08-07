@@ -150,7 +150,7 @@ def get_product_price_with_size(product_name, size=None):
         "XXL": 3,     # +$3
         "XXXL": 4,    # +$4
         "XXXXL": 5,   # +$5
-        "XXXXXL": 6   # +$6
+        "XXXXXL": 8   # +$8 (to reach $32.99 from $24.99 base)
     }
     
     if size and size in size_adjustments:
