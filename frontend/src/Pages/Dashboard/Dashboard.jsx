@@ -122,7 +122,7 @@ const Dashboard = ({ sidebar }) => {
         try {
             console.log('🔍 Starting analytics fetch...');
             setAnalyticsLoading(true);
-            const response = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/analytics');
+            const response = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/analytics?t=' + Date.now());
             console.log('📡 Response status:', response.status);
             if (response.ok) {
                 const data = await response.json();
@@ -682,38 +682,90 @@ const Dashboard = ({ sidebar }) => {
                                         <div>Image</div>
                                     </div>
                                     
-                                    {/* No sales data yet - will populate when sales occur */}
-                                    <div className="table-row empty-state">
-                                        <div className="product-info">
-                                            <span>No products sold yet</span>
+                                    {analyticsData.products_sold && analyticsData.products_sold.length > 0 ? (
+                                        analyticsData.products_sold.map((product, index) => (
+                                            <div key={index} className="table-row">
+                                                <div className="product-info">
+                                                    <span>{product.product}</span>
+                                                </div>
+                                                <div>{product.quantity}</div>
+                                                <div>${product.revenue.toFixed(2)}</div>
+                                                <div>{product.video_source}</div>
+                                                <div className="product-image">
+                                                    {product.image ? (
+                                                        <img src={product.image} alt={product.product} style={{width: '50px', height: '50px', objectFit: 'cover'}} />
+                                                    ) : (
+                                                        <span>No image</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="table-row empty-state">
+                                            <div className="product-info">
+                                                <span>No products sold yet</span>
+                                            </div>
+                                            <div>0</div>
+                                            <div>$0.00</div>
+                                            <div>No videos yet</div>
+                                            <div className="product-image">
+                                                <span>No image</span>
+                                            </div>
                                         </div>
-                                        <div>0</div>
-                                        <div>$0.00</div>
-                                        <div>No videos yet</div>
-                                        <div className="product-image">
-                                            <span>No image</span>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
                                 
                                 {/* Video Images Taken From */}
                                 <div className="video-sources-section">
                                     <h3>🎬 Video Sources</h3>
                                     <div className="video-sources-grid">
-                                        <div className="video-source-card empty-state">
-                                            <div className="video-source-info">
-                                                <h4>No videos with sales yet</h4>
-                                                <p>0 sales • $0.00 revenue</p>
-                                                <span className="video-date">Upload your first video to start earning!</span>
+                                        {analyticsData.videos_with_sales && analyticsData.videos_with_sales.length > 0 ? (
+                                            analyticsData.videos_with_sales.map((video, index) => (
+                                                <div key={index} className="video-source-card">
+                                                    <div className="video-source-info">
+                                                        <h4>{video.video_name}</h4>
+                                                        <p>{video.sales_count} sales • ${video.revenue.toFixed(2)} revenue</p>
+                                                        <span className="video-date">Active video</span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="video-source-card empty-state">
+                                                <div className="video-source-info">
+                                                    <h4>No videos with sales yet</h4>
+                                                    <p>0 sales • $0.00 revenue</p>
+                                                    <span className="video-date">Upload your first video to start earning!</span>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
                                 
                                 <div className="analytics-actions">
-                                    <button className="action-btn primary">Export Sales Report</button>
-                                    <button className="action-btn secondary">View Detailed Analytics</button>
-                                    <button className="action-btn secondary">Compare Periods</button>
+                                    <button 
+                                        className="action-btn primary"
+                                        onClick={() => {
+                                            alert('Export functionality coming soon!');
+                                        }}
+                                    >
+                                        Export Sales Report
+                                    </button>
+                                    <button 
+                                        className="action-btn secondary"
+                                        onClick={() => {
+                                            alert('Detailed analytics coming soon!');
+                                        }}
+                                    >
+                                        View Detailed Analytics
+                                    </button>
+                                    <button 
+                                        className="action-btn secondary"
+                                        onClick={() => {
+                                            alert('Period comparison coming soon!');
+                                        }}
+                                    >
+                                        Compare Periods
+                                    </button>
                                 </div>
                             </div>
                         </div>
