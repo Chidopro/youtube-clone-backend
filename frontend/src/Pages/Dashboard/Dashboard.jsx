@@ -28,10 +28,21 @@ const Dashboard = ({ sidebar }) => {
     const [isEditingAvatar, setIsEditingAvatar] = useState(false);
     const [activeTab, setActiveTab] = useState('videos');
     const [currentUser, setCurrentUser] = useState(null);
+    const [analyticsData, setAnalyticsData] = useState({
+        total_sales: 0,
+        total_revenue: 0,
+        avg_order_value: 0,
+        products_sold_count: 0,
+        videos_with_sales_count: 0,
+        sales_data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        products_sold: [],
+        videos_with_sales: []
+    });
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const navigate = useNavigate();
 
-    // Sales data for the chart
-    const salesData = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    // Sales data for the chart (will be updated from API)
+    const salesData = analyticsData.sales_data;
     const maxSales = Math.max(...salesData) || 1;
 
     useEffect(() => {
@@ -105,6 +116,31 @@ const Dashboard = ({ sidebar }) => {
         };
         fetchCurrentUser();
     }, []);
+
+    // Function to fetch analytics data
+    const fetchAnalyticsData = async () => {
+        try {
+            setAnalyticsLoading(true);
+            const response = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/analytics');
+            if (response.ok) {
+                const data = await response.json();
+                setAnalyticsData(data);
+            } else {
+                console.error('Failed to fetch analytics data');
+            }
+        } catch (error) {
+            console.error('Error fetching analytics:', error);
+        } finally {
+            setAnalyticsLoading(false);
+        }
+    };
+
+    // Fetch analytics when analytics tab is active
+    useEffect(() => {
+        if (activeTab === 'analytics') {
+            fetchAnalyticsData();
+        }
+    }, [activeTab]);
 
     const uploadImageToSupabase = async (file, type) => {
         try {
@@ -572,8 +608,8 @@ const Dashboard = ({ sidebar }) => {
                             <div className="section-header">
                                 <h2>📊 Sales Analytics</h2>
                                 <div className="analytics-summary">
-                                    <span className="total-sales">Total Sales: 0</span>
-                                    <span className="total-revenue">Total Revenue: $0.00</span>
+                                    <span className="total-sales">Total Sales: {analyticsLoading ? 'Loading...' : analyticsData.total_sales}</span>
+                                    <span className="total-revenue">Total Revenue: ${analyticsLoading ? '0.00' : analyticsData.total_revenue.toFixed(2)}</span>
                                 </div>
                             </div>
                             
@@ -582,23 +618,23 @@ const Dashboard = ({ sidebar }) => {
                                 <div className="analytics-overview-cards">
                                     <div className="analytics-card">
                                         <h4>📈 Sales Per Day</h4>
-                                        <div className="analytics-amount">0</div>
-                                        <div className="analytics-change">No data yet</div>
+                                        <div className="analytics-amount">{analyticsLoading ? '...' : analyticsData.total_sales}</div>
+                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.total_sales > 0 ? 'Active sales' : 'No data yet'}</div>
                                     </div>
                                     <div className="analytics-card">
                                         <h4>🛍️ Products Sold</h4>
-                                        <div className="analytics-amount">0</div>
-                                        <div className="analytics-change">No data yet</div>
+                                        <div className="analytics-amount">{analyticsLoading ? '...' : analyticsData.products_sold_count}</div>
+                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.products_sold_count > 0 ? 'Products selling' : 'No data yet'}</div>
                                     </div>
                                     <div className="analytics-card">
                                         <h4>🎬 Videos with Sales</h4>
-                                        <div className="analytics-amount">0</div>
-                                        <div className="analytics-change">No data yet</div>
+                                        <div className="analytics-amount">{analyticsLoading ? '...' : analyticsData.videos_with_sales_count}</div>
+                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.videos_with_sales_count > 0 ? 'Videos performing' : 'No data yet'}</div>
                                     </div>
                                     <div className="analytics-card">
                                         <h4>💰 Avg Order Value</h4>
-                                        <div className="analytics-amount">$0.00</div>
-                                        <div className="analytics-change">No data yet</div>
+                                        <div className="analytics-amount">${analyticsLoading ? '0.00' : analyticsData.avg_order_value.toFixed(2)}</div>
+                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.avg_order_value > 0 ? 'Good average' : 'No data yet'}</div>
                                     </div>
                                 </div>
                                 
