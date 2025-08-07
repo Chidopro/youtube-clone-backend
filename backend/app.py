@@ -756,22 +756,13 @@ def show_product_page(product_id):
 def checkout_page(product_id):
     logger.info(f"🔍 Checkout page requested for product ID: {product_id}")
     
-    # Try to get product data from database
-    try:
-        result = supabase.table('products').select('*').eq('product_id', product_id).execute()
-        logger.info(f"📊 Database query result: {result}")
-        product_data = result.data[0] if result.data else None
-        
-        if product_data:
-            logger.info(f"✅ Found product data: {product_data}")
-            logger.info(f"✅ Video Title: {product_data.get('video_title', 'Not found')}")
-            logger.info(f"✅ Creator Name: {product_data.get('creator_name', 'Not found')}")
-        else:
-            logger.warning(f"⚠️ No product data found for ID: {product_id}")
-            
-    except Exception as e:
-        logger.error(f"❌ Error fetching product data: {str(e)}")
-        product_data = None
+    # For dynamic products, we don't need to fetch from database
+    # The product data will come from the frontend session storage
+    product_data = {
+        'product_id': product_id,
+        'video_title': 'Dynamic Product',
+        'creator_name': 'ScreenMerch Creator'
+    }
     
     return render_template('checkout.html', product_id=product_id, product_data=product_data)
 
@@ -1098,7 +1089,8 @@ def stripe_webhook():
                 item['creator_name'] = order_data.get('creator_name', 'Unknown Creator')
                 
                 # Extract channel_id from the order data if available
-                channel_id = order_data.get('channel_id') or item.get('channel_id')
+                # For Cheedo V, use 'cheedo_v' as channel_id
+                channel_id = order_data.get('channel_id') or item.get('channel_id') or 'cheedo_v'
                 record_sale(item, channel_id=channel_id)
                 
             # Email notifications only - no SMS
