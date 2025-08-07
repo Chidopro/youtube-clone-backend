@@ -755,10 +755,10 @@
         const productRow = document.getElementById("productRow");
         if (productRow) {
           // Get products from backend
-          const products = [];
+          window.products = []; // Make products global
           {% if products %}
             {% for product in products %}
-              products.push({
+              window.products.push({
                 name: '{{ product.name }}',
                 price: {{ product.price }},
                 main_image: '{{ product.main_image }}',
@@ -769,13 +769,13 @@
             {% endfor %}
           {% endif %}
           
-          console.log('🛍️ Products to display:', products.length);
+          console.log('🛍️ Products to display:', window.products.length);
           
-                     if (products.length > 0) {
+                     if (window.products.length > 0) {
              productRow.innerHTML = ''; // Clear existing content
              
              // Only show first 30 products to avoid duplicates
-             const productsToShow = products.slice(0, 30);
+             const productsToShow = window.products.slice(0, 30);
              
              productsToShow.forEach((product, index) => {
               const productCard = document.createElement("div");
@@ -857,7 +857,7 @@
          };
          
          // Find base price from products array
-         const product = products.find(p => p.name === productName);
+         const product = window.products.find(p => p.name === productName);
          if (!product) return;
          
          const basePrice = product.price;
