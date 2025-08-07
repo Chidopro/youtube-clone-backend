@@ -120,16 +120,21 @@ const Dashboard = ({ sidebar }) => {
     // Function to fetch analytics data
     const fetchAnalyticsData = async () => {
         try {
+            console.log('🔍 Starting analytics fetch...');
             setAnalyticsLoading(true);
             const response = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/analytics');
+            console.log('📡 Response status:', response.status);
             if (response.ok) {
                 const data = await response.json();
+                console.log('📊 Analytics data received:', data);
                 setAnalyticsData(data);
             } else {
-                console.error('Failed to fetch analytics data');
+                console.error('❌ Failed to fetch analytics data, status:', response.status);
+                const errorText = await response.text();
+                console.error('❌ Error response:', errorText);
             }
         } catch (error) {
-            console.error('Error fetching analytics:', error);
+            console.error('❌ Error fetching analytics:', error);
         } finally {
             setAnalyticsLoading(false);
         }
@@ -137,7 +142,9 @@ const Dashboard = ({ sidebar }) => {
 
     // Fetch analytics when analytics tab is active
     useEffect(() => {
+        console.log('🔄 Tab changed to:', activeTab);
         if (activeTab === 'analytics') {
+            console.log('📊 Analytics tab activated, fetching data...');
             fetchAnalyticsData();
         }
     }, [activeTab]);
