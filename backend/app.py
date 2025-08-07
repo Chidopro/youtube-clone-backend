@@ -130,6 +130,50 @@ def get_product_price(product_name):
             return product['price']
     return 0.0
 
+# Add this function after the existing get_product_price function (around line 125)
+@app.template_filter('get_product_price_with_size')
+def get_product_price_with_size(product_name, size=None):
+    """Get product price with size adjustment"""
+    product = next((p for p in PRODUCTS if p["name"] == product_name), None)
+    if not product:
+        return 0.0
+    
+    base_price = product["price"]
+    
+    # Size pricing adjustments
+    size_adjustments = {
+        "XS": 0,      # No extra charge
+        "S": 0,       # No extra charge  
+        "M": 0,       # No extra charge
+        "L": 0,       # No extra charge
+        "XL": 2,      # +$2
+        "XXL": 3,     # +$3
+        "XXXL": 4,    # +$4
+        "XXXXL": 5,   # +$5
+        "XXXXXL": 6   # +$6
+    }
+    
+    if size and size in size_adjustments:
+        return base_price + size_adjustments[size]
+    
+    return base_price
+
+@app.template_filter('get_product_price_range')
+def get_product_price_range(product_name):
+    """Get product price range (min to max)"""
+    product = next((p for p in PRODUCTS if p["name"] == product_name), None)
+    if not product:
+        return "$0.00"
+    
+    base_price = product["price"]
+    min_price = base_price  # XS, S, M, L have no extra charge
+    max_price = base_price + 6  # XXXXXL has +$6
+    
+    if min_price == max_price:
+        return f"${min_price:.2f}"
+    else:
+        return f"${min_price:.2f}-${max_price:.2f}"
+
 # Configure CORS for production
 CORS(app, resources={r"/api/*": {"origins": [
     "chrome-extension://*",

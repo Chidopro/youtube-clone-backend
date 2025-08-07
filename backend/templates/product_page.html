@@ -788,7 +788,7 @@
                  <img src="/static/images/${product.preview_image || product.filename}" alt="${product.name} - Preview" style="width:100%;height:150px;object-fit:cover;border-radius:6px;">
                  
                  <div class="product-title">${product.name}</div>
-                 <div class="product-price">$${product.price.toFixed(2)}</div>
+                 <div class="product-price" id="price-${index}">$${product.price.toFixed(2)}</div>
                  ${product.options.color ? `
                    <div class="variant-selector">
                      <label>Color:</label>
@@ -800,7 +800,7 @@
                  ${product.options.size ? `
                    <div class="variant-selector">
                      <label>Size:</label>
-                     <select class="variant-select size-select">
+                     <select class="variant-select size-select" onchange="updatePrice(${index}, '${product.name}', this.value)">
                        ${product.options.size.map(size => `<option value="${size}">${size}</option>`).join('')}
                      </select>
                    </div>
@@ -845,8 +845,39 @@
           console.log('🎯 Screenshot selected for preview only');
         }
        
+       // Dynamic pricing function
+       function updatePrice(productIndex, productName, selectedSize) {
+         const priceElement = document.getElementById(`price-${productIndex}`);
+         if (!priceElement) return;
+         
+         // Size pricing adjustments
+         const sizeAdjustments = {
+           "XS": 0, "S": 0, "M": 0, "L": 0,
+           "XL": 2, "XXL": 3, "XXXL": 4, "XXXXL": 5, "XXXXXL": 6
+         };
+         
+         // Find base price from products array
+         const product = products.find(p => p.name === productName);
+         if (!product) return;
+         
+         const basePrice = product.price;
+         const adjustment = sizeAdjustments[selectedSize] || 0;
+         const newPrice = basePrice + adjustment;
+         
+         priceElement.textContent = `$${newPrice.toFixed(2)}`;
+         
+         // Update the button price for cart
+         const card = priceElement.closest('.product-card');
+         const addButton = card.querySelector('.add-to-cart-btn');
+         if (addButton) {
+           addButton.setAttribute('data-price', newPrice);
+         }
+       }
+       
        // Add to cart functionality
               function addToCart(productName, price, button) {
+                // Get the current price from the button's data attribute or use the passed price
+                const currentPrice = parseFloat(button.getAttribute('data-price')) || price;
          const card = button.closest('.product-card');
          const colorSelect = card.querySelector('.color-select');
          const sizeSelect = card.querySelector('.size-select');
@@ -870,7 +901,7 @@
             <div style="flex:1;">
               <div style="font-weight:bold; color:#333;">${productName}</div>
               <div style="color:#666; font-size:12px;">
-                Color: ${selectedColor} | Size: ${selectedSize} | $${price.toFixed(2)}
+                Color: ${selectedColor} | Size: ${selectedSize} | $${currentPrice.toFixed(2)}
                 ${note ? `<br>Note: ${note}` : ''}
               </div>
             </div>
@@ -890,7 +921,7 @@
         button.style.background = '#28a745';
         button.disabled = true;
         
-        console.log(`🛒 Added to cart: ${productName} - ${selectedColor} ${selectedSize} - $${price.toFixed(2)}`);
+        console.log(`🛒 Added to cart: ${productName} - ${selectedColor} ${selectedSize} - $${currentPrice.toFixed(2)}`);
       }
       
       function removeFromCart(button) {
