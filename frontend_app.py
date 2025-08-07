@@ -236,7 +236,7 @@ PRODUCTS = [
         "filename": "kidshirt.png",
         "main_image": "kidshirt.png",
         "preview_image": "kidshirtpreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kids Hoodie",
@@ -244,7 +244,7 @@ PRODUCTS = [
         "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
         "preview_image": "kidhoodiepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L"]}
+        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kids Long Sleeve",
@@ -252,7 +252,7 @@ PRODUCTS = [
         "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
         "preview_image": "kidlongsleevepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Canvas Tote",
@@ -398,70 +398,70 @@ PRODUCTS = [
         "preview_image": "babybibpreview.jpg",
         "options": {"color": ["White", "Pink", "Blue"], "size": []}
     },
-], "size": ["S", "M", "L", "XL"]}
+], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Unisex Hoodie",
         "price": 39.99,
         "filename": "croppedhoodiepreview.png",
         "main_image": "croppedhoodie.png",
-        "options": {"color": ["Black", "White"], "size": ["S", "M", "L"]}
+        "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Shirt",
         "price": 24.99,
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's HD Shirt",
         "price": 24.99,
         "filename": "womenshdshirtpreview.png",
         "main_image": "womenshdshirt.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Ribbed Neck",
         "price": 24.99,
         "filename": "womensribbedneckpreview.jpg",
         "main_image": "womensribbedneck.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Men's Long Sleeve",
         "price": 29.99,
         "filename": "menslongsleevepreview.jpg",
         "main_image": "menslongsleeve.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kid's Shirt",
         "price": 19.99,
         "filename": "kidshirtpreview.jpg",
         "main_image": "kidshirt.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kid's Hoodie",
         "price": 29.99,
         "filename": "kidhoodiepreview.jpg",
         "main_image": "kidhoodie.png",
-        "options": {"color": ["Black", "White"], "size": ["S", "M", "L"]}
+        "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kid's Long Sleeve",
         "price": 24.99,
         "filename": "kidlongsleevepreview.jpg",
         "main_image": "kidlongsleeve.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Tank",
         "price": 19.99,
         "filename": "womenstankpreview.jpg",
         "main_image": "womenstank.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "All Over Tote Bag",
@@ -503,7 +503,7 @@ PRODUCTS = [
         "price": 29.99,
         "filename": "alloverpajamatoppreview.png",
         "main_image": "alloverpajamatop.png",
-        "options": {"color": ["Black", "White"], "size": ["S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Snapback Hat",
