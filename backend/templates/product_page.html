@@ -808,10 +808,25 @@
                  <hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;">
                  <button class="btn add-to-cart-btn" onclick="addToCart('${product.name}', ${product.price}, this)">Add ${product.name} to Cart</button>
                `;
-              productRow.appendChild(productCard);
-            });
-            
-                         console.log(`✅ Added ${productsToShow.length} product cards (showing first 30)`);
+                             productRow.appendChild(productCard);
+             });
+             
+             console.log(`✅ Added ${productsToShow.length} product cards (showing first 30)`);
+             
+             // Add event listeners to all size dropdowns
+             setTimeout(() => {
+               const sizeDropdowns = document.querySelectorAll('.size-select');
+               console.log(`🔍 Found ${sizeDropdowns.length} size dropdowns`);
+               sizeDropdowns.forEach((dropdown, index) => {
+                 console.log(`🔍 Adding event listener to dropdown ${index}`);
+                 dropdown.addEventListener('change', function() {
+                   console.log(`🔄 Dropdown ${index} changed to: ${this.value}`);
+                   const productIndex = index;
+                   const productName = window.products[index].name;
+                   updatePrice(productIndex, productName, this.value);
+                 });
+               });
+             }, 100);
           } else {
             productRow.innerHTML = '<p style="text-align:center; color:#666; padding:20px;">No products available at the moment.</p>';
             console.log('⚠️ No products to display');
@@ -827,6 +842,13 @@
              updatePrice(0, window.products[0].name, 'XXXXXL');
            }
          };
+         
+         // Test if updatePrice function is accessible
+         console.log('🔍 Testing if updatePrice function exists:', typeof updatePrice);
+         console.log('🔍 Testing if window.products exists:', typeof window.products);
+         if (window.products && window.products.length > 0) {
+           console.log('🔍 First product:', window.products[0]);
+         }
        });
       
              // Screenshot selection functionality
