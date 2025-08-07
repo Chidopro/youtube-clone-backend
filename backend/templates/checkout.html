@@ -133,11 +133,17 @@
     <button class="checkout-btn" id="proceed-btn" onclick="finalizeOrder()">Proceed to Payment</button>
   </div>
 
-  <script>
-    const productId = '{{ product_id }}';
-    
-    // Try to get cart data from multiple sources
-    let cart = [];
+     <script>
+     const productId = '{{ product_id }}';
+     const productData = {{ product_data | tojson | safe if product_data else 'null' }};
+     
+     // Debug logging
+     console.log('🔍 Product ID:', productId);
+     console.log('🔍 Product Data:', productData);
+     console.log('🔍 Product Data Type:', typeof productData);
+     
+     // Try to get cart data from multiple sources
+     let cart = [];
     
              // First try sessionStorage (from product page)
          const sessionCartData = sessionStorage.getItem('cartData');
@@ -152,21 +158,24 @@
              cart = sessionCart.map((item, index) => {
                console.log(`🛒 Converting item ${index + 1}:`, item);
                
-                               // Extract just the product name (before any newlines or extra details)
-                // Handle case where name starts with newline
-                const nameParts = item.name.split('\n').filter(part => part.trim() !== '');
-                const cleanProductName = nameParts.length > 0 ? nameParts[0].trim() : 'Unknown Product';
-                
-                const convertedItem = {
-                  product: cleanProductName, // Use clean product name only
-                  email: '', // Will be filled from user email
-                  note: '',
-                  img: item.image,
-                  variants: {
-                    color: item.details.includes('Color:') ? item.details.split('Color:')[1].split('|')[0].trim() : 'Default',
-                    size: item.details.includes('Size:') ? item.details.split('Size:')[1].split('|')[0].trim() : 'Default'
-                  }
-                };
+               // Extract just the product name (before any newlines or extra details)
+               // Handle case where name starts with newline
+               const nameParts = item.name.split('\n').filter(part => part.trim() !== '');
+               const cleanProductName = nameParts.length > 0 ? nameParts[0].trim() : 'Unknown Product';
+               
+                       const convertedItem = {
+          product: cleanProductName, // Use clean product name only
+          email: '', // Will be filled from user email
+          note: '',
+          img: item.image,
+          video_title: item.video_title || 'Unknown Video',
+          creator_name: item.creator_name || 'Unknown Creator',
+          price: item.price || 0, // Add price field
+          variants: {
+            color: item.details.includes('Color:') ? item.details.split('Color:')[1].split('|')[0].trim() : 'Default',
+            size: item.details.includes('Size:') ? item.details.split('Size:')[1].split('|')[0].trim() : 'Default'
+          }
+        };
                
                console.log(`🛒 Converted item ${index + 1}:`, convertedItem);
                return convertedItem;
@@ -207,7 +216,8 @@
           // Thumbnail only
           imagesHtml += `<div style="margin-bottom:10px;">
             <img src="${item.img}" alt="Preview" style="max-width:100px;display:block;">
-            <div><strong>Video Name:</strong> ${item.videoName || 'N/A'}</div>
+            <div><strong>Video Name:</strong> ${item.video_title || 'N/A'}</div>
+            <div><strong>Creator:</strong> ${item.creator_name || 'N/A'}</div>
           </div>`;
         } else {
           // Screenshot selected
@@ -215,7 +225,8 @@
             imagesHtml += `<div style="margin-bottom:10px;">
               <img src="${shot.img}" alt="Screenshot ${i+1}" style="max-width:100px;display:block;">
               <div><strong>Timestamp:</strong> ${shot.timestamp || ''}</div>
-              <div><strong>Video Name:</strong> ${shot.videoName || 'N/A'}</div>
+              <div><strong>Video Name:</strong> ${item.video_title || 'N/A'}</div>
+              <div><strong>Creator:</strong> ${item.creator_name || 'N/A'}</div>
             </div>`;
           });
         }
@@ -284,7 +295,9 @@
          user_email: userEmail,
          sms_consent: false, // No SMS consent needed for email notifications
          phone_number: '', // Will be collected by Stripe
-         timestamp: new Date().toISOString()
+         timestamp: new Date().toISOString(),
+         video_title: cart.length > 0 ? (cart[0].video_title || 'Unknown Video') : (productData ? productData.video_title : 'Unknown Video'),
+         creator_name: cart.length > 0 ? (cart[0].creator_name || 'Unknown Creator') : (productData ? productData.creator_name : 'Unknown Creator')
        };
 
        console.log('🛒 Sending order data to backend:', JSON.stringify(orderData, null, 2));

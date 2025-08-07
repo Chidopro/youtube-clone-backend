@@ -781,6 +781,17 @@ def terms_of_service():
 def record_sale(item, user_id=None, friend_id=None, channel_id=None):
     from datetime import datetime
     
+    # Get the correct price - try item price first, then look up in PRODUCTS
+    item_price = item.get('price')
+    if not item_price or item_price <= 0:
+        # Look up price in PRODUCTS array
+        product_info = next((p for p in PRODUCTS if p["name"] == item.get("product")), None)
+        if not product_info:
+            # Try case-insensitive match
+            product_info = next((p for p in PRODUCTS if p["name"].lower() == item.get("product", "").lower()), None)
+        
+        item_price = product_info["price"] if product_info else 0
+    
     sale_data = {
         "user_id": user_id,
         "product_id": item.get('product_id', ''),
@@ -788,7 +799,7 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None):
         "video_id": item.get('video_id', ''),
         "video_title": item.get('video_title', ''),
         "image_url": item.get('img', ''),
-        "amount": item.get('price', 0),
+        "amount": item_price,
         "friend_id": friend_id,
         "channel_id": channel_id
     }
@@ -986,21 +997,30 @@ def create_checkout_session():
         for item in cart:
             logger.info(f"🛒 Processing item: {item}")
             logger.info(f"🛒 Item product name: '{item.get('product')}'")
+            logger.info(f"🛒 Item price: {item.get('price')}")
             logger.info(f"🛒 Available products: {[p['name'] for p in PRODUCTS]}")
             
-            # Try exact match first
-            product_info = next((p for p in PRODUCTS if p["name"] == item.get("product")), None)
-            if not product_info:
-                # Try case-insensitive match
-                product_info = next((p for p in PRODUCTS if p["name"].lower() == item.get("product", "").lower()), None)
-                if product_info:
-                    logger.info(f"✅ Found product info (case-insensitive): {product_info}")
-                else:
-                    logger.error(f"❌ Could not find price for product: '{item.get('product')}'")
-                    logger.error(f"❌ Product names in PRODUCTS: {[p['name'] for p in PRODUCTS]}")
-                    continue
+            # Use price from cart item if available, otherwise look up in PRODUCTS
+            item_price = item.get('price')
+            if item_price and item_price > 0:
+                logger.info(f"✅ Using price from cart item: ${item_price}")
+                unit_amount = int(item_price * 100)
             else:
-                logger.info(f"✅ Found product info (exact match): {product_info}")
+                # Try exact match first
+                product_info = next((p for p in PRODUCTS if p["name"] == item.get("product")), None)
+                if not product_info:
+                    # Try case-insensitive match
+                    product_info = next((p for p in PRODUCTS if p["name"].lower() == item.get("product", "").lower()), None)
+                    if product_info:
+                        logger.info(f"✅ Found product info (case-insensitive): {product_info}")
+                    else:
+                        logger.error(f"❌ Could not find price for product: '{item.get('product')}'")
+                        logger.error(f"❌ Product names in PRODUCTS: {[p['name'] for p in PRODUCTS]}")
+                        continue
+                else:
+                    logger.info(f"✅ Found product info (exact match): {product_info}")
+                
+                unit_amount = int(product_info["price"] * 100)
             
             line_items.append({
                 "price_data": {
@@ -1008,7 +1028,7 @@ def create_checkout_session():
                     "product_data": {
                         "name": item.get("product"),
                     },
-                    "unit_amount": int(product_info["price"] * 100),
+                    "unit_amount": unit_amount,
                 },
                 "quantity": 1,
             })
