@@ -14,6 +14,7 @@ const Video = () => {
   const [screenshots, setScreenshots] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [videoData, setVideoData] = useState(null);
   const videoRef = useRef(null);
 
   // Check if device is mobile
@@ -38,6 +39,14 @@ const Video = () => {
 
   const handleDeleteScreenshot = (idx) => {
     setScreenshots(screenshots => screenshots.filter((_, i) => i !== idx));
+  };
+
+  const handleCropScreenshot = (idx, croppedImageUrl) => {
+    setScreenshots(screenshots => {
+      const newScreenshots = [...screenshots];
+      newScreenshots[idx] = croppedImageUrl;
+      return newScreenshots;
+    });
   };
 
   // Grab Screenshot handler
@@ -121,9 +130,21 @@ const Video = () => {
       const isAuthenticated = localStorage.getItem('user_authenticated');
       const userEmail = localStorage.getItem('user_email');
       
+      // Get video information from the video data (passed from PlayVideo component)
+      const videoUrl = window.location.href;
+      
+      // Use the video data from state
+      const videoTitle = videoData?.title || 'Unknown Video';
+      const creatorName = videoData?.channelTitle || 'Unknown Creator';
+      
+      console.log('🔍 Video data found:', { videoTitle, creatorName, videoUrl });
+      console.log('🔍 API URL being called:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
+      
       const requestData = {
         thumbnail,
-        videoUrl: window.location.href,
+        videoUrl: videoUrl,
+        videoTitle: videoTitle,
+        creatorName: creatorName,
         screenshots: screenshots.slice(0, 6),
         isAuthenticated: isAuthenticated === 'true',
         userEmail: userEmail || ''
@@ -245,6 +266,7 @@ const Video = () => {
               thumbnail={thumbnail} setThumbnail={setThumbnail}
               screenshots={screenshots} setScreenshots={setScreenshots}
               videoRef={videoRef}
+              onVideoData={setVideoData}
             />
           ) : (
             <div style={{padding: 24, color: 'red'}}>No video selected.</div>
@@ -254,7 +276,7 @@ const Video = () => {
         {/* Middle Column - Screenshots */}
         <div className="screenshots-section" id="screenshotsSection">
           <h3>Screenshot Selection</h3>
-          <ScreenmerchImages thumbnail={thumbnail} screenshots={screenshots} onDeleteScreenshot={handleDeleteScreenshot} />
+          <ScreenmerchImages thumbnail={thumbnail} screenshots={screenshots} onDeleteScreenshot={handleDeleteScreenshot} onCropScreenshot={handleCropScreenshot} />
         </div>
       </div>
 

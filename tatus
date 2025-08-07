@@ -1,8 +1,10 @@
-[33m2d79140cd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Add API endpoints for product variants and all products - Get all color/size combinations and pricing for product manager tool
-[33m3a93533a7[m Enhanced order email notifications with comprehensive screenshot information - Video name, timestamp, and image confirmation for Printful fulfillment
-[33m88cfd9f2e[m Fix order email notifications to include complete shipping information
-[33m3ea6b8fc9[m Rebuild frontend with 5XL sizes
-[33m132baa05d[m Add 5XL sizes to clothing products
-[33m380a920da[m Re-add backend files and create product configuration
-[33m181565e88[m Fix footer logo by using public path instead of import
-[33m3b15451c7[m Your commit message here
+[33m88f2a7334[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Revert "Add crop functionality for portrait videos - automatic detection, three crop modes (fit/fill/crop), mobile responsive controls"
+[33m4be817ca8[m Add crop functionality for portrait videos - automatic detection, three crop modes (fit/fill/crop), mobile responsive controls
+[33m236b5e70e[m Revert to original working CORS configuration
+[33m8b290a4c3[m Simplify CORS configuration to basic working setup
+[33mda50c4544[m Implement comprehensive CORS fix with global headers and permissive origins
+[33maa3f9e7c3[m Add CORS headers to actual screenshot API responses
+[33m2b50caf6b[m Fix CORS issues for screenshot capture API endpoints
+[33m8da1018eb[m Improve screenshot quality to maximum and add shirt image processing with feathered edges
+[33m7aa865edb[m Modernize success page with beautiful gradient design, animations, and improved UX
+[33m5535a214c[m Fix product name parsing to handle names that start with newline

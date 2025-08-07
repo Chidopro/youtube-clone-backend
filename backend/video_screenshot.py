@@ -15,14 +15,15 @@ class VideoScreenshotCapture:
         self.temp_dir = tempfile.mkdtemp()
         logger.info(f"Video screenshot capture initialized with temp dir: {self.temp_dir}")
     
-    def capture_screenshot(self, video_url, timestamp=0, quality=95):
+    def capture_screenshot(self, video_url, timestamp=0, quality=95, crop_area=None):
         """
-        Capture a screenshot from a video at a specific timestamp
+        Capture a screenshot from a video at a specific timestamp with optional cropping
         
         Args:
             video_url (str): URL of the video to capture from
             timestamp (float): Timestamp in seconds (default: 0 for first frame)
             quality (int): JPEG quality (1-100, default: 95 for maximum quality)
+            crop_area (dict): Optional crop area with x, y, width, height (in pixels)
         
         Returns:
             dict: {
@@ -52,9 +53,83 @@ class VideoScreenshotCapture:
                     'error': 'Failed to create screenshot file'
                 }
             
-            # Read the image and convert to base64
+            # Read the image and process it
             with open(screenshot_path, 'rb') as f:
                 image_data = f.read()
+            
+            # Apply cropping if crop_area is provided
+            if crop_area and isinstance(crop_area, dict):
+                try:
+                    # Open the image for cropping
+                    image = Image.open(io.BytesIO(image_data))
+                    img_width, img_height = image.size
+                    
+                    # Extract crop coordinates (normalized 0-1)
+                    x_norm = float(crop_area.get('x', 0))
+                    y_norm = float(crop_area.get('y', 0))
+                    width_norm = float(crop_area.get('width', 0))
+                    height_norm = float(crop_area.get('height', 0))
+                    
+                    # Convert normalized coordinates to pixel coordinates
+                    x = int(x_norm * img_width)
+                    y = int(y_norm * img_height)
+                    width = int(width_norm * img_width)
+                    height = int(height_norm * img_height)
+                    
+                    # Ensure crop area is within image bounds
+                    x = max(0, min(x, img_width - 1))
+                    y = max(0, min(y, img_height - 1))
+                    width = max(1, min(width, img_width - x))
+                    height = max(1, min(height, img_height - y))
+                    
+                    # Ensure minimum crop size for merchandise compatibility
+                    min_width = max(50, int(img_width * 0.1))  # At least 50px or 10% of image width
+                    min_height = max(50, int(img_height * 0.1))  # At least 50px or 10% of image height
+                    
+                    if width < min_width:
+                        # Expand width while keeping center
+                        center_x = x + width // 2
+                        width = min_width
+                        x = max(0, center_x - width // 2)
+                        x = min(x, img_width - width)
+                    
+                    if height < min_height:
+                        # Expand height while keeping center
+                        center_y = y + height // 2
+                        height = min_height
+                        y = max(0, center_y - height // 2)
+                        y = min(y, img_height - height)
+                    
+                    # Crop the image
+                    cropped_image = image.crop((x, y, x + width, y + height))
+                    
+                    # Resize for frontend screenshot grid compatibility (120x80 container)
+                    target_width = 120
+                    target_height = 80
+                    
+                    # Calculate new dimensions while maintaining aspect ratio
+                    img_width, img_height = cropped_image.size
+                    crop_aspect_ratio = img_width / img_height
+                    container_aspect_ratio = target_width / target_height
+                    
+                    # Always fit to the container dimensions (120x80) to match other screenshots
+                    new_width = target_width
+                    new_height = target_height
+                    
+                    # Resize the cropped image while maintaining aspect ratio
+                    cropped_image = cropped_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                    logger.info(f"Resized cropped image from {img_width}x{img_height} to {new_width}x{new_height} maintaining aspect ratio")
+                    
+                    # Convert cropped image back to bytes
+                    img_buffer = io.BytesIO()
+                    cropped_image.save(img_buffer, format='JPEG', quality=quality)
+                    image_data = img_buffer.getvalue()
+                    
+                    logger.info(f"Image cropped successfully: {width}x{height} at ({x},{y}) from normalized coords ({x_norm:.3f},{y_norm:.3f},{width_norm:.3f},{height_norm:.3f})")
+                    
+                except Exception as crop_error:
+                    logger.error(f"Cropping failed: {crop_error}, returning original image")
+                    # If cropping fails, continue with original image
             
             # Convert to base64
             base64_image = base64.b64encode(image_data).decode('utf-8')

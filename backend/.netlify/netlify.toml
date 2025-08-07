@@ -10,6 +10,7 @@ plugins = []
 publish = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone\\backend\\dist"
 publishOrigin = "config"
 commandOrigin = "config"
+base = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone\\backend"
 command = "npm run build"
 
 [build.environment]

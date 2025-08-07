@@ -10,52 +10,52 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "White", "Gray"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
       }
-}
     }
   },
   "unisexclassictee": {
@@ -69,61 +69,61 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "White", "Gray", "Navy"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
       }
-}
     }
   },
   "menstanktop": {
@@ -137,52 +137,52 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "White", "Gray"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
       }
-}
     }
   },
   "unisexhoodie": {
@@ -196,43 +196,43 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "White"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true
-      },
-      "S": {
-            "Black": true,
-            "White": true
-      },
-      "M": {
-            "Black": true,
-            "White": true
-      },
-      "L": {
-            "Black": true,
-            "White": true
-      },
-      "XL": {
-            "Black": true,
-            "White": true
-      },
-      "XXL": {
-            "Black": true,
-            "White": true
-      },
-      "XXXL": {
-            "Black": true,
-            "White": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "White": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "White": true
+        "XS": {
+          "Black": true,
+          "White": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "White": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "White": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "White": true,
+        },
       }
-}
     }
   },
   "croppedhoodie": {
@@ -246,52 +246,52 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "Gray", "Navy"],
       availability: {
-      "XS": {
-            "Black": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "S": {
-            "Black": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "M": {
-            "Black": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "L": {
-            "Black": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XL": {
-            "Black": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXL": {
-            "Black": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXXL": {
-            "Black": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "Gray": true,
-            "Navy": true
+        "XS": {
+          "Black": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "S": {
+          "Black": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "M": {
+          "Black": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "L": {
+          "Black": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XL": {
+          "Black": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXL": {
+          "Black": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "Gray": true,
+          "Navy": true,
+        },
       }
-}
     }
   },
   "unisexchampionhoodie": {
@@ -305,43 +305,43 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "Gray"],
       availability: {
-      "XS": {
-            "Black": true,
-            "Gray": true
-      },
-      "S": {
-            "Black": true,
-            "Gray": true
-      },
-      "M": {
-            "Black": true,
-            "Gray": true
-      },
-      "L": {
-            "Black": true,
-            "Gray": true
-      },
-      "XL": {
-            "Black": true,
-            "Gray": true
-      },
-      "XXL": {
-            "Black": true,
-            "Gray": true
-      },
-      "XXXL": {
-            "Black": true,
-            "Gray": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "Gray": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "Gray": true
+        "XS": {
+          "Black": true,
+          "Gray": true,
+        },
+        "S": {
+          "Black": true,
+          "Gray": true,
+        },
+        "M": {
+          "Black": true,
+          "Gray": true,
+        },
+        "L": {
+          "Black": true,
+          "Gray": true,
+        },
+        "XL": {
+          "Black": true,
+          "Gray": true,
+        },
+        "XXL": {
+          "Black": true,
+          "Gray": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "Gray": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "Gray": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "Gray": true,
+        },
       }
-}
     }
   },
   "womensribbedneck": {
@@ -355,61 +355,61 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "White", "Gray", "Pink"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
       }
-}
     }
   },
   "womensshirt": {
@@ -423,61 +423,61 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "White", "Gray", "Pink"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
       }
-}
     }
   },
   "womenshdshirt": {
@@ -491,61 +491,61 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "White", "Gray", "Navy"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
       }
-}
     }
   },
   "kidsshirt": {
@@ -559,31 +559,31 @@ export const products = {
       sizes: ["XS", "S", "M", "L"],
       colors: ["Black", "White", "Gray", "Pink"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
       }
-}
     }
   },
   "kidshoodie": {
@@ -597,31 +597,31 @@ export const products = {
       sizes: ["XS", "S", "M", "L"],
       colors: ["Black", "White", "Gray", "Navy"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Navy": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Navy": true,
+        },
       }
-}
     }
   },
   "kidslongsleeve": {
@@ -635,31 +635,31 @@ export const products = {
       sizes: ["XS", "S", "M", "L"],
       colors: ["Black", "White", "Gray", "Pink"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
       }
-}
     }
   },
   "canvastote": {
@@ -670,9 +670,9 @@ export const products = {
     preview: "/static/images/allovertotebagpreview.png",
     category: "bags",
     variables: {
-      sizes: [],
       colors: ["Natural", "Black"],
-      availability: {}
+      availability: {
+      }
     }
   },
   "totebag": {
@@ -683,9 +683,9 @@ export const products = {
     preview: "/static/images/drawstringbagpreview.png",
     category: "bags",
     variables: {
-      sizes: [],
       colors: ["White", "Black", "Blue"],
-      availability: {}
+      availability: {
+      }
     }
   },
   "largecanvasbag": {
@@ -696,9 +696,9 @@ export const products = {
     preview: "/static/images/largecanvasbagpreview.png",
     category: "bags",
     variables: {
-      sizes: [],
       colors: ["Natural", "Black", "Navy"],
-      availability: {}
+      availability: {
+      }
     }
   },
   "greetingcard": {
@@ -709,9 +709,9 @@ export const products = {
     preview: "/static/images/greetingcardpreview.png",
     category: "stationery",
     variables: {
-      sizes: [],
       colors: ["White", "Cream"],
-      availability: {}
+      availability: {
+      }
     }
   },
   "notebook": {
@@ -722,9 +722,9 @@ export const products = {
     preview: "/static/images/hardcovernotebookpreview.png",
     category: "stationery",
     variables: {
-      sizes: [],
       colors: ["Black", "Blue"],
-      availability: {}
+      availability: {
+      }
     }
   },
   "coasters": {
@@ -735,9 +735,9 @@ export const products = {
     preview: "/static/images/coasterpreview.jpg",
     category: "home & living",
     variables: {
-      sizes: [],
       colors: ["Wood", "Cork", "Black"],
-      availability: {}
+      availability: {
+      }
     }
   },
   "stickerpack": {
@@ -747,11 +747,6 @@ export const products = {
     image: "/static/images/stickers.png",
     preview: "/static/images/stickerspreview.png",
     category: "accessories",
-    variables: {
-      sizes: [],
-      colors: [],
-      availability: {}
-    }
   },
   "dogbowl": {
     name: "Dog Bowl",
@@ -760,11 +755,6 @@ export const products = {
     image: "/static/images/dogbowl.png",
     preview: "/static/images/dogbowlpreview.png",
     category: "pet supplies",
-    variables: {
-      sizes: [],
-      colors: [],
-      availability: {}
-    }
   },
   "magnetset": {
     name: "Magnet Set",
@@ -773,11 +763,6 @@ export const products = {
     image: "/static/images/magnet.png",
     preview: "/static/images/magnetpreview.png",
     category: "accessories",
-    variables: {
-      sizes: [],
-      colors: [],
-      availability: {}
-    }
   },
   "menslongsleeve": {
     name: "Men's Long Sleeve",
@@ -790,52 +775,52 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "White", "Gray"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+        },
       }
-}
     }
   },
   "womenstank": {
@@ -849,61 +834,61 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "White", "Gray", "Pink"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
       }
-}
     }
   },
   "womenstee": {
@@ -917,61 +902,61 @@ export const products = {
       sizes: ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"],
       colors: ["Black", "White", "Gray", "Pink"],
       availability: {
-      "XS": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "S": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "M": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "L": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
-      },
-      "XXXXXL": {
-            "Black": true,
-            "White": true,
-            "Gray": true,
-            "Pink": true
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
+        "XXXXXL": {
+          "Black": true,
+          "White": true,
+          "Gray": true,
+          "Pink": true,
+        },
       }
-}
     }
   },
   "distresseddadhat": {
@@ -985,12 +970,12 @@ export const products = {
       sizes: ["One Size"],
       colors: ["Black", "Navy", "Gray"],
       availability: {
-      "One Size": {
-            "Black": true,
-            "Navy": true,
-            "Gray": true
+        "One Size": {
+          "Black": true,
+          "Navy": true,
+          "Gray": true,
+        },
       }
-}
     }
   },
   "snapbackhat": {
@@ -1004,13 +989,13 @@ export const products = {
       sizes: ["One Size"],
       colors: ["Black", "White", "Navy", "Gray"],
       availability: {
-      "One Size": {
-            "Black": true,
-            "White": true,
-            "Navy": true,
-            "Gray": true
+        "One Size": {
+          "Black": true,
+          "White": true,
+          "Navy": true,
+          "Gray": true,
+        },
       }
-}
     }
   },
   "fivepaneltruckerhat": {
@@ -1024,12 +1009,12 @@ export const products = {
       sizes: ["One Size"],
       colors: ["Black", "White", "Navy"],
       availability: {
-      "One Size": {
-            "Black": true,
-            "White": true,
-            "Navy": true
+        "One Size": {
+          "Black": true,
+          "White": true,
+          "Navy": true,
+        },
       }
-}
     }
   },
   "flatbillcap": {
@@ -1043,13 +1028,13 @@ export const products = {
       sizes: ["One Size"],
       colors: ["Black", "White", "Navy", "Gray"],
       availability: {
-      "One Size": {
-            "Black": true,
-            "White": true,
-            "Navy": true,
-            "Gray": true
+        "One Size": {
+          "Black": true,
+          "White": true,
+          "Navy": true,
+          "Gray": true,
+        },
       }
-}
     }
   },
   "crossbodybag": {
@@ -1060,9 +1045,9 @@ export const products = {
     preview: "/static/images/crossbodybagpreview.png",
     category: "bags",
     variables: {
-      sizes: [],
       colors: ["Black", "Brown", "Tan"],
-      availability: {}
+      availability: {
+      }
     }
   },
   "babybib": {
@@ -1073,9 +1058,9 @@ export const products = {
     preview: "/static/images/babybibpreview.jpg",
     category: "baby",
     variables: {
-      sizes: [],
       colors: ["White", "Pink", "Blue"],
-      availability: {}
+      availability: {
+      }
     }
   },
 };

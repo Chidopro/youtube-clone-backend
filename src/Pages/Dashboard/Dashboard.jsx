@@ -28,10 +28,21 @@ const Dashboard = ({ sidebar }) => {
     const [isEditingAvatar, setIsEditingAvatar] = useState(false);
     const [activeTab, setActiveTab] = useState('videos');
     const [currentUser, setCurrentUser] = useState(null);
+    const [analyticsData, setAnalyticsData] = useState({
+        total_sales: 0,
+        total_revenue: 0,
+        avg_order_value: 0,
+        products_sold_count: 0,
+        videos_with_sales_count: 0,
+        sales_data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        products_sold: [],
+        videos_with_sales: []
+    });
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const navigate = useNavigate();
 
-    // Sales data for the chart
-    const salesData = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    // Sales data for the chart (will be updated from API)
+    const salesData = analyticsData.sales_data;
     const maxSales = Math.max(...salesData) || 1;
 
     useEffect(() => {
@@ -88,6 +99,31 @@ const Dashboard = ({ sidebar }) => {
         };
         fetchUserData();
     }, [navigate]);
+
+    // Function to fetch analytics data
+    const fetchAnalyticsData = async () => {
+        try {
+            setAnalyticsLoading(true);
+            const response = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/analytics');
+            if (response.ok) {
+                const data = await response.json();
+                setAnalyticsData(data);
+            } else {
+                console.error('Failed to fetch analytics data');
+            }
+        } catch (error) {
+            console.error('Error fetching analytics:', error);
+        } finally {
+            setAnalyticsLoading(false);
+        }
+    };
+
+    // Fetch analytics when analytics tab is active
+    useEffect(() => {
+        if (activeTab === 'analytics') {
+            fetchAnalyticsData();
+        }
+    }, [activeTab]);
 
     useEffect(() => {
         const fetchCurrentUser = async () => {
@@ -478,8 +514,8 @@ const Dashboard = ({ sidebar }) => {
                             <div className="section-header">
                                 <h2>📊 Sales Analytics</h2>
                                 <div className="analytics-summary">
-                                    <span className="total-sales">Total Sales: 0</span>
-                                    <span className="total-revenue">Total Revenue: $0.00</span>
+                                    <span className="total-sales">Total Sales: {analyticsLoading ? 'Loading...' : analyticsData.total_sales}</span>
+                                    <span className="total-revenue">Total Revenue: ${analyticsLoading ? '0.00' : analyticsData.total_revenue.toFixed(2)}</span>
                                 </div>
                             </div>
                             
@@ -488,23 +524,23 @@ const Dashboard = ({ sidebar }) => {
                                 <div className="analytics-overview-cards">
                                     <div className="analytics-card">
                                         <h4>📈 Sales Per Day</h4>
-                                        <div className="analytics-amount">0</div>
-                                        <div className="analytics-change">No data yet</div>
+                                        <div className="analytics-amount">{analyticsLoading ? '...' : analyticsData.total_sales}</div>
+                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.total_sales > 0 ? 'Active sales' : 'No data yet'}</div>
                                     </div>
                                     <div className="analytics-card">
                                         <h4>🛍️ Products Sold</h4>
-                                        <div className="analytics-amount">0</div>
-                                        <div className="analytics-change">No data yet</div>
+                                        <div className="analytics-amount">{analyticsLoading ? '...' : analyticsData.products_sold_count}</div>
+                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.products_sold_count > 0 ? 'Products selling' : 'No data yet'}</div>
                                     </div>
                                     <div className="analytics-card">
                                         <h4>🎬 Videos with Sales</h4>
-                                        <div className="analytics-amount">0</div>
-                                        <div className="analytics-change">No data yet</div>
+                                        <div className="analytics-amount">{analyticsLoading ? '...' : analyticsData.videos_with_sales_count}</div>
+                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.videos_with_sales_count > 0 ? 'Videos performing' : 'No data yet'}</div>
                                     </div>
                                     <div className="analytics-card">
                                         <h4>💰 Avg Order Value</h4>
-                                        <div className="analytics-amount">$0.00</div>
-                                        <div className="analytics-change">No data yet</div>
+                                        <div className="analytics-amount">${analyticsLoading ? '0.00' : analyticsData.avg_order_value.toFixed(2)}</div>
+                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.avg_order_value > 0 ? 'Good average' : 'No data yet'}</div>
                                     </div>
                                 </div>
                                 
@@ -545,31 +581,82 @@ const Dashboard = ({ sidebar }) => {
                                         <div>Image</div>
                                     </div>
                                     
-                                    {/* No sales data yet - will populate when sales occur */}
-                                    <div className="table-row empty-state">
-                                        <div className="product-info">
-                                            <span>No products sold yet</span>
+                                    {analyticsLoading ? (
+                                        <div className="table-row empty-state">
+                                            <div className="product-info">
+                                                <span>Loading...</span>
+                                            </div>
+                                            <div>...</div>
+                                            <div>...</div>
+                                            <div>...</div>
+                                            <div className="product-image">
+                                                <span>...</span>
+                                            </div>
                                         </div>
-                                        <div>0</div>
-                                        <div>$0.00</div>
-                                        <div>No videos yet</div>
-                                        <div className="product-image">
-                                            <span>No image</span>
+                                    ) : analyticsData.products_sold.length > 0 ? (
+                                        analyticsData.products_sold.map((product, index) => (
+                                            <div key={index} className="table-row">
+                                                <div className="product-info">
+                                                    <span>{product.product}</span>
+                                                </div>
+                                                <div>{product.quantity}</div>
+                                                <div>${product.revenue.toFixed(2)}</div>
+                                                <div>{product.video_source}</div>
+                                                <div className="product-image">
+                                                    {product.image ? (
+                                                        <img src={product.image} alt={product.product} />
+                                                    ) : (
+                                                        <span>No image</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="table-row empty-state">
+                                            <div className="product-info">
+                                                <span>No products sold yet</span>
+                                            </div>
+                                            <div>0</div>
+                                            <div>$0.00</div>
+                                            <div>No videos yet</div>
+                                            <div className="product-image">
+                                                <span>No image</span>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                                 
                                 {/* Video Images Taken From */}
                                 <div className="video-sources-section">
                                     <h3>🎬 Video Sources</h3>
                                     <div className="video-sources-grid">
-                                        <div className="video-source-card empty-state">
-                                            <div className="video-source-info">
-                                                <h4>No videos with sales yet</h4>
-                                                <p>0 sales • $0.00 revenue</p>
-                                                <span className="video-date">Upload your first video to start earning!</span>
+                                        {analyticsLoading ? (
+                                            <div className="video-source-card empty-state">
+                                                <div className="video-source-info">
+                                                    <h4>Loading...</h4>
+                                                    <p>...</p>
+                                                    <span className="video-date">Loading analytics...</span>
+                                                </div>
                                             </div>
-                                        </div>
+                                        ) : analyticsData.videos_with_sales.length > 0 ? (
+                                            analyticsData.videos_with_sales.map((video, index) => (
+                                                <div key={index} className="video-source-card">
+                                                    <div className="video-source-info">
+                                                        <h4>{video.video_name}</h4>
+                                                        <p>{video.sales_count} sales • ${video.revenue.toFixed(2)} revenue</p>
+                                                        <span className="video-date">Performing well!</span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="video-source-card empty-state">
+                                                <div className="video-source-info">
+                                                    <h4>No videos with sales yet</h4>
+                                                    <p>0 sales • $0.00 revenue</p>
+                                                    <span className="video-date">Upload your first video to start earning!</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 

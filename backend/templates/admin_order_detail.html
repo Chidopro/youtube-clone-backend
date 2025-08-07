@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScreenMerch Admin - Order Details</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            position: relative;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+        }
+        
+        .admin-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            text-align: right;
+        }
+        
+        .admin-email {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .order-header {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .order-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .info-item {
+            text-align: center;
+        }
+        
+        .info-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1rem;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-processing {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status-shipped {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .items-grid {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .item-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .item-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .item-price {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        .item-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .detail-item {
+            text-align: center;
+        }
+        
+        .detail-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .detail-value {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .screenshot-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .screenshot-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .screenshot-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .screenshot-info ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .screenshot-info li {
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        
+        .screenshot-info strong {
+            color: #667eea;
+        }
+        
+        .screenshot-image {
+            max-width: 300px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            margin-top: 10px;
+        }
+        
+        .fulfillment-actions {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .actions-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1rem;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background: #138496;
+        }
+        
+        .customer-note {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .note-label {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .item-header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="admin-info">
+            <div class="admin-email">{{ admin_email }}</div>
+            <a href="/admin/logout" class="logout-btn">Logout</a>
+        </div>
+        <div class="header-content">
+            <h1>📦 Order #{{ order_id[-8:].upper() }}</h1>
+            <a href="/admin/orders" class="back-btn">← Back to Orders</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="order-header">
+            <div class="order-info">
+                <div class="info-item">
+                    <div class="info-label">Order ID</div>
+                    <div class="info-value">{{ order_id[-8:].upper() }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value">
+                        <span class="status-badge status-{{ order.status }}">{{ order.status.title() }}</span>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Items</div>
+                    <div class="info-value">{{ order.cart|length }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Total Value</div>
+                    <div class="info-value">${{ "%.2f"|format(order.cart|map(attribute='product')|map('get_product_price')|sum) }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Customer Email</div>
+                    <div class="info-value">{{ order.cart[0].email if order.cart and order.cart[0].email else 'N/A' }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Created</div>
+                    <div class="info-value">{{ order.created_at if order.created_at != 'N/A' else 'Recent' }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="items-grid">
+            {% for item in order.cart %}
+            <div class="item-card">
+                <div class="item-header">
+                    <div class="item-title">{{ item.product }}</div>
+                    <div class="item-price">${{ "%.2f"|format(item|get_product_price) }}</div>
+                </div>
+                
+                <div class="item-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Color</div>
+                        <div class="detail-value">{{ item.variants.color if item.variants else 'N/A' }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Size</div>
+                        <div class="detail-value">{{ item.variants.size if item.variants else 'N/A' }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Video</div>
+                        <div class="detail-value">{{ item.videoName if item.videoName else 'N/A' }}</div>
+                    </div>
+                </div>
+                
+                {% if item.note and item.note != 'None' %}
+                <div class="customer-note">
+                    <div class="note-label">Customer Note:</div>
+                    <div>{{ item.note }}</div>
+                </div>
+                {% endif %}
+                
+                <div class="screenshot-section">
+                    <div class="screenshot-title">📸 Screenshot Information</div>
+                    
+                    {% if item.screenshots and item.screenshots|length > 0 %}
+                        {% for screenshot in item.screenshots %}
+                        <div class="screenshot-info">
+                            <ul>
+                                <li><strong>Video:</strong> {{ screenshot.videoName if screenshot.videoName else item.videoName }}</li>
+                                <li><strong>Timestamp:</strong> {{ screenshot.timestamp }} seconds</li>
+                                <li><strong>Reference:</strong> Use screenshot at {{ screenshot.timestamp }}s from video</li>
+                            </ul>
+                            {% if screenshot.img and not screenshot.img.startswith('data:image') %}
+                            <img src="{{ screenshot.img }}" alt="Screenshot" class="screenshot-image">
+                            {% else %}
+                            <p><em>📧 Screenshot not shown due to size - use timestamp reference above</em></p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="screenshot-info">
+                            <ul>
+                                <li><strong>Type:</strong> Video Thumbnail</li>
+                                <li><strong>Video:</strong> {{ item.videoName if item.videoName else 'N/A' }}</li>
+                                <li><strong>Reference:</strong> Use video thumbnail</li>
+                            </ul>
+                            {% if item.img and not item.img.startswith('data:image') %}
+                            <img src="{{ item.img }}" alt="Thumbnail" class="screenshot-image">
+                            {% else %}
+                            <p><em>📧 Thumbnail not shown due to size - use video reference above</em></p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="fulfillment-actions">
+            <div class="actions-title">🚀 Fulfillment Actions</div>
+            <div class="action-buttons">
+                <button class="btn btn-success" onclick="updateStatus('{{ order_id }}', 'processing')">Mark as Processing</button>
+                <button class="btn btn-warning" onclick="updateStatus('{{ order_id }}', 'shipped')">Mark as Shipped</button>
+                <button class="btn btn-info" onclick="copyOrderInfo()">Copy Order Info</button>
+                <a href="https://printful.com/dashboard" target="_blank" class="btn btn-primary">Open Printful</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function updateStatus(orderId, status) {
+            fetch(`/admin/order/${orderId}/status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ status: status })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Failed to update status');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating status');
+            });
+        }
+        
+        function copyOrderInfo() {
+            const orderInfo = `Order #{{ order_id[-8:].upper() }}
+Items: {{ order.cart|length }}
+Customer: {{ order.cart[0].email if order.cart and order.cart[0].email else 'N/A' }}
+{% for item in order.cart %}
+- {{ item.product }} ({{ item.variants.color if item.variants else 'N/A' }}, {{ item.variants.size if item.variants else 'N/A' }})
+  Video: {{ item.videoName if item.videoName else 'N/A' }}
+  {% if item.screenshots and item.screenshots|length > 0 %}
+  {% for screenshot in item.screenshots %}
+  Screenshot: {{ screenshot.timestamp }}s from video
+  {% endfor %}
+  {% else %}
+  Screenshot: Use video thumbnail
+  {% endif %}
+{% endfor %}`;
+            
+            navigator.clipboard.writeText(orderInfo).then(() => {
+                alert('Order information copied to clipboard!');
+            }).catch(() => {
+                alert('Failed to copy order information');
+            });
+        }
+    </script>
+</body>
+</html> 
