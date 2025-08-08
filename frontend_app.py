@@ -159,7 +159,7 @@ PRINTFUL_API_KEY = os.getenv("PRINTFUL_API_KEY")
 
 PRODUCTS = [
     {
-        "name": "Soft Tee",
+        "name": "Unisex Staple T-Shirt",
         "price": 24.99,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",

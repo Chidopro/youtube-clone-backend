@@ -293,10 +293,10 @@ def test_order_email():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 PRODUCTS = [
-    # Products with both COLOR and SIZE options
-    {
-        "name": "Soft Tee",
-        "price": 24.99,
+                # Products with both COLOR and SIZE options
+            {
+                "name": "Unisex Staple T-Shirt",
+                "price": 24.99,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "preview_image": "guidonpreview.png",
