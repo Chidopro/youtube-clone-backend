@@ -24,41 +24,59 @@ def update_frontend_products_js(products_data):
     frontend_path = "frontend/src/data/products.js"
     
     try:
-        with open(frontend_path, 'r') as f:
+        with open(frontend_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        # Find the products array
-        products_match = re.search(r'export const products = (\[.*?\]);', content, re.DOTALL)
+        # Find the products object
+        products_match = re.search(r'export const products = (\{.*?\});', content, re.DOTALL)
         if not products_match:
-            print("Could not find products array in frontend file")
+            print("Could not find products object in frontend file")
             return False
         
         # Convert products_data to JavaScript format
-        js_products = []
-        for product in products_data:
+        js_products = {}
+        for i, product in enumerate(products_data):
+            # Create a product ID based on the name
+            product_id = product.get("name", "").lower().replace(" ", "").replace("-", "")
+            if not product_id:
+                product_id = f"product{i}"
+            
+            # Get colors from the product
+            colors = product.get("options", {}).get("color", [])
+            
+            # Create availability matrix
+            sizes = product.get("options", {}).get("size", ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"])
+            availability = {}
+            for size in sizes:
+                availability[size] = {}
+                for color in colors:
+                    availability[size][color] = True
+            
             js_product = {
-                "id": product.get("id", ""),
                 "name": product.get("name", ""),
-                "price": product.get("price", 0),
+                "price": product.get("base_price", 0),
                 "description": product.get("description", ""),
-                "image": product.get("image", ""),
-                "category": product.get("category", ""),
-                "colors": product.get("options", {}).get("color", []),
-                "sizes": product.get("options", {}).get("size", []),
-                "availability": product.get("availability", {})
+                "image": f"/static/images/{product.get('main_image', 'default.png')}",
+                "preview": f"/static/images/{product.get('filename', 'default.png')}",
+                "category": product.get("category", "").lower().replace(" ", "-"),
+                "variables": {
+                    "sizes": sizes,
+                    "colors": colors,
+                    "availability": availability
+                }
             }
-            js_products.append(js_product)
+            js_products[product_id] = js_product
         
         # Create new JavaScript content
         new_products_js = json.dumps(js_products, indent=2)
         new_content = re.sub(
-            r'export const products = \[.*?\];',
+            r'export const products = \{.*?\};',
             f'export const products = {new_products_js};',
             content,
             flags=re.DOTALL
         )
         
-        with open(frontend_path, 'w') as f:
+        with open(frontend_path, 'w', encoding='utf-8') as f:
             f.write(new_content)
         
         print(f"Updated {frontend_path}")
@@ -73,13 +91,13 @@ def update_backend_app_py(products_data):
     backend_path = "backend/app.py"
     
     try:
-        with open(backend_path, 'r') as f:
+        with open(backend_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
         # Find the products list in the backend
-        products_match = re.search(r'products = (\[.*?\])', content, re.DOTALL)
+        products_match = re.search(r'PRODUCTS = (\[.*?\])', content, re.DOTALL)
         if not products_match:
-            print("Could not find products list in backend file")
+            print("Could not find PRODUCTS list in backend file")
             return False
         
         # Convert to Python format
@@ -88,9 +106,9 @@ def update_backend_app_py(products_data):
             py_product = {
                 "id": product.get("id", ""),
                 "name": product.get("name", ""),
-                "price": product.get("price", 0),
+                "price": product.get("base_price", 0),
                 "description": product.get("description", ""),
-                "image": product.get("image", ""),
+                "image": product.get("main_image", ""),
                 "category": product.get("category", ""),
                 "options": product.get("options", {}),
                 "availability": product.get("availability", {})
@@ -100,13 +118,13 @@ def update_backend_app_py(products_data):
         # Create new Python content
         new_products_py = str(py_products).replace("'", '"')
         new_content = re.sub(
-            r'products = \[.*?\]',
-            f'products = {new_products_py}',
+            r'PRODUCTS = \[.*?\]',
+            f'PRODUCTS = {new_products_py}',
             content,
             flags=re.DOTALL
         )
         
-        with open(backend_path, 'w') as f:
+        with open(backend_path, 'w', encoding='utf-8') as f:
             f.write(new_content)
         
         print(f"Updated {backend_path}")
@@ -121,7 +139,7 @@ def update_frontend_app_py(products_data):
     frontend_app_path = "frontend_app.py"
     
     try:
-        with open(frontend_app_path, 'r') as f:
+        with open(frontend_app_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
         # Find the products list
@@ -136,9 +154,9 @@ def update_frontend_app_py(products_data):
             py_product = {
                 "id": product.get("id", ""),
                 "name": product.get("name", ""),
-                "price": product.get("price", 0),
+                "price": product.get("base_price", 0),
                 "description": product.get("description", ""),
-                "image": product.get("image", ""),
+                "image": product.get("main_image", ""),
                 "category": product.get("category", ""),
                 "options": product.get("options", {}),
                 "availability": product.get("availability", {})
@@ -154,7 +172,7 @@ def update_frontend_app_py(products_data):
             flags=re.DOTALL
         )
         
-        with open(frontend_app_path, 'w') as f:
+        with open(frontend_app_path, 'w', encoding='utf-8') as f:
             f.write(new_content)
         
         print(f"Updated {frontend_app_path}")
