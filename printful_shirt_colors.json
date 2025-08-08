@@ -1,0 +1,41 @@
+{
+  "basic_shirt_colors": [
+    {
+      "name": "Black",
+      "code": "#000000",
+      "printful_id": "Black",
+      "description": "Classic black - always available"
+    },
+    {
+      "name": "White",
+      "code": "#ffffff",
+      "printful_id": "White",
+      "description": "Classic white - always available"
+    },
+    {
+      "name": "Navy",
+      "code": "#212642",
+      "printful_id": "Navy",
+      "description": "Dark navy blue - professional and versatile"
+    },
+    {
+      "name": "Grey",
+      "code": "#808080",
+      "printful_id": "Grey",
+      "description": "Medium grey - neutral and popular"
+    },
+    {
+      "name": "Red",
+      "code": "#dc143c",
+      "printful_id": "Red",
+      "description": "Classic red - bold and eye-catching"
+    },
+    {
+      "name": "Pink",
+      "code": "#fdbfc7",
+      "printful_id": "Pink",
+      "description": "Soft pink - feminine and popular choice"
+    }
+  ],
+  "note": "These are the basic colors available across most shirt styles and sizes. Simplified to avoid confusion with size-specific variants."
+}

@@ -10,4 +10,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
+// Make Supabase available for debugging
+if (typeof window !== 'undefined') {
+  window.supabase = supabase;
+  window.__SUPABASE__ = supabase;
+}
+
 console.log('VITE ENV:', import.meta.env);

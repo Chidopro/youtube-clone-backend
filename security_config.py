@@ -98,7 +98,7 @@ SECURITY_HEADERS = {
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.printful.com https://api.resend.com https://api.stripe.com https://sojxbydpcdcdzfdtbypd.supabase.co; frame-src https://js.stripe.com https://checkout.stripe.com;",
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https: data: https://sojxbydpcdcdzfdtbypd.supabase.co; connect-src 'self' https://api.printful.com https://api.resend.com https://api.stripe.com https://sojxbydpcdcdzfdtbypd.supabase.co; frame-src https://js.stripe.com https://checkout.stripe.com;",
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
 }
@@ -111,8 +111,8 @@ PRODUCTION_CORS_ORIGINS = [
 ]
 
 # Allowed file types for uploads
-ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp4', '.webm', '.mov', '.avi'}
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB for videos
 
 def validate_file_upload(filename, file_size):
     """Validate file uploads"""
