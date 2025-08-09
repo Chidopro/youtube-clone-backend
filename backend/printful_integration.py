@@ -97,6 +97,16 @@ class PrintfulAPI:
             logger.error(f"Failed to create product: {str(e)}")
             raise
     
+    def get_shipping_rates(self, shipping_data: dict) -> dict:
+        """Get shipping rates from Printful"""
+        try:
+            result = self._make_request("/shipping/rates", "POST", shipping_data)
+            logger.info(f"Shipping rates retrieved successfully")
+            return result
+        except Exception as e:
+            logger.error(f"Failed to get shipping rates: {str(e)}")
+            raise
+    
     def create_order(self, order_data: dict) -> dict:
         """Create order in Printful"""
         try:
@@ -359,6 +369,96 @@ class ScreenMerchPrintfulIntegration:
                 "error": str(e)
             }
     
+    def calculate_shipping_rates(self, recipient_data: dict, items: list) -> dict:
+        """Calculate shipping rates for given items and destination"""
+        try:
+            # Format items for Printful shipping calculation
+            shipping_items = []
+            for item in items:
+                # Get variant_id from your product mapping or use a default
+                variant_id = item.get('printful_variant_id', 71)  # Default to basic t-shirt variant
+                shipping_items.append({
+                    "variant_id": variant_id,
+                    "quantity": item.get('quantity', 1)
+                })
+            
+            shipping_payload = {
+                "recipient": {
+                    "country_code": recipient_data['country_code'],
+                    "state_code": recipient_data.get('state_code', ''),
+                    "city": recipient_data.get('city', ''),
+                    "zip": recipient_data.get('zip', '')
+                },
+                "items": shipping_items,
+                "currency": "USD"
+            }
+            
+            # Call Printful shipping rates API
+            shipping_rates = self.printful.get_shipping_rates(shipping_payload)
+            
+            if shipping_rates and 'result' in shipping_rates:
+                rates = shipping_rates['result']
+                
+                # Find the standard shipping rate
+                standard_rate = None
+                for rate in rates:
+                    if rate['id'] == 'STANDARD':
+                        standard_rate = rate
+                        break
+                
+                if standard_rate:
+                    return {
+                        "success": True,
+                        "shipping_cost": float(standard_rate['rate']),
+                        "currency": "USD",
+                        "delivery_days": standard_rate.get('minDeliveryDays', 5),
+                        "all_rates": rates
+                    }
+                else:
+                    # Fallback to first available rate
+                    if rates:
+                        fallback_rate = rates[0]
+                        return {
+                            "success": True,
+                            "shipping_cost": float(fallback_rate['rate']),
+                            "currency": "USD",
+                            "delivery_days": fallback_rate.get('minDeliveryDays', 5),
+                            "all_rates": rates
+                        }
+            
+            # Fallback to default rates if API fails
+            return self._get_default_shipping_rate(recipient_data['country_code'])
+            
+        except Exception as e:
+            logger.error(f"Shipping calculation failed: {str(e)}")
+            # Return default shipping rate based on country
+            return self._get_default_shipping_rate(recipient_data.get('country_code', 'US'))
+    
+    def _get_default_shipping_rate(self, country_code: str) -> dict:
+        """Fallback shipping rates when API is unavailable"""
+        default_rates = {
+            'US': 6.99,
+            'MX': 6.99,
+            'CA': 9.99,
+            'GB': 9.99,
+            'DE': 9.99,
+            'FR': 9.99,
+            'AU': 14.99,
+            'JP': 14.99,
+            'IN': 19.99,
+            'BR': 19.99
+        }
+        
+        shipping_cost = default_rates.get(country_code, 24.99)  # Default to highest rate
+        
+        return {
+            "success": True,
+            "shipping_cost": shipping_cost,
+            "currency": "USD",
+            "delivery_days": 7,
+            "fallback": True
+        }
+
     def create_order(self, order_data: dict) -> dict:
         """Create order in Printful"""
         try:

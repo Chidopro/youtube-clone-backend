@@ -292,7 +292,15 @@ def test_order_email():
         logger.error(f"Error in test_order_email: {str(e)}")
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
-PRODUCTS = [{"id": "", "name": "Unisex Staple T-Shirt", "price": 24.99, "description": "Comfortable soft t-shirt with custom design", "image": "guidontee.png", "category": "T-Shirts", "options": {"color": ["Black", "White", "Dark Gray", "Navy", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Unisex Classic Tee", "price": 24.99, "description": "Classic unisex t-shirt", "image": "unisexclassictee.png", "category": "T-Shirts", "options": {"color": ["Black", "Navy", "Sport Grey", "White", "Maroon", "Red", "Natural", "Military Green", "Orange", "Irish Green", "Gold", "Sky", "Ash", "Purple", "Cardinal"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Men"s Tank Top", "price": 19.99, "description": "Comfortable men"s tank top", "image": "random.png", "category": "Tank Tops", "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Unisex Hoodie", "price": 22.99, "description": "Comfortable unisex hoodie", "image": "tested.png", "category": "Hoodies", "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Cropped Hoodie", "price": 39.99, "description": "Stylish cropped hoodie", "image": "croppedhoodie.png", "category": "Hoodies", "options": {"color": ["Black", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Unisex Champion Hoodie", "price": 29.99, "description": "Premium Champion brand hoodie", "image": "hoodiechampion.png", "category": "Hoodies", "options": {"color": ["Black", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Women"s Ribbed Neck", "price": 25.99, "description": "Women"s shirt with ribbed neck design", "image": "womensribbedneck.png", "category": "Women"s Shirts", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Women"s Shirt", "price": 26.99, "description": "Comfortable women"s shirt", "image": "womensshirt.png", "category": "Women"s Shirts", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Women"s HD Shirt", "price": 28.99, "description": "High-definition print women"s shirt", "image": "womenshdshirt.png", "category": "Women"s Shirts", "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Kids Shirt", "price": 19.99, "description": "Comfortable kids t-shirt", "image": "kidshirt.png", "category": "Kids", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}, "availability": {}}, {"id": "", "name": "Kids Hoodie", "price": 29.99, "description": "Warm kids hoodie", "image": "kidhoodie.png", "category": "Kids", "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L"]}, "availability": {}}, {"id": "", "name": "Kids Long Sleeve", "price": 24.99, "description": "Comfortable kids long sleeve shirt", "image": "kidlongsleeve.png", "category": "Kids", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}, "availability": {}}, {"id": "", "name": "Canvas Tote", "price": 18.99, "description": "Eco-friendly canvas tote bag", "image": "allovertotebag.png", "category": "Bags", "options": {"color": ["Natural", "Black"], "size": []}, "availability": {}}, {"id": "", "name": "Tote Bag", "price": 21.99, "description": "Versatile tote bag", "image": "drawstringbag.png", "category": "Bags", "options": {"color": ["White", "Black", "Blue"], "size": []}, "availability": {}}, {"id": "", "name": "Large Canvas Bag", "price": 24.99, "description": "Large canvas bag for all your needs", "image": "largecanvasbag.png", "category": "Bags", "options": {"color": ["Natural", "Black", "Navy"], "size": []}, "availability": {}}, {"id": "", "name": "Greeting Card", "price": 22.99, "description": "Beautiful greeting card", "image": "greetingcard.png", "category": "Stationery", "options": {"color": ["White", "Cream"], "size": []}, "availability": {}}, {"id": "", "name": "Notebook", "price": 14.99, "description": "Hardcover notebook", "image": "hardcovernotebook.png", "category": "Stationery", "options": {"color": ["Black", "Blue"], "size": []}, "availability": {}}, {"id": "", "name": "Coasters", "price": 13.99, "description": "Set of custom coasters", "image": "coaster.png", "category": "Home & Living", "options": {"color": ["Wood", "Cork", "Black"], "size": []}, "availability": {}}, {"id": "", "name": "Sticker Pack", "price": 8.99, "description": "Set of custom stickers", "image": "stickers.png", "category": "Accessories", "options": {"color": [], "size": []}, "availability": {}}, {"id": "", "name": "Dog Bowl", "price": 12.99, "description": "Custom dog bowl", "image": "dogbowl.png", "category": "Pet Supplies", "options": {"color": [], "size": []}, "availability": {}}, {"id": "", "name": "Magnet Set", "price": 11.99, "description": "Set of custom magnets", "image": "magnet.png", "category": "Accessories", "options": {"color": [], "size": []}, "availability": {}}, {"id": "", "name": "Men"s Long Sleeve", "price": 29.99, "description": "Comfortable men"s long sleeve shirt", "image": "menslongsleeve.png", "category": "Men"s Shirts", "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Women"s Tank", "price": 22.99, "description": "Comfortable women"s tank top", "image": "womenstank.png", "category": "Women"s Shirts", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Women"s Tee", "price": 23.99, "description": "Comfortable women"s t-shirt", "image": "womenstee.png", "category": "Women"s Shirts", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Distressed Dad Hat", "price": 24.99, "description": "Stylish distressed dad hat", "image": "distresseddadhat.jpg", "category": "Hats", "options": {"color": ["Black", "Navy", "Gray"], "size": ["One Size"]}, "availability": {}}, {"id": "", "name": "Snapback Hat", "price": 25.99, "description": "Classic snapback hat", "image": "snapbackhat.png", "category": "Hats", "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}, "availability": {}}, {"id": "", "name": "Five Panel Trucker Hat", "price": 26.99, "description": "Five panel trucker hat", "image": "fivepaneltruckerhat.png", "category": "Hats", "options": {"color": ["Black", "White", "Navy"], "size": ["One Size"]}, "availability": {}}, {"id": "", "name": "Flat Bill Cap", "price": 24.99, "description": "Flat bill cap", "image": "flatbillcap.png", "category": "Hats", "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}, "availability": {}}, {"id": "", "name": "Crossbody Bag", "price": 32.99, "description": "Stylish crossbody bag", "image": "crossbodybag.png", "category": "Bags", "options": {"color": ["Black", "Brown", "Tan"], "size": []}, "availability": {}}, {"id": "", "name": "Baby Bib", "price": 16.99, "description": "Custom baby bib", "image": "babybib.png", "category": "Baby", "options": {"color": ["White", "Pink", "Blue"], "size": []}, "availability": {}}], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Unisex Classic Tee", "price": 24.99, "description": "Classic unisex t-shirt", "image": "unisexclassictee.png", "category": "T-Shirts", "options": {"color": ["Black", "Navy", "Sport Grey", "White", "Maroon", "Red", "Natural", "Military Green", "Orange", "Irish Green", "Gold", "Sky", "Ash", "Purple", "Cardinal"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Men"s Tank Top", "price": 19.99, "description": "Comfortable men"s tank top", "image": "random.png", "category": "Tank Tops", "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Unisex Hoodie", "price": 22.99, "description": "Comfortable unisex hoodie", "image": "tested.png", "category": "Hoodies", "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Cropped Hoodie", "price": 39.99, "description": "Stylish cropped hoodie", "image": "croppedhoodie.png", "category": "Hoodies", "options": {"color": ["Black", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Unisex Champion Hoodie", "price": 29.99, "description": "Premium Champion brand hoodie", "image": "hoodiechampion.png", "category": "Hoodies", "options": {"color": ["Black", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Women"s Ribbed Neck", "price": 25.99, "description": "Women"s shirt with ribbed neck design", "image": "womensribbedneck.png", "category": "Women"s Shirts", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Women"s Shirt", "price": 26.99, "description": "Comfortable women"s shirt", "image": "womensshirt.png", "category": "Women"s Shirts", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Women"s HD Shirt", "price": 28.99, "description": "High-definition print women"s shirt", "image": "womenshdshirt.png", "category": "Women"s Shirts", "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Kids Shirt", "price": 19.99, "description": "Comfortable kids t-shirt", "image": "kidshirt.png", "category": "Kids", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}, "availability": {}}, {"id": "", "name": "Kids Hoodie", "price": 29.99, "description": "Warm kids hoodie", "image": "kidhoodie.png", "category": "Kids", "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L"]}, "availability": {}}, {"id": "", "name": "Kids Long Sleeve", "price": 24.99, "description": "Comfortable kids long sleeve shirt", "image": "kidlongsleeve.png", "category": "Kids", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}, "availability": {}}, {"id": "", "name": "Canvas Tote", "price": 18.99, "description": "Eco-friendly canvas tote bag", "image": "allovertotebag.png", "category": "Bags", "options": {"color": ["Natural", "Black"], "size": []}, "availability": {}}, {"id": "", "name": "Tote Bag", "price": 21.99, "description": "Versatile tote bag", "image": "drawstringbag.png", "category": "Bags", "options": {"color": ["White", "Black", "Blue"], "size": []}, "availability": {}}, {"id": "", "name": "Large Canvas Bag", "price": 24.99, "description": "Large canvas bag for all your needs", "image": "largecanvasbag.png", "category": "Bags", "options": {"color": ["Natural", "Black", "Navy"], "size": []}, "availability": {}}, {"id": "", "name": "Greeting Card", "price": 22.99, "description": "Beautiful greeting card", "image": "greetingcard.png", "category": "Stationery", "options": {"color": ["White", "Cream"], "size": []}, "availability": {}}, {"id": "", "name": "Notebook", "price": 14.99, "description": "Hardcover notebook", "image": "hardcovernotebook.png", "category": "Stationery", "options": {"color": ["Black", "Blue"], "size": []}, "availability": {}}, {"id": "", "name": "Coasters", "price": 13.99, "description": "Set of custom coasters", "image": "coaster.png", "category": "Home & Living", "options": {"color": ["Wood", "Cork", "Black"], "size": []}, "availability": {}}, {"id": "", "name": "Sticker Pack", "price": 8.99, "description": "Set of custom stickers", "image": "stickers.png", "category": "Accessories", "options": {"color": [], "size": []}, "availability": {}}, {"id": "", "name": "Dog Bowl", "price": 12.99, "description": "Custom dog bowl", "image": "dogbowl.png", "category": "Pet Supplies", "options": {"color": [], "size": []}, "availability": {}}, {"id": "", "name": "Magnet Set", "price": 11.99, "description": "Set of custom magnets", "image": "magnet.png", "category": "Accessories", "options": {"color": [], "size": []}, "availability": {}}, {"id": "", "name": "Men"s Long Sleeve", "price": 29.99, "description": "Comfortable men"s long sleeve shirt", "image": "menslongsleeve.png", "category": "Men"s Shirts", "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Women"s Tank", "price": 22.99, "description": "Comfortable women"s tank top", "image": "womenstank.png", "category": "Women"s Shirts", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Women"s Tee", "price": 23.99, "description": "Comfortable women"s t-shirt", "image": "womenstee.png", "category": "Women"s Shirts", "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}, "availability": {}}, {"id": "", "name": "Distressed Dad Hat", "price": 24.99, "description": "Stylish distressed dad hat", "image": "distresseddadhat.jpg", "category": "Hats", "options": {"color": ["Black", "Navy", "Gray"], "size": ["One Size"]}, "availability": {}}, {"id": "", "name": "Snapback Hat", "price": 25.99, "description": "Classic snapback hat", "image": "snapbackhat.png", "category": "Hats", "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}, "availability": {}}, {"id": "", "name": "Five Panel Trucker Hat", "price": 26.99, "description": "Five panel trucker hat", "image": "fivepaneltruckerhat.png", "category": "Hats", "options": {"color": ["Black", "White", "Navy"], "size": ["One Size"]}, "availability": {}}, {"id": "", "name": "Flat Bill Cap", "price": 24.99, "description": "Flat bill cap", "image": "flatbillcap.png", "category": "Hats", "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}, "availability": {}}, {"id": "", "name": "Crossbody Bag", "price": 32.99, "description": "Stylish crossbody bag", "image": "crossbodybag.png", "category": "Bags", "options": {"color": ["Black", "Brown", "Tan"], "size": []}, "availability": {}}, {"id": "", "name": "Baby Bib", "price": 16.99, "description": "Custom baby bib", "image": "babybib.png", "category": "Baby", "options": {"color": ["White", "Pink", "Blue"], "size": []}, "availability": {}}], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+PRODUCTS = [
+    # Products with both COLOR and SIZE options
+    {
+        "name": "Unisex Staple T-Shirt",
+        "price": 24.99,
+        "filename": "guidontee.png",
+        "main_image": "guidontee.png",
+        "preview_image": "guidonpreview.png",
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Unisex Classic Tee",
@@ -882,15 +890,15 @@ def send_order():
         email_data = {
             "from": RESEND_FROM,
             "to": [MAIL_TO],
-            "subject": f"🛍️ New ScreenMerch Order #{order_number}",
+            "subject": f"🛍️ New ScreenMerch Order #{stripe_session_id}",
             "html": f"""
                     <h2>New Order Received!</h2>
-                    <p><strong>Order ID:</strong> {order_number}</p>
+                    <p><strong>Order ID:</strong> {stripe_session_id}</p>
                     <p><strong>Items:</strong> {len(cart)}</p>
                     <p><strong>Total Value:</strong> ${sum([next((p['price'] for p in PRODUCTS if p['name'] == item.get('product')), 0) for item in cart]):.2f}</p>
                     <br>
                     <p><strong>📋 View Full Order Details:</strong></p>
-                    <p><a href="https://backend-hidden-firefly-7865.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <p><a href="https://backend-hidden-firefly-7865.fly.dev/admin/order/{stripe_session_id}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
                     <br>
                     <p><strong>📊 All Orders Dashboard:</strong></p>
                     <p><a href="https://backend-hidden-firefly-7865.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
@@ -1006,23 +1014,23 @@ def create_checkout_session():
         cart = data.get("cart", [])
         product_id = data.get("product_id")
         sms_consent = data.get("sms_consent", False)
+        shipping_address = data.get("shipping_address", {})
 
         logger.info(f"🛒 Received checkout request - Cart: {cart}")
         logger.info(f"🛒 Product ID: {product_id}")
         logger.info(f"🛒 SMS Consent: {sms_consent}")
+        logger.info(f"🛒 Shipping Address: {shipping_address}")
 
         if not cart:
             logger.error("❌ Cart is empty")
             return jsonify({"error": "Cart is empty"}), 400
-
-        # Email notifications - SMS consent not required
-        # sms_consent is kept for backward compatibility but not enforced
 
         # Generate a unique order ID and store the full cart (with images) and SMS consent
         order_id = str(uuid.uuid4())
         order_store[order_id] = {
             "cart": cart,
             "sms_consent": sms_consent,
+            "shipping_address": shipping_address,
             "timestamp": data.get("timestamp"),
             "order_id": order_id,
             "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
@@ -1030,11 +1038,12 @@ def create_checkout_session():
         }
 
         line_items = []
+        
+        # Add product line items
         for item in cart:
             logger.info(f"🛒 Processing item: {item}")
             logger.info(f"🛒 Item product name: '{item.get('product')}'")
             logger.info(f"🛒 Item price: {item.get('price')}")
-            logger.info(f"🛒 Available products: {[p['name'] for p in PRODUCTS]}")
             
             # Use price from cart item if available, otherwise look up in PRODUCTS
             item_price = item.get('price')
@@ -1069,24 +1078,67 @@ def create_checkout_session():
                 "quantity": 1,
             })
 
+        # Calculate and add shipping costs
+        shipping_cost = 0
+        if shipping_address and shipping_address.get('country_code'):
+            try:
+                shipping_result = printful_integration.calculate_shipping_rates(shipping_address, cart)
+                if shipping_result['success']:
+                    shipping_cost = shipping_result['shipping_cost']
+                    logger.info(f"🚚 Calculated shipping cost: ${shipping_cost}")
+                    
+                    # Add shipping as a line item
+                    line_items.append({
+                        "price_data": {
+                            "currency": "usd",
+                            "product_data": {
+                                "name": f"Shipping to {shipping_address.get('country_code', 'Unknown')}",
+                                "description": f"Standard shipping (estimated {shipping_result.get('delivery_days', 7)} business days)"
+                            },
+                            "unit_amount": int(shipping_cost * 100),
+                        },
+                        "quantity": 1,
+                    })
+                    
+                    # Store shipping cost in order data
+                    order_store[order_id]["shipping_cost"] = shipping_cost
+                else:
+                    logger.warning(f"🚚 Failed to calculate shipping: {shipping_result.get('error', 'Unknown error')}")
+            except Exception as shipping_error:
+                logger.error(f"🚚 Shipping calculation error: {str(shipping_error)}")
+                # Continue without shipping cost - customer will pay for shipping separately through Printful
+        else:
+            logger.warning("🚚 No shipping address provided - will use Stripe's shipping collection")
+
         logger.info(f"🛒 Created line items: {line_items}")
         if not line_items:
             logger.error("❌ No valid items in cart to check out")
             return jsonify({"error": "No valid items in cart to check out."}), 400
 
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            mode="payment",
-            line_items=line_items,
-            success_url=f"https://backend-hidden-firefly-7865.fly.dev/success?order_id={order_id}",
-            cancel_url=f"https://screenmerch.com/checkout/{product_id}",
+        # Configure Stripe session
+        session_config = {
+            "payment_method_types": ["card"],
+            "mode": "payment",
+            "line_items": line_items,
+            "success_url": f"https://backend-hidden-firefly-7865.fly.dev/success?order_id={order_id}",
+            "cancel_url": f"https://screenmerch.com/checkout/{product_id}",
             # A2P 10DLC Compliance: Collect phone number for SMS notifications
-            phone_number_collection={"enabled": True},
-            metadata={
+            "phone_number_collection": {"enabled": True},
+            "metadata": {
                 "order_id": order_id  # Only store the small order ID in Stripe
             }
-        )
+        }
+
+        # If no shipping address provided, let Stripe collect it
+        if not shipping_address or not shipping_address.get('country_code'):
+            session_config["shipping_address_collection"] = {
+                "allowed_countries": ['US', 'CA', 'GB', 'DE', 'FR', 'AU', 'JP', 'MX', 'BR', 'IN']
+            }
+            logger.info("🚚 Enabling Stripe shipping address collection")
+
+        session = stripe.checkout.Session.create(**session_config)
         return jsonify({"url": session.url})
+        
     except Exception as e:
         logger.error(f"Stripe API Error: {str(e)}")
         return jsonify({"error": "Failed to create Stripe checkout session"}), 500
@@ -1331,6 +1383,41 @@ def create_printful_product():
             
     except Exception as e:
         logger.error(f"Printful product creation error: {str(e)}")
+        return jsonify(success=False, error="Internal server error"), 500
+
+@app.route("/api/calculate-shipping", methods=["POST"])
+def calculate_shipping():
+    """Calculate shipping costs for given items and destination"""
+    try:
+        data = request.get_json()
+        cart = data.get('cart', [])
+        shipping_address = data.get('shipping_address', {})
+        
+        if not cart:
+            return jsonify({"error": "Cart is empty"}), 400
+        
+        if not shipping_address.get('country_code'):
+            return jsonify({"error": "Country code is required"}), 400
+        
+        # Calculate shipping using Printful integration
+        result = printful_integration.calculate_shipping_rates(shipping_address, cart)
+        
+        if result['success']:
+            return jsonify({
+                "success": True,
+                "shipping_cost": result['shipping_cost'],
+                "currency": result['currency'],
+                "delivery_days": result.get('delivery_days', 7),
+                "fallback": result.get('fallback', False)
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": result.get('error', 'Failed to calculate shipping')
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Shipping calculation error: {str(e)}")
         return jsonify(success=False, error="Internal server error"), 500
 
 @app.route("/api/printful/create-order", methods=["POST"])

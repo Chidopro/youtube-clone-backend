@@ -513,16 +513,26 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Server error response:', errorText);
+                alert(`Server returned error ${response.status}: ${errorText}`);
                 throw new Error(`Server error: ${response.status} - ${errorText}`);
             }
             
             const data = await response.json();
-            console.log('Response data:', data);
+            console.log('✅ SUCCESS! Response data:', data);
+            console.log('✅ Product URL:', data.product_url);
             
             if (data.success && data.product_url) {
-                window.open(data.product_url, '_blank');
+                console.log('🚀 Attempting to open merchandise page:', data.product_url);
+                const newWindow = window.open(data.product_url, '_blank');
+                if (!newWindow) {
+                    console.error('❌ Popup blocked! Trying alternative...');
+                    // Fallback: navigate in same window
+                    window.location.href = data.product_url;
+                } else {
+                    console.log('✅ Merchandise page opened successfully!');
+                }
             } else {
-                console.error('Failed to create product:', data);
+                console.error('❌ Failed to create product:', data);
                 alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
             }
         } catch (err) {
@@ -723,6 +733,46 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     )}
                 </div>
             </div>
+            
+            {/* Action buttons for screenshots and merchandise */}
+            <div className="screenmerch-actions" style={{
+                display: 'flex',
+                gap: '10px',
+                marginBottom: '15px',
+                flexWrap: 'wrap'
+            }}>
+                <button 
+                    className="screenmerch-btn" 
+                    onClick={handleGrabScreenshot}
+                    style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#007bff',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    Grab Screenshot
+                </button>
+                <button 
+                    className="screenmerch-btn" 
+                    onClick={handleMakeMerch}
+                    style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#28a745',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    Make Merch
+                </button>
+            </div>
+            
             <h3>{video.title}</h3>
             <div className="play-video-info">
                 <p>{moment(video.created_at).fromNow()}</p>

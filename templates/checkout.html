@@ -206,8 +206,11 @@
         </div>
         
         <p style="margin-top: 15px; font-style: italic; color: #666;">
-          💡 <strong>Note:</strong> Shipping costs will be calculated at checkout based on your location. 
+          💡 <strong>Note:</strong> Shipping costs will be automatically calculated and added at checkout based on your shipping address. 
           All prices shown are in USD. Delivery times may vary during peak seasons.
+        </p>
+        <p style="margin-top: 10px; color: #28a745; font-weight: bold;">
+          ✅ <strong>NEW:</strong> Exact shipping costs are now calculated in real-time using Printful's shipping rates API!
         </p>
       </div>
     </div>
@@ -275,6 +278,11 @@
         return;
       }
       
+      // Update button text
+      const proceedBtn = document.getElementById('proceed-btn');
+      proceedBtn.textContent = 'Processing...';
+      proceedBtn.disabled = true;
+      
       // Email notifications - no consent required
       const orderData = {
         cart: cart,
@@ -283,6 +291,8 @@
         sms_consent: false, // No SMS consent needed for email notifications
         phone_number: '', // Will be collected by Stripe
         timestamp: new Date().toISOString()
+        // Note: shipping_address will be collected by Stripe checkout
+        // Shipping costs will be calculated during checkout based on customer's address
       };
 
       fetch("/create-checkout-session", {
@@ -297,11 +307,15 @@
           window.location.href = data.url;
         } else {
           alert("Error creating Stripe checkout session: " + (data.error || 'Unknown error'));
+          proceedBtn.textContent = 'Proceed to Payment';
+          proceedBtn.disabled = false;
         }
       })
       .catch(error => {
         console.error('Checkout error:', error);
         alert("Error creating checkout session. Please try again.");
+        proceedBtn.textContent = 'Proceed to Payment';
+        proceedBtn.disabled = false;
       });
     }
 
