@@ -65,6 +65,62 @@
       background: #ccc;
       cursor: not-allowed;
     }
+    
+    /* Shipping Information Styles */
+    .shipping-info {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: left;
+    }
+    
+    .shipping-info h3 {
+      color: #2c3e50;
+      margin-bottom: 15px;
+      text-align: center;
+      font-size: 18px;
+    }
+    
+    .shipping-details p {
+      margin: 8px 0;
+      color: #333;
+    }
+    
+    .shipping-costs {
+      margin: 15px 0;
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+    
+    .shipping-costs h4 {
+      margin-bottom: 12px;
+      color: #2c3e50;
+      font-size: 16px;
+    }
+    
+    .cost-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .cost-item:last-child {
+      border-bottom: none;
+    }
+    
+    .cost-item span:first-child {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    
+    .cost-item span:last-child {
+      color: #666;
+    }
     /* A2P 10DLC Compliance Styles */
     .sms-consent-section {
       background: #f8f9ff;
@@ -128,6 +184,47 @@
     <h2>You're Almost Done!</h2>
     <div id="cart-items"></div>
     
+    <!-- Shipping Information Section -->
+    <div class="shipping-info">
+      <h3>🌍 Shipping & Delivery Information</h3>
+      <div class="shipping-details">
+        <p><strong>✅ Global Shipping:</strong> We ship to all countries worldwide!</p>
+        <p><strong>📦 Fulfillment:</strong> Products are fulfilled from US/Mexico for maximum availability.</p>
+        <p><strong>🎨 Color Availability:</strong> Core colors (Black, White, Gray, Navy) are always available globally.</p>
+        
+        <div class="shipping-costs">
+          <h4>📋 Shipping Costs & Delivery Times:</h4>
+          <div class="cost-item">
+            <span><strong>US & Mexico:</strong></span>
+            <span>$5-8 shipping • 3-5 business days</span>
+          </div>
+          <div class="cost-item">
+            <span><strong>Canada & Europe:</strong></span>
+            <span>$8-12 shipping • 5-8 business days</span>
+          </div>
+          <div class="cost-item">
+            <span><strong>Asia & Australia:</strong></span>
+            <span>$12-18 shipping • 7-10 business days</span>
+          </div>
+          <div class="cost-item">
+            <span><strong>India & Middle East:</strong></span>
+            <span>$15-25 shipping • 7-14 business days</span>
+          </div>
+          <div class="cost-item">
+            <span><strong>Rest of World:</strong></span>
+            <span>$18-30 shipping • 10-14 business days</span>
+          </div>
+        </div>
+        
+        <p style="margin-top: 15px; font-style: italic; color: #666;">
+          💡 <strong>Note:</strong> Shipping costs will be automatically calculated and added at checkout based on your shipping address. 
+          All prices shown are in USD. Delivery times may vary during peak seasons.
+        </p>
+        <p style="margin-top: 10px; color: #28a745; font-weight: bold;">
+          ✅ <strong>NEW:</strong> Exact shipping costs are now calculated in real-time using Printful's shipping rates API!
+        </p>
+      </div>
+    </div>
 
     
     <button class="checkout-btn" id="proceed-btn" onclick="finalizeOrder()">Proceed to Payment</button>

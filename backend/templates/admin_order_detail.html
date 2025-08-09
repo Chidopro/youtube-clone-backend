@@ -365,8 +365,16 @@
                     <div class="info-value">{{ order.cart|length }}</div>
                 </div>
                 <div class="info-item">
-                    <div class="info-label">Total Value</div>
+                    <div class="info-label">Product Total</div>
                     <div class="info-value">${{ "%.2f"|format(order.cart|map(attribute='product')|map('get_product_price')|sum) }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Shipping Cost</div>
+                    <div class="info-value">${{ "%.2f"|format(order.shipping_cost) if order.shipping_cost else 'Included' }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Total Value</div>
+                    <div class="info-value">${{ "%.2f"|format((order.cart|map(attribute='product')|map('get_product_price')|sum) + (order.shipping_cost or 0)) }}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Customer Email</div>
@@ -375,6 +383,16 @@
                 <div class="info-item">
                     <div class="info-label">Created</div>
                     <div class="info-value">{{ order.created_at if order.created_at != 'N/A' else 'Recent' }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Shipping Address</div>
+                    <div class="info-value">
+                        {% if order.shipping_address %}
+                            {{ order.shipping_address.city }}, {{ order.shipping_address.country_code }}
+                        {% else %}
+                            To be collected at checkout
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
