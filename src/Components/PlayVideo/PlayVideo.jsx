@@ -1,9 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
 import './PlayVideo.css'
-import like from '../../assets/like.png'
-import dislike from '../../assets/dislike.png'
-import share from '../../assets/share.png'
-import save from '../../assets/save.png'
 import { value_converter } from '../../data'
 import moment from 'moment'
 import { useParams } from 'react-router-dom'
@@ -133,20 +129,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             <h3>{video.title}</h3>
             <div className="play-video-info">
                 <p>{moment(video.created_at).fromNow()}</p>
-                <div>
-                    <span><img src={like} alt="" />Like</span>
-                    <span><img src={dislike} alt="" />Dislike</span>
-                    <span><img src={share} alt="" />Share</span>
-                    <span><img src={save} alt="" />Save</span>
-                </div>
             </div>
             <hr />
-            <div className="publisher">
-                <div>
-                    <p>Approved Creator</p>
-                </div>
-                <button type="button">Subscribe</button>
-            </div>
             <div className="vid-description">
                 <p>{video.description}</p>
             </div>

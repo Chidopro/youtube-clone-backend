@@ -1129,12 +1129,60 @@ def create_checkout_session():
             }
         }
 
-        # If no shipping address provided, let Stripe collect it
+        # If no shipping address provided, let Stripe collect it with shipping rates
         if not shipping_address or not shipping_address.get('country_code'):
             session_config["shipping_address_collection"] = {
                 "allowed_countries": ['US', 'CA', 'GB', 'DE', 'FR', 'AU', 'JP', 'MX', 'BR', 'IN']
             }
-            logger.info("🚚 Enabling Stripe shipping address collection")
+            
+            # Add shipping options for different regions
+            session_config["shipping_options"] = [
+                {
+                    "shipping_rate_data": {
+                        "type": "fixed_amount",
+                        "fixed_amount": {"amount": 675, "currency": "usd"},  # $6.75 for US/Mexico
+                        "display_name": "US & Mexico Standard",
+                        "delivery_estimate": {
+                            "minimum": {"unit": "business_day", "value": 3},
+                            "maximum": {"unit": "business_day", "value": 5}
+                        }
+                    }
+                },
+                {
+                    "shipping_rate_data": {
+                        "type": "fixed_amount", 
+                        "fixed_amount": {"amount": 999, "currency": "usd"},  # $9.99 for Canada/Europe
+                        "display_name": "Canada & Europe Standard",
+                        "delivery_estimate": {
+                            "minimum": {"unit": "business_day", "value": 5},
+                            "maximum": {"unit": "business_day", "value": 8}
+                        }
+                    }
+                },
+                {
+                    "shipping_rate_data": {
+                        "type": "fixed_amount",
+                        "fixed_amount": {"amount": 1499, "currency": "usd"},  # $14.99 for Asia/Australia
+                        "display_name": "Asia & Australia Standard", 
+                        "delivery_estimate": {
+                            "minimum": {"unit": "business_day", "value": 7},
+                            "maximum": {"unit": "business_day", "value": 10}
+                        }
+                    }
+                },
+                {
+                    "shipping_rate_data": {
+                        "type": "fixed_amount",
+                        "fixed_amount": {"amount": 1999, "currency": "usd"},  # $19.99 for rest of world
+                        "display_name": "International Standard",
+                        "delivery_estimate": {
+                            "minimum": {"unit": "business_day", "value": 10},
+                            "maximum": {"unit": "business_day", "value": 14}
+                        }
+                    }
+                }
+            ]
+            logger.info("🚚 Enabling Stripe shipping address collection with shipping options")
 
         session = stripe.checkout.Session.create(**session_config)
         return jsonify({"url": session.url})
