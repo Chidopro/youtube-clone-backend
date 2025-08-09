@@ -17,6 +17,7 @@ import Admin from "./Pages/Admin/Admin";
 import AuthForm from "./Components/AuthForm";
 import PrivacyPolicy from "./Pages/PrivacyPolicy/PrivacyPolicy";
 import TermsOfService from "./Pages/TermsOfService/TermsOfService";
+import Search from "./Pages/Search/Search";
 import { API_CONFIG } from "./config/apiConfig";
 
 const App = () => {
@@ -81,6 +82,7 @@ const App = () => {
               <Route path="/auth" element={<AuthForm />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/search" element={<Search />} />
             </Routes>
           </div>
           <Footer />

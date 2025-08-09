@@ -1710,6 +1710,74 @@ def ensure_user_exists():
         logger.error(f"Error ensuring user exists: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/search/creators", methods=["GET", "OPTIONS"])
+def search_creators():
+    """Search for creators by display name, username, or channel title"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        query = request.args.get('q', '').strip()
+        
+        if not query:
+            return jsonify({"success": False, "error": "Search query is required"}), 400
+        
+        if len(query) < 2:
+            return jsonify({"success": False, "error": "Search query must be at least 2 characters"}), 400
+        
+        # Search users/creators by display_name, username, or bio
+        users_result = supabase.table('users').select(
+            'id, email, username, display_name, profile_image_url, bio, role, created_at'
+        ).or_(
+            f'display_name.ilike.%{query}%,username.ilike.%{query}%,bio.ilike.%{query}%'
+        ).eq('role', 'creator').order('display_name').limit(20).execute()
+        
+        # Also search in videos table by channelTitle for additional creator discovery
+        videos_result = supabase.table('videos2').select(
+            'user_id, channelTitle, COUNT(*) as video_count'
+        ).ilike('channelTitle', f'%{query}%').execute()
+        
+        # Combine results and remove duplicates
+        creators = []
+        user_ids_found = set()
+        
+        # Add users from direct user search
+        for user in users_result.data:
+            if user['id'] not in user_ids_found:
+                creators.append({
+                    'id': user['id'],
+                    'username': user['username'] or user['email'].split('@')[0] if user['email'] else 'user',
+                    'display_name': user['display_name'] or user['username'] or 'Creator',
+                    'profile_image_url': user['profile_image_url'],
+                    'bio': user['bio'],
+                    'created_at': user['created_at'],
+                    'type': 'user'
+                })
+                user_ids_found.add(user['id'])
+        
+        # Get video counts for found creators
+        for creator in creators:
+            try:
+                video_count_result = supabase.table('videos2').select('id', count='exact').eq('user_id', creator['id']).execute()
+                creator['video_count'] = video_count_result.count if video_count_result.count else 0
+            except:
+                creator['video_count'] = 0
+        
+        return jsonify({
+            "success": True,
+            "query": query,
+            "results": creators,
+            "total": len(creators)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error searching creators: {str(e)}")
+        return jsonify({"success": False, "error": "Search service unavailable"}), 500
+
 @app.route("/api/users/<user_id>/delete-account", methods=["DELETE"])
 def delete_user_account(user_id):
     """Delete user account and all associated data"""

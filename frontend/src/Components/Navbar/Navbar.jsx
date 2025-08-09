@@ -16,6 +16,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -119,6 +120,22 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         navigate('/join-channel');
     };
 
+    const handleSearchInput = (e) => {
+        setSearchQuery(e.target.value);
+    };
+
+    const handleSearch = () => {
+        if (searchQuery.trim()) {
+            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        }
+    };
+
+    const handleSearchKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    };
+
     return (
         <>
             <nav className='flex-div'>
@@ -128,8 +145,20 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                 </div>
                 <div className="nav-middle flex-div">
                     <div className="search-box flex-div">
-                        <input type="text" placeholder="Search" />
-                        <img src={search_icon} alt="" />
+                        <input 
+                            type="text" 
+                            placeholder="Search creators..." 
+                            value={searchQuery}
+                            onChange={handleSearchInput}
+                            onKeyPress={handleSearchKeyPress}
+                        />
+                        <img 
+                            src={search_icon} 
+                            alt="Search" 
+                            onClick={handleSearch}
+                            style={{ cursor: 'pointer' }}
+                            title="Search creators"
+                        />
                     </div>
                 </div>
                 <div className="nav-right flex-div">
