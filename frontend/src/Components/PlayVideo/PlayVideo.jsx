@@ -5,6 +5,7 @@ import moment from 'moment'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
+import CropModal from '../CropModal/CropModal'
 
 const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData }) => {
     // Use prop if provided, otherwise fallback to URL param
@@ -24,6 +25,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const [croppedImage, setCroppedImage] = useState(null);
     const [isCropApplied, setIsCropApplied] = useState(false);
     const [isApplyingCrop, setIsApplyingCrop] = useState(false);
+    
+    // Screenshot crop modal state
+    const [showCropModal, setShowCropModal] = useState(false);
+    const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(null);
+    const [selectedScreenshotImage, setSelectedScreenshotImage] = useState(null);
 
     useEffect(() => {
         if (!videoId) {
@@ -785,35 +791,95 @@ export default PlayVideo
 
 
 
-export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot }) => {
+export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot, onCropScreenshot }) => {
+    const [showCropModal, setShowCropModal] = useState(false);
+    const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(null);
+    const [selectedScreenshotImage, setSelectedScreenshotImage] = useState(null);
+
+    const handleScreenshotClick = (idx) => {
+        if (screenshots[idx]) {
+            setSelectedScreenshotIndex(idx);
+            setSelectedScreenshotImage(screenshots[idx]);
+            setShowCropModal(true);
+        }
+    };
+
+    const handleCropComplete = (croppedImageUrl) => {
+        if (selectedScreenshotIndex !== null && onCropScreenshot) {
+            onCropScreenshot(selectedScreenshotIndex, croppedImageUrl);
+        }
+        setShowCropModal(false);
+        setSelectedScreenshotIndex(null);
+        setSelectedScreenshotImage(null);
+    };
+
+    const handleCropCancel = () => {
+        setShowCropModal(false);
+        setSelectedScreenshotIndex(null);
+        setSelectedScreenshotImage(null);
+    };
+
     return (
-        <div className="screenmerch-images-grid">
-            {[0,1,2,3,4,5].map(idx => (
-                <div className="screenmerch-image-box" key={idx}>
-                    <h4>Screenshot {idx + 1}</h4>
-                    {screenshots[idx] ? (
-                        <div className="screenmerch-img-wrapper">
-                            <img 
-                                src={screenshots[idx]} 
-                                alt={`Screenshot ${idx + 1}`} 
-                                className="screenmerch-preview"
-                                style={{
-                                    maxWidth: '100%',
-                                    maxHeight: '100%',
-                                    width: 'auto',
-                                    height: 'auto',
-                                    objectFit: 'contain'
-                                }}
-                            />
-                            <div className="screenmerch-buttons">
-                                <button className="screenmerch-delete-btn" onClick={() => onDeleteScreenshot(idx)} title="Delete screenshot">×</button>
+        <>
+            <div className="screenmerch-images-grid">
+                {[0,1,2,3,4,5].map(idx => (
+                    <div className="screenmerch-image-box" key={idx}>
+                        <h4>Screenshot {idx + 1}</h4>
+                        {screenshots[idx] ? (
+                            <div className="screenmerch-img-wrapper">
+                                <img 
+                                    src={screenshots[idx]} 
+                                    alt={`Screenshot ${idx + 1}`} 
+                                    className="screenmerch-preview"
+                                    style={{
+                                        maxWidth: '100%',
+                                        maxHeight: '100%',
+                                        width: 'auto',
+                                        height: 'auto',
+                                        objectFit: 'contain',
+                                        cursor: 'pointer'
+                                    }}
+                                    onClick={() => handleScreenshotClick(idx)}
+                                    title="Click to crop this screenshot"
+                                />
+                                <div className="screenmerch-buttons">
+                                    <button 
+                                        className="screenmerch-crop-btn" 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleScreenshotClick(idx);
+                                        }} 
+                                        title="Crop screenshot"
+                                        style={{
+                                            background: '#007bff',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '3px',
+                                            padding: '4px 8px',
+                                            cursor: 'pointer',
+                                            fontSize: '12px',
+                                            marginRight: '5px'
+                                        }}
+                                    >
+                                        ✂️ Crop
+                                    </button>
+                                    <button className="screenmerch-delete-btn" onClick={() => onDeleteScreenshot(idx)} title="Delete screenshot">×</button>
+                                </div>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="screenmerch-placeholder">No screenshot</div>
-                    )}
-                </div>
-            ))}
-        </div>
+                        ) : (
+                            <div className="screenmerch-placeholder">No screenshot</div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {/* Crop Modal */}
+            <CropModal
+                isOpen={showCropModal}
+                image={selectedScreenshotImage}
+                onCrop={handleCropComplete}
+                onCancel={handleCropCancel}
+            />
+        </>
     );
 };
