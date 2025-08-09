@@ -133,6 +133,13 @@ class ProductManager:
                     colors_str += f" (+{len(product['colors']) - 3} more)"
                 print(f"     Colors: {colors_str}")
             
+            # Show options colors for debugging
+            if 'options' in product and 'color' in product['options'] and product['options']['color']:
+                options_colors_str = ', '.join(product['options']['color'][:3])
+                if len(product['options']['color']) > 3:
+                    options_colors_str += f" (+{len(product['options']['color']) - 3} more)"
+                print(f"     Options Colors: {options_colors_str}")
+            
             if product.get('description'):
                 desc = product['description'][:50] + "..." if len(product['description']) > 50 else product['description']
                 print(f"     Description: {desc}")
@@ -169,6 +176,10 @@ class ProductManager:
             "category": category,
             "description": description,
             "colors": colors,
+            "options": {
+                "color": colors,
+                "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]
+            },
             "size_pricing": size_pricing,
             "created_at": datetime.now().isoformat()
         }
@@ -226,6 +237,10 @@ class ProductManager:
             new_colors = self.select_basic_colors()
             if new_colors:
                 product['colors'] = new_colors
+                # Also update options.color for website compatibility
+                if 'options' not in product:
+                    product['options'] = {}
+                product['options']['color'] = new_colors
         
         # Edit size pricing
         print(f"\nCurrent size pricing: {product.get('size_pricing', {})}")

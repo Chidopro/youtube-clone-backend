@@ -843,26 +843,7 @@ export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot, 
                                     title="Click to crop this screenshot"
                                 />
                                 <div className="screenmerch-buttons">
-                                    <button 
-                                        className="screenmerch-crop-btn" 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleScreenshotClick(idx);
-                                        }} 
-                                        title="Crop screenshot"
-                                        style={{
-                                            background: '#007bff',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '3px',
-                                            padding: '4px 8px',
-                                            cursor: 'pointer',
-                                            fontSize: '12px',
-                                            marginRight: '5px'
-                                        }}
-                                    >
-                                        ✂️ Crop
-                                    </button>
+
                                     <button className="screenmerch-delete-btn" onClick={() => onDeleteScreenshot(idx)} title="Delete screenshot">×</button>
                                 </div>
                             </div>

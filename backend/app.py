@@ -293,14 +293,217 @@ def test_order_email():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 PRODUCTS = [
-    # Products with both COLOR and SIZE options
     {
-        "name": "Unisex Staple T-Shirt",
+        "name": "Soft Tee",
         "price": 24.99,
-        "filename": "guidontee.png",
+        "filename": "guidonteepreview.png",
         "main_image": "guidontee.png",
-        "preview_image": "guidonpreview.png",
         "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Unisex Classic Tee",
+        "price": 24.99,
+        "filename": "unisexclassicteepreview.png",
+        "main_image": "unisexclassictee.png",
+        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Men's Tank Top",
+        "price": 19.99,
+        "filename": "randompreview.png",
+        "main_image": "random.png",
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Unisex Hoodie",
+        "price": 22.99,
+        "filename": "testedpreview.png",
+        "main_image": "tested.png",
+        "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Cropped Hoodie",
+        "price": 39.99,
+        "filename": "croppedhoodiepreview.png",
+        "main_image": "croppedhoodie.png",
+        "options": {"color": ["Black", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Unisex Champion Hoodie",
+        "price": 29.99,
+        "filename": "hoodiechampionpreview.jpg",
+        "main_image": "hoodiechampion.png",
+        "options": {"color": ["Black", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Women's Ribbed Neck",
+        "price": 25.99,
+        "filename": "womensribbedneckpreview.jpg",
+        "main_image": "womensribbedneck.png",
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Women's Shirt",
+        "price": 26.99,
+        "filename": "womensshirtkevin.png",
+        "main_image": "womensshirt.png",
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Women's HD Shirt",
+        "price": 28.99,
+        "filename": "womenshdshirtpreview.png",
+        "main_image": "womenshdshirt.png",
+        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Kids Shirt",
+        "price": 19.99,
+        "filename": "kidshirtpreview.jpg",
+        "main_image": "kidshirt.png",
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Kids Hoodie",
+        "price": 29.99,
+        "filename": "kidhoodiepreview.jpg",
+        "main_image": "kidhoodie.png",
+        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Kids Long Sleeve",
+        "price": 24.99,
+        "filename": "kidlongsleevepreview.jpg",
+        "main_image": "kidlongsleeve.png",
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Canvas Tote",
+        "price": 18.99,
+        "filename": "allovertotebagpreview.png",
+        "main_image": "allovertotebag.png",
+        "options": {"color": ["Natural", "Black"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Tote Bag",
+        "price": 21.99,
+        "filename": "drawstringbagpreview.png",
+        "main_image": "drawstringbag.png",
+        "options": {"color": ["White", "Black", "Blue"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Large Canvas Bag",
+        "price": 24.99,
+        "filename": "largecanvasbagpreview.png",
+        "main_image": "largecanvasbag.png",
+        "options": {"color": ["Natural", "Black", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Greeting Card",
+        "price": 22.99,
+        "filename": "greetingcardpreview.png",
+        "main_image": "greetingcard.png",
+        "options": {"color": ["White", "Cream"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Notebook",
+        "price": 14.99,
+        "filename": "hardcovernotebookpreview.png",
+        "main_image": "hardcovernotebook.png",
+        "options": {"color": ["Black", "Blue"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Coasters",
+        "price": 13.99,
+        "filename": "coasterpreview.jpg",
+        "main_image": "coaster.png",
+        "options": {"color": ["Wood", "Cork", "Black"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Sticker Pack",
+        "price": 8.99,
+        "filename": "stickerspreview.png",
+        "main_image": "stickers.png",
+        "options": {"color": [], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Dog Bowl",
+        "price": 12.99,
+        "filename": "dogbowlpreview.png",
+        "main_image": "dogbowl.png",
+        "options": {"color": [], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Magnet Set",
+        "price": 11.99,
+        "filename": "magnetpreview.png",
+        "main_image": "magnet.png",
+        "options": {"color": [], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Men's Long Sleeve",
+        "price": 29.99,
+        "filename": "menslongsleevepreview.jpg",
+        "main_image": "menslongsleeve.png",
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Women's Tank",
+        "price": 22.99,
+        "filename": "womenstankpreview.jpg",
+        "main_image": "womenstank.png",
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Women's Tee",
+        "price": 23.99,
+        "filename": "womensteepreview.jpg",
+        "main_image": "womenstee.png",
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Distressed Dad Hat",
+        "price": 24.99,
+        "filename": "distresseddadhatpreview.jpg",
+        "main_image": "distresseddadhat.jpg",
+        "options": {"color": ["Black", "Navy", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Snapback Hat",
+        "price": 25.99,
+        "filename": "snapbackhatpreview.png",
+        "main_image": "snapbackhat.png",
+        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Five Panel Trucker Hat",
+        "price": 26.99,
+        "filename": "fivepaneltruckerhatpreview.jpg",
+        "main_image": "fivepaneltruckerhat.png",
+        "options": {"color": ["Black", "White", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Flat Bill Cap",
+        "price": 24.99,
+        "filename": "flatbillcappreview.png",
+        "main_image": "flatbillcap.png",
+        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Crossbody Bag",
+        "price": 32.99,
+        "filename": "crossbodybagpreview.png",
+        "main_image": "crossbodybag.png",
+        "options": {"color": ["Black", "Brown", "Tan"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+    {
+        "name": "Baby Bib",
+        "price": 16.99,
+        "filename": "babybibpreview.jpg",
+        "main_image": "babybib.png",
+        "options": {"color": ["White", "Pink", "Blue"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+    },
+], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Unisex Classic Tee",
@@ -890,15 +1093,15 @@ def send_order():
         email_data = {
             "from": RESEND_FROM,
             "to": [MAIL_TO],
-            "subject": f"🛍️ New ScreenMerch Order #{stripe_session_id}",
+            "subject": f"🛍️ New ScreenMerch Order #{order_number}",
             "html": f"""
                     <h2>New Order Received!</h2>
-                    <p><strong>Order ID:</strong> {stripe_session_id}</p>
+                    <p><strong>Order ID:</strong> {order_number}</p>
                     <p><strong>Items:</strong> {len(cart)}</p>
                     <p><strong>Total Value:</strong> ${sum([next((p['price'] for p in PRODUCTS if p['name'] == item.get('product')), 0) for item in cart]):.2f}</p>
                     <br>
                     <p><strong>📋 View Full Order Details:</strong></p>
-                    <p><a href="https://backend-hidden-firefly-7865.fly.dev/admin/order/{stripe_session_id}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <p><a href="https://backend-hidden-firefly-7865.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
                     <br>
                     <p><strong>📊 All Orders Dashboard:</strong></p>
                     <p><a href="https://backend-hidden-firefly-7865.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
@@ -1014,23 +1217,23 @@ def create_checkout_session():
         cart = data.get("cart", [])
         product_id = data.get("product_id")
         sms_consent = data.get("sms_consent", False)
-        shipping_address = data.get("shipping_address", {})
 
         logger.info(f"🛒 Received checkout request - Cart: {cart}")
         logger.info(f"🛒 Product ID: {product_id}")
         logger.info(f"🛒 SMS Consent: {sms_consent}")
-        logger.info(f"🛒 Shipping Address: {shipping_address}")
 
         if not cart:
             logger.error("❌ Cart is empty")
             return jsonify({"error": "Cart is empty"}), 400
+
+        # Email notifications - SMS consent not required
+        # sms_consent is kept for backward compatibility but not enforced
 
         # Generate a unique order ID and store the full cart (with images) and SMS consent
         order_id = str(uuid.uuid4())
         order_store[order_id] = {
             "cart": cart,
             "sms_consent": sms_consent,
-            "shipping_address": shipping_address,
             "timestamp": data.get("timestamp"),
             "order_id": order_id,
             "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
@@ -1038,12 +1241,11 @@ def create_checkout_session():
         }
 
         line_items = []
-        
-        # Add product line items
         for item in cart:
             logger.info(f"🛒 Processing item: {item}")
             logger.info(f"🛒 Item product name: '{item.get('product')}'")
             logger.info(f"🛒 Item price: {item.get('price')}")
+            logger.info(f"🛒 Available products: {[p['name'] for p in PRODUCTS]}")
             
             # Use price from cart item if available, otherwise look up in PRODUCTS
             item_price = item.get('price')
@@ -1078,115 +1280,24 @@ def create_checkout_session():
                 "quantity": 1,
             })
 
-        # Calculate and add shipping costs
-        shipping_cost = 0
-        if shipping_address and shipping_address.get('country_code'):
-            try:
-                shipping_result = printful_integration.calculate_shipping_rates(shipping_address, cart)
-                if shipping_result['success']:
-                    shipping_cost = shipping_result['shipping_cost']
-                    logger.info(f"🚚 Calculated shipping cost: ${shipping_cost}")
-                    
-                    # Add shipping as a line item
-                    line_items.append({
-                        "price_data": {
-                            "currency": "usd",
-                            "product_data": {
-                                "name": f"Shipping to {shipping_address.get('country_code', 'Unknown')}",
-                                "description": f"Standard shipping (estimated {shipping_result.get('delivery_days', 7)} business days)"
-                            },
-                            "unit_amount": int(shipping_cost * 100),
-                        },
-                        "quantity": 1,
-                    })
-                    
-                    # Store shipping cost in order data
-                    order_store[order_id]["shipping_cost"] = shipping_cost
-                else:
-                    logger.warning(f"🚚 Failed to calculate shipping: {shipping_result.get('error', 'Unknown error')}")
-            except Exception as shipping_error:
-                logger.error(f"🚚 Shipping calculation error: {str(shipping_error)}")
-                # Continue without shipping cost - customer will pay for shipping separately through Printful
-        else:
-            logger.warning("🚚 No shipping address provided - will use Stripe's shipping collection")
-
         logger.info(f"🛒 Created line items: {line_items}")
         if not line_items:
             logger.error("❌ No valid items in cart to check out")
             return jsonify({"error": "No valid items in cart to check out."}), 400
 
-        # Configure Stripe session
-        session_config = {
-            "payment_method_types": ["card"],
-            "mode": "payment",
-            "line_items": line_items,
-            "success_url": f"https://backend-hidden-firefly-7865.fly.dev/success?order_id={order_id}",
-            "cancel_url": f"https://screenmerch.com/checkout/{product_id}",
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="payment",
+            line_items=line_items,
+            success_url=f"https://backend-hidden-firefly-7865.fly.dev/success?order_id={order_id}",
+            cancel_url=f"https://screenmerch.com/checkout/{product_id}",
             # A2P 10DLC Compliance: Collect phone number for SMS notifications
-            "phone_number_collection": {"enabled": True},
-            "metadata": {
+            phone_number_collection={"enabled": True},
+            metadata={
                 "order_id": order_id  # Only store the small order ID in Stripe
             }
-        }
-
-        # If no shipping address provided, let Stripe collect it with shipping rates
-        if not shipping_address or not shipping_address.get('country_code'):
-            session_config["shipping_address_collection"] = {
-                "allowed_countries": ['US', 'CA', 'GB', 'DE', 'FR', 'AU', 'JP', 'MX', 'BR', 'IN']
-            }
-            
-            # Add shipping options for different regions
-            session_config["shipping_options"] = [
-                {
-                    "shipping_rate_data": {
-                        "type": "fixed_amount",
-                        "fixed_amount": {"amount": 675, "currency": "usd"},  # $6.75 for US/Mexico
-                        "display_name": "US & Mexico Standard",
-                        "delivery_estimate": {
-                            "minimum": {"unit": "business_day", "value": 3},
-                            "maximum": {"unit": "business_day", "value": 5}
-                        }
-                    }
-                },
-                {
-                    "shipping_rate_data": {
-                        "type": "fixed_amount", 
-                        "fixed_amount": {"amount": 999, "currency": "usd"},  # $9.99 for Canada/Europe
-                        "display_name": "Canada & Europe Standard",
-                        "delivery_estimate": {
-                            "minimum": {"unit": "business_day", "value": 5},
-                            "maximum": {"unit": "business_day", "value": 8}
-                        }
-                    }
-                },
-                {
-                    "shipping_rate_data": {
-                        "type": "fixed_amount",
-                        "fixed_amount": {"amount": 1499, "currency": "usd"},  # $14.99 for Asia/Australia
-                        "display_name": "Asia & Australia Standard", 
-                        "delivery_estimate": {
-                            "minimum": {"unit": "business_day", "value": 7},
-                            "maximum": {"unit": "business_day", "value": 10}
-                        }
-                    }
-                },
-                {
-                    "shipping_rate_data": {
-                        "type": "fixed_amount",
-                        "fixed_amount": {"amount": 1999, "currency": "usd"},  # $19.99 for rest of world
-                        "display_name": "International Standard",
-                        "delivery_estimate": {
-                            "minimum": {"unit": "business_day", "value": 10},
-                            "maximum": {"unit": "business_day", "value": 14}
-                        }
-                    }
-                }
-            ]
-            logger.info("🚚 Enabling Stripe shipping address collection with shipping options")
-
-        session = stripe.checkout.Session.create(**session_config)
+        )
         return jsonify({"url": session.url})
-        
     except Exception as e:
         logger.error(f"Stripe API Error: {str(e)}")
         return jsonify({"error": "Failed to create Stripe checkout session"}), 500
@@ -1433,41 +1544,6 @@ def create_printful_product():
         logger.error(f"Printful product creation error: {str(e)}")
         return jsonify(success=False, error="Internal server error"), 500
 
-@app.route("/api/calculate-shipping", methods=["POST"])
-def calculate_shipping():
-    """Calculate shipping costs for given items and destination"""
-    try:
-        data = request.get_json()
-        cart = data.get('cart', [])
-        shipping_address = data.get('shipping_address', {})
-        
-        if not cart:
-            return jsonify({"error": "Cart is empty"}), 400
-        
-        if not shipping_address.get('country_code'):
-            return jsonify({"error": "Country code is required"}), 400
-        
-        # Calculate shipping using Printful integration
-        result = printful_integration.calculate_shipping_rates(shipping_address, cart)
-        
-        if result['success']:
-            return jsonify({
-                "success": True,
-                "shipping_cost": result['shipping_cost'],
-                "currency": result['currency'],
-                "delivery_days": result.get('delivery_days', 7),
-                "fallback": result.get('fallback', False)
-            })
-        else:
-            return jsonify({
-                "success": False,
-                "error": result.get('error', 'Failed to calculate shipping')
-            }), 500
-            
-    except Exception as e:
-        logger.error(f"Shipping calculation error: {str(e)}")
-        return jsonify(success=False, error="Internal server error"), 500
-
 @app.route("/api/printful/create-order", methods=["POST"])
 def create_printful_order():
     """Create order in Printful automatically"""
@@ -1709,74 +1785,6 @@ def ensure_user_exists():
     except Exception as e:
         logger.error(f"Error ensuring user exists: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
-@app.route("/api/search/creators", methods=["GET", "OPTIONS"])
-def search_creators():
-    """Search for creators by display name, username, or channel title"""
-    if request.method == "OPTIONS":
-        response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        return response
-    
-    try:
-        query = request.args.get('q', '').strip()
-        
-        if not query:
-            return jsonify({"success": False, "error": "Search query is required"}), 400
-        
-        if len(query) < 2:
-            return jsonify({"success": False, "error": "Search query must be at least 2 characters"}), 400
-        
-        # Search users/creators by display_name, username, or bio
-        users_result = supabase.table('users').select(
-            'id, email, username, display_name, profile_image_url, bio, role, created_at'
-        ).or_(
-            f'display_name.ilike.%{query}%,username.ilike.%{query}%,bio.ilike.%{query}%'
-        ).eq('role', 'creator').order('display_name').limit(20).execute()
-        
-        # Also search in videos table by channelTitle for additional creator discovery
-        videos_result = supabase.table('videos2').select(
-            'user_id, channelTitle, COUNT(*) as video_count'
-        ).ilike('channelTitle', f'%{query}%').execute()
-        
-        # Combine results and remove duplicates
-        creators = []
-        user_ids_found = set()
-        
-        # Add users from direct user search
-        for user in users_result.data:
-            if user['id'] not in user_ids_found:
-                creators.append({
-                    'id': user['id'],
-                    'username': user['username'] or user['email'].split('@')[0] if user['email'] else 'user',
-                    'display_name': user['display_name'] or user['username'] or 'Creator',
-                    'profile_image_url': user['profile_image_url'],
-                    'bio': user['bio'],
-                    'created_at': user['created_at'],
-                    'type': 'user'
-                })
-                user_ids_found.add(user['id'])
-        
-        # Get video counts for found creators
-        for creator in creators:
-            try:
-                video_count_result = supabase.table('videos2').select('id', count='exact').eq('user_id', creator['id']).execute()
-                creator['video_count'] = video_count_result.count if video_count_result.count else 0
-            except:
-                creator['video_count'] = 0
-        
-        return jsonify({
-            "success": True,
-            "query": query,
-            "results": creators,
-            "total": len(creators)
-        })
-        
-    except Exception as e:
-        logger.error(f"Error searching creators: {str(e)}")
-        return jsonify({"success": False, "error": "Search service unavailable"}), 500
 
 @app.route("/api/users/<user_id>/delete-account", methods=["DELETE"])
 def delete_user_account(user_id):

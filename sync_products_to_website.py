@@ -45,7 +45,7 @@ def update_backend_app(products):
     print("🔄 Updating backend/app.py...")
     
     try:
-        with open('backend/app.py', 'r') as f:
+        with open('backend/app.py', 'r', encoding='utf-8') as f:
             content = f.read()
         
         # Find the PRODUCTS array
@@ -63,12 +63,26 @@ def update_backend_app(products):
         # Create new PRODUCTS array
         new_products_array = 'PRODUCTS = [\n'
         for product in products:
+            # Generate filename and main_image if not present
+            safe_name = product['name'].lower().replace(' ', '').replace("'", '')
+            filename = product.get('filename', f"{safe_name}.png")
+            main_image = product.get('main_image', f"{safe_name}.png")
+            
+            # Map colors to options.color
+            colors = product.get('colors', [])
+            sizes = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]
+            
+            options = {
+                "color": colors,
+                "size": sizes
+            }
+            
             new_products_array += f'    {{\n'
             new_products_array += f'        "name": "{product["name"]}",\n'
             new_products_array += f'        "price": {product["base_price"]},\n'
-            new_products_array += f'        "filename": "{product["filename"]}",\n'
-            new_products_array += f'        "main_image": "{product["main_image"]}",\n'
-            new_products_array += f'        "options": {json.dumps(product["options"])}\n'
+            new_products_array += f'        "filename": "{filename}",\n'
+            new_products_array += f'        "main_image": "{main_image}",\n'
+            new_products_array += f'        "options": {json.dumps(options)}\n'
             new_products_array += f'    }},\n'
         new_products_array += ']'
         
@@ -76,7 +90,7 @@ def update_backend_app(products):
         new_content = content[:products_start] + new_products_array + content[products_end + 1:]
         
         # Write back to file
-        with open('backend/app.py', 'w') as f:
+        with open('backend/app.py', 'w', encoding='utf-8') as f:
             f.write(new_content)
         
         print("✅ Updated backend/app.py")
@@ -89,7 +103,7 @@ def update_main_app(products):
     print("🔄 Updating app.py...")
     
     try:
-        with open('app.py', 'r') as f:
+        with open('app.py', 'r', encoding='utf-8') as f:
             content = f.read()
         
         # Find the PRODUCTS array
@@ -107,12 +121,26 @@ def update_main_app(products):
         # Create new PRODUCTS array
         new_products_array = 'PRODUCTS = [\n'
         for product in products:
+            # Generate filename and main_image if not present
+            safe_name = product['name'].lower().replace(' ', '').replace("'", '')
+            filename = product.get('filename', f"{safe_name}.png")
+            main_image = product.get('main_image', f"{safe_name}.png")
+            
+            # Map colors to options.color
+            colors = product.get('colors', [])
+            sizes = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]
+            
+            options = {
+                "color": colors,
+                "size": sizes
+            }
+            
             new_products_array += f'    {{\n'
             new_products_array += f'        "name": "{product["name"]}",\n'
             new_products_array += f'        "price": {product["base_price"]},\n'
-            new_products_array += f'        "filename": "{product["filename"]}",\n'
-            new_products_array += f'        "main_image": "{product["main_image"]}",\n'
-            new_products_array += f'        "options": {json.dumps(product["options"])}\n'
+            new_products_array += f'        "filename": "{filename}",\n'
+            new_products_array += f'        "main_image": "{main_image}",\n'
+            new_products_array += f'        "options": {json.dumps(options)}\n'
             new_products_array += f'    }},\n'
         new_products_array += ']'
         
@@ -120,7 +148,7 @@ def update_main_app(products):
         new_content = content[:products_start] + new_products_array + content[products_end + 1:]
         
         # Write back to file
-        with open('app.py', 'w') as f:
+        with open('app.py', 'w', encoding='utf-8') as f:
             f.write(new_content)
         
         print("✅ Updated app.py")
@@ -133,7 +161,7 @@ def update_frontend_app(products):
     print("🔄 Updating frontend_app.py...")
     
     try:
-        with open('frontend_app.py', 'r') as f:
+        with open('frontend_app.py', 'r', encoding='utf-8') as f:
             content = f.read()
         
         # Find the PRODUCTS array
@@ -151,12 +179,26 @@ def update_frontend_app(products):
         # Create new PRODUCTS array
         new_products_array = 'PRODUCTS = [\n'
         for product in products:
+            # Generate filename and main_image if not present
+            safe_name = product['name'].lower().replace(' ', '').replace("'", '')
+            filename = product.get('filename', f"{safe_name}.png")
+            main_image = product.get('main_image', f"{safe_name}.png")
+            
+            # Map colors to options.color
+            colors = product.get('colors', [])
+            sizes = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]
+            
+            options = {
+                "color": colors,
+                "size": sizes
+            }
+            
             new_products_array += f'    {{\n'
             new_products_array += f'        "name": "{product["name"]}",\n'
             new_products_array += f'        "price": {product["base_price"]},\n'
-            new_products_array += f'        "filename": "{product["filename"]}",\n'
-            new_products_array += f'        "main_image": "{product["main_image"]}",\n'
-            new_products_array += f'        "options": {json.dumps(product["options"])}\n'
+            new_products_array += f'        "filename": "{filename}",\n'
+            new_products_array += f'        "main_image": "{main_image}",\n'
+            new_products_array += f'        "options": {json.dumps(options)}\n'
             new_products_array += f'    }},\n'
         new_products_array += ']'
         
@@ -164,7 +206,7 @@ def update_frontend_app(products):
         new_content = content[:products_start] + new_products_array + content[products_end + 1:]
         
         # Write back to file
-        with open('frontend_app.py', 'w') as f:
+        with open('frontend_app.py', 'w', encoding='utf-8') as f:
             f.write(new_content)
         
         print("✅ Updated frontend_app.py")

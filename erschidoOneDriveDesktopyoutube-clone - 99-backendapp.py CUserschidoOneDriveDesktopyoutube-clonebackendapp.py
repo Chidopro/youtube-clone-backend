@@ -1,0 +1,10 @@
+[33m9c5c5d3e9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m  NEW FEATURE: Creator Search Functionality
+[33m190a77e70[m  FIX: Screenshot cropping bug - proper thumbnail crop functionality
+[33m6d1c1ddcc[m  UI CLEANUP: Fix logo layering + remove cluttered elements
+[33m7ebfbd7da[m  FIX: Add shipping information to checkout and admin pages
+[33mf7809a411[m  SHIPPING INTEGRATION: Fix billing issue - customers now charged for shipping
+[33mc1dd31cec[m Auto-sync products from Product Manager
+[33m008d1f58d[m Sync product colors from Product Manager
+[33m79dbd3428[m Add product sync script
+[33mccf53a63f[m Merge remote changes with local product updates
+[33mea416ac84[m Update product name and colors for Unisex Staple T-Shirt
