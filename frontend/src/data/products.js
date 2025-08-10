@@ -21,7 +21,7 @@ export const products = {
       "colors": [
         "Black",
         "White",
-        "Dark Grey",
+        "Dark Gray",
         "Navy",
         "Red",
         "Athletic Heather"
@@ -30,7 +30,7 @@ export const products = {
         "XS": {
           "Black": true,
           "White": true,
-          "Dark Grey": true,
+          "Dark Gray": true,
           "Navy": true,
           "Red": true,
           "Athletic Heather": true
@@ -38,7 +38,7 @@ export const products = {
         "S": {
           "Black": true,
           "White": true,
-          "Dark Grey": true,
+          "Dark Gray": true,
           "Navy": true,
           "Red": true,
           "Athletic Heather": true
@@ -46,7 +46,7 @@ export const products = {
         "M": {
           "Black": true,
           "White": true,
-          "Dark Grey": true,
+          "Dark Gray": true,
           "Navy": true,
           "Red": true,
           "Athletic Heather": true
@@ -54,7 +54,7 @@ export const products = {
         "L": {
           "Black": true,
           "White": true,
-          "Dark Grey": true,
+          "Dark Gray": true,
           "Navy": true,
           "Red": true,
           "Athletic Heather": true
@@ -62,7 +62,7 @@ export const products = {
         "XL": {
           "Black": true,
           "White": true,
-          "Dark Grey": true,
+          "Dark Gray": true,
           "Navy": true,
           "Red": true,
           "Athletic Heather": true
@@ -70,7 +70,7 @@ export const products = {
         "XXL": {
           "Black": true,
           "White": true,
-          "Dark Grey": true,
+          "Dark Gray": true,
           "Navy": true,
           "Red": true,
           "Athletic Heather": true
@@ -78,7 +78,7 @@ export const products = {
         "XXXL": {
           "Black": true,
           "White": true,
-          "Dark Grey": true,
+          "Dark Gray": true,
           "Navy": true,
           "Red": true,
           "Athletic Heather": true
@@ -86,7 +86,7 @@ export const products = {
         "XXXXL": {
           "Black": true,
           "White": true,
-          "Dark Grey": true,
+          "Dark Gray": true,
           "Navy": true,
           "Red": true,
           "Athletic Heather": true
@@ -94,7 +94,7 @@ export const products = {
         "XXXXXL": {
           "Black": true,
           "White": true,
-          "Dark Grey": true,
+          "Dark Gray": true,
           "Navy": true,
           "Red": true,
           "Athletic Heather": true
