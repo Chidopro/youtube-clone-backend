@@ -1,7 +1,7 @@
 export const products = {
   "unisexstapletshirt": {
     "name": "Unisex Staple T-Shirt",
-    "price": 24.99,
+    "price": 21.99,
     "description": "Comfortable soft t-shirt with custom design",
     "image": "/static/images/guidontee.png",
     "preview": "/static/images/guidonteepreview.png",
