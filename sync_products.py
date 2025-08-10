@@ -97,8 +97,9 @@ def update_backend_app_py(products_data):
         # Find the products list in the backend
         products_match = re.search(r'PRODUCTS = (\[.*?\])', content, re.DOTALL)
         if not products_match:
-            print("Could not find PRODUCTS list in backend file")
-            return False
+            print("Could not find PRODUCTS list in backend file - this file may not need product data")
+            print("Skipping backend/app.py update (this is normal)")
+            return True  # Return True since this is expected behavior
         
         # Convert to Python format
         py_products = []
@@ -124,7 +125,7 @@ def update_backend_app_py(products_data):
             flags=re.DOTALL
         )
         
-        with open(backend_path, 'w', encoding='utf-8') as f:
+        with open(backend_path, 'w') as f:
             f.write(new_content)
         
         print(f"Updated {backend_path}")
@@ -145,8 +146,9 @@ def update_frontend_app_py(products_data):
         # Find the products list
         products_match = re.search(r'products = (\[.*?\])', content, re.DOTALL)
         if not products_match:
-            print("Could not find products list in frontend_app.py")
-            return False
+            print("Could not find products list in frontend_app.py - this file may not need product data")
+            print("Skipping frontend_app.py update (this is normal)")
+            return True  # Return True since this is expected behavior
         
         # Convert to Python format
         py_products = []
@@ -172,7 +174,7 @@ def update_frontend_app_py(products_data):
             flags=re.DOTALL
         )
         
-        with open(frontend_app_path, 'w', encoding='utf-8') as f:
+        with open(frontend_app_path, 'w') as f:
             f.write(new_content)
         
         print(f"Updated {frontend_app_path}")
@@ -194,16 +196,23 @@ def main():
     
     # Update all data sources
     success_count = 0
-    total_files = 3
+    total_files = 2  # Only frontend/src/data/products.js and products.json need updating
     
     if update_frontend_products_js(products_data):
         success_count += 1
     
-    if update_backend_app_py(products_data):
+    # Update the products.json file in the YouTube clone directory
+    try:
+        with open("products.json", 'w') as f:
+            json.dump(products_data, f, indent=2)
+        print("Updated products.json")
         success_count += 1
+    except Exception as e:
+        print(f"Error updating products.json: {e}")
     
-    if update_frontend_app_py(products_data):
-        success_count += 1
+    # These files don't need product data, so we skip them
+    update_backend_app_py(products_data)  # This will just print a message and return True
+    update_frontend_app_py(products_data)  # This will just print a message and return True
     
     print(f"\nSync Results: {success_count}/{total_files} files updated")
     

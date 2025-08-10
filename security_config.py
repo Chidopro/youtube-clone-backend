@@ -100,7 +100,12 @@ SECURITY_HEADERS = {
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https: data: https://sojxbydpcdcdzfdtbypd.supabase.co; connect-src 'self' https://api.printful.com https://api.resend.com https://api.stripe.com https://sojxbydpcdcdzfdtbypd.supabase.co; frame-src https://js.stripe.com https://checkout.stripe.com;",
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
+    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+    # CORS headers
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Allow-Credentials': 'true'
 }
 
 # CORS configuration for production

@@ -1,6 +1,6 @@
 [
   {
-    "name": "Soft Tee",
+    "name": "Unisex Staple T-Shirt",
     "base_price": 24.99,
     "category": "T-Shirts",
     "description": "Comfortable soft t-shirt with custom design",
@@ -10,7 +10,10 @@
       "color": [
         "Black",
         "White",
-        "Gray"
+        "Dark Grey",
+        "Navy",
+        "Red",
+        "Athletic Heather"
       ],
       "size": [
         "XS",
@@ -28,18 +31,24 @@
     "colors": [
       "Black",
       "White",
-      "Gray"
+      "Dark Grey",
+      "Navy",
+      "Red",
+      "Athletic Heather"
     ],
     "size_pricing": {
-      "XS": 0,
-      "S": 0,
-      "M": 0,
-      "L": 0,
-      "XL": 1,
-      "XXL": 2,
-      "XXXL": 3
+      "XS": 24.99,
+      "S": 24.99,
+      "M": 24.99,
+      "L": 24.99,
+      "XL": 24.99,
+      "XXL": 26.99,
+      "XXXL": 28.99,
+      "XXXXL": 30.99,
+      "XXXXXL": 32.99
     },
-    "created_at": "2025-07-26T14:32:17.276594"
+    "created_at": "2025-07-26T14:32:17.276594",
+    "updated_at": "2025-08-09T13:28:25.006169"
   },
   {
     "name": "Unisex Classic Tee",
@@ -51,9 +60,20 @@
     "options": {
       "color": [
         "Black",
+        "Navy",
+        "Sport Grey",
         "White",
-        "Gray",
-        "Navy"
+        "Maroon",
+        "Red",
+        "Natural",
+        "Military Green",
+        "Orange",
+        "Irish Green",
+        "Gold",
+        "Sky",
+        "Ash",
+        "Purple",
+        "Cardinal"
       ],
       "size": [
         "XS",
@@ -70,20 +90,34 @@
     "printful_product_type_id": null,
     "colors": [
       "Black",
+      "Navy",
+      "Sport Grey",
       "White",
-      "Gray",
-      "Navy"
+      "Maroon",
+      "Red",
+      "Natural",
+      "Military Green",
+      "Orange",
+      "Irish Green",
+      "Gold",
+      "Sky",
+      "Ash",
+      "Purple",
+      "Cardinal"
     ],
     "size_pricing": {
-      "XS": 0,
-      "S": 0,
-      "M": 0,
-      "L": 0,
-      "XL": 1,
-      "XXL": 2,
-      "XXXL": 3
+      "XS": 24.99,
+      "S": 24.99,
+      "M": 24.99,
+      "L": 24.99,
+      "XL": 24.99,
+      "XXL": 26.99,
+      "XXXL": 28.99,
+      "XXXXL": 30.99,
+      "XXXXXL": 32.99
     },
-    "created_at": "2025-07-26T14:32:17.276594"
+    "created_at": "2025-07-26T14:32:17.276594",
+    "updated_at": "2025-08-08T14:29:12.569103"
   },
   {
     "name": "Men's Tank Top",

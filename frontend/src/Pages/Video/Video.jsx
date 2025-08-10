@@ -67,7 +67,8 @@ const Video = () => {
     try {
       // First try server-side screenshot capture
       const currentTime = videoElement.currentTime || 0;
-      const videoUrl = videoElement.src;
+      // Use videoData.video_url instead of videoElement.src to get the actual video file
+      const videoUrl = videoData?.video_url || videoElement.src;
       
       console.log(`Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
       
