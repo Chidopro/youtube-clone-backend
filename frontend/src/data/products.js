@@ -297,139 +297,29 @@ export const products = {
   },
   "men'stanktop": {
     "name": "Men's Tank Top",
-    "price": 19.99,
+    "price": 39.99,
     "description": "Comfortable men's tank top",
     "image": "/static/images/random.png",
     "preview": "/static/images/randompreview.png",
     "category": "tank-tops",
     "variables": {
-      "sizes": [
-        "XS",
-        "S",
-        "M",
-        "L",
-        "XL",
-        "XXL",
-        "XXXL",
-        "XXXXL",
-        "XXXXXL"
-      ],
-      "colors": [
-        "Black",
-        "White",
-        "Gray"
-      ],
-      "availability": {
-        "XS": {
-          "Black": true,
-          "White": true,
-          "Gray": true
-        },
-        "S": {
-          "Black": true,
-          "White": true,
-          "Gray": true
-        },
-        "M": {
-          "Black": true,
-          "White": true,
-          "Gray": true
-        },
-        "L": {
-          "Black": true,
-          "White": true,
-          "Gray": true
-        },
-        "XL": {
-          "Black": true,
-          "White": true,
-          "Gray": true
-        },
-        "XXL": {
-          "Black": true,
-          "White": true,
-          "Gray": true
-        },
-        "XXXL": {
-          "Black": true,
-          "White": true,
-          "Gray": true
-        },
-        "XXXXL": {
-          "Black": true,
-          "White": true,
-          "Gray": true
-        },
-        "XXXXXL": {
-          "Black": true,
-          "White": true,
-          "Gray": true
-        }
-      }
-    }
+  "sizes": [],
+  "colors": [],
+  "availability": {}
+}
   },
   "unisexhoodie": {
     "name": "Unisex Hoodie",
-    "price": 22.99,
+    "price": 42.99,
     "description": "Comfortable unisex hoodie",
     "image": "/static/images/tested.png",
     "preview": "/static/images/testedpreview.png",
     "category": "hoodies",
     "variables": {
-      "sizes": [
-        "XS",
-        "S",
-        "M",
-        "L",
-        "XL",
-        "XXL",
-        "XXXL",
-        "XXXXL",
-        "XXXXXL"
-      ],
-      "colors": [
-        "Black",
-        "White"
-      ],
-      "availability": {
-        "XS": {
-          "Black": true,
-          "White": true
-        },
-        "S": {
-          "Black": true,
-          "White": true
-        },
-        "M": {
-          "Black": true,
-          "White": true
-        },
-        "L": {
-          "Black": true,
-          "White": true
-        },
-        "XL": {
-          "Black": true,
-          "White": true
-        },
-        "XXL": {
-          "Black": true,
-          "White": true
-        },
-        "XXXL": {
-          "Black": true,
-          "White": true
-        },
-        "XXXXL": {
-          "Black": true,
-          "White": true
-        },
-        "XXXXXL": {
-          "Black": true,
-          "White": true
-        }
-      }
-    }
+  "sizes": [],
+  "colors": [],
+  "availability": {}
+}
   },
   "croppedhoodie": {
     "name": "Cropped Hoodie",
@@ -1398,55 +1288,29 @@ export const products = {
   },
   "distresseddadhat": {
     "name": "Distressed Dad Hat",
-    "price": 24.99,
+    "price": 44.99,
     "description": "Stylish distressed dad hat",
     "image": "/static/images/distresseddadhat.jpg",
     "preview": "/static/images/distresseddadhatpreview.jpg",
     "category": "hats",
     "variables": {
-      "sizes": [
-        "One Size"
-      ],
-      "colors": [
-        "Black",
-        "Navy",
-        "Gray"
-      ],
-      "availability": {
-        "One Size": {
-          "Black": true,
-          "Navy": true,
-          "Gray": true
-        }
-      }
-    }
+  "sizes": [],
+  "colors": [],
+  "availability": {}
+}
   },
   "snapbackhat": {
     "name": "Snapback Hat",
-    "price": 25.99,
+    "price": 45.99,
     "description": "Classic snapback hat",
     "image": "/static/images/snapbackhat.png",
     "preview": "/static/images/snapbackhatpreview.png",
     "category": "hats",
     "variables": {
-      "sizes": [
-        "One Size"
-      ],
-      "colors": [
-        "Black",
-        "White",
-        "Navy",
-        "Gray"
-      ],
-      "availability": {
-        "One Size": {
-          "Black": true,
-          "White": true,
-          "Navy": true,
-          "Gray": true
-        }
-      }
-    }
+  "sizes": [],
+  "colors": [],
+  "availability": {}
+}
   },
   "fivepaneltruckerhat": {
     "name": "Five Panel Trucker Hat",

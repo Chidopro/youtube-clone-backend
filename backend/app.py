@@ -312,7 +312,7 @@ PRODUCTS = [
     # Products with both COLOR and SIZE options
     {
         "name": "Unisex T-Shirt",
-        "price": 21.99,
+        "price": 41.99,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "preview_image": "guidonpreview.png",
@@ -331,7 +331,7 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Classic Tee",
-        "price": 19.25,
+        "price": 39.25,
         "filename": "unisexclassictee.png",
         "main_image": "unisexclassictee.png",
         "preview_image": "unisexclassicteepreview.png",
@@ -350,7 +350,7 @@ PRODUCTS = [
     },
     {
         "name": "Men's Tank Top",
-        "price": 19.99,
+        "price": 39.99,
         "filename": "random.png",
         "main_image": "random.png",
         "preview_image": "randompreview.png",
@@ -366,7 +366,7 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Hoodie",
-        "price": 36.95,
+        "price": 56.95,
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "testedpreview.png",
@@ -382,7 +382,7 @@ PRODUCTS = [
     },
     {
         "name": "Cropped Hoodie",
-        "price": 43.15,
+        "price": 63.15,
         "filename": "croppedhoodie.png",
         "main_image": "croppedhoodie.png",
         "preview_image": "croppedhoodiepreview.png",
@@ -397,7 +397,7 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Champion Hoodie",
-        "price": 45,
+        "price": 65.0,
         "filename": "hoodiechampion.png",
         "main_image": "hoodiechampion.png",
         "preview_image": "hoodiechampionpreview.jpg",
@@ -413,7 +413,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's Ribbed Neck",
-        "price": 25.60,
+        "price": 45.6,
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
         "preview_image": "womensribbedneckpreview.jpg",
@@ -431,7 +431,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's Shirt",
-        "price": 26.99,
+        "price": 46.99,
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
         "preview_image": "womensshirtkevin.png",
@@ -439,7 +439,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's HD Shirt",
-        "price": 28.99,
+        "price": 48.99,
         "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
         "preview_image": "womenshdshirtpreview.png",
@@ -447,7 +447,7 @@ PRODUCTS = [
     },
     {
         "name": "Kids Shirt",
-        "price": 19.99,
+        "price": 39.99,
         "filename": "kidshirt.png",
         "main_image": "kidshirt.png",
         "preview_image": "kidshirtpreview.jpg",
@@ -455,7 +455,7 @@ PRODUCTS = [
     },
     {
         "name": "Kids Hoodie",
-        "price": 29.99,
+        "price": 49.99,
         "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
         "preview_image": "kidhoodiepreview.jpg",
@@ -463,7 +463,7 @@ PRODUCTS = [
     },
     {
         "name": "Kids Long Sleeve",
-        "price": 24.99,
+        "price": 44.99,
         "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
         "preview_image": "kidlongsleevepreview.jpg",
@@ -471,7 +471,7 @@ PRODUCTS = [
     },
     {
         "name": "Canvas Tote",
-        "price": 18.99,
+        "price": 38.99,
         "filename": "allovertotebag.png",
         "main_image": "allovertotebag.png",
         "preview_image": "allovertotebagpreview.png",
@@ -479,7 +479,7 @@ PRODUCTS = [
     },
     {
         "name": "Tote Bag",
-        "price": 21.99,
+        "price": 41.99,
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
         "preview_image": "drawstringbagpreview.png",
@@ -487,7 +487,7 @@ PRODUCTS = [
     },
     {
         "name": "Large Canvas Bag",
-        "price": 24.99,
+        "price": 44.99,
         "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
         "preview_image": "largecanvasbagpreview.png",
@@ -495,7 +495,7 @@ PRODUCTS = [
     },
     {
         "name": "Greeting Card",
-        "price": 22.99,
+        "price": 42.99,
         "filename": "greetingcard.png",
         "main_image": "greetingcard.png",
         "preview_image": "greetingcardpreview.png",
@@ -503,7 +503,7 @@ PRODUCTS = [
     },
     {
         "name": "Notebook",
-        "price": 14.99,
+        "price": 34.99,
         "filename": "hardcovernotebook.png",
         "main_image": "hardcovernotebook.png",
         "preview_image": "hardcovernotebookpreview.png",
@@ -511,7 +511,7 @@ PRODUCTS = [
     },
     {
         "name": "Coasters",
-        "price": 13.99,
+        "price": 33.99,
         "filename": "coaster.png",
         "main_image": "coaster.png",
         "preview_image": "coasterpreview.jpg",
@@ -519,7 +519,7 @@ PRODUCTS = [
     },
     {
         "name": "Sticker Pack",
-        "price": 8.99,
+        "price": 28.99,
         "filename": "stickers.png",
         "main_image": "stickers.png",
         "preview_image": "stickerspreview.png",
@@ -527,7 +527,7 @@ PRODUCTS = [
     },
     {
         "name": "Dog Bowl",
-        "price": 12.99,
+        "price": 32.99,
         "filename": "dogbowl.png",
         "main_image": "dogbowl.png",
         "preview_image": "dogbowlpreview.png",
@@ -535,7 +535,7 @@ PRODUCTS = [
     },
     {
         "name": "Magnet Set",
-        "price": 11.99,
+        "price": 31.99,
         "filename": "magnet.png",
         "main_image": "magnet.png",
         "preview_image": "magnetpreview.png",
@@ -543,7 +543,7 @@ PRODUCTS = [
     },
     {
         "name": "Men's Long Sleeve",
-        "price": 29.99,
+        "price": 49.99,
         "filename": "menslongsleeve.png",
         "main_image": "menslongsleeve.png",
         "preview_image": "menslongsleevepreview.jpg",
@@ -551,7 +551,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's Tank",
-        "price": 22.99,
+        "price": 42.99,
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.jpg",
@@ -559,7 +559,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's Tee",
-        "price": 23.99,
+        "price": 43.99,
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
         "preview_image": "womensteepreview.jpg",
@@ -567,7 +567,7 @@ PRODUCTS = [
     },
     {
         "name": "Distressed Dad Hat",
-        "price": 24.99,
+        "price": 44.99,
         "filename": "distresseddadhat.jpg",
         "main_image": "distresseddadhat.jpg",
         "preview_image": "distresseddadhatpreview.jpg",
@@ -575,7 +575,7 @@ PRODUCTS = [
     },
     {
         "name": "Snapback Hat",
-        "price": 25.99,
+        "price": 45.99,
         "filename": "snapbackhat.png",
         "main_image": "snapbackhat.png",
         "preview_image": "snapbackhatpreview.png",
@@ -583,7 +583,7 @@ PRODUCTS = [
     },
     {
         "name": "Five Panel Trucker Hat",
-        "price": 26.99,
+        "price": 46.99,
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
         "preview_image": "fivepaneltruckerhatpreview.jpg",
@@ -591,7 +591,7 @@ PRODUCTS = [
     },
     {
         "name": "Flat Bill Cap",
-        "price": 24.99,
+        "price": 44.99,
         "filename": "flatbillcap.png",
         "main_image": "flatbillcap.png",
         "preview_image": "flatbillcappreview.png",
@@ -599,7 +599,7 @@ PRODUCTS = [
     },
     {
         "name": "Crossbody Bag",
-        "price": 32.99,
+        "price": 52.99,
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
         "preview_image": "crossbodybagpreview.png",
@@ -607,7 +607,7 @@ PRODUCTS = [
     },
     {
         "name": "Baby Bib",
-        "price": 16.99,
+        "price": 36.99,
         "filename": "babybib.png",
         "main_image": "babybib.png",
         "preview_image": "babybibpreview.jpg",

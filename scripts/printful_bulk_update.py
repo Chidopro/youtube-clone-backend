@@ -270,23 +270,48 @@ def update_backend_prices(price_bump: float) -> None:
         contents = f.read()
 
     # Add bump to every "price": number inside the PRODUCTS list only.
-    # Narrow scope between 'PRODUCTS = [' and the closing ']\n' that ends the list.
+    # Narrow scope between 'PRODUCTS = [' and its matching closing bracket, while
+    # ignoring brackets that appear inside strings.
     products_start = contents.find("PRODUCTS = [")
     if products_start == -1:
         return
-    # Find the end of the list by tracking brackets
-    i = products_start
-    bracket_count = 0
+
+    # Find the first '[' after the PRODUCTS assignment
+    first_bracket = contents.find('[', products_start)
+    if first_bracket == -1:
+        return
+
+    # Find the matching closing ']' for the list while ignoring strings
+    i = first_bracket
+    depth = 0
+    in_string = False
+    string_char = ''
     end_index = None
     while i < len(contents):
-        if contents[i] == '[':
-            bracket_count += 1
-        elif contents[i] == ']':
-            bracket_count -= 1
-            if bracket_count == 0:
-                end_index = i + 1
-                break
+        ch = contents[i]
+        if in_string:
+            if ch == '\\':
+                i += 2  # skip escaped char
+                continue
+            if ch == string_char:
+                in_string = False
+            i += 1
+            continue
+        else:
+            if ch in ('"', "'"):
+                in_string = True
+                string_char = ch
+                i += 1
+                continue
+            if ch == '[':
+                depth += 1
+            elif ch == ']':
+                depth -= 1
+                if depth == 0:
+                    end_index = i + 1
+                    break
         i += 1
+
     if end_index is None:
         return
 
