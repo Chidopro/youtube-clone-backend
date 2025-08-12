@@ -615,17 +615,7 @@ def create_product():
     
     if request.method == "OPTIONS":
         print("🔍 Handling OPTIONS preflight request")
-        response = jsonify({"success": True})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
-        response.headers.add("Access-Control-Allow-Methods", "POST")
-        return response
-    if request.method == "OPTIONS":
-        response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        return response
+        return jsonify({"success": True})
 
     try:
         data = request.get_json()
