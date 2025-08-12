@@ -18,7 +18,13 @@ const config = {
   }
 };
 
-const currentConfig = isDevelopment ? config.development : config.production;
+// Force production config to use the correct Fly.io URL
+const currentConfig = isDevelopment ? config.development : {
+  ...config.production,
+  API_BASE_URL: 'https://backend-hidden-firefly-7865.fly.dev',
+  EMAIL_API_URL: 'https://backend-hidden-firefly-7865.fly.dev',
+  SUBSCRIPTION_API_URL: 'https://backend-hidden-firefly-7865.fly.dev'
+};
 
 export const API_CONFIG = {
   BASE_URL: currentConfig.API_BASE_URL,
