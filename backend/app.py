@@ -615,6 +615,56 @@ PRODUCTS = [
     }
 ]
 
+# Server-side product availability rules (pinpointed to only the requested product)
+# This enforces allowed color–size combinations at checkout, matching the storefront/Printful grid.
+WOMENS_RIBBED_NECK_ALL_COLORS = [
+    "Black",
+    "French Navy",
+    "Heather Grey",
+    "White",
+    "Dark Heather Grey",
+    "Burgundy",
+    "India Ink Grey",
+    "Anthracite",
+    "Red",
+    "Stargazer",
+    "Khaki",
+    "Desert Dust",
+    "Fraiche Peche",
+    "Cotton Pink",
+    "Lavender",
+]
+
+WOMENS_RIBBED_NECK_CORE_COLORS = [
+    "Black",
+    "French Navy",
+    "Heather Grey",
+    "White",
+]
+
+PRODUCT_AVAILABILITY = {
+    "Women's Ribbed Neck": {
+        "S": set(WOMENS_RIBBED_NECK_ALL_COLORS),
+        "M": set(WOMENS_RIBBED_NECK_ALL_COLORS),
+        "L": set(WOMENS_RIBBED_NECK_ALL_COLORS),
+        "XL": set(WOMENS_RIBBED_NECK_ALL_COLORS),
+        "XXL": set(WOMENS_RIBBED_NECK_ALL_COLORS),
+        "XXXL": set(WOMENS_RIBBED_NECK_CORE_COLORS),
+        "XXXXL": set(WOMENS_RIBBED_NECK_CORE_COLORS),
+        "XXXXXL": set(WOMENS_RIBBED_NECK_CORE_COLORS),
+    }
+}
+
+def is_variant_available(product_name: str, size: str, color: str) -> bool:
+    """Return True if the color–size combo is allowed for the product; defaults to True for products without rules."""
+    rules = PRODUCT_AVAILABILITY.get(product_name) or PRODUCT_AVAILABILITY.get((product_name or "").strip())
+    if not rules:
+        return True
+    allowed_colors = rules.get(size)
+    if not allowed_colors:
+        return True
+    return color in allowed_colors
+
 @app.route("/")
 def index():
     return "Flask Backend is Running!"
@@ -1133,6 +1183,20 @@ def create_checkout_session():
             logger.info(f"🛒 Item price: {item.get('price')}")
             logger.info(f"🛒 Available products: {[p['name'] for p in PRODUCTS]}")
             
+            # Validate color/size availability if present (pinpointed to requested product only)
+            try:
+                product_name = item.get("product")
+                variants = item.get("variants", {})
+                color = variants.get("color")
+                size = variants.get("size")
+                if product_name and size and color:
+                    if not is_variant_available(product_name, size, color):
+                        logger.error(f"❌ Invalid variant for {product_name}: {color} / {size}")
+                        return jsonify({"error": f"{product_name}: {color} in {size} is not available"}), 400
+            except Exception:
+                # Never block checkout due to validation errors; just log
+                logger.exception("Variant validation error; allowing checkout to proceed")
+
             # Use price from cart item if available, otherwise look up in PRODUCTS
             item_price = item.get('price')
             if item_price and item_price > 0:
