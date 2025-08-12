@@ -335,8 +335,8 @@ PRODUCTS = [
         "filename": "unisexclassictee.png",
         "main_image": "unisexclassictee.png",
         "preview_image": "unisexclassicteepreview.png",
-        "options": {"color": ["Black", "Navy", "Sport Grey", "White", "Maroon", "Red", "Natural", "Military Green", "Orange", "Irish Green", "Gold", "Sky", "Ash", "Purple", "Cardinal"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
-      "size_pricing": {
+        "options": {"color": ["Black", "Navy", "Sport Grey", "White", "Maroon", "Red", "Natural", "Military Green", "Orange", "Irish Green", "Gold", "Sky", "Ash", "Purple", "Cardinal"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "size_pricing": {
             "XS": 0,      # No extra charge
             "S": 0,       # No extra charge  
             "M": 0,       # No extra charge
@@ -354,8 +354,8 @@ PRODUCTS = [
         "filename": "random.png",
         "main_image": "random.png",
         "preview_image": "randompreview.png",
-        "options": {"color": ["Black", "White", "Navy", "True Royal", "Athletic Heather", "Red", "Charcoal-Black Triblend", "Oatmeal Triblend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]}
-    "size_pricing": {
+        "options": {"color": ["Black", "White", "Navy", "True Royal", "Athletic Heather", "Red", "Charcoal-Black Triblend", "Oatmeal Triblend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
+        "size_pricing": {
             "XS": 0,      # No extra charge
             "S": 0,       # No extra charge  
             "M": 0,       # No extra charge
