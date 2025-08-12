@@ -413,11 +413,21 @@ PRODUCTS = [
     },
     {
         "name": "Women's Ribbed Neck",
-        "price": 25.99,
+        "price": 25.60,
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
         "preview_image": "womensribbedneckpreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+         "size_pricing": {
+            "S": 0,       # Base price $25.60
+            "M": 0,       # Base price $25.60
+            "L": 0,       # Base price $25.60
+            "XL": 0,      # Base price $25.60
+            "XXL": 2,     # +$2 = $27.60
+            "XXXL": 4,     # +$4 = $29.60
+            "XXXXL": 6,   # +$6 = $31.60
+            "XXXXXL": 8   # +$8 = $33.60
+        }
     },
     {
         "name": "Women's Shirt",

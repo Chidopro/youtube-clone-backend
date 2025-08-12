@@ -576,7 +576,6 @@ export const products = {
     "category": "women's-shirts",
     "variables": {
       "sizes": [
-        "XS",
         "S",
         "M",
         "L",
@@ -588,64 +587,124 @@ export const products = {
       ],
       "colors": [
         "Black",
+        "French Navy",
+        "Heather Grey",
         "White",
-        "Gray",
-        "Pink"
+        "Dark Heather Grey",
+        "Burgundy",
+        "India Ink Grey",
+        "Anthracite",
+        "Red",
+        "Stargazer",
+        "Khaki",
+        "Desert Dust",
+        "Fraiche Peche",
+        "Cotton Pink",
+        "Lavender"
       ],
       "availability": {
-        "XS": {
-          "Black": true,
-          "White": true,
-          "Gray": true,
-          "Pink": true
-        },
         "S": {
           "Black": true,
+          "French Navy": true,
+          "Heather Grey": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Dark Heather Grey": true,
+          "Burgundy": true,
+          "India Ink Grey": true,
+          "Anthracite": true,
+          "Red": true,
+          "Stargazer": true,
+          "Khaki": true,
+          "Desert Dust": true,
+          "Fraiche Peche": true,
+          "Cotton Pink": true,
+          "Lavender": true
         },
         "M": {
           "Black": true,
+          "French Navy": true,
+          "Heather Grey": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Dark Heather Grey": true,
+          "Burgundy": true,
+          "India Ink Grey": true,
+          "Anthracite": true,
+          "Red": true,
+          "Stargazer": true,
+          "Khaki": true,
+          "Desert Dust": true,
+          "Fraiche Peche": true,
+          "Cotton Pink": true,
+          "Lavender": true
         },
         "L": {
           "Black": true,
+          "French Navy": true,
+          "Heather Grey": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Dark Heather Grey": true,
+          "Burgundy": true,
+          "India Ink Grey": true,
+          "Anthracite": true,
+          "Red": true,
+          "Stargazer": true,
+          "Khaki": true,
+          "Desert Dust": true,
+          "Fraiche Peche": true,
+          "Cotton Pink": true,
+          "Lavender": true
         },
         "XL": {
           "Black": true,
+          "French Navy": true,
+          "Heather Grey": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Dark Heather Grey": true,
+          "Burgundy": true,
+          "India Ink Grey": true,
+          "Anthracite": true,
+          "Red": true,
+          "Stargazer": true,
+          "Khaki": true,
+          "Desert Dust": true,
+          "Fraiche Peche": true,
+          "Cotton Pink": true,
+          "Lavender": true
         },
         "XXL": {
           "Black": true,
+          "French Navy": true,
+          "Heather Grey": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Dark Heather Grey": true,
+          "Burgundy": true,
+          "India Ink Grey": true,
+          "Anthracite": true,
+          "Red": true,
+          "Stargazer": true,
+          "Khaki": true,
+          "Desert Dust": true,
+          "Fraiche Peche": true,
+          "Cotton Pink": true,
+          "Lavender": true
         },
         "XXXL": {
           "Black": true,
-          "White": true,
-          "Gray": true,
-          "Pink": true
+          "French Navy": true,
+          "Heather Grey": true,
+          "White": true
         },
         "XXXXL": {
           "Black": true,
-          "White": true,
-          "Gray": true,
-          "Pink": true
+          "French Navy": true,
+          "Heather Grey": true,
+          "White": true
         },
         "XXXXXL": {
           "Black": true,
-          "White": true,
-          "Gray": true,
-          "Pink": true
+          "French Navy": true,
+          "Heather Grey": true,
+          "White": true
         }
       }
     }
