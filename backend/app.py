@@ -248,6 +248,51 @@ PRINTFUL_API_KEY = os.getenv("PRINTFUL_API_KEY")
 def ping():
     return {"message": "pong"}
 
+@app.route("/api/calculate-shipping", methods=["POST"])
+def calculate_shipping():
+    """Calculate exact shipping using Printful's rates API.
+
+    Expects JSON with:
+      - cart: [{ printful_variant_id?, quantity? }]
+      - shipping_address: { country_code, state_code?, city?, zip? }
+    """
+    try:
+        data = request.get_json() or {}
+        cart = data.get("cart", [])
+        shipping_address = data.get("shipping_address") or data.get("shippingAddress") or {}
+
+        if not shipping_address or not shipping_address.get("country_code"):
+            return jsonify({"success": False, "error": "shipping_address.country_code is required"}), 400
+
+        # Map cart into the minimal shape needed for Printful rate lookup
+        items = []
+        for item in cart:
+            items.append({
+                "printful_variant_id": item.get("printful_variant_id") or item.get("variant_id") or 71,
+                "quantity": item.get("quantity", 1)
+            })
+
+        recipient = {
+            "country_code": shipping_address.get("country_code"),
+            "state_code": shipping_address.get("state_code", ""),
+            "city": shipping_address.get("city", ""),
+            "zip": shipping_address.get("zip", "")
+        }
+
+        result = printful_integration.calculate_shipping_rates(recipient, items)
+        logger.info(f"🚚 Calculated shipping result: {result}")
+
+        return jsonify({
+            "success": bool(result.get("success")),
+            "shipping_cost": float(result.get("shipping_cost", 0.0)),
+            "currency": result.get("currency", "USD"),
+            "delivery_days": result.get("delivery_days"),
+            "fallback": result.get("fallback", False),
+        })
+    except Exception as e:
+        logger.error(f"Shipping calculation API error: {str(e)}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
 @app.route("/api/test-order-email", methods=["POST"])
 def test_order_email():
     """Test endpoint to send a sample order confirmation email"""
@@ -312,7 +357,7 @@ PRODUCTS = [
     # Products with both COLOR and SIZE options
     {
         "name": "Unisex T-Shirt",
-        "price": 41.99,
+        "price": 21.69,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "preview_image": "guidonpreview.png",
@@ -331,7 +376,7 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Classic Tee",
-        "price": 39.25,
+        "price": 19.25,
         "filename": "unisexclassictee.png",
         "main_image": "unisexclassictee.png",
         "preview_image": "unisexclassicteepreview.png",
@@ -350,7 +395,7 @@ PRODUCTS = [
     },
     {
         "name": "Men's Tank Top",
-        "price": 39.99,
+        "price": 24.23,
         "filename": "random.png",
         "main_image": "random.png",
         "preview_image": "randompreview.png",
@@ -366,7 +411,7 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Hoodie",
-        "price": 56.95,
+        "price": 36.95,
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "testedpreview.png",
@@ -382,22 +427,22 @@ PRODUCTS = [
     },
     {
         "name": "Cropped Hoodie",
-        "price": 63.15,
+        "price": 43.15,
         "filename": "croppedhoodie.png",
         "main_image": "croppedhoodie.png",
         "preview_image": "croppedhoodiepreview.png",
         "options": {"color": ["Black", "Military Green", "Storm", "Peach"], "size": ["S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $43.115
-            "M": 0,       # Base price $43.115
-            "L": 0,       # Base price $43.115
-            "XL": 0,      # Base price $43.115
-            "XXL": 2      # +$2 = $45.115
+            "S": 0,       # Base price $43.15
+            "M": 0,       # Base price $43.15
+            "L": 0,       # Base price $43.15
+            "XL": 0,      # Base price $43.15
+            "XXL": 2      # +$2 = $45.15
         }
     },
     {
         "name": "Unisex Champion Hoodie",
-        "price": 65.0,
+        "price": 45.00,
         "filename": "hoodiechampion.png",
         "main_image": "hoodiechampion.png",
         "preview_image": "hoodiechampionpreview.jpg",
@@ -413,7 +458,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's Ribbed Neck",
-        "price": 45.6,
+        "price": 25.60,
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
         "preview_image": "womensribbedneckpreview.jpg",
@@ -431,83 +476,101 @@ PRODUCTS = [
     },
     {
         "name": "Women's Shirt",
-        "price": 46.99,
+        "price": 23.69,
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
         "preview_image": "womensshirtkevin.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Dark Grey Heather", "Pink", "Navy", "Heather Mauve", "Poppy", "Heather Red", "Berry", "Leaf", "Heather Blue Lagoon", "Athletic Heather", "Heather Stone", "Heather Prism Lilac", "Citron"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 2,
+            "XXXL": 2
+        }
     },
     {
-        "name": "Women's HD Shirt",
-        "price": 48.99,
+        "name": "Unisex Heavyweight T-Shirt",
+        "price": 25.29,
         "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
         "preview_image": "womenshdshirtpreview.png",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Berry", "Blue Jean", "Brick", "Moss", "Black", "True Navy", "Grey", "Violet", "White", "Blue Spruce", "Bay", "Lagoon Blue", "Butter", "Pepper", "Flo Blue", "Ivory", "Navy", "Red", "Sage", "Midnight"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
+        "size_pricing": {
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 2,
+            "XXXL": 2,
+            "XXXXL": 2
+        }
     },
     {
         "name": "Kids Shirt",
-        "price": 39.99,
+        "price": 23.49,
         "filename": "kidshirt.png",
         "main_image": "kidshirt.png",
         "preview_image": "kidshirtpreview.jpg",
-        "options": {"color": ["Black", "Navy", "Red", "Royal", "Charcoal", "Azalea", "Gold", "Sport Grey", "Natural", "White", "Lime", "Light Blue", "Light Pink"], "size": ["XS", "S", "M", "L", "XL"]}
+        "options": {"color": ["Black", "Navy", "Maroon", "Forest", "Red", "Dark Grey Heather", "True Royal", "Berry", "Heather Forest", "Kelly", "Heather Columbia Blue", "Athletic Heather", "Mustard", "Pink", "Heather Dust", "Natural", "White"], "size": ["XS", "S", "M", "L", "XL"]}
     },
     {
-        "name": "Kids Hoodie",
-        "price": 49.99,
+        "name": "Youth Heavy Blend Hoodie",
+        "price": 29.33,
         "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
         "preview_image": "kidhoodiepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "Navy", "Royal", "White", "Dark Heather", "Carolina Blue"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kids Long Sleeve",
-        "price": 44.99,
+        "price": 26.49,
         "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
         "preview_image": "kidlongsleevepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "Navy", "Red", "Athletic Heather", "White"], "size": ["S", "M", "L"]}
     },
     {
-        "name": "Canvas Tote",
-        "price": 38.99,
+        "name": "All-Over Print Tote Bag",
+        "price": 24.23,
         "filename": "allovertotebag.png",
         "main_image": "allovertotebag.png",
         "preview_image": "allovertotebagpreview.png",
-        "options": {"color": ["Natural", "Black"], "size": []}
+        "options": {"color": ["Black", "Red", "Yellow"], "size": ["15\"x15\""]}
     },
     {
-        "name": "Tote Bag",
-        "price": 41.99,
+        "name": "All-Over Print Drawstring Bag",
+        "price": 25.25,
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
         "preview_image": "drawstringbagpreview.png",
-        "options": {"color": ["White", "Black", "Blue"], "size": []}
+        "options": {"color": ["White", "Black", "Blue"], "size": ["15\"x17\""]}
     },
     {
-        "name": "Large Canvas Bag",
-        "price": 44.99,
+        "name": "All-Over Print Crossbody Bag",
+        "price": 32.14,
         "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
         "preview_image": "largecanvasbagpreview.png",
-        "options": {"color": ["Natural", "Black", "Navy"], "size": []}
+        "options": {"color": ["Natural", "Black", "Navy"], "size": ["11\"x8\"x1.5\""]}
     },
     {
         "name": "Greeting Card",
-        "price": 42.99,
+        "price": 5.00,
         "filename": "greetingcard.png",
         "main_image": "greetingcard.png",
         "preview_image": "greetingcardpreview.png",
-        "options": {"color": ["White", "Cream"], "size": []}
+        "options": {"color": ["White"], "size": ["4\"x6\""]}
     },
     {
-        "name": "Notebook",
-        "price": 34.99,
+        "name": "Hardcover Bound Notebook",
+        "price": 23.21,
         "filename": "hardcovernotebook.png",
         "main_image": "hardcovernotebook.png",
         "preview_image": "hardcovernotebookpreview.png",
-        "options": {"color": ["Black", "Blue"], "size": []}
+        "options": {"color": ["Black", "Navy", "Red", "Blue", "Turquoise", "Orange", "Silver", "Lime", "White"], "size": ["5.5\"x8.5\""]}
     },
     {
         "name": "Coasters",
@@ -518,64 +581,101 @@ PRODUCTS = [
         "options": {"color": ["Wood", "Cork", "Black"], "size": []}
     },
     {
-        "name": "Sticker Pack",
-        "price": 28.99,
+        "name": "Kiss-Cut Stickers",
+        "price": 4.29,
         "filename": "stickers.png",
         "main_image": "stickers.png",
         "preview_image": "stickerspreview.png",
-        "options": {"color": [], "size": []}
+        "options": {"color": ["White"], "size": ["3\"x3\"", "4\"x4\"", "5.5\"x5.5\"", "15\"x3.75\""]},
+        "size_pricing": {
+            "3\"x3\"": 0,
+            "4\"x4\"": 0.20,
+            "5.5\"x5.5\"": 0.40,
+            "15\"x3.75\"": 3.07
+        }
     },
     {
-        "name": "Dog Bowl",
-        "price": 32.99,
+        "name": "Pet Bowl All-Over Print",
+        "price": 31.49,
         "filename": "dogbowl.png",
         "main_image": "dogbowl.png",
         "preview_image": "dogbowlpreview.png",
-        "options": {"color": [], "size": []}
+        "options": {"color": ["White"], "size": ["18oz", "32oz"]}
     },
     {
-        "name": "Magnet Set",
-        "price": 31.99,
+        "name": "Die-Cut Magnets",
+        "price": 5.32,
         "filename": "magnet.png",
         "main_image": "magnet.png",
         "preview_image": "magnetpreview.png",
-        "options": {"color": [], "size": []}
+        "options": {"color": ["White"], "size": ["3\"x3\"", "4\"x4\"", "6\"x6\""]},
+        "size_pricing": {
+            "3\"x3\"": 0,
+            "4\"x4\"": 0.51,
+            "6\"x6\"": 2.55
+        }
     },
     {
-        "name": "Men's Long Sleeve",
-        "price": 49.99,
+        "name": "Men's Long Sleeve Shirt",
+        "price": 24.79,
         "filename": "menslongsleeve.png",
         "main_image": "menslongsleeve.png",
         "preview_image": "menslongsleevepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Light Pink", "Ash"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 2,
+            "XXXL": 2,
+            "XXXXL": 2
+        }
     },
     {
-        "name": "Women's Tank",
-        "price": 42.99,
+        "name": "Women’s fitted racerback tank top",
+        "price": 20.95,
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "Hot Pink", "Light Orange", "Tahiti Blue", "Heather Gray", "Cancun", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 2
+        }
     },
     {
-        "name": "Women's Tee",
-        "price": 43.99,
+        "name": "Women's Micro-Rib Tank Top",
+        "price": 25.81,
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
         "preview_image": "womensteepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Solid Black Blend", "Solid Navy Blend", "Athletic Heather", "Solid Baby Blue Blend", "Solid Pink Blend", "Solid White Blend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 2
+        }
     },
     {
         "name": "Distressed Dad Hat",
-        "price": 44.99,
+        "price": 23.99,
         "filename": "distresseddadhat.jpg",
         "main_image": "distresseddadhat.jpg",
         "preview_image": "distresseddadhatpreview.jpg",
-        "options": {"color": ["Black", "Navy", "Gray"], "size": ["One Size"]}
+        "options": {"color": ["Black", "Navy", "Charcoal Gray"], "size": ["One Size"]}
     },
     {
         "name": "Snapback Hat",
-        "price": 45.99,
+        "price": 26.89,
         "filename": "snapbackhat.png",
         "main_image": "snapbackhat.png",
         "preview_image": "snapbackhatpreview.png",
@@ -583,35 +683,54 @@ PRODUCTS = [
     },
     {
         "name": "Five Panel Trucker Hat",
-        "price": 46.99,
+        "price": 24.85,
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
         "preview_image": "fivepaneltruckerhatpreview.jpg",
-        "options": {"color": ["Black", "White", "Navy"], "size": ["One Size"]}
+        "options": {"color": [
+            "Black",
+            "Black/ White",
+            "Charcoal",
+            "Black/ White/ Black",
+            "Red/ White/ Red",
+            "Navy/ White/ Navy",
+            "White",
+            "Royal/ White/ Royal",
+            "Kelly/ White/ Kelly",
+            "Navy",
+            "Navy/ White",
+            "Charcoal/ White",
+            "Silver/ Black"
+        ], "size": ["One Size"]}
     },
     {
-        "name": "Flat Bill Cap",
-        "price": 44.99,
+        "name": "White Glossy Mug",
+        "price": 19.95,
         "filename": "flatbillcap.png",
         "main_image": "flatbillcap.png",
         "preview_image": "flatbillcappreview.png",
-        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}
+        "options": {"color": ["White"], "size": ["11 oz", "15 oz", "20 oz"]},
+        "size_pricing": {
+            "11 oz": 0,
+            "15 oz": 2.00,
+            "20 oz": 4.00
+        }
     },
     {
-        "name": "Crossbody Bag",
-        "price": 52.99,
+        "name": "All-Over Print Crossbody Bag",
+        "price": 30.35,
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
         "preview_image": "crossbodybagpreview.png",
-        "options": {"color": ["Black", "Brown", "Tan"], "size": []}
+        "options": {"color": ["White"], "size": []}
     },
     {
-        "name": "Baby Bib",
-        "price": 36.99,
+        "name": "Baby Short Sleeve One Piece",
+        "price": 23.52,
         "filename": "babybib.png",
         "main_image": "babybib.png",
         "preview_image": "babybibpreview.jpg",
-        "options": {"color": ["White", "Pink", "Blue"], "size": []}
+        "options": {"color": ["Black", "Dark Grey Heather", "Heather Columbia Blue", "Athletic Heather", "Pink", "Yellow", "White"], "size": ["3-6m", "6-12m", "12-18m", "18-24m"]}
     }
 ]
 
@@ -1089,15 +1208,26 @@ def success():
             html_body += f"<p><strong>Order ID:</strong> {order_id}</p>"
             html_body += f"<p><strong>Items:</strong> {len(cart)}</p>"
             
-            # Calculate total value
+            # Calculate total value (products only)
             total_value = 0
             for item in cart:
                 product_name = item.get('product', '')
                 product_info = next((p for p in PRODUCTS if p["name"] == product_name), None)
                 if product_info:
                     total_value += product_info["price"]
-            
-            html_body += f"<p><strong>Total Value:</strong> ${total_value:.2f}</p>"
+
+            # Include shipping if recorded during checkout
+            shipping_cost = float(order_data.get("shipping_cost", 0) or 0)
+            shipping_currency = order_data.get("shipping_currency", "USD")
+            delivery_days = order_data.get("shipping_delivery_days")
+
+            html_body += f"<p><strong>Products Subtotal:</strong> ${total_value:.2f}</p>"
+            if shipping_cost:
+                html_body += f"<p><strong>Shipping:</strong> ${shipping_cost:.2f} {shipping_currency}"
+                if delivery_days:
+                    html_body += f" • ETA: {delivery_days} days"
+                html_body += "</p>"
+            html_body += f"<p><strong>Order Total:</strong> ${(total_value + shipping_cost):.2f}</p>"
             html_body += f"<br>"
             html_body += f"<p><strong>📋 View Full Order Details:</strong></p>"
             html_body += f"<p><a href='https://backend-hidden-firefly-7865.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
@@ -1153,10 +1283,12 @@ def create_checkout_session():
         cart = data.get("cart", [])
         product_id = data.get("product_id")
         sms_consent = data.get("sms_consent", False)
+        shipping_address = data.get("shipping_address") or data.get("shippingAddress")
 
         logger.info(f"🛒 Received checkout request - Cart: {cart}")
         logger.info(f"🛒 Product ID: {product_id}")
         logger.info(f"🛒 SMS Consent: {sms_consent}")
+        logger.info(f"🧾 Shipping address provided: {bool(shipping_address)}")
 
         if not cart:
             logger.error("❌ Cart is empty")
@@ -1234,6 +1366,45 @@ def create_checkout_session():
         if not line_items:
             logger.error("❌ No valid items in cart to check out")
             return jsonify({"error": "No valid items in cart to check out."}), 400
+
+        # Calculate and append shipping as a separate line item when address is provided
+        if shipping_address:
+            try:
+                items_for_shipping = []
+                for item in cart:
+                    items_for_shipping.append({
+                        "printful_variant_id": item.get("printful_variant_id") or item.get("variant_id") or 71,
+                        "quantity": item.get("quantity", 1)
+                    })
+
+                recipient = {
+                    "country_code": shipping_address.get("country_code"),
+                    "state_code": shipping_address.get("state_code", ""),
+                    "city": shipping_address.get("city", ""),
+                    "zip": shipping_address.get("zip", "")
+                }
+
+                shipping_result = printful_integration.calculate_shipping_rates(recipient, items_for_shipping)
+                if shipping_result.get("success") and float(shipping_result.get("shipping_cost", 0)) > 0:
+                    shipping_amount_cents = int(round(float(shipping_result["shipping_cost"]) * 100))
+                    # Persist for admin/email views
+                    order_store[order_id]["shipping_cost"] = float(shipping_result["shipping_cost"])
+                    order_store[order_id]["shipping_currency"] = shipping_result.get("currency", "USD")
+                    order_store[order_id]["shipping_delivery_days"] = shipping_result.get("delivery_days")
+                    order_store[order_id]["shipping_fallback"] = shipping_result.get("fallback", False)
+                    line_items.append({
+                        "price_data": {
+                            "currency": "usd",
+                            "product_data": {"name": "Shipping"},
+                            "unit_amount": shipping_amount_cents,
+                        },
+                        "quantity": 1,
+                    })
+                    logger.info(f"🚚 Shipping added to checkout: ${shipping_result['shipping_cost']:.2f}")
+                else:
+                    logger.warning("🚚 Shipping calculation failed or returned 0; proceeding without shipping line item")
+            except Exception:
+                logger.exception("🚚 Error calculating shipping; proceeding without shipping line item")
 
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],

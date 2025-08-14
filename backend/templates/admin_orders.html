@@ -302,6 +302,22 @@
                                 <div class="summary-value">${{ "%.2f"|format(order.cart|map(attribute='product')|map('get_product_price')|sum) }}</div>
                             </div>
                             <div class="summary-item">
+                                <div class="summary-label">Shipping</div>
+                                <div class="summary-value">
+                                    {% if order.shipping_cost %}
+                                        ${{ "%.2f"|format(order.shipping_cost) }}
+                                    {% else %}
+                                        Included
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Order Total</div>
+                                <div class="summary-value">
+                                    ${{ "%.2f"|format((order.cart|map(attribute='product')|map('get_product_price')|sum) + (order.shipping_cost or 0)) }}
+                                </div>
+                            </div>
+                            <div class="summary-item">
                                 <div class="summary-label">Customer</div>
                                 <div class="summary-value">{{ order.cart[0].email if order.cart and order.cart[0].email else 'N/A' }}</div>
                             </div>
