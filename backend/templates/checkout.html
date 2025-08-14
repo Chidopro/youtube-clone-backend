@@ -26,7 +26,7 @@
       margin: auto;
       box-shadow: 0 20px 40px rgba(0,0,0,0.15);
       border: 1px solid rgba(255, 255, 255, 0.2);
-      max-height: 60vh;
+      max-height: 75vh;
       overflow-y: auto;
       position: relative;
     }
@@ -216,7 +216,7 @@
         <div id="shipping-form" style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:15px;">
           <div>
             <label for="country_code" style="font-size:0.85rem; color:#555; font-weight:500;">Country</label>
-            <select id="country_code" style="width:100%; padding:10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem; background:white;">
+            <select id="country_code" style="width:100%; padding:10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem; background:white; box-sizing:border-box;">
               <option value="US" selected>🇺🇸 United States</option>
               <option value="CA">🇨🇦 Canada</option>
               <option value="MX">🇲🇽 Mexico</option>
@@ -231,7 +231,7 @@
           </div>
           <div>
             <label for="zip" style="font-size:0.85rem; color:#555; font-weight:500;">ZIP / Postal Code</label>
-            <input id="zip" placeholder="90001" style="width:100%; padding:10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem;" />
+            <input id="zip" placeholder="90001" style="width:100%; padding:10px; border:2px solid #e1e5e9; border-radius:8px; font-size:0.9rem; box-sizing:border-box;" />
           </div>
         </div>
         
@@ -259,7 +259,7 @@
       </div>
     </div>
 
-    <div id="cart-items"></div>
+    <div id="cart-items" style="margin-top: 15px;"></div>
   </div>
 
      <script>
