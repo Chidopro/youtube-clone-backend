@@ -1,10 +1,12 @@
 .container {
   background: #f9f9f9;
-  padding-top: 16px;
-  padding-bottom: 16px;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
-/* .large-container class is no longer needed for padding but may be used elsewhere */
+.large-container {
+  /* This class is no longer needed for padding but may be used elsewhere */
+}
 
 @media (max-width: 900px) {
   .large-container,
@@ -17,11 +19,10 @@
 /* User Flow Section Styles */
 .user-flow-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  margin: -16px -24px 24px -16px;
-  padding: 24px 24px;
+  margin: -10px -20px 20px -20px;
+  padding: 20px 20px;
   color: white;
   text-align: center;
-  border-radius: 0 0 16px 16px;
 }
 
 .flow-steps {
@@ -85,49 +86,22 @@
 
 /* Mobile Responsive for Flow */
 @media (max-width: 768px) {
-  /* Prevent horizontal scroll caused by negative margins or wide children */
-  html, body {
-    overflow-x: hidden;
-  }
-
-  /* Remove negative margins and tighten padding on mobile */
-  .user-flow-section {
-    margin: 16px 0 20px 0;
-    padding: 16px 12px;
-    border-radius: 12px;
-  }
-
-  /* Arrange steps side-by-side and make them more compact */
   .flow-steps {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: space-between;
-    gap: 6px;
-    max-width: 100%;
+    flex-direction: column;
+    gap: 8px;
   }
-
-  /* Hide arrows to save vertical space */
+  
   .flow-arrow {
-    display: none;
+    transform: rotate(90deg);
+    margin: 4px 0;
   }
-
+  
   .flow-step {
-    min-width: 90px;
+    min-width: 110px;
   }
-
-  .step-number {
-    width: 24px;
-    height: 24px;
-    font-size: 0.85rem;
-    margin-bottom: 4px;
-  }
-
-  .step-content h3 {
-    font-size: 0.8rem;
-  }
-
-  .step-content p {
-    font-size: 0.6rem;
+  
+  .user-flow-section {
+    padding: 15px 15px;
   }
 }
 
