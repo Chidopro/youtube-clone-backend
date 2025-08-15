@@ -276,8 +276,26 @@ const Video = () => {
 
         {/* Middle Column - Screenshots */}
         <div className="screenshots-section" id="screenshotsSection">
-          <h3>Screenshot Selection</h3>
+          <h3 className="screenshots-selected-heading">Screenshots Selected</h3>
           <ScreenmerchImages thumbnail={thumbnail} screenshots={screenshots} onDeleteScreenshot={handleDeleteScreenshot} onCropScreenshot={handleCropScreenshot} />
+        </div>
+
+        {/* Products Section */}
+        <div className="screenshots-section products-section" id="productsSection">
+          <h3 className="products-available-heading">Available Products</h3>
+          <div className="products-preview">
+            <p style={{textAlign: 'center', color: '#666', fontSize: '0.9rem', margin: '20px 0'}}>
+              Select screenshots above, then click "Make Merchandise" to choose from our available products
+            </p>
+            <div className="product-types-grid">
+              <div className="product-type-item">📱 Phone Cases</div>
+              <div className="product-type-item">👕 T-Shirts</div>
+              <div className="product-type-item">👒 Hats</div>
+              <div className="product-type-item">🎒 Bags</div>
+              <div className="product-type-item">☕ Mugs</div>
+              <div className="product-type-item">📄 Stickers</div>
+            </div>
+          </div>
         </div>
       </div>
 
