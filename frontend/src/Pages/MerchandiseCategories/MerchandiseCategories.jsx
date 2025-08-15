@@ -4,6 +4,8 @@ import AuthModal from '../../Components/AuthModal/AuthModal';
 
 const MerchandiseCategories = () => {
   console.log('🔍 MerchandiseCategories component loading...');
+  console.log('🔍 Current URL:', window.location.href);
+  console.log('🔍 Component rendered at:', new Date().toLocaleTimeString());
   
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
