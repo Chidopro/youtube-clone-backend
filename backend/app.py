@@ -1104,11 +1104,17 @@ def show_product_page(product_id):
         if product_id in product_data_store:
             logger.info(f"🔄 Found product in memory storage")
             product_data = product_data_store[product_id]
+            
+            # Get category and filter products for memory storage too
+            category = product_data.get('category', 'misc')
+            filtered_products = filter_products_by_category(category)
+            logger.info(f"🔄 Memory storage - filtering for category '{category}': {len(filtered_products)} products")
+            
             return render_template(
                 'product_page.html',
                 img_url=product_data.get('thumbnail'),
                 screenshots=product_data.get('screenshots', []),
-                products=PRODUCTS,
+                products=filtered_products,
                 product_id=product_id,
                 email='',
                 channel_id='',
@@ -1125,11 +1131,15 @@ def show_product_page(product_id):
 
     logger.warning(f"⚠️ Product not found, but rendering template with default values")
     # Even if product is not found, render the template with default values
+    # Use 'misc' category as fallback
+    fallback_filtered_products = filter_products_by_category('misc')
+    logger.info(f"🔄 Fallback - using misc category: {len(fallback_filtered_products)} products")
+    
     return render_template(
         'product_page.html',
         img_url='',
         screenshots=[],
-        products=PRODUCTS,
+        products=fallback_filtered_products,
         product_id=product_id,
         email='',
         channel_id='',
