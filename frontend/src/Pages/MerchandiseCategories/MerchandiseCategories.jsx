@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-// import './MerchandiseCategories.css'; // Temporarily disabled for debugging
+import './MerchandiseCategories.css';
 import { API_CONFIG } from '../../config/apiConfig';
 
 const MerchandiseCategories = () => {
