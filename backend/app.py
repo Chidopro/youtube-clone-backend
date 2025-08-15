@@ -786,7 +786,9 @@ def is_variant_available(product_name: str, size: str, color: str) -> bool:
 
 def filter_products_by_category(category):
     """Filter products based on category selection"""
+    print(f"🔍 FILTER DEBUG: Received category: '{category}'")
     if not category or category == "all":
+        print(f"🔍 FILTER DEBUG: No category or 'all', returning all {len(PRODUCTS)} products")
         return PRODUCTS
     
     # Define category mappings based on actual product names from PRODUCTS list
@@ -847,10 +849,17 @@ def filter_products_by_category(category):
     
     # Filter PRODUCTS list to only include products from this category
     filtered_products = []
+    print(f"🔍 FILTER DEBUG: Looking for products in category '{category}' with {len(category_products)} product names")
+    print(f"🔍 FILTER DEBUG: Category products: {category_products}")
+    
     for product in PRODUCTS:
         if product["name"] in category_products:
+            print(f"✅ FILTER DEBUG: Found matching product: {product['name']}")
             filtered_products.append(product)
+        else:
+            print(f"❌ FILTER DEBUG: Skipping product: {product['name']}")
     
+    print(f"🔍 FILTER DEBUG: Returning {len(filtered_products)} filtered products out of {len(PRODUCTS)} total")
     return filtered_products
 
 @app.route("/")
@@ -1015,6 +1024,7 @@ def create_product():
         is_authenticated = data.get("isAuthenticated", False)
         user_email = data.get("userEmail", "")
         category = data.get("category", "")
+        print(f"🔍 CREATE_PRODUCT DEBUG: Received category from frontend: '{category}'")
         
         # Build product URL with authentication parameters
         product_url = f"https://backend-hidden-firefly-7865.fly.dev/product/{product_id}"
