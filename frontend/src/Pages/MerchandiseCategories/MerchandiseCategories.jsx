@@ -103,63 +103,20 @@ const MerchandiseCategories = () => {
     console.log('🔍 About to render component...');
     
     return (
-      <div style={{ 
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
-        padding: '2rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <div style={{ maxWidth: '1200px', width: '100%', textAlign: 'center' }}>
-          <h1 style={{ 
-            fontSize: '3rem',
-            fontWeight: '700',
-            color: 'white',
-            textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
-            marginBottom: '1rem'
-          }}>Choose Your Product Category</h1>
-          <p style={{
-            fontSize: '1.2rem',
-            color: 'rgba(255, 255, 255, 0.9)',
-            textShadow: '1px 1px 2px rgba(0, 0, 0, 0.5)',
-            marginBottom: '3rem'
-          }}>Select a category to see available products</p>
+      <div className="merchandise-categories">
+        <div className="categories-container">
+          <h1 className="categories-title">Choose Your Product Category</h1>
+          <p className="categories-subtitle">Select a category to see available products</p>
         
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '2rem',
-          marginBottom: '3rem'
-        }}>
+                <div className="categories-grid">
           {categories.map((cat, index) => (
-            <div 
+            <div
               key={index}
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '20px',
-                padding: '2.5rem 1.5rem',
-                cursor: isCreating ? 'not-allowed' : 'pointer',
-                opacity: isCreating ? 0.5 : 1,
-                minHeight: '160px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                textAlign: 'center',
-                position: 'relative'
-              }}
+              className={`category-box ${isCreating ? 'disabled' : ''}`}
               onClick={() => !isCreating && handleCategoryClick(cat.category)}
             >
-              <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>{cat.emoji}</div>
-              <div style={{ 
-                fontSize: '1.3rem',
-                fontWeight: '600',
-                color: 'white',
-                textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)'
-              }}>{cat.name}</div>
+              <div className="category-emoji">{cat.emoji}</div>
+              <div className="category-name">{cat.name}</div>
               {isCreating && (
                 <div style={{
                   position: 'absolute',
