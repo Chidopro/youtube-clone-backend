@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import './MerchandiseCategories.css';
 import { API_CONFIG } from '../../config/apiConfig';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 
 const MerchandiseCategories = () => {
+  console.log('🔍 MerchandiseCategories component loading...');
+  
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [products, setProducts] = useState([]);
   const [screenshots, setScreenshots] = useState([]);
   const [thumbnail, setThumbnail] = useState('');
   const [videoData, setVideoData] = useState(null);
-
-  // Debug log to see if component is mounting
-  console.log('MerchandiseCategories component loaded');
 
   // Product categories with emojis
   const categories = [
@@ -29,12 +26,17 @@ const MerchandiseCategories = () => {
 
   // Get data from localStorage that was passed from video page
   useEffect(() => {
+    console.log('🔍 useEffect running...');
     const storedScreenshots = localStorage.getItem('merch_screenshots');
     const storedThumbnail = localStorage.getItem('merch_thumbnail');
     const storedVideoData = localStorage.getItem('merch_video_data');
 
+    console.log('🔍 Stored data:', { storedScreenshots, storedThumbnail, storedVideoData });
+
     if (storedScreenshots) {
-      setScreenshots(JSON.parse(storedScreenshots));
+      const parsed = JSON.parse(storedScreenshots);
+      setScreenshots(parsed);
+      console.log('🔍 Set screenshots:', parsed);
     }
     if (storedThumbnail) {
       setThumbnail(storedThumbnail);
@@ -142,6 +144,17 @@ const MerchandiseCategories = () => {
       alert(`Error: ${err.message}`);
     }
   };
+
+  // Error boundary fallback
+  if (!categories || categories.length === 0) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center', minHeight: '100vh', background: '#f5f5f5' }}>
+        <h1>Loading Categories...</h1>
+        <p>If this persists, please go back and try again.</p>
+        <button onClick={() => window.history.back()}>← Back to Video</button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '40px', textAlign: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
