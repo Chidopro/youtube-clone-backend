@@ -789,7 +789,7 @@ def filter_products_by_category(category):
     if not category or category == "all":
         return PRODUCTS
     
-    # Define category mappings based on user specifications
+    # Define category mappings based on actual product names from PRODUCTS list
     category_mappings = {
         'mens': [
             "Men's Long Sleeve Shirt",
@@ -804,24 +804,32 @@ def filter_products_by_category(category):
             "Unisex Hoodie", 
             "Unisex Champion Hoodie",
             "Women's fitted racerback tank top",
-            "Women's Micro-Rib Tank Top"
+            "Women's Micro-Rib Tank Top",
+            "Women's Ribbed Neck",
+            "Women's Shirt",
+            "Unisex Heavyweight T-Shirt"
         ],
         'kids': [
-            "Youth Heavy Blend Hoodie"
+            "Youth Heavy Blend Hoodie",
+            "Kids Shirt",
+            "Kids Long Sleeve"
         ],
         'bags': [
             "All-Over Print Tote Bag",
             "All-Over Print Drawstring Bag", 
-            "All-Over Print Crossbody Bag",
-            "All-Over Print Crossbody Purse"
+            "All-Over Print Crossbody Bag"
         ],
         'hats': [
             "Distressed Dad Hat",
             "Snapback Hat",
             "Five Panel Trucker Hat"
         ],
+        'mugs': [
+            "White Glossy Mug"
+        ],
         'pets': [
-            "Pet Bowl All-Over Print"
+            "Pet Bowl All-Over Print",
+            "Baby Short Sleeve One Piece"
         ],
         'stickers': [
             "Kiss-Cut Stickers",

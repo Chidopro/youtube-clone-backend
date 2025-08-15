@@ -157,9 +157,9 @@ const MerchandiseCategories = () => {
   }
 
   return (
-    <div style={{ padding: '40px', textAlign: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
-      <h1 style={{ color: '#333', marginBottom: '20px' }}>🛍️ Choose Your Product Category</h1>
-      <p style={{ color: '#666', marginBottom: '40px' }}>Select a category to start creating your custom merchandise</p>
+    <div style={{ padding: '40px', textAlign: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+      <h1 style={{ color: 'white', marginBottom: '20px', textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>🛍️ Choose Your Product Category</h1>
+      <p style={{ color: 'rgba(255, 255, 255, 0.9)', marginBottom: '40px', fontSize: '1.1rem' }}>Select a category to start creating your custom merchandise</p>
       
       {screenshots.length > 0 && (
         <div style={{ background: 'white', borderRadius: '10px', padding: '20px', marginBottom: '30px' }}>
@@ -201,14 +201,15 @@ const MerchandiseCategories = () => {
             key={category.id}
             onClick={() => handleCreateMerch(category.id)}
             style={{
-              background: 'white',
+              background: 'rgba(255, 255, 255, 0.95)',
               borderRadius: '15px',
               padding: '30px 20px',
               textAlign: 'center',
               cursor: 'pointer',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-              transition: 'all 0.3s ease',
-              border: `3px solid ${category.color}`
+              boxShadow: '0 8px 25px rgba(0,0,0,0.2)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              border: `3px solid ${category.color}`,
+              backdropFilter: 'blur(10px)'
             }}
           >
             <div style={{ fontSize: '3rem', marginBottom: '10px' }}>{category.emoji}</div>
@@ -237,12 +238,15 @@ const MerchandiseCategories = () => {
         <button 
           onClick={() => window.history.back()}
           style={{
-            background: '#666',
+            background: 'rgba(255, 255, 255, 0.2)',
             color: 'white',
-            border: 'none',
+            border: '2px solid rgba(255, 255, 255, 0.5)',
             padding: '12px 25px',
-            borderRadius: '20px',
-            cursor: 'pointer'
+            borderRadius: '25px',
+            cursor: 'pointer',
+            backdropFilter: 'blur(10px)',
+            fontWeight: '600',
+            transition: 'all 0.3s ease'
           }}
         >
           ← Back to Video
