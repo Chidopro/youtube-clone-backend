@@ -144,7 +144,7 @@ const MerchandiseCategories = () => {
   };
 
   return (
-    <div style={{ padding: '40px', textAlign: 'center', minHeight: '100vh', background: '#f5f5f5' }}>
+    <div style={{ padding: '40px', textAlign: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
       <h1 style={{ color: '#333', marginBottom: '20px' }}>🛍️ Choose Your Product Category</h1>
       <p style={{ color: '#666', marginBottom: '40px' }}>Select a category to start creating your custom merchandise</p>
       

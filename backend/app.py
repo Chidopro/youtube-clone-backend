@@ -784,6 +784,67 @@ def is_variant_available(product_name: str, size: str, color: str) -> bool:
         return True
     return color in allowed_colors
 
+def filter_products_by_category(category):
+    """Filter products based on category selection"""
+    if not category or category == "all":
+        return PRODUCTS
+    
+    # Define category mappings based on user specifications
+    category_mappings = {
+        'mens': [
+            "Men's Long Sleeve Shirt",
+            "Men's Tank Top", 
+            "Unisex Classic Tee",
+            "Unisex T-Shirt",
+            "Unisex Hoodie",
+            "Unisex Champion Hoodie"
+        ],
+        'womens': [
+            "Cropped Hoodie",
+            "Unisex Hoodie", 
+            "Unisex Champion Hoodie",
+            "Women's fitted racerback tank top",
+            "Women's Micro-Rib Tank Top"
+        ],
+        'kids': [
+            "Youth Heavy Blend Hoodie"
+        ],
+        'bags': [
+            "All-Over Print Tote Bag",
+            "All-Over Print Drawstring Bag", 
+            "All-Over Print Crossbody Bag",
+            "All-Over Print Crossbody Purse"
+        ],
+        'hats': [
+            "Distressed Dad Hat",
+            "Snapback Hat",
+            "Five Panel Trucker Hat"
+        ],
+        'pets': [
+            "Pet Bowl All-Over Print"
+        ],
+        'stickers': [
+            "Kiss-Cut Stickers",
+            "Die-Cut Magnets"
+        ],
+        'misc': [
+            "Greeting Card",
+            "Hardcover Bound Notebook", 
+            "Coasters"
+        ]
+    }
+    
+    # Get product names for the selected category
+    category_products = category_mappings.get(category, [])
+    
+    # Filter PRODUCTS list to only include products from this category
+    filtered_products = []
+    for product in PRODUCTS:
+        if product["name"] in category_products:
+            filtered_products.append(product)
+    
+    return filtered_products
+
 @app.route("/")
 def index():
     return "Flask Backend is Running!"
@@ -903,7 +964,7 @@ def create_product():
                 "video_title": video_title,
                 "creator_name": creator_name,
                 "screenshots_urls": json.dumps(screenshots),
-                "category": "Custom Merch"
+                "category": category if category else "misc"
             }).execute()
             logger.info(f"✅ Successfully saved to Supabase database with creator_name")
         except Exception as db_error:
@@ -925,7 +986,7 @@ def create_product():
                     "video_url": video_url,
                     "video_title": video_title,
                     "screenshots_urls": json.dumps(screenshots),
-                    "category": "Custom Merch"
+                    "category": category if category else "misc"
                 }).execute()
                 logger.info(f"✅ Successfully saved to Supabase database (without creator_name)")
             except Exception as db_error2:
@@ -942,9 +1003,10 @@ def create_product():
                     "created_at": "now"
                 }
 
-        # Get authentication data from request
+        # Get authentication data and category from request
         is_authenticated = data.get("isAuthenticated", False)
         user_email = data.get("userEmail", "")
+        category = data.get("category", "")
         
         # Build product URL with authentication parameters
         product_url = f"https://backend-hidden-firefly-7865.fly.dev/product/{product_id}"
@@ -988,10 +1050,15 @@ def show_product_page(product_id):
                         logger.error(f"❌ Error parsing screenshots JSON: {str(json_error)}")
                         screenshots = []
                 
+                # Get category from database and filter products
+                category = product_data.get('category', 'misc')
+                filtered_products = filter_products_by_category(category)
+                
                 logger.info(f"🎨 Rendering template with data:")
                 logger.info(f"   img_url: {product_data.get('thumbnail_url', 'None')}")
                 logger.info(f"   screenshots: {len(screenshots)} items")
-                logger.info(f"   products: {len(PRODUCTS)} items")
+                logger.info(f"   category: {category}")
+                logger.info(f"   filtered_products: {len(filtered_products)} items (was {len(PRODUCTS)})")
                 logger.info(f"   product_id: {product_id}")
                 
                 try:
@@ -999,7 +1066,7 @@ def show_product_page(product_id):
                         'product_page.html',
                         img_url=product_data.get('thumbnail_url'),
                         screenshots=screenshots,
-                        products=PRODUCTS,
+                        products=filtered_products,
                         product_id=product_id,
                         email='',
                         channel_id='',
