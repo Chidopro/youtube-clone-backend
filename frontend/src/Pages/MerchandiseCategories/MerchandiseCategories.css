@@ -1,18 +1,13 @@
 /* Merchandise Categories Page */
 .merchandise-categories {
   min-height: 100vh;
-  min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
   background: linear-gradient(135deg, 
-    rgba(147, 51, 234, 0.1) 0%, 
-    rgba(168, 85, 247, 0.1) 25%, 
-    rgba(196, 181, 253, 0.1) 50%, 
-    rgba(147, 51, 234, 0.1) 75%, 
-    rgba(168, 85, 247, 0.1) 100%);
+    rgba(147, 51, 234, 0.3) 0%, 
+    rgba(168, 85, 247, 0.3) 25%, 
+    rgba(196, 181, 253, 0.3) 50%, 
+    rgba(147, 51, 234, 0.3) 75%, 
+    rgba(168, 85, 247, 0.3) 100%);
   padding: 2rem;
-  padding-top: max(2rem, env(safe-area-inset-top) + 1rem);
-  padding-bottom: max(2rem, env(safe-area-inset-bottom) + 1rem);
-  padding-left: max(2rem, env(safe-area-inset-left) + 1rem);
-  padding-right: max(2rem, env(safe-area-inset-right) + 1rem);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -51,14 +46,14 @@
 }
 
 .category-box {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(15px);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   border-radius: 20px;
   padding: 2.5rem 1.5rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
   position: relative;
   overflow: hidden;
   min-height: 160px;
@@ -93,9 +88,10 @@
 }
 
 .category-box:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 20px 40px rgba(147, 51, 234, 0.3);
-  border-color: rgba(147, 51, 234, 0.5);
+  transform: translateY(-10px) scale(1.03);
+  box-shadow: 0 25px 50px rgba(147, 51, 234, 0.4);
+  border-color: rgba(147, 51, 234, 0.7);
+  background: rgba(255, 255, 255, 0.35);
 }
 
 /* Touch devices hover effects */
@@ -113,20 +109,26 @@
 }
 
 .category-emoji {
-  font-size: 3.5rem;
+  font-size: 4rem;
   margin-bottom: 1rem;
   position: relative;
   z-index: 2;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+  transition: transform 0.3s ease;
+}
+
+.category-box:hover .category-emoji {
+  transform: scale(1.1);
 }
 
 .category-name {
-  font-size: 1.3rem;
-  font-weight: 600;
+  font-size: 1.4rem;
+  font-weight: 700;
   color: white;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7);
   position: relative;
   z-index: 2;
+  letter-spacing: 0.5px;
 }
 
 .back-button-container {
@@ -194,43 +196,40 @@
 }
 
 /* Mobile Responsiveness */
-@media (max-width: 1024px) {
-  .merchandise-categories {
-    padding: 1.5rem;
-  }
-  
-  .categories-grid {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.8rem;
-  }
-}
-
 @media (max-width: 768px) {
   .merchandise-categories {
-    padding: 1rem;
+    padding: 0.8rem;
+    min-height: auto;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  
+  .categories-container {
+    max-width: 100%;
+    padding: 0;
   }
   
   .categories-title {
-    font-size: 2.5rem;
-    margin-bottom: 0.8rem;
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
   }
   
   .categories-subtitle {
-    font-size: 1.1rem;
-    margin-bottom: 2.5rem;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
   }
   
   .categories-grid {
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
   }
   
   .category-box {
-    padding: 2.2rem 1.2rem;
-    border-radius: 18px;
-    /* Improve touch targets */
-    min-height: 140px;
+    padding: 1rem 0.5rem;
+    border-radius: 12px;
+    min-height: 80px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -238,118 +237,40 @@
   }
   
   .category-emoji {
-    font-size: 3.2rem;
-    margin-bottom: 0.8rem;
+    font-size: 1.8rem;
+    margin-bottom: 0.3rem;
   }
   
   .category-name {
-    font-size: 1.15rem;
+    font-size: 0.8rem;
     font-weight: 600;
     text-align: center;
-    line-height: 1.3;
+    line-height: 1.2;
   }
   
   .back-button {
-    padding: 14px 28px;
-    font-size: 1.05rem;
-    border-radius: 10px;
-    /* Better touch target */
-    min-height: 48px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    width: auto;
   }
   
   .creating-message {
-    padding: 1.8rem;
-    margin: 1.5rem 0;
-    border-radius: 12px;
-  }
-  
-  .loading-overlay {
-    font-size: 1.05rem;
-    border-radius: 18px;
-  }
-}
-
-@media (max-width: 480px) {
-  .merchandise-categories {
-    padding: 0.8rem;
-  }
-  
-  .categories-title {
-    font-size: 2rem;
-    margin-bottom: 0.6rem;
-  }
-  
-  .categories-subtitle {
-    font-size: 1rem;
-    margin-bottom: 2rem;
-  }
-  
-  .categories-grid {
-    grid-template-columns: 1fr;
-    gap: 1.2rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .category-box {
-    padding: 1.8rem 1rem;
-    border-radius: 16px;
-    min-height: 120px;
-    /* Ensure good spacing on small screens */
-    margin: 0 auto;
-    max-width: 320px;
-  }
-  
-  .category-emoji {
-    font-size: 2.8rem;
-    margin-bottom: 0.6rem;
-  }
-  
-  .category-name {
-    font-size: 1.05rem;
-    font-weight: 600;
-  }
-  
-  .back-button {
-    padding: 12px 24px;
-    font-size: 1rem;
-    width: 100%;
-    max-width: 280px;
-  }
-  
-  .creating-message {
-    padding: 1.5rem;
+    padding: 1rem;
     margin: 1rem 0;
+    border-radius: 8px;
+  }
+  
+  .creating-message p {
+    font-size: 0.9rem;
   }
   
   .creating-message p:first-child {
-    font-size: 1.1rem;
-  }
-}
-
-@media (max-width: 360px) {
-  .merchandise-categories {
-    padding: 0.6rem;
-  }
-  
-  .categories-title {
-    font-size: 1.7rem;
-  }
-  
-  .categories-subtitle {
-    font-size: 0.95rem;
-  }
-  
-  .category-box {
-    padding: 1.5rem 0.8rem;
-    min-height: 110px;
-    max-width: 100%;
-  }
-  
-  .category-emoji {
-    font-size: 2.5rem;
-  }
-  
-  .category-name {
     font-size: 1rem;
+  }
+  
+  .loading-overlay {
+    font-size: 0.9rem;
+    border-radius: 12px;
   }
 }

@@ -88,8 +88,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 };
                 localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
                 
-                // Redirect to login page
-                window.location.href = '/login?redirect=merch';
+                // Redirect to auth page (existing route) instead of non-existent /login
+                window.location.href = '/auth?redirect=merch';
                 return;
             }
             

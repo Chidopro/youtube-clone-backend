@@ -205,6 +205,52 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         console.log('Crop selection finished. Final crop area:', cropArea);
     };
 
+    // Touch counterparts to prevent page scroll on mobile during crop
+    const handleCropTouchStart = (e) => {
+        if (!showCropTool || !videoRef.current) return;
+        if (!e.touches || e.touches.length === 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (videoRef.current) {
+            videoRef.current.pause();
+        }
+        const touch = e.touches[0];
+        const rect = videoRef.current.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        setIsSelecting(true);
+        setSelectionStart({ x, y });
+        setCropArea({ x, y, width: 0, height: 0 });
+    };
+
+    const handleCropTouchMove = (e) => {
+        if (!showCropTool || !isSelecting || !videoRef.current) return;
+        if (!e.touches || e.touches.length === 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (videoRef.current) {
+            videoRef.current.pause();
+        }
+        const touch = e.touches[0];
+        const rect = videoRef.current.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        const width = Math.abs(x - selectionStart.x);
+        const height = Math.abs(y - selectionStart.y);
+        const left = Math.min(x, selectionStart.x);
+        const top = Math.min(y, selectionStart.y);
+        setCropArea({ x: left, y: top, width, height });
+    };
+
+    const handleCropTouchEnd = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsSelecting(false);
+        if (videoRef.current) {
+            videoRef.current.pause();
+        }
+    };
+
     const resetCropSelection = () => {
         setCropArea({ x: 0, y: 0, width: 0, height: 0 });
         setCroppedImage(null);
@@ -472,8 +518,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Make Merch handler
     const handleMakeMerch = async () => {
         try {
-            // Check if user is authenticated
-            const isAuthenticated = localStorage.getItem('user_authenticated');
+            // Check if user is authenticated via Supabase session (reliable across devices)
+            const { data: { session } } = await supabase.auth.getSession();
+            const isAuthenticated = !!session?.user;
             
             if (!isAuthenticated) {
                 // Store screenshot data for after login
@@ -484,8 +531,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 };
                 localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
                 
-                // Redirect to login page
-                window.location.href = '/login?redirect=merch';
+                // Redirect to auth page (existing route) instead of non-existent /login
+                window.location.href = '/auth?redirect=merch';
                 return;
             }
             
@@ -554,7 +601,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 style={{ position: 'relative', display: 'inline-block' }}
             >
 
-                    <div style={{ 
+                        <div style={{ 
                         position: 'relative', 
                         display: 'inline-block', 
                         width: '100%', 
@@ -569,13 +616,20 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         // Disable any transitions that might cause size changes
                         transition: 'none',
                         // Ensure container never changes size
-                        flexShrink: 0,
-                        flexGrow: 0
+                            flexShrink: 0,
+                            flexGrow: 0,
+                            // Prevent scroll/pan gestures while cropping
+                            touchAction: showCropTool ? 'none' : 'manipulation',
+                            overscrollBehavior: 'contain'
                     }}>
                         <video 
                             key={videoId}
                             ref={videoRef} 
                             controls 
+                            playsInline
+                            webkit-playsinline="true"
+                            disablePictureInPicture
+                            controlsList="nodownload"
                             width="100%" 
                             style={{
                                 background: '#000', 
@@ -591,8 +645,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                 // Prevent any size changes
                                 transition: 'none',
                                 // Ensure video never changes size
-                                flexShrink: 0,
-                                flexGrow: 0
+                                    flexShrink: 0,
+                                    flexGrow: 0,
+                                    touchAction: showCropTool ? 'none' : 'manipulation'
                             }} 
                             poster={video.thumbnail || ''} 
                             src={video.video_url}
@@ -602,6 +657,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             onMouseUp={showCropTool ? handleCropMouseUp : undefined}
                             onMouseLeave={showCropTool ? handleCropMouseUp : undefined}
                             onClick={showCropTool ? (e) => e.preventDefault() : undefined}
+                                onTouchStart={showCropTool ? handleCropTouchStart : undefined}
+                                onTouchMove={showCropTool ? handleCropTouchMove : undefined}
+                                onTouchEnd={showCropTool ? handleCropTouchEnd : undefined}
                         >
                             Your browser does not support the video tag.
                         </video>
