@@ -107,19 +107,15 @@ const Video = () => {
     }
   };
 
-  // Make Merch handler
+  // Make Merch handler - redirect to new categorized page
   const handleMakeMerch = async () => {
-    // Check if user is authenticated
-    const isAuthenticated = localStorage.getItem('user_authenticated');
+    // Store data for the merchandise page
+    localStorage.setItem('merch_screenshots', JSON.stringify(screenshots));
+    localStorage.setItem('merch_thumbnail', thumbnail);
+    localStorage.setItem('merch_video_data', JSON.stringify(videoData));
     
-    if (!isAuthenticated) {
-      // Show auth modal instead of redirecting
-      setShowAuthModal(true);
-      return;
-    }
-    
-    // User is authenticated, proceed with merch creation
-    await createMerchProduct();
+    // Navigate to the new merchandise categories page
+    window.location.href = '/merchandise';
   };
 
   // Create merch product function
