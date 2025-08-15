@@ -11,6 +11,9 @@ const MerchandiseCategories = () => {
   const [thumbnail, setThumbnail] = useState('');
   const [videoData, setVideoData] = useState(null);
 
+  // Debug log to see if component is mounting
+  console.log('MerchandiseCategories component loaded');
+
   // Product categories with emojis
   const categories = [
     { id: 'womens', name: "Women's", emoji: '👕', color: '#e91e63' },
@@ -141,56 +144,106 @@ const MerchandiseCategories = () => {
   };
 
   return (
-    <div className="merchandise-categories-page">
-      <div className="merch-header">
-        <h1>🛍️ Choose Your Product Category</h1>
-        <p>Select a category to start creating your custom merchandise</p>
-        
-        {screenshots.length > 0 && (
-          <div className="selected-screenshots">
-            <h3>📸 Your Selected Screenshots ({screenshots.length})</h3>
-            <div className="screenshot-preview">
-              {screenshots.slice(0, 3).map((screenshot, idx) => (
-                <img key={idx} src={screenshot} alt={`Screenshot ${idx + 1}`} className="screenshot-thumb" />
-              ))}
-              {screenshots.length > 3 && <span className="more-count">+{screenshots.length - 3} more</span>}
-            </div>
+    <div style={{ padding: '40px', textAlign: 'center', minHeight: '100vh', background: '#f5f5f5' }}>
+      <h1 style={{ color: '#333', marginBottom: '20px' }}>🛍️ Choose Your Product Category</h1>
+      <p style={{ color: '#666', marginBottom: '40px' }}>Select a category to start creating your custom merchandise</p>
+      
+      {screenshots.length > 0 && (
+        <div style={{ background: 'white', borderRadius: '10px', padding: '20px', marginBottom: '30px' }}>
+          <h3>📸 Your Selected Screenshots ({screenshots.length})</h3>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
+            {screenshots.slice(0, 3).map((screenshot, idx) => (
+              <img 
+                key={idx} 
+                src={screenshot} 
+                alt={`Screenshot ${idx + 1}`} 
+                style={{ width: '80px', height: '60px', borderRadius: '5px', objectFit: 'cover' }}
+              />
+            ))}
+            {screenshots.length > 3 && (
+              <span style={{ 
+                background: '#666', 
+                color: 'white', 
+                padding: '20px 15px', 
+                borderRadius: '5px',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                +{screenshots.length - 3} more
+              </span>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="categories-grid">
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(3, 1fr)', 
+        gap: '20px', 
+        maxWidth: '1000px', 
+        margin: '0 auto' 
+      }}>
         {categories.map((category) => (
           <div 
             key={category.id}
-            className="category-box"
-            style={{ '--category-color': category.color }}
             onClick={() => handleCreateMerch(category.id)}
+            style={{
+              background: 'white',
+              borderRadius: '15px',
+              padding: '30px 20px',
+              textAlign: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+              transition: 'all 0.3s ease',
+              border: `3px solid ${category.color}`
+            }}
           >
-            <div className="category-emoji">{category.emoji}</div>
-            <div className="category-name">{category.name}</div>
-            <div className="category-description">
+            <div style={{ fontSize: '3rem', marginBottom: '10px' }}>{category.emoji}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
+              {category.name}
+            </div>
+            <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '15px' }}>
               Create custom {category.name.toLowerCase()} with your screenshots
             </div>
-            <button className="category-button">
+            <button style={{
+              background: category.color,
+              color: 'white',
+              border: 'none',
+              padding: '10px 20px',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}>
               Start Creating →
             </button>
           </div>
         ))}
       </div>
 
-      <div className="back-to-video">
-        <button onClick={() => window.history.back()}>
+      <div style={{ marginTop: '40px' }}>
+        <button 
+          onClick={() => window.history.back()}
+          style={{
+            background: '#666',
+            color: 'white',
+            border: 'none',
+            padding: '12px 25px',
+            borderRadius: '20px',
+            cursor: 'pointer'
+          }}
+        >
           ← Back to Video
         </button>
       </div>
 
       {/* Authentication Modal */}
-      <AuthModal 
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={() => createMerchProduct(selectedCategory)}
-      />
+      {showAuthModal && (
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={() => createMerchProduct(selectedCategory)}
+        />
+      )}
     </div>
   );
 };
