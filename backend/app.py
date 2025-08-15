@@ -803,8 +803,6 @@ def filter_products_by_category(category):
         ],
         'womens': [
             "Cropped Hoodie",
-            "Unisex Hoodie", 
-            "Unisex Champion Hoodie",
             "Women's fitted racerback tank top",
             "Women's Micro-Rib Tank Top",
             "Women's Ribbed Neck",
