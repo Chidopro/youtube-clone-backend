@@ -1,6 +1,6 @@
+headersOrigin = "config"
 redirectsOrigin = "config"
 plugins = []
-headers = []
 
 [functions]
 
@@ -29,6 +29,18 @@ skip_processing = false
 [build.processing.js]
 
 [build.services]
+
+[[headers]]
+for = "/index.html"
+
+[headers.values]
+Cache-Control = "no-cache, must-revalidate"
+
+[[headers]]
+for = "/*.html"
+
+[headers.values]
+Cache-Control = "no-cache, must-revalidate"
 
 [[redirects]]
 from = "/*"
