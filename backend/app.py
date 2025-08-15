@@ -969,6 +969,7 @@ def create_product():
             selected_product_name = random.choice(product_names)
             
             # Try with creator_name first
+            print(f"🔍 SUPABASE INSERT DEBUG: Saving category '{category}' to database")
             supabase.table("products").insert({
                 "name": selected_product_name,  # Use actual product name instead of generic
                 "price": 24.99,  # Required field - default price
@@ -1009,12 +1010,14 @@ def create_product():
                 logger.info("🔄 Falling back to in-memory storage")
                 
                 # Fallback to in-memory storage
+                print(f"🔍 IN-MEMORY STORE DEBUG: Storing category '{category}' in memory for product {product_id}")
                 product_data_store[product_id] = {
                     "thumbnail": thumbnail,
                     "screenshots": screenshots,
                     "video_url": video_url,
                     "video_title": video_title,
                     "creator_name": creator_name,
+                    "category": category,  # Add the category to in-memory storage
                     "created_at": "now"
                 }
 
@@ -1068,6 +1071,8 @@ def show_product_page(product_id):
                 
                 # Get category from database and filter products
                 category = product_data.get('category', 'misc')
+                print(f"🔍 DATABASE RETRIEVE DEBUG: Retrieved category '{category}' from database")
+                print(f"🔍 DATABASE RETRIEVE DEBUG: Full product_data keys: {list(product_data.keys())}")
                 filtered_products = filter_products_by_category(category)
                 
                 logger.info(f"🎨 Rendering template with data:")
@@ -1107,6 +1112,8 @@ def show_product_page(product_id):
             
             # Get category and filter products for memory storage too
             category = product_data.get('category', 'misc')
+            print(f"🔍 MEMORY STORAGE DEBUG: Retrieved category '{category}' from memory")
+            print(f"🔍 MEMORY STORAGE DEBUG: Full product_data keys: {list(product_data.keys())}")
             filtered_products = filter_products_by_category(category)
             logger.info(f"🔄 Memory storage - filtering for category '{category}': {len(filtered_products)} products")
             
