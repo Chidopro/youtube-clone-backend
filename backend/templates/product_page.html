@@ -338,6 +338,65 @@
        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
      }
 
+     /* Category Navigation Icons */
+     .category-navigation {
+       margin-bottom: 20px;
+       border-bottom: 1px solid #eee;
+       padding-bottom: 15px;
+     }
+
+     .category-nav-title {
+       font-size: 14px;
+       font-weight: 600;
+       color: #666;
+       margin-bottom: 10px;
+       text-align: left;
+     }
+
+     .category-icons {
+       display: flex;
+       flex-wrap: wrap;
+       gap: 8px;
+       justify-content: flex-start;
+     }
+
+     .category-icon {
+       display: flex;
+       flex-direction: column;
+       align-items: center;
+       padding: 8px 6px;
+       border-radius: 8px;
+       background: #f8f9fa;
+       border: 1px solid #e9ecef;
+       cursor: pointer;
+       transition: all 0.2s ease;
+       min-width: 50px;
+       text-decoration: none;
+     }
+
+     .category-icon:hover {
+       background: #e3f2fd;
+       border-color: #2196f3;
+       transform: translateY(-1px);
+     }
+
+     .category-icon .icon {
+       font-size: 18px;
+       margin-bottom: 2px;
+     }
+
+     .category-icon .label {
+       font-size: 10px;
+       font-weight: 500;
+       color: #666;
+       text-align: center;
+       line-height: 1.2;
+     }
+
+     .category-icon:hover .label {
+       color: #2196f3;
+     }
+
     .preview-image {
       max-width: 100%;
       width: 100%;
@@ -686,6 +745,49 @@
 
     <!-- Right Column - Available Products -->
     <div class="products-section" id="productsSection">
+      <!-- Category Navigation Icons -->
+      <div class="category-navigation">
+        <div class="category-nav-title">Shop Other Categories:</div>
+        <div class="category-icons">
+          <div class="category-icon" onclick="switchCategory('womens')" title="Women's">
+            <span class="icon">👩</span>
+            <span class="label">Women's</span>
+          </div>
+          <div class="category-icon" onclick="switchCategory('mens')" title="Men's">
+            <span class="icon">👨</span>
+            <span class="label">Men's</span>
+          </div>
+          <div class="category-icon" onclick="switchCategory('kids')" title="Kids">
+            <span class="icon">👶</span>
+            <span class="label">Kids</span>
+          </div>
+          <div class="category-icon" onclick="switchCategory('mugs')" title="Mugs">
+            <span class="icon">☕</span>
+            <span class="label">Mugs</span>
+          </div>
+          <div class="category-icon" onclick="switchCategory('hats')" title="Hats">
+            <span class="icon">🧢</span>
+            <span class="label">Hats</span>
+          </div>
+          <div class="category-icon" onclick="switchCategory('bags')" title="Bags">
+            <span class="icon">👜</span>
+            <span class="label">Bags</span>
+          </div>
+          <div class="category-icon" onclick="switchCategory('pets')" title="Pets">
+            <span class="icon">🐕</span>
+            <span class="label">Pets</span>
+          </div>
+          <div class="category-icon" onclick="switchCategory('stickers')" title="Stickers">
+            <span class="icon">🌟</span>
+            <span class="label">Stickers</span>
+          </div>
+          <div class="category-icon" onclick="switchCategory('misc')" title="Misc">
+            <span class="icon">📦</span>
+            <span class="label">Misc</span>
+          </div>
+        </div>
+      </div>
+      
       <h3>Available Products</h3>
       <div class="product-row" id="productRow"></div>
     </div>
@@ -764,7 +866,8 @@
                 main_image: '{{ product.main_image }}',
                 filename: '{{ product.filename }}',
                 preview_image: '{{ product.preview_image }}',
-                options: {{ product.options | tojson }}
+                options: {{ product.options | tojson }},
+                size_pricing: {{ (product.size_pricing | tojson) if (product.size_pricing is defined) else 'null' }}
               });
             {% endfor %}
           {% endif %}
@@ -874,6 +977,130 @@
           // Don't update product images - just show selection
           console.log('🎯 Screenshot selected for preview only');
         }
+
+        // Category switching function
+        function switchCategory(category) {
+          console.log('🔄 Switching to category:', category);
+          
+          // Create form to POST to create-product with new category
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/api/create-product';
+          form.style.display = 'none';
+          
+          // Add current data to form
+          const thumbnailInput = document.createElement('input');
+          thumbnailInput.type = 'hidden';
+          thumbnailInput.name = 'thumbnail';
+          thumbnailInput.value = '{{ img_url }}';
+          form.appendChild(thumbnailInput);
+          
+          const videoUrlInput = document.createElement('input');
+          videoUrlInput.type = 'hidden';
+          videoUrlInput.name = 'videoUrl';
+          videoUrlInput.value = window.location.href.split('/product/')[0];
+          form.appendChild(videoUrlInput);
+          
+          const videoTitleInput = document.createElement('input');
+          videoTitleInput.type = 'hidden';
+          videoTitleInput.name = 'videoTitle';
+          videoTitleInput.value = '{{ video_title }}';
+          form.appendChild(videoTitleInput);
+          
+          const creatorNameInput = document.createElement('input');
+          creatorNameInput.type = 'hidden';
+          creatorNameInput.name = 'creatorName';
+          creatorNameInput.value = '{{ creator_name }}';
+          form.appendChild(creatorNameInput);
+          
+          // Add screenshots
+          const screenshotsInput = document.createElement('input');
+          screenshotsInput.type = 'hidden';
+          screenshotsInput.name = 'screenshots';
+          const screenshots = [];
+          {% if screenshots %}
+            {% for screenshot in screenshots %}
+              screenshots.push('{{ screenshot }}');
+            {% endfor %}
+          {% endif %}
+          screenshotsInput.value = JSON.stringify(screenshots);
+          form.appendChild(screenshotsInput);
+          
+          // Add the new category
+          const categoryInput = document.createElement('input');
+          categoryInput.type = 'hidden';
+          categoryInput.name = 'category';
+          categoryInput.value = category;
+          form.appendChild(categoryInput);
+          
+          // Add authentication data if available
+          const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+          const userEmail = localStorage.getItem('user_email') || '';
+          
+          const authInput = document.createElement('input');
+          authInput.type = 'hidden';
+          authInput.name = 'isAuthenticated';
+          authInput.value = isAuthenticated;
+          form.appendChild(authInput);
+          
+          const emailInput = document.createElement('input');
+          emailInput.type = 'hidden';
+          emailInput.name = 'userEmail';
+          emailInput.value = userEmail;
+          form.appendChild(emailInput);
+          
+          // Submit form
+          document.body.appendChild(form);
+          
+          // Show loading state
+          const categoryIcons = document.querySelectorAll('.category-icon');
+          categoryIcons.forEach(icon => {
+            icon.style.pointerEvents = 'none';
+            icon.style.opacity = '0.6';
+          });
+          
+          // Simulate form submission via fetch to get new product URL
+          const formData = new FormData(form);
+          const data = {};
+          for (let [key, value] of formData.entries()) {
+            data[key] = value;
+          }
+          
+          fetch('/api/create-product', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+          })
+          .then(response => response.json())
+          .then(result => {
+            if (result.success) {
+              // Redirect to the new product page with filtered category
+              window.location.href = result.product_url;
+            } else {
+              console.error('Failed to switch category:', result.error);
+              alert('Failed to switch category. Please try again.');
+              // Restore category icons
+              categoryIcons.forEach(icon => {
+                icon.style.pointerEvents = 'auto';
+                icon.style.opacity = '1';
+              });
+            }
+          })
+          .catch(error => {
+            console.error('Error switching category:', error);
+            alert('Error switching category. Please try again.');
+            // Restore category icons
+            categoryIcons.forEach(icon => {
+              icon.style.pointerEvents = 'auto';
+              icon.style.opacity = '1';
+            });
+          })
+          .finally(() => {
+            document.body.removeChild(form);
+          });
+        }
        
                // Dynamic pricing function
         function updatePrice(productIndex, productName, selectedSize) {
@@ -885,11 +1112,8 @@
             return;
           }
           
-          // Size pricing adjustments
-          const sizeAdjustments = {
-            "XS": 0, "S": 0, "M": 0, "L": 0,
-            "XL": 2, "XXL": 3, "XXXL": 4, "XXXXL": 5, "XXXXXL": 8
-          };
+          // Default size pricing adjustments (fallback)
+          const defaultSizeAdjustments = { "XS": 0, "S": 0, "M": 0, "L": 0, "XL": 2, "XXL": 3, "XXXL": 4, "XXXXL": 5, "XXXXXL": 8 };
           
           console.log(`📊 Available products:`, window.products);
           
@@ -901,6 +1125,7 @@
           }
           
           const basePrice = product.price;
+          const sizeAdjustments = product.size_pricing || defaultSizeAdjustments;
           const adjustment = sizeAdjustments[selectedSize] || 0;
           const newPrice = basePrice + adjustment;
           

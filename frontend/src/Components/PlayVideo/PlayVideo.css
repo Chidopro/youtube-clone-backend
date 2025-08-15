@@ -1,3 +1,26 @@
+/* Mobile: keep video inline, prevent fullscreen takeover */
+@media (max-width: 768px) {
+  video::-internal-media-controls-overlay-cast-button,
+  video::-webkit-media-controls-fullscreen-button {
+    display: none !important;
+  }
+  /* iOS: ensure inline playback */
+  video[playsinline],
+  video[webkit-playsinline] {
+    max-height: 360px !important;
+  }
+  .play-video .video-container,
+  .play-video video {
+    max-width: 100% !important;
+    height: 360px !important;
+  }
+  /* Prevent page from scrolling while user draws crop area */
+  .play-video .video-container,
+  .play-video video {
+    touch-action: none;
+  }
+  html, body { overflow-x: hidden; }
+}
 .play-video {
     width: 100%;
     max-width: 720px;
