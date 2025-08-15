@@ -947,6 +947,12 @@ def create_product():
         if not data:
             return jsonify(success=False, error="No data received"), 400
 
+        # Get authentication data and category from request FIRST
+        is_authenticated = data.get("isAuthenticated", False)
+        user_email = data.get("userEmail", "")
+        category = data.get("category", "")
+        print(f"🔍 CREATE_PRODUCT DEBUG: Received category from frontend: '{category}'")
+
         product_id = str(uuid.uuid4())
         thumbnail = data.get("thumbnail", "")
         video_url = data.get("videoUrl", "")
@@ -1021,11 +1027,7 @@ def create_product():
                     "created_at": "now"
                 }
 
-        # Get authentication data and category from request
-        is_authenticated = data.get("isAuthenticated", False)
-        user_email = data.get("userEmail", "")
-        category = data.get("category", "")
-        print(f"🔍 CREATE_PRODUCT DEBUG: Received category from frontend: '{category}'")
+        # Category and authentication data already extracted above
         
         # Build product URL with authentication parameters
         product_url = f"https://backend-hidden-firefly-7865.fly.dev/product/{product_id}"
