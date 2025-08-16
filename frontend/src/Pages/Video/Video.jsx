@@ -17,6 +17,27 @@ const Video = () => {
   const [videoData, setVideoData] = useState(null);
   const videoRef = useRef(null);
 
+  // Clear old screenshots when video changes
+  useEffect(() => {
+    // Clear screenshots when videoId changes (new video loaded)
+    if (videoId) {
+      setScreenshots([]);
+      setThumbnail(null);
+      // Clear localStorage to prevent stale data
+      localStorage.removeItem('merch_screenshots');
+      localStorage.removeItem('merch_thumbnail');
+      localStorage.removeItem('merch_video_data');
+    }
+  }, [videoId]);
+
+  // Clear any existing localStorage data on component mount (fix for existing users)
+  useEffect(() => {
+    // This will run once when the component mounts, clearing any stale data
+    localStorage.removeItem('merch_screenshots');
+    localStorage.removeItem('merch_thumbnail');
+    localStorage.removeItem('merch_video_data');
+  }, []);
+
   // Check if device is mobile
   useEffect(() => {
     const checkMobile = () => {
@@ -47,6 +68,21 @@ const Video = () => {
       newScreenshots[idx] = croppedImageUrl;
       return newScreenshots;
     });
+  };
+
+  const handleClearAllScreenshots = () => {
+    if (screenshots.length === 0) {
+      alert('No screenshots to clear.');
+      return;
+    }
+    
+    const confirmClear = window.confirm('Are you sure you want to clear all screenshots? This action cannot be undone.');
+    if (confirmClear) {
+      setScreenshots([]);
+      // Also clear localStorage
+      localStorage.removeItem('merch_screenshots');
+      alert('All screenshots cleared successfully!');
+    }
   };
 
   // Grab Screenshot handler
@@ -272,7 +308,18 @@ const Video = () => {
 
         {/* Middle Column - Screenshots */}
         <div className="screenshots-section" id="screenshotsSection">
-          <h3>Screenshot Selection</h3>
+          <div className="screenshots-header">
+            <h3>Screenshot Selection</h3>
+            {screenshots.length > 0 && (
+              <button 
+                className="clear-all-btn"
+                onClick={handleClearAllScreenshots}
+                title="Clear all screenshots"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
           <ScreenmerchImages thumbnail={thumbnail} screenshots={screenshots} onDeleteScreenshot={handleDeleteScreenshot} onCropScreenshot={handleCropScreenshot} />
         </div>
       </div>

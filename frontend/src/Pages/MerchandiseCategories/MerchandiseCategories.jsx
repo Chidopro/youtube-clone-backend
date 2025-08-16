@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './MerchandiseCategories.css';
 import { API_CONFIG } from '../../config/apiConfig';
+import AuthModal from '../../Components/AuthModal/AuthModal';
 
 const MerchandiseCategories = () => {
   console.log('🔍 MerchandiseCategories component loading...');
@@ -8,11 +9,33 @@ const MerchandiseCategories = () => {
   console.log('🔍 Component rendered at:', new Date().toLocaleTimeString());
   
   const [isCreating, setIsCreating] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   
-  // Get data from localStorage
-  const screenshots = JSON.parse(localStorage.getItem('merch_screenshots') || '[]');
+  // Get data from localStorage with validation
+  const screenshots = (() => {
+    try {
+      const data = localStorage.getItem('merch_screenshots');
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.warn('Invalid screenshots data in localStorage, clearing...');
+      localStorage.removeItem('merch_screenshots');
+      return [];
+    }
+  })();
+  
   const thumbnail = localStorage.getItem('merch_thumbnail');
-  const videoData = JSON.parse(localStorage.getItem('merch_video_data') || '{}');
+  
+  const videoData = (() => {
+    try {
+      const data = localStorage.getItem('merch_video_data');
+      return data ? JSON.parse(data) : {};
+    } catch (e) {
+      console.warn('Invalid video data in localStorage, clearing...');
+      localStorage.removeItem('merch_video_data');
+      return {};
+    }
+  })();
 
   console.log('📸 Screenshots:', screenshots.length);
   console.log('🎬 Video data:', videoData);
@@ -31,6 +54,22 @@ const MerchandiseCategories = () => {
 
   const handleCategoryClick = async (category) => {
     console.log('🎯 Category selected:', category);
+    
+    // Check authentication first
+    const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+    
+    if (!isAuthenticated) {
+      // Store the selected category and show auth modal
+      setSelectedCategory(category);
+      setShowAuthModal(true);
+      return;
+    }
+    
+    // User is authenticated, proceed with product creation
+    await createProduct(category);
+  };
+
+  const createProduct = async (category) => {
     setIsCreating(true);
     
     try {
@@ -98,6 +137,15 @@ const MerchandiseCategories = () => {
     }
   };
 
+  // Handle successful authentication
+  const handleAuthSuccess = async () => {
+    if (selectedCategory) {
+      // User authenticated, proceed with creating product for selected category
+      await createProduct(selectedCategory);
+      setSelectedCategory(null);
+    }
+  };
+
   // Add error handling for rendering
   try {
     console.log('🔍 About to render component...');
@@ -156,6 +204,16 @@ const MerchandiseCategories = () => {
             ← Back to Video
           </button>
         </div>
+
+        {/* Authentication Modal */}
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => {
+            setShowAuthModal(false);
+            setSelectedCategory(null);
+          }}
+          onSuccess={handleAuthSuccess}
+        />
       </div>
     </div>
     );

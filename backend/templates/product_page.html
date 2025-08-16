@@ -796,6 +796,18 @@
      <script>
      console.log('🚀 Merchandise page script loaded');
      
+     // EMERGENCY FIX: Clear any existing screenshot capture intervals
+     if (window.screenshotInterval) {
+       clearInterval(window.screenshotInterval);
+       console.log('🛑 Cleared existing screenshot interval');
+     }
+     
+     // Clear all intervals to stop screenshot loops
+     for (let i = 1; i < 99999; i++) {
+       clearInterval(i);
+     }
+     console.log('🛑 Cleared all intervals to stop screenshot loops');
+     
      // Simple initialization
      document.addEventListener('DOMContentLoaded', function() {
        console.log('✅ DOM loaded successfully');
