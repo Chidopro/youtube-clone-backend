@@ -38,50 +38,50 @@
       color: #333;
     }
     
-         .screenshot-preview-row {
-       display: flex;
-       flex-direction: row;
-       gap: 8px;
-       margin: 6px 0 10px 0;
-       min-height: 40px;
-       align-items: center;
-       justify-content: space-between; /* Spread across full width */
-       flex-wrap: nowrap;
-       overflow-x: auto;
-       width: 100%; /* Take full width */
+                   .screenshot-preview-row {
+        display: flex;
+        flex-direction: row;
+        gap: 12px; /* More space between thumbnails */
+        margin: 6px 0 10px 0;
+        min-height: 60px; /* Bigger height for larger thumbnails */
+        align-items: center;
+        justify-content: space-between; /* Spread across full width */
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        width: 100%; /* Take full width */
+      }
+    
+         .video-thumbnail {
+       width: 80px;
+       height: 60px;
+       object-fit: cover;
+       border-radius: 6px;
+       border: 2px solid #4CAF50;
+       flex-shrink: 0;
      }
     
-    .video-thumbnail {
-      width: 50px;
-      height: 35px;
-      object-fit: cover;
-      border-radius: 3px;
-      border: 2px solid #4CAF50;
-      flex-shrink: 0;
-    }
+                   .screenshot-thumbnails {
+        display: flex;
+        flex-direction: row;
+        gap: 12px; /* More space between thumbnails */
+        flex: 1;
+        margin-left: 8px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        justify-content: space-between; /* Spread thumbnails across full width */
+        width: 100%; /* Take full available width */
+      }
     
-         .screenshot-thumbnails {
-       display: flex;
-       flex-direction: row;
-       gap: 6px;
-       flex: 1;
-       margin-left: 8px;
-       overflow-x: auto;
-       scrollbar-width: thin;
-       justify-content: space-between; /* Spread thumbnails across full width */
-       width: 100%; /* Take full available width */
+         .screenshot-thumbnail {
+       width: 80px;
+       height: 60px;
+       object-fit: cover;
+       border-radius: 6px;
+       border: 1px solid #ddd;
+       flex-shrink: 0;
+       cursor: pointer;
+       transition: border-color 0.2s;
      }
-    
-    .screenshot-thumbnail {
-      width: 50px;
-      height: 35px;
-      object-fit: cover;
-      border-radius: 3px;
-      border: 1px solid #ddd;
-      flex-shrink: 0;
-      cursor: pointer;
-      transition: border-color 0.2s;
-    }
     
     /* Main Container - Products and Fixed Sidebar */
     .main-container {

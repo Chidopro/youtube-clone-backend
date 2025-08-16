@@ -432,54 +432,54 @@
       box-sizing: border-box;
       display: block;
     }
-                                                                                                   .screenshot-preview-row { 
-         display: flex !important; 
-         flex-direction: row !important;
-         gap: 8px !important; 
-         margin: 6px 0 10px 0 !important;
-         min-height: 40px !important; /* Even more compact height */
-         align-items: center !important;
-         justify-content: space-between !important; /* Spread across full width */
-         flex-wrap: nowrap !important;
-         overflow-x: auto !important;
-         width: 100% !important; /* Take full width */
-       }
+                                                                                                                                                     .screenshot-preview-row { 
+          display: flex !important; 
+          flex-direction: row !important;
+          gap: 12px !important; /* More space between thumbnails */
+          margin: 6px 0 10px 0 !important;
+          min-height: 60px !important; /* Bigger height for larger thumbnails */
+          align-items: center !important;
+          justify-content: space-between !important; /* Spread across full width */
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          width: 100% !important; /* Take full width */
+        }
       
-                 /* Video thumbnail styling - Much smaller size */
-               .video-thumbnail {
-          width: 50px !important;
-          height: 35px !important;
-          object-fit: cover !important;
-          border-radius: 3px !important;
-          border: 2px solid #4CAF50 !important;
-          cursor: pointer !important;
-          flex-shrink: 0 !important;
+                                   /* Video thumbnail styling - Bigger size */
+                .video-thumbnail {
+           width: 80px !important;
+           height: 60px !important;
+           object-fit: cover !important;
+           border-radius: 6px !important;
+           border: 2px solid #4CAF50 !important;
+           cursor: pointer !important;
+           flex-shrink: 0 !important;
+         }
+    
+                                                               /* Screenshot thumbnails container - full width spread */
+        .screenshot-thumbnails {
+          display: flex !important;
+          flex-direction: row !important;
+          gap: 12px !important; /* More space between thumbnails */
+          flex: 1 !important;
+          margin-left: 8px !important;
+          overflow-x: auto !important;
+          scrollbar-width: thin !important;
+          justify-content: space-between !important; /* Spread thumbnails across full width */
+          width: 100% !important; /* Take full available width */
         }
     
-                               /* Screenshot thumbnails container - full width spread */
-       .screenshot-thumbnails {
-         display: flex !important;
-         flex-direction: row !important;
-         gap: 6px !important;
-         flex: 1 !important;
-         margin-left: 8px !important;
-         overflow-x: auto !important;
-         scrollbar-width: thin !important;
-         justify-content: space-between !important; /* Spread thumbnails across full width */
-         width: 100% !important; /* Take full available width */
+                               /* Individual screenshot styling - bigger */
+       .screenshot-thumbnail {
+         width: 80px !important;
+         height: 60px !important;
+         object-fit: cover !important;
+         border-radius: 6px !important;
+         cursor: pointer !important;
+         border: 1px solid #ddd !important;
+         transition: border-color 0.2s !important;
+         flex-shrink: 0 !important;
        }
-    
-               /* Individual screenshot styling - smaller */
-      .screenshot-thumbnail {
-        width: 50px !important;
-        height: 35px !important;
-        object-fit: cover !important;
-        border-radius: 3px !important;
-        cursor: pointer !important;
-        border: 1px solid #ddd !important;
-        transition: border-color 0.2s !important;
-        flex-shrink: 0 !important;
-      }
     
     .screenshot-thumbnail:hover {
       border-color: #4CAF50;
