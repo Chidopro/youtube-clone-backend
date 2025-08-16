@@ -982,6 +982,22 @@
         function switchCategory(category) {
           console.log('🔄 Switching to category:', category);
           
+          // Prevent multiple simultaneous switches
+          if (window.switchingCategory) {
+            console.log('⏸️ Category switch already in progress');
+            return;
+          }
+          window.switchingCategory = true;
+          
+          // Clear any existing screenshot processes to prevent conflicts
+          if (window.screenshotInterval) {
+            clearInterval(window.screenshotInterval);
+          }
+          
+          // Clear screenshot-related localStorage to prevent conflicts
+          localStorage.removeItem('merch_screenshots');
+          localStorage.removeItem('merch_thumbnail');
+          
           // Create form to POST to create-product with new category
           const form = document.createElement('form');
           form.method = 'POST';
