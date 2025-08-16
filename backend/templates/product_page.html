@@ -739,7 +739,18 @@
         <div class="selected-products" id="selectedProducts">
           <p>No products selected yet</p>
         </div>
-                 <button class="btn checkout-btn" onclick="goToCheckout()" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
+        
+        <!-- Order Summary -->
+        <div id="orderSummary" style="display: none; margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
+          <div style="font-weight: bold; color: #333; margin-bottom: 8px;">📋 Order Summary</div>
+          <div id="summaryDetails" style="font-size: 13px; color: #666; line-height: 1.4;">
+            <div><span id="itemCount">0</span> items • Subtotal: $<span id="subtotal">0.00</span></div>
+            <div style="margin-top: 4px;">✅ Shipping calculated at checkout</div>
+            <div style="margin-top: 4px; color: #28a745;">💡 <strong>Multiple items = Better shipping rates!</strong></div>
+          </div>
+        </div>
+        
+        <button class="btn checkout-btn" onclick="goToCheckout()" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
       </div>
     </div>
 
@@ -1099,9 +1110,44 @@
              });
              
              console.log(`🔄 Loaded ${cartItems.length} items from cart storage`);
+             
+             // Update order summary after loading
+             updateOrderSummary();
            }
          } catch (error) {
            console.error('Error loading cart from storage:', error);
+         }
+       }
+       
+       function updateOrderSummary() {
+         const selectedProducts = document.getElementById('selectedProducts');
+         const orderSummary = document.getElementById('orderSummary');
+         const itemCountElement = document.getElementById('itemCount');
+         const subtotalElement = document.getElementById('subtotal');
+         
+         // Count items and calculate subtotal
+         const productItems = selectedProducts.querySelectorAll('.cart-product-item');
+         const itemCount = productItems.length;
+         
+         let subtotal = 0;
+         productItems.forEach(item => {
+           const detailsElement = item.querySelector('div div:last-child');
+           if (detailsElement) {
+             const details = detailsElement.innerHTML;
+             const priceMatch = details.match(/\$(\d+\.\d+)/);
+             if (priceMatch) {
+               subtotal += parseFloat(priceMatch[1]);
+             }
+           }
+         });
+         
+         // Show/hide summary based on item count
+         if (itemCount > 0) {
+           orderSummary.style.display = 'block';
+           itemCountElement.textContent = itemCount;
+           subtotalElement.textContent = subtotal.toFixed(2);
+         } else {
+           orderSummary.style.display = 'none';
          }
        }
 
@@ -1150,6 +1196,9 @@
         // Save cart to localStorage for persistence across category switches
         saveCartToStorage();
         
+        // Update order summary
+        updateOrderSummary();
+        
         // Change button text
         button.textContent = 'Added to Cart';
         button.style.background = '#28a745';
@@ -1169,6 +1218,9 @@
         
         // Save updated cart to localStorage
         saveCartToStorage();
+        
+        // Update order summary
+        updateOrderSummary();
       }
       
                    function goToCheckout() {
