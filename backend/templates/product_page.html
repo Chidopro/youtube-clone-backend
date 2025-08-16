@@ -750,7 +750,7 @@
           </div>
         </div>
         
-        <button class="btn checkout-btn" onclick="goToCheckout()" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
+                 <button class="btn checkout-btn" onclick="goToCheckout()" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
       </div>
     </div>
 
@@ -896,12 +896,22 @@
           
           console.log('📸 Processing screenshots:', screenshots);
           
-          // Use actual screenshots only - no placeholders
-          let screenshotsToShow = screenshots;
-          if (screenshots.length === 0) {
-            console.log('📸 No screenshots found - will use video thumbnail only');
+          // Add video thumbnail as first selectable option
+          if (videoThumbnail && videoThumbnail !== '' && videoThumbnail !== 'None') {
+            const thumbnailImg = document.createElement("img");
+            thumbnailImg.src = videoThumbnail;
+            thumbnailImg.className = "video-thumbnail";
+            thumbnailImg.alt = "Video Thumbnail";
+            thumbnailImg.style.cssText = "border: 2px solid #ccc; cursor: pointer;";
+            thumbnailImg.addEventListener('click', function() {
+              selectScreenshot(thumbnailImg, videoThumbnail);
+            });
+            thumbnailsContainer.appendChild(thumbnailImg);
+            console.log('✅ Added video thumbnail as selectable option');
           }
           
+          // Add screenshots
+          let screenshotsToShow = screenshots;
           screenshotsToShow.forEach((src, index) => {
             console.log(`📸 Screenshot ${index + 1}:`, src);
             if (src && src !== 'None' && src !== '') {
@@ -1196,7 +1206,7 @@
        }
        
 
-
+       
        // Add to cart functionality
               function addToCart(productName, price, button) {
                 // Get the current price from the button's data attribute or use the passed price
@@ -1212,25 +1222,16 @@
          
          const selectedProducts = document.getElementById('selectedProducts');
          
-         // Check if user has selected a screenshot or if thumbnail is available
-         const thumbnailUrl = '{{ img_url }}';
+         // Check if user has selected a screenshot
          const hasScreenshot = selectedScreenshotUrl !== null;
-         const hasThumbnail = thumbnailUrl && thumbnailUrl !== '' && thumbnailUrl !== 'None';
          
-         if (!hasScreenshot && !hasThumbnail) {
+         if (!hasScreenshot) {
            alert('Please choose Thumbnail or Screenshot');
            return;
          }
          
-         if (!hasScreenshot && hasThumbnail) {
-           const confirmThumbnail = confirm('Please choose Thumbnail or Screenshot');
-           if (!confirmThumbnail) {
-             return;
-           }
-         }
-         
          // Get the selected screenshot URL
-         const selectedScreenshot = selectedScreenshotUrl || thumbnailUrl;
+         const selectedScreenshot = selectedScreenshotUrl;
          
                    // Create product item with image
           const productItem = document.createElement('div');
