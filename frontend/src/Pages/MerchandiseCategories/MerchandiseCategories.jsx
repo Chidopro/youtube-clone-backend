@@ -32,10 +32,9 @@ const MerchandiseCategories = () => {
   const handleCategoryClick = (category) => {
     console.log('🎯 Category clicked:', category);
     
-    // Navigate to a product browsing page for this category
-    // For now, redirect to the main site with a category filter
+    // Navigate to the make merchandise page for this specific category
     const categoryParam = category.toLowerCase();
-    window.location.href = `/?category=${categoryParam}`;
+    window.location.href = `/make-merch/${categoryParam}`;
   };
 
   // Add error handling for rendering
