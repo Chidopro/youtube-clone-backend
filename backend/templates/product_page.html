@@ -756,6 +756,49 @@
 
     <!-- Right Column - Available Products -->
     <div class="products-section" id="productsSection">
+      {% if show_category_selection %}
+      <!-- Category Selection Landing -->
+      <div class="category-selection-landing" style="text-align: center; padding: 40px 20px;">
+        <h2 style="color: #333; margin-bottom: 10px;">Choose a Product Category</h2>
+        <p style="color: #666; margin-bottom: 30px;">Select a category to browse products for your custom merchandise</p>
+        
+        <div class="category-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 20px; max-width: 600px; margin: 0 auto;">
+          <div class="category-card" onclick="switchCategory('womens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👩</span>
+            <span style="font-weight: 600; color: #333;">Women's</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('mens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👨</span>
+            <span style="font-weight: 600; color: #333;">Men's</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('kids')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👶</span>
+            <span style="font-weight: 600; color: #333;">Kids</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('mugs')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">☕</span>
+            <span style="font-weight: 600; color: #333;">Mugs</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('hats')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🧢</span>
+            <span style="font-weight: 600; color: #333;">Hats</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('bags')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👜</span>
+            <span style="font-weight: 600; color: #333;">Bags</span>
+          </div>
+        </div>
+      </div>
+      
+      <style>
+        .category-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+          border-color: #4CAF50 !important;
+          background: #fff !important;
+        }
+      </style>
+      {% else %}
       <!-- Category Navigation Icons -->
       <div class="category-navigation">
         <div class="category-nav-title">Shop Other Categories:</div>
@@ -801,6 +844,7 @@
       
       <h3>Available Products</h3>
       <div class="product-row" id="productRow"></div>
+      {% endif %}
     </div>
   </div>
 

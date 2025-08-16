@@ -1076,11 +1076,22 @@ def show_product_page(product_id):
                 if url_category:
                     category = url_category
                     print(f"🔍 URL CATEGORY DEBUG: Using category '{category}' from URL parameter")
+                    filtered_products = filter_products_by_category(category)
                 else:
-                    category = product_data.get('category', 'misc')
-                    print(f"🔍 DATABASE RETRIEVE DEBUG: Retrieved category '{category}' from database")
-                print(f"🔍 DATABASE RETRIEVE DEBUG: Full product_data keys: {list(product_data.keys())}")
-                filtered_products = filter_products_by_category(category)
+                    # No category specified - show category selection instead of defaulting
+                    print(f"🔍 NO CATEGORY SPECIFIED: Showing category selection page")
+                    return render_template(
+                        'product_page.html',
+                        img_url=product_data.get('thumbnail'),
+                        screenshots=product_data.get('screenshots', []),
+                        products=[],  # Empty products to trigger category selection
+                        product_id=product_id,
+                        email='',
+                        channel_id='',
+                        video_title=product_data.get('video_title', 'Unknown Video'),
+                        creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                        show_category_selection=True
+                    )
                 
                 logger.info(f"🎨 Rendering template with data:")
                 logger.info(f"   img_url: {product_data.get('thumbnail_url', 'None')}")
@@ -1122,11 +1133,22 @@ def show_product_page(product_id):
             if url_category:
                 category = url_category
                 print(f"🔍 URL CATEGORY DEBUG (MEMORY): Using category '{category}' from URL parameter")
+                filtered_products = filter_products_by_category(category)
             else:
-                category = product_data.get('category', 'misc')
-                print(f"🔍 MEMORY STORAGE DEBUG: Retrieved category '{category}' from memory")
-            print(f"🔍 MEMORY STORAGE DEBUG: Full product_data keys: {list(product_data.keys())}")
-            filtered_products = filter_products_by_category(category)
+                # No category specified - show category selection instead of defaulting
+                print(f"🔍 NO CATEGORY SPECIFIED (MEMORY): Showing category selection page")
+                return render_template(
+                    'product_page.html',
+                    img_url=product_data.get('thumbnail'),
+                    screenshots=product_data.get('screenshots', []),
+                    products=[],  # Empty products to trigger category selection
+                    product_id=product_id,
+                    email='',
+                    channel_id='',
+                    video_title=product_data.get('video_title', 'Unknown Video'),
+                    creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                    show_category_selection=True
+                )
             logger.info(f"🔄 Memory storage - filtering for category '{category}': {len(filtered_products)} products")
             
             return render_template(
@@ -1150,10 +1172,14 @@ def show_product_page(product_id):
 
     logger.warning(f"⚠️ Product not found, but rendering template with default values")
     # Even if product is not found, render the template with default values
-    # Check URL parameter first, then fallback to 'misc' category
-    url_category = request.args.get('category', 'misc')
-    fallback_filtered_products = filter_products_by_category(url_category)
-    logger.info(f"🔄 Fallback - using {url_category} category: {len(fallback_filtered_products)} products")
+    url_category = request.args.get('category')
+    if url_category:
+        fallback_filtered_products = filter_products_by_category(url_category)
+        logger.info(f"🔄 Fallback - using {url_category} category: {len(fallback_filtered_products)} products")
+    else:
+        # No category specified - show category selection
+        logger.info(f"🔄 Fallback - no category specified, showing category selection")
+        fallback_filtered_products = []
     
     return render_template(
         'product_page.html',
@@ -1164,7 +1190,8 @@ def show_product_page(product_id):
         email='',
         channel_id='',
         video_title='Unknown Video',
-        creator_name='Unknown Creator'
+        creator_name='Unknown Creator',
+        show_category_selection=(url_category is None)
     )
 
 @app.route("/checkout/<product_id>")
