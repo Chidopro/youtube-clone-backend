@@ -143,15 +143,10 @@ const Video = () => {
     }
   };
 
-  // Make Merch handler - redirect to new categorized page
+  // Make Merch handler - create product directly
   const handleMakeMerch = async () => {
-    // Store data for the merchandise page
-    localStorage.setItem('merch_screenshots', JSON.stringify(screenshots));
-    localStorage.setItem('merch_thumbnail', thumbnail);
-    localStorage.setItem('merch_video_data', JSON.stringify(videoData));
-    
-    // Navigate to the new merchandise categories page
-    window.location.href = '/merchandise';
+    // Call the product creation function directly instead of redirecting to categories
+    await createMerchProduct();
   };
 
   // Create merch product function

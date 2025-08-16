@@ -594,14 +594,44 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     };
 
     // Handle successful authentication - proceed with merch creation
-    const handleAuthSuccess = () => {
+    const handleAuthSuccess = async () => {
         // Get the pending merch data
         const pendingData = localStorage.getItem('pending_merch_data');
         if (pendingData) {
             // Clear the pending data
             localStorage.removeItem('pending_merch_data');
-            // Proceed with merch creation by redirecting to merchandise categories
-            window.location.href = '/merchandise';
+            
+            // Proceed with merch creation directly by calling the API
+            try {
+                const merchData = JSON.parse(pendingData);
+                console.log('Creating merch product after authentication:', merchData);
+                
+                const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(merchData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.product_url) {
+                    console.log('Merch product created successfully, redirecting to:', data.product_url);
+                    window.location.href = data.product_url;
+                } else {
+                    console.error('Failed to create product:', data);
+                    alert(`Failed to create merch product: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error creating merch product after auth:', error);
+                alert('Error creating merch product. Please try again.');
+            }
         }
     };
 
