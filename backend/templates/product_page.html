@@ -900,8 +900,19 @@
           
           console.log('📸 Processing screenshots:', screenshots);
           
-          // Video thumbnail will be automatically selectable from the main preview
-          // No need to add it to the small thumbnails container
+          // Add video thumbnail as first small selectable option
+          if (videoThumbnail && videoThumbnail !== '' && videoThumbnail !== 'None') {
+            const thumbnailImg = document.createElement("img");
+            thumbnailImg.src = videoThumbnail;
+            thumbnailImg.className = "video-thumbnail";
+            thumbnailImg.alt = "Video Thumbnail";
+            thumbnailImg.style.cssText = "border: 2px solid #ccc; cursor: pointer;";
+            thumbnailImg.addEventListener('click', function() {
+              selectScreenshot(thumbnailImg, videoThumbnail);
+            });
+            thumbnailsContainer.appendChild(thumbnailImg);
+            console.log('✅ Added video thumbnail as small selectable option');
+          }
           
           // Add screenshots
           let screenshotsToShow = screenshots;
@@ -924,19 +935,6 @@
           
           row.appendChild(thumbnailsContainer);
           console.log(`✅ Added ${thumbnailsContainer.children.length} screenshots to container`);
-          
-          // Add the main video thumbnail as a large clickable preview
-          if (videoThumbnail && videoThumbnail !== '' && videoThumbnail !== 'None') {
-            const mainThumbnailImg = document.createElement("img");
-            mainThumbnailImg.src = videoThumbnail;
-            mainThumbnailImg.alt = "Video Thumbnail - Click to select";
-            mainThumbnailImg.style.cssText = "width: 200px; height: 150px; object-fit: cover; border: 3px solid #ccc; cursor: pointer; border-radius: 8px; margin-top: 10px; transition: border-color 0.3s;";
-            mainThumbnailImg.addEventListener('click', function() {
-              selectScreenshot(mainThumbnailImg, videoThumbnail);
-            });
-            row.appendChild(mainThumbnailImg);
-            console.log('✅ Added main video thumbnail as clickable preview');
-          }
        }
        
                // Display products
