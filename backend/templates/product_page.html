@@ -990,144 +990,23 @@
           console.log('🎯 Screenshot selected for preview only');
         }
 
-        // Category switching function
+        // Simplified category switching function - just reload with new category filter
         function switchCategory(category) {
           console.log('🔄 Switching to category:', category);
           
-          // Prevent multiple simultaneous switches
-          if (window.switchingCategory) {
-            console.log('⏸️ Category switch already in progress');
-            return;
-          }
-          window.switchingCategory = true;
-          
-          // Clear any existing screenshot processes to prevent conflicts
-          if (window.screenshotInterval) {
-            clearInterval(window.screenshotInterval);
-          }
-          
-          // Clear screenshot-related localStorage to prevent conflicts
-          localStorage.removeItem('merch_screenshots');
-          localStorage.removeItem('merch_thumbnail');
-          
-          // Create form to POST to create-product with new category
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = '/api/create-product';
-          form.style.display = 'none';
-          
-          // Add current data to form
-          const thumbnailInput = document.createElement('input');
-          thumbnailInput.type = 'hidden';
-          thumbnailInput.name = 'thumbnail';
-          thumbnailInput.value = '{{ img_url }}';
-          form.appendChild(thumbnailInput);
-          
-          const videoUrlInput = document.createElement('input');
-          videoUrlInput.type = 'hidden';
-          videoUrlInput.name = 'videoUrl';
-          videoUrlInput.value = window.location.href.split('/product/')[0];
-          form.appendChild(videoUrlInput);
-          
-          const videoTitleInput = document.createElement('input');
-          videoTitleInput.type = 'hidden';
-          videoTitleInput.name = 'videoTitle';
-          videoTitleInput.value = '{{ video_title }}';
-          form.appendChild(videoTitleInput);
-          
-          const creatorNameInput = document.createElement('input');
-          creatorNameInput.type = 'hidden';
-          creatorNameInput.name = 'creatorName';
-          creatorNameInput.value = '{{ creator_name }}';
-          form.appendChild(creatorNameInput);
-          
-          // Add screenshots
-          const screenshotsInput = document.createElement('input');
-          screenshotsInput.type = 'hidden';
-          screenshotsInput.name = 'screenshots';
-          const screenshots = [];
-          {% if screenshots %}
-            {% for screenshot in screenshots %}
-              screenshots.push('{{ screenshot }}');
-            {% endfor %}
-          {% endif %}
-          screenshotsInput.value = JSON.stringify(screenshots);
-          form.appendChild(screenshotsInput);
-          
-          // Add the new category
-          const categoryInput = document.createElement('input');
-          categoryInput.type = 'hidden';
-          categoryInput.name = 'category';
-          categoryInput.value = category;
-          form.appendChild(categoryInput);
-          
-          // Add authentication data if available
-          const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
-          const userEmail = localStorage.getItem('user_email') || '';
-          
-          const authInput = document.createElement('input');
-          authInput.type = 'hidden';
-          authInput.name = 'isAuthenticated';
-          authInput.value = isAuthenticated;
-          form.appendChild(authInput);
-          
-          const emailInput = document.createElement('input');
-          emailInput.type = 'hidden';
-          emailInput.name = 'userEmail';
-          emailInput.value = userEmail;
-          form.appendChild(emailInput);
-          
-          // Submit form
-          document.body.appendChild(form);
-          
-          // Show loading state
+          // Show loading feedback
           const categoryIcons = document.querySelectorAll('.category-icon');
           categoryIcons.forEach(icon => {
             icon.style.pointerEvents = 'none';
             icon.style.opacity = '0.6';
           });
           
-          // Simulate form submission via fetch to get new product URL
-          const formData = new FormData(form);
-          const data = {};
-          for (let [key, value] of formData.entries()) {
-            data[key] = value;
-          }
+          // Simple approach: reload current page with category parameter
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set('category', category);
           
-          fetch('/api/create-product', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-          })
-          .then(response => response.json())
-          .then(result => {
-            if (result.success) {
-              // Redirect to the new product page with filtered category
-              window.location.href = result.product_url;
-            } else {
-              console.error('Failed to switch category:', result.error);
-              alert('Failed to switch category. Please try again.');
-              // Restore category icons
-              categoryIcons.forEach(icon => {
-                icon.style.pointerEvents = 'auto';
-                icon.style.opacity = '1';
-              });
-            }
-          })
-          .catch(error => {
-            console.error('Error switching category:', error);
-            alert('Error switching category. Please try again.');
-            // Restore category icons
-            categoryIcons.forEach(icon => {
-              icon.style.pointerEvents = 'auto';
-              icon.style.opacity = '1';
-            });
-          })
-          .finally(() => {
-            document.body.removeChild(form);
-          });
+          // Redirect to same page with category filter
+          window.location.href = currentUrl.toString();
         }
        
                // Dynamic pricing function
