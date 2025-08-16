@@ -434,17 +434,19 @@
                                                  .screenshot-preview-row { 
         display: flex !important; 
         flex-direction: row !important;
-        gap: 6px !important; 
+        gap: 8px !important; 
         margin: 6px 0 10px 0 !important;
-        min-height: 50px !important; /* Compact height */
-        align-items: flex-start !important;
+        min-height: 40px !important; /* Even more compact height */
+        align-items: center !important;
         justify-content: flex-start !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
       }
       
                  /* Video thumbnail styling - Much smaller size */
                .video-thumbnail {
-          width: 60px !important;
-          height: 45px !important;
+          width: 50px !important;
+          height: 35px !important;
           object-fit: cover !important;
           border-radius: 3px !important;
           border: 2px solid #4CAF50 !important;
@@ -452,24 +454,27 @@
           flex-shrink: 0 !important;
         }
     
-               /* Screenshot thumbnails container - fits 5 screenshots */
+               /* Screenshot thumbnails container - horizontal scroll */
       .screenshot-thumbnails {
-        display: grid !important;
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 4px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 6px !important;
         flex: 1 !important;
-        margin-left: 6px !important;
+        margin-left: 8px !important;
+        overflow-x: auto !important;
+        scrollbar-width: thin !important;
       }
     
-               /* Individual screenshot styling */
+               /* Individual screenshot styling - smaller */
       .screenshot-thumbnail {
-        width: 100%;
-        height: 20px;
-        object-fit: cover;
-        border-radius: 2px;
-        cursor: pointer;
-        border: 1px solid #ddd;
-        transition: border-color 0.2s;
+        width: 50px !important;
+        height: 35px !important;
+        object-fit: cover !important;
+        border-radius: 3px !important;
+        cursor: pointer !important;
+        border: 1px solid #ddd !important;
+        transition: border-color 0.2s !important;
+        flex-shrink: 0 !important;
       }
     
     .screenshot-thumbnail:hover {
