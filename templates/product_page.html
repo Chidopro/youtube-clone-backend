@@ -759,17 +759,8 @@
       // Display video thumbnail and screenshots in the top window
       const row = document.getElementById("screenshotPreviewRow");
       
-      // Auto-insert video thumbnail first
-      if (videoThumbnail) {
-        const thumbnailImg = document.createElement("img");
-        thumbnailImg.src = videoThumbnail + '?v=' + Date.now(); // Add timestamp to prevent caching
-        thumbnailImg.className = "video-thumbnail";
-                 thumbnailImg.style.cssText = "width: 100%; height: 40px; object-fit: cover; border-radius: 6px; margin-bottom: 4px; border: 2px solid #4CAF50;";
-        thumbnailImg.addEventListener('click', function() {
-          setSelectedImage(thumbnailImg, videoThumbnail);
-        });
-        row.appendChild(thumbnailImg);
-      }
+      // Video thumbnail is automatically included in screenshots array from frontend
+      // No need to add it separately here to avoid duplication
 
       // Create screenshot thumbnails container
       const thumbnailsContainer = document.createElement("div");

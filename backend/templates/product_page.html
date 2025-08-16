@@ -900,19 +900,8 @@
           
           console.log('📸 Processing screenshots:', screenshots);
           
-          // Add video thumbnail as first small selectable option
-          if (videoThumbnail && videoThumbnail !== '' && videoThumbnail !== 'None') {
-            const thumbnailImg = document.createElement("img");
-            thumbnailImg.src = videoThumbnail;
-            thumbnailImg.className = "video-thumbnail";
-            thumbnailImg.alt = "Video Thumbnail";
-            thumbnailImg.style.cssText = "border: 2px solid #ccc; cursor: pointer;";
-            thumbnailImg.addEventListener('click', function() {
-              selectScreenshot(thumbnailImg, videoThumbnail);
-            });
-            thumbnailsContainer.appendChild(thumbnailImg);
-            console.log('✅ Added video thumbnail as small selectable option');
-          }
+          // Video thumbnail is automatically included in screenshots array from frontend
+          // No need to add it separately here to avoid duplication
           
           // Add screenshots
           let screenshotsToShow = screenshots;
