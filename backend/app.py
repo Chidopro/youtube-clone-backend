@@ -1071,9 +1071,14 @@ def show_product_page(product_id):
                         logger.error(f"❌ Error parsing screenshots JSON: {str(json_error)}")
                         screenshots = []
                 
-                # Get category from database and filter products
-                category = product_data.get('category', 'misc')
-                print(f"🔍 DATABASE RETRIEVE DEBUG: Retrieved category '{category}' from database")
+                # Get category from URL parameter or database (URL parameter takes priority)
+                url_category = request.args.get('category')
+                if url_category:
+                    category = url_category
+                    print(f"🔍 URL CATEGORY DEBUG: Using category '{category}' from URL parameter")
+                else:
+                    category = product_data.get('category', 'misc')
+                    print(f"🔍 DATABASE RETRIEVE DEBUG: Retrieved category '{category}' from database")
                 print(f"🔍 DATABASE RETRIEVE DEBUG: Full product_data keys: {list(product_data.keys())}")
                 filtered_products = filter_products_by_category(category)
                 
@@ -1112,9 +1117,14 @@ def show_product_page(product_id):
             logger.info(f"🔄 Found product in memory storage")
             product_data = product_data_store[product_id]
             
-            # Get category and filter products for memory storage too
-            category = product_data.get('category', 'misc')
-            print(f"🔍 MEMORY STORAGE DEBUG: Retrieved category '{category}' from memory")
+            # Get category from URL parameter or memory storage (URL parameter takes priority)
+            url_category = request.args.get('category')
+            if url_category:
+                category = url_category
+                print(f"🔍 URL CATEGORY DEBUG (MEMORY): Using category '{category}' from URL parameter")
+            else:
+                category = product_data.get('category', 'misc')
+                print(f"🔍 MEMORY STORAGE DEBUG: Retrieved category '{category}' from memory")
             print(f"🔍 MEMORY STORAGE DEBUG: Full product_data keys: {list(product_data.keys())}")
             filtered_products = filter_products_by_category(category)
             logger.info(f"🔄 Memory storage - filtering for category '{category}': {len(filtered_products)} products")
@@ -1140,9 +1150,10 @@ def show_product_page(product_id):
 
     logger.warning(f"⚠️ Product not found, but rendering template with default values")
     # Even if product is not found, render the template with default values
-    # Use 'misc' category as fallback
-    fallback_filtered_products = filter_products_by_category('misc')
-    logger.info(f"🔄 Fallback - using misc category: {len(fallback_filtered_products)} products")
+    # Check URL parameter first, then fallback to 'misc' category
+    url_category = request.args.get('category', 'misc')
+    fallback_filtered_products = filter_products_by_category(url_category)
+    logger.info(f"🔄 Fallback - using {url_category} category: {len(fallback_filtered_products)} products")
     
     return render_template(
         'product_page.html',
