@@ -105,11 +105,40 @@
   overflow-y: auto;
 }
 
+.screenshots-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
 .screenshots-section h3 {
-  margin: 0 0 15px 0;
+  margin: 0;
   color: #333;
   font-size: 1.2rem;
   font-weight: 600;
+}
+
+.clear-all-btn {
+  background: #ff4757;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.clear-all-btn:hover {
+  background: #ff3838;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
+}
+
+.clear-all-btn:active {
+  transform: translateY(0);
 }
 
 /* Legacy styles for backward compatibility */
@@ -157,9 +186,18 @@
     padding: 15px;
   }
   
+  .screenshots-header {
+    margin-bottom: 12px;
+  }
+  
   .screenshots-section h3 {
     font-size: 1.1rem;
-    margin-bottom: 12px;
+    margin: 0;
+  }
+  
+  .clear-all-btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
   }
   
   .flow-steps {
