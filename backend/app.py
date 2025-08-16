@@ -1110,7 +1110,8 @@ def show_product_page(product_id):
                         email='',
                         channel_id='',
                         video_title=product_data.get('video_title', 'Unknown Video'),
-                        creator_name=product_data.get('creator_name', 'Unknown Creator')
+                        creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                        show_category_selection=False
                     )
                 except Exception as template_error:
                     logger.error(f"❌ Template rendering error: {str(template_error)}")
@@ -1160,7 +1161,8 @@ def show_product_page(product_id):
                 email='',
                 channel_id='',
                 video_title=product_data.get('video_title', 'Unknown Video'),
-                creator_name=product_data.get('creator_name', 'Unknown Creator')
+                creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                show_category_selection=False
             )
         else:
             logger.warning(f"⚠️ Product not found in memory storage either")
