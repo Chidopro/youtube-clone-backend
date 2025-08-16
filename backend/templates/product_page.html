@@ -1218,12 +1218,12 @@
          const hasThumbnail = thumbnailUrl && thumbnailUrl !== '' && thumbnailUrl !== 'None';
          
          if (!hasScreenshot && !hasThumbnail) {
-           alert('📸 Please select a screenshot first!\n\nGo back to the video page and capture a screenshot, then return to add products to your cart.');
+           alert('Please choose Thumbnail or Screenshot');
            return;
          }
          
          if (!hasScreenshot && hasThumbnail) {
-           const confirmThumbnail = confirm('📸 No screenshot selected - use the video thumbnail instead?\n\nClick OK to use thumbnail, or Cancel to go back and select a screenshot.');
+           const confirmThumbnail = confirm('Please choose Thumbnail or Screenshot');
            if (!confirmThumbnail) {
              return;
            }
