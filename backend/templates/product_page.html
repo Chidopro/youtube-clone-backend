@@ -812,6 +812,9 @@
      document.addEventListener('DOMContentLoaded', function() {
        console.log('✅ DOM loaded successfully');
        
+       // Load persistent cart from previous sessions
+       loadCartFromStorage();
+       
        // Get data from backend
        const videoThumbnail = '{{ img_url }}';
        const screenshots = [];
@@ -1051,6 +1054,57 @@
           console.log(`✅ Price updated to $${newPrice.toFixed(2)}`);
         }
        
+       // Cart persistence functions
+       function saveCartToStorage() {
+         const selectedProducts = document.getElementById('selectedProducts');
+         const cartItems = [];
+         
+         // Get all cart items
+         const productItems = selectedProducts.querySelectorAll('.cart-product-item');
+         productItems.forEach(item => {
+           const img = item.querySelector('img');
+           const nameDiv = item.querySelector('div div:first-child');
+           const detailsDiv = item.querySelector('div div:last-child');
+           
+           if (img && nameDiv && detailsDiv) {
+             cartItems.push({
+               screenshot: img.src,
+               name: nameDiv.textContent,
+               details: detailsDiv.innerHTML,
+               fullHTML: item.outerHTML
+             });
+           }
+         });
+         
+         // Save to localStorage
+         localStorage.setItem('persistent_cart', JSON.stringify(cartItems));
+         console.log(`💾 Saved ${cartItems.length} items to cart storage`);
+       }
+       
+       function loadCartFromStorage() {
+         try {
+           const savedCart = localStorage.getItem('persistent_cart');
+           if (!savedCart) return;
+           
+           const cartItems = JSON.parse(savedCart);
+           const selectedProducts = document.getElementById('selectedProducts');
+           
+           if (cartItems.length > 0) {
+             // Clear existing content
+             selectedProducts.innerHTML = '';
+             
+             // Add saved items
+             cartItems.forEach(item => {
+               selectedProducts.insertAdjacentHTML('beforeend', item.fullHTML);
+             });
+             
+             console.log(`🔄 Loaded ${cartItems.length} items from cart storage`);
+           }
+         } catch (error) {
+           console.error('Error loading cart from storage:', error);
+         }
+       }
+
        // Add to cart functionality
               function addToCart(productName, price, button) {
                 // Get the current price from the button's data attribute or use the passed price
@@ -1093,6 +1147,9 @@
           noProductsMsg.remove();
         }
         
+        // Save cart to localStorage for persistence across category switches
+        saveCartToStorage();
+        
         // Change button text
         button.textContent = 'Added to Cart';
         button.style.background = '#28a745';
@@ -1109,6 +1166,9 @@
         if (selectedProducts.children.length === 0) {
           selectedProducts.innerHTML = '<p>No products selected yet</p>';
         }
+        
+        // Save updated cart to localStorage
+        saveCartToStorage();
       }
       
                    function goToCheckout() {
