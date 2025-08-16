@@ -98,40 +98,31 @@ const MerchandiseCategories = () => {
       
       console.log('Request data:', requestData);
       
-      const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/create_product`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
         },
         body: JSON.stringify(requestData)
       });
-      
-      console.log('Response status:', response.status);
-      
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server error response:', errorText);
-        throw new Error(`Server error: ${response.status} - ${errorText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
-      const data = await response.json();
-      console.log('Response data:', data);
-      
-      if (data.success && data.product_url) {
-        // Check if we're on mobile and handle accordingly
-        if (window.innerWidth <= 768) {
-          window.location.href = data.product_url;
-        } else {
-          window.open(data.product_url, '_blank');
-        }
+
+      const result = await response.json();
+      console.log('✅ Product creation result:', result);
+
+      if (result.success) {
+        // Redirect to the product page
+        window.location.href = result.product_url;
       } else {
-        console.error('Failed to create product:', data);
-        alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
+        console.error('❌ Product creation failed:', result.error);
+        alert('Failed to create product. Please try again.');
       }
-    } catch (err) {
-      console.error('Make Merch error:', err);
-      alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
+    } catch (error) {
+      console.error('❌ Error creating product:', error);
+      alert('Error creating product. Please try again.');
     } finally {
       setIsCreating(false);
     }
@@ -152,57 +143,87 @@ const MerchandiseCategories = () => {
     
     return (
       <div className="merchandise-categories">
+        {/* Top Section - Screenshots Selected */}
+        {(thumbnail || screenshots.length > 0) && (
+          <div className="top-section">
+            <h3>Screenshots Selected</h3>
+            <div className="screenshots-container">
+              {thumbnail && (
+                <div className="video-thumbnail-container">
+                  <img 
+                    src={thumbnail} 
+                    alt="Video Thumbnail" 
+                    className="video-thumbnail"
+                  />
+                  <span className="thumbnail-label">Video Thumbnail</span>
+                </div>
+              )}
+              {screenshots.length > 0 && (
+                <div className="screenshots-grid">
+                  {screenshots.slice(0, 6).map((screenshot, index) => (
+                    <img 
+                      key={index}
+                      src={screenshot} 
+                      alt={`Screenshot ${index + 1}`} 
+                      className="screenshot-thumbnail"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="categories-container">
           <h1 className="categories-title">Choose Your Product Category</h1>
           <p className="categories-subtitle">Select a category to see available products</p>
         
-                <div className="categories-grid">
-          {categories.map((cat, index) => (
-            <div
-              key={index}
-              className={`category-box ${isCreating ? 'disabled' : ''}`}
-              onClick={() => !isCreating && handleCategoryClick(cat.category)}
+          <div className="categories-grid">
+            {categories.map((cat, index) => (
+              <div
+                key={index}
+                className={`category-box ${isCreating ? 'disabled' : ''}`}
+                onClick={() => !isCreating && handleCategoryClick(cat.category)}
+              >
+                <div className="category-emoji">{cat.emoji}</div>
+                <div className="category-name">{cat.name}</div>
+                {isCreating && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(147, 51, 234, 0.8)',
+                    backdropFilter: 'blur(5px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontWeight: '600',
+                    fontSize: '1.1rem',
+                    borderRadius: '20px'
+                  }}>Creating...</div>
+                )}
+              </div>
+            ))}
+          </div>
+          
+          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+            <button 
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '12px',
+                padding: '12px 24px',
+                color: 'white',
+                fontSize: '1rem',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+              onClick={() => window.history.back()}
             >
-              <div className="category-emoji">{cat.emoji}</div>
-              <div className="category-name">{cat.name}</div>
-              {isCreating && (
-                <div style={{
-                  position: 'absolute',
-                  top: 0, left: 0, right: 0, bottom: 0,
-                  background: 'rgba(147, 51, 234, 0.8)',
-                  backdropFilter: 'blur(5px)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontWeight: '600',
-                  fontSize: '1.1rem',
-                  borderRadius: '20px'
-                }}>Creating...</div>
-              )}
-            </div>
-          ))}
-        </div>
-        
-
-        
-        <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-          <button 
-            style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '12px',
-              padding: '12px 24px',
-              color: 'white',
-              fontSize: '1rem',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-            onClick={() => window.history.back()}
-          >
-            ← Back to Video
-          </button>
+              ← Back to Video
+            </button>
+          </div>
         </div>
 
         {/* Authentication Modal */}
@@ -215,7 +236,6 @@ const MerchandiseCategories = () => {
           onSuccess={handleAuthSuccess}
         />
       </div>
-    </div>
     );
   } catch (error) {
     console.error('🚨 Error rendering MerchandiseCategories:', error);

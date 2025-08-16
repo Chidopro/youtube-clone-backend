@@ -21,45 +21,20 @@
       font-weight: bold;
     }
     
-    .main-container {
-      display: flex;
+    /* Top Section - Thumbnails and Screenshots */
+    .top-section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin: 20px auto;
       max-width: 1400px;
-      margin: 0 auto;
-      padding: 20px;
-      gap: 20px;
     }
     
-    .left-column {
-      flex: 1;
-      min-width: 400px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      max-width: 500px;
-    }
-    
-    .screenshots-selected {
-      background: #fff;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    
-    .products-selected {
-      background: #fff;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      min-height: 150px;
-    }
-    
-    .products-section {
-      flex: 1;
-      min-width: 400px;
-      background: #fff;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    .top-section h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: #333;
     }
     
     .screenshot-preview-row {
@@ -92,6 +67,49 @@
       object-fit: cover;
       border-radius: 4px;
       border: 1px solid #ddd;
+    }
+    
+    /* Main Container - Products and Fixed Sidebar */
+    .main-container {
+      display: flex;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 20px 20px 20px;
+      gap: 20px;
+    }
+    
+    /* Fixed Products Selected Sidebar */
+    .products-selected {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 300px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      min-height: 200px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      z-index: 1000;
+    }
+    
+    .products-selected h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: #333;
+      font-size: 16px;
+    }
+    
+    /* Products Section - Takes remaining space */
+    .products-section {
+      flex: 1;
+      min-width: 400px;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin-right: 320px; /* Make space for fixed sidebar */
     }
     
     .product-row {
@@ -138,6 +156,23 @@
       cursor: pointer;
       font-size: 12px;
     }
+    
+    /* Responsive adjustments */
+    @media (max-width: 1200px) {
+      .products-selected {
+        position: static;
+        width: auto;
+        margin-bottom: 20px;
+      }
+      
+      .products-section {
+        margin-right: 0;
+      }
+      
+      .main-container {
+        flex-direction: column;
+      }
+    }
   </style>
 </head>
 <body>
@@ -147,29 +182,26 @@
     🚨 SIMPLE MERCHANDISE: If you see this, the page is loading!
   </div>
 
+  <!-- Top Section - Thumbnails and Screenshots -->
+  <div class="top-section">
+    <h3>Screenshots Selected</h3>
+    <div class="screenshot-preview-row" id="screenshotPreviewRow">
+      <!-- Will be populated by simple JavaScript -->
+    </div>
+  </div>
+
   <!-- Main Layout -->
   <div class="main-container">
-    <!-- Left Column -->
-    <div class="left-column">
-      <!-- Screenshots Selected -->
-      <div class="screenshots-selected">
-        <h3>Screenshots Selected</h3>
-        <div class="screenshot-preview-row" id="screenshotPreviewRow">
-          <!-- Will be populated by simple JavaScript -->
-        </div>
+    <!-- Fixed Products Selected Sidebar -->
+    <div class="products-selected">
+      <h3>Products Selected</h3>
+      <div id="selectedProducts">
+        <p>No products selected yet</p>
       </div>
-      
-      <!-- Products Selected -->
-      <div class="products-selected">
-        <h3>Products Selected</h3>
-        <div id="selectedProducts">
-          <p>No products selected yet</p>
-        </div>
-        <button class="btn" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
-      </div>
+      <button class="btn" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
     </div>
 
-    <!-- Right Column -->
+    <!-- Products Section -->
     <div class="products-section">
       <h3>Available Products</h3>
       <div class="product-row" id="productRow">
