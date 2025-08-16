@@ -762,7 +762,7 @@
         <h2 style="color: #333; margin-bottom: 10px;">Choose a Product Category</h2>
         <p style="color: #666; margin-bottom: 30px;">Select a category to browse products for your custom merchandise</p>
         
-        <div class="category-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 20px; max-width: 600px; margin: 0 auto;">
+        <div class="category-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 600px; margin: 0 auto;">
           <div class="category-card" onclick="switchCategory('womens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👩</span>
             <span style="font-weight: 600; color: #333;">Women's</span>
@@ -779,6 +779,8 @@
             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">☕</span>
             <span style="font-weight: 600; color: #333;">Mugs</span>
           </div>
+          <!-- Empty space for alignment -->
+          <div></div>
           <div class="category-card" onclick="switchCategory('hats')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🧢</span>
             <span style="font-weight: 600; color: #333;">Hats</span>
@@ -787,6 +789,8 @@
             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👜</span>
             <span style="font-weight: 600; color: #333;">Bags</span>
           </div>
+          <!-- Empty space for alignment -->
+          <div></div>
         </div>
       </div>
       
