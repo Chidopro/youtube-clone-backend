@@ -736,6 +736,11 @@
       <!-- Bottom Window: Products Selected -->
       <div class="products-selected" id="productsSelected">
         <h3>Products Selected</h3>
+        
+        <!-- Screenshot Status Indicator -->
+        <div id="screenshotStatus" style="margin-bottom: 12px; padding: 8px; border-radius: 6px; font-size: 13px; font-weight: 500;">
+          <span id="statusIcon">📸</span> <span id="statusText">No screenshot selected</span>
+        </div>
         <div class="selected-products" id="selectedProducts">
           <p>No products selected yet</p>
         </div>
@@ -825,6 +830,9 @@
        
        // Load persistent cart from previous sessions
        loadCartFromStorage();
+       
+       // Initialize screenshot status indicator
+       updateScreenshotStatus();
        
        // Get data from backend
        const videoThumbnail = '{{ img_url }}';
@@ -995,6 +1003,9 @@
          
          console.log(`🎯 Selected screenshot: ${screenshotUrl}`);
          
+         // Update screenshot status indicator
+         updateScreenshotStatus();
+         
          // Update all product cards to show selected image
          updateProductImages(screenshotUrl);
        }
@@ -1113,6 +1124,9 @@
              
              // Update order summary after loading
              updateOrderSummary();
+             
+             // Update screenshot status
+             updateScreenshotStatus();
            }
          } catch (error) {
            console.error('Error loading cart from storage:', error);
@@ -1150,6 +1164,29 @@
            orderSummary.style.display = 'none';
          }
        }
+       
+       function updateScreenshotStatus() {
+         const statusDiv = document.getElementById('screenshotStatus');
+         const statusIcon = document.getElementById('statusIcon');
+         const statusText = document.getElementById('statusText');
+         const thumbnailUrl = '{{ img_url }}';
+         const hasScreenshot = selectedScreenshotUrl !== null;
+         const hasThumbnail = thumbnailUrl && thumbnailUrl !== '' && thumbnailUrl !== 'None';
+         
+         if (hasScreenshot) {
+           statusDiv.style.cssText = 'margin-bottom: 12px; padding: 8px; border-radius: 6px; font-size: 13px; font-weight: 500; background: #d4edda; color: #155724; border-left: 4px solid #28a745;';
+           statusIcon.textContent = '✅';
+           statusText.textContent = 'Screenshot selected - ready to add products!';
+         } else if (hasThumbnail) {
+           statusDiv.style.cssText = 'margin-bottom: 12px; padding: 8px; border-radius: 6px; font-size: 13px; font-weight: 500; background: #fff3cd; color: #856404; border-left: 4px solid #ffc107;';
+           statusIcon.textContent = '📷';
+           statusText.textContent = 'Using video thumbnail (or select a screenshot)';
+         } else {
+           statusDiv.style.cssText = 'margin-bottom: 12px; padding: 8px; border-radius: 6px; font-size: 13px; font-weight: 500; background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545;';
+           statusIcon.textContent = '⚠️';
+           statusText.textContent = 'No screenshot or thumbnail available';
+         }
+       }
 
        // Add to cart functionality
               function addToCart(productName, price, button) {
@@ -1166,8 +1203,25 @@
          
          const selectedProducts = document.getElementById('selectedProducts');
          
+         // Check if user has selected a screenshot or if thumbnail is available
+         const thumbnailUrl = '{{ img_url }}';
+         const hasScreenshot = selectedScreenshotUrl !== null;
+         const hasThumbnail = thumbnailUrl && thumbnailUrl !== '' && thumbnailUrl !== 'None';
+         
+         if (!hasScreenshot && !hasThumbnail) {
+           alert('📸 Please select a screenshot first!\n\nGo back to the video page and capture a screenshot, then return to add products to your cart.');
+           return;
+         }
+         
+         if (!hasScreenshot && hasThumbnail) {
+           const confirmThumbnail = confirm('📸 No screenshot selected - use the video thumbnail instead?\n\nClick OK to use thumbnail, or Cancel to go back and select a screenshot.');
+           if (!confirmThumbnail) {
+             return;
+           }
+         }
+         
          // Get the selected screenshot URL
-         const selectedScreenshot = selectedScreenshotUrl || '{{ img_url }}';
+         const selectedScreenshot = selectedScreenshotUrl || thumbnailUrl;
          
                    // Create product item with image
           const productItem = document.createElement('div');
