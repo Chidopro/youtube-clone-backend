@@ -225,10 +225,13 @@ const Video = () => {
     }
   };
 
-  // Navigate directly to merchandise page
+  // Scroll to screenshots section
   const scrollToScreenshots = () => {
-    // Direct navigation to merchandise page without scrolling
-    handleMakeMerch();
+    // Scroll to the screenshots section
+    const screenshotsSection = document.getElementById('screenshotsSection');
+    if (screenshotsSection) {
+      screenshotsSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   // Scroll to products section and make merch
