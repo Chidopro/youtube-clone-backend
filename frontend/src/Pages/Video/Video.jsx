@@ -225,19 +225,10 @@ const Video = () => {
     }
   };
 
-  // Scroll to screenshots section and select screenshot
+  // Navigate directly to merchandise page
   const scrollToScreenshots = () => {
-    const screenshotsSection = document.getElementById('screenshotsSection');
-    if (screenshotsSection) {
-      // On mobile, scroll more smoothly
-      if (window.innerWidth <= 768) {
-        screenshotsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else {
-        screenshotsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-    // Also trigger merch creation
-    setTimeout(() => handleMakeMerch(), 500);
+    // Direct navigation to merchandise page without scrolling
+    handleMakeMerch();
   };
 
   // Scroll to products section and make merch

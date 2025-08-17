@@ -519,7 +519,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
     };
 
-    // Make Merch handler
+    // Make Merch handler - Direct navigation to merchandise page
     const handleMakeMerch = async () => {
         try {
             // Check if user is authenticated using localStorage (consistent with AuthModal)
@@ -575,14 +575,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             
             if (data.success && data.product_url) {
                 console.log('🚀 Attempting to open merchandise page:', data.product_url);
-                const newWindow = window.open(data.product_url, '_blank');
-                if (!newWindow) {
-                    console.error('❌ Popup blocked! Trying alternative...');
-                    // Fallback: navigate in same window
-                    window.location.href = data.product_url;
-                } else {
-                    console.log('✅ Merchandise page opened successfully!');
-                }
+                // Always navigate in same window to avoid popup issues and ensure proper navigation
+                window.location.href = data.product_url;
             } else {
                 console.error('❌ Failed to create product:', data);
                 alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
