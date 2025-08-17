@@ -28,7 +28,7 @@
        padding: 15px 20px; /* Tighter vertical padding */
        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
        margin: 15px auto; /* Tighter top/bottom margin */
-       max-width: 1400px;
+       max-width: 1200px; /* Match main container width */
        width: 100%;
      }
     
@@ -41,7 +41,7 @@
                    .screenshot-preview-row {
         display: flex;
         flex-direction: row;
-        gap: 8px; /* Tighter spacing between thumbnails */
+        gap: 10px; /* Slightly more space between thumbnails */
         margin: 6px 0 10px 0;
         min-height: 90px;
         align-items: center;
@@ -64,7 +64,7 @@
                    .screenshot-thumbnails {
         display: flex;
         flex-direction: row;
-        gap: 8px; /* Tighter spacing between thumbnails */
+        gap: 10px; /* Slightly more space between thumbnails */
         flex: 1;
         margin-left: 8px;
         overflow-x: auto;
@@ -87,17 +87,17 @@
     /* Main Container - Products and Fixed Sidebar */
     .main-container {
       display: flex;
-      max-width: 1400px;
+      max-width: 1200px; /* Reduced max-width to center better */
       margin: 0 auto;
-      padding: 0 15px 20px 15px; /* Tighter side padding */
-      gap: 15px; /* Reduced gap */
+      padding: 0 20px 20px 20px; /* Increased side padding for better centering */
+      gap: 20px; /* Increased gap */
     }
     
          /* Fixed Products Selected Sidebar - Bottom of Page */
      .products-selected {
        position: fixed;
        bottom: 20px;
-       right: 15px; /* Tighter right margin */
+       right: 20px; /* Increased right margin for better centering */
        width: 280px; /* Slightly smaller width */
        background: #fff;
        border-radius: 12px;
