@@ -416,7 +416,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     // Grab Screenshot handler with crop support
     const handleGrabScreenshot = async () => {
-        console.log('🎯 Grab Screenshot clicked');
+        console.log('🎯 Grab Screenshot clicked - FUNCTION CALLED');
         console.log('📊 Current state:', {
             videoId,
             video: video ? 'loaded' : 'not loaded',
@@ -885,7 +885,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             }}>
                 <button 
                     className="screenmerch-btn" 
-                    onClick={handleGrabScreenshot}
+                    onClick={() => {
+                        console.log('🔘 Select Screenshot button clicked');
+                        handleGrabScreenshot();
+                    }}
                     style={{
                         padding: '10px 20px',
                         backgroundColor: '#007bff',
