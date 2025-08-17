@@ -519,6 +519,22 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
     };
 
+    // Select Screenshot handler - Navigate to screenshot selection page
+    const handleSelectScreenshot = () => {
+        // Store current video data for screenshot selection
+        const screenshotData = {
+            videoId: videoId,
+            thumbnail: thumbnail,
+            videoUrl: window.location.href,
+            videoTitle: video?.title || 'Unknown Video',
+            creatorName: video?.channelTitle || 'Unknown Creator'
+        };
+        localStorage.setItem('screenshot_selection_data', JSON.stringify(screenshotData));
+        
+        // Navigate to screenshot selection page
+        window.location.href = '/screenshot-selection';
+    };
+
     // Make Merch handler - Direct navigation to merchandise page
     const handleMakeMerch = async () => {
         try {
@@ -842,7 +858,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             }}>
                 <button 
                     className="screenmerch-btn" 
-                    onClick={handleMakeMerch}
+                    onClick={handleSelectScreenshot}
                     style={{
                         padding: '10px 20px',
                         backgroundColor: '#007bff',

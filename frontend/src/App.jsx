@@ -19,6 +19,7 @@ import PrivacyPolicy from "./Pages/PrivacyPolicy/PrivacyPolicy";
 import TermsOfService from "./Pages/TermsOfService/TermsOfService";
 import Search from "./Pages/Search/Search";
 import MerchandiseCategories from "./Pages/MerchandiseCategories/MerchandiseCategories";
+import ScreenshotSelection from "./Pages/ScreenshotSelection/ScreenshotSelection";
 import { API_CONFIG } from "./config/apiConfig";
 
 const App = () => {
@@ -85,6 +86,7 @@ const App = () => {
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/search" element={<Search />} />
               <Route path="/merchandise" element={<MerchandiseCategories />} />
+              <Route path="/screenshot-selection" element={<ScreenshotSelection />} />
             </Routes>
           </div>
           <Footer />
