@@ -848,7 +848,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             }}>
                 <button 
                     className="screenmerch-btn" 
-                    onClick={handleGrabScreenshot}
+                    onClick={handleMakeMerch}
                     style={{
                         padding: '10px 20px',
                         backgroundColor: '#007bff',
@@ -859,7 +859,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         fontWeight: 'bold'
                     }}
                 >
-                    Grab Screenshot
+                    Select Screenshot
                 </button>
                 <button 
                     className="screenmerch-btn" 

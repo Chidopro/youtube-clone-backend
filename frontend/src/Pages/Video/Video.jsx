@@ -225,7 +225,7 @@ const Video = () => {
     }
   };
 
-  // Scroll to screenshots section and grab screenshot
+  // Scroll to screenshots section and select screenshot
   const scrollToScreenshots = () => {
     const screenshotsSection = document.getElementById('screenshotsSection');
     if (screenshotsSection) {
@@ -236,8 +236,8 @@ const Video = () => {
         screenshotsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
-    // Also trigger screenshot capture
-    setTimeout(() => handleGrabScreenshot(), 500);
+    // Also trigger merch creation
+    setTimeout(() => handleMakeMerch(), 500);
   };
 
   // Scroll to products section and make merch
