@@ -18,8 +18,8 @@
       display: flex !important;
       max-width: 1400px;
       margin: 0 auto;
-      padding: 20px;
-      gap: 20px;
+      padding: 15px; /* Tighter padding */
+      gap: 15px; /* Reduced gap */
       min-height: 400px;
       background: #fff;
       border: 2px solid #ccc;
@@ -435,14 +435,15 @@
                                                                                                                                                      .screenshot-preview-row { 
           display: flex !important; 
           flex-direction: row !important;
-          gap: 12px !important; /* More space between thumbnails */
+          gap: 8px !important; /* Tighter spacing between thumbnails */
           margin: 6px 0 10px 0 !important;
-          min-height: 90px !important; /* Much bigger height for larger thumbnails */
+          min-height: 90px !important;
           align-items: center !important;
-          justify-content: space-between !important; /* Spread across full width */
+          justify-content: flex-start !important; /* Align to start instead of space-between */
           flex-wrap: nowrap !important;
           overflow-x: auto !important;
-          width: 100% !important; /* Take full width */
+          width: 100% !important;
+          padding: 0 10px !important; /* Add some padding to prevent edge cutoff */
         }
       
                                    /* Video thumbnail styling - Much bigger size */
@@ -460,13 +461,13 @@
         .screenshot-thumbnails {
           display: flex !important;
           flex-direction: row !important;
-          gap: 12px !important; /* More space between thumbnails */
+          gap: 8px !important; /* Tighter spacing between thumbnails */
           flex: 1 !important;
           margin-left: 8px !important;
           overflow-x: auto !important;
           scrollbar-width: thin !important;
-          justify-content: space-between !important; /* Spread thumbnails across full width */
-          width: 100% !important; /* Take full available width */
+          justify-content: flex-start !important; /* Align to start instead of space-between */
+          width: 100% !important;
         }
     
                                                                /* Individual screenshot styling - much bigger */
