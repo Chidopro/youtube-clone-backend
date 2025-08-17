@@ -437,7 +437,7 @@
           flex-direction: row !important;
           gap: 12px !important; /* More space between thumbnails */
           margin: 6px 0 10px 0 !important;
-          min-height: 60px !important; /* Bigger height for larger thumbnails */
+          min-height: 90px !important; /* Much bigger height for larger thumbnails */
           align-items: center !important;
           justify-content: space-between !important; /* Spread across full width */
           flex-wrap: nowrap !important;
@@ -445,12 +445,12 @@
           width: 100% !important; /* Take full width */
         }
       
-                                   /* Video thumbnail styling - Bigger size */
+                                   /* Video thumbnail styling - Much bigger size */
                 .video-thumbnail {
-           width: 80px !important;
-           height: 60px !important;
+           width: 120px !important;
+           height: 90px !important;
            object-fit: cover !important;
-           border-radius: 6px !important;
+           border-radius: 8px !important;
            border: 2px solid #4CAF50 !important;
            cursor: pointer !important;
            flex-shrink: 0 !important;
@@ -469,17 +469,17 @@
           width: 100% !important; /* Take full available width */
         }
     
-                               /* Individual screenshot styling - bigger */
-       .screenshot-thumbnail {
-         width: 80px !important;
-         height: 60px !important;
-         object-fit: cover !important;
-         border-radius: 6px !important;
-         cursor: pointer !important;
-         border: 1px solid #ddd !important;
-         transition: border-color 0.2s !important;
-         flex-shrink: 0 !important;
-       }
+                                                               /* Individual screenshot styling - much bigger */
+        .screenshot-thumbnail {
+          width: 120px !important;
+          height: 90px !important;
+          object-fit: cover !important;
+          border-radius: 8px !important;
+          cursor: pointer !important;
+          border: 1px solid #ddd !important;
+          transition: border-color 0.2s !important;
+          flex-shrink: 0 !important;
+        }
     
     .screenshot-thumbnail:hover {
       border-color: #4CAF50;
