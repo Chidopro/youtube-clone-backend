@@ -225,10 +225,18 @@ const Video = () => {
     }
   };
 
-  // Navigate directly to merchandise page
+  // Navigate to screenshot selection page
   const scrollToScreenshots = () => {
-    // Direct navigation to merchandise page without scrolling
-    handleMakeMerch();
+    // Navigate to screenshot selection page
+    const screenshotData = {
+      videoId: videoId,
+      thumbnail: thumbnail,
+      videoUrl: window.location.href,
+      videoTitle: videoData?.title || 'Unknown Video',
+      creatorName: videoData?.channelTitle || 'Unknown Creator'
+    };
+    localStorage.setItem('screenshot_selection_data', JSON.stringify(screenshotData));
+    window.location.href = '/screenshot-selection';
   };
 
   // Scroll to products section and make merch
