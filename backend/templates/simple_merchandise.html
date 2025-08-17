@@ -25,9 +25,9 @@
      .top-section {
        background: #fff;
        border-radius: 12px;
-       padding: 20px;
+       padding: 15px 20px; /* Tighter vertical padding */
        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-       margin: 20px auto;
+       margin: 15px auto; /* Tighter top/bottom margin */
        max-width: 1400px;
        width: 100%;
      }
@@ -41,14 +41,15 @@
                    .screenshot-preview-row {
         display: flex;
         flex-direction: row;
-        gap: 12px; /* More space between thumbnails */
+        gap: 8px; /* Tighter spacing between thumbnails */
         margin: 6px 0 10px 0;
-        min-height: 90px; /* Much bigger height for larger thumbnails */
+        min-height: 90px;
         align-items: center;
-        justify-content: space-between; /* Spread across full width */
+        justify-content: flex-start; /* Align to start instead of space-between */
         flex-wrap: nowrap;
         overflow-x: auto;
-        width: 100%; /* Take full width */
+        width: 100%;
+        padding: 0 10px; /* Add some padding to prevent edge cutoff */
       }
     
          .video-thumbnail {
@@ -63,13 +64,13 @@
                    .screenshot-thumbnails {
         display: flex;
         flex-direction: row;
-        gap: 12px; /* More space between thumbnails */
+        gap: 8px; /* Tighter spacing between thumbnails */
         flex: 1;
         margin-left: 8px;
         overflow-x: auto;
         scrollbar-width: thin;
-        justify-content: space-between; /* Spread thumbnails across full width */
-        width: 100%; /* Take full available width */
+        justify-content: flex-start; /* Align to start instead of space-between */
+        width: 100%;
       }
     
          .screenshot-thumbnail {
@@ -88,16 +89,16 @@
       display: flex;
       max-width: 1400px;
       margin: 0 auto;
-      padding: 0 20px 20px 20px;
-      gap: 20px;
+      padding: 0 15px 20px 15px; /* Tighter side padding */
+      gap: 15px; /* Reduced gap */
     }
     
          /* Fixed Products Selected Sidebar - Bottom of Page */
      .products-selected {
        position: fixed;
        bottom: 20px;
-       right: 20px;
-       width: 300px;
+       right: 15px; /* Tighter right margin */
+       width: 280px; /* Slightly smaller width */
        background: #fff;
        border-radius: 12px;
        padding: 20px;
@@ -123,7 +124,7 @@
       border-radius: 12px;
       padding: 20px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      margin-right: 320px; /* Make space for fixed sidebar */
+      margin-right: 295px; /* Adjusted for smaller sidebar */
     }
     
     .product-row {
