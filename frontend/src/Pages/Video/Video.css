@@ -77,14 +77,17 @@
   background: #f9f9f9;
   padding-top: 10px;
   padding-bottom: 10px;
+  overflow-x: hidden;
 }
 
 .main-container {
   display: flex;
   gap: 20px;
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+  align-items: flex-start;
+  box-sizing: border-box;
 }
 
 .video-viewer {
@@ -174,16 +177,21 @@
     flex-direction: column;
     padding: 0 10px;
     gap: 15px;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
   
   .video-viewer {
     order: 1;
+    width: 100%;
   }
   
   .screenshots-section {
     order: 2;
     max-height: none;
     padding: 15px;
+    width: 100%;
   }
   
   .screenshots-header {
@@ -201,17 +209,23 @@
   }
   
   .flow-steps {
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    gap: 4px;
+    justify-content: center;
+    flex-wrap: nowrap;
   }
   
   .flow-arrow {
-    transform: rotate(90deg);
-    margin: 4px 0;
+    margin: 0 3px;
+    font-size: 1rem;
   }
   
   .flow-step {
-    min-width: 110px;
+    min-width: auto;
+    flex-direction: row;
+    gap: 4px;
+    flex: 1;
+    max-width: 80px;
   }
   
   .user-flow-section {

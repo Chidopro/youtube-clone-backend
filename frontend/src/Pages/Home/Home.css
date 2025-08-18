@@ -20,9 +20,11 @@
 .user-flow-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   margin: -10px -20px 20px -20px;
-  padding: 20px 20px;
+  padding: 15px 20px;
   color: white;
   text-align: center;
+  min-height: 80px;
+  max-height: 100px;
 }
 
 .flow-steps {
@@ -47,12 +49,12 @@
   background: rgba(255, 255, 255, 0.2);
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: bold;
   margin-bottom: 6px;
   transition: all 0.3s ease;
@@ -65,14 +67,14 @@
 
 .step-content h3 {
   margin: 0 0 3px 0;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 600;
   color: white;
 }
 
 .step-content p {
   margin: 0;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   opacity: 0.9;
   line-height: 1.1;
 }
@@ -87,21 +89,46 @@
 /* Mobile Responsive for Flow */
 @media (max-width: 768px) {
   .flow-steps {
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    gap: 4px;
+    justify-content: center;
+    flex-wrap: nowrap;
   }
   
   .flow-arrow {
-    transform: rotate(90deg);
-    margin: 4px 0;
+    margin: 0 3px;
+    font-size: 1rem;
   }
   
   .flow-step {
-    min-width: 110px;
+    min-width: auto;
+    flex-direction: row;
+    gap: 4px;
+    flex: 1;
+    max-width: 80px;
+  }
+  
+  .step-number {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 0.7rem !important;
+    margin-bottom: 0 !important;
+  }
+  
+  .step-content h3 {
+    font-size: 0.6rem !important;
+    margin: 0 !important;
+    line-height: 1.1;
+  }
+  
+  .step-content p {
+    display: none !important;
   }
   
   .user-flow-section {
-    padding: 15px 15px;
+    padding: 12px 15px;
+    min-height: 60px !important;
+    max-height: 80px !important;
   }
 }
 
