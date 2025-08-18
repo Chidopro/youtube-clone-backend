@@ -15,16 +15,17 @@
 
 .footer-content {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   flex-wrap: wrap;
   gap: 30px;
-  padding-left: 20px;
+  text-align: center;
 }
 
 .footer-logo-section {
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .footer-logo {
@@ -35,10 +36,9 @@
 .footer-links-section {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 40px;
   flex-wrap: wrap;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .footer-links-section a {
@@ -56,13 +56,16 @@
 .footer-copyright {
   display: flex;
   align-items: center;
-  margin-left: auto;
+  justify-content: center;
+  width: 100%;
+  margin-top: 10px;
 }
 
 .footer-copyright p {
   margin: 0;
   color: #6c757d;
   white-space: nowrap;
+  text-align: center;
 }
 
 /* Responsive Design */

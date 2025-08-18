@@ -416,15 +416,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     // Grab Screenshot handler with crop support
     const handleGrabScreenshot = async () => {
-        console.log('🎯 Grab Screenshot clicked - FUNCTION CALLED');
-        console.log('📊 Current state:', {
-            videoId,
-            video: video ? 'loaded' : 'not loaded',
-            videoElement: videoRef.current ? 'exists' : 'not found',
-            screenshotsCount: screenshots.length,
-            isCropApplied,
-            hasCroppedImage: !!croppedImage
-        });
+        console.log('Grab Screenshot clicked');
         
         // Prevent page scrolling when screenshot is taken
         const currentScroll = window.scrollY;
@@ -436,7 +428,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
         // If we have a cropped image, use it directly
         if (isCropApplied && croppedImage) {
-            console.log('✅ Using cropped image for screenshot');
+            console.log('Using cropped image for screenshot');
             setScreenshots(prev => prev.length < 6 ? [...prev, croppedImage] : prev);
             const newScreenshotCount = screenshots.length + 1;
             alert(`Cropped screenshot ${newScreenshotCount} captured successfully!`);
@@ -453,14 +445,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         // Otherwise, capture a new screenshot
         const videoElement = videoRef.current;
         if (!videoElement) {
-            console.error('❌ Video element not found');
             alert('Video not loaded yet. Please wait for the video to load.');
-            return;
-        }
-        
-        if (!video) {
-            console.error('❌ Video data not loaded');
-            alert('Video data not loaded yet. Please wait for the video to load.');
             return;
         }
 
@@ -468,43 +453,32 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             const currentTime = videoElement.currentTime || 0;
             const videoUrl = video.video_url;
             
-            console.log(`🎬 Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
-            console.log(`🔗 API Endpoint: ${API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT}`);
-            
-            const requestData = {
-                video_url: videoUrl,
-                timestamp: currentTime,
-                quality: 85,
-                crop_area: showCropTool && cropArea.width > 0 ? cropArea : null
-            };
-            
-            console.log('📤 Request data:', requestData);
+            console.log(`Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
             
             const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(requestData)
+                body: JSON.stringify({
+                    video_url: videoUrl,
+                    timestamp: currentTime,
+                    quality: 85,
+                    crop_area: showCropTool && cropArea.width > 0 ? cropArea : null
+                })
             });
             
-            console.log(`📥 Response status: ${response.status}`);
-            console.log(`📥 Response headers:`, Object.fromEntries(response.headers.entries()));
-            
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`❌ Server error ${response.status}:`, errorText);
-                throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
+                throw new Error(`Server responded with status: ${response.status}`);
             }
             
             const result = await response.json();
-            console.log('📥 Response data:', result);
             
             if (result.success && result.screenshot) {
-                console.log('✅ Server-side screenshot captured successfully');
+                console.log('Server-side screenshot captured successfully');
                 
                 if (result.fallback) {
-                    console.log('⚠️ Server returned fallback response, using thumbnail instead');
+                    console.log('Server returned fallback response, using thumbnail instead');
                     const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
                     if (thumbnailUrl) {
                         setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
@@ -522,44 +496,27 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 window.scrollTo(0, currentScroll);
                 return;
             } else {
-                console.error('❌ Server screenshot capture failed:', result.error);
+                console.error('Server screenshot capture failed:', result.error);
                 throw new Error(result.error || 'Server failed to capture screenshot');
             }
             
         } catch (error) {
-            console.error('❌ Server capture failed, using thumbnail fallback:', error);
+            console.log('Server capture failed, using thumbnail fallback:', error);
             
             const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
             
             if (thumbnailUrl) {
-                console.log('🖼️ Adding video thumbnail as screenshot fallback');
+                console.log('Adding video thumbnail as screenshot');
                 setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
                 
                 const newScreenshotCount = screenshots.length + 1;
                 alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
             } else {
-                console.error('❌ No thumbnail available for fallback');
                 alert('No thumbnail available for this video.');
             }
             // Restore scroll position
             window.scrollTo(0, currentScroll);
         }
-    };
-
-    // Select Screenshot handler - Navigate to screenshot selection page
-    const handleSelectScreenshot = () => {
-        // Store current video data for screenshot selection
-        const screenshotData = {
-            videoId: videoId,
-            thumbnail: thumbnail,
-            videoUrl: window.location.href,
-            videoTitle: video?.title || 'Unknown Video',
-            creatorName: video?.channelTitle || 'Unknown Creator'
-        };
-        localStorage.setItem('screenshot_selection_data', JSON.stringify(screenshotData));
-        
-        // Navigate to screenshot selection page
-        window.location.href = '/screenshot-selection';
     };
 
     // Make Merch handler - Direct navigation to merchandise page
@@ -885,10 +842,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             }}>
                 <button 
                     className="screenmerch-btn" 
-                    onClick={() => {
-                        console.log('🔘 Select Screenshot button clicked');
-                        handleGrabScreenshot();
-                    }}
+                    onClick={handleMakeMerch}
                     style={{
                         padding: '10px 20px',
                         backgroundColor: '#007bff',

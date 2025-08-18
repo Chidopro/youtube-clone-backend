@@ -4,15 +4,17 @@
   video::-webkit-media-controls-fullscreen-button {
     display: none !important;
   }
-  /* iOS: ensure inline playback */
+  /* iOS: ensure inline playback with consistent sizing */
   video[playsinline],
   video[webkit-playsinline] {
+    height: 360px !important;
     max-height: 360px !important;
   }
   .play-video .video-container,
   .play-video video {
     max-width: 100% !important;
     height: 360px !important;
+    width: 100% !important;
   }
   /* Prevent page from scrolling while user draws crop area */
   .play-video .video-container,
@@ -36,15 +38,31 @@
 .play-video video {
     width: 100%;
     max-width: 640px;
-    max-height: 360px;
+    height: 360px;
     object-fit: contain;
-    /* Professional video constraints */
-    height: auto;
+    /* Professional video constraints - fixed height to prevent size changes */
     aspect-ratio: 16/9;
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
     border: 1px solid #e0e0e0;
     background: #000;
+    /* Ensure consistent sizing */
+    display: block;
+    margin: 0 auto;
+}
+
+/* Video container to maintain consistent dimensions */
+.play-video .video-container {
+    width: 100%;
+    max-width: 640px;
+    height: 360px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 .play-video iframe {
@@ -393,12 +411,19 @@
 /* Mobile-specific video fixes */
 @media (max-width: 768px) {
     .play-video video {
-        max-height: 50vh;
+        height: 360px;
+        max-height: 360px;
         width: 100%;
         object-fit: contain;
         /* Prevent fullscreen overflow */
         position: relative;
         z-index: 1;
+    }
+    
+    .play-video .video-container {
+        height: 360px;
+        max-height: 360px;
+        width: 100%;
     }
     
     .screenmerch-btn {
@@ -428,7 +453,13 @@
 
 @media (max-width: 480px) {
     .play-video video {
-        max-height: 40vh;
+        height: 360px;
+        max-height: 360px;
+    }
+    
+    .play-video .video-container {
+        height: 360px;
+        max-height: 360px;
     }
     
     .screenmerch-btn {
