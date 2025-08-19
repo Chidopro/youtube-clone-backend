@@ -574,9 +574,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.log('✅ Product URL:', data.product_url);
             
             if (data.success && data.product_url) {
-                console.log('🚀 Attempting to open merchandise page:', data.product_url);
-                // Always navigate in same window to avoid popup issues and ensure proper navigation
-                window.location.href = data.product_url;
+                console.log('🚀 Copy 5 product URL generated:', data.product_url);
+                // Show the local URL instead of redirecting for testing
+                alert(`Copy 5 Product Created! Local URL: ${data.product_url}`);
+                // window.location.href = data.product_url;
             } else {
                 console.error('❌ Failed to create product:', data);
                 alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
