@@ -7,10 +7,10 @@ plugins = []
 [functions."*"]
 
 [build]
-publish = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone\\frontend\\dist"
+publish = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone - Copy (5)\\frontend\\dist"
 publishOrigin = "config"
 commandOrigin = "config"
-base = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone\\frontend"
+base = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone - Copy (5)\\frontend"
 command = "npm install && npm run build"
 
 [build.environment]

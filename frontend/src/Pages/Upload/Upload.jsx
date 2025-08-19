@@ -166,7 +166,7 @@ const Upload = ({ sidebar }) => {
             console.log('User ID:', user.id);
             
             // Ensure user exists in database before upload
-            const ensureUserResponse = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/users/ensure-exists', {
+            const ensureUserResponse = await fetch('https://copy5-backend.fly.dev/api/users/ensure-exists', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

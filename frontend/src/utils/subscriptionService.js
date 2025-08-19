@@ -75,7 +75,7 @@ export class SubscriptionService {
       const { data: { user } } = await supabase.auth.getUser();
       
       // Create Stripe checkout session for Pro tier with 7-day trial
-      const response = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/create-pro-checkout', {
+      const response = await fetch('https://copy5-backend.fly.dev/api/create-pro-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
