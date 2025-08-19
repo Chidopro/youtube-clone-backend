@@ -2,6 +2,13 @@
 // Force production mode for Netlify deployment
 const isDevelopment = false; // Force production mode
 
+// Direct production configuration - no environment detection
+const API_BASE_URL = 'https://copy5-backend.fly.dev';
+const EMAIL_API_URL = 'https://copy5-backend.fly.dev';
+const SUBSCRIPTION_API_URL = 'https://copy5-backend.fly.dev';
+const SUPABASE_URL = 'https://sojxbydpcdcdzfdtbypd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no';
+
 const config = {
   development: {
     API_BASE_URL: 'http://127.0.0.1:5000',
@@ -20,7 +27,13 @@ const config = {
 };
 
 // Force production config for Netlify deployment to connect to Copy 5 backend
-const currentConfig = config.production;
+const currentConfig = {
+  API_BASE_URL: API_BASE_URL,
+  EMAIL_API_URL: EMAIL_API_URL,
+  SUBSCRIPTION_API_URL: SUBSCRIPTION_API_URL,
+  SUPABASE_URL: SUPABASE_URL,
+  SUPABASE_ANON_KEY: SUPABASE_ANON_KEY
+};
 
 export const API_CONFIG = {
   BASE_URL: currentConfig.API_BASE_URL,
