@@ -3,16 +3,16 @@
 const isDevelopment = false; // Force production mode
 
 // Debug logging to verify configuration is loaded
-console.log('API Configuration loaded - Using production backend:', 'https://backend-hidden-firefly-7865.fly.dev');
+console.log('API Configuration loaded - Using production backend:', 'https://copy5-backend.fly.dev');
 console.log('Configuration timestamp:', new Date().toISOString());
 
 // Force override any cached configuration
-window.FORCE_PRODUCTION_API = 'https://backend-hidden-firefly-7865.fly.dev';
+window.FORCE_PRODUCTION_API = 'https://copy5-backend.fly.dev';
 
 // Direct production configuration - no environment detection
-const API_BASE_URL = 'https://backend-hidden-firefly-7865.fly.dev';
-const EMAIL_API_URL = 'https://backend-hidden-firefly-7865.fly.dev';
-const SUBSCRIPTION_API_URL = 'https://backend-hidden-firefly-7865.fly.dev';
+const API_BASE_URL = 'https://copy5-backend.fly.dev';
+const EMAIL_API_URL = 'https://copy5-backend.fly.dev';
+const SUBSCRIPTION_API_URL = 'https://copy5-backend.fly.dev';
 const SUPABASE_URL = 'https://sojxbydpcdcdzfdtbypd.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no';
 
@@ -25,9 +25,9 @@ const config = {
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no'
   },
   production: {
-    API_BASE_URL: 'https://backend-hidden-firefly-7865.fly.dev',
-    EMAIL_API_URL: 'https://backend-hidden-firefly-7865.fly.dev',
-    SUBSCRIPTION_API_URL: 'https://backend-hidden-firefly-7865.fly.dev',
+    API_BASE_URL: 'https://copy5-backend.fly.dev',
+    EMAIL_API_URL: 'https://copy5-backend.fly.dev',
+    SUBSCRIPTION_API_URL: 'https://copy5-backend.fly.dev',
     SUPABASE_URL: 'https://sojxbydpcdcdzfdtbypd.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no'
   }
