@@ -4,6 +4,10 @@ const isDevelopment = false; // Force production mode
 
 // Debug logging to verify configuration is loaded
 console.log('API Configuration loaded - Using production backend:', 'https://copy5-backend.fly.dev');
+console.log('Configuration timestamp:', new Date().toISOString());
+
+// Force override any cached configuration
+window.FORCE_PRODUCTION_API = 'https://copy5-backend.fly.dev';
 
 // Direct production configuration - no environment detection
 const API_BASE_URL = 'https://copy5-backend.fly.dev';
