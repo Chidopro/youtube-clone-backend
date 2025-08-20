@@ -20,7 +20,7 @@ const Video = () => {
 
   const handleStep2Click = () => {
     // Trigger screenshot capture when Step 2 is clicked
-    console.log('Step 2 clicked - triggering screenshot capture');
+    console.log('Step 2 clicked - triggering screenshot capture - UPDATED');
     if (playVideoRef.current && playVideoRef.current.handleGrabScreenshot) {
       playVideoRef.current.handleGrabScreenshot();
     }
