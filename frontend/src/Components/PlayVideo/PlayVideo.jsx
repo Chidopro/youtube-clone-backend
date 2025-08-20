@@ -723,6 +723,46 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     )}
                 </div>
             </div>
+            
+            {/* Action buttons for screenshots and merchandise */}
+            <div className="screenmerch-actions" style={{
+                display: 'flex',
+                gap: '10px',
+                marginBottom: '15px',
+                flexWrap: 'wrap'
+            }}>
+                <button 
+                    className="screenmerch-btn" 
+                    onClick={handleGrabScreenshot}
+                    style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#007bff',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    Select Screenshot
+                </button>
+                <button 
+                    className="screenmerch-btn" 
+                    onClick={handleMakeMerch}
+                    style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#28a745',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    Make Merch
+                </button>
+            </div>
+            
             <h3>{video.title}</h3>
             <div className="play-video-info">
                 <p>{moment(video.created_at).fromNow()}</p>
