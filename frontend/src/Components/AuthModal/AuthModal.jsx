@@ -16,9 +16,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
-      // Force production API if available
-      const baseUrl = window.FORCE_PRODUCTION_API || API_CONFIG.BASE_URL;
-      const url = `${baseUrl}${endpoint}`;
+      const url = `${API_CONFIG.BASE_URL}${endpoint}`;
       
       console.log('Attempting auth request to:', url);
       console.log('Mode:', isLoginMode ? 'login' : 'signup');

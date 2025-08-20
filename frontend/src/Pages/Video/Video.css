@@ -1,23 +1,10 @@
 /* User Flow Section Styles - Matching Home Page */
 .user-flow-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  margin: -24px -24px 30px -24px;
+  margin: -10px -20px 20px -20px;
   padding: 20px 20px;
   color: white;
   text-align: center;
-  width: 100vw;
-  position: relative;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
-  margin-bottom: 30px !important;
-  /* Force visibility */
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  z-index: 1000 !important;
-  box-sizing: border-box;
 }
 
 .flow-steps {
@@ -25,7 +12,7 @@
   justify-content: center;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 60px;
+  gap: 12px;
   max-width: 800px;
   margin: 0 auto;
 }
@@ -42,37 +29,6 @@
 
 .flow-step:hover {
   transform: translateY(-2px);
-}
-
-.clickable-step {
-  cursor: pointer;
-  position: relative;
-}
-
-.clickable-step:hover {
-  transform: translateY(-3px);
-}
-
-.clickable-step:hover .step-number {
-  background: rgba(255, 255, 255, 0.4);
-  transform: scale(1.15);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.clickable-step::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.8);
-  transition: width 0.3s ease;
-}
-
-.clickable-step:hover::after {
-  width: 80%;
 }
 
 .step-number {
@@ -121,17 +77,14 @@
   background: #f9f9f9;
   padding-top: 10px;
   padding-bottom: 10px;
-  overflow-x: hidden;
 }
 
 .main-container {
   display: flex;
   gap: 20px;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
-  align-items: flex-start;
-  box-sizing: border-box;
 }
 
 .video-viewer {
@@ -152,74 +105,38 @@
   overflow-y: auto;
 }
 
-.screenshots-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
 .screenshots-section h3 {
-  margin: 0;
+  margin: 0 0 15px 0;
   color: #333;
   font-size: 1.2rem;
   font-weight: 600;
 }
 
-.clear-all-btn {
-  background: #ff4757;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-weight: 500;
-}
-
-.clear-all-btn:hover {
-  background: #ff3838;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
-}
-
-.clear-all-btn:active {
-  transform: translateY(0);
-}
-
-/* Clean Layout - Matching Paint Mockup */
+/* Legacy styles for backward compatibility */
 .play-container{
     background: #f9f9f9;
-    padding: 20px;
+    padding-left: 2%;
+    padding-right: 2%;
+    padding-top: 20px;
+    padding-bottom: 20px;
     display: flex;
     justify-content: space-between;
-    gap: 20px;
-    max-width: 1400px;
-    margin: 0 auto;
-    height: calc(100vh - 200px);
-    overflow: hidden;
+    flex-wrap: wrap;
 }
 
 .main-video-col {
-    flex: 1;
-    min-width: 350px;
-    max-width: 500px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+    flex: 2;
+    min-width: 400px;
+    max-width: 720px;
 }
 
 .screenmerch-sidebar {
-    flex: 1.5;
-    min-width: 400px;
-    max-width: 600px;
-    background: white;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    height: 100%;
-    overflow: hidden;
+    flex: 1;
+    min-width: 260px;
+    max-width: 340px;
+    padding-left: 24px;
+    padding-right: 8px;
+    overflow-y: auto;
 }
 
 /* Mobile Responsive */
@@ -228,55 +145,35 @@
     flex-direction: column;
     padding: 0 10px;
     gap: 15px;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
   }
   
   .video-viewer {
     order: 1;
-    width: 100%;
   }
   
   .screenshots-section {
     order: 2;
     max-height: none;
     padding: 15px;
-    width: 100%;
-  }
-  
-  .screenshots-header {
-    margin-bottom: 12px;
   }
   
   .screenshots-section h3 {
     font-size: 1.1rem;
-    margin: 0;
-  }
-  
-  .clear-all-btn {
-    padding: 6px 10px;
-    font-size: 0.8rem;
+    margin-bottom: 12px;
   }
   
   .flow-steps {
-    flex-direction: row;
-    gap: 4px;
-    justify-content: center;
-    flex-wrap: nowrap;
+    flex-direction: column;
+    gap: 8px;
   }
   
   .flow-arrow {
-    margin: 0 3px;
-    font-size: 1rem;
+    transform: rotate(90deg);
+    margin: 4px 0;
   }
   
   .flow-step {
-    min-width: auto;
-    flex-direction: row;
-    gap: 4px;
-    flex: 1;
-    max-width: 80px;
+    min-width: 110px;
   }
   
   .user-flow-section {

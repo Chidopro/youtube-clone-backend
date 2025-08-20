@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import './PlayVideo.css'
+import like from '../../assets/like.png'
+import dislike from '../../assets/dislike.png'
+import share from '../../assets/share.png'
+import save from '../../assets/save.png'
 import { value_converter } from '../../data'
 import moment from 'moment'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
-import CropModal from '../CropModal/CropModal'
-import AuthModal from '../AuthModal/AuthModal'
 
-const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData }, ref) => {
+const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData }) => {
     // Use prop if provided, otherwise fallback to URL param
     const params = useParams();
     const videoId = propVideoId || params.videoId;
@@ -26,16 +28,6 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
     const [croppedImage, setCroppedImage] = useState(null);
     const [isCropApplied, setIsCropApplied] = useState(false);
     const [isApplyingCrop, setIsApplyingCrop] = useState(false);
-    
-    // Screenshot crop modal state
-    const [showCropModal, setShowCropModal] = useState(false);
-    const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(null);
-    const [selectedScreenshotImage, setSelectedScreenshotImage] = useState(null);
-    
-    // Auth modal state
-    const [showAuthModal, setShowAuthModal] = useState(false);
-
-
 
     useEffect(() => {
         if (!videoId) {
@@ -211,52 +203,6 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
         console.log('Crop selection finished. Final crop area:', cropArea);
     };
 
-    // Touch counterparts to prevent page scroll on mobile during crop
-    const handleCropTouchStart = (e) => {
-        if (!showCropTool || !videoRef.current) return;
-        if (!e.touches || e.touches.length === 0) return;
-        e.preventDefault();
-        e.stopPropagation();
-        if (videoRef.current) {
-            videoRef.current.pause();
-        }
-        const touch = e.touches[0];
-        const rect = videoRef.current.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        setIsSelecting(true);
-        setSelectionStart({ x, y });
-        setCropArea({ x, y, width: 0, height: 0 });
-    };
-
-    const handleCropTouchMove = (e) => {
-        if (!showCropTool || !isSelecting || !videoRef.current) return;
-        if (!e.touches || e.touches.length === 0) return;
-        e.preventDefault();
-        e.stopPropagation();
-        if (videoRef.current) {
-            videoRef.current.pause();
-        }
-        const touch = e.touches[0];
-        const rect = videoRef.current.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        const width = Math.abs(x - selectionStart.x);
-        const height = Math.abs(y - selectionStart.y);
-        const left = Math.min(x, selectionStart.x);
-        const top = Math.min(y, selectionStart.y);
-        setCropArea({ x: left, y: top, width, height });
-    };
-
-    const handleCropTouchEnd = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsSelecting(false);
-        if (videoRef.current) {
-            videoRef.current.pause();
-        }
-    };
-
     const resetCropSelection = () => {
         setCropArea({ x: 0, y: 0, width: 0, height: 0 });
         setCroppedImage(null);
@@ -416,15 +362,35 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
         }
     };
 
-    // Grab Screenshot handler - Simplified for speed
+    // Grab Screenshot handler with crop support
     const handleGrabScreenshot = async () => {
         console.log('Grab Screenshot clicked');
+        
+        // Prevent page scrolling when screenshot is taken
+        const currentScroll = window.scrollY;
         
         if (screenshots.length >= 6) {
             alert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
             return;
         }
 
+        // If we have a cropped image, use it directly
+        if (isCropApplied && croppedImage) {
+            console.log('Using cropped image for screenshot');
+            setScreenshots(prev => prev.length < 6 ? [...prev, croppedImage] : prev);
+            const newScreenshotCount = screenshots.length + 1;
+            alert(`Cropped screenshot ${newScreenshotCount} captured successfully!`);
+            // Reset crop state after successful capture
+            setCroppedImage(null);
+            setIsCropApplied(false);
+            setShowCropTool(false);
+            setCropArea({ x: 0, y: 0, width: 0, height: 0 });
+            // Restore page scrolling
+            document.body.style.overflow = 'auto';
+            return;
+        }
+
+        // Otherwise, capture a new screenshot
         const videoElement = videoRef.current;
         if (!videoElement) {
             alert('Video not loaded yet. Please wait for the video to load.');
@@ -435,7 +401,7 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
             const currentTime = videoElement.currentTime || 0;
             const videoUrl = video.video_url;
             
-            console.log(`Capturing screenshot at ${currentTime}s from ${videoUrl}`);
+            console.log(`Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
             
             const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
                 method: 'POST',
@@ -444,7 +410,9 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
                 },
                 body: JSON.stringify({
                     video_url: videoUrl,
-                    timestamp: currentTime
+                    timestamp: currentTime,
+                    quality: 85,
+                    crop_area: showCropTool && cropArea.width > 0 ? cropArea : null
                 })
             });
             
@@ -455,101 +423,111 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
             const result = await response.json();
             
             if (result.success && result.screenshot) {
-                console.log('Screenshot captured successfully');
-                setScreenshots(prev => prev.length < 6 ? [...prev, result.screenshot] : prev);
-                const newScreenshotCount = screenshots.length + 1;
-                alert(`Screenshot ${newScreenshotCount} captured successfully!`);
-            } else {
-                // Fallback to thumbnail
-                const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
-                if (thumbnailUrl) {
-                    setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
-                    const newScreenshotCount = screenshots.length + 1;
-                    alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
+                console.log('Server-side screenshot captured successfully');
+                
+                if (result.fallback) {
+                    console.log('Server returned fallback response, using thumbnail instead');
+                    const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
+                    if (thumbnailUrl) {
+                        setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
+                        const newScreenshotCount = screenshots.length + 1;
+                        alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
+                    } else {
+                        alert('No thumbnail available for this video.');
+                    }
                 } else {
-                    alert('No thumbnail available for this video.');
+                    setScreenshots(prev => prev.length < 6 ? [...prev, result.screenshot] : prev);
+                    const newScreenshotCount = screenshots.length + 1;
+                    alert(`Screenshot ${newScreenshotCount} captured successfully!`);
                 }
+                // Restore scroll position
+                window.scrollTo(0, currentScroll);
+                return;
+            } else {
+                console.error('Server screenshot capture failed:', result.error);
+                throw new Error(result.error || 'Server failed to capture screenshot');
             }
             
         } catch (error) {
-            console.log('Screenshot capture failed, using thumbnail fallback:', error);
+            console.log('Server capture failed, using thumbnail fallback:', error);
             
             const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
             
             if (thumbnailUrl) {
+                console.log('Adding video thumbnail as screenshot');
                 setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
+                
                 const newScreenshotCount = screenshots.length + 1;
                 alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
             } else {
                 alert('No thumbnail available for this video.');
             }
+            // Restore scroll position
+            window.scrollTo(0, currentScroll);
         }
     };
 
-    // Expose methods to parent component via ref
-    useImperativeHandle(ref, () => ({
-        handleGrabScreenshot: handleGrabScreenshot
-    }), [screenshots, isCropApplied, croppedImage, video, videoRef]);
-
-    // Make Merch handler - Simplified
+    // Make Merch handler
     const handleMakeMerch = async () => {
-        alert('Make Merch button clicked!'); // Test alert
-        console.log('Make Merch clicked - starting process');
-        
-        // Always show auth modal first for simplicity
-        const merchData = {
-            thumbnail,
-            videoUrl: window.location.href,
-            screenshots: screenshots.slice(0, 6),
-        };
-        console.log('Storing merch data:', merchData);
-        localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
-        
-        console.log('Setting showAuthModal to true');
-        // Show the AuthModal
-        setShowAuthModal(true);
-        console.log('AuthModal should now be visible');
-    };
-
-    // Handle successful authentication - proceed with merch creation
-    const handleAuthSuccess = async () => {
-        // Get the pending merch data
-        const pendingData = localStorage.getItem('pending_merch_data');
-        if (pendingData) {
-            // Clear the pending data
-            localStorage.removeItem('pending_merch_data');
+        try {
+            // Check if user is authenticated
+            const isAuthenticated = localStorage.getItem('user_authenticated');
             
-            // Proceed with merch creation directly by calling the API
-            try {
-                const merchData = JSON.parse(pendingData);
-                console.log('Creating merch product after authentication:', merchData);
+            if (!isAuthenticated) {
+                // Store screenshot data for after login
+                const merchData = {
+                    thumbnail,
+                    videoUrl: window.location.href,
+                    screenshots: screenshots.slice(0, 6),
+                };
+                localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
                 
-                const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(merchData)
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.success && data.product_url) {
-                    console.log('Merch product created successfully, redirecting to:', data.product_url);
-                    window.location.href = data.product_url;
-                } else {
-                    console.error('Failed to create product:', data);
-                    alert(`Failed to create merch product: ${data.error || 'Unknown error'}`);
-                }
-            } catch (error) {
-                console.error('Error creating merch product after auth:', error);
-                alert('Error creating merch product. Please try again.');
+                // Redirect to login page
+                window.location.href = '/login?redirect=merch';
+                return;
             }
+            
+            // User is authenticated, proceed with merch creation
+            console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
+            
+            const requestData = {
+                thumbnail,
+                videoUrl: window.location.href,
+                screenshots: screenshots.slice(0, 6),
+            };
+            
+            console.log('Request data:', requestData);
+            
+            const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Server error response:', errorText);
+                throw new Error(`Server error: ${response.status} - ${errorText}`);
+            }
+            
+            const data = await response.json();
+            console.log('Response data:', data);
+            
+            if (data.success && data.product_url) {
+                window.open(data.product_url, '_blank');
+            } else {
+                console.error('Failed to create product:', data);
+                alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
+            }
+        } catch (err) {
+            console.error('Make Merch error:', err);
+            alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
         }
     };
 
@@ -558,14 +536,13 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
 
     return (
         <div className="play-video">
-
             <div 
                 className="video-container" 
                 ref={videoContainerRef}
                 style={{ position: 'relative', display: 'inline-block' }}
             >
 
-                        <div style={{ 
+                    <div style={{ 
                         position: 'relative', 
                         display: 'inline-block', 
                         width: '100%', 
@@ -580,20 +557,13 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
                         // Disable any transitions that might cause size changes
                         transition: 'none',
                         // Ensure container never changes size
-                            flexShrink: 0,
-                            flexGrow: 0,
-                            // Prevent scroll/pan gestures while cropping
-                            touchAction: showCropTool ? 'none' : 'manipulation',
-                            overscrollBehavior: 'contain'
+                        flexShrink: 0,
+                        flexGrow: 0
                     }}>
                         <video 
                             key={videoId}
                             ref={videoRef} 
                             controls 
-                            playsInline
-                            webkit-playsinline="true"
-                            disablePictureInPicture
-                            controlsList="nodownload"
                             width="100%" 
                             style={{
                                 background: '#000', 
@@ -609,9 +579,8 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
                                 // Prevent any size changes
                                 transition: 'none',
                                 // Ensure video never changes size
-                                    flexShrink: 0,
-                                    flexGrow: 0,
-                                    touchAction: showCropTool ? 'none' : 'manipulation'
+                                flexShrink: 0,
+                                flexGrow: 0
                             }} 
                             poster={video.thumbnail || ''} 
                             src={video.video_url}
@@ -621,9 +590,6 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
                             onMouseUp={showCropTool ? handleCropMouseUp : undefined}
                             onMouseLeave={showCropTool ? handleCropMouseUp : undefined}
                             onClick={showCropTool ? (e) => e.preventDefault() : undefined}
-                                onTouchStart={showCropTool ? handleCropTouchStart : undefined}
-                                onTouchMove={showCropTool ? handleCropTouchMove : undefined}
-                                onTouchEnd={showCropTool ? handleCropTouchEnd : undefined}
                         >
                             Your browser does not support the video tag.
                         </video>
@@ -757,112 +723,45 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
                     )}
                 </div>
             </div>
-            
-            {/* Action buttons for screenshots and merchandise */}
-            <div className="screenmerch-actions" style={{
-                display: 'flex',
-                gap: '10px',
-                marginBottom: '15px',
-                flexWrap: 'wrap',
-                border: '2px solid red', // Debug border
-                padding: '10px',
-                backgroundColor: 'yellow' // Debug background
-            }}>
-                <button 
-                    className="screenmerch-btn" 
-                    onClick={handleGrabScreenshot}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#007bff',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                    }}
-                >
-                    Select Screenshot
-                </button>
-                <button 
-                    className="screenmerch-btn" 
-                    onClick={handleMakeMerch}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#28a745',
-                        color: 'white',
-                        border: '2px solid red', // Debug border
-                        borderRadius: '5px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold',
-                        fontSize: '16px' // Make text bigger
-                    }}
-                >
-                    🛍️ Make Merch (CLICK ME!)
-                </button>
-            </div>
-            
             <h3>{video.title}</h3>
             <div className="play-video-info">
                 <p>{moment(video.created_at).fromNow()}</p>
+                <div>
+                    <span><img src={like} alt="" />Like</span>
+                    <span><img src={dislike} alt="" />Dislike</span>
+                    <span><img src={share} alt="" />Share</span>
+                    <span><img src={save} alt="" />Save</span>
+                </div>
             </div>
             <hr />
+            <div className="publisher">
+                <div>
+                    <p>Approved Creator</p>
+                </div>
+                <button type="button">Subscribe</button>
+            </div>
             <div className="vid-description">
                 <p>{video.description}</p>
             </div>
-
-            {/* Authentication Modal */}
-            <AuthModal 
-                isOpen={showAuthModal}
-                onClose={() => setShowAuthModal(false)}
-                onSuccess={handleAuthSuccess}
-            />
         </div>
     )
-});
+}
 
 export default PlayVideo
 
 
 
-export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot, onCropScreenshot }) => {
-    const [showCropModal, setShowCropModal] = useState(false);
-    const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(null);
-    const [selectedScreenshotImage, setSelectedScreenshotImage] = useState(null);
-
-    const handleScreenshotClick = (idx) => {
-        if (screenshots[idx]) {
-            setSelectedScreenshotIndex(idx);
-            setSelectedScreenshotImage(screenshots[idx]);
-            setShowCropModal(true);
-        }
-    };
-
-    const handleCropComplete = (croppedImageUrl) => {
-        if (selectedScreenshotIndex !== null && onCropScreenshot) {
-            onCropScreenshot(selectedScreenshotIndex, croppedImageUrl);
-        }
-        setShowCropModal(false);
-        setSelectedScreenshotIndex(null);
-        setSelectedScreenshotImage(null);
-    };
-
-    const handleCropCancel = () => {
-        setShowCropModal(false);
-        setSelectedScreenshotIndex(null);
-        setSelectedScreenshotImage(null);
-    };
-
+export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot }) => {
     return (
-        <>
-            <div className="screenmerch-images-grid">
-                {/* Thumbnail - Always shows */}
-                <div className="screenmerch-image-box">
-                    <h4>Thumbnail</h4>
-                    {thumbnail ? (
+        <div className="screenmerch-images-grid">
+            {[0,1,2,3,4,5].map(idx => (
+                <div className="screenmerch-image-box" key={idx}>
+                    <h4>Screenshot {idx + 1}</h4>
+                    {screenshots[idx] ? (
                         <div className="screenmerch-img-wrapper">
                             <img 
-                                src={thumbnail} 
-                                alt="Video Thumbnail" 
+                                src={screenshots[idx]} 
+                                alt={`Screenshot ${idx + 1}`} 
                                 className="screenmerch-preview"
                                 style={{
                                     maxWidth: '100%',
@@ -872,51 +771,15 @@ export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot, 
                                     objectFit: 'contain'
                                 }}
                             />
+                            <div className="screenmerch-buttons">
+                                <button className="screenmerch-delete-btn" onClick={() => onDeleteScreenshot(idx)} title="Delete screenshot">×</button>
+                            </div>
                         </div>
                     ) : (
-                        <div className="screenmerch-placeholder">No thumbnail</div>
+                        <div className="screenmerch-placeholder">No screenshot</div>
                     )}
                 </div>
-                
-                {/* 5 Screenshot slots */}
-                {[0,1,2,3,4].map(idx => (
-                    <div className="screenmerch-image-box" key={idx}>
-                        <h4>Screenshot {idx + 1}</h4>
-                        {screenshots[idx] ? (
-                            <div className="screenmerch-img-wrapper">
-                                <img 
-                                    src={screenshots[idx]} 
-                                    alt={`Screenshot ${idx + 1}`} 
-                                    className="screenmerch-preview"
-                                    style={{
-                                        maxWidth: '100%',
-                                        maxHeight: '100%',
-                                        width: 'auto',
-                                        height: 'auto',
-                                        objectFit: 'contain',
-                                        cursor: 'pointer'
-                                    }}
-                                    onClick={() => handleScreenshotClick(idx)}
-                                    title="Click to crop this screenshot"
-                                />
-                                <div className="screenmerch-buttons">
-                                    <button className="screenmerch-delete-btn" onClick={() => onDeleteScreenshot(idx)} title="Delete screenshot">×</button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="screenmerch-placeholder">No screenshot</div>
-                        )}
-                    </div>
-                ))}
-            </div>
-
-            {/* Crop Modal */}
-            <CropModal
-                isOpen={showCropModal}
-                image={selectedScreenshotImage}
-                onCrop={handleCropComplete}
-                onCancel={handleCropCancel}
-            />
-        </>
+            ))}
+        </div>
     );
 };
