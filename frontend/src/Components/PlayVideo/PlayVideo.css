@@ -410,8 +410,10 @@
 .screenmerch-images-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
+    grid-template-rows: repeat(2, 1fr);
+    gap: 10px;
     width: 100%;
+    height: 100%;
     align-items: start;
     max-width: 100%;
     box-sizing: border-box;

@@ -935,7 +935,31 @@ export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot, 
     return (
         <>
             <div className="screenmerch-images-grid">
-                {[0,1,2,3,4,5].map(idx => (
+                {/* Thumbnail - Always shows */}
+                <div className="screenmerch-image-box">
+                    <h4>Thumbnail</h4>
+                    {thumbnail ? (
+                        <div className="screenmerch-img-wrapper">
+                            <img 
+                                src={thumbnail} 
+                                alt="Video Thumbnail" 
+                                className="screenmerch-preview"
+                                style={{
+                                    maxWidth: '100%',
+                                    maxHeight: '100%',
+                                    width: 'auto',
+                                    height: 'auto',
+                                    objectFit: 'contain'
+                                }}
+                            />
+                        </div>
+                    ) : (
+                        <div className="screenmerch-placeholder">No thumbnail</div>
+                    )}
+                </div>
+                
+                {/* 5 Screenshot slots */}
+                {[0,1,2,3,4].map(idx => (
                     <div className="screenmerch-image-box" key={idx}>
                         <h4>Screenshot {idx + 1}</h4>
                         {screenshots[idx] ? (
@@ -956,7 +980,6 @@ export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot, 
                                     title="Click to crop this screenshot"
                                 />
                                 <div className="screenmerch-buttons">
-
                                     <button className="screenmerch-delete-btn" onClick={() => onDeleteScreenshot(idx)} title="Delete screenshot">×</button>
                                 </div>
                             </div>
