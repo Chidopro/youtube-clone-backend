@@ -23,6 +23,113 @@
   }
   html, body { overflow-x: hidden; }
 }
+
+/* Step Navigation Bar Styles */
+.user-flow-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin: -24px -24px 20px -24px;
+  padding: 20px 20px;
+  color: white;
+  text-align: center;
+  border-radius: 16px 16px 0 0;
+}
+
+.flow-steps {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 130px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.flow-step:hover {
+  transform: translateY(-2px);
+}
+
+.clickable-step {
+  cursor: pointer;
+  position: relative;
+}
+
+.clickable-step:hover {
+  transform: translateY(-3px);
+}
+
+.clickable-step:hover .step-number {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.clickable-step::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.8);
+  transition: width 0.3s ease;
+}
+
+.clickable-step:hover::after {
+  width: 80%;
+}
+
+.step-number {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 6px;
+  transition: all 0.3s ease;
+}
+
+.flow-step:hover .step-number {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.step-content h3 {
+  margin: 0 0 3px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+}
+
+.step-content p {
+  margin: 0;
+  font-size: 0.7rem;
+  opacity: 0.9;
+  line-height: 1.1;
+}
+
+.flow-arrow {
+  font-size: 1.3rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: bold;
+  margin: 0 6px;
+}
+
 .play-video {
     width: 100%;
     max-width: 720px;

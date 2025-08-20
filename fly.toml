@@ -1,6 +1,6 @@
 # fly.toml app configuration file for ScreenMerch backend
 
-app = "backend-hidden-firefly-7865"
+app = "copy5-backend"
 primary_region = "sjc"
 
 [build]
