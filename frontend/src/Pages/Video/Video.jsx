@@ -28,7 +28,7 @@ const Video = () => {
 
   return (
       <div className="play-container">
-        {/* Step Navigation Bar - Only Steps 2 and 3 on video page */}
+        {/* Step Navigation Bar - Only Steps 2 and 3 on screenshot page */}
         <div className="user-flow-section">
           <div className="flow-steps">
             <div className="flow-step clickable-step" onClick={handleStep2Click}>
