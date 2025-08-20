@@ -23,8 +23,8 @@ const Video = () => {
   };
 
   return (
-      <div className="play-container">
-        {/* Purple Instruction Bar */}
+      <>
+        {/* Purple Instruction Bar - Outside container for full width */}
         <div className="user-flow-section">
           <div className="flow-steps">
             <div className="flow-step clickable-step" onClick={handleStep2Click}>
@@ -38,22 +38,24 @@ const Video = () => {
           </div>
         </div>
 
-        <div className="main-video-col">
-          {videoId ? (
-            <PlayVideo 
-              ref={playVideoRef}
-              videoId={videoId} 
-              thumbnail={thumbnail} setThumbnail={setThumbnail}
-              screenshots={screenshots} setScreenshots={setScreenshots}
-            />
-          ) : (
-            <div style={{padding: 24, color: 'red'}}>No video selected.</div>
-          )}
+        <div className="play-container">
+          <div className="main-video-col">
+            {videoId ? (
+              <PlayVideo 
+                ref={playVideoRef}
+                videoId={videoId} 
+                thumbnail={thumbnail} setThumbnail={setThumbnail}
+                screenshots={screenshots} setScreenshots={setScreenshots}
+              />
+            ) : (
+              <div style={{padding: 24, color: 'red'}}>No video selected.</div>
+            )}
+          </div>
+          <div className="screenmerch-sidebar">
+            <ScreenmerchImages thumbnail={thumbnail} screenshots={screenshots} onDeleteScreenshot={handleDeleteScreenshot} />
+          </div>
         </div>
-        <div className="screenmerch-sidebar">
-          <ScreenmerchImages thumbnail={thumbnail} screenshots={screenshots} onDeleteScreenshot={handleDeleteScreenshot} />
-        </div>
-      </div>
+      </>
   );
 };
 
