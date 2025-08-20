@@ -1,25 +1,5 @@
 // API Configuration for different environments
-// Force production mode for Netlify deployment
-const isDevelopment = false; // Force production mode
-
-// Cache-busting timestamp to force reload of configuration
-const CACHE_BUST_TIMESTAMP = Date.now() + Math.random();
-
-// Debug logging to verify configuration is loaded
-console.log('API Configuration loaded - Using production backend:', 'https://copy5-backend.fly.dev');
-console.log('Configuration timestamp:', new Date().toISOString());
-console.log('Cache bust timestamp:', CACHE_BUST_TIMESTAMP);
-
-// Force override any cached configuration
-window.FORCE_PRODUCTION_API = 'https://copy5-backend.fly.dev';
-window.CONFIG_CACHE_BUST = CACHE_BUST_TIMESTAMP;
-
-// Direct production configuration - no environment detection
-const API_BASE_URL = 'https://copy5-backend.fly.dev';
-const EMAIL_API_URL = 'https://copy5-backend.fly.dev';
-const SUBSCRIPTION_API_URL = 'https://copy5-backend.fly.dev';
-const SUPABASE_URL = 'https://sojxbydpcdcdzfdtbypd.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no';
+const isDevelopment = import.meta.env.MODE === 'development';
 
 const config = {
   development: {
@@ -30,22 +10,15 @@ const config = {
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no'
   },
   production: {
-    API_BASE_URL: 'https://copy5-backend.fly.dev',
-    EMAIL_API_URL: 'https://copy5-backend.fly.dev',
-    SUBSCRIPTION_API_URL: 'https://copy5-backend.fly.dev',
+    API_BASE_URL: 'https://backend-hidden-firefly-7865.fly.dev',
+    EMAIL_API_URL: 'https://backend-hidden-firefly-7865.fly.dev',
+    SUBSCRIPTION_API_URL: 'https://backend-hidden-firefly-7865.fly.dev',
     SUPABASE_URL: 'https://sojxbydpcdcdzfdtbypd.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no'
   }
 };
 
-// Force production config for Netlify deployment to connect to Copy 5 backend
-const currentConfig = {
-  API_BASE_URL: API_BASE_URL,
-  EMAIL_API_URL: EMAIL_API_URL,
-  SUBSCRIPTION_API_URL: SUBSCRIPTION_API_URL,
-  SUPABASE_URL: SUPABASE_URL,
-  SUPABASE_ANON_KEY: SUPABASE_ANON_KEY
-};
+const currentConfig = isDevelopment ? config.development : config.production;
 
 export const API_CONFIG = {
   BASE_URL: currentConfig.API_BASE_URL,
