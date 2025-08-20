@@ -32,6 +32,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
+    
+    // Notification state
+    const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 
     useEffect(() => {
         if (!videoId) {
@@ -216,13 +219,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const applyCrop = async () => {
         console.log('Apply crop called with cropArea:', cropArea);
         if (!videoRef.current || !showCropTool) {
-            alert('Please enable crop tool first');
+            showNotification('Please enable crop tool first', 'error');
             return;
         }
         
         // Minimum crop size for good print quality (at least 150x150 pixels)
         if (cropArea.width < 150 || cropArea.height < 150) {
-            alert('Please select a larger crop area (minimum 150x150 pixels for good print quality and proper aspect ratio)');
+            showNotification('Please select a larger crop area (minimum 150x150 pixels for good print quality and proper aspect ratio)', 'error');
             return;
         }
 
@@ -317,7 +320,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 
                 // Show success message
                 const newScreenshotCount = screenshots.length + 1;
-                alert(`Cropped screenshot ${newScreenshotCount} captured and added to grid!`);
+                showNotification(`Screenshot ${newScreenshotCount} captured successfully! 🎉`);
                 
                 // Reset crop tool state immediately but maintain video size
                 setShowCropTool(false);
@@ -332,11 +335,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 
             } else {
                 console.error('Crop failed:', result.error);
-                alert('Failed to apply crop: ' + result.error);
+                showNotification('Failed to apply crop: ' + result.error, 'error');
             }
         } catch (error) {
             console.error('Error applying crop:', error);
-            alert('Error applying crop: ' + error.message);
+            showNotification('Error applying crop: ' + error.message, 'error');
         } finally {
             // Hide loading state
             setIsApplyingCrop(false);
@@ -374,7 +377,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         const currentScroll = window.scrollY;
         
         if (screenshots.length >= 6) {
-            alert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
+            showNotification('Maximum 6 screenshots allowed. Please delete some screenshots first.', 'error');
             return;
         }
 
@@ -383,7 +386,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.log('Using cropped image for screenshot');
             setScreenshots(prev => prev.length < 6 ? [...prev, croppedImage] : prev);
             const newScreenshotCount = screenshots.length + 1;
-            alert(`Cropped screenshot ${newScreenshotCount} captured successfully!`);
+            showNotification(`Screenshot ${newScreenshotCount} captured successfully! 🎉`);
             // Reset crop state after successful capture
             setCroppedImage(null);
             setIsCropApplied(false);
@@ -397,7 +400,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         // Otherwise, capture a new screenshot
         const videoElement = videoRef.current;
         if (!videoElement) {
-            alert('Video not loaded yet. Please wait for the video to load.');
+            showNotification('Video not loaded yet. Please wait for the video to load.', 'error');
             return;
         }
 
@@ -435,14 +438,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     if (thumbnailUrl) {
                         setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
                         const newScreenshotCount = screenshots.length + 1;
-                        alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
+                        showNotification(`Screenshot ${newScreenshotCount} captured successfully! 🎉`);
                     } else {
-                        alert('No thumbnail available for this video.');
+                        showNotification('No thumbnail available for this video.', 'error');
                     }
                 } else {
                     setScreenshots(prev => prev.length < 6 ? [...prev, result.screenshot] : prev);
                     const newScreenshotCount = screenshots.length + 1;
-                    alert(`Screenshot ${newScreenshotCount} captured successfully!`);
+                    showNotification(`Screenshot ${newScreenshotCount} captured successfully! 🎉`);
                 }
                 // Restore scroll position
                 window.scrollTo(0, currentScroll);
@@ -462,9 +465,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
                 
                 const newScreenshotCount = screenshots.length + 1;
-                alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
+                showNotification(`Screenshot ${newScreenshotCount} captured successfully! 🎉`);
             } else {
-                alert('No thumbnail available for this video.');
+                showNotification('No thumbnail available for this video.', 'error');
             }
             // Restore scroll position
             window.scrollTo(0, currentScroll);
@@ -532,11 +535,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 window.open(data.product_url, '_blank');
             } else {
                 console.error('Failed to create product:', data);
-                alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
+                showNotification(`Failed to create merch product page: ${data.error || 'Unknown error'}`, 'error');
             }
         } catch (err) {
             console.error('Make Merch error:', err);
-            alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
+            showNotification(`Error connecting to merch server: ${err.message}`, 'error');
         }
     };
 
@@ -545,6 +548,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         setShowAuthModal(false);
         // After successful authentication, try to create merch again
         createMerchProduct();
+    };
+
+    // Show notification function
+    const showNotification = (message, type = 'success') => {
+        setNotification({ show: true, message, type });
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            setNotification({ show: false, message: '', type: 'success' });
+        }, 3000);
     };
 
     if (loading) return <div style={{padding: 24}}>Loading video...</div>;
@@ -806,6 +818,40 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 onClose={() => setShowAuthModal(false)}
                 onSuccess={handleAuthSuccess}
             />
+            
+            {/* Notification Toast */}
+            {notification.show && (
+                <div 
+                    style={{
+                        position: 'fixed',
+                        top: '20px',
+                        right: '20px',
+                        zIndex: 9999,
+                        padding: '16px 24px',
+                        borderRadius: '8px',
+                        color: 'white',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        transform: 'translateX(0)',
+                        transition: 'all 0.3s ease',
+                        background: notification.type === 'success' 
+                            ? 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'
+                            : 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                        border: '1px solid',
+                        borderColor: notification.type === 'success' ? '#28a745' : '#dc3545',
+                        maxWidth: '300px',
+                        wordWrap: 'break-word'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '18px' }}>
+                            {notification.type === 'success' ? '✅' : '❌'}
+                        </span>
+                        {notification.message}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
