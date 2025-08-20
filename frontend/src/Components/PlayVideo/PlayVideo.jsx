@@ -493,6 +493,7 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
 
     // Make Merch handler - Simplified
     const handleMakeMerch = async () => {
+        alert('Make Merch button clicked!'); // Test alert
         console.log('Make Merch clicked - starting process');
         
         // Always show auth modal first for simplicity

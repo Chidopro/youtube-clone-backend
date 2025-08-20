@@ -45,6 +45,7 @@
   min-width: 130px;
   cursor: pointer;
   transition: all 0.3s ease;
+  justify-content: flex-start;
 }
 
 .flow-step:hover {
@@ -79,7 +80,7 @@
 }
 
 .step-content h3 {
-  margin: 0 0 3px 0;
+  margin: 0 0 2px 0;
   font-size: 1rem;
   font-weight: 600;
   color: white;
