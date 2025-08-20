@@ -27,10 +27,6 @@ const Video = () => {
         {/* Purple Instruction Bar */}
         <div className="user-flow-section">
           <div className="flow-steps">
-            <div className="flow-step">
-              <div className="step-number">1</div>
-              <div className="step-label">Upload Video</div>
-            </div>
             <div className="flow-step clickable-step" onClick={handleStep2Click}>
               <div className="step-number">2</div>
               <div className="step-label">Pick Screenshot</div>
