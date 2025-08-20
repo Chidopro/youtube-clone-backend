@@ -3,7 +3,7 @@
 const isDevelopment = false; // Force production mode
 
 // Cache-busting timestamp to force reload of configuration
-const CACHE_BUST_TIMESTAMP = Date.now();
+const CACHE_BUST_TIMESTAMP = Date.now() + Math.random();
 
 // Debug logging to verify configuration is loaded
 console.log('API Configuration loaded - Using production backend:', 'https://copy5-backend.fly.dev');
