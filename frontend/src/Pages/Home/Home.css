@@ -43,6 +43,12 @@
   align-items: center;
   text-align: center;
   min-width: 130px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.flow-step:hover {
+  transform: translateY(-2px);
 }
 
 .step-number {
@@ -63,6 +69,13 @@
 .flow-step:hover .step-number {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.1);
+}
+
+.step-label {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
 }
 
 .step-content h3 {
