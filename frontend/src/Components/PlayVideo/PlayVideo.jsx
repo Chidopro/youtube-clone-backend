@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import './PlayVideo.css'
 import { value_converter } from '../../data'
 import moment from 'moment'
@@ -8,7 +8,7 @@ import { API_CONFIG } from '../../config/apiConfig'
 import CropModal from '../CropModal/CropModal'
 import AuthModal from '../AuthModal/AuthModal'
 
-const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData }) => {
+const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData }, ref) => {
     // Use prop if provided, otherwise fallback to URL param
     const params = useParams();
     const videoId = propVideoId || params.videoId;
@@ -34,6 +34,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
+
+
 
     useEffect(() => {
         if (!videoId) {
@@ -519,6 +521,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
     };
 
+    // Expose methods to parent component via ref
+    useImperativeHandle(ref, () => ({
+        handleGrabScreenshot: handleGrabScreenshot
+    }), [screenshots, isCropApplied, croppedImage, video, videoRef]);
+
     // Make Merch handler - Direct navigation to merchandise page
     const handleMakeMerch = async () => {
         try {
@@ -635,6 +642,35 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     return (
         <div className="play-video">
+            {/* Step Navigation Bar */}
+            <div className="user-flow-section">
+              <div className="flow-steps">
+                <div className="flow-step">
+                  <div className="step-number">1</div>
+                  <div className="step-content">
+                    <h3>Choose Video</h3>
+                    <p>Browse and select your favorite video content</p>
+                  </div>
+                </div>
+                <div className="flow-arrow">→</div>
+                <div className="flow-step clickable-step" onClick={handleGrabScreenshot}>
+                  <div className="step-number">2</div>
+                  <div className="step-content">
+                    <h3>Pick Screenshot</h3>
+                    <p>Click to capture screenshots</p>
+                  </div>
+                </div>
+                <div className="flow-arrow">→</div>
+                <div className="flow-step">
+                  <div className="step-number">3</div>
+                  <div className="step-content">
+                    <h3>Make Merchandise</h3>
+                    <p>Create custom products with your screenshot</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div 
                 className="video-container" 
                 ref={videoContainerRef}
@@ -890,7 +926,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             />
         </div>
     )
-}
+});
 
 export default PlayVideo
 

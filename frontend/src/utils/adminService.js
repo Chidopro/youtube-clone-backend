@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient.js';
+import { API_CONFIG } from '../config/apiConfig.js';
 
 export class AdminService {
   /**
@@ -201,7 +202,7 @@ export class AdminService {
    */
   static async deleteUser(userId) {
     try {
-      const response = await fetch(`http://localhost:3002/api/users/${userId}/delete-account`, {
+      const response = await fetch(`${API_CONFIG.SUBSCRIPTION_API_URL}/api/users/${userId}/delete-account`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

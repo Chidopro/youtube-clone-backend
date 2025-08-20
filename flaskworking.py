@@ -178,8 +178,11 @@ def get_product_price_range(product_name):
 CORS(app, resources={r"/api/*": {"origins": [
     "chrome-extension://*",
     "https://screenmerch.com",
-    "https://www.screenmerch.com"
-]}})
+    "https://www.screenmerch.com",
+    "https://famous-custard-4c8894.netlify.app",
+    "https://*.netlify.app",
+    "https://*.fly.dev"
+]}}, supports_credentials=True)
 
 # Security middleware
 @app.before_request
@@ -203,6 +206,13 @@ def add_security_headers(response):
     """Add security headers to all responses"""
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
+    
+    # Ensure CORS headers are properly set
+    if request.method == 'OPTIONS':
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+    
     return response
 
 # Initialize Supabase client for database operations
@@ -689,7 +699,7 @@ def create_product():
         user_email = data.get("userEmail", "")
         
         # Build product URL with authentication parameters
-        product_url = f"https://backend-hidden-firefly-7865.fly.dev/product/{product_id}"
+        product_url = f"https://copy5-backend.fly.dev/product/{product_id}"
         if is_authenticated and user_email:
             product_url += f"?authenticated=true&email={user_email}"
         

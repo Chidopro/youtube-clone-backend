@@ -31,6 +31,37 @@
   transform: translateY(-2px);
 }
 
+.clickable-step {
+  cursor: pointer;
+  position: relative;
+}
+
+.clickable-step:hover {
+  transform: translateY(-3px);
+}
+
+.clickable-step:hover .step-number {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.clickable-step::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.8);
+  transition: width 0.3s ease;
+}
+
+.clickable-step:hover::after {
+  width: 80%;
+}
+
 .step-number {
   background: rgba(255, 255, 255, 0.2);
   border: 2px solid rgba(255, 255, 255, 0.3);

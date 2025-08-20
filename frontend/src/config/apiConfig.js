@@ -2,12 +2,17 @@
 // Force production mode for Netlify deployment
 const isDevelopment = false; // Force production mode
 
+// Cache-busting timestamp to force reload of configuration
+const CACHE_BUST_TIMESTAMP = Date.now();
+
 // Debug logging to verify configuration is loaded
 console.log('API Configuration loaded - Using production backend:', 'https://copy5-backend.fly.dev');
 console.log('Configuration timestamp:', new Date().toISOString());
+console.log('Cache bust timestamp:', CACHE_BUST_TIMESTAMP);
 
 // Force override any cached configuration
 window.FORCE_PRODUCTION_API = 'https://copy5-backend.fly.dev';
+window.CONFIG_CACHE_BUST = CACHE_BUST_TIMESTAMP;
 
 // Direct production configuration - no environment detection
 const API_BASE_URL = 'https://copy5-backend.fly.dev';
