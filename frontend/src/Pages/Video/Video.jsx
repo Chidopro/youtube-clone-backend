@@ -28,17 +28,9 @@ const Video = () => {
 
   return (
       <div className="play-container">
-        {/* Step Navigation Bar */}
+        {/* Step Navigation Bar - Only Steps 2 and 3 on video page */}
         <div className="user-flow-section">
           <div className="flow-steps">
-            <div className="flow-step">
-              <div className="step-number">1</div>
-              <div className="step-content">
-                <h3>Choose Video</h3>
-                <p>Browse and select your favorite video content</p>
-              </div>
-            </div>
-            <div className="flow-arrow">→</div>
             <div className="flow-step clickable-step" onClick={handleStep2Click}>
               <div className="step-number">2</div>
               <div className="step-content">
