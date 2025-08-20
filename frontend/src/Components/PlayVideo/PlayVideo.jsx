@@ -763,7 +763,10 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
                 display: 'flex',
                 gap: '10px',
                 marginBottom: '15px',
-                flexWrap: 'wrap'
+                flexWrap: 'wrap',
+                border: '2px solid red', // Debug border
+                padding: '10px',
+                backgroundColor: 'yellow' // Debug background
             }}>
                 <button 
                     className="screenmerch-btn" 
@@ -787,13 +790,14 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
                         padding: '10px 20px',
                         backgroundColor: '#28a745',
                         color: 'white',
-                        border: 'none',
+                        border: '2px solid red', // Debug border
                         borderRadius: '5px',
                         cursor: 'pointer',
-                        fontWeight: 'bold'
+                        fontWeight: 'bold',
+                        fontSize: '16px' // Make text bigger
                     }}
                 >
-                    Make Merch
+                    🛍️ Make Merch (CLICK ME!)
                 </button>
             </div>
             
