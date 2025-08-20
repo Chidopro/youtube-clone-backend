@@ -9,6 +9,7 @@ import moment from 'moment'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
+import AuthModal from '../AuthModal/AuthModal'
 
 const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData }) => {
     // Use prop if provided, otherwise fallback to URL param
@@ -28,6 +29,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const [croppedImage, setCroppedImage] = useState(null);
     const [isCropApplied, setIsCropApplied] = useState(false);
     const [isApplyingCrop, setIsApplyingCrop] = useState(false);
+    
+    // Auth modal state
+    const [showAuthModal, setShowAuthModal] = useState(false);
 
     useEffect(() => {
         if (!videoId) {
@@ -469,25 +473,30 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     // Make Merch handler
     const handleMakeMerch = async () => {
+        // Check if user is authenticated
+        const isAuthenticated = localStorage.getItem('user_authenticated');
+        
+        if (!isAuthenticated) {
+            // Store screenshot data for after login
+            const merchData = {
+                thumbnail,
+                videoUrl: window.location.href,
+                screenshots: screenshots.slice(0, 6),
+            };
+            localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+            
+            // Show auth modal instead of redirecting
+            setShowAuthModal(true);
+            return;
+        }
+        
+        // User is authenticated, proceed with merch creation
+        await createMerchProduct();
+    };
+
+    // Create merch product function
+    const createMerchProduct = async () => {
         try {
-            // Check if user is authenticated
-            const isAuthenticated = localStorage.getItem('user_authenticated');
-            
-            if (!isAuthenticated) {
-                // Store screenshot data for after login
-                const merchData = {
-                    thumbnail,
-                    videoUrl: window.location.href,
-                    screenshots: screenshots.slice(0, 6),
-                };
-                localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
-                
-                // Redirect to login page
-                window.location.href = '/login?redirect=merch';
-                return;
-            }
-            
-            // User is authenticated, proceed with merch creation
             console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
             
             const requestData = {
@@ -529,6 +538,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.error('Make Merch error:', err);
             alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
         }
+    };
+
+    // handleAuthSuccess function to be called by AuthModal
+    const handleAuthSuccess = () => {
+        setShowAuthModal(false);
+        // After successful authentication, try to create merch again
+        createMerchProduct();
     };
 
     if (loading) return <div style={{padding: 24}}>Loading video...</div>;
@@ -783,6 +799,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             <div className="vid-description">
                 <p>{video.description}</p>
             </div>
+
+            {/* Authentication Modal */}
+            <AuthModal 
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onSuccess={handleAuthSuccess}
+            />
         </div>
     )
 }
