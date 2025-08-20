@@ -392,6 +392,7 @@
     border-radius: 8px;
     width: 100%;
     height: 80px;
+    min-height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -399,6 +400,7 @@
     font-size: 0.75rem;
     font-weight: 500;
     transition: all 0.2s ease;
+    flex: 1;
 }
 
 .screenmerch-placeholder:hover {
@@ -410,11 +412,10 @@
 .screenmerch-images-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(2, 1fr);
+    grid-template-rows: repeat(2, minmax(120px, auto));
     gap: 10px;
     width: 100%;
-    height: 100%;
-    align-items: start;
+    align-items: stretch;
     max-width: 100%;
     box-sizing: border-box;
 }
@@ -429,6 +430,9 @@
     padding: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     transition: transform 0.2s ease;
+    height: 100%;
+    justify-content: space-between;
+    min-height: 120px;
 }
 
 .screenmerch-image-box:hover {
@@ -482,6 +486,11 @@
 .screenmerch-img-wrapper {
     position: relative;
     display: inline-block;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
 }
 
 .screenmerch-buttons {
