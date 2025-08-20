@@ -386,24 +386,31 @@
 }
 
 .screenmerch-placeholder {
-    background: #f5f5f5;
-    color: #888;
-    border: 1px dashed #ccc;
+    background: #f8f9fa;
+    color: #6c757d;
+    border: 2px dashed #dee2e6;
     border-radius: 8px;
-    width: 120px;
+    width: 100%;
     height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    margin-top: 8px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.screenmerch-placeholder:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    color: #495057;
 }
 
 .screenmerch-images-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
     width: 100%;
     align-items: start;
     max-width: 100%;
@@ -415,13 +422,25 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+
+.screenmerch-image-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .screenmerch-image-box h4 {
-    font-size: 0.9rem;
-    margin: 0 0 8px 0;
+    font-size: 0.85rem;
+    margin: 0 0 10px 0;
     color: #333;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .screenmerch-col {
