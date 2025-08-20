@@ -107,6 +107,9 @@ SECURITY_HEADERS = {
 PRODUCTION_CORS_ORIGINS = [
     "https://screenmerch.com",
     "https://www.screenmerch.com",
+    "https://breakupplug.netlify.app",
+    "https://famous-custard-4c8894.netlify.app",
+    "https://*.netlify.app",
     "chrome-extension://*"  # For your browser extension
 ]
 
