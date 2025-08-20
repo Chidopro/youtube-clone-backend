@@ -416,35 +416,15 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
         }
     };
 
-    // Grab Screenshot handler with crop support
+    // Grab Screenshot handler - Simplified for speed
     const handleGrabScreenshot = async () => {
         console.log('Grab Screenshot clicked');
-        
-        // Prevent page scrolling when screenshot is taken
-        const currentScroll = window.scrollY;
         
         if (screenshots.length >= 6) {
             alert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
             return;
         }
 
-        // If we have a cropped image, use it directly
-        if (isCropApplied && croppedImage) {
-            console.log('Using cropped image for screenshot');
-            setScreenshots(prev => prev.length < 6 ? [...prev, croppedImage] : prev);
-            const newScreenshotCount = screenshots.length + 1;
-            alert(`Cropped screenshot ${newScreenshotCount} captured successfully!`);
-            // Reset crop state after successful capture
-            setCroppedImage(null);
-            setIsCropApplied(false);
-            setShowCropTool(false);
-            setCropArea({ x: 0, y: 0, width: 0, height: 0 });
-            // Restore page scrolling
-            document.body.style.overflow = 'auto';
-            return;
-        }
-
-        // Otherwise, capture a new screenshot
         const videoElement = videoRef.current;
         if (!videoElement) {
             alert('Video not loaded yet. Please wait for the video to load.');
@@ -455,7 +435,7 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
             const currentTime = videoElement.currentTime || 0;
             const videoUrl = video.video_url;
             
-            console.log(`Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
+            console.log(`Capturing screenshot at ${currentTime}s from ${videoUrl}`);
             
             const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
                 method: 'POST',
@@ -464,9 +444,7 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
                 },
                 body: JSON.stringify({
                     video_url: videoUrl,
-                    timestamp: currentTime,
-                    quality: 85,
-                    crop_area: showCropTool && cropArea.width > 0 ? cropArea : null
+                    timestamp: currentTime
                 })
             });
             
@@ -477,47 +455,34 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
             const result = await response.json();
             
             if (result.success && result.screenshot) {
-                console.log('Server-side screenshot captured successfully');
-                
-                if (result.fallback) {
-                    console.log('Server returned fallback response, using thumbnail instead');
-                    const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
-                    if (thumbnailUrl) {
-                        setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
-                        const newScreenshotCount = screenshots.length + 1;
-                        alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
-                    } else {
-                        alert('No thumbnail available for this video.');
-                    }
-                } else {
-                    setScreenshots(prev => prev.length < 6 ? [...prev, result.screenshot] : prev);
-                    const newScreenshotCount = screenshots.length + 1;
-                    alert(`Screenshot ${newScreenshotCount} captured successfully!`);
-                }
-                // Restore scroll position
-                window.scrollTo(0, currentScroll);
-                return;
+                console.log('Screenshot captured successfully');
+                setScreenshots(prev => prev.length < 6 ? [...prev, result.screenshot] : prev);
+                const newScreenshotCount = screenshots.length + 1;
+                alert(`Screenshot ${newScreenshotCount} captured successfully!`);
             } else {
-                console.error('Server screenshot capture failed:', result.error);
-                throw new Error(result.error || 'Server failed to capture screenshot');
+                // Fallback to thumbnail
+                const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
+                if (thumbnailUrl) {
+                    setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
+                    const newScreenshotCount = screenshots.length + 1;
+                    alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
+                } else {
+                    alert('No thumbnail available for this video.');
+                }
             }
             
         } catch (error) {
-            console.log('Server capture failed, using thumbnail fallback:', error);
+            console.log('Screenshot capture failed, using thumbnail fallback:', error);
             
             const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
             
             if (thumbnailUrl) {
-                console.log('Adding video thumbnail as screenshot');
                 setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
-                
                 const newScreenshotCount = screenshots.length + 1;
                 alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
             } else {
                 alert('No thumbnail available for this video.');
             }
-            // Restore scroll position
-            window.scrollTo(0, currentScroll);
         }
     };
 
@@ -526,73 +491,20 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
         handleGrabScreenshot: handleGrabScreenshot
     }), [screenshots, isCropApplied, croppedImage, video, videoRef]);
 
-    // Make Merch handler - Direct navigation to merchandise page
+    // Make Merch handler - Simplified
     const handleMakeMerch = async () => {
-        try {
-            // Check if user is authenticated using localStorage (consistent with AuthModal)
-            const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
-            
-            if (!isAuthenticated) {
-                // Store screenshot data for after login
-                const merchData = {
-                    thumbnail,
-                    videoUrl: window.location.href,
-                    screenshots: screenshots.slice(0, 6),
-                };
-                localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
-                
-                // Show the styled AuthModal instead of redirecting
-                setShowAuthModal(true);
-                return;
-            }
-            
-            // User is authenticated, proceed with merch creation
-            console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
-            
-            const requestData = {
-                thumbnail,
-                videoUrl: window.location.href,
-                screenshots: screenshots.slice(0, 6),
-            };
-            
-            console.log('Request data:', requestData);
-            
-            const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(requestData)
-            });
-            
-            console.log('Response status:', response.status);
-            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Server error response:', errorText);
-                alert(`Server returned error ${response.status}: ${errorText}`);
-                throw new Error(`Server error: ${response.status} - ${errorText}`);
-            }
-            
-            const data = await response.json();
-            console.log('✅ SUCCESS! Response data:', data);
-            console.log('✅ Product URL:', data.product_url);
-            
-            if (data.success && data.product_url) {
-                console.log('🚀 Copy 5 product URL generated:', data.product_url);
-                // Show the local URL instead of redirecting for testing
-                alert(`Copy 5 Product Created! Local URL: ${data.product_url}`);
-                // window.location.href = data.product_url;
-            } else {
-                console.error('❌ Failed to create product:', data);
-                alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
-            }
-        } catch (err) {
-            console.error('Make Merch error:', err);
-            alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
-        }
+        console.log('Make Merch clicked');
+        
+        // Always show auth modal first for simplicity
+        const merchData = {
+            thumbnail,
+            videoUrl: window.location.href,
+            screenshots: screenshots.slice(0, 6),
+        };
+        localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+        
+        // Show the AuthModal
+        setShowAuthModal(true);
     };
 
     // Handle successful authentication - proceed with merch creation

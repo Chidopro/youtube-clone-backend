@@ -1,7 +1,7 @@
 /* User Flow Section Styles - Matching Home Page */
 .user-flow-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  margin: -24px -24px 80px -24px;
+  margin: -24px -24px 30px -24px;
   padding: 20px 20px;
   color: white;
   text-align: center;
@@ -11,7 +11,7 @@
   right: 50%;
   margin-left: -50vw;
   margin-right: -50vw;
-  margin-bottom: 80px !important;
+  margin-bottom: 30px !important;
   /* Force visibility */
   display: block !important;
   visibility: visible !important;
@@ -25,7 +25,7 @@
   justify-content: center;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 12px;
+  gap: 60px;
   max-width: 800px;
   margin: 0 auto;
 }
