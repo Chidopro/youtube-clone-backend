@@ -493,7 +493,7 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
 
     // Make Merch handler - Simplified
     const handleMakeMerch = async () => {
-        console.log('Make Merch clicked');
+        console.log('Make Merch clicked - starting process');
         
         // Always show auth modal first for simplicity
         const merchData = {
@@ -501,10 +501,13 @@ const PlayVideo = forwardRef(({ videoId: propVideoId, thumbnail, setThumbnail, s
             videoUrl: window.location.href,
             screenshots: screenshots.slice(0, 6),
         };
+        console.log('Storing merch data:', merchData);
         localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
         
+        console.log('Setting showAuthModal to true');
         // Show the AuthModal
         setShowAuthModal(true);
+        console.log('AuthModal should now be visible');
     };
 
     // Handle successful authentication - proceed with merch creation
