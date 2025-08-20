@@ -1,16 +1,21 @@
 /* User Flow Section Styles - Matching Home Page */
 .user-flow-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  margin: -10px -20px 20px -20px;
+  margin: -24px -24px 20px -24px;
   padding: 20px 20px;
   color: white;
   text-align: center;
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
   /* Force visibility */
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
   z-index: 1000 !important;
-  position: relative !important;
 }
 
 .flow-steps {
@@ -188,25 +193,25 @@
     display: flex;
     justify-content: space-between;
     gap: 20px;
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     height: calc(100vh - 200px);
     overflow: hidden;
 }
 
 .main-video-col {
-    flex: 2;
-    min-width: 400px;
-    max-width: 600px;
+    flex: 1;
+    min-width: 350px;
+    max-width: 500px;
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
 .screenmerch-sidebar {
-    flex: 1;
-    min-width: 280px;
-    max-width: 350px;
+    flex: 1.5;
+    min-width: 400px;
+    max-width: 600px;
     background: white;
     border-radius: 8px;
     padding: 15px;
