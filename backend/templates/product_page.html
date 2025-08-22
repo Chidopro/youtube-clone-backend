@@ -7,23 +7,31 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
-  <style>
-    body { font-family: Arial, sans-serif; background: #f9f9f9; text-align: center; padding: 0; margin: 0; }
-    h1 { color: #3f51b5; }
+     <style>
+     body { 
+       font-family: Arial, sans-serif; 
+       background: #f9f9f9; 
+       text-align: center; 
+       padding: 0; 
+       margin: 0; 
+       overflow-x: hidden !important;
+       width: 100% !important;
+       box-sizing: border-box !important;
+     }
+     h1 { color: #3f51b5; }
     
     
     
-    /* Ensure main container is always visible */
-    .main-container {
-      display: flex !important;
-      max-width: 1200px; /* Reduced max-width to center better */
-      margin: 0 auto;
-      padding: 20px; /* Increased padding for better centering */
-      gap: 20px; /* Increased gap */
-      min-height: 400px;
-      background: #fff;
-      border: 2px solid #ccc;
-    }
+         /* Ensure main container is always visible */
+     .main-container {
+       display: flex !important;
+       width: 100%;
+       padding: 20px; /* Increased padding for better centering */
+       gap: 20px; /* Increased gap */
+       min-height: 400px;
+       overflow-x: hidden !important;
+       box-sizing: border-box !important;
+     }
     
          /* Simple Logo Header - Bigger Logo, Less Height */
      .simple-header {
@@ -287,8 +295,12 @@
     
     /* Responsive adjustments */
     @media (max-width: 1200px) {
+      .top-section-content {
+        flex-direction: column;
+        gap: 15px;
+      }
+      
       .products-selected {
-        position: static;
         width: auto;
         margin-bottom: 20px;
       }
@@ -301,16 +313,110 @@
         flex-direction: column;
       }
     }
-
-                   /* Top Section - Thumbnails and Screenshots - Full Width */
+    
+    @media (max-width: 768px) {
       .top-section {
-        background: #fff;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        margin: 20px auto;
-        max-width: 1200px; /* Match main container width */
-        width: 100%;
+        padding: 15px;
+        margin: 15px auto;
+      }
+      
+      .top-section-content {
+        gap: 12px;
+        flex-direction: column;
+      }
+      
+             /* Hide Products Selected popup on mobile */
+       .products-selected {
+         display: none !important;
+       }
+       
+               /* Show mobile action buttons on mobile (but hide on category selection page) */
+        .mobile-action-buttons {
+          display: flex !important;
+          gap: 10px;
+          margin: 15px 0;
+          justify-content: center;
+          width: 100%;
+        }
+        
+        /* Hide mobile buttons when category selection is shown */
+        .category-selection-landing ~ .mobile-action-buttons,
+        .category-selection-landing + .mobile-action-buttons,
+        .mobile-action-buttons[data-category-page="true"] {
+          display: none !important;
+        }
+        
+
+      
+      .screenshots-section h3 {
+        font-size: 16px;
+        margin-bottom: 12px;
+      }
+      
+      /* Fix screenshot layout on mobile */
+      .screenshot-preview-row {
+        flex-wrap: wrap !important;
+        overflow-x: visible !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        padding: 0 5px !important;
+      }
+      
+      .screenshot-thumbnails {
+        flex-wrap: wrap !important;
+        overflow-x: visible !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        margin-left: 0 !important;
+      }
+      
+      .video-thumbnail,
+      .screenshot-thumbnail {
+        width: 80px !important;
+        height: 60px !important;
+        flex-shrink: 0 !important;
+      }
+      
+      /* Prevent horizontal scrolling on mobile */
+      body {
+        overflow-x: hidden !important;
+      }
+      
+      .main-container {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      
+      .top-section {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+    }
+
+                                                                               /* Top Section - Thumbnails and Screenshots with Products Selected Sidebar */
+        .top-section {
+          background: #fff;
+          border-radius: 12px;
+          padding: 20px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          margin: 20px 0;
+          width: 100%;
+          box-sizing: border-box !important;
+          overflow-x: hidden !important;
+        }
+      
+             .top-section-content {
+         display: flex;
+         gap: 20px;
+         align-items: flex-start;
+         margin-top: -20px;
+       }
+      
+      .screenshots-section {
+        flex: 1;
+        min-width: 0; /* Allow flex item to shrink */
       }
     
     .top-section h3 {
@@ -329,20 +435,15 @@
        min-height: 100vh;
      }
 
-         /* Fixed Products Selected Sidebar - Bottom of Page */
+         /* Products Selected Sidebar - Now positioned next to screenshots */
      .products-selected {
-       position: fixed;
-       bottom: 20px;
-       right: 20px;
        width: 300px;
        background: #fff;
        border-radius: 12px;
        padding: 20px;
-       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
        min-height: 200px;
-       max-height: calc(100vh - 40px);
-       overflow-y: auto;
-       z-index: 1000;
+       flex-shrink: 0; /* Prevent sidebar from shrinking */
      }
     
     .products-selected h3 {
@@ -352,16 +453,17 @@
       font-size: 16px;
     }
 
-         /* Right Column - Available Products */
-     .products-section {
-       flex: 1;
-       min-width: 400px;
-       background: #fff;
-       border-radius: 12px;
-       padding: 20px;
-       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-       margin-right: 320px; /* Make space for fixed sidebar */
-     }
+                   /* Right Column - Available Products */
+      .products-section {
+        flex: 1;
+        min-width: 400px;
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+      }
 
      /* Category Navigation Icons */
      .category-navigation {
@@ -528,6 +630,9 @@
          flex-direction: column;
          padding: 10px;
          gap: 15px;
+         overflow-x: hidden !important;
+         width: 100% !important;
+         max-width: 100% !important;
        }
        
        .left-column {
@@ -549,6 +654,10 @@
        .screenshot-preview-row {
          min-height: 100px;
          margin: 8px 0 10px 0;
+         flex-wrap: wrap !important;
+         overflow-x: visible !important;
+         justify-content: center !important;
+         gap: 8px !important;
        }
        
        .video-thumbnail {
@@ -557,13 +666,19 @@
        }
        
        .screenshot-thumbnails {
-         grid-template-columns: repeat(3, 1fr);
-         gap: 6px;
+         display: flex !important;
+         flex-wrap: wrap !important;
+         overflow-x: visible !important;
+         justify-content: center !important;
+         gap: 8px !important;
          margin-top: 8px;
+         margin-left: 0 !important;
        }
        
        .screenshot-thumbnail {
-         height: 50px;
+         width: 80px !important;
+         height: 60px !important;
+         flex-shrink: 0 !important;
        }
        
        .product-row {
@@ -606,18 +721,89 @@
          width: 100%;
        }
        
-       .user-flow-section {
-         padding: 20px 15px;
-         min-height: 100px;
-         flex-direction: column;
-         gap: 15px;
-       }
-       
-       .flow-steps {
+       .user-flow-section .flow-steps {
+         flex-direction: row !important;
+         gap: 8px;
+         justify-content: space-evenly !important;
+         flex-wrap: nowrap;
+         width: 100%;
+         padding: 0 10px;
          position: static !important;
          transform: none !important;
          left: auto !important;
          margin: 0 auto;
+       }
+       
+       .user-flow-section .flow-arrow {
+         display: none !important;
+       }
+       
+               .user-flow-section .flow-step {
+          min-width: auto;
+          flex-direction: column;
+          gap: 2px;
+          flex: 1;
+          max-width: none;
+          align-items: center;
+          padding-top: 8px;
+        }
+       
+       .user-flow-section .step-number {
+         width: 32px !important;
+         height: 32px !important;
+         font-size: 1rem !important;
+         margin-bottom: 6px !important;
+         padding: 2px !important;
+       }
+       
+       .user-flow-section .step-content h3 {
+         font-size: 0.8rem !important;
+         margin: 0 !important;
+         line-height: 1.2;
+         text-align: center;
+       }
+       
+       .user-flow-section .step-content p {
+         display: block !important;
+         font-size: 0.6rem !important;
+         margin: 0 !important;
+         line-height: 1.1;
+         text-align: center;
+       }
+       
+               .user-flow-section {
+          padding: 15px 12px;
+          min-height: 80px !important;
+          max-height: 100px !important;
+          margin: -10px 0 20px 0 !important;
+          border-radius: 0 !important;
+          width: 100vw !important;
+          position: relative !important;
+          left: 50% !important;
+          transform: translateX(-50%) !important;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+          flex-direction: column;
+          gap: 15px;
+          justify-content: center;
+        }
+       
+       /* Make content extend to full width like purple bar */
+       .top-section {
+         padding-left: 0 !important;
+         padding-right: 0 !important;
+         margin: 0 !important;
+         width: 100vw !important;
+         position: relative !important;
+         left: 50% !important;
+         transform: translateX(-50%) !important;
+       }
+       
+       /* Ensure content extends to edges */
+       .screenshots-section, .products-selected {
+         margin-left: 0 !important;
+         margin-right: 0 !important;
+         width: 100% !important;
+         max-width: 100% !important;
        }
        
        .shipping-info {
@@ -703,8 +889,68 @@
          height: 120px;
        }
        
-       .user-flow-section {
-         padding: 15px 10px;
+       .user-flow-section .flow-steps {
+         gap: 4px;
+         justify-content: space-evenly !important;
+         padding: 0 8px;
+       }
+       
+       .user-flow-section .flow-arrow {
+         display: none !important;
+       }
+       
+       .user-flow-section .step-number {
+         width: 28px !important;
+         height: 28px !important;
+         font-size: 0.9rem !important;
+         padding: 2px !important;
+         margin-bottom: 4px !important;
+       }
+       
+       .user-flow-section .step-content h3 {
+         font-size: 0.7rem !important;
+         margin-bottom: 2px !important;
+       }
+       
+       .user-flow-section .step-content p {
+         display: block !important;
+         font-size: 0.5rem !important;
+         margin: 0 !important;
+         line-height: 1.1;
+         text-align: center;
+       }
+       
+               .user-flow-section {
+          padding: 12px 10px;
+          min-height: 75px !important;
+          max-height: 95px !important;
+          margin: -10px 0 20px 0 !important;
+          border-radius: 0 !important;
+          width: 100vw !important;
+          position: relative !important;
+          left: 50% !important;
+          transform: translateX(-50%) !important;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+          justify-content: center;
+        }
+       
+       /* Make content extend to full width like purple bar */
+       .top-section {
+         padding-left: 0 !important;
+         padding-right: 0 !important;
+         margin: 0 !important;
+         width: 100vw !important;
+         position: relative !important;
+         left: 50% !important;
+         transform: translateX(-50%) !important;
+       }
+       
+       /* Ensure content extends to edges */
+       .screenshots-section, .products-selected {
+         margin-left: 0 !important;
+         margin-right: 0 !important;
+         width: 100% !important;
+         max-width: 100% !important;
        }
        
        .shipping-info {
@@ -723,77 +969,106 @@
 
      <!-- User Flow Section - Only Step 3 since we're already at merchandise page -->
    <div class="user-flow-section">
-           <!-- Make Merchandise Section - Now positioned above Screenshots Selected -->
-      <div class="flow-steps" style="position: absolute; left: 25%; transform: translateX(-50%); z-index: 5;">
-        <div class="flow-step">
-          <div class="step-number">3</div>
-          <div class="step-content">
-            <h3>Make Merchandise</h3>
-            <p>Create custom products with your screenshot</p>
-          </div>
-        </div>
-      </div>
-     
-     <!-- Shipping Information - Now on the UPPER RIGHT -->
-     <div class="shipping-info">
-       <div class="shipping-item">
-         <span class="shipping-icon">🌍</span>
-         <span class="shipping-text">Global Shipping</span>
+     <div class="flow-steps">
+       <div class="flow-step">
+         <div class="step-number">3</div>
+         <div class="step-content">
+           <h3>Make Merchandise</h3>
+           <p>Create custom products with your screenshot</p>
+         </div>
        </div>
-       <div class="shipping-item">
-         <span class="shipping-icon">📦</span>
-         <span class="shipping-text">US/Mexico Fulfillment</span>
-       </div>
-       <div class="shipping-item">
-         <span class="shipping-icon">🎨</span>
-         <span class="shipping-text">Core Colors Available</span>
-       </div>
-        <div class="shipping-item">
-          <span class="shipping-icon">✅</span>
-          <span class="shipping-text">3-14 Day Delivery</span>
-        </div>
      </div>
    </div>
 
-  <!-- Top Section - Thumbnails and Screenshots -->
-  <div class="top-section">
-    <h3>Screenshots Selected</h3>
-    <div class="screenshot-preview-row" id="screenshotPreviewRow">
-      <!-- Video thumbnail will be auto-inserted here -->
-    </div>
-  </div>
-
-  <!-- Main Layout -->
-  <div class="main-container">
-    <!-- Fixed Products Selected Sidebar -->
-    <div class="products-selected" id="productsSelected">
-      <h3>Products Selected</h3>
-      <div class="selected-products" id="selectedProducts">
-        <p>No products selected yet</p>
-      </div>
-      
-      <!-- Order Summary -->
-      <div id="orderSummary" style="display: none; margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
-        <div style="font-weight: bold; color: #333; margin-bottom: 8px;">📋 Order Summary</div>
-        <div id="summaryDetails" style="font-size: 13px; color: #666; line-height: 1.4;">
-          <div><span id="itemCount">0</span> items • Subtotal: $<span id="subtotal">0.00</span></div>
-          <div style="margin-top: 4px;">✅ Shipping calculated at checkout</div>
-          <div style="margin-top: 4px; color: #28a745;">💡 <strong>Multiple items = Better shipping rates!</strong></div>
+     <!-- Page Wrapper for consistent width -->
+   <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;">
+   
+   <!-- Top Section - Thumbnails and Screenshots with Products Selected Sidebar -->
+   <div class="top-section">
+    <div class="top-section-content">
+      <div class="screenshots-section">
+        <h3>Screenshots Selected</h3>
+        <div class="screenshot-preview-row" id="screenshotPreviewRow">
+          <!-- Video thumbnail will be auto-inserted here -->
         </div>
       </div>
       
-      <button class="btn checkout-btn" onclick="goToCheckout()" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
+             <!-- Products Selected Sidebar - Now positioned next to screenshots -->
+       <div class="products-selected" id="productsSelected">
+         <h3>Products Selected</h3>
+         <div class="selected-products" id="selectedProducts">
+           <p>No products selected yet</p>
+         </div>
+         
+         <!-- Order Summary -->
+         <div id="orderSummary" style="display: none; margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
+           <div style="font-weight: bold; color: #333; margin-bottom: 8px;">📋 Order Summary</div>
+           <div id="summaryDetails" style="font-size: 13px; color: #666; line-height: 1.4;">
+             <div><span id="itemCount">0</span> items • Subtotal: $<span id="subtotal">0.00</span></div>
+             <div style="margin-top: 4px;">✅ Shipping calculated at checkout</div>
+             <div style="margin-top: 4px; color: #28a745;">💡 <strong>Multiple items = Better shipping rates!</strong></div>
+           </div>
+         </div>
+         
+         <button class="btn checkout-btn" onclick="goToCheckout()" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
+       </div>
+       
+               <!-- Mobile Action Buttons - Hidden on desktop, shown on mobile -->
+        <div class="mobile-action-buttons" id="mobileActionButtons" style="display: none;" data-category-page="{{ 'true' if show_category_selection else 'false' }}">
+         <button class="mobile-cart-btn" onclick="viewCart()" style="
+           background: #007bff; 
+           color: white; 
+           border: none; 
+           padding: 15px 20px; 
+           border-radius: 8px; 
+           cursor: pointer; 
+           font-weight: bold; 
+           font-size: 16px; 
+           width: 48%; 
+           display: flex; 
+           align-items: center; 
+           justify-content: center; 
+           gap: 8px;
+           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+         ">
+           🛒 View Cart
+         </button>
+         <button class="mobile-checkout-btn" onclick="goToCheckout()" style="
+           background: #6c757d; 
+           color: white; 
+           border: none; 
+           padding: 15px 20px; 
+           border-radius: 8px; 
+           cursor: pointer; 
+           font-weight: bold; 
+           font-size: 16px; 
+           width: 48%; 
+           display: flex; 
+           align-items: center; 
+           justify-content: center; 
+           gap: 8px;
+           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+         ">
+           🛍️ Checkout
+         </button>
+       </div>
     </div>
+  </div>
+
+     </div> <!-- Close page wrapper -->
+   
+   <!-- Main Layout -->
+   <div class="main-container">
 
     <!-- Products Section -->
     <div class="products-section" id="productsSection">
       {% if show_category_selection %}
       <!-- Category Selection Landing -->
-      <div class="category-selection-landing" style="text-align: center; padding: 40px 20px;">
+             <div class="category-selection-landing" style="text-align: center; padding: 40px 20px; box-sizing: border-box !important; overflow-x: hidden !important; width: 100% !important;">
         <h2 style="color: #333; margin-bottom: 10px;">Choose a Product Category</h2>
         <p style="color: #666; margin-bottom: 30px;">Select a category to browse products for your custom merchandise</p>
         
-        <div class="category-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 600px; margin: 0 auto;">
+        <div class="category-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; max-width: 800px; margin: 0 auto;">
           <div class="category-card" onclick="switchCategory('womens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👩</span>
             <span style="font-weight: 600; color: #333;">Women's</span>
@@ -810,8 +1085,6 @@
             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">☕</span>
             <span style="font-weight: 600; color: #333;">Mugs</span>
           </div>
-          <!-- Empty space for alignment -->
-          <div></div>
           <div class="category-card" onclick="switchCategory('hats')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🧢</span>
             <span style="font-weight: 600; color: #333;">Hats</span>
@@ -820,8 +1093,22 @@
             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👜</span>
             <span style="font-weight: 600; color: #333;">Bags</span>
           </div>
-          <!-- Empty space for alignment -->
-          <div></div>
+          <div class="category-card" onclick="switchCategory('pets')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🐕</span>
+            <span style="font-weight: 600; color: #333;">Pets</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('stickers')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🌟</span>
+            <span style="font-weight: 600; color: #333;">Stickers & Magnets</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('misc')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">📦</span>
+            <span style="font-weight: 600; color: #333;">Miscellaneous</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('thumbnails')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🖼️</span>
+            <span style="font-weight: 600; color: #333;">Thumbnails</span>
+          </div>
         </div>
       </div>
       
@@ -874,6 +1161,10 @@
             <span class="icon">📦</span>
             <span class="label">Misc</span>
           </div>
+          <div class="category-icon" onclick="switchCategory('thumbnails')" title="Thumbnails">
+            <span class="icon">🖼️</span>
+            <span class="label">Thumbnails</span>
+          </div>
         </div>
       </div>
       
@@ -898,9 +1189,45 @@
      }
      console.log('🛑 Cleared all intervals to stop screenshot loops');
      
-     // Simple initialization
-     document.addEventListener('DOMContentLoaded', function() {
-       console.log('✅ DOM loaded successfully');
+             // Simple initialization
+        document.addEventListener('DOMContentLoaded', function() {
+          console.log('✅ DOM loaded successfully');
+          
+          // Show/hide mobile buttons based on screen size and category selection
+          function toggleMobileButtons() {
+            const mobileButtons = document.getElementById('mobileActionButtons');
+            const productsSelected = document.getElementById('productsSelected');
+            
+            console.log('🔍 toggleMobileButtons called');
+            console.log('🔍 Window width:', window.innerWidth);
+            console.log('🔍 Mobile buttons element:', mobileButtons);
+            
+            if (window.innerWidth <= 768) {
+              // Mobile view
+              if (mobileButtons) {
+                // Check if we're on the category selection page using data attribute
+                const isCategorySelection = mobileButtons.getAttribute('data-category-page') === 'true';
+                console.log('🔍 Data category page attribute:', mobileButtons.getAttribute('data-category-page'));
+                console.log('🔍 Is category selection:', isCategorySelection);
+                
+                // Hide mobile buttons on category selection page
+                const shouldShow = !isCategorySelection;
+                mobileButtons.style.display = shouldShow ? 'flex' : 'none';
+                console.log('🔍 Setting mobile buttons display to:', shouldShow ? 'flex' : 'none');
+              }
+              if (productsSelected) productsSelected.style.display = 'none';
+            } else {
+              // Desktop view
+              if (mobileButtons) mobileButtons.style.display = 'none';
+              if (productsSelected) productsSelected.style.display = 'block';
+            }
+          }
+          
+          // Initial setup
+          toggleMobileButtons();
+          
+          // Listen for window resize
+          window.addEventListener('resize', toggleMobileButtons);
        
        // Load persistent cart from previous sessions
        loadCartFromStorage();
@@ -1415,9 +1742,48 @@
         // Store cart data in sessionStorage for checkout page
         sessionStorage.setItem('cartData', JSON.stringify(products));
         
-        // Redirect to checkout
-        window.location.href = checkoutUrl;
-      }
+                 // Redirect to checkout
+         window.location.href = checkoutUrl;
+       }
+       
+       // Mobile cart view function
+       function viewCart() {
+         console.log('🛒 Mobile view cart function called');
+         
+         // Show the products selected section temporarily for mobile
+         const productsSelected = document.getElementById('productsSelected');
+         const mobileButtons = document.getElementById('mobileActionButtons');
+         
+         if (productsSelected && mobileButtons) {
+           // Hide mobile buttons
+           mobileButtons.style.display = 'none';
+           
+           // Show products selected section with !important to override CSS
+           productsSelected.style.setProperty('display', 'block', 'important');
+           productsSelected.style.position = 'fixed';
+           productsSelected.style.top = '50%';
+           productsSelected.style.left = '50%';
+           productsSelected.style.transform = 'translate(-50%, -50%)';
+           productsSelected.style.zIndex = '1000';
+           productsSelected.style.maxWidth = '90vw';
+           productsSelected.style.maxHeight = '80vh';
+           productsSelected.style.overflow = 'auto';
+           productsSelected.style.background = 'white';
+           productsSelected.style.borderRadius = '12px';
+           productsSelected.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)';
+           productsSelected.style.padding = '20px';
+           
+           // Add close button
+           const closeBtn = document.createElement('button');
+           closeBtn.innerHTML = '✕';
+           closeBtn.style.cssText = 'position:absolute;top:10px;right:10px;background:#dc3545;color:white;border:none;padding:5px 10px;border-radius:50%;cursor:pointer;font-size:16px;';
+           closeBtn.onclick = function() {
+             productsSelected.style.setProperty('display', 'none', 'important');
+             mobileButtons.style.display = 'flex';
+           };
+           productsSelected.appendChild(closeBtn);
+         }
+       }
     </script>
 </body>
 </html>
