@@ -84,8 +84,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     const thumbnailUrl = data.thumbnail || data.poster;
                     console.log('Setting thumbnail:', thumbnailUrl);
                     setThumbnail(thumbnailUrl);
-                    // Always add thumbnail as first screenshot when video loads
-                    if (setScreenshots) {
+                    // Only add thumbnail as first screenshot if screenshots are empty
+                    if (setScreenshots && screenshots.length === 0) {
                         console.log('Adding thumbnail as first screenshot');
                         setScreenshots([thumbnailUrl]);
                     }
@@ -100,7 +100,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             setLoading(false);
         };
         fetchVideo();
-    }, [videoId, setThumbnail, setScreenshots, screenshots.length]);
+    }, [videoId, setThumbnail, setScreenshots]);
 
     // Reset video element when videoId changes
     useEffect(() => {
