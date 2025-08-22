@@ -143,10 +143,10 @@
 }
 
 .play-video video {
-    width: 100%;
-    max-width: 640px;
-    height: 360px;
-    object-fit: contain;
+    width: 100% !important;
+    max-width: 640px !important;
+    height: 360px !important;
+    object-fit: contain !important;
     /* Professional video constraints - fixed height to prevent size changes */
     aspect-ratio: 16/9;
     border-radius: 12px;
@@ -154,8 +154,14 @@
     border: 1px solid #e0e0e0;
     background: #000;
     /* Ensure consistent sizing */
-    display: block;
+    display: block !important;
     margin: 0 auto;
+    /* Prevent any interference with video playback */
+    pointer-events: auto !important;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 /* Video container to maintain consistent dimensions */
