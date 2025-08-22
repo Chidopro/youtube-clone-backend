@@ -42,19 +42,55 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         const fetchVideo = async () => {
             setLoading(true);
             setError('');
+            console.log('Fetching video with ID:', videoId);
             let { data, error } = await supabase
                 .from('videos2')
                 .select('*')
                 .eq('id', videoId)
                 .single();
             if (error) {
+                console.error('Supabase error:', error);
                 setError('Video not found.');
                 setVideo(null);
             } else {
+                console.log('Video data fetched:', data);
+                console.log('Video URL:', data.video_url);
+                console.log('Video thumbnail:', data.thumbnail);
+                console.log('Video poster:', data.poster);
+                
+                // Validate video URL
+                if (!data.video_url) {
+                    console.error('No video URL found in data');
+                    setError('Video URL is missing.');
+                    setVideo(null);
+                    setLoading(false);
+                    return;
+                }
+
+                // Test if video URL is accessible
+                try {
+                    const response = await fetch(data.video_url, { method: 'HEAD' });
+                    console.log('Video URL accessibility test:', response.status, response.statusText);
+                    if (!response.ok) {
+                        console.warn('Video URL may not be accessible:', response.status);
+                    }
+                } catch (urlError) {
+                    console.warn('Could not test video URL accessibility:', urlError);
+                }
+                
                 setVideo(data);
                 // Automatically set thumbnail if available
                 if (data.thumbnail || data.poster) {
-                    setThumbnail(data.thumbnail || data.poster);
+                    const thumbnailUrl = data.thumbnail || data.poster;
+                    console.log('Setting thumbnail:', thumbnailUrl);
+                    setThumbnail(thumbnailUrl);
+                    // Always add thumbnail as first screenshot when video loads
+                    if (setScreenshots) {
+                        console.log('Adding thumbnail as first screenshot');
+                        setScreenshots([thumbnailUrl]);
+                    }
+                } else {
+                    console.log('No thumbnail found in video data');
                 }
                 // Pass video data to parent component
                 if (onVideoData) {
@@ -64,7 +100,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             setLoading(false);
         };
         fetchVideo();
-    }, [videoId, setThumbnail]);
+    }, [videoId, setThumbnail, setScreenshots, screenshots.length]);
 
     // Reset video element when videoId changes
     useEffect(() => {
@@ -547,8 +583,165 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         createMerchProduct();
     };
 
-    if (loading) return <div style={{padding: 24}}>Loading video...</div>;
-    if (error || !video) return <div style={{padding: 24, color: 'red'}}>{error || 'Video not found.'}</div>;
+    // Test video playback function
+    const testVideoPlayback = async () => {
+        if (!videoRef.current) {
+            alert('Video element not found');
+            return;
+        }
+
+        const video = videoRef.current;
+        console.log('Testing video playback...');
+        console.log('Video URL:', video.src);
+        console.log('Video ready state:', video.readyState);
+        console.log('Video network state:', video.networkState);
+        console.log('Video paused:', video.paused);
+        console.log('Video current time:', video.currentTime);
+        console.log('Video duration:', video.duration);
+
+        try {
+            // Try to play the video
+            await video.play();
+            console.log('Video play() successful');
+            alert('Video playback test successful! Video should be playing now.');
+        } catch (error) {
+            console.error('Video play() failed:', error);
+            alert(`Video playback test failed: ${error.message}`);
+        }
+    };
+
+    // Test video URL accessibility
+    const testVideoUrl = async () => {
+        if (!video || !video.video_url) {
+            alert('No video URL to test');
+            return;
+        }
+
+        console.log('Testing video URL accessibility...');
+        console.log('Video URL:', video.video_url);
+
+        try {
+            // Test with HEAD request first
+            const headResponse = await fetch(video.video_url, { 
+                method: 'HEAD',
+                mode: 'cors'
+            });
+            console.log('HEAD request result:', headResponse.status, headResponse.statusText);
+            console.log('Content-Type:', headResponse.headers.get('content-type'));
+            console.log('Content-Length:', headResponse.headers.get('content-length'));
+
+            if (headResponse.ok) {
+                alert(`✅ Video URL is accessible!\nStatus: ${headResponse.status}\nContent-Type: ${headResponse.headers.get('content-type')}`);
+            } else {
+                alert(`❌ Video URL not accessible\nStatus: ${headResponse.status}\nError: ${headResponse.statusText}`);
+            }
+        } catch (error) {
+            console.error('URL test failed:', error);
+            alert(`❌ Video URL test failed: ${error.message}`);
+        }
+    };
+
+    // Debug database data
+    const debugVideoData = () => {
+        console.log('=== VIDEO DATA DEBUG ===');
+        console.log('Video ID:', videoId);
+        console.log('Video object:', video);
+        console.log('Video URL:', video?.video_url);
+        console.log('Thumbnail:', video?.thumbnail);
+        console.log('Poster:', video?.poster);
+        console.log('Title:', video?.title);
+        console.log('Description:', video?.description);
+        console.log('Created at:', video?.created_at);
+        
+        if (videoRef.current) {
+            console.log('=== VIDEO ELEMENT DEBUG ===');
+            console.log('Video element src:', videoRef.current.src);
+            console.log('Video element readyState:', videoRef.current.readyState);
+            console.log('Video element networkState:', videoRef.current.networkState);
+            console.log('Video element paused:', videoRef.current.paused);
+            console.log('Video element currentTime:', videoRef.current.currentTime);
+            console.log('Video element duration:', videoRef.current.duration);
+            console.log('Video element videoWidth:', videoRef.current.videoWidth);
+            console.log('Video element videoHeight:', videoRef.current.videoHeight);
+            console.log('Video element display:', videoRef.current.style.display);
+            console.log('Video element visibility:', videoRef.current.style.visibility);
+            console.log('Video element opacity:', videoRef.current.style.opacity);
+            console.log('Video element zIndex:', videoRef.current.style.zIndex);
+        }
+        
+        alert('Check console for detailed debug information');
+    };
+
+    // Force video visibility
+    const forceVideoVisibility = () => {
+        if (videoRef.current) {
+            videoRef.current.style.display = 'block';
+            videoRef.current.style.visibility = 'visible';
+            videoRef.current.style.opacity = '1';
+            videoRef.current.style.zIndex = '1';
+            videoRef.current.style.position = 'relative';
+            videoRef.current.style.width = '100%';
+            videoRef.current.style.height = '360px';
+            videoRef.current.style.maxWidth = '100%';
+            videoRef.current.style.objectFit = 'contain';
+            
+            console.log('Forced video visibility');
+            console.log('Video element styles:', {
+                display: videoRef.current.style.display,
+                visibility: videoRef.current.style.visibility,
+                opacity: videoRef.current.style.opacity,
+                zIndex: videoRef.current.style.zIndex,
+                position: videoRef.current.style.position,
+                width: videoRef.current.style.width,
+                height: videoRef.current.style.height
+            });
+            
+            alert('Video visibility forced! Check if video is now visible.');
+        } else {
+            alert('Video element not found');
+        }
+    };
+
+    if (loading) return (
+        <div style={{
+            padding: 24, 
+            textAlign: 'center',
+            background: '#f8f9fa',
+            borderRadius: '8px',
+            border: '1px solid #dee2e6'
+        }}>
+            <div style={{
+                width: '40px',
+                height: '40px',
+                border: '4px solid #f3f3f3',
+                borderTop: '4px solid #007bff',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 16px auto'
+            }}></div>
+            <p>Loading video...</p>
+            {video && <p style={{fontSize: '14px', color: '#6c757d'}}>URL: {video.video_url}</p>}
+        </div>
+    );
+    
+    if (error || !video) return (
+        <div style={{
+            padding: 24, 
+            color: 'red',
+            background: '#f8d7da',
+            borderRadius: '8px',
+            border: '1px solid #f5c6cb'
+        }}>
+            <h3>Video Error</h3>
+            <p>{error || 'Video not found.'}</p>
+            {video && (
+                <div style={{marginTop: '12px', fontSize: '14px'}}>
+                    <p><strong>Video URL:</strong> {video.video_url}</p>
+                    <p><strong>Video ID:</strong> {videoId}</p>
+                </div>
+            )}
+        </div>
+    );
 
     return (
         <div className="play-video">
@@ -558,57 +751,39 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 style={{ position: 'relative', display: 'inline-block' }}
             >
 
-                    <div style={{ 
-                        position: 'relative', 
-                        display: 'inline-block', 
-                        width: '100%', 
-                        maxWidth: '640px',
-                        // Force fixed dimensions to prevent any size changes
-                        height: '360px',
-                        minHeight: '360px',
-                        maxHeight: '360px',
-                        // Prevent any layout shifts
-                        overflow: 'hidden',
-                        boxSizing: 'border-box',
-                        // Disable any transitions that might cause size changes
-                        transition: 'none',
-                        // Ensure container never changes size
-                        flexShrink: 0,
-                        flexGrow: 0
-                    }}>
-                        <video 
+                                         <div style={{ 
+                         position: 'relative', 
+                         display: 'inline-block', 
+                         width: '100%', 
+                         maxWidth: '640px'
+                     }}>
+                                                                         <video 
                             key={videoId}
                             ref={videoRef} 
                             controls 
+                            poster={video.thumbnail || ''}
                             width="100%" 
+                            height="360"
                             style={{
                                 background: '#000', 
                                 cursor: showCropTool ? 'crosshair' : 'default',
                                 width: '100%',
-                                height: '360px',
-                                maxWidth: '100%',
-                                maxHeight: '360px',
-                                minWidth: '100%',
-                                minHeight: '360px',
-                                // Force video to maintain exact size
-                                objectFit: 'contain',
-                                // Prevent any size changes
-                                transition: 'none',
-                                // Ensure video never changes size
-                                flexShrink: 0,
-                                flexGrow: 0
+                                height: '360px'
                             }} 
-                            poster={video.thumbnail || ''} 
                             src={video.video_url}
-                            crossOrigin="anonymous"
                             onMouseDown={showCropTool ? handleCropMouseDown : undefined}
                             onMouseMove={showCropTool ? handleCropMouseMove : undefined}
                             onMouseUp={showCropTool ? handleCropMouseUp : undefined}
                             onMouseLeave={showCropTool ? handleCropMouseUp : undefined}
-                            onClick={showCropTool ? (e) => e.preventDefault() : undefined}
-                        >
-                            Your browser does not support the video tag.
-                        </video>
+                            onCanPlay={() => {
+                                console.log('Video can play');
+                                setLoading(false);
+                            }}
+                            onLoadedData={() => {
+                                console.log('Video data loaded');
+                                setLoading(false);
+                            }}
+                        />
                         
                         {/* Simple Crop Selection Overlay */}
                         {showCropTool && cropArea.width > 0 && cropArea.height > 0 && (
@@ -799,6 +974,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             <div className="vid-description">
                 <p>{video.description}</p>
             </div>
+            
+                         
 
             {/* Authentication Modal */}
             <AuthModal 
@@ -815,6 +992,9 @@ export default PlayVideo
 
 
 export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot }) => {
+    console.log('ScreenmerchImages: Received screenshots:', screenshots);
+    console.log('ScreenmerchImages: Received thumbnail:', thumbnail);
+    
     return (
         <div className="screenmerch-images-grid">
             {[0,1,2,3,4,5].map(idx => (
@@ -833,6 +1013,8 @@ export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot }
                                     height: 'auto',
                                     objectFit: 'contain'
                                 }}
+                                onError={(e) => console.error(`Failed to load screenshot ${idx + 1}:`, e.target.src)}
+                                onLoad={() => console.log(`Screenshot ${idx + 1} loaded successfully:`, screenshots[idx])}
                             />
                             <div className="screenmerch-buttons">
                                 <button className="screenmerch-delete-btn" onClick={() => onDeleteScreenshot(idx)} title="Delete screenshot">×</button>
