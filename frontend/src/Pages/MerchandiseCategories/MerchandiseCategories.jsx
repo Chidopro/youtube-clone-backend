@@ -42,7 +42,8 @@ const MerchandiseCategories = () => {
     { name: "Bags", emoji: "👜", category: "bags" },
     { name: "Pets", emoji: "🐕", category: "pets" },
     { name: "Stickers & Magnets", emoji: "🌟", category: "stickers" },
-    { name: "Miscellaneous", emoji: "📦", category: "misc" }
+    { name: "Miscellaneous", emoji: "📦", category: "misc" },
+    { name: "Thumbnails", emoji: "🖼️", category: "thumbnails" }
   ];
 
   const handleCategoryClick = async (category) => {

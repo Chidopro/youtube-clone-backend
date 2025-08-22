@@ -742,6 +742,44 @@ PRODUCTS = [
         "main_image": "babybib.png",
         "preview_image": "babybibpreview.jpg",
         "options": {"color": ["Black", "Dark Grey Heather", "Heather Columbia Blue", "Athletic Heather", "Pink", "Yellow", "White"], "size": ["3-6m", "6-12m", "12-18m", "18-24m"]}
+    },
+    {
+        "name": "Custom Thumbnail Print",
+        "price": 15.99,
+        "filename": "thumbnail_print.png",
+        "main_image": "thumbnail_print.png",
+        "preview_image": "thumbnail_print_preview.png",
+        "options": {"color": ["Glossy", "Matte"], "size": ["8\"x10\"", "11\"x14\"", "16\"x20\""]},
+        "size_pricing": {
+            "8\"x10\"": 0,
+            "11\"x14\"": 5.00,
+            "16\"x20\"": 12.00
+        }
+    },
+    {
+        "name": "Thumbnail Poster",
+        "price": 19.99,
+        "filename": "thumbnail_poster.png",
+        "main_image": "thumbnail_poster.png",
+        "preview_image": "thumbnail_poster_preview.png",
+        "options": {"color": ["White"], "size": ["18\"x24\"", "24\"x36\""]},
+        "size_pricing": {
+            "18\"x24\"": 0,
+            "24\"x36\"": 8.00
+        }
+    },
+    {
+        "name": "Thumbnail Canvas Print",
+        "price": 29.99,
+        "filename": "thumbnail_canvas.png",
+        "main_image": "thumbnail_canvas.png",
+        "preview_image": "thumbnail_canvas_preview.png",
+        "options": {"color": ["Natural"], "size": ["12\"x16\"", "16\"x20\"", "20\"x24\""]},
+        "size_pricing": {
+            "12\"x16\"": 0,
+            "16\"x20\"": 10.00,
+            "20\"x24\"": 20.00
+        }
     }
 ]
 
@@ -850,6 +888,11 @@ def filter_products_by_category(category):
             "Greeting Card",
             "Hardcover Bound Notebook", 
             "Coasters"
+        ],
+        'thumbnails': [
+            "Custom Thumbnail Print",
+            "Thumbnail Poster",
+            "Thumbnail Canvas Print"
         ]
     }
     
