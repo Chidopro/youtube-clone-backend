@@ -445,6 +445,12 @@
        min-height: 200px;
        flex-shrink: 0; /* Prevent sidebar from shrinking */
      }
+     
+     /* When on category selection page, make screenshots section take full width */
+     .top-section.category-selection-mode .screenshots-section {
+       flex: 1;
+       width: 100%;
+     }
     
     .products-selected h3 {
       margin-top: 0;
@@ -984,7 +990,7 @@
    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;">
    
    <!-- Top Section - Thumbnails and Screenshots with Products Selected Sidebar -->
-   <div class="top-section">
+   <div class="top-section{% if show_category_selection %} category-selection-mode{% endif %}">
     <div class="top-section-content">
       <div class="screenshots-section">
         <h3>Screenshots Selected</h3>
@@ -994,6 +1000,7 @@
       </div>
       
              <!-- Products Selected Sidebar - Now positioned next to screenshots -->
+       {% if not show_category_selection %}
        <div class="products-selected" id="productsSelected">
          <h3>Products Selected</h3>
          <div class="selected-products" id="selectedProducts">
@@ -1012,6 +1019,7 @@
          
          <button class="btn checkout-btn" onclick="goToCheckout()" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
        </div>
+       {% endif %}
        
                <!-- Mobile Action Buttons - Hidden on desktop, shown on mobile -->
         <div class="mobile-action-buttons" id="mobileActionButtons" style="display: none;" data-category-page="{{ 'true' if show_category_selection else 'false' }}">
