@@ -1,5 +1,23 @@
+/* Ensure video controls are visible and clickable */
+.play-video video {
+  pointer-events: auto !important;
+  user-select: none;
+}
+
+.play-video video::-webkit-media-controls {
+  display: flex !important;
+}
+
+.play-video video::-webkit-media-controls-panel {
+  display: flex !important;
+}
+
+.play-video video::-webkit-media-controls-play-button {
+  display: flex !important;
+}
+
 /* Mobile: keep video inline, prevent fullscreen takeover */
-@media (max-width: 768px) {
+@media (max-width: 768px) and (orientation: portrait) {
   video::-internal-media-controls-overlay-cast-button,
   video::-webkit-media-controls-fullscreen-button {
     display: none !important;
@@ -7,19 +25,14 @@
   /* iOS: ensure inline playback with consistent sizing */
   video[playsinline],
   video[webkit-playsinline] {
-    height: 360px !important;
-    max-height: 360px !important;
+    height: 320px !important;
+    max-height: 320px !important;
   }
   .play-video .video-container,
   .play-video video {
     max-width: 100% !important;
-    height: 360px !important;
+    height: 320px !important;
     width: 100% !important;
-  }
-  /* Prevent page from scrolling while user draws crop area */
-  .play-video .video-container,
-  .play-video video {
-    touch-action: none;
   }
   html, body { overflow-x: hidden; }
 }
@@ -156,6 +169,64 @@
     /* Ensure consistent sizing */
     display: block;
     margin: 0 auto;
+}
+
+/* Force video background to be transparent */
+.play-video video {
+  background: transparent !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.play-video .video-container {
+  background: white !important;
+  border-radius: 8px;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 400px !important;
+}
+
+.play-video .video-container > div {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Crop Tool Button Styles */
+.crop-tool-btn {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  z-index: 1000 !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 8px !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  backdrop-filter: blur(4px) !important;
+  transition: all 0.2s ease !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.crop-tool-btn:hover {
+  background: rgba(0, 0, 0, 0.9) !important;
+  transform: scale(1.05) !important;
 }
 
 /* Video container to maintain consistent dimensions */
@@ -386,21 +457,19 @@
 }
 
 .screenmerch-placeholder {
-    background: #f8f9fa;
-    color: #6c757d;
-    border: 2px dashed #dee2e6;
-    border-radius: 8px;
-    width: 100%;
-    height: 80px;
-    min-height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
+    width: 100%;
+    height: 80px;
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 6px;
+    color: #6c757d;
     font-size: 0.75rem;
     font-weight: 500;
     transition: all 0.2s ease;
-    flex: 1;
+    margin-top: auto;
 }
 
 .screenmerch-placeholder:hover {
@@ -411,13 +480,13 @@
 
 .screenmerch-images-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(2, minmax(120px, auto));
-    gap: 10px;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 12px;
     width: 100%;
-    align-items: stretch;
     max-width: 100%;
     box-sizing: border-box;
+    padding: 0;
 }
 
 .screenmerch-image-box {
@@ -430,9 +499,10 @@
     padding: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     transition: transform 0.2s ease;
-    height: 100%;
-    justify-content: space-between;
-    min-height: 120px;
+    min-height: 140px;
+    max-height: 160px;
+    overflow: hidden;
+    border: 2px dashed #e0e0e0;
 }
 
 .screenmerch-image-box:hover {
@@ -441,12 +511,10 @@
 }
 
 .screenmerch-image-box h4 {
-    font-size: 0.85rem;
-    margin: 0 0 10px 0;
-    color: #333;
+    font-size: 0.9rem;
+    margin: 0 0 8px 0;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: #333;
 }
 
 .screenmerch-col {
@@ -486,11 +554,6 @@
 .screenmerch-img-wrapper {
     position: relative;
     display: inline-block;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 80px;
 }
 
 .screenmerch-buttons {
@@ -543,72 +606,6 @@
 
 .screenmerch-delete-btn:hover {
     background: #ffeaea;
-}
-
-/* Mobile-specific video fixes */
-@media (max-width: 768px) {
-    .play-video video {
-        height: 360px;
-        max-height: 360px;
-        width: 100%;
-        object-fit: contain;
-        /* Prevent fullscreen overflow */
-        position: relative;
-        z-index: 1;
-    }
-    
-    .play-video .video-container {
-        height: 360px;
-        max-height: 360px;
-        width: 100%;
-    }
-    
-    .screenmerch-btn {
-        /* Better touch targets for mobile */
-        min-height: 44px;
-        padding: 12px 16px;
-        font-size: 14px;
-        /* Prevent text wrapping */
-        white-space: nowrap;
-        /* Ensure buttons are clickable */
-        touch-action: manipulation;
-        -webkit-tap-highlight-color: rgba(0,0,0,0.1);
-        /* Prevent double-tap zoom */
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        user-select: none;
-    }
-    
-    .screenmerch-actions {
-        /* Stack buttons vertically on very small screens */
-        flex-direction: column;
-        gap: 12px;
-        /* Ensure proper spacing */
-        margin-bottom: 20px;
-    }
-}
-
-@media (max-width: 480px) {
-    .play-video video {
-        height: 360px;
-        max-height: 360px;
-    }
-    
-    .play-video .video-container {
-        height: 360px;
-        max-height: 360px;
-    }
-    
-    .screenmerch-btn {
-        padding: 10px 12px;
-        font-size: 13px;
-        /* Even better touch targets for small screens */
-        min-height: 48px;
-    }
-    
-    .screenmerch-actions {
-        gap: 10px;
-    }
 }
 
 /* Loading spinner animation */
