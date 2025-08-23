@@ -65,11 +65,47 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.log('Adding video thumbnail as screenshot');
             setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
             
-            // Show success message
+            // Show success message with green notification
             const newScreenshotCount = screenshots.length + 1;
-            alert(`Screenshot ${newScreenshotCount} captured successfully!`);
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #4CAF50;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                animation: slideIn 0.3s ease-out;
+                max-width: 300px;
+                font-size: 14px;
+                font-weight: 500;
+            `;
+            notification.textContent = `Screenshot ${newScreenshotCount} captured successfully!`;
+            document.body.appendChild(notification);
+            setTimeout(() => document.body.removeChild(notification), 3000);
         } else {
-            alert('No thumbnail available for this video.');
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #f44336;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                animation: slideIn 0.3s ease-out;
+                max-width: 300px;
+                font-size: 14px;
+                font-weight: 500;
+            `;
+            notification.textContent = 'No thumbnail available for this video.';
+            document.body.appendChild(notification);
+            setTimeout(() => document.body.removeChild(notification), 3000);
         }
     };
 
@@ -107,10 +143,46 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             if (data.success && data.product_url) {
                 window.open(data.product_url, '_blank');
             } else {
-                alert('Failed to create merch product page.');
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #f44336;
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    z-index: 10000;
+                    animation: slideIn 0.3s ease-out;
+                    max-width: 300px;
+                    font-size: 14px;
+                    font-weight: 500;
+                `;
+                notification.textContent = 'Failed to create merch product page.';
+                document.body.appendChild(notification);
+                setTimeout(() => document.body.removeChild(notification), 3000);
             }
         } catch (err) {
-            alert('Error connecting to merch server. Make sure Flask is running.');
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #f44336;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                animation: slideIn 0.3s ease-out;
+                max-width: 300px;
+                font-size: 14px;
+                font-weight: 500;
+            `;
+            notification.textContent = 'Error connecting to merch server. Make sure Flask is running.';
+            document.body.appendChild(notification);
+            setTimeout(() => document.body.removeChild(notification), 3000);
         }
     };
 
