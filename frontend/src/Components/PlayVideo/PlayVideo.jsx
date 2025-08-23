@@ -12,6 +12,39 @@ import { API_CONFIG } from '../../config/apiConfig'
 import AuthModal from '../AuthModal/AuthModal'
 import { mobileAuthDebug } from '../../utils/mobileAuthDebug'
 
+// Simple notification component
+const Notification = ({ message, type = 'success', onClose }) => {
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            onClose();
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [onClose]);
+
+    return (
+        <div 
+            className="notification"
+            style={{
+                position: 'fixed',
+                top: '20px',
+                right: '20px',
+                background: type === 'success' ? '#4CAF50' : '#f44336',
+                color: 'white',
+                padding: '12px 20px',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                zIndex: 10000,
+                animation: 'slideIn 0.3s ease-out',
+                maxWidth: '300px',
+                fontSize: '14px',
+                fontWeight: '500'
+            }}
+        >
+            ✅ {message}
+        </div>
+    );
+};
+
 const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData }) => {
     // Use prop if provided, otherwise fallback to URL param
     const params = useParams();
@@ -23,6 +56,19 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
+    
+    // Notification state
+    const [notification, setNotification] = useState(null);
+
+    // Show notification function
+    const showNotification = (message, type = 'success') => {
+        setNotification({ message, type });
+    };
+
+    // Hide notification function
+    const hideNotification = () => {
+        setNotification(null);
+    };
 
     useEffect(() => {
         if (!videoId) {
@@ -120,92 +166,32 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         };
     }, []);
 
-    // Grab Screenshot handler
-    const handleGrabScreenshot = async () => {
+    // Fast Screenshot handler - uses video thumbnail for instant capture
+    const handleGrabScreenshot = () => {
         console.log('Grab Screenshot clicked');
         
-        // Prevent page scrolling when screenshot is taken
-        const currentScroll = window.scrollY;
-        
         if (screenshots.length >= 6) {
-            alert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
+            showNotification('Maximum 6 screenshots allowed. Please delete some screenshots first.', 'error');
             return;
         }
 
-        // Otherwise, capture a new screenshot
         const videoElement = videoRef.current;
         if (!videoElement) {
-            alert('Video not loaded yet. Please wait for the video to load.');
+            showNotification('Video not loaded yet. Please wait for the video to load.', 'error');
             return;
         }
 
-        try {
-            const currentTime = videoElement.currentTime || 0;
-            const videoUrl = video.video_url;
+        // Use video thumbnail for instant screenshot capture
+        const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
+        
+        if (thumbnailUrl) {
+            console.log('Adding video thumbnail as screenshot');
+            setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
             
-            console.log(`Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
-            
-            const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    video_url: videoUrl,
-                    timestamp: currentTime,
-                    quality: 85,
-                    crop_area: null
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Server responded with status: ${response.status}`);
-            }
-            
-            const result = await response.json();
-            
-            if (result.success && result.screenshot) {
-                console.log('Server-side screenshot captured successfully');
-                
-                if (result.fallback) {
-                    console.log('Server returned fallback response, using thumbnail instead');
-                    const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
-                    if (thumbnailUrl) {
-                        setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
-                        const newScreenshotCount = screenshots.length + 1;
-                        alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
-                    } else {
-                        alert('No thumbnail available for this video.');
-                    }
-                } else {
-                    setScreenshots(prev => prev.length < 6 ? [...prev, result.screenshot] : prev);
-                    const newScreenshotCount = screenshots.length + 1;
-                    alert(`Screenshot ${newScreenshotCount} captured successfully!`);
-                }
-                // Restore scroll position
-                window.scrollTo(0, currentScroll);
-                return;
-            } else {
-                console.error('Server screenshot capture failed:', result.error);
-                throw new Error(result.error || 'Server failed to capture screenshot');
-            }
-            
-        } catch (error) {
-            console.log('Server capture failed, using thumbnail fallback:', error);
-            
-            const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
-            
-            if (thumbnailUrl) {
-                console.log('Adding video thumbnail as screenshot');
-                setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
-                
-                const newScreenshotCount = screenshots.length + 1;
-                alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
-            } else {
-                alert('No thumbnail available for this video.');
-            }
-            // Restore scroll position
-            window.scrollTo(0, currentScroll);
+            const newScreenshotCount = screenshots.length + 1;
+            showNotification(`Screenshot ${newScreenshotCount} captured successfully!`);
+        } else {
+            showNotification('No thumbnail available for this video.', 'error');
         }
     };
 
@@ -704,6 +690,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 onClose={() => setShowAuthModal(false)}
                 onSuccess={handleAuthSuccess}
             />
+            
+            {/* Notification */}
+            {notification && (
+                <Notification 
+                    message={notification.message} 
+                    type={notification.type} 
+                    onClose={hideNotification} 
+                />
+            )}
         </div>
     )
 }
