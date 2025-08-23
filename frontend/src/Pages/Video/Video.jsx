@@ -29,13 +29,23 @@ const Video = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Add some default screenshots for testing
+  // Add thumbnail as first screenshot when available
   useEffect(() => {
     if (thumbnail && screenshots.length === 0) {
+      console.log('Video.jsx: Adding thumbnail as first screenshot:', thumbnail);
       // Add the thumbnail as the first screenshot
       setScreenshots([thumbnail]);
     }
   }, [thumbnail, screenshots.length]);
+
+  // Reset screenshots when video changes and set thumbnail as first image
+  useEffect(() => {
+    if (videoId && thumbnail) {
+      console.log('Video.jsx: Video changed, resetting screenshots with thumbnail:', thumbnail);
+      // Clear existing screenshots and set thumbnail as first
+      setScreenshots([thumbnail]);
+    }
+  }, [videoId, thumbnail]);
 
   const handleDeleteScreenshot = (idx) => {
     setScreenshots(screenshots => screenshots.filter((_, i) => i !== idx));
@@ -286,6 +296,8 @@ const Video = () => {
         onClose={() => setShowAuthModal(false)}
         onSuccess={createMerchProduct}
       />
+
+
     </div>
   );
 };
