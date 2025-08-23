@@ -48,12 +48,48 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const handleGrabScreenshot = () => {
         const video = videoRef.current;
         if (!video) {
-            alert('Video not loaded yet. Please wait for the video to load.');
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #f44336;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                animation: slideIn 0.3s ease-out;
+                max-width: 300px;
+                font-size: 14px;
+                font-weight: 500;
+            `;
+            notification.textContent = 'Video not loaded yet. Please wait for the video to load.';
+            document.body.appendChild(notification);
+            setTimeout(() => document.body.removeChild(notification), 3000);
             return;
         }
         
         if (screenshots.length >= 6) {
-            alert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #f44336;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                animation: slideIn 0.3s ease-out;
+                max-width: 300px;
+                font-size: 14px;
+                font-weight: 500;
+            `;
+            notification.textContent = 'Maximum 6 screenshots allowed. Please delete some screenshots first.';
+            document.body.appendChild(notification);
+            setTimeout(() => document.body.removeChild(notification), 3000);
             return;
         }
 
