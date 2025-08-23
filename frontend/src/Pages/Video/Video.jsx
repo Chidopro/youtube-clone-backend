@@ -238,21 +238,75 @@ const Video = () => {
           try {
             window.location.href = data.product_url;
           } catch (e) {
-            // Fallback: show URL for user to copy
-            alert(`Your merch page is ready! Please visit: ${data.product_url}`);
+                       // Fallback: show URL for user to copy
+           const notification = document.createElement('div');
+           notification.style.cssText = `
+             position: fixed;
+             top: 20px;
+             right: 20px;
+             background: #4CAF50;
+             color: white;
+             padding: 12px 20px;
+             border-radius: 8px;
+             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+             z-index: 10000;
+             animation: slideIn 0.3s ease-out;
+             max-width: 300px;
+             font-size: 14px;
+             font-weight: 500;
+           `;
+           notification.textContent = `Your merch page is ready! Please visit: ${data.product_url}`;
+           document.body.appendChild(notification);
+           setTimeout(() => document.body.removeChild(notification), 5000);
           }
         } else {
           // On desktop, open in new tab
           window.open(data.product_url, '_blank');
         }
-      } else {
-        console.error('Failed to create product:', data);
-        alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
-      }
-    } catch (err) {
-      console.error('Make Merch error:', err);
-      alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
-    }
+             } else {
+         console.error('Failed to create product:', data);
+         const notification = document.createElement('div');
+         notification.style.cssText = `
+           position: fixed;
+           top: 20px;
+           right: 20px;
+           background: #f44336;
+           color: white;
+           padding: 12px 20px;
+           border-radius: 8px;
+           box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+           z-index: 10000;
+           animation: slideIn 0.3s ease-out;
+           max-width: 300px;
+           font-size: 14px;
+           font-weight: 500;
+         `;
+         notification.textContent = `Failed to create merch product page: ${data.error || 'Unknown error'}`;
+         document.body.appendChild(notification);
+         setTimeout(() => document.body.removeChild(notification), 5000);
+       }
+     } catch (err) {
+       console.error('Make Merch error:', err);
+       const notification = document.createElement('div');
+       notification.style.cssText = `
+         position: fixed;
+         top: 20px;
+         right: 20px;
+         background: #f44336;
+         color: white;
+         padding: 12px 20px;
+         border-radius: 8px;
+         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+         z-index: 10000;
+         animation: slideIn 0.3s ease-out;
+         max-width: 300px;
+         font-size: 14px;
+         font-weight: 500;
+       `;
+       notification.textContent = `Error connecting to merch server: ${err.message}`;
+       document.body.appendChild(notification);
+       setTimeout(() => document.body.removeChild(notification), 5000);
+     }
   };
 
   // Scroll to screenshots section and grab screenshot

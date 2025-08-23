@@ -288,11 +288,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 }
             } else {
                 console.error('Failed to create product:', data);
-                alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
+                showNotification(`Failed to create merch product page: ${data.error || 'Unknown error'}`, 'error');
             }
         } catch (err) {
             console.error('Make Merch error:', err);
-            alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
+            showNotification(`Error connecting to merch server: ${err.message}`, 'error');
         }
     };
 
@@ -531,17 +531,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         poster={video.thumbnail || ''}
                         width="100%" 
                         height="360"
-                        style={{
-                            background: '#000', 
-                            cursor: showCropTool ? 'crosshair' : 'default',
-                            width: '100%',
-                            height: '360px'
-                        }} 
-                        src={video.video_url}
-                        onMouseDown={showCropTool ? handleCropMouseDown : undefined}
-                        onMouseMove={showCropTool ? handleCropMouseMove : undefined}
-                        onMouseUp={showCropTool ? handleCropMouseUp : undefined}
-                        onMouseLeave={showCropTool ? handleCropMouseUp : undefined}
+                                                 style={{
+                             background: '#000', 
+                             cursor: 'default',
+                             width: '100%',
+                             height: '360px'
+                         }} 
+                         src={video.video_url}
                         onCanPlay={() => {
                             console.log('Video can play');
                             setLoading(false);
@@ -552,51 +548,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         }}
                     />
                     
-                    {/* Simple Crop Selection Overlay */}
-                    {showCropTool && cropArea.width > 0 && cropArea.height > 0 && (
-                        <div 
-                            className="crop-selection"
-                            style={{
-                                position: 'absolute',
-                                left: cropArea.x,
-                                top: cropArea.y,
-                                width: cropArea.width,
-                                height: cropArea.height,
-                                border: '2px solid #ff0000',
-                                background: 'rgba(255, 0, 0, 0.1)',
-                                pointerEvents: 'none',
-                                zIndex: 1000
-                            }}
-                        />
-                    )}
                     
-                    {/* Debug Info Overlay */}
-                         {showCropTool && cropArea.width > 0 && cropArea.height > 0 && (
-                             <div 
-                                 style={{
-                                     position: 'absolute',
-                                     top: '5px',
-                                     left: '5px',
-                                     background: 'rgba(0, 0, 0, 0.9)',
-                                     color: 'white',
-                                     padding: '8px',
-                                     fontSize: '12px',
-                                     zIndex: 1001,
-                                     fontFamily: 'monospace',
-                                     borderRadius: '4px',
-                                     border: '1px solid #fff'
-                                 }}
-                             >
-                                 <div>Crop: {Math.round(cropArea.x)},{Math.round(cropArea.y)}</div>
-                                 <div>Size: {Math.round(cropArea.width)}x{Math.round(cropArea.height)}</div>
-                                 <div style={{ 
-                                     color: cropArea.width >= 150 && cropArea.height >= 150 ? '#4CAF50' : '#FF9800',
-                                     fontWeight: 'bold'
-                                 }}>
-                                     {cropArea.width >= 150 && cropArea.height >= 150 ? '✅ Good size' : '⚠️ Min 150x150px'}
-                                 </div>
-                             </div>
-                         )}
                     </div>
                 
                 <video 
