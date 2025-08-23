@@ -581,7 +581,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         e.target.style.background = 'rgba(0, 0, 0, 0.7)';
                         e.target.style.transform = 'scale(1)';
                     }}
-                    title="Crop Tool"
+                                         title="Crop Tool - Click to enable"
                 >
                     ✂️
                 </button>
