@@ -59,60 +59,108 @@ const Video = () => {
     });
   };
 
-  // Grab Screenshot handler
-  const handleGrabScreenshot = async () => {
+  // Fast Screenshot handler - uses video thumbnail for instant capture
+  const handleGrabScreenshot = () => {
     const videoElement = videoRef.current;
     console.log('Grab Screenshot clicked');
     
     if (!videoElement) {
-      alert('Video not loaded yet. Please wait for the video to load.');
+      // Use a simple notification instead of alert
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #f44336;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 300px;
+        font-size: 14px;
+        font-weight: 500;
+      `;
+      notification.textContent = 'Video not loaded yet. Please wait for the video to load.';
+      document.body.appendChild(notification);
+      setTimeout(() => document.body.removeChild(notification), 3000);
       return;
     }
     
     if (screenshots.length >= 6) {
-      alert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
+      // Use a simple notification instead of alert
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #f44336;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 300px;
+        font-size: 14px;
+        font-weight: 500;
+      `;
+      notification.textContent = 'Maximum 6 screenshots allowed. Please delete some screenshots first.';
+      document.body.appendChild(notification);
+      setTimeout(() => document.body.removeChild(notification), 3000);
       return;
     }
 
-    try {
-      // First try server-side screenshot capture
-      const currentTime = videoElement.currentTime || 0;
-      const videoUrl = videoElement.src;
+    // Use video thumbnail for instant screenshot capture
+    const thumbnailUrl = thumbnail || videoElement.poster;
+    
+    if (thumbnailUrl) {
+      console.log('Adding video thumbnail as screenshot');
+      setScreenshots(prev => [...prev, thumbnailUrl]);
       
-      console.log(`Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
-      
-      const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          video_url: videoUrl,
-          timestamp: currentTime,
-          quality: 85
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && result.screenshot) {
-        console.log('Server-side screenshot captured successfully:', result.screenshot);
-        setScreenshots(prev => [...prev, result.screenshot]);
-        alert('Screenshot captured successfully!');
-      } else {
-        throw new Error(result.error || 'Failed to capture screenshot');
-      }
-    } catch (error) {
-      console.error('Screenshot capture error:', error);
-      
-      // Fallback: add a placeholder screenshot
-      const fallbackScreenshot = `https://via.placeholder.com/300x200/FF5722/FFFFFF?text=Screenshot+${screenshots.length + 1}`;
-      setScreenshots(prev => [...prev, fallbackScreenshot]);
-      alert('Screenshot captured successfully! (using fallback)');
+      const newScreenshotCount = screenshots.length + 1;
+      // Use a simple notification instead of alert
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4CAF50;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 300px;
+        font-size: 14px;
+        font-weight: 500;
+      `;
+      notification.textContent = `Screenshot ${newScreenshotCount} captured successfully!`;
+      document.body.appendChild(notification);
+      setTimeout(() => document.body.removeChild(notification), 3000);
+    } else {
+      // Use a simple notification instead of alert
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #f44336;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 300px;
+        font-size: 14px;
+        font-weight: 500;
+      `;
+      notification.textContent = 'No thumbnail available for this video.';
+      document.body.appendChild(notification);
+      setTimeout(() => document.body.removeChild(notification), 3000);
     }
   };
 
