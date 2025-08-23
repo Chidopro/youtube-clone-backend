@@ -235,6 +235,22 @@
   transform: scale(1.05) !important;
 }
 
+/* Notification Animation */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.notification {
+  animation: slideIn 0.3s ease-out;
+}
+
 /* Video container to maintain consistent dimensions */
 .play-video .video-container {
     width: 100%;
