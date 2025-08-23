@@ -57,86 +57,134 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
     
-         // Notification state
-     const [notification, setNotification] = useState(null);
-     
-     // Crop tool state
-     const [showCropTool, setShowCropTool] = useState(false);
-     const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 0, height: 0 });
-     const [isSelecting, setIsSelecting] = useState(false);
-     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    // Notification state
+    const [notification, setNotification] = useState(null);
+    
+    // Crop tool state
+    const [showCropTool, setShowCropTool] = useState(false);
+    const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 0, height: 0 });
+    const [isSelecting, setIsSelecting] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [canvasRef] = useState(useRef(null));
 
     // Show notification function
     const showNotification = (message, type = 'success') => {
         setNotification({ message, type });
     };
 
-         // Hide notification function
-     const hideNotification = () => {
-         setNotification(null);
-     };
-     
-     // Crop tool functions
-     const toggleCropTool = () => {
-         setShowCropTool(!showCropTool);
-         if (showCropTool) {
-             setCropArea({ x: 0, y: 0, width: 0, height: 0 });
-         }
-     };
-     
-     const handleCropMouseDown = (e) => {
-         if (!showCropTool || !videoRef.current) return;
-         
-         const rect = videoRef.current.getBoundingClientRect();
-         const x = e.clientX - rect.left;
-         const y = e.clientY - rect.top;
-         
-         setIsSelecting(true);
-         setDragStart({ x, y });
-         setCropArea({ x, y, width: 0, height: 0 });
-     };
-     
-     const handleCropMouseMove = (e) => {
-         if (!showCropTool || !isSelecting || !videoRef.current) return;
-         
-         const rect = videoRef.current.getBoundingClientRect();
-         const x = e.clientX - rect.left;
-         const y = e.clientY - rect.top;
-         
-         const left = Math.min(dragStart.x, x);
-         const top = Math.min(dragStart.y, y);
-         const width = Math.abs(x - dragStart.x);
-         const height = Math.abs(y - dragStart.y);
-         
-         setCropArea({ x: left, y: top, width, height });
-     };
-     
-     const handleCropMouseUp = () => {
-         setIsSelecting(false);
-     };
-     
-     const applyCrop = () => {
-         if (!videoRef.current || !showCropTool) {
-             showNotification('Please select a crop area first', 'error');
-             return;
-         }
-         
-         if (cropArea.width < 50 || cropArea.height < 50) {
-             showNotification('Crop area too small. Please select a larger area.', 'error');
-             return;
-         }
-         
-         // For now, just add the thumbnail as a screenshot with crop info
-         const thumbnailUrl = video.thumbnail || video.poster;
-         if (thumbnailUrl) {
-             setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
-             showNotification('Cropped screenshot captured successfully!');
-             setShowCropTool(false);
-             setCropArea({ x: 0, y: 0, width: 0, height: 0 });
-         } else {
-             showNotification('No thumbnail available for cropping', 'error');
-         }
-     };
+    // Hide notification function
+    const hideNotification = () => {
+        setNotification(null);
+    };
+    
+    // Crop tool functions
+    const toggleCropTool = () => {
+        setShowCropTool(!showCropTool);
+        if (showCropTool) {
+            setCropArea({ x: 0, y: 0, width: 0, height: 0 });
+        }
+    };
+    
+    const handleCropMouseDown = (e) => {
+        if (!showCropTool || !videoRef.current) return;
+        
+        const rect = videoRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        setIsSelecting(true);
+        setDragStart({ x, y });
+        setCropArea({ x, y, width: 0, height: 0 });
+    };
+    
+    const handleCropMouseMove = (e) => {
+        if (!showCropTool || !isSelecting || !videoRef.current) return;
+        
+        const rect = videoRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const left = Math.min(dragStart.x, x);
+        const top = Math.min(dragStart.y, y);
+        const width = Math.abs(x - dragStart.x);
+        const height = Math.abs(y - dragStart.y);
+        
+        setCropArea({ x: left, y: top, width, height });
+    };
+    
+    const handleCropMouseUp = () => {
+        setIsSelecting(false);
+    };
+    
+    // Capture actual screenshot from video
+    const captureScreenshot = () => {
+        if (!videoRef.current) return null;
+        
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size to video size
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Draw current video frame to canvas
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // If crop area is selected, crop the image
+        if (cropArea.width > 0 && cropArea.height > 0) {
+            const scaleX = video.videoWidth / video.offsetWidth;
+            const scaleY = video.videoHeight / video.offsetHeight;
+            
+            const cropX = cropArea.x * scaleX;
+            const cropY = cropArea.y * scaleY;
+            const cropWidth = cropArea.width * scaleX;
+            const cropHeight = cropArea.height * scaleY;
+            
+            // Create new canvas for cropped image
+            const croppedCanvas = document.createElement('canvas');
+            const croppedCtx = croppedCanvas.getContext('2d');
+            croppedCanvas.width = cropWidth;
+            croppedCanvas.height = cropHeight;
+            
+            // Draw cropped portion
+            croppedCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+            
+            return croppedCanvas.toDataURL('image/png');
+        }
+        
+        return canvas.toDataURL('image/png');
+    };
+    
+    const applyCrop = () => {
+        if (!videoRef.current || !showCropTool) {
+            showNotification('Please select a crop area first', 'error');
+            return;
+        }
+        
+        // Minimum size for good product quality (300x300 pixels)
+        const minSize = 300;
+        const scaleX = videoRef.current.videoWidth / videoRef.current.offsetWidth;
+        const scaleY = videoRef.current.videoHeight / videoRef.current.offsetHeight;
+        const actualWidth = cropArea.width * scaleX;
+        const actualHeight = cropArea.height * scaleY;
+        
+        if (actualWidth < minSize || actualHeight < minSize) {
+            showNotification(`Crop area too small. Minimum size is ${minSize}x${minSize} pixels for good product quality.`, 'error');
+            return;
+        }
+        
+        // Capture screenshot
+        const screenshotDataUrl = captureScreenshot();
+        if (screenshotDataUrl) {
+            setScreenshots(prev => prev.length < 6 ? [...prev, screenshotDataUrl] : prev);
+            showNotification('Cropped screenshot captured successfully!');
+            setShowCropTool(false);
+            setCropArea({ x: 0, y: 0, width: 0, height: 0 });
+        } else {
+            showNotification('Failed to capture screenshot', 'error');
+        }
+    };
 
     useEffect(() => {
         if (!videoId) {
@@ -234,7 +282,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         };
     }, []);
 
-    // Fast Screenshot handler - uses video thumbnail for instant capture
+    // Fast Screenshot handler - captures actual video frame
     const handleGrabScreenshot = () => {
         console.log('Grab Screenshot clicked');
         
@@ -249,17 +297,17 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             return;
         }
 
-        // Use video thumbnail for instant screenshot capture
-        const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
+        // Capture actual screenshot from current video frame
+        const screenshotDataUrl = captureScreenshot();
         
-        if (thumbnailUrl) {
-            console.log('Adding video thumbnail as screenshot');
-            setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
+        if (screenshotDataUrl) {
+            console.log('Adding actual video screenshot');
+            setScreenshots(prev => prev.length < 6 ? [...prev, screenshotDataUrl] : prev);
             
             const newScreenshotCount = screenshots.length + 1;
             showNotification(`Screenshot ${newScreenshotCount} captured successfully!`);
         } else {
-            showNotification('No thumbnail available for this video.', 'error');
+            showNotification('Failed to capture screenshot from video.', 'error');
         }
     };
 
@@ -629,6 +677,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                      Your browser does not support the video tag.
                  </video>
                  
+                 {/* Hidden canvas for screenshot capture */}
+                 <canvas 
+                     ref={canvasRef} 
+                     style={{ display: 'none' }}
+                 />
+                 
                  {/* Crop Selection Overlay */}
                  {showCropTool && cropArea.width > 0 && cropArea.height > 0 && (
                      <div 
@@ -663,6 +717,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                          }}
                      >
                          <div>Click and drag to select crop area</div>
+                         <div style={{marginTop: '5px', fontSize: '10px', color: '#ccc'}}>
+                             Minimum size: 300x300 pixels for good product quality
+                         </div>
                          {cropArea.width > 0 && cropArea.height > 0 && (
                              <div style={{marginTop: '5px'}}>
                                  <div>Size: {Math.round(cropArea.width)}x{Math.round(cropArea.height)}</div>
