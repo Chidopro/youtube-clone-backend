@@ -106,7 +106,7 @@ nav{
     width: 20px;
 }
 
-@media (max-width: 900px){
+@media (max-width: 768px){
     .menu-icon{
         display: none;
     }
@@ -150,6 +150,26 @@ nav{
         color: white;
         border: 1px solid #065fd4;
         margin-top: 4px;
+    }
+}
+
+/* Ensure desktop layout for screens larger than 768px */
+@media (min-width: 769px) {
+    .nav-right {
+        flex-direction: row;
+        gap: 10px;
+        align-items: center;
+        min-width: auto;
+    }
+    .nav-right .subscribe-btn, .sign-in-btn {
+        padding: 8px 16px;
+        font-size: 14px;
+        border-radius: 25px;
+        white-space: nowrap;
+        margin-right: 10px;
+        display: inline-flex;
+        width: auto;
+        max-width: none;
     }
 }
 
