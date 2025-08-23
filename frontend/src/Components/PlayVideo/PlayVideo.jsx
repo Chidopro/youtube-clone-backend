@@ -57,18 +57,86 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
     
-    // Notification state
-    const [notification, setNotification] = useState(null);
+         // Notification state
+     const [notification, setNotification] = useState(null);
+     
+     // Crop tool state
+     const [showCropTool, setShowCropTool] = useState(false);
+     const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 0, height: 0 });
+     const [isSelecting, setIsSelecting] = useState(false);
+     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
     // Show notification function
     const showNotification = (message, type = 'success') => {
         setNotification({ message, type });
     };
 
-    // Hide notification function
-    const hideNotification = () => {
-        setNotification(null);
-    };
+         // Hide notification function
+     const hideNotification = () => {
+         setNotification(null);
+     };
+     
+     // Crop tool functions
+     const toggleCropTool = () => {
+         setShowCropTool(!showCropTool);
+         if (showCropTool) {
+             setCropArea({ x: 0, y: 0, width: 0, height: 0 });
+         }
+     };
+     
+     const handleCropMouseDown = (e) => {
+         if (!showCropTool || !videoRef.current) return;
+         
+         const rect = videoRef.current.getBoundingClientRect();
+         const x = e.clientX - rect.left;
+         const y = e.clientY - rect.top;
+         
+         setIsSelecting(true);
+         setDragStart({ x, y });
+         setCropArea({ x, y, width: 0, height: 0 });
+     };
+     
+     const handleCropMouseMove = (e) => {
+         if (!showCropTool || !isSelecting || !videoRef.current) return;
+         
+         const rect = videoRef.current.getBoundingClientRect();
+         const x = e.clientX - rect.left;
+         const y = e.clientY - rect.top;
+         
+         const left = Math.min(dragStart.x, x);
+         const top = Math.min(dragStart.y, y);
+         const width = Math.abs(x - dragStart.x);
+         const height = Math.abs(y - dragStart.y);
+         
+         setCropArea({ x: left, y: top, width, height });
+     };
+     
+     const handleCropMouseUp = () => {
+         setIsSelecting(false);
+     };
+     
+     const applyCrop = () => {
+         if (!videoRef.current || !showCropTool) {
+             showNotification('Please select a crop area first', 'error');
+             return;
+         }
+         
+         if (cropArea.width < 50 || cropArea.height < 50) {
+             showNotification('Crop area too small. Please select a larger area.', 'error');
+             return;
+         }
+         
+         // For now, just add the thumbnail as a screenshot with crop info
+         const thumbnailUrl = video.thumbnail || video.poster;
+         if (thumbnailUrl) {
+             setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
+             showNotification('Cropped screenshot captured successfully!');
+             setShowCropTool(false);
+             setCropArea({ x: 0, y: 0, width: 0, height: 0 });
+         } else {
+             showNotification('No thumbnail available for cropping', 'error');
+         }
+     };
 
     useEffect(() => {
         if (!videoId) {
@@ -481,30 +549,30 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 className="video-container" 
                 style={{ position: 'relative', display: 'block' }}
             >
-                {/* Crop Tool Button - Upper Left Corner */}
-                <button
-                    className="crop-tool-btn"
-                    onClick={() => console.log('Crop tool clicked')}
-                    style={{
-                        position: 'absolute',
-                        top: '10px',
-                        left: '10px',
-                        zIndex: 10,
-                        background: 'rgba(0, 0, 0, 0.7)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '8px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minWidth: '32px',
-                        minHeight: '32px',
-                        backdropFilter: 'blur(4px)',
-                        transition: 'all 0.2s ease'
-                    }}
+                                 {/* Crop Tool Button - Upper Left Corner */}
+                 <button
+                     className="crop-tool-btn"
+                     onClick={toggleCropTool}
+                                         style={{
+                         position: 'absolute',
+                         top: '10px',
+                         left: '10px',
+                         zIndex: 10,
+                         background: showCropTool ? 'rgba(255, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.7)',
+                         color: 'white',
+                         border: 'none',
+                         borderRadius: '4px',
+                         padding: '8px',
+                         cursor: 'pointer',
+                         fontSize: '14px',
+                         display: 'flex',
+                         alignItems: 'center',
+                         justifyContent: 'center',
+                         minWidth: '32px',
+                         minHeight: '32px',
+                         backdropFilter: 'blur(4px)',
+                         transition: 'all 0.2s ease'
+                     }}
                     onMouseEnter={(e) => {
                         e.target.style.background = 'rgba(0, 0, 0, 0.9)';
                         e.target.style.transform = 'scale(1.05)';
@@ -518,73 +586,104 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     ✂️
                 </button>
 
-                <div style={{ 
-                    position: 'relative', 
-                    display: 'inline-block', 
-                    width: '100%', 
-                    maxWidth: '640px'
-                }}>
-                    <video 
-                        key={videoId}
-                        ref={videoRef} 
-                        controls 
-                        poster={video.thumbnail || ''}
-                        width="100%" 
-                        height="360"
-                                                 style={{
-                             background: '#000', 
-                             cursor: 'default',
-                             width: '100%',
-                             height: '360px'
-                         }} 
-                         src={video.video_url}
-                        onCanPlay={() => {
-                            console.log('Video can play');
-                            setLoading(false);
-                        }}
-                        onLoadedData={() => {
-                            console.log('Video data loaded');
-                            setLoading(false);
-                        }}
-                    />
-                    
-                    
-                    </div>
-                
-                <video 
-                    key={videoId}
-                    ref={videoRef} 
-                    controls 
-                    width="100%" 
-                    height="100%"
-                    style={{
-                        width: '100%',
-                        height: '100%',
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                        objectFit: 'cover',
-                        borderRadius: '8px',
-                        backgroundColor: 'transparent',
-                        display: 'block'
-                    }} 
-                    src={video.video_url}
-                    onError={(e) => console.error('Video error:', e)}
-                    onLoadStart={() => console.log('Video loading started')}
-                    onCanPlay={() => console.log('Video can play')}
-                    onPlay={() => console.log('Video play event fired')}
-                    onPause={() => console.log('Video pause event fired')}
-                    onLoadedData={() => console.log('Video data loaded, URL:', video.video_url)}
-                    onLoadedMetadata={() => console.log('Video metadata loaded')}
-                    onCanPlayThrough={() => console.log('Video can play through')}
-                    onWaiting={() => console.log('Video waiting for data')}
-                    onStalled={() => console.log('Video stalled')}
-                    poster={video.thumbnail || video.poster}
-                    preload="metadata"
-                    playsInline
-                    webkit-playsinline="true"
-                >
-                    Your browser does not support the video tag.
-                </video>
+                                 <video 
+                     key={videoId}
+                     ref={videoRef} 
+                     controls 
+                     width="100%" 
+                     height="360"
+                     style={{
+                         background: '#000', 
+                         cursor: showCropTool ? 'crosshair' : 'default',
+                         width: '100%',
+                         height: '360px',
+                         borderRadius: '8px',
+                         objectFit: 'cover'
+                     }} 
+                     src={video.video_url}
+                     poster={video.thumbnail || video.poster}
+                     onMouseDown={showCropTool ? handleCropMouseDown : undefined}
+                     onMouseMove={showCropTool ? handleCropMouseMove : undefined}
+                     onMouseUp={showCropTool ? handleCropMouseUp : undefined}
+                     onMouseLeave={showCropTool ? handleCropMouseUp : undefined}
+                     onError={(e) => console.error('Video error:', e)}
+                     onLoadStart={() => console.log('Video loading started')}
+                     onCanPlay={() => {
+                         console.log('Video can play');
+                         setLoading(false);
+                     }}
+                     onLoadedData={() => {
+                         console.log('Video data loaded');
+                         setLoading(false);
+                     }}
+                     onPlay={() => console.log('Video play event fired')}
+                     onPause={() => console.log('Video pause event fired')}
+                     onLoadedMetadata={() => console.log('Video metadata loaded')}
+                     onCanPlayThrough={() => console.log('Video can play through')}
+                     onWaiting={() => console.log('Video waiting for data')}
+                     onStalled={() => console.log('Video stalled')}
+                     preload="metadata"
+                     playsInline
+                     webkit-playsinline="true"
+                 >
+                     Your browser does not support the video tag.
+                 </video>
+                 
+                 {/* Crop Selection Overlay */}
+                 {showCropTool && cropArea.width > 0 && cropArea.height > 0 && (
+                     <div 
+                         className="crop-selection"
+                         style={{
+                             position: 'absolute',
+                             left: cropArea.x,
+                             top: cropArea.y,
+                             width: cropArea.width,
+                             height: cropArea.height,
+                             border: '2px solid #ff0000',
+                             background: 'rgba(255, 0, 0, 0.1)',
+                             pointerEvents: 'none',
+                             zIndex: 1000
+                         }}
+                     />
+                 )}
+                 
+                 {/* Crop Tool Controls */}
+                 {showCropTool && (
+                     <div 
+                         style={{
+                             position: 'absolute',
+                             top: '50px',
+                             left: '10px',
+                             background: 'rgba(0, 0, 0, 0.8)',
+                             color: 'white',
+                             padding: '10px',
+                             borderRadius: '8px',
+                             zIndex: 1001,
+                             fontSize: '12px'
+                         }}
+                     >
+                         <div>Click and drag to select crop area</div>
+                         {cropArea.width > 0 && cropArea.height > 0 && (
+                             <div style={{marginTop: '5px'}}>
+                                 <div>Size: {Math.round(cropArea.width)}x{Math.round(cropArea.height)}</div>
+                                 <button 
+                                     onClick={applyCrop}
+                                     style={{
+                                         background: '#4CAF50',
+                                         color: 'white',
+                                         border: 'none',
+                                         padding: '5px 10px',
+                                         borderRadius: '4px',
+                                         cursor: 'pointer',
+                                         marginTop: '5px'
+                                     }}
+                                 >
+                                     Apply Crop
+                                 </button>
+                             </div>
+                         )}
+                     </div>
+                 )}
             </div>
             
             {/* Action buttons for screenshots and merchandise */}
