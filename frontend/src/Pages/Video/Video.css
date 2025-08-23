@@ -1,3 +1,15 @@
+/* Add slideIn animation for notifications */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 /* User Flow Section Styles - Matching Home Page */
 .user-flow-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
