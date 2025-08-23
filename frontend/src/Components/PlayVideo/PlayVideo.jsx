@@ -170,7 +170,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         const actualHeight = cropArea.height * scaleY;
         
         if (actualWidth < minSize || actualHeight < minSize) {
-            showNotification(`Crop area too small. Minimum size is ${minSize}x${minSize} pixels for good product quality.`, 'error');
+            showNotification(`Selection too small. Minimum size is ${minSize}x${minSize} pixels for good product quality.`, 'error');
             return;
         }
         
@@ -706,38 +706,43 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                      <div 
                          style={{
                              position: 'absolute',
-                             top: '50px',
-                             left: '10px',
+                             top: '10px',
+                             right: '10px',
                              background: 'rgba(0, 0, 0, 0.8)',
                              color: 'white',
-                             padding: '10px',
-                             borderRadius: '8px',
+                             padding: '8px',
+                             borderRadius: '4px',
                              zIndex: 1001,
                              fontSize: '12px'
                          }}
                      >
-                         <div>Click and drag to select crop area</div>
-                         <div style={{marginTop: '5px', fontSize: '10px', color: '#ccc'}}>
-                             Minimum size: 300x300 pixels for good product quality
-                         </div>
-                         {cropArea.width > 0 && cropArea.height > 0 && (
-                             <div style={{marginTop: '5px'}}>
+                         {cropArea.width > 0 && cropArea.height > 0 ? (
+                             <div>
                                  <div>Size: {Math.round(cropArea.width)}x{Math.round(cropArea.height)}</div>
-                                 <button 
-                                     onClick={applyCrop}
-                                     style={{
-                                         background: '#4CAF50',
-                                         color: 'white',
-                                         border: 'none',
-                                         padding: '5px 10px',
-                                         borderRadius: '4px',
-                                         cursor: 'pointer',
-                                         marginTop: '5px'
-                                     }}
-                                 >
-                                     Apply Crop
-                                 </button>
+                                 {cropArea.width < 300 || cropArea.height < 300 ? (
+                                     <div style={{color: '#ff6b6b', fontSize: '10px'}}>
+                                         Selection too small - need 300x300 minimum
+                                     </div>
+                                 ) : (
+                                     <button 
+                                         onClick={applyCrop}
+                                         style={{
+                                             background: '#4CAF50',
+                                             color: 'white',
+                                             border: 'none',
+                                             padding: '4px 8px',
+                                             borderRadius: '3px',
+                                             cursor: 'pointer',
+                                             marginTop: '4px',
+                                             fontSize: '11px'
+                                         }}
+                                     >
+                                         Capture
+                                     </button>
+                                 )}
                              </div>
+                         ) : (
+                             <div>Click and drag to select</div>
                          )}
                      </div>
                  )}
