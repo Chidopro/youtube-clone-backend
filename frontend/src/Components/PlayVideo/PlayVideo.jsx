@@ -435,29 +435,25 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             }}
                         />
                         
-                        {/* Green Flag Confirmation Overlay */}
+                        {/* Green Flag Confirmation Banner */}
                         {showGreenFlag && (
                             <div 
                                 style={{
                                     position: 'absolute',
-                                    top: '50%',
-                                    left: '50%',
-                                    transform: 'translate(-50%, -50%)',
+                                    top: '10px',
+                                    right: '10px',
                                     backgroundColor: '#28a745',
                                     color: 'white',
-                                    padding: '20px 30px',
-                                    borderRadius: '8px',
-                                    fontSize: '18px',
+                                    padding: '12px 20px',
+                                    borderRadius: '6px',
+                                    fontSize: '16px',
                                     fontWeight: 'bold',
                                     zIndex: 2000,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '10px',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                                     animation: 'fadeInOut 2s ease-in-out'
                                 }}
                             >
-                                ✅ Screenshot Captured!
+                                Screenshot captured successfully!
                             </div>
                         )}
 
