@@ -20,15 +20,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const [error, setError] = useState('');
     const videoRef = propVideoRef || useRef(null);
     
-    // Crop tool state
-    const [showCropTool, setShowCropTool] = useState(false);
-    const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 0, height: 0 });
-    const [isSelecting, setIsSelecting] = useState(false);
-    const [selectionStart, setSelectionStart] = useState({ x: 0, y: 0 });
+    // Video container ref
     const [videoContainerRef] = useState(useRef(null));
-    const [croppedImage, setCroppedImage] = useState(null);
-    const [isCropApplied, setIsCropApplied] = useState(false);
-    const [isApplyingCrop, setIsApplyingCrop] = useState(false);
     
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -109,300 +102,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
         // Clear screenshots when video changes
         setScreenshots([]);
-        // Reset crop tool
-        setShowCropTool(false);
-        setCropArea({ x: 0, y: 0, width: 0, height: 0 });
-        setCroppedImage(null);
-        setIsCropApplied(false);
     }, [videoId, setScreenshots]);
 
-    // Pause video when crop tool is enabled and prevent playback during crop
-    useEffect(() => {
-        if (showCropTool && videoRef.current) {
-            videoRef.current.pause();
-            
-            // Add event listener to prevent playback during crop
-            const handlePlay = () => {
-                if (showCropTool) {
-                    videoRef.current.pause();
-                }
-            };
-            
-            // Prevent clicking on video from playing it
-            const handleClick = (e) => {
-                if (showCropTool) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    videoRef.current.pause();
-                }
-            };
-            
-            videoRef.current.addEventListener('play', handlePlay);
-            videoRef.current.addEventListener('click', handleClick);
-            
-            return () => {
-                if (videoRef.current) {
-                    videoRef.current.removeEventListener('play', handlePlay);
-                    videoRef.current.removeEventListener('click', handleClick);
-                }
-            };
-        }
-    }, [showCropTool]);
 
-    // Cleanup function to restore scrolling when component unmounts
-    useEffect(() => {
-        return () => {
-            document.body.style.overflow = 'auto';
-        };
-    }, []);
 
-    // Maintain video size when crop tool state changes
-    useEffect(() => {
-        if (videoRef.current) {
-            const video = videoRef.current;
-            // Force video to maintain its exact size
-            video.style.width = '100%';
-            video.style.height = '360px';
-            video.style.minWidth = '100%';
-            video.style.minHeight = '360px';
-            video.style.maxWidth = '100%';
-            video.style.maxHeight = '360px';
-            video.style.objectFit = 'contain';
-            video.style.transition = 'none';
-            video.style.flexShrink = '0';
-            video.style.flexGrow = '0';
-            
-            // Also ensure the container maintains size
-            const container = video.parentElement;
-            if (container) {
-                container.style.height = '360px';
-                container.style.minHeight = '360px';
-                container.style.maxHeight = '360px';
-                container.style.transition = 'none';
-                container.style.flexShrink = '0';
-                container.style.flexGrow = '0';
-            }
-        }
-    }, [showCropTool]);
-
-    const handleCropMouseDown = (e) => {
-        if (!showCropTool || !videoRef.current) return;
-        
-        // Prevent video from playing
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Ensure video stays paused
-        if (videoRef.current) {
-            videoRef.current.pause();
-        }
-        
-        const rect = videoRef.current.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        console.log('Crop mouse down at:', { x, y });
-        
-        setIsSelecting(true);
-        setSelectionStart({ x, y });
-        setCropArea({ x, y, width: 0, height: 0 });
-    };
-
-    const handleCropMouseMove = (e) => {
-        if (!showCropTool || !isSelecting || !videoRef.current) return;
-        
-        // Prevent video from playing
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Ensure video stays paused during selection
-        if (videoRef.current) {
-            videoRef.current.pause();
-        }
-        
-        const rect = videoRef.current.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        const width = Math.abs(x - selectionStart.x);
-        const height = Math.abs(y - selectionStart.y);
-        const left = Math.min(x, selectionStart.x);
-        const top = Math.min(y, selectionStart.y);
-        
-        const newCropArea = { x: left, y: top, width, height };
-        console.log('Crop area updated:', newCropArea);
-        setCropArea(newCropArea);
-    };
-
-    const handleCropMouseUp = () => {
-        setIsSelecting(false);
-        // Ensure video stays paused after selection
-        if (videoRef.current) {
-            videoRef.current.pause();
-        }
-        console.log('Crop selection finished. Final crop area:', cropArea);
-    };
-
-    const resetCropSelection = () => {
-        setCropArea({ x: 0, y: 0, width: 0, height: 0 });
-        setCroppedImage(null);
-        setIsCropApplied(false);
-    };
-
-    const applyCrop = async () => {
-        console.log('Apply crop called with cropArea:', cropArea);
-        if (!videoRef.current || !showCropTool) {
-            alert('Please enable crop tool first');
-            return;
-        }
-        
-        // Minimum crop size for good print quality (at least 150x150 pixels)
-        if (cropArea.width < 150 || cropArea.height < 150) {
-            alert('Please select a larger crop area (minimum 150x150 pixels for good print quality and proper aspect ratio)');
-            return;
-        }
-
-        // Show loading state
-        setIsApplyingCrop(true);
-
-        try {
-            const currentTime = videoRef.current.currentTime || 0;
-            const videoUrl = video.video_url;
-            
-            // Get the video element and its actual dimensions
-            const videoElement = videoRef.current;
-            
-            // Wait for video metadata to load if not already loaded
-            if (videoElement.readyState < 1) {
-                await new Promise((resolve) => {
-                    videoElement.addEventListener('loadedmetadata', resolve, { once: true });
-                });
-            }
-            
-            // Get actual video dimensions (not display dimensions)
-            const videoWidth = videoElement.videoWidth;
-            const videoHeight = videoElement.videoHeight;
-            
-            // Get the display dimensions (what user sees)
-            const displayRect = videoElement.getBoundingClientRect();
-            const displayWidth = displayRect.width;
-            const displayHeight = displayRect.height;
-            
-            console.log('Video actual dimensions:', { videoWidth, videoHeight });
-            console.log('Video display dimensions:', { displayWidth, displayHeight });
-            console.log('Crop area (display pixels):', cropArea);
-            
-            // Calculate scale factors between display and actual video
-            const scaleX = videoWidth / displayWidth;
-            const scaleY = videoHeight / displayHeight;
-            
-            console.log('Scale factors:', { scaleX, scaleY });
-            
-            // Convert display coordinates to actual video coordinates
-            const videoCropArea = {
-                x: Math.round(cropArea.x * scaleX),
-                y: Math.round(cropArea.y * scaleY),
-                width: Math.round(cropArea.width * scaleX),
-                height: Math.round(cropArea.height * scaleY)
-            };
-            
-            // Ensure crop area is within video bounds
-            videoCropArea.x = Math.max(0, Math.min(videoCropArea.x, videoWidth - 1));
-            videoCropArea.y = Math.max(0, Math.min(videoCropArea.y, videoHeight - 1));
-            videoCropArea.width = Math.max(1, Math.min(videoCropArea.width, videoWidth - videoCropArea.x));
-            videoCropArea.height = Math.max(1, Math.min(videoCropArea.height, videoHeight - videoCropArea.y));
-            
-            // Convert to normalized coordinates (0-1)
-            const normalizedCropArea = {
-                x: videoCropArea.x / videoWidth,
-                y: videoCropArea.y / videoHeight,
-                width: videoCropArea.width / videoWidth,
-                height: videoCropArea.height / videoHeight
-            };
-            
-            console.log('Video crop area (pixels):', videoCropArea);
-            console.log('Normalized crop area (0-1):', normalizedCropArea);
-            
-            const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    video_url: videoUrl,
-                    timestamp: currentTime,
-                    crop_area: normalizedCropArea
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            
-            if (result.success) {
-                console.log('Crop applied successfully');
-                
-                // ONLY add the cropped image to screenshots - DO NOT change video player
-                setScreenshots(prev => {
-                    const newScreenshots = prev.length < 6 ? [...prev, result.screenshot] : prev;
-                    console.log('Automatically added cropped image to screenshots');
-                    return newScreenshots;
-                });
-                
-                // Show success message
-                const newScreenshotCount = screenshots.length + 1;
-                alert(`Cropped screenshot ${newScreenshotCount} captured and added to grid!`);
-                
-                // Reset crop tool state immediately but maintain video size
-                setShowCropTool(false);
-                setCropArea({ x: 0, y: 0, width: 0, height: 0 });
-                setIsSelecting(false);
-                setSelectionStart({ x: 0, y: 0 });
-                // DO NOT set cropped image or crop applied - keep video player unchanged
-                setCroppedImage(null);
-                setIsCropApplied(false);
-                // Restore page scrolling
-                document.body.style.overflow = 'auto';
-                
-            } else {
-                console.error('Crop failed:', result.error);
-                alert('Failed to apply crop: ' + result.error);
-            }
-        } catch (error) {
-            console.error('Error applying crop:', error);
-            alert('Error applying crop: ' + error.message);
-        } finally {
-            // Hide loading state
-            setIsApplyingCrop(false);
-        }
-    };
-
-    const handleCropToolToggle = () => {
-        if (!showCropTool) {
-            // Enable crop tool
-            setShowCropTool(true);
-            setCroppedImage(null);
-            setIsCropApplied(false);
-            // Pause video
-            if (videoRef.current) {
-                videoRef.current.pause();
-            }
-            // Prevent page scrolling when crop tool is activated
-            document.body.style.overflow = 'hidden';
-        } else {
-            // Disable crop tool
-            setShowCropTool(false);
-            setCropArea({ x: 0, y: 0, width: 0, height: 0 });
-            setCroppedImage(null);
-            setIsCropApplied(false);
-            // Restore page scrolling
-            document.body.style.overflow = 'auto';
-        }
-    };
-
-    // Grab Screenshot handler with crop support
+    // Grab Screenshot handler
     const handleGrabScreenshot = async () => {
         console.log('Grab Screenshot clicked');
         
@@ -414,23 +118,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             return;
         }
 
-        // If we have a cropped image, use it directly
-        if (isCropApplied && croppedImage) {
-            console.log('Using cropped image for screenshot');
-            setScreenshots(prev => prev.length < 6 ? [...prev, croppedImage] : prev);
-            const newScreenshotCount = screenshots.length + 1;
-            alert(`Cropped screenshot ${newScreenshotCount} captured successfully!`);
-            // Reset crop state after successful capture
-            setCroppedImage(null);
-            setIsCropApplied(false);
-            setShowCropTool(false);
-            setCropArea({ x: 0, y: 0, width: 0, height: 0 });
-            // Restore page scrolling
-            document.body.style.overflow = 'auto';
-            return;
-        }
-
-        // Otherwise, capture a new screenshot
+        // Capture a new screenshot
         const videoElement = videoRef.current;
         if (!videoElement) {
             alert('Video not loaded yet. Please wait for the video to load.');
@@ -451,8 +139,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 body: JSON.stringify({
                     video_url: videoUrl,
                     timestamp: currentTime,
-                    quality: 85,
-                    crop_area: showCropTool && cropArea.width > 0 ? cropArea : null
+                    quality: 85
                 })
             });
             
@@ -707,15 +394,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             height="360"
                             style={{
                                 background: '#000', 
-                                cursor: showCropTool ? 'crosshair' : 'default',
                                 width: '100%',
                                 height: '360px'
                             }} 
                             src={video.video_url}
-                            onMouseDown={showCropTool ? handleCropMouseDown : undefined}
-                            onMouseMove={showCropTool ? handleCropMouseMove : undefined}
-                            onMouseUp={showCropTool ? handleCropMouseUp : undefined}
-                            onMouseLeave={showCropTool ? handleCropMouseUp : undefined}
                             onCanPlay={() => {
                                 console.log('Video can play');
                                 setLoading(false);
@@ -726,108 +408,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             }}
                         />
                         
-                        {/* Simple Crop Selection Overlay */}
-                        {showCropTool && cropArea.width > 0 && cropArea.height > 0 && (
-                            <div 
-                                className="crop-selection"
-                                style={{
-                                    position: 'absolute',
-                                    left: cropArea.x,
-                                    top: cropArea.y,
-                                    width: cropArea.width,
-                                    height: cropArea.height,
-                                    border: '2px solid #ff0000',
-                                    background: 'rgba(255, 0, 0, 0.1)',
-                                    pointerEvents: 'none',
-                                    zIndex: 1000
-                                }}
-                            />
-                        )}
-                        
 
                     </div>
                 
-                {/* Simple Crop Tool Button */}
-                <div className="crop-tool-button" style={{
-                    position: 'absolute',
-                    top: '10px',
-                    left: '10px',
-                    zIndex: 1000,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
-                }}>
-                    <button 
-                        onClick={handleCropToolToggle}
-                        style={{
-                            padding: '8px 12px',
-                            borderRadius: '4px',
-                            border: 'none',
-                            background: showCropTool ? '#dc3545' : '#28a745',
-                            color: 'white',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
-                        }}
-                        title={showCropTool ? 'Click and drag to select crop area' : 'Enable crop tool'}
-                    >
-                        {showCropTool ? '✂️ Crop Active' : '✂️ Crop'}
-                    </button>
-                    
-                    {showCropTool && (
-                        <>
-                            <button 
-                                onClick={resetCropSelection}
-                                style={{
-                                    padding: '8px 12px',
-                                    borderRadius: '4px',
-                                    border: 'none',
-                                    background: '#6c757d',
-                                    color: 'white',
-                                    cursor: 'pointer',
-                                    fontSize: '14px'
-                                }}
-                                title="Clear crop selection"
-                            >
-                                Clear
-                            </button>
-                                                         <button 
-                                 onClick={applyCrop}
-                                 disabled={isApplyingCrop}
-                                 style={{
-                                     padding: '8px 12px',
-                                     borderRadius: '4px',
-                                     border: 'none',
-                                     background: isApplyingCrop ? '#6c757d' : '#007bff',
-                                     color: 'white',
-                                     cursor: isApplyingCrop ? 'not-allowed' : 'pointer',
-                                     fontSize: '14px',
-                                     display: 'flex',
-                                     alignItems: 'center',
-                                     gap: '6px'
-                                 }}
-                                 title={isApplyingCrop ? 'Applying crop...' : 'Apply crop to selected screenshot'}
-                             >
-                                 {isApplyingCrop ? (
-                                     <>
-                                         <div style={{
-                                             width: '12px',
-                                             height: '12px',
-                                             border: '2px solid #ffffff',
-                                             borderTop: '2px solid transparent',
-                                             borderRadius: '50%',
-                                             animation: 'spin 1s linear infinite'
-                                         }} />
-                                         Processing...
-                                     </>
-                                 ) : (
-                                     'Apply Crop'
-                                 )}
-                             </button>
-                        </>
-                    )}
-                </div>
+                
             </div>
             
             {/* Action buttons for screenshots and merchandise */}
