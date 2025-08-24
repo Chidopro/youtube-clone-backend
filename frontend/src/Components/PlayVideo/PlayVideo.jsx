@@ -724,6 +724,26 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                      style={{ display: 'none' }}
                  />
                  
+                 {/* Crop Tool Overlay - Only show when crop tool is active */}
+                 {showCropTool && (
+                     <div 
+                         style={{
+                             position: 'absolute',
+                             top: 0,
+                             left: 0,
+                             width: '100%',
+                             height: '100%',
+                             cursor: 'crosshair',
+                             zIndex: 1000,
+                             background: 'transparent'
+                         }}
+                         onMouseDown={handleCropMouseDown}
+                         onMouseMove={handleCropMouseMove}
+                         onMouseUp={handleCropMouseUp}
+                         onMouseLeave={handleCropMouseUp}
+                     />
+                 )}
+                 
                  {/* Crop Selection Overlay */}
                  {showCropTool && cropArea.width > 0 && cropArea.height > 0 && (
                      <div 
