@@ -382,9 +382,9 @@
   top: 10px !important;
   left: 10px !important;
   z-index: 1000 !important;
-  background: rgba(0, 0, 0, 0.8) !important;
-  color: white !important;
-  border: 2px solid white !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: black !important;
+  border: 2px solid rgba(0, 0, 0, 0.2) !important;
   border-radius: 4px !important;
   padding: 8px !important;
   cursor: pointer !important;
@@ -398,11 +398,11 @@
   transition: all 0.2s ease !important;
   visibility: visible !important;
   opacity: 1 !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
 }
 
 .crop-tool-btn:hover {
-  background: rgba(0, 0, 0, 0.9) !important;
+  background: rgba(255, 255, 255, 1) !important;
   transform: scale(1.05) !important;
 }
 
