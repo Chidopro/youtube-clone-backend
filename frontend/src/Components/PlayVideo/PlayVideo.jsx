@@ -771,27 +771,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                      />
                  )}
                  
-                 {/* Debug Info - Only show when crop tool is active */}
-                 {showCropTool && (
-                     <div 
-                         style={{
-                             position: 'absolute',
-                             top: '50px',
-                             left: '10px',
-                             background: 'rgba(0,0,0,0.8)',
-                             color: 'white',
-                             padding: '8px',
-                             borderRadius: '4px',
-                             fontSize: '12px',
-                             zIndex: 1003,
-                             fontFamily: 'monospace'
-                         }}
-                     >
-                         Crop: {Math.round(cropArea.x)},{Math.round(cropArea.y)}<br/>
-                         Size: {Math.round(cropArea.width)}x{Math.round(cropArea.height)}<br/>
-                         Selecting: {isSelecting ? 'Yes' : 'No'}
-                     </div>
-                 )}
+                 
                  
                                                      {/* Crop Tool Controls - Only show capture button when selection is valid */}
                   {showCropTool && cropArea.width >= 300 && cropArea.height >= 300 && (
