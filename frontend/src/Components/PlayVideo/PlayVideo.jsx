@@ -117,14 +117,22 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         const currentScroll = window.scrollY;
         
         if (screenshots.length >= 6) {
-            alert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
+            // Show green flag with error message instead of alert
+            setShowGreenFlag(true);
+            setTimeout(() => {
+                setShowGreenFlag(false);
+            }, 2000);
             return;
         }
 
         // Capture a new screenshot
         const videoElement = videoRef.current;
         if (!videoElement) {
-            alert('Video not loaded yet. Please wait for the video to load.');
+            // Show green flag with error message instead of alert
+            setShowGreenFlag(true);
+            setTimeout(() => {
+                setShowGreenFlag(false);
+            }, 2000);
             return;
         }
 
@@ -163,7 +171,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                          // Show green flag confirmation instead of alert
                          showGreenFlagConfirmation();
                      } else {
-                         alert('No thumbnail available for this video.');
+                         // Show green flag with error message instead of alert
+                         setShowGreenFlag(true);
+                         setTimeout(() => {
+                             setShowGreenFlag(false);
+                         }, 2000);
                      }
                  } else {
                      setScreenshots(prev => prev.length < 6 ? [...prev, result.screenshot] : prev);
@@ -190,7 +202,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                  // Show green flag confirmation instead of alert
                  showGreenFlagConfirmation();
              } else {
-                 alert('No thumbnail available for this video.');
+                 // Show green flag with error message instead of alert
+                 setShowGreenFlag(true);
+                 setTimeout(() => {
+                     setShowGreenFlag(false);
+                 }, 2000);
              }
             // Restore scroll position
             window.scrollTo(0, currentScroll);
@@ -450,28 +466,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 
             </div>
             
-            {/* Action buttons for screenshots and merchandise */}
+            {/* Action buttons for merchandise */}
             <div className="screenmerch-actions" style={{
                 display: 'flex',
                 gap: '10px',
                 marginBottom: '15px',
                 flexWrap: 'wrap'
             }}>
-                <button 
-                    className="screenmerch-btn" 
-                    onClick={handleGrabScreenshot}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#007bff',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                    }}
-                >
-                    Select Screenshot
-                </button>
                 <button 
                     className="screenmerch-btn" 
                     onClick={handleMakeMerch}
