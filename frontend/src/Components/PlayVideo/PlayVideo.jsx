@@ -408,6 +408,31 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             }}
                         />
                         
+                        {/* Quick Screenshot Button with Green Flag */}
+                        <button 
+                            onClick={handleGrabScreenshot}
+                            style={{
+                                position: 'absolute',
+                                top: '10px',
+                                right: '10px',
+                                padding: '8px 12px',
+                                backgroundColor: '#28a745',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: 'bold',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                                zIndex: 1000,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}
+                            title="Quick Screenshot"
+                        >
+                            ✅ Quick Screenshot
+                        </button>
 
                     </div>
                 
