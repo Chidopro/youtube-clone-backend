@@ -734,7 +734,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              position: 'absolute',
                              top: '10px',
                              right: '10px',
-                             background: 'rgba(255, 255, 255, 0.95)',
+                             background: 'rgba(255, 255, 255, 0.98)',
                              color: 'black',
                              padding: '8px',
                              borderRadius: '4px',
@@ -742,7 +742,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              fontSize: '11px',
                              border: '1px solid rgba(0, 0, 0, 0.2)',
                              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                             minWidth: '120px'
+                             minWidth: '120px',
+                             maxWidth: '150px'
                          }}
                      >
                          {cropArea.width > 0 && cropArea.height > 0 ? (
