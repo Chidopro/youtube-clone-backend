@@ -734,14 +734,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              position: 'absolute',
                              top: '10px',
                              right: '10px',
-                             background: 'rgba(0, 0, 0, 0.7)',
-                             color: 'white',
+                             background: 'rgba(255, 255, 255, 0.95)',
+                             color: 'black',
                              padding: '8px',
                              borderRadius: '4px',
                              zIndex: 1002,
                              fontSize: '11px',
-                             border: '1px solid rgba(255, 255, 255, 0.3)',
-                             boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                             border: '1px solid rgba(0, 0, 0, 0.2)',
+                             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                              minWidth: '120px'
                          }}
                      >
@@ -751,7 +751,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                      Size: {Math.round(cropArea.width)}x{Math.round(cropArea.height)}
                                  </div>
                                  {cropArea.width < 300 || cropArea.height < 300 ? (
-                                     <div style={{color: '#ff6b6b', fontSize: '10px', marginBottom: '8px'}}>
+                                     <div style={{color: '#d32f2f', fontSize: '10px', marginBottom: '8px'}}>
                                          ⚠️ Selection too small - need 300x300 minimum
                                      </div>
                                  ) : (
