@@ -82,6 +82,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         setShowCropTool(!showCropTool);
         if (showCropTool) {
             setCropArea({ x: 0, y: 0, width: 0, height: 0 });
+            setIsSelecting(false);
         }
     };
     
@@ -618,20 +619,20 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         <div className="play-video">
             <div 
                 className="video-container" 
-                style={{ position: 'relative', display: 'block' }}
+                style={{ position: 'relative', display: 'block', background: 'transparent' }}
             >
                                  {/* Crop Tool Button - Upper Left Corner */}
                  <button
                      className="crop-tool-btn"
                      onClick={toggleCropTool}
-                                         style={{
+                     style={{
                          position: 'absolute',
                          top: '10px',
                          left: '10px',
-                         zIndex: 10,
-                         background: showCropTool ? 'rgba(255, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.7)',
+                         zIndex: 1000,
+                         background: showCropTool ? 'rgba(255, 0, 0, 0.9)' : 'rgba(0, 0, 0, 0.8)',
                          color: 'white',
-                         border: 'none',
+                         border: '2px solid white',
                          borderRadius: '4px',
                          padding: '8px',
                          cursor: 'pointer',
@@ -642,17 +643,18 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                          minWidth: '32px',
                          minHeight: '32px',
                          backdropFilter: 'blur(4px)',
-                         transition: 'all 0.2s ease'
+                         transition: 'all 0.2s ease',
+                         boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
                      }}
                     onMouseEnter={(e) => {
-                        e.target.style.background = 'rgba(0, 0, 0, 0.9)';
+                        e.target.style.background = showCropTool ? 'rgba(255, 0, 0, 1)' : 'rgba(0, 0, 0, 0.9)';
                         e.target.style.transform = 'scale(1.05)';
                     }}
                     onMouseLeave={(e) => {
-                        e.target.style.background = 'rgba(0, 0, 0, 0.7)';
+                        e.target.style.background = showCropTool ? 'rgba(255, 0, 0, 0.9)' : 'rgba(0, 0, 0, 0.8)';
                         e.target.style.transform = 'scale(1)';
                     }}
-                                         title="Crop Tool - Click to enable"
+                     title={showCropTool ? "Crop Tool - Active (Click to disable)" : "Crop Tool - Click to enable"}
                 >
                     ✂️
                 </button>
@@ -665,7 +667,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                      height="360"
                      crossOrigin="anonymous"
                      style={{
-                         background: '#000', 
+                         background: 'transparent', 
                          cursor: showCropTool ? 'crosshair' : 'default',
                          width: '100%',
                          height: '360px',
@@ -717,10 +719,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              top: cropArea.y,
                              width: cropArea.width,
                              height: cropArea.height,
-                             border: '2px solid #ff0000',
-                             background: 'rgba(255, 0, 0, 0.1)',
+                             border: '3px solid #ff0000',
+                             background: 'rgba(255, 0, 0, 0.15)',
                              pointerEvents: 'none',
-                             zIndex: 1000
+                             zIndex: 1001,
+                             boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.5) inset'
                          }}
                      />
                  )}
@@ -732,20 +735,25 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              position: 'absolute',
                              top: '10px',
                              right: '10px',
-                             background: 'rgba(0, 0, 0, 0.8)',
+                             background: 'rgba(0, 0, 0, 0.9)',
                              color: 'white',
-                             padding: '8px',
-                             borderRadius: '4px',
-                             zIndex: 1001,
-                             fontSize: '12px'
+                             padding: '12px',
+                             borderRadius: '6px',
+                             zIndex: 1002,
+                             fontSize: '12px',
+                             border: '1px solid rgba(255, 255, 255, 0.2)',
+                             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                             minWidth: '150px'
                          }}
                      >
                          {cropArea.width > 0 && cropArea.height > 0 ? (
                              <div>
-                                 <div>Size: {Math.round(cropArea.width)}x{Math.round(cropArea.height)}</div>
+                                 <div style={{fontWeight: 'bold', marginBottom: '4px'}}>
+                                     Size: {Math.round(cropArea.width)}x{Math.round(cropArea.height)}
+                                 </div>
                                  {cropArea.width < 300 || cropArea.height < 300 ? (
-                                     <div style={{color: '#ff6b6b', fontSize: '10px'}}>
-                                         Selection too small - need 300x300 minimum
+                                     <div style={{color: '#ff6b6b', fontSize: '10px', marginBottom: '8px'}}>
+                                         ⚠️ Selection too small - need 300x300 minimum
                                      </div>
                                  ) : (
                                      <button 
@@ -754,19 +762,23 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                              background: '#4CAF50',
                                              color: 'white',
                                              border: 'none',
-                                             padding: '4px 8px',
-                                             borderRadius: '3px',
+                                             padding: '6px 12px',
+                                             borderRadius: '4px',
                                              cursor: 'pointer',
-                                             marginTop: '4px',
-                                             fontSize: '11px'
+                                             fontSize: '11px',
+                                             fontWeight: 'bold',
+                                             width: '100%'
                                          }}
                                      >
-                                         Capture
+                                         ✅ Capture Screenshot
                                      </button>
                                  )}
                              </div>
                          ) : (
-                             <div>Click and drag to select</div>
+                             <div style={{textAlign: 'center'}}>
+                                 <div style={{fontWeight: 'bold', marginBottom: '4px'}}>Crop Tool Active</div>
+                                 <div style={{fontSize: '10px', opacity: 0.8}}>Click and drag to select area</div>
+                             </div>
                          )}
                      </div>
                  )}
