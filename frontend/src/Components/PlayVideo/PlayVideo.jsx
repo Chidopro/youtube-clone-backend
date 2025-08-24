@@ -104,6 +104,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 width: defaultSize, 
                 height: defaultSize 
             });
+            
+            // Reset selection state
+            setIsSelecting(false);
+            setDragStart({ x: 0, y: 0 });
         } else {
             setCropArea({ x: 0, y: 0, width: 0, height: 0 });
             setIsSelecting(false);
@@ -703,10 +707,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                      }} 
                      src={video.video_url}
                      poster={video.thumbnail || video.poster}
-                     onMouseDown={showCropTool ? handleCropMouseDown : undefined}
-                     onMouseMove={showCropTool ? handleCropMouseMove : undefined}
-                     onMouseUp={showCropTool ? handleCropMouseUp : undefined}
-                     onMouseLeave={showCropTool ? handleCropMouseUp : undefined}
+                     
                      onError={(e) => console.error('Video error:', e)}
                      onLoadStart={() => console.log('Video loading started')}
                      onCanPlay={() => {
@@ -736,22 +737,26 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                      style={{ display: 'none' }}
                  />
                  
-                 {/* Crop Tool Overlay - Only show when crop tool is active */}
-                 {showCropTool && (
-                     <div 
-                         style={{
-                             position: 'absolute',
-                             top: 0,
-                             left: 0,
-                             width: '100%',
-                             height: '100%',
-                             cursor: 'crosshair',
-                             zIndex: 1000,
-                             background: 'transparent',
-                             pointerEvents: 'none'
-                         }}
-                     />
-                 )}
+                                   {/* Crop Tool Overlay - Only show when crop tool is active */}
+                  {showCropTool && (
+                      <div 
+                          style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              cursor: 'crosshair',
+                              zIndex: 1000,
+                              background: 'transparent',
+                              pointerEvents: 'auto'
+                          }}
+                          onMouseDown={handleCropMouseDown}
+                          onMouseMove={handleCropMouseMove}
+                          onMouseUp={handleCropMouseUp}
+                          onMouseLeave={handleCropMouseUp}
+                      />
+                  )}
                  
                  {/* Crop Selection Overlay */}
                  {showCropTool && cropArea.width > 0 && cropArea.height > 0 && (
