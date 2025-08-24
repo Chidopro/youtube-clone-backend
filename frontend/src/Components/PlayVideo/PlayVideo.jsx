@@ -641,66 +641,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
     };
 
-    // Debug database data
-    const debugVideoData = () => {
-        console.log('=== VIDEO DATA DEBUG ===');
-        console.log('Video ID:', videoId);
-        console.log('Video object:', video);
-        console.log('Video URL:', video?.video_url);
-        console.log('Thumbnail:', video?.thumbnail);
-        console.log('Poster:', video?.poster);
-        console.log('Title:', video?.title);
-        console.log('Description:', video?.description);
-        console.log('Created at:', video?.created_at);
-        
-        if (videoRef.current) {
-            console.log('=== VIDEO ELEMENT DEBUG ===');
-            console.log('Video element src:', videoRef.current.src);
-            console.log('Video element readyState:', videoRef.current.readyState);
-            console.log('Video element networkState:', videoRef.current.networkState);
-            console.log('Video element paused:', videoRef.current.paused);
-            console.log('Video element currentTime:', videoRef.current.currentTime);
-            console.log('Video element duration:', videoRef.current.duration);
-            console.log('Video element videoWidth:', videoRef.current.videoWidth);
-            console.log('Video element videoHeight:', videoRef.current.videoHeight);
-            console.log('Video element display:', videoRef.current.style.display);
-            console.log('Video element visibility:', videoRef.current.style.visibility);
-            console.log('Video element opacity:', videoRef.current.style.opacity);
-            console.log('Video element zIndex:', videoRef.current.style.zIndex);
-        }
-        
-        alert('Check console for detailed debug information');
-    };
 
-    // Force video visibility
-    const forceVideoVisibility = () => {
-        if (videoRef.current) {
-            videoRef.current.style.display = 'block';
-            videoRef.current.style.visibility = 'visible';
-            videoRef.current.style.opacity = '1';
-            videoRef.current.style.zIndex = '1';
-            videoRef.current.style.position = 'relative';
-            videoRef.current.style.width = '100%';
-            videoRef.current.style.height = '360px';
-            videoRef.current.style.maxWidth = '100%';
-            videoRef.current.style.objectFit = 'contain';
-            
-            console.log('Forced video visibility');
-            console.log('Video element styles:', {
-                display: videoRef.current.style.display,
-                visibility: videoRef.current.style.visibility,
-                opacity: videoRef.current.style.opacity,
-                zIndex: videoRef.current.style.zIndex,
-                position: videoRef.current.style.position,
-                width: videoRef.current.style.width,
-                height: videoRef.current.style.height
-            });
-            
-            alert('Video visibility forced! Check if video is now visible.');
-        } else {
-            alert('Video element not found');
-        }
-    };
 
     if (loading) return (
         <div style={{
@@ -803,33 +744,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             />
                         )}
                         
-                                                 {/* Debug Info Overlay */}
-                         {showCropTool && cropArea.width > 0 && cropArea.height > 0 && (
-                             <div 
-                                 style={{
-                                     position: 'absolute',
-                                     top: '5px',
-                                     left: '5px',
-                                     background: 'rgba(0, 0, 0, 0.9)',
-                                     color: 'white',
-                                     padding: '8px',
-                                     fontSize: '12px',
-                                     zIndex: 1001,
-                                     fontFamily: 'monospace',
-                                     borderRadius: '4px',
-                                     border: '1px solid #fff'
-                                 }}
-                             >
-                                 <div>Crop: {Math.round(cropArea.x)},{Math.round(cropArea.y)}</div>
-                                 <div>Size: {Math.round(cropArea.width)}x{Math.round(cropArea.height)}</div>
-                                 <div style={{ 
-                                     color: cropArea.width >= 150 && cropArea.height >= 150 ? '#4CAF50' : '#FF9800',
-                                     fontWeight: 'bold'
-                                 }}>
-                                     {cropArea.width >= 150 && cropArea.height >= 150 ? '✅ Good size' : '⚠️ Min 150x150px'}
-                                 </div>
-                             </div>
-                         )}
+
                     </div>
                 
                 {/* Simple Crop Tool Button */}
