@@ -84,14 +84,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         
         if (newShowCropTool && videoRef.current) {
             // Set a small default crop area in the center when enabling
-            const rect = videoRef.current.getBoundingClientRect();
             const defaultSize = 50; // Small 50x50 pixel crop area
-            const centerX = (rect.width / 2) - (defaultSize / 2);
-            const centerY = (rect.height / 2) - (defaultSize / 2);
+            const videoWidth = videoRef.current.offsetWidth || 640;
+            const videoHeight = videoRef.current.offsetHeight || 360;
+            const centerX = (videoWidth / 2) - (defaultSize / 2);
+            const centerY = (videoHeight / 2) - (defaultSize / 2);
             
             console.log('Setting initial crop area:', {
-                rectWidth: rect.width,
-                rectHeight: rect.height,
+                videoWidth,
+                videoHeight,
                 centerX,
                 centerY,
                 defaultSize
@@ -746,12 +747,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              height: '100%',
                              cursor: 'crosshair',
                              zIndex: 1000,
-                             background: 'transparent'
+                             background: 'transparent',
+                             pointerEvents: 'none'
                          }}
-                         onMouseDown={handleCropMouseDown}
-                         onMouseMove={handleCropMouseMove}
-                         onMouseUp={handleCropMouseUp}
-                         onMouseLeave={handleCropMouseUp}
                      />
                  )}
                  
