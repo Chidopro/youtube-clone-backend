@@ -79,8 +79,23 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     
     // Crop tool functions
     const toggleCropTool = () => {
-        setShowCropTool(!showCropTool);
-        if (showCropTool) {
+        const newShowCropTool = !showCropTool;
+        setShowCropTool(newShowCropTool);
+        
+        if (newShowCropTool && videoRef.current) {
+            // Set a small default crop area in the center when enabling
+            const rect = videoRef.current.getBoundingClientRect();
+            const defaultSize = 50; // Small 50x50 pixel crop area
+            const centerX = (rect.width / 2) - (defaultSize / 2);
+            const centerY = (rect.height / 2) - (defaultSize / 2);
+            
+            setCropArea({ 
+                x: Math.max(0, centerX), 
+                y: Math.max(0, centerY), 
+                width: defaultSize, 
+                height: defaultSize 
+            });
+        } else {
             setCropArea({ x: 0, y: 0, width: 0, height: 0 });
             setIsSelecting(false);
         }
