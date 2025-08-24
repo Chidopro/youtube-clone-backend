@@ -37,6 +37,176 @@
   html, body { overflow-x: hidden; }
 }
 
+/* Enhanced Mobile Video Player */
+@media (max-width: 768px) {
+  /* Better video container for mobile */
+  .play-video .video-container {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+  }
+  
+  /* Improved video controls for mobile */
+  .play-video video {
+    border-radius: 12px;
+    /* Better touch interaction */
+    touch-action: manipulation;
+  }
+  
+  /* Mobile-specific video controls */
+  .play-video video::-webkit-media-controls {
+    background: rgba(0,0,0,0.7);
+    border-radius: 0 0 12px 12px;
+  }
+  
+  .play-video video::-webkit-media-controls-panel {
+    padding: 8px;
+  }
+  
+  /* Larger touch targets for mobile */
+  .play-video button,
+  .play-video .btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
+    font-size: 16px;
+    border-radius: 8px;
+    touch-action: manipulation;
+    /* Prevent text selection on touch */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* Better spacing for mobile */
+  .play-video {
+    padding: 10px;
+  }
+  
+  /* Improved screenshot grid for mobile */
+  .screenshots-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 15px 0;
+  }
+  
+  .screenshot-item {
+    aspect-ratio: 16/9;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    /* Touch-friendly */
+    min-height: 80px;
+    touch-action: manipulation;
+  }
+  
+  .screenshot-item:hover {
+    transform: scale(1.05);
+  }
+  
+  .screenshot-item.selected {
+    border: 3px solid #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+  }
+  
+  /* Better crop tool for mobile */
+  .crop-tool {
+    padding: 15px;
+    border-radius: 12px;
+    margin: 15px 0;
+  }
+  
+  .crop-tool button {
+    margin: 5px;
+    font-size: 14px;
+  }
+  
+  /* Improved Make Merch button for mobile */
+  .make-merch-btn {
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    border-radius: 12px;
+    margin-top: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    touch-action: manipulation;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  .make-merch-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  }
+  
+  .make-merch-btn:active {
+    transform: translateY(0);
+  }
+  
+  /* Better flow steps for mobile */
+  .flow-steps {
+    gap: 8px;
+    padding: 0 10px;
+  }
+  
+  .flow-step {
+    min-width: 100px;
+    padding: 8px 4px;
+  }
+  
+  .step-number {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+  
+  /* Improved user flow section for mobile */
+  .user-flow-section {
+    margin: -10px -10px 20px -10px;
+    padding: 15px 10px;
+    border-radius: 0;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  .play-video .video-container,
+  .play-video video {
+    height: 280px !important;
+    max-height: 280px !important;
+  }
+  
+  .screenshots-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .flow-steps {
+    gap: 4px;
+  }
+  
+  .flow-step {
+    min-width: 80px;
+  }
+  
+  .step-number {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+  
+  .make-merch-btn {
+    padding: 14px;
+    font-size: 15px;
+  }
+}
+
 /* Step Navigation Bar Styles */
 .user-flow-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -165,7 +335,7 @@
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
     border: 1px solid #e0e0e0;
-    background: #000;
+    background: transparent;
     /* Ensure consistent sizing */
     display: block !important;
     margin: 0 auto;
@@ -212,9 +382,9 @@
   top: 10px !important;
   left: 10px !important;
   z-index: 1000 !important;
-  background: rgba(0, 0, 0, 0.7) !important;
+  background: rgba(0, 0, 0, 0.8) !important;
   color: white !important;
-  border: none !important;
+  border: 2px solid white !important;
   border-radius: 4px !important;
   padding: 8px !important;
   cursor: pointer !important;
@@ -228,6 +398,7 @@
   transition: all 0.2s ease !important;
   visibility: visible !important;
   opacity: 1 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
 }
 
 .crop-tool-btn:hover {
@@ -260,7 +431,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #000;
+    background: transparent;
     border-radius: 12px;
     overflow: hidden;
 }
