@@ -727,59 +727,51 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                      />
                  )}
                  
-                 {/* Crop Tool Controls */}
-                 {showCropTool && (
-                     <div 
-                         style={{
-                             position: 'absolute',
-                             top: '10px',
-                             right: '10px',
-                             background: 'rgba(255, 255, 255, 0.98)',
-                             color: 'black',
-                             padding: '8px',
-                             borderRadius: '4px',
-                             zIndex: 1002,
-                             fontSize: '11px',
-                             border: '1px solid rgba(0, 0, 0, 0.2)',
-                             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                             minWidth: '120px',
-                             maxWidth: '150px'
-                         }}
-                     >
-                         {cropArea.width > 0 && cropArea.height > 0 ? (
-                             <div>
-                                 <div style={{fontWeight: 'bold', marginBottom: '4px'}}>
-                                     Size: {Math.round(cropArea.width)}x{Math.round(cropArea.height)}
-                                 </div>
-                                 {cropArea.width < 300 || cropArea.height < 300 ? (
-                                     <div style={{color: '#d32f2f', fontSize: '10px', marginBottom: '8px'}}>
-                                         ⚠️ Selection too small - need 300x300 minimum
-                                     </div>
-                                 ) : (
-                                     <button 
-                                         onClick={applyCrop}
-                                         style={{
-                                             background: '#4CAF50',
-                                             color: 'white',
-                                             border: 'none',
-                                             padding: '6px 12px',
-                                             borderRadius: '4px',
-                                             cursor: 'pointer',
-                                             fontSize: '11px',
-                                             fontWeight: 'bold',
-                                             width: '100%'
-                                         }}
-                                     >
-                                         ✅ Capture Screenshot
-                                     </button>
-                                 )}
-                             </div>
-                         ) : (
-                             <div style={{textAlign: 'center'}}>
-                                 <div style={{fontWeight: 'bold', marginBottom: '4px'}}>Crop Tool Active</div>
-                                 <div style={{fontSize: '10px', opacity: 0.8}}>Click and drag to select area</div>
-                             </div>
-                         )}
+                                   {/* Crop Tool Controls */}
+                  {showCropTool && (
+                      <div 
+                          style={{
+                              position: 'absolute',
+                              top: '10px',
+                              right: '10px',
+                              background: 'transparent',
+                              color: 'black',
+                              padding: '8px',
+                              borderRadius: '4px',
+                              zIndex: 1002,
+                              fontSize: '11px',
+                              border: 'none',
+                              boxShadow: 'none',
+                              minWidth: '120px',
+                              maxWidth: '150px'
+                          }}
+                      >
+                                                   {cropArea.width > 0 && cropArea.height > 0 ? (
+                              <div>
+                                  {cropArea.width < 300 || cropArea.height < 300 ? (
+                                      <div style={{color: '#d32f2f', fontSize: '10px', marginBottom: '8px'}}>
+                                          ⚠️ Selection too small - need 300x300 minimum
+                                      </div>
+                                  ) : (
+                                      <button 
+                                          onClick={applyCrop}
+                                          style={{
+                                              background: '#4CAF50',
+                                              color: 'white',
+                                              border: 'none',
+                                              padding: '6px 12px',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontSize: '11px',
+                                              fontWeight: 'bold',
+                                              width: '100%'
+                                          }}
+                                      >
+                                          ✅ Capture Screenshot
+                                      </button>
+                                  )}
+                              </div>
+                          ) : null}
                      </div>
                  )}
             </div>
