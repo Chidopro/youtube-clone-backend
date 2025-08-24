@@ -727,53 +727,29 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                      />
                  )}
                  
-                                   {/* Crop Tool Controls */}
-                  {showCropTool && (
-                      <div 
+                                                     {/* Crop Tool Controls - Only show capture button when selection is valid */}
+                  {showCropTool && cropArea.width >= 300 && cropArea.height >= 300 && (
+                      <button 
+                          onClick={applyCrop}
                           style={{
                               position: 'absolute',
                               top: '10px',
                               right: '10px',
-                              background: 'transparent',
-                              color: 'black',
-                              padding: '8px',
-                              borderRadius: '4px',
-                              zIndex: 1002,
-                              fontSize: '11px',
+                              background: '#4CAF50',
+                              color: 'white',
                               border: 'none',
-                              boxShadow: 'none',
-                              minWidth: '120px',
-                              maxWidth: '150px'
+                              padding: '8px 12px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: 'bold',
+                              zIndex: 1002,
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                           }}
                       >
-                                                   {cropArea.width > 0 && cropArea.height > 0 ? (
-                              <div>
-                                  {cropArea.width < 300 || cropArea.height < 300 ? (
-                                      <div style={{color: '#d32f2f', fontSize: '10px', marginBottom: '8px'}}>
-                                          ⚠️ Selection too small - need 300x300 minimum
-                                      </div>
-                                  ) : (
-                                      <button 
-                                          onClick={applyCrop}
-                                          style={{
-                                              background: '#4CAF50',
-                                              color: 'white',
-                                              border: 'none',
-                                              padding: '6px 12px',
-                                              borderRadius: '4px',
-                                              cursor: 'pointer',
-                                              fontSize: '11px',
-                                              fontWeight: 'bold',
-                                              width: '100%'
-                                          }}
-                                      >
-                                          ✅ Capture Screenshot
-                                      </button>
-                                  )}
-                              </div>
-                          ) : null}
-                     </div>
-                 )}
+                          ✅ Capture
+                      </button>
+                  )}
             </div>
             
             {/* Action buttons for screenshots and merchandise */}
