@@ -124,39 +124,66 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         
-        // Set canvas size to video size
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        
-        // Draw current video frame to canvas
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        // If crop area is selected, crop the image
-        if (cropArea.width > 0 && cropArea.height > 0) {
-            const scaleX = video.videoWidth / video.offsetWidth;
-            const scaleY = video.videoHeight / video.offsetHeight;
+        try {
+            // Set canvas size to video size
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
             
-            const cropX = cropArea.x * scaleX;
-            const cropY = cropArea.y * scaleY;
-            const cropWidth = cropArea.width * scaleX;
-            const cropHeight = cropArea.height * scaleY;
+            // Draw current video frame to canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // Create new canvas for cropped image
-            const croppedCanvas = document.createElement('canvas');
-            const croppedCtx = croppedCanvas.getContext('2d');
-            croppedCanvas.width = cropWidth;
-            croppedCanvas.height = cropHeight;
+            // If crop area is selected, crop the image
+            if (cropArea.width > 0 && cropArea.height > 0) {
+                const scaleX = video.videoWidth / video.offsetWidth;
+                const scaleY = video.videoHeight / video.offsetHeight;
+                
+                const cropX = cropArea.x * scaleX;
+                const cropY = cropArea.y * scaleY;
+                const cropWidth = cropArea.width * scaleX;
+                const cropHeight = cropArea.height * scaleY;
+                
+                // Create new canvas for cropped image
+                const croppedCanvas = document.createElement('canvas');
+                const croppedCtx = croppedCanvas.getContext('2d');
+                croppedCanvas.width = cropWidth;
+                croppedCanvas.height = cropHeight;
+                
+                // Draw cropped portion
+                croppedCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+                
+                try {
+                    return croppedCanvas.toDataURL('image/png');
+                } catch (error) {
+                    console.error('CORS error when creating cropped data URL:', error);
+                    // Fallback: create a blob URL instead
+                    return new Promise((resolve) => {
+                        croppedCanvas.toBlob((blob) => {
+                            const blobUrl = URL.createObjectURL(blob);
+                            resolve(blobUrl);
+                        }, 'image/png');
+                    });
+                }
+            }
             
-            // Draw cropped portion
-            croppedCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-            
-            return croppedCanvas.toDataURL('image/png');
+            try {
+                return canvas.toDataURL('image/png');
+            } catch (error) {
+                console.error('CORS error when creating data URL:', error);
+                // Fallback: create a blob URL instead
+                return new Promise((resolve) => {
+                    canvas.toBlob((blob) => {
+                        const blobUrl = URL.createObjectURL(blob);
+                        resolve(blobUrl);
+                    }, 'image/png');
+                });
+            }
+        } catch (error) {
+            console.error('Error capturing screenshot:', error);
+            return null;
         }
-        
-        return canvas.toDataURL('image/png');
     };
     
-    const applyCrop = () => {
+    const applyCrop = async () => {
         if (!videoRef.current || !showCropTool) {
             showNotification('Please select a crop area first', 'error');
             return;
@@ -175,7 +202,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
         
         // Capture screenshot
-        const screenshotDataUrl = captureScreenshot();
+        const screenshotDataUrl = await captureScreenshot();
         if (screenshotDataUrl) {
             setScreenshots(prev => prev.length < 6 ? [...prev, screenshotDataUrl] : prev);
             showNotification('Cropped screenshot captured successfully!');
@@ -192,6 +219,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             setLoading(false);
             return;
         }
+        
+
+        
         const fetchVideo = async () => {
             setLoading(true);
             setError('');
@@ -220,6 +250,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     return;
                 }
 
+                setVideo(data);
+                console.log('Video data loaded:', data);
+                console.log('Video URL:', data.video_url);
+                
                 // Test if video URL is accessible
                 try {
                     const response = await fetch(data.video_url, { method: 'HEAD' });
@@ -229,18 +263,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     }
                 } catch (urlError) {
                     console.warn('Could not test video URL accessibility:', urlError);
-                }
-                
-                setVideo(data);
-                console.log('Video data loaded:', data);
-                console.log('Video URL:', data.video_url);
-                
-                // Test if video URL is accessible
-                try {
-                    const response = await fetch(data.video_url, { method: 'HEAD' });
-                    console.log('Video URL accessibility test:', response.status, response.ok);
-                } catch (err) {
-                    console.error('Video URL accessibility test failed:', err);
                 }
                 
                 // Automatically set thumbnail if available
@@ -264,6 +286,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             setLoading(false);
         };
         fetchVideo();
+        
     }, [videoId, setThumbnail, setScreenshots]);
 
     // Reset video element when videoId changes
@@ -283,7 +306,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     }, []);
 
     // Fast Screenshot handler - captures actual video frame
-    const handleGrabScreenshot = () => {
+    const handleGrabScreenshot = async () => {
         console.log('Grab Screenshot clicked');
         
         if (screenshots.length >= 6) {
@@ -298,7 +321,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
 
         // Capture actual screenshot from current video frame
-        const screenshotDataUrl = captureScreenshot();
+        const screenshotDataUrl = await captureScreenshot();
         
         if (screenshotDataUrl) {
             console.log('Adding actual video screenshot');
@@ -640,6 +663,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                      controls 
                      width="100%" 
                      height="360"
+                     crossOrigin="anonymous"
                      style={{
                          background: '#000', 
                          cursor: showCropTool ? 'crosshair' : 'default',

@@ -1653,22 +1653,68 @@ def stripe_webhook():
             # Get customer phone number from Stripe session
             customer_phone = session.get("customer_details", {}).get("phone", "")
             
-            # Format and send the order email
-            html_body = f"<h1>New Paid ScreenMerch Order #{order_id}</h1>"
-            html_body += f"<p><strong>SMS Consent:</strong> {'Yes' if sms_consent else 'No'}</p>"
-            html_body += f"<p><strong>Customer Phone:</strong> {customer_phone}</p>"
+            # Calculate order totals
+            total_amount = session.get("amount_total", 0) / 100  # Convert from cents
+            shipping_cost = float(order_data.get("shipping_cost", 0) or 0)
+            shipping_currency = order_data.get("shipping_currency", "USD")
+            delivery_days = order_data.get("shipping_delivery_days")
+            
+            # Generate order number (last 8 characters of order_id)
+            order_number = order_id[-8:].upper()
+            
+            # Format and send the robust order email
+            html_body = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9;">
+                <div style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h1 style="color: #333; text-align: center; margin-bottom: 30px;">🎯 New ScreenMerch Order #{order_number}</h1>
+                    
+                    <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #28a745;">
+                        <h3 style="color: #28a745; margin: 0;">✅ Payment received successfully! This order is ready for processing.</h3>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                        <h3 style="color: #333; margin-top: 0;">📋 Order Summary</h3>
+                        <p><strong>Order ID:</strong> {order_id}</p>
+                        <p><strong>Customer Phone:</strong> {customer_phone}</p>
+                        <p><strong>Items:</strong> {len(cart)}</p>
+                        <p><strong>Shipping Cost:</strong> ${shipping_cost:.2f} {shipping_currency}{f" • ETA: {delivery_days} days" if delivery_days else ""}</p>
+                        <p><strong>Total Amount:</strong> ${total_amount:.2f}</p>
+                    </div>
+                    
+                    <h3 style="color: #333;">🛍️ Product Details</h3>
+            """
             
             for item in cart:
                 html_body += f"""
-                    <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
-                        <h2>{item.get('product', 'N/A')}</h2>
+                    <div style='border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 8px; background: white;'>
+                        <h4 style="color: #333; margin-top: 0;">{item.get('product', 'N/A')}</h4>
                         <p><strong>Color:</strong> {item.get('variants', {}).get('color', 'N/A')}</p>
                         <p><strong>Size:</strong> {item.get('variants', {}).get('size', 'N/A')}</p>
+                        <p><strong>Price:</strong> ${item.get('price', 0):.2f}</p>
                         <p><strong>Note:</strong> {item.get('note', 'None')}</p>
-                        <p><strong>Image:</strong></p>
-                        <img src="{item.get('img', '')}" alt='Product Image' style='max-width: 300px; border-radius: 6px;'>
+                        <p><strong>Video:</strong> {order_data.get('video_title', 'Unknown Video')}</p>
+                        <p><strong>Creator:</strong> {order_data.get('creator_name', 'Unknown Creator')}</p>
+                        <p><strong>Screenshot/Thumbnail:</strong></p>
+                        <img src="{item.get('img', '')}" alt='Product Image' style='max-width: 300px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
                     </div>
                 """
+            
+            html_body += f"""
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                        <h3 style="color: #333; margin-top: 0;">📋 Next Steps</h3>
+                        <ul style="color: #666;">
+                            <li>Review the screenshot/thumbnail for print quality</li>
+                            <li>Verify customer information and shipping details</li>
+                            <li>Process the order through your fulfillment system</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                        <p style="color: #666; font-size: 14px;">This is an automated notification from ScreenMerch</p>
+                    </div>
+                </div>
+            </div>
+            """
             
             # Record each sale with creator and video information
             for item in cart:
@@ -1692,11 +1738,11 @@ def stripe_webhook():
                 admin_email_body += f"• {item.get('product', 'N/A')} ({item.get('variants', {}).get('color', 'N/A')}, {item.get('variants', {}).get('size', 'N/A')})\n"
             send_order_email(admin_email_body)
             
-            # Send confirmation email to alancraigdigital@gmail.com
+            # Send robust confirmation email to admin
             email_data = {
                 "from": RESEND_FROM,
-                "to": ["alancraigdigital@gmail.com"],
-                "subject": f"🎯 ScreenMerch Payment Confirmation - Order #{order_id}",
+                "to": [MAIL_TO],
+                "subject": f"New ScreenMerch Order #{order_number}",
                 "html": html_body
             }
             
