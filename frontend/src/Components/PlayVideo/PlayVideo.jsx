@@ -25,6 +25,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
+    
+    // Green flag confirmation state
+    const [showGreenFlag, setShowGreenFlag] = useState(false);
 
     useEffect(() => {
         if (!videoId) {
@@ -152,21 +155,21 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             if (result.success && result.screenshot) {
                 console.log('Server-side screenshot captured successfully');
                 
-                if (result.fallback) {
-                    console.log('Server returned fallback response, using thumbnail instead');
-                    const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
-                    if (thumbnailUrl) {
-                        setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
-                        const newScreenshotCount = screenshots.length + 1;
-                        alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
-                    } else {
-                        alert('No thumbnail available for this video.');
-                    }
-                } else {
-                    setScreenshots(prev => prev.length < 6 ? [...prev, result.screenshot] : prev);
-                    const newScreenshotCount = screenshots.length + 1;
-                    alert(`Screenshot ${newScreenshotCount} captured successfully!`);
-                }
+                                 if (result.fallback) {
+                     console.log('Server returned fallback response, using thumbnail instead');
+                     const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
+                     if (thumbnailUrl) {
+                         setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
+                         // Show green flag confirmation instead of alert
+                         showGreenFlagConfirmation();
+                     } else {
+                         alert('No thumbnail available for this video.');
+                     }
+                 } else {
+                     setScreenshots(prev => prev.length < 6 ? [...prev, result.screenshot] : prev);
+                     // Show green flag confirmation instead of alert
+                     showGreenFlagConfirmation();
+                 }
                 // Restore scroll position
                 window.scrollTo(0, currentScroll);
                 return;
@@ -180,15 +183,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             
             const thumbnailUrl = video.thumbnail || video.poster || videoElement.poster;
             
-            if (thumbnailUrl) {
-                console.log('Adding video thumbnail as screenshot');
-                setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
-                
-                const newScreenshotCount = screenshots.length + 1;
-                alert(`Screenshot ${newScreenshotCount} captured successfully! (using thumbnail)`);
-            } else {
-                alert('No thumbnail available for this video.');
-            }
+                         if (thumbnailUrl) {
+                 console.log('Adding video thumbnail as screenshot');
+                 setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
+                 
+                 // Show green flag confirmation instead of alert
+                 showGreenFlagConfirmation();
+             } else {
+                 alert('No thumbnail available for this video.');
+             }
             // Restore scroll position
             window.scrollTo(0, currentScroll);
         }
@@ -295,6 +298,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.error('Video play() failed:', error);
             alert(`Video playback test failed: ${error.message}`);
         }
+    };
+
+    // Green flag confirmation function
+    const showGreenFlagConfirmation = () => {
+        setShowGreenFlag(true);
+        setTimeout(() => {
+            setShowGreenFlag(false);
+        }, 2000); // Show for 2 seconds
     };
 
     // Test video URL accessibility
@@ -408,31 +419,31 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             }}
                         />
                         
-                        {/* Quick Screenshot Button with Green Flag */}
-                        <button 
-                            onClick={handleGrabScreenshot}
-                            style={{
-                                position: 'absolute',
-                                top: '10px',
-                                right: '10px',
-                                padding: '8px 12px',
-                                backgroundColor: '#28a745',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '14px',
-                                fontWeight: 'bold',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                                zIndex: 1000,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}
-                            title="Quick Screenshot"
-                        >
-                            ✅ Quick Screenshot
-                        </button>
+                        {/* Green Flag Confirmation Overlay */}
+                        {showGreenFlag && (
+                            <div 
+                                style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    backgroundColor: '#28a745',
+                                    color: 'white',
+                                    padding: '20px 30px',
+                                    borderRadius: '8px',
+                                    fontSize: '18px',
+                                    fontWeight: 'bold',
+                                    zIndex: 2000,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                    animation: 'fadeInOut 2s ease-in-out'
+                                }}
+                            >
+                                ✅ Screenshot Captured!
+                            </div>
+                        )}
 
                     </div>
                 
