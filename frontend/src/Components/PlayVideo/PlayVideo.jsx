@@ -720,10 +720,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              width: cropArea.width,
                              height: cropArea.height,
                              border: '3px solid #ff0000',
-                             background: 'rgba(255, 0, 0, 0.15)',
+                             background: 'transparent',
                              pointerEvents: 'none',
-                             zIndex: 1001,
-                             boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.5) inset'
+                             zIndex: 1001
                          }}
                      />
                  )}
@@ -735,15 +734,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              position: 'absolute',
                              top: '10px',
                              right: '10px',
-                             background: 'rgba(0, 0, 0, 0.9)',
+                             background: 'rgba(0, 0, 0, 0.7)',
                              color: 'white',
-                             padding: '12px',
-                             borderRadius: '6px',
+                             padding: '8px',
+                             borderRadius: '4px',
                              zIndex: 1002,
-                             fontSize: '12px',
-                             border: '1px solid rgba(255, 255, 255, 0.2)',
-                             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                             minWidth: '150px'
+                             fontSize: '11px',
+                             border: '1px solid rgba(255, 255, 255, 0.3)',
+                             boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                             minWidth: '120px'
                          }}
                      >
                          {cropArea.width > 0 && cropArea.height > 0 ? (
