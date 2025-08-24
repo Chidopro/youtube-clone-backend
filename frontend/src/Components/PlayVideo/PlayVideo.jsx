@@ -89,6 +89,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             const centerX = (rect.width / 2) - (defaultSize / 2);
             const centerY = (rect.height / 2) - (defaultSize / 2);
             
+            console.log('Setting initial crop area:', {
+                rectWidth: rect.width,
+                rectHeight: rect.height,
+                centerX,
+                centerY,
+                defaultSize
+            });
+            
             setCropArea({ 
                 x: Math.max(0, centerX), 
                 y: Math.max(0, centerY), 
@@ -102,11 +110,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     };
     
     const handleCropMouseDown = (e) => {
+        console.log('Crop mouse down:', { showCropTool, hasVideoRef: !!videoRef.current });
         if (!showCropTool || !videoRef.current) return;
         
         const rect = videoRef.current.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
+        
+        console.log('Crop mouse down coordinates:', { x, y, clientX: e.clientX, clientY: e.clientY, rectLeft: rect.left, rectTop: rect.top });
         
         setIsSelecting(true);
         setDragStart({ x, y });
@@ -760,6 +771,28 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              zIndex: 1001
                          }}
                      />
+                 )}
+                 
+                 {/* Debug Info - Only show when crop tool is active */}
+                 {showCropTool && (
+                     <div 
+                         style={{
+                             position: 'absolute',
+                             top: '50px',
+                             left: '10px',
+                             background: 'rgba(0,0,0,0.8)',
+                             color: 'white',
+                             padding: '8px',
+                             borderRadius: '4px',
+                             fontSize: '12px',
+                             zIndex: 1003,
+                             fontFamily: 'monospace'
+                         }}
+                     >
+                         Crop: {Math.round(cropArea.x)},{Math.round(cropArea.y)}<br/>
+                         Size: {Math.round(cropArea.width)}x{Math.round(cropArea.height)}<br/>
+                         Selecting: {isSelecting ? 'Yes' : 'No'}
+                     </div>
                  )}
                  
                                                      {/* Crop Tool Controls - Only show capture button when selection is valid */}
