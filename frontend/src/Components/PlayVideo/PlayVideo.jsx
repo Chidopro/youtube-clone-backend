@@ -1,9 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import './PlayVideo.css'
-import like from '../../assets/like.png'
-import dislike from '../../assets/dislike.png'
-import share from '../../assets/share.png'
-import save from '../../assets/save.png'
 import { value_converter } from '../../data'
 import moment from 'moment'
 import { useParams } from 'react-router-dom'
@@ -1009,12 +1005,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             <hr />
             <div className="publisher">
                 <div>
-                    <div className="social-interactions">
-                        <span><img src={like} alt="" />Like</span>
-                        <span><img src={dislike} alt="" />Dislike</span>
-                        <span><img src={share} alt="" />Share</span>
-                        <span><img src={save} alt="" />Save</span>
-                    </div>
+                    {/* Video description area - social interactions removed */}
                 </div>
                 <button type="button">Subscribe</button>
             </div>
