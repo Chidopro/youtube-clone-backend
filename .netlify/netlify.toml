@@ -1,20 +1,21 @@
+headersOrigin = "config"
 redirectsOrigin = "config"
 plugins = []
-headers = []
 
 [functions]
 
 [functions."*"]
 
 [build]
-publish = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone\\frontend\\dist"
+publish = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone - Copy (5)\\frontend\\dist"
 publishOrigin = "config"
 commandOrigin = "config"
-base = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone\\frontend"
+base = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone - Copy (5)\\frontend"
 command = "npm install && npm run build"
 
 [build.environment]
 NODE_VERSION = "18"
+NETLIFY_USE_YARN = "false"
 
 [build.processing]
 skip_processing = false
@@ -28,6 +29,44 @@ skip_processing = false
 [build.processing.js]
 
 [build.services]
+
+[[headers]]
+for = "/index.html"
+
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate, max-age=0"
+Pragma = "no-cache"
+Expires = "0"
+
+[[headers]]
+for = "/*.html"
+
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate, max-age=0"
+Pragma = "no-cache"
+Expires = "0"
+
+[[headers]]
+for = "/*.js"
+
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate, max-age=0"
+Pragma = "no-cache"
+Expires = "0"
+
+[[headers]]
+for = "/*.css"
+
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate, max-age=0"
+Pragma = "no-cache"
+Expires = "0"
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' https: data: https://sojxbydpcdcdzfdtbypd.supabase.co; connect-src 'self' https://api.printful.com https://api.resend.com https://api.stripe.com https://sojxbydpcdcdzfdtbypd.supabase.co https://backend-hidden-firefly-7865.fly.dev https://copy5-backend.fly.dev; frame-src 'self' https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';"
 
 [[redirects]]
 from = "/*"

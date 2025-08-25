@@ -10,7 +10,6 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
 import AuthModal from '../AuthModal/AuthModal'
-import SimpleCropTool from '../PrintCropTool/SimpleCropTool'
 
 const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData, onScreenshotFunction }) => {
     // Use prop if provided, otherwise fallback to URL param
@@ -34,9 +33,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
     const [lastAlertTime, setLastAlertTime] = useState(0);
     
-    // Crop tool state
-    const [showCropTool, setShowCropTool] = useState(false);
-    const [currentImageForCrop, setCurrentImageForCrop] = useState(null);
+    // Inline crop tool state
+    const [isCropMode, setIsCropMode] = useState(false);
+    const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 200, height: 200 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [isResizing, setIsResizing] = useState(false);
+    const [resizeDirection, setResizeDirection] = useState(null);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     
     // Safe alert function to prevent rapid-fire alerts - DISABLED TO STOP LOOPS
     const safeAlert = useCallback((message) => {
@@ -363,31 +366,133 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         await createMerchProduct();
     };
     
-    // Crop tool functions
-    const handleOpenCropTool = () => {
-        // Use the current video frame or thumbnail as the image to crop
-        const imageToCrop = thumbnail || video?.thumbnail || '';
-        if (imageToCrop) {
-            setCurrentImageForCrop(imageToCrop);
-            setShowCropTool(true);
-        } else {
-            alert('No image available to crop. Please take a screenshot first.');
+    // Inline crop tool functions
+    const handleToggleCropMode = () => {
+        setIsCropMode(!isCropMode);
+        if (!isCropMode) {
+            // Initialize crop area in center of video
+            const videoElement = videoRef.current;
+            if (videoElement) {
+                const rect = videoElement.getBoundingClientRect();
+                const centerX = rect.width / 2 - 100;
+                const centerY = rect.height / 2 - 100;
+                setCropArea({ x: centerX, y: centerY, width: 200, height: 200 });
+            }
         }
     };
-    
-    const handleCropComplete = (croppedImageUrl) => {
-        // Add the cropped image to screenshots
-        setScreenshots(prev => {
-            const newScreenshots = prev.length < 6 ? [...prev, croppedImageUrl] : prev;
-            return newScreenshots;
-        });
-        setShowCropTool(false);
-        setCurrentImageForCrop(null);
+
+    const handleCropMouseDown = (e) => {
+        if (!isCropMode) return;
+        
+        const videoElement = videoRef.current;
+        if (!videoElement) return;
+        
+        const rect = videoElement.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Check if clicking inside crop area
+        if (x >= cropArea.x && x <= cropArea.x + cropArea.width &&
+            y >= cropArea.y && y <= cropArea.y + cropArea.height) {
+            setIsDragging(true);
+            setDragStart({ x: x - cropArea.x, y: y - cropArea.y });
+        }
     };
-    
-    const handleCropCancel = () => {
-        setShowCropTool(false);
-        setCurrentImageForCrop(null);
+
+    const handleCropMouseMove = (e) => {
+        if (!isCropMode || (!isDragging && !isResizing)) return;
+        
+        const videoElement = videoRef.current;
+        if (!videoElement) return;
+        
+        const rect = videoElement.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        if (isDragging) {
+            const newX = Math.max(0, Math.min(rect.width - cropArea.width, x - dragStart.x));
+            const newY = Math.max(0, Math.min(rect.height - cropArea.height, y - dragStart.y));
+            setCropArea(prev => ({ ...prev, x: newX, y: newY }));
+        } else if (isResizing) {
+            // Handle resizing based on direction
+            let newWidth = cropArea.width;
+            let newHeight = cropArea.height;
+            let newX = cropArea.x;
+            let newY = cropArea.y;
+            
+            if (resizeDirection.includes('right')) {
+                newWidth = Math.max(50, x - cropArea.x);
+            }
+            if (resizeDirection.includes('left')) {
+                const maxLeft = cropArea.x + cropArea.width - 50;
+                newX = Math.min(maxLeft, x);
+                newWidth = cropArea.x + cropArea.width - newX;
+            }
+            if (resizeDirection.includes('bottom')) {
+                newHeight = Math.max(50, y - cropArea.y);
+            }
+            if (resizeDirection.includes('top')) {
+                const maxTop = cropArea.y + cropArea.height - 50;
+                newY = Math.min(maxTop, y);
+                newHeight = cropArea.y + cropArea.height - newY;
+            }
+            
+            setCropArea({ x: newX, y: newY, width: newWidth, height: newHeight });
+        }
+    };
+
+    const handleCropMouseUp = () => {
+        setIsDragging(false);
+        setIsResizing(false);
+        setResizeDirection(null);
+    };
+
+    const handleResizeStart = (direction, e) => {
+        e.stopPropagation();
+        setIsResizing(true);
+        setResizeDirection(direction);
+    };
+
+    const handleApplyCrop = () => {
+        if (!isCropMode) return;
+        
+        const videoElement = videoRef.current;
+        if (!videoElement) return;
+        
+        try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size to crop area
+            canvas.width = cropArea.width;
+            canvas.height = cropArea.height;
+            
+            // Draw the cropped portion
+            ctx.drawImage(videoElement, cropArea.x, cropArea.y, cropArea.width, cropArea.height, 0, 0, cropArea.width, cropArea.height);
+            
+            // Convert to data URL
+            const croppedImageUrl = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // Add to screenshots
+            setScreenshots(prev => {
+                const newScreenshots = prev.length < 6 ? [...prev, croppedImageUrl] : prev;
+                return newScreenshots;
+            });
+            
+            // Exit crop mode
+            setIsCropMode(false);
+            
+        } catch (error) {
+            console.error('Error applying crop:', error);
+            alert('Failed to crop image. Please try again.');
+        }
+    };
+
+    const handleCancelCrop = () => {
+        setIsCropMode(false);
+        setIsDragging(false);
+        setIsResizing(false);
+        setResizeDirection(null);
     };
 
     // Create merch product function
@@ -585,44 +690,173 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         }}
                     />
                     
-                    {/* Crop Tool Icon - Top Left Corner */}
-                    <button
-                        onClick={handleOpenCropTool}
-                        style={{
-                            position: 'absolute',
-                            top: '10px',
-                            left: '10px',
-                            background: 'rgba(0, 0, 0, 0.7)',
-                            border: 'none',
-                            borderRadius: '50%',
-                            width: '40px',
-                            height: '40px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 10,
-                            transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.target.style.background = 'rgba(0, 0, 0, 0.9)';
-                            e.target.style.transform = 'scale(1.1)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.target.style.background = 'rgba(0, 0, 0, 0.7)';
-                            e.target.style.transform = 'scale(1)';
-                        }}
-                        title="Crop Image"
-                    >
-                        <svg 
-                            width="20" 
-                            height="20" 
-                            viewBox="0 0 24 24" 
-                            fill="white"
-                        >
-                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
-                        </svg>
-                    </button>
+                                         {/* Crop Tool Icon - Top Left Corner */}
+                     <button
+                         onClick={handleToggleCropMode}
+                         style={{
+                             position: 'absolute',
+                             top: '10px',
+                             left: '10px',
+                             background: isCropMode ? 'rgba(0, 123, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)',
+                             border: 'none',
+                             borderRadius: '50%',
+                             width: '40px',
+                             height: '40px',
+                             cursor: 'pointer',
+                             display: 'flex',
+                             alignItems: 'center',
+                             justifyContent: 'center',
+                             zIndex: 10,
+                             transition: 'all 0.2s ease'
+                         }}
+                         onMouseEnter={(e) => {
+                             e.target.style.background = isCropMode ? 'rgba(0, 123, 255, 1)' : 'rgba(0, 0, 0, 0.9)';
+                             e.target.style.transform = 'scale(1.1)';
+                         }}
+                         onMouseLeave={(e) => {
+                             e.target.style.background = isCropMode ? 'rgba(0, 123, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)';
+                             e.target.style.transform = 'scale(1)';
+                         }}
+                         title={isCropMode ? "Exit Crop Mode" : "Crop Image"}
+                     >
+                         <svg 
+                             width="20" 
+                             height="20" 
+                             viewBox="0 0 24 24" 
+                             fill="white"
+                         >
+                             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                         </svg>
+                     </button>
+
+                     {/* Inline Crop Overlay */}
+                     {isCropMode && (
+                         <div
+                             style={{
+                                 position: 'absolute',
+                                 top: 0,
+                                 left: 0,
+                                 right: 0,
+                                 bottom: 0,
+                                 zIndex: 5,
+                                 cursor: isDragging ? 'move' : 'default'
+                             }}
+                             onMouseDown={handleCropMouseDown}
+                             onMouseMove={handleCropMouseMove}
+                             onMouseUp={handleCropMouseUp}
+                             onMouseLeave={handleCropMouseUp}
+                         >
+                             {/* Crop Area */}
+                             <div
+                                 style={{
+                                     position: 'absolute',
+                                     left: cropArea.x,
+                                     top: cropArea.y,
+                                     width: cropArea.width,
+                                     height: cropArea.height,
+                                     border: '2px dashed #007bff',
+                                     backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                                     cursor: isDragging ? 'move' : 'default'
+                                 }}
+                             >
+                                 {/* Resize Handles */}
+                                 <div
+                                     style={{
+                                         position: 'absolute',
+                                         top: -5,
+                                         left: -5,
+                                         width: 10,
+                                         height: 10,
+                                         backgroundColor: '#007bff',
+                                         borderRadius: '50%',
+                                         cursor: 'nw-resize'
+                                     }}
+                                     onMouseDown={(e) => handleResizeStart('top-left', e)}
+                                 />
+                                 <div
+                                     style={{
+                                         position: 'absolute',
+                                         top: -5,
+                                         right: -5,
+                                         width: 10,
+                                         height: 10,
+                                         backgroundColor: '#007bff',
+                                         borderRadius: '50%',
+                                         cursor: 'ne-resize'
+                                     }}
+                                     onMouseDown={(e) => handleResizeStart('top-right', e)}
+                                 />
+                                 <div
+                                     style={{
+                                         position: 'absolute',
+                                         bottom: -5,
+                                         left: -5,
+                                         width: 10,
+                                         height: 10,
+                                         backgroundColor: '#007bff',
+                                         borderRadius: '50%',
+                                         cursor: 'sw-resize'
+                                     }}
+                                     onMouseDown={(e) => handleResizeStart('bottom-left', e)}
+                                 />
+                                 <div
+                                     style={{
+                                         position: 'absolute',
+                                         bottom: -5,
+                                         right: -5,
+                                         width: 10,
+                                         height: 10,
+                                         backgroundColor: '#007bff',
+                                         borderRadius: '50%',
+                                         cursor: 'se-resize'
+                                     }}
+                                     onMouseDown={(e) => handleResizeStart('bottom-right', e)}
+                                 />
+                             </div>
+
+                             {/* Crop Controls */}
+                             <div
+                                 style={{
+                                     position: 'absolute',
+                                     bottom: '20px',
+                                     left: '50%',
+                                     transform: 'translateX(-50%)',
+                                     display: 'flex',
+                                     gap: '10px',
+                                     zIndex: 6
+                                 }}
+                             >
+                                 <button
+                                     onClick={handleCancelCrop}
+                                     style={{
+                                         padding: '8px 16px',
+                                         backgroundColor: '#6c757d',
+                                         color: 'white',
+                                         border: 'none',
+                                         borderRadius: '4px',
+                                         cursor: 'pointer',
+                                         fontSize: '14px'
+                                     }}
+                                 >
+                                     Cancel
+                                 </button>
+                                 <button
+                                     onClick={handleApplyCrop}
+                                     style={{
+                                         padding: '8px 16px',
+                                         backgroundColor: '#007bff',
+                                         color: 'white',
+                                         border: 'none',
+                                         borderRadius: '4px',
+                                         cursor: 'pointer',
+                                         fontSize: '14px'
+                                     }}
+                                 >
+                                     Apply Crop
+                                 </button>
+                             </div>
+                         </div>
+                     )}
                 </div>
             </div>
             
@@ -691,20 +925,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 <p>{video.description}</p>
             </div>
             
-            {/* Authentication Modal */}
-            <AuthModal 
-                isOpen={showAuthModal}
-                onClose={() => setShowAuthModal(false)}
-                onSuccess={handleAuthSuccess}
-            />
-            
-            {/* Crop Tool Modal */}
-            <SimpleCropTool
-                isOpen={showCropTool}
-                image={currentImageForCrop}
-                onCrop={handleCropComplete}
-                onCancel={handleCropCancel}
-            />
+                         {/* Authentication Modal */}
+             <AuthModal 
+                 isOpen={showAuthModal}
+                 onClose={() => setShowAuthModal(false)}
+                 onSuccess={handleAuthSuccess}
+             />
         </div>
     )
 }
