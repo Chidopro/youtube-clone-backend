@@ -10,6 +10,7 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
 import AuthModal from '../AuthModal/AuthModal'
+import SimpleCropTool from '../PrintCropTool/SimpleCropTool'
 
 const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData, onScreenshotFunction }) => {
     // Use prop if provided, otherwise fallback to URL param
@@ -32,6 +33,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Screenshot protection state
     const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
     const [lastAlertTime, setLastAlertTime] = useState(0);
+    
+    // Crop tool state
+    const [showCropTool, setShowCropTool] = useState(false);
+    const [currentImageForCrop, setCurrentImageForCrop] = useState(null);
     
     // Safe alert function to prevent rapid-fire alerts - DISABLED TO STOP LOOPS
     const safeAlert = useCallback((message) => {
@@ -357,6 +362,33 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         // User is authenticated, proceed with merch creation
         await createMerchProduct();
     };
+    
+    // Crop tool functions
+    const handleOpenCropTool = () => {
+        // Use the current video frame or thumbnail as the image to crop
+        const imageToCrop = thumbnail || video?.thumbnail || '';
+        if (imageToCrop) {
+            setCurrentImageForCrop(imageToCrop);
+            setShowCropTool(true);
+        } else {
+            alert('No image available to crop. Please take a screenshot first.');
+        }
+    };
+    
+    const handleCropComplete = (croppedImageUrl) => {
+        // Add the cropped image to screenshots
+        setScreenshots(prev => {
+            const newScreenshots = prev.length < 6 ? [...prev, croppedImageUrl] : prev;
+            return newScreenshots;
+        });
+        setShowCropTool(false);
+        setCurrentImageForCrop(null);
+    };
+    
+    const handleCropCancel = () => {
+        setShowCropTool(false);
+        setCurrentImageForCrop(null);
+    };
 
     // Create merch product function
     const createMerchProduct = async () => {
@@ -553,7 +585,44 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         }}
                     />
                     
-                    
+                    {/* Crop Tool Icon - Top Left Corner */}
+                    <button
+                        onClick={handleOpenCropTool}
+                        style={{
+                            position: 'absolute',
+                            top: '10px',
+                            left: '10px',
+                            background: 'rgba(0, 0, 0, 0.7)',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '40px',
+                            height: '40px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 10,
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.target.style.background = 'rgba(0, 0, 0, 0.9)';
+                            e.target.style.transform = 'scale(1.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.background = 'rgba(0, 0, 0, 0.7)';
+                            e.target.style.transform = 'scale(1)';
+                        }}
+                        title="Crop Image"
+                    >
+                        <svg 
+                            width="20" 
+                            height="20" 
+                            viewBox="0 0 24 24" 
+                            fill="white"
+                        >
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             
@@ -627,6 +696,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}
                 onSuccess={handleAuthSuccess}
+            />
+            
+            {/* Crop Tool Modal */}
+            <SimpleCropTool
+                isOpen={showCropTool}
+                image={currentImageForCrop}
+                onCrop={handleCropComplete}
+                onCancel={handleCropCancel}
             />
         </div>
     )

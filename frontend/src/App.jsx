@@ -20,6 +20,7 @@ import TermsOfService from "./Pages/TermsOfService/TermsOfService";
 import Search from "./Pages/Search/Search";
 import MerchandiseCategories from "./Pages/MerchandiseCategories/MerchandiseCategories";
 // import ScreenshotSelection from "./Pages/ScreenshotSelection/ScreenshotSelection";
+import TestCropTool from "./Pages/TestCropTool/TestCropTool";
 import { API_CONFIG } from "./config/apiConfig";
 
 const App = () => {
@@ -86,6 +87,7 @@ const App = () => {
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/search" element={<Search />} />
               <Route path="/merchandise" element={<MerchandiseCategories />} />
+              <Route path="/test-crop-tool" element={<TestCropTool />} />
               {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
             </Routes>
           </div>
