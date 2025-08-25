@@ -157,16 +157,19 @@
     flex-direction: column;
     padding: 0 10px;
     gap: 15px;
+    align-items: stretch;
   }
   
   .video-viewer {
     order: 1;
+    flex: none;
   }
   
   .screenshots-section {
     order: 2;
     max-height: none;
     padding: 15px;
+    flex: none;
   }
   
   .screenshots-section h3 {
