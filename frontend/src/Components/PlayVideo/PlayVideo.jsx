@@ -26,17 +26,21 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
     
-    // Crop tool state
-    const [isCropMode, setIsCropMode] = useState(false);
-    const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 0, height: 0 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
-    const cropContainerRef = useRef(null);
+    // Ref to track if screenshot function has been passed to prevent loops
+    const screenshotFunctionPassedRef = useRef(false);
+    
+    // Screenshot protection state
+    const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
+    const [lastAlertTime, setLastAlertTime] = useState(0);
+    
+    // Safe alert function to prevent rapid-fire alerts - DISABLED TO STOP LOOPS
+    const safeAlert = useCallback((message) => {
+        // DISABLED TO STOP ENDLESS LOOPS
+        console.log('Alert disabled:', message);
+        return;
+    }, []);
+    
 
-    // Minimum crop size (20% of video dimensions)
-    const MIN_CROP_WIDTH = 0.2;
-    const MIN_CROP_HEIGHT = 0.2;
 
     useEffect(() => {
         if (!videoId) {
@@ -114,369 +118,35 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
         // Clear screenshots when video changes
         setScreenshots([]);
+        // Reset capturing state and alert timer
+        setIsCapturingScreenshot(false);
+        setLastAlertTime(0);
+        // Reset screenshot function passed flag
+        screenshotFunctionPassedRef.current = false;
     }, [videoId, setScreenshots]);
 
-    // Update video dimensions when video loads
-    useEffect(() => {
-        const updateVideoDimensions = () => {
-            if (videoRef.current) {
-                const rect = videoRef.current.getBoundingClientRect();
-                setVideoDimensions({
-                    width: rect.width,
-                    height: rect.height
-                });
-            }
-        };
 
-        const videoElement = videoRef.current;
-        if (videoElement) {
-            videoElement.addEventListener('loadedmetadata', updateVideoDimensions);
-            videoElement.addEventListener('resize', updateVideoDimensions);
-            
-            // Initial update
-            updateVideoDimensions();
-        }
 
-        return () => {
-            if (videoElement) {
-                videoElement.removeEventListener('loadedmetadata', updateVideoDimensions);
-                videoElement.removeEventListener('resize', updateVideoDimensions);
-            }
-        };
-    }, [videoRef]);
 
-    // Initialize crop area when entering crop mode
-    useEffect(() => {
-        if (isCropMode && videoDimensions.width > 0 && videoDimensions.height > 0) {
-            const minWidth = videoDimensions.width * MIN_CROP_WIDTH;
-            const minHeight = videoDimensions.height * MIN_CROP_HEIGHT;
-            
-            // Set initial crop area to center with minimum size
-            setCropArea({
-                x: (videoDimensions.width - minWidth) / 2,
-                y: (videoDimensions.height - minHeight) / 2,
-                width: minWidth,
-                height: minHeight
-            });
-        }
-    }, [isCropMode, videoDimensions]);
 
-    // Mouse event handlers for crop tool
-    const handleMouseDown = useCallback((e) => {
-        if (!isCropMode) return;
-        
-        const rect = cropContainerRef.current.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        setIsDragging(true);
-        setDragStart({ x, y });
-        
-        // Update crop area to start from this point
-        setCropArea(prev => ({
-            ...prev,
-            x,
-            y,
-            width: 0,
-            height: 0
-        }));
-    }, [isCropMode]);
 
-    const handleMouseMove = useCallback((e) => {
-        if (!isCropMode || !isDragging) return;
-        
-        const rect = cropContainerRef.current.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        const deltaX = x - dragStart.x;
-        const deltaY = y - dragStart.y;
-        
-        // Calculate new crop area
-        let newX = dragStart.x;
-        let newY = dragStart.y;
-        let newWidth = Math.abs(deltaX);
-        let newHeight = Math.abs(deltaY);
-        
-        // Handle negative drag (dragging left/up)
-        if (deltaX < 0) {
-            newX = x;
-            newWidth = Math.abs(deltaX);
-        }
-        if (deltaY < 0) {
-            newY = y;
-            newHeight = Math.abs(deltaY);
-        }
-        
-        // Apply minimum size constraints
-        const minWidth = videoDimensions.width * MIN_CROP_WIDTH;
-        const minHeight = videoDimensions.height * MIN_CROP_HEIGHT;
-        
-        if (newWidth < minWidth) {
-            newWidth = minWidth;
-            if (deltaX < 0) {
-                newX = x - minWidth;
-            }
-        }
-        if (newHeight < minHeight) {
-            newHeight = minHeight;
-            if (deltaY < 0) {
-                newY = y - minHeight;
-            }
-        }
-        
-        // Constrain to video boundaries
-        newX = Math.max(0, Math.min(newX, videoDimensions.width - newWidth));
-        newY = Math.max(0, Math.min(newY, videoDimensions.height - newHeight));
-        
-        setCropArea({
-            x: newX,
-            y: newY,
-            width: newWidth,
-            height: newHeight
-        });
-    }, [isCropMode, isDragging, dragStart, videoDimensions]);
-
-    const handleMouseUp = useCallback(() => {
-        setIsDragging(false);
-    }, []);
-
-    // Touch event handlers for mobile
-    const handleTouchStart = useCallback((e) => {
-        if (!isCropMode) return;
-        e.preventDefault();
-        
-        const rect = cropContainerRef.current.getBoundingClientRect();
-        const touch = e.touches[0];
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        
-        setIsDragging(true);
-        setDragStart({ x, y });
-        
-        // Update crop area to start from this point
-        setCropArea(prev => ({
-            ...prev,
-            x,
-            y,
-            width: 0,
-            height: 0
-        }));
-    }, [isCropMode]);
-
-    const handleTouchMove = useCallback((e) => {
-        if (!isCropMode || !isDragging) return;
-        e.preventDefault();
-        
-        const rect = cropContainerRef.current.getBoundingClientRect();
-        const touch = e.touches[0];
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        
-        const deltaX = x - dragStart.x;
-        const deltaY = y - dragStart.y;
-        
-        // Calculate new crop area
-        let newX = dragStart.x;
-        let newY = dragStart.y;
-        let newWidth = Math.abs(deltaX);
-        let newHeight = Math.abs(deltaY);
-        
-        // Handle negative drag (dragging left/up)
-        if (deltaX < 0) {
-            newX = x;
-            newWidth = Math.abs(deltaX);
-        }
-        if (deltaY < 0) {
-            newY = y;
-            newHeight = Math.abs(deltaY);
-        }
-        
-        // Apply minimum size constraints
-        const minWidth = videoDimensions.width * MIN_CROP_WIDTH;
-        const minHeight = videoDimensions.height * MIN_CROP_HEIGHT;
-        
-        if (newWidth < minWidth) {
-            newWidth = minWidth;
-            if (deltaX < 0) {
-                newX = x - minWidth;
-            }
-        }
-        if (newHeight < minHeight) {
-            newHeight = minHeight;
-            if (deltaY < 0) {
-                newY = y - minHeight;
-            }
-        }
-        
-        // Constrain to video boundaries
-        newX = Math.max(0, Math.min(newX, videoDimensions.width - newWidth));
-        newY = Math.max(0, Math.min(newY, videoDimensions.height - newHeight));
-        
-        setCropArea({
-            x: newX,
-            y: newY,
-            width: newWidth,
-            height: newHeight
-        });
-    }, [isCropMode, isDragging, dragStart, videoDimensions]);
-
-    const handleTouchEnd = useCallback(() => {
-        setIsDragging(false);
-    }, []);
-
-    // Add/remove event listeners
-    useEffect(() => {
-        if (isCropMode && cropContainerRef.current) {
-            const container = cropContainerRef.current;
-            
-            // Mouse events
-            container.addEventListener('mousedown', handleMouseDown);
-            container.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-            
-            // Touch events
-            container.addEventListener('touchstart', handleTouchStart, { passive: false });
-            container.addEventListener('touchmove', handleTouchMove, { passive: false });
-            container.addEventListener('touchend', handleTouchEnd);
-            
-            return () => {
-                container.removeEventListener('mousedown', handleMouseDown);
-                container.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-                container.removeEventListener('touchstart', handleTouchStart);
-                container.removeEventListener('touchmove', handleTouchMove);
-                container.removeEventListener('touchend', handleTouchEnd);
-            };
-        }
-    }, [isCropMode, handleMouseDown, handleMouseMove, handleMouseUp, handleTouchStart, handleTouchMove, handleTouchEnd]);
-
-    // Crop tool functions
-    const startCropMode = () => {
-        console.log('=== STARTING CROP MODE ===');
-        setIsCropMode(true);
-        console.log('Crop mode set to:', true);
-    };
-
-    const cancelCropMode = () => {
-        console.log('=== CANCELLING CROP MODE ===');
-        setIsCropMode(false);
-        setCropArea({ x: 0, y: 0, width: 0, height: 0 });
-        console.log('Crop mode cancelled');
-    };
-
-    const applyCrop = async () => {
-        console.log('=== APPLYING CROP ===');
-        console.log('Crop area:', cropArea);
-        
-        if (!videoRef.current || cropArea.width === 0 || cropArea.height === 0) {
-            console.log('Invalid crop area or video not ready');
-            return;
-        }
-
-        try {
-            console.log('Creating canvas for crop...');
-            // Create a canvas to capture the cropped area
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // Set canvas size to crop dimensions
-            canvas.width = cropArea.width;
-            canvas.height = cropArea.height;
-            
-            console.log('Canvas size set to:', canvas.width, 'x', canvas.height);
-            
-            // Create a temporary video element for capturing
-            const tempVideo = document.createElement('video');
-            tempVideo.src = video.video_url;
-            tempVideo.currentTime = videoRef.current.currentTime;
-            
-            console.log('Loading temporary video...');
-            await new Promise((resolve) => {
-                tempVideo.addEventListener('loadeddata', resolve, { once: true });
-                tempVideo.load();
-            });
-            
-            console.log('Drawing cropped area to canvas...');
-            // Draw the cropped portion to canvas
-            ctx.drawImage(
-                tempVideo,
-                cropArea.x, cropArea.y, cropArea.width, cropArea.height,
-                0, 0, cropArea.width, cropArea.height
-            );
-            
-            // Convert to data URL
-            const croppedImageData = canvas.toDataURL('image/jpeg', 0.9);
-            
-            console.log('Cropped image created, length:', croppedImageData.length);
-            
-            // Add to screenshots
-            if (setScreenshots && screenshots.length < 6) {
-                setScreenshots(prev => [...prev, croppedImageData]);
-                showGreenFlagConfirmation();
-                console.log('Cropped image added to screenshots');
-            }
-            
-            // Exit crop mode
-            setIsCropMode(false);
-            setCropArea({ x: 0, y: 0, width: 0, height: 0 });
-            console.log('Crop mode exited');
-            
-        } catch (error) {
-            console.error('Error applying crop:', error);
-            alert('Failed to crop image. Please try again.');
-        }
-    };
 
     // Create a function that can be called from parent component
-    const captureScreenshotFromParent = async () => {
+    // Note: This function is memoized to prevent endless loops when passed to parent
+    const captureScreenshotFromParent = useCallback(async () => {
         console.log('Capture screenshot called from parent component');
         
-        if (screenshots.length >= 6) {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: #f44336;
-                color: white;
-                padding: 12px 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                z-index: 10000;
-                animation: slideIn 0.3s ease-out;
-                max-width: 300px;
-                font-size: 14px;
-                font-weight: 500;
-            `;
-            notification.textContent = 'Maximum 6 screenshots allowed. Please delete some screenshots first.';
-            document.body.appendChild(notification);
-            setTimeout(() => document.body.removeChild(notification), 3000);
+        // Get current screenshots length from state
+        const currentScreenshotsLength = screenshots.length;
+        if (currentScreenshotsLength >= 6) {
+            safeAlert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
             return;
         }
 
         // Capture a new screenshot
         const videoElement = videoRef.current;
         if (!videoElement) {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: #f44336;
-                color: white;
-                padding: 12px 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                z-index: 10000;
-                animation: slideIn 0.3s ease-out;
-                max-width: 300px;
-                font-size: 14px;
-                font-weight: 500;
-            `;
-            notification.textContent = 'Video not loaded yet. Please wait for the video to load.';
-            document.body.appendChild(notification);
-            setTimeout(() => document.body.removeChild(notification), 3000);
+            safeAlert('Video not loaded yet. Please wait for the video to load.');
             return;
         }
 
@@ -486,8 +156,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         
         if (clientScreenshot) {
             console.log('✅ Client-side screenshot captured successfully from parent');
-            setScreenshots(prev => prev.length < 6 ? [...prev, clientScreenshot] : prev);
-            showGreenFlagConfirmation();
+            setScreenshots(prev => {
+                const newScreenshots = prev.length < 6 ? [...prev, clientScreenshot] : prev;
+                showGreenFlagConfirmation(prev.length);
+                return newScreenshots;
+            });
         } else {
             console.log('❌ Client-side capture failed, trying server-side...');
             
@@ -522,8 +195,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 
                 if (result.success && result.screenshot) {
                     console.log('✅ Server-side screenshot captured successfully');
-                    setScreenshots(prev => prev.length < 6 ? [...prev, result.screenshot] : prev);
-                    showGreenFlagConfirmation();
+                    setScreenshots(prev => {
+                        const newScreenshots = prev.length < 6 ? [...prev, result.screenshot] : prev;
+                        showGreenFlagConfirmation(prev.length);
+                        return newScreenshots;
+                    });
                 } else {
                     throw new Error(result.error || 'Server failed to capture screenshot');
                 }
@@ -536,8 +212,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 
                 if (thumbnailUrl) {
                     console.log('Using thumbnail as last resort:', thumbnailUrl);
-                    setScreenshots(prev => prev.length < 6 ? [...prev, thumbnailUrl] : prev);
-                    showGreenFlagConfirmation();
+                    setScreenshots(prev => {
+                        const newScreenshots = prev.length < 6 ? [...prev, thumbnailUrl] : prev;
+                        showGreenFlagConfirmation(prev.length);
+                        return newScreenshots;
+                    });
                 } else {
                     const notification = document.createElement('div');
                     notification.style.cssText = `
@@ -561,24 +240,53 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 }
             }
         }
-    };
+    }, [video, videoRef, setScreenshots]);
 
-    // Pass the screenshot function to parent component
-    useEffect(() => {
-        if (onScreenshotFunction && video && !loading) {
-            console.log('Passing screenshot function to parent component');
-            onScreenshotFunction(captureScreenshotFromParent);
-        }
-    }, [onScreenshotFunction, video, loading]);
+    // Pass the screenshot function to parent component - DISABLED TO PREVENT LOOPS
+    // useEffect(() => {
+    //     if (onScreenshotFunction && video && !loading && !screenshotFunctionPassedRef.current) {
+    //         console.log('Passing screenshot function to parent component');
+    //         onScreenshotFunction(captureScreenshotFromParent);
+    //         screenshotFunctionPassedRef.current = true;
+    //     }
+    // }, [onScreenshotFunction, video, loading]);
 
     // Grab Screenshot handler for the button in PlayVideo
     const handleGrabScreenshot = async () => {
         console.log('Grab Screenshot clicked from PlayVideo button');
-        await captureScreenshotFromParent();
+        
+        // Prevent multiple simultaneous captures
+        if (isCapturingScreenshot) {
+            console.log('Screenshot capture already in progress, ignoring click');
+            return;
+        }
+        
+        // Additional protection against rapid clicks
+        const now = Date.now();
+        if (now - lastAlertTime < 1000) { // Prevent calls within 1 second of last alert
+            console.log('Too soon since last screenshot attempt, ignoring click');
+            return;
+        }
+        
+        // Check if we're already at max screenshots
+        if (screenshots.length >= 6) {
+            safeAlert('Maximum 6 screenshots allowed. Please delete some screenshots first.');
+            return;
+        }
+
+        // Set capturing state to prevent multiple calls
+        setIsCapturingScreenshot(true);
+        
+        try {
+            await captureScreenshotFromParent();
+        } finally {
+            // Always reset capturing state
+            setIsCapturingScreenshot(false);
+        }
     };
 
     // Client-side video frame capture function
-    const captureCurrentVideoFrame = async () => {
+    const captureCurrentVideoFrame = useCallback(async () => {
         const videoElement = videoRef.current;
         if (!videoElement) {
             console.error('Video element not found');
@@ -625,7 +333,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.error('Error capturing video frame:', error);
             return null;
         }
-    };
+    }, []);
 
     // Make Merch handler
     const handleMakeMerch = async () => {
@@ -730,30 +438,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
     };
 
-    // Green flag confirmation function
-    const showGreenFlagConfirmation = () => {
-        const newScreenshotCount = screenshots.length + 1;
-        // Use the same notification style as Video.jsx
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #4CAF50;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 10000;
-            animation: slideIn 0.3s ease-out;
-            max-width: 300px;
-            font-size: 14px;
-            font-weight: 500;
-        `;
-        notification.textContent = `Screenshot ${newScreenshotCount} captured successfully!`;
-        document.body.appendChild(notification);
-        setTimeout(() => document.body.removeChild(notification), 3000);
-    };
+    // Green flag confirmation function - DISABLED TO STOP LOOPS
+    const showGreenFlagConfirmation = useCallback((screenshotCount) => {
+        // DISABLED TO STOP ENDLESS LOOPS
+        console.log('Green flag disabled for screenshot:', screenshotCount + 1);
+        return;
+    }, []);
 
     // Test video URL accessibility
     const testVideoUrl = async () => {
@@ -863,59 +553,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         }}
                     />
                     
-                    {/* Crop Tool Overlay */}
-                    {isCropMode && (
-                        <div 
-                            ref={cropContainerRef}
-                            className="crop-overlay"
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                width: '100%',
-                                height: '100%',
-                                cursor: 'crosshair',
-                                backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                                zIndex: 1000
-                            }}
-                        >
-                            {/* Crop Area Selection */}
-                            {cropArea.width > 0 && cropArea.height > 0 && (
-                                <div
-                                    className="crop-selection"
-                                    style={{
-                                        position: 'absolute',
-                                        left: cropArea.x,
-                                        top: cropArea.y,
-                                        width: cropArea.width,
-                                        height: cropArea.height,
-                                        border: '2px solid #ff0000',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                        boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
-                                        pointerEvents: 'none'
-                                    }}
-                                />
-                            )}
-                            
-                            {/* Crop Instructions */}
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    top: '10px',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    background: 'rgba(0, 0, 0, 0.8)',
-                                    color: 'white',
-                                    padding: '8px 16px',
-                                    borderRadius: '4px',
-                                    fontSize: '14px',
-                                    pointerEvents: 'none'
-                                }}
-                            >
-                                Drag to select crop area (minimum 20% of video size)
-                            </div>
-                        </div>
-                    )}
+                    
                 </div>
             </div>
             
@@ -929,34 +567,21 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 <button 
                     className="screenmerch-btn" 
                     onClick={handleGrabScreenshot}
+                    disabled={isCapturingScreenshot || screenshots.length >= 6}
                     style={{
                         padding: '10px 20px',
-                        backgroundColor: '#007bff',
+                        backgroundColor: (isCapturingScreenshot || screenshots.length >= 6) ? '#6c757d' : '#007bff',
                         color: 'white',
                         border: 'none',
                         borderRadius: '5px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                    }}
-                >
-                    Select Screenshot
-                </button>
-                <button 
-                    className="screenmerch-btn" 
-                    onClick={startCropMode}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: isCropMode ? '#dc3545' : '#ff6b35',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer',
+                        cursor: (isCapturingScreenshot || screenshots.length >= 6) ? 'not-allowed' : 'pointer',
                         fontWeight: 'bold',
-                        transition: 'all 0.2s ease'
+                        opacity: (isCapturingScreenshot || screenshots.length >= 6) ? 0.7 : 1
                     }}
                 >
-                    {isCropMode ? 'Exit Crop' : 'Crop Tool'}
+                    {isCapturingScreenshot ? 'Capturing...' : screenshots.length >= 6 ? 'Max Screenshots' : 'Select Screenshot'}
                 </button>
+                
                 <button 
                     className="screenmerch-btn" 
                     onClick={handleMakeMerch}
@@ -974,57 +599,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 </button>
             </div>
 
-            {/* Crop Tool Controls */}
-            {isCropMode && (
-                <div className="crop-controls" style={{
-                    display: 'flex',
-                    gap: '10px',
-                    marginBottom: '15px',
-                    padding: '15px',
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '8px',
-                    border: '1px solid #dee2e6'
-                }}>
-                    <button 
-                        onClick={applyCrop}
-                        style={{
-                            padding: '10px 20px',
-                            backgroundColor: '#28a745',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: 'pointer',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        Apply Crop
-                    </button>
-                    <button 
-                        onClick={cancelCropMode}
-                        style={{
-                            padding: '10px 20px',
-                            backgroundColor: '#6c757d',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: 'pointer',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        Cancel
-                    </button>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        fontSize: '14px',
-                        color: '#6c757d'
-                    }}>
-                        <span>Crop Size: {Math.round(cropArea.width)} × {Math.round(cropArea.height)}</span>
-                        <span>Min: {Math.round(videoDimensions.width * MIN_CROP_WIDTH)} × {Math.round(videoDimensions.height * MIN_CROP_HEIGHT)}</span>
-                    </div>
-                </div>
-            )}
+
             
             <h3>{video.title}</h3>
             <div className="play-video-info">
