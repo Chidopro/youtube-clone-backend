@@ -587,6 +587,7 @@
 .publisher {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     margin-top: 20px;
 }
 
@@ -612,6 +613,30 @@
     color: #5a5a5a;
 }
 
+.social-interactions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.social-interactions span {
+    display: inline-flex;
+    align-items: center;
+    font-size: 14px;
+    color: #5a5a5a;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.social-interactions span:hover {
+    color: #333;
+}
+
+.social-interactions span img {
+    width: 20px;
+    margin-right: 8px;
+}
+
 .publisher button {
     background: red;
     color: #fff;
@@ -620,6 +645,11 @@
     outline: 0;
     border-radius: 4px;
     cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.publisher button:hover {
+    background: #cc0000;
 }
 
 .vid-description {
@@ -696,6 +726,25 @@
         margin-left: 0;
         margin-right: 15px;
         margin-top: 15px;
+    }
+    
+    .publisher {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .social-interactions {
+        gap: 10px;
+    }
+    
+    .social-interactions span {
+        font-size: 13px;
+    }
+    
+    .social-interactions span img {
+        width: 18px;
+        margin-right: 6px;
     }
 }
 

@@ -460,14 +460,42 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         if (!videoElement) return;
         
         try {
-            // Use the existing screenshot capture method which handles cross-origin issues
-            console.log('Using fallback screenshot method for crop...');
-            const fullScreenshot = await captureCurrentVideoFrame();
+            // Use server-side screenshot capture to avoid cross-origin issues
+            console.log('Using server-side screenshot capture for crop...');
             
-            if (!fullScreenshot) {
-                alert('Failed to capture video frame. Please try again.');
+            if (!video?.video_url) {
+                alert('Video URL not available. Please try again.');
                 return;
             }
+            
+            const currentTime = videoElement.currentTime || 0;
+            const videoUrl = video.video_url;
+            
+            console.log(`Requesting server-side screenshot at ${currentTime}s from ${videoUrl}`);
+            
+            const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    video_url: videoUrl,
+                    timestamp: currentTime
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (!result.success || !result.screenshot) {
+                throw new Error(result.error || 'Server failed to capture screenshot');
+            }
+            
+            const fullScreenshot = result.screenshot;
             
             // Create a new canvas to crop the screenshot
             const canvas = document.createElement('canvas');
@@ -977,17 +1005,16 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             <h3>{video.title}</h3>
             <div className="play-video-info">
                 <p>{moment(video.created_at).fromNow()}</p>
-                <div>
-                    <span><img src={like} alt="" />Like</span>
-                    <span><img src={dislike} alt="" />Dislike</span>
-                    <span><img src={share} alt="" />Share</span>
-                    <span><img src={save} alt="" />Save</span>
-                </div>
             </div>
             <hr />
             <div className="publisher">
                 <div>
-                    <p>Approved Creator</p>
+                    <div className="social-interactions">
+                        <span><img src={like} alt="" />Like</span>
+                        <span><img src={dislike} alt="" />Dislike</span>
+                        <span><img src={share} alt="" />Share</span>
+                        <span><img src={save} alt="" />Save</span>
+                    </div>
                 </div>
                 <button type="button">Subscribe</button>
             </div>
