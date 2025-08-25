@@ -59,86 +59,25 @@ const Video = () => {
     });
   };
 
-  // Fast Screenshot handler - uses callback from PlayVideo component
+  // Fast Screenshot handler - DISABLED TO STOP LOOPS
   const handleGrabScreenshot = async () => {
-    console.log('=== PURPLE BAR SCREENSHOT CLICKED ===');
-    
-    if (screenshots.length >= 6) {
-      console.log('Maximum screenshots reached');
-      // Use a simple notification instead of alert
-      const notification = document.createElement('div');
-      notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #f44336;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 10000;
-        animation: slideIn 0.3s ease-out;
-        max-width: 300px;
-        font-size: 14px;
-        font-weight: 500;
-      `;
-      notification.textContent = 'Maximum 6 screenshots allowed. Please delete some screenshots first.';
-      document.body.appendChild(notification);
-      setTimeout(() => document.body.removeChild(notification), 3000);
-      return;
-    }
-
-    // Call the screenshot function from PlayVideo component
-    if (playVideoScreenshotFunction) {
-      console.log('Calling PlayVideo screenshot function...');
-      console.log('Function available:', typeof playVideoScreenshotFunction);
-      await playVideoScreenshotFunction();
-    } else {
-      console.log('No screenshot function available from PlayVideo');
-      console.log('playVideoScreenshotFunction value:', playVideoScreenshotFunction);
-      // Fallback to thumbnail
-      const thumbnailUrl = thumbnail;
-      if (thumbnailUrl) {
-        console.log('Using thumbnail as fallback:', thumbnailUrl);
-        setScreenshots(prev => [...prev, thumbnailUrl]);
-        
-        const newScreenshotCount = screenshots.length + 1;
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          background: #4CAF50;
-          color: white;
-          padding: 12px 20px;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          z-index: 10000;
-          animation: slideIn 0.3s ease-out;
-          max-width: 300px;
-          font-size: 14px;
-          font-weight: 500;
-        `;
-        notification.textContent = `Screenshot ${newScreenshotCount} captured successfully!`;
-        document.body.appendChild(notification);
-        setTimeout(() => document.body.removeChild(notification), 3000);
-      }
-    }
+    console.log('=== PURPLE BAR SCREENSHOT DISABLED ===');
+    return;
   };
 
   // Store the screenshot function from PlayVideo
   const [playVideoScreenshotFunction, setPlayVideoScreenshotFunction] = useState(null);
 
-  // Debug when screenshot function is set
-  useEffect(() => {
-    console.log('Screenshot function state changed:', typeof playVideoScreenshotFunction);
-  }, [playVideoScreenshotFunction]);
+  // Debug when screenshot function is set - DISABLED TO PREVENT LOOPS
+  // useEffect(() => {
+  //   console.log('Screenshot function state changed:', typeof playVideoScreenshotFunction);
+  // }, [playVideoScreenshotFunction]);
 
-  // Callback to receive screenshot function from PlayVideo
+  // Callback to receive screenshot function from PlayVideo - DISABLED TO PREVENT LOOPS
   const handleScreenshotFunction = (screenshotFunction) => {
-    console.log('Received screenshot function from PlayVideo');
-    console.log('Function type:', typeof screenshotFunction);
-    setPlayVideoScreenshotFunction(screenshotFunction);
+    // console.log('Received screenshot function from PlayVideo');
+    // console.log('Function type:', typeof screenshotFunction);
+    // setPlayVideoScreenshotFunction(screenshotFunction);
   };
 
   // Make Merch handler
@@ -286,20 +225,11 @@ const Video = () => {
      }
    };
 
-   // Scroll to screenshots section and grab screenshot
-   const scrollToScreenshots = () => {
-     const screenshotsSection = document.getElementById('screenshotsSection');
-     if (screenshotsSection) {
-       // On mobile, scroll more smoothly
-       if (window.innerWidth <= 768) {
-         screenshotsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-       } else {
-         screenshotsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-       }
-     }
-     // Also trigger screenshot capture
-     setTimeout(() => handleGrabScreenshot(), 500);
-   };
+       // Scroll to screenshots section and grab screenshot - DISABLED TO STOP LOOPS
+    const scrollToScreenshots = () => {
+      console.log('=== SCROLL TO SCREENSHOTS DISABLED ===');
+      return;
+    };
 
    // Scroll to products section and make merch
    const scrollToProducts = () => {
