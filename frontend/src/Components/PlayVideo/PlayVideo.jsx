@@ -460,97 +460,99 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         if (!videoElement) return;
         
         try {
-            // Ensure video is loaded and ready
-            if (videoElement.readyState < 2) {
-                console.log('Video not ready, attempting fallback method...');
-                // Try fallback method using current video frame
-                const fallbackScreenshot = await captureCurrentVideoFrame();
-                if (fallbackScreenshot) {
-                    // For fallback, we'll use the full screenshot since we can't crop it properly
-                    setScreenshots(prev => {
-                        const newScreenshots = prev.length < 6 ? [...prev, fallbackScreenshot] : prev;
-                        return newScreenshots;
-                    });
-                    setIsCropMode(false);
-                    return;
-                } else {
-                    alert('Video not ready. Please wait for the video to load completely.');
-                    return;
-                }
+            // Use the existing screenshot capture method which handles cross-origin issues
+            console.log('Using fallback screenshot method for crop...');
+            const fullScreenshot = await captureCurrentVideoFrame();
+            
+            if (!fullScreenshot) {
+                alert('Failed to capture video frame. Please try again.');
+                return;
             }
             
+            // Create a new canvas to crop the screenshot
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
+            const img = new Image();
             
-            // Get the actual video dimensions
-            const videoWidth = videoElement.videoWidth || videoElement.offsetWidth;
-            const videoHeight = videoElement.videoHeight || videoElement.offsetHeight;
+            img.onload = () => {
+                try {
+                    // Get the display dimensions of the video
+                    const displayRect = videoElement.getBoundingClientRect();
+                    const displayWidth = displayRect.width;
+                    const displayHeight = displayRect.height;
+                    
+                    // Calculate scale factors between screenshot and display
+                    const scaleX = img.width / displayWidth;
+                    const scaleY = img.height / displayHeight;
+                    
+                    // Convert display crop coordinates to screenshot coordinates
+                    const screenshotCropX = Math.round(cropArea.x * scaleX);
+                    const screenshotCropY = Math.round(cropArea.y * scaleY);
+                    const screenshotCropWidth = Math.round(cropArea.width * scaleX);
+                    const screenshotCropHeight = Math.round(cropArea.height * scaleY);
+                    
+                    // Ensure crop area is within image bounds
+                    const finalCropX = Math.max(0, Math.min(img.width - screenshotCropWidth, screenshotCropX));
+                    const finalCropY = Math.max(0, Math.min(img.height - screenshotCropHeight, screenshotCropY));
+                    const finalCropWidth = Math.min(screenshotCropWidth, img.width - finalCropX);
+                    const finalCropHeight = Math.min(screenshotCropHeight, img.height - finalCropY);
+                    
+                    console.log('Crop coordinates:', {
+                        display: cropArea,
+                        screenshot: { x: finalCropX, y: finalCropY, width: finalCropWidth, height: finalCropHeight },
+                        scale: { x: scaleX, y: scaleY },
+                        imageSize: { width: img.width, height: img.height },
+                        displaySize: { width: displayWidth, height: displayHeight }
+                    });
+                    
+                    // Set canvas size to crop area
+                    canvas.width = finalCropWidth;
+                    canvas.height = finalCropHeight;
+                    
+                    // Clear canvas
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw the cropped portion from the screenshot
+                    ctx.drawImage(
+                        img,
+                        finalCropX, finalCropY, finalCropWidth, finalCropHeight,  // Source rectangle
+                        0, 0, finalCropWidth, finalCropHeight  // Destination rectangle
+                    );
+                    
+                    // Convert to data URL
+                    const croppedImageUrl = canvas.toDataURL('image/jpeg', 0.9);
+                    
+                    console.log('Crop successful, image size:', finalCropWidth, 'x', finalCropHeight);
+                    
+                    // Add to screenshots
+                    setScreenshots(prev => {
+                        const newScreenshots = prev.length < 6 ? [...prev, croppedImageUrl] : prev;
+                        return newScreenshots;
+                    });
+                    
+                    // Exit crop mode
+                    setIsCropMode(false);
+                    
+                } catch (error) {
+                    console.error('Error cropping screenshot:', error);
+                    alert('Failed to crop image. Please try again.');
+                }
+            };
             
-            // Get the display dimensions
-            const displayRect = videoElement.getBoundingClientRect();
-            const displayWidth = displayRect.width;
-            const displayHeight = displayRect.height;
+            img.onerror = () => {
+                console.error('Failed to load screenshot for cropping');
+                alert('Failed to load screenshot for cropping. Please try again.');
+            };
             
-            // Calculate scale factors
-            const scaleX = videoWidth / displayWidth;
-            const scaleY = videoHeight / displayHeight;
-            
-            // Convert display coordinates to video coordinates
-            const videoCropX = Math.round(cropArea.x * scaleX);
-            const videoCropY = Math.round(cropArea.y * scaleY);
-            const videoCropWidth = Math.round(cropArea.width * scaleX);
-            const videoCropHeight = Math.round(cropArea.height * scaleY);
-            
-            // Ensure crop area is within video bounds
-            const finalCropX = Math.max(0, Math.min(videoWidth - videoCropWidth, videoCropX));
-            const finalCropY = Math.max(0, Math.min(videoHeight - videoCropHeight, videoCropY));
-            const finalCropWidth = Math.min(videoCropWidth, videoWidth - finalCropX);
-            const finalCropHeight = Math.min(videoCropHeight, videoHeight - finalCropY);
-            
-            console.log('Crop coordinates:', {
-                display: cropArea,
-                video: { x: finalCropX, y: finalCropY, width: finalCropWidth, height: finalCropHeight },
-                scale: { x: scaleX, y: scaleY },
-                videoSize: { width: videoWidth, height: videoHeight },
-                displaySize: { width: displayWidth, height: displayHeight }
-            });
-            
-            // Set canvas size to crop area
-            canvas.width = finalCropWidth;
-            canvas.height = finalCropHeight;
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw the cropped portion from the video
-            ctx.drawImage(
-                videoElement,
-                finalCropX, finalCropY, finalCropWidth, finalCropHeight,  // Source rectangle
-                0, 0, finalCropWidth, finalCropHeight  // Destination rectangle
-            );
-            
-            // Convert to data URL
-            const croppedImageUrl = canvas.toDataURL('image/jpeg', 0.9);
-            
-            console.log('Crop successful, image size:', finalCropWidth, 'x', finalCropHeight);
-            
-            // Add to screenshots
-            setScreenshots(prev => {
-                const newScreenshots = prev.length < 6 ? [...prev, croppedImageUrl] : prev;
-                return newScreenshots;
-            });
-            
-            // Exit crop mode
-            setIsCropMode(false);
+            // Load the screenshot
+            img.src = fullScreenshot;
             
         } catch (error) {
             console.error('Error applying crop:', error);
             console.error('Error details:', {
                 videoElement: !!videoElement,
                 videoReadyState: videoElement?.readyState,
-                cropArea,
-                videoWidth: videoElement?.videoWidth,
-                videoHeight: videoElement?.videoHeight
+                cropArea
             });
             alert('Failed to crop image. Please try again.');
         }
