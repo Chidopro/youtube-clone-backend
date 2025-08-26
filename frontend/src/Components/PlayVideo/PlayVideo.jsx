@@ -996,7 +996,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 </button>
             </div>
 
-            {/* Subscribe button moved up */}
+            {/* Video title moved up */}
+            <h3 style={{
+                marginTop: '10px',
+                marginBottom: '15px',
+                fontWeight: '600',
+                fontSize: '22px'
+            }}>{video.title}</h3>
+
+            {/* Subscribe button */}
             <div className="subscribe-section" style={{
                 display: 'flex',
                 justifyContent: 'flex-end',
@@ -1014,7 +1022,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 }}>Subscribe</button>
             </div>
 
-            {/* Video description moved up */}
+            {/* Video description */}
             <div className="vid-description" style={{
                 marginBottom: '15px',
                 padding: '10px 0'
@@ -1026,7 +1034,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 }}>{video.description}</p>
             </div>
             
-            <h3>{video.title}</h3>
             <div className="play-video-info">
                 <p>{moment(video.created_at).fromNow()}</p>
             </div>
