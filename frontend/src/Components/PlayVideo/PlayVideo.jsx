@@ -30,6 +30,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const params = useParams();
     const videoId = propVideoId || params.videoId;
     const isMobile = useIsMobile();
+    
+    // Debug mobile detection
+    useEffect(() => {
+        console.log('🔍 Mobile Detection Debug:');
+        console.log('  - Window width:', window.innerWidth);
+        console.log('  - Is mobile:', isMobile);
+        console.log('  - User agent:', navigator.userAgent);
+    }, [isMobile]);
     const [video, setVideo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -772,7 +780,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             <div 
                 className="video-container" 
                 ref={videoContainerRef}
-                style={{ position: 'relative', display: 'inline-block' }}
+                style={{ 
+                    position: 'relative', 
+                    display: 'inline-block',
+                    marginBottom: isMobile ? '0px' : '15px'
+                }}
             >
                 <div style={{ 
                     position: 'relative', 
@@ -786,11 +798,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         controls 
                         poster={video.thumbnail || ''}
                         width="100%" 
-                        height="360"
+                        height={isMobile ? "320" : "360"}
                         style={{
                             background: '#000', 
                             width: '100%',
-                            height: '360px'
+                            height: isMobile ? '320px' : '360px'
                         }} 
                         src={video.video_url}
                         onCanPlay={() => {
@@ -980,6 +992,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 marginBottom: isMobile ? '0px' : '15px',
                 flexWrap: 'wrap'
             }}>
+                {/* Debug info - remove after testing */}
+                {isMobile && <div style={{fontSize: '10px', color: 'red', position: 'absolute', top: '-20px'}}>MOBILE MODE - marginBottom: 0px</div>}
                 <button 
                     className="screenmerch-btn" 
                     onClick={handleGrabScreenshot}
