@@ -97,6 +97,8 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
+  align-items: flex-start;
+  min-height: 100vh;
 }
 
 .video-viewer {
@@ -158,11 +160,13 @@
     padding: 0 10px;
     gap: 15px;
     align-items: stretch;
+    min-height: 100vh;
   }
   
   .video-viewer {
     order: 1;
     flex: none;
+    min-height: 0;
   }
   
   .screenshots-section {
@@ -170,6 +174,7 @@
     max-height: none;
     padding: 15px;
     flex: none;
+    min-height: 0;
   }
   
   .screenshots-section h3 {
