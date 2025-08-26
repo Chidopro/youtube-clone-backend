@@ -670,7 +670,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const handleAuthSuccess = () => {
         setShowAuthModal(false);
         // After successful authentication, try to create merch again
-        createMerchProduct();
+        // Small delay to ensure auth state is properly set
+        setTimeout(() => {
+            createMerchProduct();
+        }, 1000);
     };
 
     // Test video playback function
