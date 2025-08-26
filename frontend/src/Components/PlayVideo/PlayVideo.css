@@ -467,6 +467,13 @@
     -ms-user-select: none;
 }
 
+/* Mobile override for video height */
+@media (max-width: 768px) {
+  .play-video video {
+    height: 320px !important;
+  }
+}
+
 /* Force video background to be transparent */
 .play-video video {
   background: transparent !important;
@@ -479,6 +486,13 @@
   object-fit: cover !important;
 }
 
+/* Mobile override for forced video background rule */
+@media (max-width: 768px) {
+  .play-video video {
+    height: 320px !important;
+  }
+}
+
 .play-video .video-container {
   background: white !important;
   border-radius: 8px;
@@ -487,6 +501,14 @@
   width: 100% !important;
   height: 100% !important;
   min-height: 400px !important;
+}
+
+/* Mobile override for video container height */
+@media (max-width: 768px) {
+  .play-video .video-container {
+    min-height: 320px !important;
+    height: 320px !important;
+  }
 }
 
 .play-video .video-container > div {
@@ -554,6 +576,13 @@
     background: transparent;
     border-radius: 12px;
     overflow: hidden;
+}
+
+/* Mobile override for the second video container definition */
+@media (max-width: 768px) {
+  .play-video .video-container {
+    height: 320px !important;
+  }
 }
 
 .play-video iframe {
