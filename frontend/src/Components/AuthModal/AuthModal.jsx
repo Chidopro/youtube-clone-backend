@@ -51,10 +51,14 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         localStorage.setItem('user_authenticated', 'true');
         localStorage.setItem('user_email', email.trim());
         
+        console.log('🔐 Auth success - storing auth state');
+        console.log('📱 Is Mobile:', window.innerWidth <= 768);
+        
         setMessage({ type: 'success', text: data.message });
         
         // Close modal and call success callback after a short delay
         setTimeout(() => {
+          console.log('🚀 Calling onSuccess callback');
           onSuccess();
           onClose();
         }, 1500);
