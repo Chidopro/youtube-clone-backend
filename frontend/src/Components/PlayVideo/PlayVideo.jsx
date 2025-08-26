@@ -372,13 +372,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         // Check if user is authenticated
         const isAuthenticated = localStorage.getItem('user_authenticated');
         console.log('🔐 Auth state:', isAuthenticated);
+        console.log('🔐 Auth state type:', typeof isAuthenticated);
+        console.log('🔐 Auth state length:', isAuthenticated ? isAuthenticated.length : 0);
         console.log('🔐 All localStorage keys:', Object.keys(localStorage));
         
         if (isMobile) {
-            alert(`🔐 Auth state: ${isAuthenticated}`);
+            alert(`🔐 Auth state: "${isAuthenticated}" (type: ${typeof isAuthenticated})`);
         }
         
-        if (!isAuthenticated) {
+        if (!isAuthenticated || isAuthenticated === 'false' || isAuthenticated === 'null') {
             console.log('❌ Not authenticated - showing auth modal');
             if (isMobile) {
                 alert('❌ Not authenticated - showing auth modal');
