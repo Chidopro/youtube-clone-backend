@@ -364,11 +364,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         console.log('📱 Is mobile:', isMobile);
         console.log('📱 User agent:', navigator.userAgent);
         
-        // Show visual feedback on mobile
-        if (isMobile) {
-            alert('🛍️ Make Merch button clicked!');
-        }
-        
         // Check if user is authenticated
         const isAuthenticated = localStorage.getItem('user_authenticated');
         console.log('🔐 Auth state:', isAuthenticated);
@@ -376,15 +371,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         console.log('🔐 Auth state length:', isAuthenticated ? isAuthenticated.length : 0);
         console.log('🔐 All localStorage keys:', Object.keys(localStorage));
         
-        if (isMobile) {
-            alert(`🔐 Auth state: "${isAuthenticated}" (type: ${typeof isAuthenticated})`);
-        }
-        
         if (!isAuthenticated || isAuthenticated === 'false' || isAuthenticated === 'null') {
             console.log('❌ Not authenticated - showing auth modal');
-            if (isMobile) {
-                alert('❌ Not authenticated - showing auth modal');
-            }
             // Store screenshot data for after login
             const merchData = {
                 thumbnail,
@@ -399,9 +387,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
         
         console.log('✅ Authenticated - proceeding with merch creation');
-        if (isMobile) {
-            alert('✅ Authenticated - proceeding with merch creation');
-        }
         // User is authenticated, proceed with merch creation
         await createMerchProduct();
     };
@@ -639,10 +624,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.log('🎯 CreateMerchProduct function called');
             console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
             
-            if (isMobile) {
-                alert('🎯 CreateMerchProduct function called');
-            }
-            
             const requestData = {
                 thumbnail,
                 videoUrl: window.location.href,
@@ -650,10 +631,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             };
             
             console.log('Request data:', requestData);
-            
-            if (isMobile) {
-                alert('📤 Sending request to server...');
-            }
             
             const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
                 method: 'POST',
@@ -667,29 +644,17 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.log('Response status:', response.status);
             console.log('Response headers:', Object.fromEntries(response.headers.entries()));
             
-            if (isMobile) {
-                alert(`📥 Server response: ${response.status} ${response.statusText}`);
-            }
-            
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Server error response:', errorText);
-                if (isMobile) {
-                    alert(`❌ Server error: ${response.status} - ${errorText}`);
-                }
                 throw new Error(`Server error: ${response.status} - ${errorText}`);
             }
             
             const data = await response.json();
             console.log('Response data:', data);
             
-            if (isMobile) {
-                alert(`📄 Response data: ${JSON.stringify(data)}`);
-            }
-            
             if (data.success && data.product_url) {
                 if (isMobile) {
-                    alert(`✅ Success! Opening: ${data.product_url}`);
                     // For mobile, try to open in the same window since popup blockers often prevent window.open
                     setTimeout(() => {
                         window.location.href = data.product_url;
@@ -699,16 +664,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 }
             } else {
                 console.error('Failed to create product:', data);
-                if (isMobile) {
-                    alert(`❌ Failed to create merch: ${data.error || 'Unknown error'}`);
-                }
                 alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
             }
         } catch (err) {
             console.error('Make Merch error:', err);
-            if (isMobile) {
-                alert(`💥 Error: ${err.message}`);
-            }
             alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
         }
     };
