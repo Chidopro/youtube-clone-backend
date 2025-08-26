@@ -172,6 +172,12 @@
   /* Make video player full width and adjust button positioning on mobile */
   .video-viewer .play-video {
     padding: 0;
+    margin: 0;
+  }
+  
+  .video-viewer {
+    padding: 0;
+    margin: 0;
   }
   
   .video-viewer .video-container {
@@ -194,7 +200,7 @@
   }
   
   .video-viewer .screenmerch-actions {
-    margin: 15px 10px 15px 10px;
+    margin: 5px 10px 15px 10px;
     gap: 10px;
   }
   
