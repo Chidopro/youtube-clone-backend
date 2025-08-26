@@ -138,7 +138,7 @@
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    margin-bottom: 15px;
+    margin-bottom: 0 !important; /* Remove bottom margin on mobile */
     /* Mobile-specific: Override the 400px min-height to match video height */
     min-height: 320px !important;
   }
@@ -178,7 +178,12 @@
   
   /* Better spacing for mobile */
   .play-video {
-    padding: 10px;
+    padding: 0 !important; /* Remove all padding on mobile */
+  }
+  
+  /* Remove bottom margin from screenmerch actions on mobile */
+  .screenmerch-actions {
+    margin-bottom: 0 !important;
   }
   
   /* Improved screenshot grid for mobile */
