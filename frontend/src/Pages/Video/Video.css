@@ -169,18 +169,35 @@
     min-height: 0;
   }
   
-  /* Tighten up spacing under video player on mobile */
+  /* Make video player full width and adjust button positioning on mobile */
   .video-viewer .play-video {
-    padding: 10px;
+    padding: 0;
+  }
+  
+  .video-viewer .video-container {
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    max-width: none;
+  }
+  
+  .video-viewer .video-container > div {
+    width: 100%;
+    max-width: none;
+  }
+  
+  .video-viewer .video-container video {
+    width: 100%;
+    height: auto;
+    border-radius: 0;
   }
   
   .video-viewer .screenmerch-actions {
-    margin-bottom: 10px;
-    gap: 8px;
+    margin: 15px 10px 15px 10px;
+    gap: 10px;
   }
   
   .video-viewer .screenmerch-actions button {
-    padding: 8px 16px;
+    padding: 10px 20px;
     font-size: 14px;
   }
   
