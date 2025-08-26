@@ -1037,15 +1037,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                  <button 
                      className="screenmerch-btn" 
                      onClick={handleMakeMerch}
-                     onTouchStart={(e) => {
-                         console.log('📱 Touch start on Make Merch button');
-                         e.preventDefault();
-                     }}
-                     onTouchEnd={(e) => {
-                         console.log('📱 Touch end on Make Merch button');
-                         e.preventDefault();
-                         handleMakeMerch();
-                     }}
                      style={{
                          padding: '10px 20px',
                          backgroundColor: '#28a745',
