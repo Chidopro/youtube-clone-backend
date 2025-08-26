@@ -1004,25 +1004,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 fontSize: '22px'
             }}>{video.title}</h3>
 
-            {/* Subscribe button */}
-            <div className="subscribe-section" style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                marginBottom: '15px'
-            }}>
-                <button type="button" style={{
-                    background: 'red',
-                    color: '#fff',
-                    padding: '8px 30px',
-                    border: '0',
-                    outline: '0',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s ease'
-                }}>Subscribe</button>
-            </div>
-
-            {/* Video description */}
+            {/* Video description moved up for cleaner layout */}
             <div className="vid-description" style={{
                 marginBottom: '15px',
                 padding: '10px 0'
