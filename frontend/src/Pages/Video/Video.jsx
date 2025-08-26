@@ -244,11 +244,11 @@ const Video = () => {
          <div className="flow-steps">
            <div 
              className="flow-step" 
-             onClick={scrollToScreenshots}
              style={{ 
-               cursor: 'pointer',
+               cursor: 'default',
                userSelect: 'none',
-               WebkitTapHighlightColor: 'transparent'
+               WebkitTapHighlightColor: 'transparent',
+               opacity: '0.6'
              }}
            >
              <div className="step-number">2</div>
