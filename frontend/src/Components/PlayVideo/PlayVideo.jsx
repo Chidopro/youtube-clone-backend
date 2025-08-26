@@ -360,10 +360,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     // Make Merch handler
     const handleMakeMerch = async () => {
+        console.log('🛍️ Make Merch button clicked');
+        
         // Check if user is authenticated
         const isAuthenticated = localStorage.getItem('user_authenticated');
+        console.log('🔐 Auth state:', isAuthenticated);
         
         if (!isAuthenticated) {
+            console.log('❌ Not authenticated - showing auth modal');
             // Store screenshot data for after login
             const merchData = {
                 thumbnail,
@@ -377,6 +381,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             return;
         }
         
+        console.log('✅ Authenticated - proceeding with merch creation');
         // User is authenticated, proceed with merch creation
         await createMerchProduct();
     };
@@ -611,6 +616,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Create merch product function
     const createMerchProduct = async () => {
         try {
+            console.log('🎯 CreateMerchProduct function called');
             console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
             
             const requestData = {
