@@ -97,7 +97,7 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
-  align-items: flex-start;
+  align-items: stretch;
   min-height: 100vh;
 }
 
@@ -107,6 +107,8 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .screenshots-section {
