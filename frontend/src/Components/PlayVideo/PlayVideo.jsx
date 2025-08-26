@@ -623,6 +623,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.log('📱 Is Mobile:', window.innerWidth <= 768);
             console.log('🔐 Auth State:', localStorage.getItem('user_authenticated'));
             console.log('📧 User Email:', localStorage.getItem('user_email'));
+            console.log('📦 Screenshots count:', screenshots.length);
+            console.log('🖼️ Thumbnail:', thumbnail);
             console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
             
             const requestData = {
@@ -668,10 +670,26 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     // handleAuthSuccess function to be called by AuthModal
     const handleAuthSuccess = () => {
+        console.log('🔐 Auth success - starting merch creation process');
+        
+        // Show mobile alert for debugging
+        if (window.innerWidth <= 768) {
+            alert('🔐 Auth Success! Starting merch creation...');
+        }
+        
         setShowAuthModal(false);
+        
+        // Check if we have pending merch data
+        const pendingData = localStorage.getItem('pending_merch_data');
+        console.log('📦 Pending merch data:', pendingData);
+        
         // After successful authentication, try to create merch again
         // Small delay to ensure auth state is properly set
         setTimeout(() => {
+            console.log('🚀 Calling createMerchProduct after auth success');
+            if (window.innerWidth <= 768) {
+                alert('🚀 Creating merch product now...');
+            }
             createMerchProduct();
         }, 1000);
     };
