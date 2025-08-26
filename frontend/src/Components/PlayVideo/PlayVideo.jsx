@@ -690,8 +690,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             if (data.success && data.product_url) {
                 if (isMobile) {
                     alert(`✅ Success! Opening: ${data.product_url}`);
+                    // For mobile, try to open in the same window since popup blockers often prevent window.open
+                    window.location.href = data.product_url;
+                } else {
+                    window.open(data.product_url, '_blank');
                 }
-                window.open(data.product_url, '_blank');
             } else {
                 console.error('Failed to create product:', data);
                 if (isMobile) {
