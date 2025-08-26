@@ -173,8 +173,23 @@
   }
   
   .categories-grid {
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
+    max-width: 100%;
+  }
+  
+  .category-box {
+    padding: 1.5rem 1rem;
+    min-height: 120px;
+  }
+  
+  .category-emoji {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .category-name {
+    font-size: 0.9rem;
   }
   
   .back-button {
