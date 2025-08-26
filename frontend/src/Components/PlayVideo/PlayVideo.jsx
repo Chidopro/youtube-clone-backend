@@ -1004,8 +1004,45 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 fontSize: '22px'
             }}>{video.title}</h3>
 
-            {/* Description and Subscribe button removed for cleaner layout */}
-            <div style={{ flex: 1 }}></div>
+            {/* Subscribe button */}
+            <div className="subscribe-section" style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                marginBottom: '15px'
+            }}>
+                <button type="button" style={{
+                    background: 'red',
+                    color: '#fff',
+                    padding: '8px 30px',
+                    border: '0',
+                    outline: '0',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease'
+                }}>Subscribe</button>
+            </div>
+
+            {/* Video description */}
+            <div className="vid-description" style={{
+                marginBottom: '15px',
+                padding: '10px 0'
+            }}>
+                <p style={{
+                    fontSize: '14px',
+                    marginBottom: '5px',
+                    color: '#5a5a5a'
+                }}>{video.description}</p>
+            </div>
+            
+            <div className="play-video-info">
+                <p>{moment(video.created_at).fromNow()}</p>
+            </div>
+            <hr />
+            <div className="publisher">
+                <div>
+                    {/* Publisher info area */}
+                </div>
+            </div>
             
                          {/* Authentication Modal */}
              <AuthModal 
