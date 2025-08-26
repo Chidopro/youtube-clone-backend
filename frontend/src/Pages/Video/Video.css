@@ -202,6 +202,11 @@
     max-height: 50vh; /* Limit maximum height to 50% of viewport height */
     border-radius: 0;
     object-fit: cover;
+    /* Prevent fullscreen on mobile */
+    -webkit-playsinline: true;
+    playsinline: true;
+    -webkit-presentation-mode: inline;
+    presentation-mode: inline;
   }
   
   .video-viewer .screenmerch-actions {
