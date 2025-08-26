@@ -124,6 +124,10 @@
     height: 320px !important;
     width: 100% !important;
   }
+  /* Ensure white background container matches video height exactly */
+  .play-video .video-container {
+    min-height: 320px !important;
+  }
   html, body { overflow-x: hidden; }
 }
 
@@ -135,6 +139,8 @@
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     margin-bottom: 15px;
+    /* Mobile-specific: Override the 400px min-height to match video height */
+    min-height: 320px !important;
   }
   
   /* Improved video controls for mobile */

@@ -1,0 +1,5 @@
+[33md254c403b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Update screenshot page layout: remove 'Approved Creator' text, move social interactions to publisher section, improve mobile responsiveness
+[33ma86a3bbc6[m Fix cross-origin canvas issue by using screenshot-based cropping instead of direct video drawing
+[33m701977814[m Fix crop tool coordinate scaling and add fallback method for video not ready
+[33m3d22b7377[m Replace modal crop tool with inline crop tool integrated into video player
+[33m88859287f[m Add crop tool integration to video player with print size validation
