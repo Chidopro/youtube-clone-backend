@@ -364,13 +364,25 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         console.log('📱 Is mobile:', isMobile);
         console.log('📱 User agent:', navigator.userAgent);
         
+        // Show visual feedback on mobile
+        if (isMobile) {
+            alert('🛍️ Make Merch button clicked!');
+        }
+        
         // Check if user is authenticated
         const isAuthenticated = localStorage.getItem('user_authenticated');
         console.log('🔐 Auth state:', isAuthenticated);
         console.log('🔐 All localStorage keys:', Object.keys(localStorage));
         
+        if (isMobile) {
+            alert(`🔐 Auth state: ${isAuthenticated}`);
+        }
+        
         if (!isAuthenticated) {
             console.log('❌ Not authenticated - showing auth modal');
+            if (isMobile) {
+                alert('❌ Not authenticated - showing auth modal');
+            }
             // Store screenshot data for after login
             const merchData = {
                 thumbnail,
@@ -385,6 +397,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
         
         console.log('✅ Authenticated - proceeding with merch creation');
+        if (isMobile) {
+            alert('✅ Authenticated - proceeding with merch creation');
+        }
         // User is authenticated, proceed with merch creation
         await createMerchProduct();
     };
@@ -621,6 +636,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         try {
             console.log('🎯 CreateMerchProduct function called');
             console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
+            
+            if (isMobile) {
+                alert('🎯 CreateMerchProduct function called');
+            }
             
             const requestData = {
                 thumbnail,
