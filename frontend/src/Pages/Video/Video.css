@@ -187,8 +187,10 @@
   
   .video-viewer .video-container video {
     width: 100%;
-    height: auto;
+    height: 56.25vw; /* 16:9 aspect ratio */
+    max-height: 50vh; /* Limit maximum height to 50% of viewport height */
     border-radius: 0;
+    object-fit: cover;
   }
   
   .video-viewer .screenmerch-actions {
