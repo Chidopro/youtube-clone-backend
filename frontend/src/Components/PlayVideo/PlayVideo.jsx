@@ -361,10 +361,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Make Merch handler
     const handleMakeMerch = async () => {
         console.log('🛍️ Make Merch button clicked');
+        console.log('📱 Is mobile:', isMobile);
+        console.log('📱 User agent:', navigator.userAgent);
         
         // Check if user is authenticated
         const isAuthenticated = localStorage.getItem('user_authenticated');
         console.log('🔐 Auth state:', isAuthenticated);
+        console.log('🔐 All localStorage keys:', Object.keys(localStorage));
         
         if (!isAuthenticated) {
             console.log('❌ Not authenticated - showing auth modal');
@@ -1012,21 +1015,31 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     {isCapturingScreenshot ? 'Capturing...' : screenshots.length >= 6 ? 'Max Screenshots' : 'Select Screenshot'}
                 </button>
                 
-                <button 
-                    className="screenmerch-btn" 
-                    onClick={handleMakeMerch}
-                    style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#28a745',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                    }}
-                >
-                    Make Merch
-                </button>
+                                 <button 
+                     className="screenmerch-btn" 
+                     onClick={handleMakeMerch}
+                     onTouchStart={(e) => {
+                         console.log('📱 Touch start on Make Merch button');
+                         e.preventDefault();
+                     }}
+                     onTouchEnd={(e) => {
+                         console.log('📱 Touch end on Make Merch button');
+                         e.preventDefault();
+                         handleMakeMerch();
+                     }}
+                     style={{
+                         padding: '10px 20px',
+                         backgroundColor: '#28a745',
+                         color: 'white',
+                         border: 'none',
+                         borderRadius: '5px',
+                         cursor: 'pointer',
+                         fontWeight: 'bold',
+                         touchAction: 'manipulation'
+                     }}
+                 >
+                     Make Merch
+                 </button>
             </div>
 
             {/* Video title moved up */}
