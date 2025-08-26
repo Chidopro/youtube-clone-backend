@@ -7,10 +7,29 @@ import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
 import AuthModal from '../AuthModal/AuthModal'
 
+// Mobile detection hook
+const useIsMobile = () => {
+    const [isMobile, setIsMobile] = useState(false);
+    
+    useEffect(() => {
+        const checkIsMobile = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+        
+        checkIsMobile();
+        window.addEventListener('resize', checkIsMobile);
+        
+        return () => window.removeEventListener('resize', checkIsMobile);
+    }, []);
+    
+    return isMobile;
+};
+
 const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData, onScreenshotFunction }) => {
     // Use prop if provided, otherwise fallback to URL param
     const params = useParams();
     const videoId = propVideoId || params.videoId;
+    const isMobile = useIsMobile();
     const [video, setVideo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -958,7 +977,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             <div className="screenmerch-actions" style={{
                 display: 'flex',
                 gap: '10px',
-                marginBottom: '15px',
+                marginBottom: isMobile ? '0px' : '15px',
                 flexWrap: 'wrap'
             }}>
                 <button 
@@ -999,14 +1018,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             {/* Video title moved up */}
             <h3 style={{
                 marginTop: '10px',
-                marginBottom: '15px',
+                marginBottom: isMobile ? '5px' : '15px',
                 fontWeight: '600',
                 fontSize: '22px'
             }}>{video.title}</h3>
 
             {/* Video description moved up for cleaner layout */}
             <div className="vid-description" style={{
-                marginBottom: '15px',
+                marginBottom: isMobile ? '5px' : '15px',
                 padding: '10px 0'
             }}>
                 <p style={{
