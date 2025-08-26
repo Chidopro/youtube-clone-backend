@@ -368,15 +368,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     // Make Merch handler
     const handleMakeMerch = async () => {
-        console.log('🛍️ Make Merch clicked');
-        console.log('📱 Is Mobile:', window.innerWidth <= 768);
-        
         // Check if user is authenticated
         const isAuthenticated = localStorage.getItem('user_authenticated');
-        console.log('🔐 Auth State:', isAuthenticated);
         
         if (!isAuthenticated) {
-            console.log('❌ Not authenticated - showing auth modal');
             // Store screenshot data for after login
             const merchData = {
                 thumbnail,
@@ -384,14 +379,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 screenshots: screenshots.slice(0, 6),
             };
             localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
-            console.log('💾 Stored pending merch data');
             
             // Show auth modal instead of redirecting
             setShowAuthModal(true);
             return;
         }
         
-        console.log('✅ Authenticated - proceeding with merch creation');
         // User is authenticated, proceed with merch creation
         await createMerchProduct();
     };
@@ -675,17 +668,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     // handleAuthSuccess function to be called by AuthModal
     const handleAuthSuccess = () => {
-        console.log('🔐 Auth success - proceeding with merch creation');
         setShowAuthModal(false);
-        
-        // Add mobile-specific delay to ensure auth state is properly set
-        const isMobile = window.innerWidth <= 768;
-        const delay = isMobile ? 2000 : 1000; // Longer delay on mobile
-        
-        setTimeout(() => {
-            console.log('🚀 Creating merch product after auth success');
-            createMerchProduct();
-        }, delay);
+        // After successful authentication, try to create merch again
+        createMerchProduct();
     };
 
     // Test video playback function
