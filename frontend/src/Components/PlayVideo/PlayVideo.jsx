@@ -996,7 +996,35 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 </button>
             </div>
 
+            {/* Subscribe button moved up */}
+            <div className="subscribe-section" style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                marginBottom: '15px'
+            }}>
+                <button type="button" style={{
+                    background: 'red',
+                    color: '#fff',
+                    padding: '8px 30px',
+                    border: '0',
+                    outline: '0',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease'
+                }}>Subscribe</button>
+            </div>
 
+            {/* Video description moved up */}
+            <div className="vid-description" style={{
+                marginBottom: '15px',
+                padding: '10px 0'
+            }}>
+                <p style={{
+                    fontSize: '14px',
+                    marginBottom: '5px',
+                    color: '#5a5a5a'
+                }}>{video.description}</p>
+            </div>
             
             <h3>{video.title}</h3>
             <div className="play-video-info">
@@ -1005,12 +1033,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             <hr />
             <div className="publisher">
                 <div>
-                    {/* Video description area - social interactions removed */}
+                    {/* Publisher info area */}
                 </div>
-                <button type="button">Subscribe</button>
-            </div>
-            <div className="vid-description">
-                <p>{video.description}</p>
             </div>
             
                          {/* Authentication Modal */}
