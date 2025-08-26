@@ -649,6 +649,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             
             console.log('Request data:', requestData);
             
+            if (isMobile) {
+                alert('📤 Sending request to server...');
+            }
+            
             const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
                 method: 'POST',
                 headers: { 
@@ -661,23 +665,43 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.log('Response status:', response.status);
             console.log('Response headers:', Object.fromEntries(response.headers.entries()));
             
+            if (isMobile) {
+                alert(`📥 Server response: ${response.status}`);
+            }
+            
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Server error response:', errorText);
+                if (isMobile) {
+                    alert(`❌ Server error: ${response.status} - ${errorText}`);
+                }
                 throw new Error(`Server error: ${response.status} - ${errorText}`);
             }
             
             const data = await response.json();
             console.log('Response data:', data);
             
+            if (isMobile) {
+                alert(`📄 Response data: ${JSON.stringify(data)}`);
+            }
+            
             if (data.success && data.product_url) {
+                if (isMobile) {
+                    alert(`✅ Success! Opening: ${data.product_url}`);
+                }
                 window.open(data.product_url, '_blank');
             } else {
                 console.error('Failed to create product:', data);
+                if (isMobile) {
+                    alert(`❌ Failed to create merch: ${data.error || 'Unknown error'}`);
+                }
                 alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
             }
         } catch (err) {
             console.error('Make Merch error:', err);
+            if (isMobile) {
+                alert(`💥 Error: ${err.message}`);
+            }
             alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
         }
     };
