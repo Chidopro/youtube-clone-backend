@@ -897,6 +897,179 @@
     font-style: italic;
 }
 
+/* Tier Calculator Styles */
+.tier-calculator-section {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 30px;
+    border: 1px solid #dee2e6;
+}
+
+.calculator-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.calculator-header h4 {
+    margin: 0 0 8px 0;
+    color: #333;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.calculator-header p {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.tier-comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.tier-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    border: 2px solid #dee2e6;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.tier-card.current {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #f8f9fa, #e3f2fd);
+}
+
+.tier-card.upgrade {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #f8f9fa, #e8f5e8);
+}
+
+.tier-card.enterprise {
+    border-color: #6f42c1;
+    background: linear-gradient(135deg, #f8f9fa, #f3e5f5);
+}
+
+.tier-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.tier-header {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.tier-header h5 {
+    margin: 0 0 5px 0;
+    color: #333;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.tier-fee {
+    background: #007bff;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.tier-card.upgrade .tier-fee {
+    background: #28a745;
+}
+
+.tier-card.enterprise .tier-fee {
+    background: #6f42c1;
+}
+
+.tier-revenue {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.revenue-amount {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #28a745;
+    margin-bottom: 5px;
+}
+
+.revenue-label {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.tier-cost {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.cost-amount {
+    display: block;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #dc3545;
+    margin-bottom: 3px;
+}
+
+.cost-label {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.tier-savings {
+    text-align: center;
+    background: #d4edda;
+    border-radius: 8px;
+    padding: 8px;
+    border: 1px solid #c3e6cb;
+}
+
+.savings-amount {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #155724;
+    margin-bottom: 3px;
+}
+
+.savings-label {
+    font-size: 0.7rem;
+    color: #155724;
+}
+
+.calculator-footer {
+    text-align: center;
+}
+
+.upgrade-btn {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.upgrade-btn:hover {
+    background: linear-gradient(135deg, #20c997, #17a2b8);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
 .chart-section {
     margin-bottom: 30px;
 }
@@ -1550,13 +1723,44 @@
         grid-template-columns: 1fr;
     }
     
-    .analytics-actions {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .action-btn {
-        width: 100%;
-        max-width: 300px;
-    }
+         .analytics-actions {
+         flex-direction: column;
+         align-items: center;
+     }
+     
+     .action-btn {
+         width: 100%;
+         max-width: 300px;
+     }
+     
+     /* Tier Calculator Mobile Styles */
+     .tier-calculator-section {
+         padding: 20px;
+     }
+     
+     .tier-comparison-grid {
+         grid-template-columns: 1fr;
+         gap: 12px;
+     }
+     
+     .tier-card {
+         padding: 15px;
+     }
+     
+     .revenue-amount {
+         font-size: 1.5rem;
+     }
+     
+     .cost-amount {
+         font-size: 1rem;
+     }
+     
+     .savings-amount {
+         font-size: 1rem;
+     }
+     
+     .upgrade-btn {
+         width: 100%;
+         padding: 15px 20px;
+     }
 } 
