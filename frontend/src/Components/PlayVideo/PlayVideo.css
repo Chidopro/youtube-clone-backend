@@ -107,28 +107,51 @@
 }
 
 /* Mobile: keep video inline, prevent fullscreen takeover */
-@media (max-width: 768px) and (orientation: portrait) {
+@media (max-width: 768px) {
+  /* Hide fullscreen button on all mobile devices */
+  video::-webkit-media-controls-fullscreen-button,
   video::-internal-media-controls-overlay-cast-button,
-  video::-webkit-media-controls-fullscreen-button {
+  video::-webkit-media-controls-enclosure {
     display: none !important;
   }
-  /* iOS: ensure inline playback with consistent sizing */
+  
+  /* Force inline playback on iOS and Android */
   video[playsinline],
-  video[webkit-playsinline] {
+  video[webkit-playsinline="true"] {
     height: 320px !important;
     max-height: 320px !important;
+    object-fit: contain !important;
   }
+  
+  /* Ensure video container stays within bounds */
   .play-video .video-container,
   .play-video video {
     max-width: 100% !important;
     height: 320px !important;
     width: 100% !important;
+    position: relative !important;
+    z-index: 1 !important;
   }
+  
+  /* Prevent video from taking over fullscreen */
+  .play-video video {
+    -webkit-presentation-mode: inline !important;
+    presentation-mode: inline !important;
+    -webkit-playsinline: true !important;
+    playsinline: true !important;
+  }
+  
   /* Ensure white background container matches video height exactly */
   .play-video .video-container {
     min-height: 320px !important;
+    overflow: hidden !important;
   }
-  html, body { overflow-x: hidden; }
+  
+  /* Prevent body overflow */
+  html, body { 
+    overflow-x: hidden !important;
+    position: relative !important;
+  }
 }
 
 /* Enhanced Mobile Video Player */
@@ -141,6 +164,11 @@
     margin-bottom: 0 !important; /* Remove bottom margin on mobile */
     /* Mobile-specific: Override the 400px min-height to match video height */
     min-height: 320px !important;
+    /* Prevent fullscreen behavior */
+    position: relative !important;
+    z-index: 1 !important;
+    transform: none !important;
+    -webkit-transform: none !important;
   }
   
   /* Improved video controls for mobile */

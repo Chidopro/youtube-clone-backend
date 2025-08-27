@@ -207,6 +207,18 @@
     playsinline: true;
     -webkit-presentation-mode: inline;
     presentation-mode: inline;
+    /* Additional mobile fullscreen prevention */
+    position: relative !important;
+    z-index: 1 !important;
+    transform: none !important;
+    -webkit-transform: none !important;
+  }
+  
+  /* Hide fullscreen button on mobile */
+  .video-viewer .video-container video::-webkit-media-controls-fullscreen-button,
+  .video-viewer .video-container video::-internal-media-controls-overlay-cast-button,
+  .video-viewer .video-container video::-webkit-media-controls-enclosure {
+    display: none !important;
   }
   
   .video-viewer .screenmerch-actions {

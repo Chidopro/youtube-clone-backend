@@ -4,6 +4,39 @@
     margin: 0 auto;
     padding: 0 16px;
 }
+
+/* Mobile video controls - prevent fullscreen */
+@media (max-width: 768px) {
+    /* Hide fullscreen button on mobile */
+    video::-webkit-media-controls-fullscreen-button,
+    video::-internal-media-controls-overlay-cast-button,
+    video::-webkit-media-controls-enclosure {
+        display: none !important;
+    }
+    
+    /* Force inline playback on mobile */
+    video[playsinline],
+    video[webkit-playsinline="true"] {
+        height: 320px !important;
+        max-height: 320px !important;
+        object-fit: contain !important;
+    }
+    
+    /* Prevent video from taking over fullscreen */
+    .play-video video {
+        -webkit-presentation-mode: inline !important;
+        presentation-mode: inline !important;
+        -webkit-playsinline: true !important;
+        playsinline: true !important;
+        position: relative !important;
+        z-index: 1 !important;
+    }
+    
+    /* Ensure video container stays within bounds */
+    .play-video {
+        overflow: hidden !important;
+    }
+}
 /* .play-video video{
     width: 100%;
 } */

@@ -231,7 +231,18 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 <button className="screenmerch-btn" onClick={handleGrabScreenshot}>Grab Screenshot</button>
                 <button className="screenmerch-btn" onClick={handleMakeMerch}>Make Merch</button>
             </div>
-            <video ref={videoRef} controls width="100%" style={{background: '#000'}} poster={video.thumbnail || ''} src={video.video_url}>
+            <video 
+                ref={videoRef} 
+                controls 
+                width="100%" 
+                style={{background: '#000'}} 
+                poster={video.thumbnail || ''} 
+                src={video.video_url}
+                playsInline
+                webkit-playsinline="true"
+                x-webkit-airplay="allow"
+                preload="metadata"
+            >
                 Your browser does not support the video tag.
             </video>
             <h3>{video.title}</h3>
