@@ -792,58 +792,9 @@ const Dashboard = ({ sidebar }) => {
                                     )}
                                 </div>
                                 
-                                {/* Video Images Taken From */}
-                                <div className="video-sources-section">
-                                    <h3>🎬 Video Sources</h3>
-                                    <div className="video-sources-grid">
-                                        {analyticsData.videos_with_sales && analyticsData.videos_with_sales.length > 0 ? (
-                                            analyticsData.videos_with_sales.map((video, index) => (
-                                                <div key={index} className="video-source-card">
-                                                    <div className="video-source-info">
-                                                        <h4>{video.video_name}</h4>
-                                                        <p>{video.sales_count} sales • ${video.revenue.toFixed(2)} revenue</p>
-                                                        <span className="video-date">Active video</span>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="video-source-card empty-state">
-                                                <div className="video-source-info">
-                                                    <h4>No videos with sales yet</h4>
-                                                    <p>0 sales • $0.00 revenue</p>
-                                                    <span className="video-date">Upload your first video to start earning!</span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+
                                 
-                                <div className="analytics-actions">
-                                    <button 
-                                        className="action-btn primary"
-                                        onClick={() => {
-                                            alert('Export functionality coming soon!');
-                                        }}
-                                    >
-                                        Export Sales Report
-                                    </button>
-                                    <button 
-                                        className="action-btn secondary"
-                                        onClick={() => {
-                                            alert('Detailed analytics coming soon!');
-                                        }}
-                                    >
-                                        View Detailed Analytics
-                                    </button>
-                                    <button 
-                                        className="action-btn secondary"
-                                        onClick={() => {
-                                            alert('Period comparison coming soon!');
-                                        }}
-                                    >
-                                        Compare Periods
-                                    </button>
-                                </div>
+
                             </div>
                         </div>
                     </div>
