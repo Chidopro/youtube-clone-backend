@@ -548,12 +548,8 @@
     color: #28a745;
     font-weight: 600;
     font-size: 0.9rem;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.tip-card.clickable:hover .card-action {
     opacity: 1;
+    transition: opacity 0.3s ease;
 }
 
 .upgrade-link {
