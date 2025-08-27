@@ -605,6 +605,39 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         if (!isResizing) return;
         e.preventDefault();
         e.stopPropagation();
+        
+        const videoElement = videoRef.current;
+        if (!videoElement) return;
+        
+        const touch = e.touches[0];
+        const rect = videoElement.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        // Handle resizing based on direction
+        let newWidth = cropArea.width;
+        let newHeight = cropArea.height;
+        let newX = cropArea.x;
+        let newY = cropArea.y;
+        
+        if (resizeDirection.includes('right')) {
+            newWidth = Math.max(50, x - cropArea.x);
+        }
+        if (resizeDirection.includes('left')) {
+            const maxLeft = cropArea.x + cropArea.width - 50;
+            newX = Math.min(maxLeft, x);
+            newWidth = cropArea.x + cropArea.width - newX;
+        }
+        if (resizeDirection.includes('bottom')) {
+            newHeight = Math.max(50, y - cropArea.y);
+        }
+        if (resizeDirection.includes('top')) {
+            const maxTop = cropArea.y + cropArea.height - 50;
+            newY = Math.min(maxTop, y);
+            newHeight = cropArea.y + cropArea.height - newY;
+        }
+        
+        setCropArea({ x: newX, y: newY, width: newWidth, height: newHeight });
     };
 
     const handleResizeTouchEnd = (e) => {
@@ -1046,15 +1079,19 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              >
                                  {/* Resize Handles */}
                                  <div
+                                     className="resize-handle"
                                      style={{
                                          position: 'absolute',
-                                         top: -5,
-                                         left: -5,
-                                         width: 10,
-                                         height: 10,
+                                         top: isMobile ? -10 : -5,
+                                         left: isMobile ? -10 : -5,
+                                         width: isMobile ? 20 : 10,
+                                         height: isMobile ? 20 : 10,
                                          backgroundColor: '#007bff',
                                          borderRadius: '50%',
-                                         cursor: 'nw-resize'
+                                         cursor: 'nw-resize',
+                                         border: isMobile ? '2px solid white' : 'none',
+                                         boxShadow: isMobile ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
+                                         zIndex: 10
                                      }}
                                      onMouseDown={(e) => handleResizeStart('top-left', e)}
                                      onTouchStart={(e) => handleResizeTouchStart('top-left', e)}
@@ -1062,15 +1099,19 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                      onTouchEnd={handleResizeTouchEnd}
                                  />
                                  <div
+                                     className="resize-handle"
                                      style={{
                                          position: 'absolute',
-                                         top: -5,
-                                         right: -5,
-                                         width: 10,
-                                         height: 10,
+                                         top: isMobile ? -10 : -5,
+                                         right: isMobile ? -10 : -5,
+                                         width: isMobile ? 20 : 10,
+                                         height: isMobile ? 20 : 10,
                                          backgroundColor: '#007bff',
                                          borderRadius: '50%',
-                                         cursor: 'ne-resize'
+                                         cursor: 'ne-resize',
+                                         border: isMobile ? '2px solid white' : 'none',
+                                         boxShadow: isMobile ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
+                                         zIndex: 10
                                      }}
                                      onMouseDown={(e) => handleResizeStart('top-right', e)}
                                      onTouchStart={(e) => handleResizeTouchStart('top-right', e)}
@@ -1078,15 +1119,19 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                      onTouchEnd={handleResizeTouchEnd}
                                  />
                                  <div
+                                     className="resize-handle"
                                      style={{
                                          position: 'absolute',
-                                         bottom: -5,
-                                         left: -5,
-                                         width: 10,
-                                         height: 10,
+                                         bottom: isMobile ? -10 : -5,
+                                         left: isMobile ? -10 : -5,
+                                         width: isMobile ? 20 : 10,
+                                         height: isMobile ? 20 : 10,
                                          backgroundColor: '#007bff',
                                          borderRadius: '50%',
-                                         cursor: 'sw-resize'
+                                         cursor: 'sw-resize',
+                                         border: isMobile ? '2px solid white' : 'none',
+                                         boxShadow: isMobile ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
+                                         zIndex: 10
                                      }}
                                      onMouseDown={(e) => handleResizeStart('bottom-left', e)}
                                      onTouchStart={(e) => handleResizeTouchStart('bottom-left', e)}
@@ -1094,15 +1139,19 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                      onTouchEnd={handleResizeTouchEnd}
                                  />
                                  <div
+                                     className="resize-handle"
                                      style={{
                                          position: 'absolute',
-                                         bottom: -5,
-                                         right: -5,
-                                         width: 10,
-                                         height: 10,
+                                         bottom: isMobile ? -10 : -5,
+                                         right: isMobile ? -10 : -5,
+                                         width: isMobile ? 20 : 10,
+                                         height: isMobile ? 20 : 10,
                                          backgroundColor: '#007bff',
                                          borderRadius: '50%',
-                                         cursor: 'se-resize'
+                                         cursor: 'se-resize',
+                                         border: isMobile ? '2px solid white' : 'none',
+                                         boxShadow: isMobile ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
+                                         zIndex: 10
                                      }}
                                      onMouseDown={(e) => handleResizeStart('bottom-right', e)}
                                      onTouchStart={(e) => handleResizeTouchStart('bottom-right', e)}
