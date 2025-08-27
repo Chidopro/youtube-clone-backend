@@ -1723,44 +1723,44 @@
         grid-template-columns: 1fr;
     }
     
-         .analytics-actions {
-         flex-direction: column;
-         align-items: center;
-     }
-     
-     .action-btn {
-         width: 100%;
-         max-width: 300px;
-     }
-     
-     /* Tier Calculator Mobile Styles */
-     .tier-calculator-section {
-         padding: 20px;
-     }
-     
-     .tier-comparison-grid {
-         grid-template-columns: 1fr;
-         gap: 12px;
-     }
-     
-     .tier-card {
-         padding: 15px;
-     }
-     
-     .revenue-amount {
-         font-size: 1.5rem;
-     }
-     
-     .cost-amount {
-         font-size: 1rem;
-     }
-     
-     .savings-amount {
-         font-size: 1rem;
-     }
-     
-     .upgrade-btn {
-         width: 100%;
-         padding: 15px 20px;
-     }
+    .analytics-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .action-btn {
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    /* Tier Calculator Mobile Styles */
+    .tier-calculator-section {
+        padding: 20px;
+    }
+    
+    .tier-comparison-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .tier-card {
+        padding: 15px;
+    }
+    
+    .revenue-amount {
+        font-size: 1.5rem;
+    }
+    
+    .cost-amount {
+        font-size: 1rem;
+    }
+    
+    .savings-amount {
+        font-size: 1rem;
+    }
+    
+    .upgrade-btn {
+        width: 100%;
+        padding: 15px 20px;
+    }
 } 
