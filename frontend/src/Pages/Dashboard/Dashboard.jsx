@@ -638,92 +638,6 @@ const Dashboard = ({ sidebar }) => {
                                              <span className="fee-explanation">Net revenue shown after fees</span>
                                          </div>
                                      </div>
-                                     
-                                     {/* Tier Comparison Calculator */}
-                                     <div className="tier-calculator-section">
-                                         <div className="calculator-header">
-                                             <h4>💰 Tier Comparison Calculator</h4>
-                                             <p>See how much more you could earn with premium tiers</p>
-                                         </div>
-                                         <div className="tier-comparison-grid">
-                                             <div className="tier-card current">
-                                                 <div className="tier-header">
-                                                     <h5>Current Tier</h5>
-                                                     <span className="tier-fee">30% fee</span>
-                                                 </div>
-                                                 <div className="tier-revenue">
-                                                     <span className="revenue-amount">${(analyticsData.total_revenue * 0.7).toFixed(2)}</span>
-                                                     <span className="revenue-label">You keep</span>
-                                                 </div>
-                                                 <div className="tier-cost">
-                                                     <span className="cost-amount">Free</span>
-                                                     <span className="cost-label">Monthly cost</span>
-                                                 </div>
-                                             </div>
-                                             
-                                             <div className="tier-card upgrade">
-                                                 <div className="tier-header">
-                                                     <h5>Tier 2</h5>
-                                                     <span className="tier-fee">20% fee</span>
-                                                 </div>
-                                                 <div className="tier-revenue">
-                                                     <span className="revenue-amount">${(analyticsData.total_revenue * 0.8).toFixed(2)}</span>
-                                                     <span className="revenue-label">You keep</span>
-                                                 </div>
-                                                 <div className="tier-cost">
-                                                     <span className="cost-amount">$99</span>
-                                                     <span className="cost-label">Monthly cost</span>
-                                                 </div>
-                                                 <div className="tier-savings">
-                                                     <span className="savings-amount">+${(analyticsData.total_revenue * 0.1).toFixed(2)}</span>
-                                                     <span className="savings-label">vs current</span>
-                                                 </div>
-                                             </div>
-                                             
-                                             <div className="tier-card upgrade">
-                                                 <div className="tier-header">
-                                                     <h5>Tier 3</h5>
-                                                     <span className="tier-fee">10% fee</span>
-                                                 </div>
-                                                 <div className="tier-revenue">
-                                                     <span className="revenue-amount">${(analyticsData.total_revenue * 0.9).toFixed(2)}</span>
-                                                     <span className="revenue-label">You keep</span>
-                                                 </div>
-                                                 <div className="tier-cost">
-                                                     <span className="cost-amount">$299</span>
-                                                     <span className="cost-label">Monthly cost</span>
-                                                 </div>
-                                                 <div className="tier-savings">
-                                                     <span className="savings-amount">+${(analyticsData.total_revenue * 0.2).toFixed(2)}</span>
-                                                     <span className="savings-label">vs current</span>
-                                                 </div>
-                                             </div>
-                                             
-                                             <div className="tier-card enterprise">
-                                                 <div className="tier-header">
-                                                     <h5>Enterprise</h5>
-                                                     <span className="tier-fee">5% fee</span>
-                                                 </div>
-                                                 <div className="tier-revenue">
-                                                     <span className="revenue-amount">${(analyticsData.total_revenue * 0.95).toFixed(2)}</span>
-                                                     <span className="revenue-label">You keep</span>
-                                                 </div>
-                                                 <div className="tier-cost">
-                                                     <span className="cost-amount">$7,500</span>
-                                                     <span className="cost-label">One-time license</span>
-                                                 </div>
-                                                 <div className="tier-savings">
-                                                     <span className="savings-amount">+${(analyticsData.total_revenue * 0.25).toFixed(2)}</span>
-                                                     <span className="savings-label">vs current</span>
-                                                 </div>
-                                             </div>
-                                         </div>
-                                         <div className="calculator-footer">
-                                             <button className="upgrade-btn" onClick={() => alert('Upgrade functionality coming soon!')}>
-                                                 🚀 View All Tiers & Upgrade
-                                             </button>
-                                         </div>
-                                     </div>
                                     
                                     {/* Daily Sales Chart */}
                                     <div className="chart-section">
@@ -860,6 +774,92 @@ const Dashboard = ({ sidebar }) => {
                                             <p>Start creating content to see your sales data here!</p>
                                         </div>
                                     )}
+                                </div>
+                                
+                                {/* Tier Comparison Calculator - Moved to bottom */}
+                                <div className="tier-calculator-section">
+                                    <div className="calculator-header">
+                                        <h4>💰 Tier Comparison Calculator</h4>
+                                        <p>See how much more you could earn with premium tiers</p>
+                                    </div>
+                                    <div className="tier-comparison-grid">
+                                        <div className="tier-card current">
+                                            <div className="tier-header">
+                                                <h5>Current Tier</h5>
+                                                <span className="tier-fee">30% fee</span>
+                                            </div>
+                                            <div className="tier-revenue">
+                                                <span className="revenue-amount">${(analyticsData.total_revenue * 0.7).toFixed(2)}</span>
+                                                <span className="revenue-label">You keep</span>
+                                            </div>
+                                            <div className="tier-cost">
+                                                <span className="cost-amount">Free</span>
+                                                <span className="cost-label">Monthly cost</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="tier-card upgrade">
+                                            <div className="tier-header">
+                                                <h5>Tier 2</h5>
+                                                <span className="tier-fee">20% fee</span>
+                                            </div>
+                                            <div className="tier-revenue">
+                                                <span className="revenue-amount">${(analyticsData.total_revenue * 0.8).toFixed(2)}</span>
+                                                <span className="revenue-label">You keep</span>
+                                            </div>
+                                            <div className="tier-cost">
+                                                <span className="cost-amount">$99</span>
+                                                <span className="cost-label">Monthly cost</span>
+                                            </div>
+                                            <div className="tier-savings">
+                                                <span className="savings-amount">+${(analyticsData.total_revenue * 0.1).toFixed(2)}</span>
+                                                <span className="savings-label">vs current</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="tier-card upgrade">
+                                            <div className="tier-header">
+                                                <h5>Tier 3</h5>
+                                                <span className="tier-fee">10% fee</span>
+                                            </div>
+                                            <div className="tier-revenue">
+                                                <span className="revenue-amount">${(analyticsData.total_revenue * 0.9).toFixed(2)}</span>
+                                                <span className="revenue-label">You keep</span>
+                                            </div>
+                                            <div className="tier-cost">
+                                                <span className="cost-amount">$299</span>
+                                                <span className="cost-label">Monthly cost</span>
+                                            </div>
+                                            <div className="tier-savings">
+                                                <span className="savings-amount">+${(analyticsData.total_revenue * 0.2).toFixed(2)}</span>
+                                                <span className="savings-label">vs current</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="tier-card enterprise">
+                                            <div className="tier-header">
+                                                <h5>Enterprise</h5>
+                                                <span className="tier-fee">5% fee</span>
+                                            </div>
+                                            <div className="tier-revenue">
+                                                <span className="revenue-amount">${(analyticsData.total_revenue * 0.95).toFixed(2)}</span>
+                                                <span className="revenue-label">You keep</span>
+                                            </div>
+                                            <div className="tier-cost">
+                                                <span className="cost-amount">$7,500</span>
+                                                <span className="cost-label">One-time license</span>
+                                            </div>
+                                            <div className="tier-savings">
+                                                <span className="savings-amount">+${(analyticsData.total_revenue * 0.25).toFixed(2)}</span>
+                                                <span className="savings-label">vs current</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="calculator-footer">
+                                        <button className="upgrade-btn" onClick={() => alert('Upgrade functionality coming soon!')}>
+                                            🚀 View All Tiers & Upgrade
+                                        </button>
+                                    </div>
                                 </div>
                                 
 
