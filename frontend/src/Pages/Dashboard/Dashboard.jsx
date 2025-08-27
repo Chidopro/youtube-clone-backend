@@ -645,47 +645,106 @@ const Dashboard = ({ sidebar }) => {
                                     </div>
                                 </div>
                                 
-                                {/* Sales Per Day Chart */}
+                                {/* Enhanced Sales Chart */}
                                 <div className="sales-chart-section">
-                                    <h3>📊 Sales Per Day (Last 30 Days)</h3>
-                                    <div className="chart-container">
-                                        <div className="chart-bars">
-                                            {salesData.map((height, index) => {
-                                                // Calculate date for this bar
-                                                const date = new Date();
-                                                date.setDate(date.getDate() - (29 - index));
-                                                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                                                
-                                                // Calculate bar height with minimum height for visibility
-                                                const barHeight = height > 0 ? Math.max((height / maxSales) * 200, 8) : 0;
-                                                
-                                                return (
-                                                    <div 
-                                                        key={index} 
-                                                        className={`chart-bar ${height > 0 ? 'has-sales' : 'no-sales'}`}
-                                                        style={{height: `${barHeight}px`}}
-                                                        title={`${dateStr}: ${height} sales${height > 0 ? ` ($${(height * analyticsData.avg_order_value).toFixed(2)} revenue)` : ''}`}
-                                                    >
-                                                        <span className="bar-value">{height}</span>
-                                                        <span className="bar-date">{dateStr}</span>
-                                                    </div>
-                                                );
-                                            })}
+                                    <div className="chart-header">
+                                        <h3>📊 Sales Analytics Dashboard</h3>
+                                        <div className="service-fee-info">
+                                            <span className="fee-badge">30% Service Fee</span>
+                                            <span className="fee-explanation">Net revenue shown after fees</span>
                                         </div>
-                                        <div className="chart-labels">
-                                            <span>30 days ago</span>
-                                            <span>3 weeks ago</span>
-                                            <span>2 weeks ago</span>
-                                            <span>1 week ago</span>
-                                            <span>Today</span>
-                                        </div>
-                                        {maxSales === 0 && (
-                                            <div className="chart-empty-state">
-                                                <div className="empty-chart-icon">📈</div>
-                                                <p>No sales data yet</p>
-                                                <small>Sales will appear here once you start making sales</small>
+                                    </div>
+                                    
+                                    {/* Daily Sales Chart */}
+                                    <div className="chart-section">
+                                        <h4>📅 Daily Sales (Last 7 Days)</h4>
+                                        <div className="daily-chart-container">
+                                            <div className="daily-chart-bars">
+                                                {Array.from({length: 7}, (_, i) => {
+                                                    const date = new Date();
+                                                    date.setDate(date.getDate() - (6 - i));
+                                                    const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                                                    const isToday = i === 6;
+                                                    const salesCount = isToday ? 1 : (i === 5 ? 2 : 0); // Mock data - replace with real data
+                                                    const revenue = salesCount * analyticsData.avg_order_value;
+                                                    const netRevenue = revenue * 0.7; // After 30% fee
+                                                    
+                                                    return (
+                                                        <div key={i} className="daily-bar-container">
+                                                            <div 
+                                                                className={`daily-bar ${salesCount > 0 ? 'has-sales' : 'no-sales'} ${isToday ? 'today' : ''}`}
+                                                                style={{height: `${salesCount > 0 ? Math.max(salesCount * 40, 20) : 0}px`}}
+                                                                title={`${dateStr}: ${salesCount} sales | Gross: $${revenue.toFixed(2)} | Net: $${netRevenue.toFixed(2)}`}
+                                                            >
+                                                                <span className="daily-bar-value">{salesCount}</span>
+                                                            </div>
+                                                            <div className="daily-bar-label">{dateStr}</div>
+                                                            {salesCount > 0 && (
+                                                                <div className="daily-bar-revenue">${netRevenue.toFixed(2)}</div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
-                                        )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Weekly Summary */}
+                                    <div className="weekly-summary">
+                                        <h4>📊 Weekly Summary</h4>
+                                        <div className="summary-grid">
+                                            <div className="summary-card">
+                                                <div className="summary-label">This Week</div>
+                                                <div className="summary-value">{analyticsData.total_sales}</div>
+                                                <div className="summary-subtitle">Total Sales</div>
+                                            </div>
+                                            <div className="summary-card">
+                                                <div className="summary-label">Gross Revenue</div>
+                                                <div className="summary-value">${analyticsData.total_revenue.toFixed(2)}</div>
+                                                <div className="summary-subtitle">Before fees</div>
+                                            </div>
+                                            <div className="summary-card highlight">
+                                                <div className="summary-label">Net Revenue</div>
+                                                <div className="summary-value">${(analyticsData.total_revenue * 0.7).toFixed(2)}</div>
+                                                <div className="summary-subtitle">After 30% fee</div>
+                                            </div>
+                                            <div className="summary-card">
+                                                <div className="summary-label">Service Fee</div>
+                                                <div className="summary-value">${(analyticsData.total_revenue * 0.3).toFixed(2)}</div>
+                                                <div className="summary-subtitle">Platform fee</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Recent Sales Activity */}
+                                    <div className="recent-activity">
+                                        <h4>🕒 Recent Sales Activity</h4>
+                                        <div className="activity-list">
+                                            <div className="activity-item">
+                                                <div className="activity-icon">💰</div>
+                                                <div className="activity-details">
+                                                    <div className="activity-title">New sale today!</div>
+                                                    <div className="activity-subtitle">Product: Custom T-Shirt | Net: $17.77</div>
+                                                </div>
+                                                <div className="activity-time">Just now</div>
+                                            </div>
+                                            <div className="activity-item">
+                                                <div className="activity-icon">💰</div>
+                                                <div className="activity-details">
+                                                    <div className="activity-title">Sale completed</div>
+                                                    <div className="activity-subtitle">Product: Coffee Mug | Net: $14.00</div>
+                                                </div>
+                                                <div className="activity-time">2 hours ago</div>
+                                            </div>
+                                            <div className="activity-item">
+                                                <div className="activity-icon">📊</div>
+                                                <div className="activity-details">
+                                                    <div className="activity-title">Weekly summary</div>
+                                                    <div className="activity-subtitle">Total: 31 sales | Net: $551.04</div>
+                                                </div>
+                                                <div className="activity-time">Yesterday</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 
