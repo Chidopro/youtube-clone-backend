@@ -810,7 +810,7 @@
     font-weight: 500;
 }
 
-/* Chart Styles */
+/* Enhanced Chart Styles */
 .sales-chart-section {
     background: #fff;
     padding: 30px;
@@ -819,10 +819,243 @@
     margin-bottom: 40px;
 }
 
-.sales-chart-section h3 {
-    margin: 0 0 20px 0;
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.chart-header h3 {
+    margin: 0;
     color: #333;
-    font-size: 1.3rem;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.service-fee-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+.fee-badge {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+}
+
+.fee-explanation {
+    font-size: 0.75rem;
+    color: #666;
+    font-style: italic;
+}
+
+.chart-section {
+    margin-bottom: 30px;
+}
+
+.chart-section h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Daily Chart Styles */
+.daily-chart-container {
+    background: linear-gradient(to bottom, rgba(0,123,255,0.02), transparent);
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid #e9ecef;
+}
+
+.daily-chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 15px;
+    height: 200px;
+    padding: 20px 0;
+}
+
+.daily-bar-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.daily-bar {
+    width: 100%;
+    max-width: 60px;
+    background: linear-gradient(to top, #e9ecef, #dee2e6);
+    border-radius: 6px 6px 0 0;
+    position: relative;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.daily-bar.has-sales {
+    background: linear-gradient(to top, #28a745, #1e7e34);
+    box-shadow: 0 4px 12px rgba(40,167,69,0.3);
+}
+
+.daily-bar.today {
+    background: linear-gradient(to top, #007bff, #0056b3);
+    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+}
+
+.daily-bar:hover {
+    transform: scaleY(1.05);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+.daily-bar-value {
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.daily-bar-label {
+    font-size: 0.75rem;
+    color: #666;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.daily-bar-revenue {
+    font-size: 0.7rem;
+    color: #28a745;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Weekly Summary Styles */
+.weekly-summary {
+    margin-bottom: 30px;
+}
+
+.weekly-summary h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.summary-card {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+
+.summary-card.highlight {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    border-color: #28a745;
+}
+
+.summary-label {
+    font-size: 0.85rem;
+    color: #666;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.summary-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.summary-subtitle {
+    font-size: 0.75rem;
+    color: #666;
+    font-style: italic;
+}
+
+/* Recent Activity Styles */
+.recent-activity h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #28a745;
+    transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+.activity-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.activity-details {
+    flex: 1;
+}
+
+.activity-title {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+    margin-bottom: 3px;
+}
+
+.activity-subtitle {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.activity-time {
+    font-size: 0.75rem;
+    color: #999;
+    font-style: italic;
 }
 
 .chart-container {
@@ -1073,35 +1306,67 @@
         gap: 15px;
     }
     
-    .chart-container {
-        height: 220px;
+    .chart-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .service-fee-info {
+        align-items: flex-start;
+    }
+    
+    .daily-chart-bars {
+        height: 150px;
+        gap: 8px;
         padding: 15px 0;
     }
     
-    .chart-bars {
-        height: 150px;
-        gap: 2px;
+    .daily-bar {
+        max-width: 40px;
+        min-height: 15px;
     }
     
-    .chart-bar {
-        min-width: 6px;
+    .daily-bar-value {
+        font-size: 0.8rem;
     }
     
-    .bar-value {
+    .daily-bar-label {
         font-size: 0.7rem;
-        padding: 2px 6px;
     }
     
-    .bar-date {
+    .daily-bar-revenue {
         font-size: 0.65rem;
     }
     
-    .chart-labels {
-        margin-top: 10px;
+    .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
     }
     
-    .chart-labels span {
-        font-size: 0.7rem;
+    .summary-card {
+        padding: 15px;
+    }
+    
+    .summary-value {
+        font-size: 1.4rem;
+    }
+    
+    .activity-item {
+        padding: 12px;
+        gap: 10px;
+    }
+    
+    .activity-icon {
+        font-size: 1.2rem;
+    }
+    
+    .activity-title {
+        font-size: 0.85rem;
+    }
+    
+    .activity-subtitle {
+        font-size: 0.75rem;
     }
     
     .video-sources-grid {
