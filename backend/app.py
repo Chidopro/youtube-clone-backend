@@ -1650,8 +1650,20 @@ def stripe_webhook():
                 logger.error(f"Order ID {order_id} not found in order_store")
                 return "", 200
 
-            # Get customer phone number from Stripe session
-            customer_phone = session.get("customer_details", {}).get("phone", "")
+            # Get customer details from Stripe session
+            customer_details = session.get("customer_details", {})
+            customer_phone = customer_details.get("phone", "")
+            customer_email = customer_details.get("email", "")
+            customer_name = customer_details.get("name", "")
+            
+            # Get shipping address from Stripe session
+            shipping_address = customer_details.get("address", {})
+            address_line1 = shipping_address.get("line1", "")
+            address_line2 = shipping_address.get("line2", "")
+            city = shipping_address.get("city", "")
+            state = shipping_address.get("state", "")
+            postal_code = shipping_address.get("postal_code", "")
+            country = shipping_address.get("country", "")
             
             # Calculate order totals
             total_amount = session.get("amount_total", 0) / 100  # Convert from cents
@@ -1662,6 +1674,26 @@ def stripe_webhook():
             # Generate order number (last 8 characters of order_id)
             order_number = order_id[-8:].upper()
             
+            # Helper function to get product category
+            def get_product_category(product_name):
+                category_mappings = {
+                    'mens': ["Men's Long Sleeve Shirt", "Men's Tank Top", "Unisex Classic Tee", "Unisex T-Shirt", "Unisex Hoodie", "Unisex Champion Hoodie"],
+                    'womens': ["Cropped Hoodie", "Women's fitted racerback tank top", "Women's Micro-Rib Tank Top", "Women's Ribbed Neck", "Women's Shirt", "Unisex Heavyweight T-Shirt"],
+                    'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve"],
+                    'bags': ["All-Over Print Tote Bag", "All-Over Print Drawstring Bag", "All-Over Print Crossbody Bag"],
+                    'hats': ["Distressed Dad Hat", "Snapback Hat", "Five Panel Trucker Hat"],
+                    'mugs': ["White Glossy Mug"],
+                    'pets': ["Pet Bowl All-Over Print", "Baby Short Sleeve One Piece"],
+                    'stickers': ["Kiss-Cut Stickers", "Die-Cut Magnets"],
+                    'misc': ["Greeting Card", "Hardcover Bound Notebook", "Coasters"],
+                    'thumbnails': ["Custom Thumbnail Print", "Thumbnail Poster", "Thumbnail Canvas Print"]
+                }
+                
+                for category, products in category_mappings.items():
+                    if product_name in products:
+                        return category.title()
+                return "General"
+            
             # Format and send the robust order email
             html_body = f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9;">
@@ -1669,31 +1701,56 @@ def stripe_webhook():
                     <h1 style="color: #333; text-align: center; margin-bottom: 30px;">🎯 New ScreenMerch Order #{order_number}</h1>
                     
                     <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #28a745;">
-                        <h3 style="color: #28a745; margin: 0;">✅ Payment received successfully! This order is ready for processing.</h3>
+                        <h3 style="color: #28a745; margin: 0;">✅ Payment received successfully! This order is ready for Printful fulfillment.</h3>
                     </div>
                     
                     <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
                         <h3 style="color: #333; margin-top: 0;">📋 Order Summary</h3>
                         <p><strong>Order ID:</strong> {order_id}</p>
-                        <p><strong>Customer Phone:</strong> {customer_phone}</p>
+                        <p><strong>Customer Name:</strong> {customer_name or 'Not provided'}</p>
+                        <p><strong>Customer Email:</strong> {customer_email or 'Not provided'}</p>
+                        <p><strong>Customer Phone:</strong> {customer_phone or 'Not provided'}</p>
                         <p><strong>Items:</strong> {len(cart)}</p>
                         <p><strong>Shipping Cost:</strong> ${shipping_cost:.2f} {shipping_currency}{f" • ETA: {delivery_days} days" if delivery_days else ""}</p>
                         <p><strong>Total Amount:</strong> ${total_amount:.2f}</p>
+                    </div>
+                    
+                    <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+                        <h3 style="color: #856404; margin-top: 0;">🚚 Shipping Address (Printful Fulfillment)</h3>
+                        <p style="margin: 5px 0;"><strong>Address:</strong> {address_line1}</p>
+                        {f'<p style="margin: 5px 0;"><strong>Address 2:</strong> {address_line2}</p>' if address_line2 else ''}
+                        <p style="margin: 5px 0;"><strong>City:</strong> {city}</p>
+                        <p style="margin: 5px 0;"><strong>State/Province:</strong> {state}</p>
+                        <p style="margin: 5px 0;"><strong>Postal Code:</strong> {postal_code}</p>
+                        <p style="margin: 5px 0;"><strong>Country:</strong> {country}</p>
                     </div>
                     
                     <h3 style="color: #333;">🛍️ Product Details</h3>
             """
             
             for item in cart:
+                product_name = item.get('product', 'N/A')
+                product_category = get_product_category(product_name)
+                
                 html_body += f"""
                     <div style='border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 8px; background: white;'>
-                        <h4 style="color: #333; margin-top: 0;">{item.get('product', 'N/A')}</h4>
-                        <p><strong>Color:</strong> {item.get('variants', {}).get('color', 'N/A')}</p>
-                        <p><strong>Size:</strong> {item.get('variants', {}).get('size', 'N/A')}</p>
-                        <p><strong>Price:</strong> ${item.get('price', 0):.2f}</p>
-                        <p><strong>Note:</strong> {item.get('note', 'None')}</p>
-                        <p><strong>Video:</strong> {order_data.get('video_title', 'Unknown Video')}</p>
-                        <p><strong>Creator:</strong> {order_data.get('creator_name', 'Unknown Creator')}</p>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                            <h4 style="color: #333; margin: 0;">{product_name}</h4>
+                            <span style="background: #007bff; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">{product_category}</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <p><strong>Color:</strong> {item.get('variants', {}).get('color', 'N/A')}</p>
+                                <p><strong>Size:</strong> {item.get('variants', {}).get('size', 'N/A')}</p>
+                                <p><strong>Price:</strong> ${item.get('price', 0):.2f}</p>
+                                <p><strong>Note:</strong> {item.get('note', 'None')}</p>
+                            </div>
+                            <div>
+                                <p><strong>Video:</strong> {order_data.get('video_title', 'Unknown Video')}</p>
+                                <p><strong>Creator:</strong> {order_data.get('creator_name', 'Unknown Creator')}</p>
+                                <p><strong>Category:</strong> {product_category}</p>
+                            </div>
+                        </div>
                         <p><strong>Screenshot/Thumbnail:</strong></p>
                         <img src="{item.get('img', '')}" alt='Product Image' style='max-width: 300px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
                     </div>
@@ -1701,16 +1758,29 @@ def stripe_webhook():
             
             html_body += f"""
                     <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px;">
-                        <h3 style="color: #333; margin-top: 0;">📋 Next Steps</h3>
+                        <h3 style="color: #333; margin-top: 0;">📋 Printful Fulfillment Steps</h3>
                         <ul style="color: #666;">
-                            <li>Review the screenshot/thumbnail for print quality</li>
-                            <li>Verify customer information and shipping details</li>
-                            <li>Process the order through your fulfillment system</li>
+                            <li>✅ Review the screenshot/thumbnail for print quality and positioning</li>
+                            <li>✅ Verify customer information and shipping address above</li>
+                            <li>✅ Check product category and variant details</li>
+                            <li>🚀 Create order in Printful dashboard with the provided shipping address</li>
+                            <li>📦 Printful will handle printing, packaging, and shipping</li>
+                            <li>📧 Customer will receive tracking information from Printful</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: #d1ecf1; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #17a2b8;">
+                        <h4 style="color: #0c5460; margin-top: 0;">💡 Printful Integration Tips</h4>
+                        <ul style="color: #0c5460; margin: 5px 0; font-size: 0.9rem;">
+                            <li>Use the exact shipping address provided above for Printful order creation</li>
+                            <li>Product categories help identify the correct Printful product type</li>
+                            <li>Review image quality before submitting to Printful</li>
+                            <li>Customer will receive automated shipping notifications from Printful</li>
                         </ul>
                     </div>
                     
                     <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                        <p style="color: #666; font-size: 14px;">This is an automated notification from ScreenMerch</p>
+                        <p style="color: #666; font-size: 14px;">This is an automated notification from ScreenMerch - Ready for Printful Fulfillment</p>
                     </div>
                 </div>
             </div>
@@ -1733,9 +1803,16 @@ def stripe_webhook():
             # Send admin notification email to alancraigdigital@gmail.com
             admin_email_body = f"New ScreenMerch Order #{order_id}!\n"
             admin_email_body += f"Items: {len(cart)}\n"
-            admin_email_body += f"Customer Phone: {customer_phone}\n"
+            admin_email_body += f"Customer Name: {customer_name or 'Not provided'}\n"
+            admin_email_body += f"Customer Email: {customer_email or 'Not provided'}\n"
+            admin_email_body += f"Customer Phone: {customer_phone or 'Not provided'}\n"
+            admin_email_body += f"Shipping Address: {address_line1}, {city}, {state} {postal_code}, {country}\n"
+            admin_email_body += f"Total Amount: ${total_amount:.2f}\n\n"
+            admin_email_body += "Products:\n"
             for item in cart:
-                admin_email_body += f"• {item.get('product', 'N/A')} ({item.get('variants', {}).get('color', 'N/A')}, {item.get('variants', {}).get('size', 'N/A')})\n"
+                product_name = item.get('product', 'N/A')
+                product_category = get_product_category(product_name)
+                admin_email_body += f"• {product_name} ({product_category}) - {item.get('variants', {}).get('color', 'N/A')}, {item.get('variants', {}).get('size', 'N/A')}\n"
             send_order_email(admin_email_body)
             
             # Send robust confirmation email to admin
