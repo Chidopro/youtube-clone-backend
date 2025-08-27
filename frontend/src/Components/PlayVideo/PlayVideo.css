@@ -187,6 +187,23 @@
     overscroll-behavior: none;
   }
 
+  /* Mobile crop control buttons */
+  .play-video .crop-overlay button {
+    touch-action: manipulation !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    z-index: 20 !important;
+    position: relative !important;
+  }
+
+  /* Ensure crop control buttons are above other elements */
+  .play-video .crop-overlay > div:last-child {
+    z-index: 20 !important;
+    position: relative !important;
+  }
+
   /* Prevent scrolling on the entire video container when crop mode is active */
   .play-video .video-container {
     touch-action: none !important;
