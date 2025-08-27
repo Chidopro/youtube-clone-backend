@@ -1,0 +1,13 @@
+[33mcommit f4dc88535dbfc9392721b009be74ea78dc44eb97[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Chido <chido@example.com>
+Date:   Wed Aug 27 09:46:14 2025 -0700
+
+    Fix mobile crop tool button clickability - improve touch event handling and prevent scrolling
+
+frontend/dist/assets/index-015af8b2.css
+frontend/dist/assets/index-58b86e8c.css
+frontend/dist/assets/index-9b87ba70.js
+frontend/dist/assets/index-f8e8c1c9.js
+frontend/dist/index.html
+frontend/src/Components/PlayVideo/PlayVideo.css
+frontend/src/Components/PlayVideo/PlayVideo.jsx
