@@ -643,6 +643,23 @@
     box-sizing: border-box;
 }
 
+.upload-card.condensed {
+    padding: 20px 32px;
+    gap: 20px;
+}
+
+.upload-card.condensed .upload-icon {
+    font-size: 2rem;
+}
+
+.upload-card.condensed h3 {
+    font-size: 1.5rem;
+}
+
+.upload-card.condensed p {
+    font-size: 1rem;
+}
+
 .upload-icon {
     font-size: 3rem;
     margin-bottom: 0;
