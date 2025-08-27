@@ -510,8 +510,87 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         setResizeDirection(null);
     };
 
+    // Mobile touch event handlers
+    const handleCropTouchStart = (e) => {
+        if (!isCropMode) return;
+        e.preventDefault(); // Prevent scrolling
+        
+        const videoElement = videoRef.current;
+        if (!videoElement) return;
+        
+        const touch = e.touches[0];
+        const rect = videoElement.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        // Check if touching inside crop area
+        if (x >= cropArea.x && x <= cropArea.x + cropArea.width &&
+            y >= cropArea.y && y <= cropArea.y + cropArea.height) {
+            setIsDragging(true);
+            setDragStart({ x: x - cropArea.x, y: y - cropArea.y });
+        }
+    };
+
+    const handleCropTouchMove = (e) => {
+        if (!isCropMode || (!isDragging && !isResizing)) return;
+        e.preventDefault(); // Prevent scrolling
+        
+        const videoElement = videoRef.current;
+        if (!videoElement) return;
+        
+        const touch = e.touches[0];
+        const rect = videoElement.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        if (isDragging) {
+            const newX = Math.max(0, Math.min(rect.width - cropArea.width, x - dragStart.x));
+            const newY = Math.max(0, Math.min(rect.height - cropArea.height, y - dragStart.y));
+            setCropArea(prev => ({ ...prev, x: newX, y: newY }));
+        } else if (isResizing) {
+            // Handle resizing based on direction
+            let newWidth = cropArea.width;
+            let newHeight = cropArea.height;
+            let newX = cropArea.x;
+            let newY = cropArea.y;
+            
+            if (resizeDirection.includes('right')) {
+                newWidth = Math.max(50, x - cropArea.x);
+            }
+            if (resizeDirection.includes('left')) {
+                const maxLeft = cropArea.x + cropArea.width - 50;
+                newX = Math.min(maxLeft, x);
+                newWidth = cropArea.x + cropArea.width - newX;
+            }
+            if (resizeDirection.includes('bottom')) {
+                newHeight = Math.max(50, y - cropArea.y);
+            }
+            if (resizeDirection.includes('top')) {
+                const maxTop = cropArea.y + cropArea.height - 50;
+                newY = Math.min(maxTop, y);
+                newHeight = cropArea.y + cropArea.height - newY;
+            }
+            
+            setCropArea({ x: newX, y: newY, width: newWidth, height: newHeight });
+        }
+    };
+
+    const handleCropTouchEnd = () => {
+        setIsDragging(false);
+        setIsResizing(false);
+        setResizeDirection(null);
+    };
+
     const handleResizeStart = (direction, e) => {
         e.stopPropagation();
+        e.preventDefault();
+        setIsResizing(true);
+        setResizeDirection(direction);
+    };
+
+    const handleResizeTouchStart = (direction, e) => {
+        e.stopPropagation();
+        e.preventDefault();
         setIsResizing(true);
         setResizeDirection(direction);
     };
@@ -926,9 +1005,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              onMouseMove={handleCropMouseMove}
                              onMouseUp={handleCropMouseUp}
                              onMouseLeave={handleCropMouseUp}
+                             onTouchStart={handleCropTouchStart}
+                             onTouchMove={handleCropTouchMove}
+                             onTouchEnd={handleCropTouchEnd}
                          >
                              {/* Crop Area */}
                              <div
+                                 className="crop-area"
                                  style={{
                                      position: 'absolute',
                                      left: cropArea.x,
@@ -953,6 +1036,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                          cursor: 'nw-resize'
                                      }}
                                      onMouseDown={(e) => handleResizeStart('top-left', e)}
+                                     onTouchStart={(e) => handleResizeTouchStart('top-left', e)}
                                  />
                                  <div
                                      style={{
@@ -966,6 +1050,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                          cursor: 'ne-resize'
                                      }}
                                      onMouseDown={(e) => handleResizeStart('top-right', e)}
+                                     onTouchStart={(e) => handleResizeTouchStart('top-right', e)}
                                  />
                                  <div
                                      style={{
@@ -979,6 +1064,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                          cursor: 'sw-resize'
                                      }}
                                      onMouseDown={(e) => handleResizeStart('bottom-left', e)}
+                                     onTouchStart={(e) => handleResizeTouchStart('bottom-left', e)}
                                  />
                                  <div
                                      style={{
@@ -992,6 +1078,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                          cursor: 'se-resize'
                                      }}
                                      onMouseDown={(e) => handleResizeStart('bottom-right', e)}
+                                     onTouchStart={(e) => handleResizeTouchStart('bottom-right', e)}
                                  />
                              </div>
 
