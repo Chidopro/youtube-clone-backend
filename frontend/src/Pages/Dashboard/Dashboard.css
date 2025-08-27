@@ -827,12 +827,14 @@
 
 .chart-container {
     position: relative;
-    height: 250px;
+    height: 280px;
     display: flex;
     align-items: flex-end;
     gap: 4px;
     padding: 20px 0;
     border-bottom: 2px solid #e9ecef;
+    background: linear-gradient(to bottom, rgba(0,123,255,0.02), transparent);
+    border-radius: 8px;
 }
 
 .chart-bars {
@@ -841,6 +843,7 @@
     gap: 4px;
     height: 200px;
     flex: 1;
+    position: relative;
 }
 
 .chart-bar {
@@ -851,42 +854,104 @@
     position: relative;
     transition: all 0.3s ease;
     cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.chart-bar.has-sales {
+    background: linear-gradient(to top, #28a745, #1e7e34);
+    box-shadow: 0 2px 8px rgba(40,167,69,0.3);
+}
+
+.chart-bar.no-sales {
+    background: linear-gradient(to top, #e9ecef, #dee2e6);
+    opacity: 0.6;
 }
 
 .chart-bar:hover {
     background: linear-gradient(to top, #0056b3, #004494);
     transform: scaleY(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.chart-bar.has-sales:hover {
+    background: linear-gradient(to top, #1e7e34, #155724);
+    box-shadow: 0 4px 12px rgba(40,167,69,0.4);
 }
 
 .bar-value {
     position: absolute;
-    top: -25px;
+    top: -30px;
     left: 50%;
     transform: translateX(-50%);
     background: #333;
     color: white;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
     font-size: 0.75rem;
+    font-weight: 600;
     opacity: 0;
     transition: opacity 0.3s ease;
+    white-space: nowrap;
+    z-index: 10;
 }
 
-.chart-bar:hover .bar-value {
+.bar-date {
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: #666;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    white-space: nowrap;
+}
+
+.chart-bar:hover .bar-value,
+.chart-bar:hover .bar-date {
     opacity: 1;
 }
 
 .chart-labels {
     display: flex;
     justify-content: space-between;
-    margin-top: 10px;
+    margin-top: 15px;
     padding: 0 10px;
 }
 
 .chart-labels span {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: #666;
     font-weight: 500;
+    text-align: center;
+    flex: 1;
+}
+
+.chart-empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: #666;
+    z-index: 5;
+}
+
+.empty-chart-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    opacity: 0.5;
+}
+
+.chart-empty-state p {
+    margin: 0 0 5px 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.chart-empty-state small {
+    font-size: 0.8rem;
+    opacity: 0.7;
 }
 
 /* Products Sold Table */
@@ -1009,11 +1074,34 @@
     }
     
     .chart-container {
-        height: 200px;
+        height: 220px;
+        padding: 15px 0;
     }
     
     .chart-bars {
         height: 150px;
+        gap: 2px;
+    }
+    
+    .chart-bar {
+        min-width: 6px;
+    }
+    
+    .bar-value {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+    }
+    
+    .bar-date {
+        font-size: 0.65rem;
+    }
+    
+    .chart-labels {
+        margin-top: 10px;
+    }
+    
+    .chart-labels span {
+        font-size: 0.7rem;
     }
     
     .video-sources-grid {

@@ -650,24 +650,42 @@ const Dashboard = ({ sidebar }) => {
                                     <h3>📊 Sales Per Day (Last 30 Days)</h3>
                                     <div className="chart-container">
                                         <div className="chart-bars">
-                                            {salesData.map((height, index) => (
-                                                <div 
-                                                    key={index} 
-                                                    className="chart-bar" 
-                                                    style={{height: `${(height / maxSales) * 200}px`}}
-                                                    title={`Day ${index + 1}: ${height} sales`}
-                                                >
-                                                    <span className="bar-value">{height}</span>
-                                                </div>
-                                            ))}
+                                            {salesData.map((height, index) => {
+                                                // Calculate date for this bar
+                                                const date = new Date();
+                                                date.setDate(date.getDate() - (29 - index));
+                                                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                                
+                                                // Calculate bar height with minimum height for visibility
+                                                const barHeight = height > 0 ? Math.max((height / maxSales) * 200, 8) : 0;
+                                                
+                                                return (
+                                                    <div 
+                                                        key={index} 
+                                                        className={`chart-bar ${height > 0 ? 'has-sales' : 'no-sales'}`}
+                                                        style={{height: `${barHeight}px`}}
+                                                        title={`${dateStr}: ${height} sales${height > 0 ? ` ($${(height * analyticsData.avg_order_value).toFixed(2)} revenue)` : ''}`}
+                                                    >
+                                                        <span className="bar-value">{height}</span>
+                                                        <span className="bar-date">{dateStr}</span>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                         <div className="chart-labels">
-                                            <span>1</span>
-                                            <span>7</span>
-                                            <span>14</span>
-                                            <span>21</span>
-                                            <span>30</span>
+                                            <span>30 days ago</span>
+                                            <span>3 weeks ago</span>
+                                            <span>2 weeks ago</span>
+                                            <span>1 week ago</span>
+                                            <span>Today</span>
                                         </div>
+                                        {maxSales === 0 && (
+                                            <div className="chart-empty-state">
+                                                <div className="empty-chart-icon">📈</div>
+                                                <p>No sales data yet</p>
+                                                <small>Sales will appear here once you start making sales</small>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 
