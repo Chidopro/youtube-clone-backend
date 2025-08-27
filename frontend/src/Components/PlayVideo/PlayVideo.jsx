@@ -514,6 +514,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const handleCropTouchStart = (e) => {
         if (!isCropMode) return;
         e.preventDefault(); // Prevent scrolling
+        e.stopPropagation(); // Stop event bubbling
         
         const videoElement = videoRef.current;
         if (!videoElement) return;
@@ -534,6 +535,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const handleCropTouchMove = (e) => {
         if (!isCropMode || (!isDragging && !isResizing)) return;
         e.preventDefault(); // Prevent scrolling
+        e.stopPropagation(); // Stop event bubbling
         
         const videoElement = videoRef.current;
         if (!videoElement) return;
@@ -575,7 +577,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
     };
 
-    const handleCropTouchEnd = () => {
+    const handleCropTouchEnd = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         setIsDragging(false);
         setIsResizing(false);
         setResizeDirection(null);
@@ -593,6 +599,21 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         e.preventDefault();
         setIsResizing(true);
         setResizeDirection(direction);
+    };
+
+    const handleResizeTouchMove = (e) => {
+        if (!isResizing) return;
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleResizeTouchEnd = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        setIsResizing(false);
+        setResizeDirection(null);
     };
 
     const handleApplyCrop = async () => {
@@ -907,7 +928,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     );
 
     return (
-        <div className="play-video">
+        <div className={`play-video ${isCropMode ? 'crop-mode-active' : ''}`}>
             <div 
                 className="video-container" 
                 ref={videoContainerRef}
@@ -1037,6 +1058,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                      }}
                                      onMouseDown={(e) => handleResizeStart('top-left', e)}
                                      onTouchStart={(e) => handleResizeTouchStart('top-left', e)}
+                                     onTouchMove={handleResizeTouchMove}
+                                     onTouchEnd={handleResizeTouchEnd}
                                  />
                                  <div
                                      style={{
@@ -1051,6 +1074,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                      }}
                                      onMouseDown={(e) => handleResizeStart('top-right', e)}
                                      onTouchStart={(e) => handleResizeTouchStart('top-right', e)}
+                                     onTouchMove={handleResizeTouchMove}
+                                     onTouchEnd={handleResizeTouchEnd}
                                  />
                                  <div
                                      style={{
@@ -1065,6 +1090,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                      }}
                                      onMouseDown={(e) => handleResizeStart('bottom-left', e)}
                                      onTouchStart={(e) => handleResizeTouchStart('bottom-left', e)}
+                                     onTouchMove={handleResizeTouchMove}
+                                     onTouchEnd={handleResizeTouchEnd}
                                  />
                                  <div
                                      style={{
@@ -1079,6 +1106,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                      }}
                                      onMouseDown={(e) => handleResizeStart('bottom-right', e)}
                                      onTouchStart={(e) => handleResizeTouchStart('bottom-right', e)}
+                                     onTouchMove={handleResizeTouchMove}
+                                     onTouchEnd={handleResizeTouchEnd}
                                  />
                              </div>
 

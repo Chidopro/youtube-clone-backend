@@ -152,6 +152,15 @@
     overflow-x: hidden !important;
     position: relative !important;
   }
+
+  /* Prevent scrolling when crop mode is active */
+  .play-video.crop-mode-active {
+    touch-action: none !important;
+  }
+
+  .play-video.crop-mode-active .video-container {
+    touch-action: none !important;
+  }
 }
 
 /* Enhanced Mobile Video Player */
@@ -174,6 +183,24 @@
   /* Mobile crop tool improvements */
   .play-video .crop-overlay {
     touch-action: none !important; /* Prevent scrolling when using crop tool */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+
+  /* Prevent scrolling on the entire video container when crop mode is active */
+  .play-video .video-container {
+    touch-action: none !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+
+  /* Prevent scrolling on the crop area itself */
+  .play-video .crop-area {
+    touch-action: none !important;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
 
   /* Larger resize handles for mobile touch */
