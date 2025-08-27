@@ -1031,17 +1031,16 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                              e.target.style.background = isCropMode ? 'rgba(0, 123, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)';
                              e.target.style.transform = 'scale(1)';
                          }}
-                                                   title={isCropMode ? "Exit Crop Mode" : "Crop Screenshot"}
+                         title={isCropMode ? "Exit Crop Mode" : "Crop Image"}
                      >
-                                                   <svg 
-                              width="20" 
-                              height="20" 
-                              viewBox="0 0 24 24" 
-                              fill="white"
-                          >
-                              {/* Crop icon - scissors */}
-                              <path d="M6 2L8 4L10 2L12 4L14 2L16 4L18 2V6L16 8L18 10L16 12L18 14L16 16L18 18H14L12 16L10 18L8 16L6 18H2V14L4 12L2 10L4 8L2 6V2H6Z"/>
-                          </svg>
+                         <svg 
+                             width="20" 
+                             height="20" 
+                             viewBox="0 0 24 24" 
+                             fill="white"
+                         >
+                             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                         </svg>
                      </button>
 
                      {/* Inline Crop Overlay */}

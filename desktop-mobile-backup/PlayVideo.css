@@ -1,0 +1,1088 @@
+/* Ensure video controls are visible and clickable */
+.play-video video {
+  pointer-events: auto !important;
+  user-select: none;
+}
+
+.play-video video::-webkit-media-controls {
+  display: flex !important;
+}
+
+.play-video video::-webkit-media-controls-panel {
+  display: flex !important;
+}
+
+.play-video video::-webkit-media-controls-play-button {
+  display: flex !important;
+}
+
+/* Crop Tool Styles */
+.crop-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.crop-selection {
+  position: absolute;
+  border: 2px solid #ff0000;
+  background-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 1001;
+}
+
+.crop-selection::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+
+.crop-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.crop-controls button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.crop-controls button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.crop-controls button:active {
+  transform: translateY(0);
+}
+
+.crop-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #6c757d;
+  margin-left: auto;
+}
+
+.crop-info span {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+/* Animation for crop overlay */
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-10px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Mobile: keep video inline, prevent fullscreen takeover */
+@media (max-width: 768px) {
+  /* Hide fullscreen button on all mobile devices */
+  video::-webkit-media-controls-fullscreen-button,
+  video::-internal-media-controls-overlay-cast-button,
+  video::-webkit-media-controls-enclosure {
+    display: none !important;
+  }
+  
+  /* Force inline playback on iOS and Android */
+  video[playsinline],
+  video[webkit-playsinline="true"] {
+    height: 320px !important;
+    max-height: 320px !important;
+    object-fit: contain !important;
+  }
+  
+  /* Ensure video container stays within bounds */
+  .play-video .video-container,
+  .play-video video {
+    max-width: 100% !important;
+    height: 320px !important;
+    width: 100% !important;
+    position: relative !important;
+    z-index: 1 !important;
+  }
+  
+  /* Prevent video from taking over fullscreen */
+  .play-video video {
+    -webkit-presentation-mode: inline !important;
+    presentation-mode: inline !important;
+    -webkit-playsinline: true !important;
+    playsinline: true !important;
+  }
+  
+  /* Ensure white background container matches video height exactly */
+  .play-video .video-container {
+    min-height: 320px !important;
+    overflow: hidden !important;
+  }
+  
+  /* Prevent body overflow */
+  html, body { 
+    overflow-x: hidden !important;
+    position: relative !important;
+  }
+
+  /* Prevent scrolling when crop mode is active */
+  .play-video.crop-mode-active {
+    touch-action: none !important;
+  }
+
+  .play-video.crop-mode-active .video-container {
+    touch-action: none !important;
+  }
+}
+
+/* Enhanced Mobile Video Player */
+@media (max-width: 768px) {
+  /* Better video container for mobile */
+  .play-video .video-container {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 0 !important; /* Remove bottom margin on mobile */
+    /* Mobile-specific: Override the 400px min-height to match video height */
+    min-height: 320px !important;
+    /* Prevent fullscreen behavior */
+    position: relative !important;
+    z-index: 1 !important;
+    transform: none !important;
+    -webkit-transform: none !important;
+  }
+
+  /* Mobile crop tool improvements */
+  .play-video .crop-overlay {
+    touch-action: none !important; /* Prevent scrolling when using crop tool */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+
+  /* Mobile crop control buttons */
+  .play-video .crop-overlay button {
+    touch-action: manipulation !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    z-index: 20 !important;
+    position: relative !important;
+  }
+
+  /* Ensure crop control buttons are above other elements */
+  .play-video .crop-overlay > div:last-child {
+    z-index: 20 !important;
+    position: relative !important;
+  }
+
+  /* Prevent scrolling on the entire video container when crop mode is active */
+  .play-video .video-container {
+    touch-action: none !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+
+  /* Prevent scrolling on the crop area itself */
+  .play-video .crop-area {
+    touch-action: none !important;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Larger resize handles for mobile touch */
+  .play-video .crop-area .resize-handle {
+    width: 20px !important;
+    height: 20px !important;
+    background-color: #007bff !important;
+    border: 2px solid white !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+    touch-action: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+  }
+
+  /* Ensure resize handles are above other elements */
+  .play-video .crop-area .resize-handle {
+    z-index: 10 !important;
+  }
+
+  /* Specific positioning for each corner handle */
+  .play-video .crop-area > div[style*="top: -5px"][style*="left: -5px"] {
+    top: -10px !important;
+    left: -10px !important;
+  }
+
+  .play-video .crop-area > div[style*="top: -5px"][style*="right: -5px"] {
+    top: -10px !important;
+    right: -10px !important;
+  }
+
+  .play-video .crop-area > div[style*="bottom: -5px"][style*="left: -5px"] {
+    bottom: -10px !important;
+    left: -10px !important;
+  }
+
+  .play-video .crop-area > div[style*="bottom: -5px"][style*="right: -5px"] {
+    bottom: -10px !important;
+    right: -10px !important;
+  }
+  
+  /* Improved video controls for mobile */
+  .play-video video {
+    border-radius: 12px;
+    /* Better touch interaction */
+    touch-action: manipulation;
+  }
+  
+  /* Mobile-specific video controls */
+  .play-video video::-webkit-media-controls {
+    background: rgba(0,0,0,0.7);
+    border-radius: 0 0 12px 12px;
+  }
+  
+  .play-video video::-webkit-media-controls-panel {
+    padding: 8px;
+  }
+  
+  /* Larger touch targets for mobile */
+  .play-video button,
+  .play-video .btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
+    font-size: 16px;
+    border-radius: 8px;
+    touch-action: manipulation;
+    /* Prevent text selection on touch */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* Better spacing for mobile */
+  .play-video {
+    padding: 0 !important; /* Remove all padding on mobile */
+  }
+  
+  /* Remove bottom margin from screenmerch actions on mobile */
+  .screenmerch-actions {
+    margin-bottom: 0 !important;
+  }
+  
+  /* Improved screenshot grid for mobile */
+  .screenshots-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 15px 0;
+  }
+  
+  .screenshot-item {
+    aspect-ratio: 16/9;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    /* Touch-friendly */
+    min-height: 80px;
+    touch-action: manipulation;
+  }
+  
+  .screenshot-item:hover {
+    transform: scale(1.05);
+  }
+  
+  .screenshot-item.selected {
+    border: 3px solid #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+  }
+  
+  /* Better crop tool for mobile */
+  .crop-tool {
+    padding: 15px;
+    border-radius: 12px;
+    margin: 15px 0;
+  }
+  
+  .crop-tool button {
+    margin: 5px;
+    font-size: 14px;
+  }
+  
+  /* Mobile crop controls */
+  .crop-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .crop-controls button {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+  }
+  
+  .crop-info {
+    margin-left: 0;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  /* Improved Make Merch button for mobile */
+  .make-merch-btn {
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    border-radius: 12px;
+    margin-top: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    touch-action: manipulation;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  .make-merch-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  }
+  
+  .make-merch-btn:active {
+    transform: translateY(0);
+  }
+  
+  /* Better flow steps for mobile */
+  .flow-steps {
+    gap: 8px;
+    padding: 0 10px;
+  }
+  
+  .flow-step {
+    min-width: 100px;
+    padding: 8px 4px;
+  }
+  
+  .step-number {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+  
+  /* Improved user flow section for mobile */
+  .user-flow-section {
+    margin: -10px -10px 20px -10px;
+    padding: 15px 10px;
+    border-radius: 0;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  .play-video .video-container,
+  .play-video video {
+    height: 280px !important;
+    max-height: 280px !important;
+  }
+  
+  .screenshots-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .flow-steps {
+    gap: 4px;
+  }
+  
+  .flow-step {
+    min-width: 80px;
+  }
+  
+  .step-number {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+  
+  .make-merch-btn {
+    padding: 14px;
+    font-size: 15px;
+  }
+}
+
+/* Step Navigation Bar Styles */
+.user-flow-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin: -24px -24px 20px -24px;
+  padding: 20px 20px;
+  color: white;
+  text-align: center;
+  border-radius: 16px 16px 0 0;
+}
+
+.flow-steps {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 130px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.flow-step:hover {
+  transform: translateY(-2px);
+}
+
+.clickable-step {
+  cursor: pointer;
+  position: relative;
+}
+
+.clickable-step:hover {
+  transform: translateY(-3px);
+}
+
+.clickable-step:hover .step-number {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.clickable-step::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.8);
+  transition: width 0.3s ease;
+}
+
+.clickable-step:hover::after {
+  width: 80%;
+}
+
+.step-number {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 6px;
+  transition: all 0.3s ease;
+}
+
+.flow-step:hover .step-number {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.step-content h3 {
+  margin: 0 0 3px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+}
+
+.step-content p {
+  margin: 0;
+  font-size: 0.7rem;
+  opacity: 0.9;
+  line-height: 1.1;
+}
+
+.flow-arrow {
+  font-size: 1.3rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: bold;
+  margin: 0 6px;
+}
+
+.play-video {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+    border: 1px solid #e9ecef;
+    position: relative;
+}
+
+.play-video video {
+    width: 100% !important;
+    max-width: 640px !important;
+    height: 360px !important;
+    object-fit: contain !important;
+    /* Professional video constraints - fixed height to prevent size changes */
+    aspect-ratio: 16/9;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    border: 1px solid #e0e0e0;
+    background: transparent;
+    /* Ensure consistent sizing */
+    display: block !important;
+    margin: 0 auto;
+    /* Prevent any interference with video playback */
+    pointer-events: auto !important;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Mobile override for video height */
+@media (max-width: 768px) {
+  .play-video video {
+    height: 320px !important;
+  }
+}
+
+/* Force video background to be transparent */
+.play-video video {
+  background: transparent !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+/* Mobile override for forced video background rule */
+@media (max-width: 768px) {
+  .play-video video {
+    height: 320px !important;
+  }
+}
+
+.play-video .video-container {
+  background: white !important;
+  border-radius: 8px;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 400px !important;
+}
+
+/* Mobile override for video container height */
+@media (max-width: 768px) {
+  .play-video .video-container {
+    min-height: 320px !important;
+    height: 320px !important;
+  }
+}
+
+.play-video .video-container > div {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Crop Tool Button Styles */
+.crop-tool-btn {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  z-index: 1000 !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: black !important;
+  border: 2px solid rgba(0, 0, 0, 0.2) !important;
+  border-radius: 4px !important;
+  padding: 8px !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  backdrop-filter: blur(4px) !important;
+  transition: all 0.2s ease !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+}
+
+.crop-tool-btn:hover {
+  background: rgba(255, 255, 255, 1) !important;
+  transform: scale(1.05) !important;
+}
+
+/* Notification Animation */
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.notification {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Video container to maintain consistent dimensions */
+.play-video .video-container {
+    width: 100%;
+    max-width: 640px;
+    height: 360px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Mobile override for the second video container definition */
+@media (max-width: 768px) {
+  .play-video .video-container {
+    height: 320px !important;
+  }
+}
+
+.play-video iframe {
+    width: 100%;
+    height: 37vw;
+}
+
+.play-video h3 {
+    margin-top: 10px;
+    font-weight: 600;
+    font-size: 22px;
+}
+
+.play-video .play-video-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #5a5a5a;
+}
+
+.play-video .play-video-info span img {
+    width: 20px;
+    margin-right: 8px;
+}
+
+.play-video .play-video-info span {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 15px;
+}
+
+.play-video hr {
+    border: 0;
+    height: 1px;
+    background: #ccc;
+    margin: 10px 0;
+}
+
+.publisher {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.publisher div {
+    flex: 1;
+    line-height: 18px;
+}
+
+.publisher img {
+    width: 40px;
+    border-radius: 50%;
+    margin-right: 15px;
+}
+
+.publisher div p {
+    color: #000;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.publisher div span {
+    font-size: 13px;
+    color: #5a5a5a;
+}
+
+/* Social interactions removed - keeping space for video description */
+
+.publisher button {
+    background: red;
+    color: #fff;
+    padding: 8px 30px;
+    border: 0;
+    outline: 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.publisher button:hover {
+    background: #cc0000;
+}
+
+.vid-description {
+    padding-left: 55px;
+    margin: 15px 0;
+}
+
+.vid-description p {
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: #5a5a5a;
+}
+
+.vid-description h4 {
+    font-size: 14px;
+    color: #5a5a5a;
+    margin-top: 15px;
+}
+
+.comment {
+    display: flex;
+    align-items: flex-start;
+    margin: 20px 0;
+}
+
+.comment img {
+    width: 35px;
+    border-radius: 50%;
+    margin-right: 15px;
+}
+
+.comment h3 {
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.comment h3 span {
+    font-size: 12px;
+    color: #5a5a5a;
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+.comment .comment-action {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.comment .comment-action img {
+    border-radius: 0;
+    width: 20px;
+    margin-right: 5px;
+}
+
+.comment .comment-action span {
+    margin-right: 20px;
+    color: #5a5a5a;
+}
+
+@media (max-width: 900px) {
+    .play-video {
+        flex-basis: 100%;
+    }
+    .play-video iframe {
+        width: 100%;
+        height: 50vw;
+    }
+    .vid-description {
+        padding-left: 0;
+    }
+    .play-video .play-video-info span {
+        margin-left: 0;
+        margin-right: 15px;
+        margin-top: 15px;
+    }
+    
+    .publisher {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+}
+
+.screenmerch-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.screenmerch-btn {
+    flex: 1 1 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    padding: 12px 24px;
+    border: 0;
+    outline: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin: 0;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.screenmerch-btn:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.screenmerch-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    margin: 24px 0;
+    justify-content: flex-start;
+}
+
+.screenmerch-images > div {
+    flex: 1 1 180px;
+    max-width: 180px;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.screenmerch-preview {
+    width: 120px;
+    height: 80px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-top: 8px;
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.screenmerch-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 80px;
+    background: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 6px;
+    color: #6c757d;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    margin-top: auto;
+}
+
+.screenmerch-placeholder:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    color: #495057;
+}
+
+.screenmerch-images-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+}
+
+.screenmerch-image-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+    min-height: 140px;
+    max-height: 160px;
+    overflow: hidden;
+    border: 2px dashed #e0e0e0;
+}
+
+.screenmerch-image-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.screenmerch-image-box h4 {
+    font-size: 0.9rem;
+    margin: 0 0 8px 0;
+    font-weight: 600;
+    color: #333;
+}
+
+.screenmerch-col {
+    display: contents;
+}
+
+.screenmerch-sidebar {
+    flex: 1;
+    min-width: 260px;
+    max-width: 340px;
+    padding-left: 16px;
+    padding-right: 8px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+@media (max-width: 900px){
+  .play-container{
+    flex-direction: column;
+    padding-left: 5%;
+    padding-right: 5%;
+  }
+  .main-video-col, .screenmerch-sidebar {
+    max-width: 100%;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .screenmerch-sidebar {
+    margin-top: 16px;
+    padding-top: 0;
+  }
+}
+
+.screenmerch-img-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.screenmerch-buttons {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: flex;
+    gap: 4px;
+    z-index: 2;
+}
+
+.screenmerch-crop-btn {
+    background: rgba(255,255,255,0.8);
+    border: none;
+    color: #007bff;
+    font-size: 14px;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    line-height: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.2s;
+}
+
+.screenmerch-crop-btn:hover {
+    background: #e3f2fd;
+}
+
+.screenmerch-delete-btn {
+    background: rgba(255,255,255,0.8);
+    border: none;
+    color: #c00;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    line-height: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.2s;
+}
+
+.screenmerch-delete-btn:hover {
+    background: #ffeaea;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
