@@ -170,6 +170,41 @@
     transform: none !important;
     -webkit-transform: none !important;
   }
+
+  /* Mobile crop tool improvements */
+  .play-video .crop-overlay {
+    touch-action: none !important; /* Prevent scrolling when using crop tool */
+  }
+
+  /* Larger resize handles for mobile touch */
+  .play-video .crop-area > div {
+    width: 20px !important;
+    height: 20px !important;
+    background-color: #007bff !important;
+    border: 2px solid white !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+  }
+
+  /* Specific positioning for each corner handle */
+  .play-video .crop-area > div[style*="top: -5px"][style*="left: -5px"] {
+    top: -10px !important;
+    left: -10px !important;
+  }
+
+  .play-video .crop-area > div[style*="top: -5px"][style*="right: -5px"] {
+    top: -10px !important;
+    right: -10px !important;
+  }
+
+  .play-video .crop-area > div[style*="bottom: -5px"][style*="left: -5px"] {
+    bottom: -10px !important;
+    left: -10px !important;
+  }
+
+  .play-video .crop-area > div[style*="bottom: -5px"][style*="right: -5px"] {
+    bottom: -10px !important;
+    right: -10px !important;
+  }
   
   /* Improved video controls for mobile */
   .play-video video {
