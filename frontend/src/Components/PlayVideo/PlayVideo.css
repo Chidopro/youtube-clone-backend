@@ -204,12 +204,22 @@
   }
 
   /* Larger resize handles for mobile touch */
-  .play-video .crop-area > div {
+  .play-video .crop-area .resize-handle {
     width: 20px !important;
     height: 20px !important;
     background-color: #007bff !important;
     border: 2px solid white !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+    touch-action: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+  }
+
+  /* Ensure resize handles are above other elements */
+  .play-video .crop-area .resize-handle {
+    z-index: 10 !important;
   }
 
   /* Specific positioning for each corner handle */
