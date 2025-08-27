@@ -1187,8 +1187,8 @@
     opacity: 0.7;
 }
 
-/* Products Sold Table */
-.products-sold-table {
+/* Products Sold Chart */
+.products-sold-chart {
     background: #fff;
     padding: 30px;
     border-radius: 12px;
@@ -1196,23 +1196,129 @@
     margin-bottom: 40px;
 }
 
-.products-sold-table h3 {
-    margin: 0 0 20px 0;
+.products-sold-chart h3 {
+    margin: 0 0 25px 0;
     color: #333;
     font-size: 1.3rem;
 }
 
-.product-info {
+.products-chart-container {
     display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.product-chart-item {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.product-chart-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border-color: #007bff;
+}
+
+.product-chart-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
+    margin-bottom: 15px;
+}
+
+.product-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.product-stats {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.quantity {
+    background: #007bff;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
     font-weight: 600;
 }
 
-.product-image img {
-    width: 40px;
+.revenue {
+    background: #28a745;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.product-chart-bar-container {
+    background: #e9ecef;
     height: 40px;
-    border-radius: 6px;
-    object-fit: cover;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.product-chart-bar {
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    height: 100%;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 15px;
+    transition: all 0.3s ease;
+    min-width: 60px;
+}
+
+.product-chart-bar:hover {
+    background: linear-gradient(90deg, #0056b3, #004494);
+    transform: scaleY(1.05);
+}
+
+.bar-label {
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.product-source {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.products-chart-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.products-chart-empty h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 1.2rem;
+}
+
+.products-chart-empty p {
+    margin: 0;
+    font-size: 0.95rem;
+    opacity: 0.8;
 }
 
 /* Video Sources Section */
@@ -1341,6 +1447,38 @@
     
     .summary-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .products-sold-chart {
+        padding: 20px;
+    }
+    
+    .product-chart-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .product-stats {
+        gap: 10px;
+    }
+    
+    .quantity, .revenue {
+        font-size: 0.8rem;
+        padding: 3px 10px;
+    }
+    
+    .product-chart-bar-container {
+        height: 35px;
+    }
+    
+    .bar-label {
+        font-size: 0.8rem;
+    }
+    
+    .product-source {
+        font-size: 0.8rem;
+    }
         gap: 10px;
     }
     

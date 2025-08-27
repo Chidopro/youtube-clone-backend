@@ -748,46 +748,46 @@ const Dashboard = ({ sidebar }) => {
                                     </div>
                                 </div>
                                 
-                                {/* Products Sold Table */}
-                                <div className="products-sold-table">
+                                {/* Products Sold Chart */}
+                                <div className="products-sold-chart">
                                     <h3>🛍️ Products Sold</h3>
-                                    <div className="table-header">
-                                        <div>Product</div>
-                                        <div>Quantity Sold</div>
-                                        <div>Revenue</div>
-                                        <div>Video Source</div>
-                                        <div>Image</div>
-                                    </div>
                                     
                                     {analyticsData.products_sold && analyticsData.products_sold.length > 0 ? (
-                                        analyticsData.products_sold.map((product, index) => (
-                                            <div key={index} className="table-row">
-                                                <div className="product-info">
-                                                    <span>{product.product}</span>
-                                                </div>
-                                                <div>{product.quantity}</div>
-                                                <div>${product.revenue.toFixed(2)}</div>
-                                                <div>{product.video_source}</div>
-                                                <div className="product-image">
-                                                    {product.image ? (
-                                                        <img src={product.image} alt={product.product} style={{width: '50px', height: '50px', objectFit: 'cover'}} />
-                                                    ) : (
-                                                        <span>No image</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))
+                                        <div className="products-chart-container">
+                                            {analyticsData.products_sold.map((product, index) => {
+                                                const maxQuantity = Math.max(...analyticsData.products_sold.map(p => p.quantity));
+                                                const barWidth = maxQuantity > 0 ? (product.quantity / maxQuantity) * 100 : 0;
+                                                
+                                                return (
+                                                    <div key={index} className="product-chart-item">
+                                                        <div className="product-chart-header">
+                                                            <div className="product-name">{product.product}</div>
+                                                            <div className="product-stats">
+                                                                <span className="quantity">{product.quantity} sold</span>
+                                                                <span className="revenue">${product.revenue.toFixed(2)}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="product-chart-bar-container">
+                                                            <div 
+                                                                className="product-chart-bar" 
+                                                                style={{width: `${barWidth}%`}}
+                                                                title={`${product.quantity} units sold - $${product.revenue.toFixed(2)} revenue`}
+                                                            >
+                                                                <span className="bar-label">{product.quantity}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="product-source">
+                                                            <small>From: {product.video_source}</small>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     ) : (
-                                        <div className="table-row empty-state">
-                                            <div className="product-info">
-                                                <span>No products sold yet</span>
-                                            </div>
-                                            <div>0</div>
-                                            <div>$0.00</div>
-                                            <div>No videos yet</div>
-                                            <div className="product-image">
-                                                <span>No image</span>
-                                            </div>
+                                        <div className="products-chart-empty">
+                                            <div className="empty-icon">📦</div>
+                                            <h4>No products sold yet</h4>
+                                            <p>Start creating content to see your sales data here!</p>
                                         </div>
                                     )}
                                 </div>
