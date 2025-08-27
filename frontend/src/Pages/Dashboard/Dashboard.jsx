@@ -541,29 +541,14 @@ const Dashboard = ({ sidebar }) => {
                                     <h4>🎨 Customize Your Channel</h4>
                                     <p>Add a cover image, profile picture, and bio to make your channel unique.</p>
                                 </div>
-                                <div className="tip-card">
+                                <div className="tip-card clickable" onClick={() => navigate('/upload')}>
                                     <h4>📹 Upload Content</h4>
                                     <p>Start sharing your videos and build your audience.</p>
+                                    <div className="card-action">Click to upload →</div>
                                 </div>
                                 <div className="tip-card">
                                     <h4>📊 Check Your Analytics</h4>
                                     <p>Monitor your sales and track your performance.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Quick Upload Section - Condensed */}
-                        <div className="quick-upload-section">
-                            <div className="upload-card condensed">
-                                <div className="upload-content">
-                                    <div className="upload-icon">📹</div>
-                                    <div className="upload-text">
-                                        <h3>Upload New Video</h3>
-                                        <p>Share your content with the ScreenMerch community</p>
-                                    </div>
-                                    <button onClick={() => navigate('/upload')} className="primary-upload-btn">
-                                        Start Upload
-                                    </button>
                                 </div>
                             </div>
                         </div>

@@ -516,6 +516,20 @@
     padding: 20px;
     border-radius: 8px;
     border-left: 4px solid #007bff;
+    transition: all 0.3s ease;
+}
+
+.tip-card.clickable {
+    cursor: pointer;
+    border-left: 4px solid #28a745;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+}
+
+.tip-card.clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.2);
+    background: linear-gradient(135deg, #e9ecef, #dee2e6);
+    border-left: 4px solid #20c997;
 }
 
 .tip-card h4 {
@@ -525,9 +539,21 @@
 }
 
 .tip-card p {
-    margin: 0;
+    margin: 0 0 10px 0;
     color: #666;
     line-height: 1.5;
+}
+
+.card-action {
+    color: #28a745;
+    font-weight: 600;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.tip-card.clickable:hover .card-action {
+    opacity: 1;
 }
 
 .upgrade-link {
