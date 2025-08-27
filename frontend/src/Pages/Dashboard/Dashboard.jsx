@@ -593,7 +593,10 @@ const Dashboard = ({ sidebar }) => {
                                     <h4>📹 Upload Content</h4>
                                     <p>Start sharing your videos and build your audience.</p>
                                 </div>
-
+                                <div className="tip-card">
+                                    <h4>📊 Check Your Analytics</h4>
+                                    <p>Monitor your sales and track your performance.</p>
+                                </div>
 
                             </div>
                         </div>
