@@ -729,7 +729,7 @@
        }
        
        .product-card img {
-         height: 150px;
+         height: 120px;
          max-width: 100% !important;
        }
        
@@ -1424,10 +1424,10 @@
               productCard.className = "product-card";
                              productCard.innerHTML = `
                  <!-- Top Image (Blank Product) -->
-                 <img src="/static/images/${product.filename}" alt="${product.name} - Blank" style="width:100%;height:150px;object-fit:cover;border-radius:6px;margin-bottom:8px;">
+                 <img src="/static/images/${product.filename}" alt="${product.name} - Blank" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px;">
                  
                  <!-- Bottom Image (Preview with Design) -->
-                 <img src="/static/images/${product.preview_image || product.filename}" alt="${product.name} - Preview" style="width:100%;height:150px;object-fit:cover;border-radius:6px;">
+                 <img src="/static/images/${product.preview_image || product.filename}" alt="${product.name} - Preview" style="width:100%;height:120px;object-fit:cover;border-radius:6px;">
                  
                  <div class="product-title">${product.name}</div>
                  <div class="product-price" id="price-${index}">$${product.price.toFixed(2)}</div>
