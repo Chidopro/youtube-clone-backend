@@ -637,8 +637,16 @@
       display: none;
     }
     
-         /* Mobile Responsive */
+         /* Mobile Responsive - STABILIZED */
      @media (max-width: 768px) {
+       /* Prevent all horizontal scrolling */
+       body {
+         overflow-x: hidden !important;
+         width: 100% !important;
+         max-width: 100% !important;
+         box-sizing: border-box !important;
+       }
+       
        .main-container {
          flex-direction: column;
          padding: 10px;
@@ -646,15 +654,18 @@
          overflow-x: hidden !important;
          width: 100% !important;
          max-width: 100% !important;
+         box-sizing: border-box !important;
        }
        
        .left-column {
          min-width: auto;
          max-width: 100%;
+         overflow-x: hidden !important;
        }
        
        .right-column {
          min-width: auto;
+         overflow-x: hidden !important;
        }
        
        .screenshots-selected,
@@ -662,55 +673,70 @@
        .products-section {
          padding: 15px;
          margin-bottom: 15px;
+         overflow-x: hidden !important;
+         width: 100% !important;
+         box-sizing: border-box !important;
        }
        
        .screenshot-preview-row {
          min-height: 100px;
          margin: 8px 0 10px 0;
          flex-wrap: wrap !important;
-         overflow-x: visible !important;
+         overflow-x: hidden !important;
          justify-content: center !important;
          gap: 8px !important;
+         width: 100% !important;
+         box-sizing: border-box !important;
        }
        
        .video-thumbnail {
          height: 30px;
          margin-bottom: 3px;
+         max-width: 100% !important;
        }
        
        .screenshot-thumbnails {
          display: flex !important;
          flex-wrap: wrap !important;
-         overflow-x: visible !important;
+         overflow-x: hidden !important;
          justify-content: center !important;
          gap: 8px !important;
          margin-top: 8px;
          margin-left: 0 !important;
+         width: 100% !important;
+         box-sizing: border-box !important;
        }
        
        .screenshot-thumbnail {
          width: 80px !important;
          height: 60px !important;
          flex-shrink: 0 !important;
+         max-width: 100% !important;
        }
        
        .product-row {
          grid-template-columns: 1fr;
          gap: 12px;
          margin-top: 15px;
+         overflow-x: hidden !important;
        }
        
        .product-card {
          padding: 12px;
+         overflow-x: hidden !important;
+         width: 100% !important;
+         box-sizing: border-box !important;
        }
        
        .product-card img {
          height: 150px;
+         max-width: 100% !important;
        }
        
        .variant-selector {
          padding: 8px;
          margin-bottom: 10px;
+         overflow-x: hidden !important;
        }
        
        .variant-selector label {
@@ -720,12 +746,54 @@
        .variant-selector select {
          padding: 5px;
          font-size: 11px;
+         max-width: 100% !important;
        }
        
        .note-input {
          padding: 5px;
          font-size: 11px;
          margin-bottom: 10px;
+         max-width: 100% !important;
+         box-sizing: border-box !important;
+       }
+       
+       /* Additional mobile stabilization */
+               .category-grid {
+          grid-template-columns: repeat(3, 1fr) !important;
+          gap: 10px !important;
+          max-width: 100% !important;
+          overflow-x: hidden !important;
+        }
+       
+               .category-card {
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+          overflow-x: hidden !important;
+          padding: 15px 10px !important;
+          min-height: 80px !important;
+        }
+        
+        .category-card span:first-child {
+          font-size: 1.8rem !important;
+          margin-bottom: 5px !important;
+        }
+        
+        .category-card span:last-child {
+          font-size: 0.7rem !important;
+          line-height: 1.2 !important;
+        }
+       
+       .category-selection-landing {
+         overflow-x: hidden !important;
+         width: 100% !important;
+         max-width: 100% !important;
+         box-sizing: border-box !important;
+       }
+       
+       /* Prevent any horizontal scrolling on all elements */
+       * {
+         max-width: 100% !important;
+         box-sizing: border-box !important;
        }
        
        .btn {
@@ -1061,48 +1129,49 @@
         <h2 style="color: #333; margin-bottom: 10px;">Choose a Product Category</h2>
         <p style="color: #666; margin-bottom: 30px;">Select a category to browse products for your custom merchandise</p>
         
-        <div class="category-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; max-width: 800px; margin: 0 auto;">
-          <div class="category-card" onclick="switchCategory('womens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👩</span>
-            <span style="font-weight: 600; color: #333;">Women's</span>
-          </div>
-          <div class="category-card" onclick="switchCategory('mens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👨</span>
-            <span style="font-weight: 600; color: #333;">Men's</span>
-          </div>
-          <div class="category-card" onclick="switchCategory('kids')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👶</span>
-            <span style="font-weight: 600; color: #333;">Kids</span>
-          </div>
-          <div class="category-card" onclick="switchCategory('mugs')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">☕</span>
-            <span style="font-weight: 600; color: #333;">Mugs</span>
-          </div>
-          <div class="category-card" onclick="switchCategory('hats')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🧢</span>
-            <span style="font-weight: 600; color: #333;">Hats</span>
-          </div>
-          <div class="category-card" onclick="switchCategory('bags')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👜</span>
-            <span style="font-weight: 600; color: #333;">Bags</span>
-          </div>
-          <div class="category-card" onclick="switchCategory('pets')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🐕</span>
-            <span style="font-weight: 600; color: #333;">Pets</span>
-          </div>
-          <div class="category-card" onclick="switchCategory('stickers')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🌟</span>
-            <span style="font-weight: 600; color: #333;">Stickers & Magnets</span>
-          </div>
-          <div class="category-card" onclick="switchCategory('misc')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">📦</span>
-            <span style="font-weight: 600; color: #333;">Miscellaneous</span>
-          </div>
-          <div class="category-card" onclick="switchCategory('thumbnails')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🖼️</span>
-            <span style="font-weight: 600; color: #333;">Thumbnails</span>
-          </div>
-        </div>
+                 <div class="category-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; max-width: 800px; margin: 0 auto;">
+           <div class="category-card" onclick="switchCategory('womens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👩</span>
+             <span style="font-weight: 600; color: #333;">Women's</span>
+           </div>
+           <div class="category-card" onclick="switchCategory('mens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👨</span>
+             <span style="font-weight: 600; color: #333;">Men's</span>
+           </div>
+           <div class="category-card" onclick="switchCategory('kids')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👶</span>
+             <span style="font-weight: 600; color: #333;">Kids</span>
+           </div>
+           <div class="category-card" onclick="switchCategory('mugs')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">☕</span>
+             <span style="font-weight: 600; color: #333;">Mugs</span>
+           </div>
+           <div class="category-card" onclick="switchCategory('hats')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🧢</span>
+             <span style="font-weight: 600; color: #333;">Hats</span>
+           </div>
+           <div class="category-card" onclick="switchCategory('bags')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👜</span>
+             <span style="font-weight: 600; color: #333;">Bags</span>
+           </div>
+           <div class="category-card" onclick="switchCategory('pets')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🐕</span>
+             <span style="font-weight: 600; color: #333;">Pets</span>
+           </div>
+           <div class="category-card" onclick="switchCategory('stickers')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🌟</span>
+             <span style="font-weight: 600; color: #333;">Stickers & Magnets</span>
+           </div>
+           <div class="category-card" onclick="switchCategory('thumbnails')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🖼️</span>
+             <span style="font-weight: 600; color: #333;">Thumbnails</span>
+           </div>
+           <div class="category-card" onclick="switchCategory('misc')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">📦</span>
+             <span style="font-weight: 600; color: #333;">Miscellaneous</span>
+           </div>
+           
+         </div>
       </div>
       
       <style>

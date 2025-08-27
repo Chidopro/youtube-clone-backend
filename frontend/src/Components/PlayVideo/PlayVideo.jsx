@@ -62,6 +62,44 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         console.log('Alert disabled:', message);
         return;
     }, []);
+
+    // Configure video for mobile inline playback
+    useEffect(() => {
+        if (videoRef.current && isMobile) {
+            const video = videoRef.current;
+            
+            // Set attributes for mobile inline playback
+            video.setAttribute('playsinline', 'true');
+            video.setAttribute('webkit-playsinline', 'true');
+            video.setAttribute('x-webkit-airplay', 'allow');
+            video.setAttribute('preload', 'metadata');
+            
+            // Prevent fullscreen on mobile
+            video.addEventListener('webkitbeginfullscreen', (e) => {
+                e.preventDefault();
+                video.webkitExitFullscreen();
+            });
+            
+            video.addEventListener('webkitendfullscreen', (e) => {
+                e.preventDefault();
+            });
+            
+            // Ensure video stays inline
+            const preventFullscreen = (e) => {
+                if (video.webkitPresentationMode === 'fullscreen') {
+                    video.webkitSetPresentationMode('inline');
+                }
+            };
+            
+            video.addEventListener('webkitpresentationmodechanged', preventFullscreen);
+            
+            return () => {
+                video.removeEventListener('webkitbeginfullscreen', preventFullscreen);
+                video.removeEventListener('webkitendfullscreen', preventFullscreen);
+                video.removeEventListener('webkitpresentationmodechanged', preventFullscreen);
+            };
+        }
+    }, [isMobile, videoRef.current]);
     
 
 
@@ -819,6 +857,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             height: isMobile ? '320px' : '360px'
                         }} 
                         src={video.video_url}
+                        playsInline
+                        webkit-playsinline="true"
+                        x-webkit-airplay="allow"
+                        preload="metadata"
                         onCanPlay={() => {
                             console.log('Video can play');
                             setLoading(false);
