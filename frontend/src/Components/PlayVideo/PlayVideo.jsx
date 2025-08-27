@@ -1160,47 +1160,59 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                  />
                              </div>
 
-                             {/* Crop Controls */}
-                             <div
-                                 style={{
-                                     position: 'absolute',
-                                     bottom: '20px',
-                                     left: '50%',
-                                     transform: 'translateX(-50%)',
-                                     display: 'flex',
-                                     gap: '10px',
-                                     zIndex: 6
-                                 }}
-                             >
-                                 <button
-                                     onClick={handleCancelCrop}
-                                     style={{
-                                         padding: '8px 16px',
-                                         backgroundColor: '#6c757d',
-                                         color: 'white',
-                                         border: 'none',
-                                         borderRadius: '4px',
-                                         cursor: 'pointer',
-                                         fontSize: '14px'
-                                     }}
-                                 >
-                                     Cancel
-                                 </button>
-                                 <button
-                                     onClick={handleApplyCrop}
-                                     style={{
-                                         padding: '8px 16px',
-                                         backgroundColor: '#007bff',
-                                         color: 'white',
-                                         border: 'none',
-                                         borderRadius: '4px',
-                                         cursor: 'pointer',
-                                         fontSize: '14px'
-                                     }}
-                                 >
-                                     Apply Crop
-                                 </button>
-                             </div>
+                                                           {/* Crop Controls */}
+                              <div
+                                  style={{
+                                      position: 'absolute',
+                                      bottom: '20px',
+                                      left: '50%',
+                                      transform: 'translateX(-50%)',
+                                      display: 'flex',
+                                      gap: '10px',
+                                      zIndex: 6
+                                  }}
+                              >
+                                  <button
+                                      onClick={handleCancelCrop}
+                                      onTouchStart={(e) => e.stopPropagation()}
+                                      onTouchEnd={(e) => e.stopPropagation()}
+                                      style={{
+                                          padding: isMobile ? '12px 20px' : '8px 16px',
+                                          backgroundColor: '#6c757d',
+                                          color: 'white',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          cursor: 'pointer',
+                                          fontSize: isMobile ? '16px' : '14px',
+                                          minHeight: isMobile ? '44px' : 'auto',
+                                          minWidth: isMobile ? '80px' : 'auto',
+                                          touchAction: 'manipulation',
+                                          zIndex: 20
+                                      }}
+                                  >
+                                      Cancel
+                                  </button>
+                                  <button
+                                      onClick={handleApplyCrop}
+                                      onTouchStart={(e) => e.stopPropagation()}
+                                      onTouchEnd={(e) => e.stopPropagation()}
+                                      style={{
+                                          padding: isMobile ? '12px 20px' : '8px 16px',
+                                          backgroundColor: '#007bff',
+                                          color: 'white',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          cursor: 'pointer',
+                                          fontSize: isMobile ? '16px' : '14px',
+                                          minHeight: isMobile ? '44px' : 'auto',
+                                          minWidth: isMobile ? '80px' : 'auto',
+                                          touchAction: 'manipulation',
+                                          zIndex: 20
+                                      }}
+                                  >
+                                      Apply Crop
+                                  </button>
+                              </div>
                          </div>
                      )}
                 </div>
