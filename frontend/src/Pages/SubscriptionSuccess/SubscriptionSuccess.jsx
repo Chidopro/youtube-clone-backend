@@ -27,11 +27,11 @@ const SubscriptionSuccess = () => {
                 const data = await response.json();
 
                 if (data.success) {
-                    // Activate the subscription in our system
-                    const result = await SubscriptionService.activatePremiumSubscription(
-                        data.subscription_id, 
-                        data.customer_id
-                    );
+                                    // Activate the subscription in our system
+                const result = await SubscriptionService.activateProSubscription(
+                    data.subscription_id, 
+                    data.customer_id
+                );
 
                     if (result.success) {
                         setSuccess(true);
