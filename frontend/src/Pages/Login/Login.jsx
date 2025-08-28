@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { supabase } from '../../supabaseClient';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { API_CONFIG } from '../../config/apiConfig';
 import './Login.css';
 
 const Login = () => {
@@ -19,33 +19,52 @@ const Login = () => {
     setMessage('');
 
     try {
-      if (isLoginMode) {
-        // Login with Supabase
-        const { error } = await supabase.auth.signInWithPassword({ 
-          email: email.trim(), 
-          password: password 
-        });
+      const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
+      const url = `${API_CONFIG.BASE_URL}${endpoint}`;
+      
+      console.log('Attempting auth request to:', url);
+      console.log('Mode:', isLoginMode ? 'login' : 'signup');
+      console.log('Email:', email.trim());
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password
+        })
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (data.success) {
+        // Store authentication state
+        localStorage.setItem('user_authenticated', 'true');
+        localStorage.setItem('user_email', email.trim());
         
-        if (error) {
-          setMessage({ type: 'error', text: error.message });
-        } else {
-          setMessage({ type: 'success', text: 'Login successful! Redirecting...' });
-          setTimeout(() => {
-            navigate(returnTo);
-          }, 1500);
-        }
+        console.log('🔐 Auth success - storing auth state');
+        
+        setMessage({ type: 'success', text: data.message || 'Login successful! Redirecting...' });
+        
+        // Redirect after a short delay
+        setTimeout(() => {
+          navigate(returnTo);
+        }, 1500);
       } else {
-        // Signup with Supabase
-        const { error } = await supabase.auth.signUp({ 
-          email: email.trim(), 
-          password: password 
-        });
-        
-        if (error) {
-          setMessage({ type: 'error', text: error.message });
-        } else {
-          setMessage({ type: 'success', text: 'Signup successful! Please check your email for confirmation.' });
-        }
+        setMessage({ type: 'error', text: data.error || 'Authentication failed' });
       }
     } catch (error) {
       console.error('Auth error:', error);
