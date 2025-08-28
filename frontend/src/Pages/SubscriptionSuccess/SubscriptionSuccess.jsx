@@ -27,13 +27,24 @@ const SubscriptionSuccess = () => {
                 const { data: { user }, error: authError } = await supabase.auth.getUser();
                 
                 if (authError || !user) {
-                    setError('Please sign in to complete your subscription activation');
-                    setLoading(false);
+                    // Store the session ID in localStorage for after login
+                    localStorage.setItem('pendingSubscriptionSession', sessionId);
+                    // Redirect to login with return URL
+                    navigate('/login?returnTo=/subscription-success');
                     return;
                 }
 
+                // Check if there's a pending subscription session from before login
+                const pendingSession = localStorage.getItem('pendingSubscriptionSession');
+                const sessionToUse = pendingSession || sessionId;
+                
+                if (pendingSession) {
+                    // Clear the pending session
+                    localStorage.removeItem('pendingSubscriptionSession');
+                }
+
                 // Verify the subscription with our backend
-                const response = await fetch(`${API_CONFIG.ENDPOINTS.VERIFY_SUBSCRIPTION}/${sessionId}`);
+                const response = await fetch(`${API_CONFIG.ENDPOINTS.VERIFY_SUBSCRIPTION}/${sessionToUse}`);
                 const data = await response.json();
 
                 if (data.success) {
