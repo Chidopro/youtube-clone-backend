@@ -205,11 +205,11 @@ const SubscriptionTiers = () => {
                             <span className="revenue-label">You Keep</span>
                         </div>
                         <div className="tier-cost">
-                            <span className="cost-amount">$9.99/month</span>
+                            <span className="cost-amount">$99/month</span>
                             <span className="cost-label">Monthly Cost</span>
                         </div>
                         <div className="tier-savings">
-                            <span className="savings-amount">+${(hypotheticalData.totalRevenue * 0.1 - 120).toLocaleString()}</span>
+                            <span className="savings-amount">+${(hypotheticalData.totalRevenue * 0.1 - 1200).toLocaleString()}</span>
                             <span className="savings-label">Net Additional Earnings</span>
                         </div>
                     </div>
@@ -225,11 +225,11 @@ const SubscriptionTiers = () => {
                             <span className="revenue-label">You Keep</span>
                         </div>
                         <div className="tier-cost">
-                            <span className="cost-amount">$99/month</span>
+                            <span className="cost-amount">$299/month</span>
                             <span className="cost-label">Monthly Cost</span>
                         </div>
                         <div className="tier-savings">
-                            <span className="savings-amount">+${(hypotheticalData.totalRevenue * 0.2 - 1200).toLocaleString()}</span>
+                            <span className="savings-amount">+${(hypotheticalData.totalRevenue * 0.2 - 3600).toLocaleString()}</span>
                             <span className="savings-label">Net Additional Earnings</span>
                         </div>
                     </div>
@@ -245,11 +245,11 @@ const SubscriptionTiers = () => {
                             <span className="revenue-label">You Keep</span>
                         </div>
                         <div className="tier-cost">
-                            <span className="cost-amount">$299/month</span>
-                            <span className="cost-label">Monthly Cost</span>
+                            <span className="cost-amount">$7,500</span>
+                            <span className="cost-label">One-time License</span>
                         </div>
                         <div className="tier-savings">
-                            <span className="savings-amount">+${(hypotheticalData.totalRevenue * 0.25 - 3600).toLocaleString()}</span>
+                            <span className="savings-amount">+${(hypotheticalData.totalRevenue * 0.25 - 7500).toLocaleString()}</span>
                             <span className="savings-label">Net Additional Earnings</span>
                         </div>
                     </div>
