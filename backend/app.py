@@ -340,15 +340,15 @@ def send_welcome_email(user_email, user_name, tier="Pro"):
                 <h2>🚀 Here's what you can do next:</h2>
                 
                 <div class="step">
-                    <h3>1. Set Up Your Store (5 minutes)</h3>
-                    <p>• Upload your first design</p>
-                    <p>• Choose products to sell (t-shirts, hoodies, etc.)</p>
-                    <p>• Set your pricing strategy</p>
+                    <h3>1. Create Password & Log In</h3>
+                    <p>• Complete your account setup</p>
+                    <p>• Set a secure password</p>
+                    <p>• Access your dashboard</p>
                     <a href="https://screenmerch.com/dashboard" class="cta">Go to Dashboard</a>
                 </div>
                 
                 <div class="step">
-                    <h3>2. Customize Your Brand</h3>
+                    <h3>2. Customize Your Public Page</h3>
                     <p>• Add your logo and brand colors</p>
                     <p>• Write your creator bio</p>
                     <p>• Design your store layout</p>
@@ -356,7 +356,7 @@ def send_welcome_email(user_email, user_name, tier="Pro"):
                 </div>
                 
                 <div class="step">
-                    <h3>3. Start Promoting</h3>
+                    <h3>3. Upload Videos & Promote</h3>
                     <p>• Share your store link on social media</p>
                     <p>• Use our built-in social media tools</p>
                     <p>• Track your sales analytics</p>
@@ -3056,6 +3056,35 @@ def fix_database_schema():
     except Exception as e:
         logger.error(f"❌ Error fixing database schema: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/verify-subscription/<session_id>", methods=["GET"])
+def verify_subscription(session_id):
+    """Verify Stripe subscription payment"""
+    try:
+        # Initialize Stripe
+        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+        if not stripe.api_key:
+            logger.error("STRIPE_SECRET_KEY not found in environment variables")
+            return jsonify({"success": False, "error": "Stripe configuration error"}), 500
+        
+        # Retrieve the checkout session
+        session = stripe.checkout.Session.retrieve(session_id)
+        
+        if session.payment_status == 'paid':
+            return jsonify({ 
+                "success": True, 
+                "subscription_id": session.subscription,
+                "customer_id": session.customer 
+            })
+        else:
+            return jsonify({"success": False, "message": "Payment not completed"}), 400
+            
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error verifying subscription: {e}")
+        return jsonify({"success": False, "error": f"Stripe error: {str(e)}"}), 400
+    except Exception as e:
+        logger.error(f"Error verifying subscription: {e}")
+        return jsonify({"success": False, "error": "Failed to verify subscription"}), 500
 
 if __name__ == "__main__":
     import os
