@@ -293,25 +293,7 @@ const SubscriptionTiers = () => {
                 </div>
             </div>
 
-            <div className="tiers-footer">
-                <div className="success-stories">
-                    <h3>💫 Creator Success Stories</h3>
-                    <div className="story-grid">
-                        <div className="story-card">
-                            <p>"Started with the free trial and was making sales within days!"</p>
-                            <span className="story-author">- Sarah M., Lifestyle Creator</span>
-                        </div>
-                        <div className="story-card">
-                            <p>"The 30% fee is fair and the platform handles everything for me."</p>
-                            <span className="story-author">- Mike R., Tech Reviewer</span>
-                        </div>
-                        <div className="story-card">
-                            <p>"Pro tier gave me the tools to scale to $10K+ monthly revenue."</p>
-                            <span className="story-author">- Alex K., Fitness Influencer</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
         </div>
     );
 };
