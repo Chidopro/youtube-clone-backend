@@ -2315,9 +2315,9 @@ def create_pro_checkout():
                     "currency": "usd",
                     "product_data": {
                         "name": "ScreenMerch Pro Plan",
-                        "description": "Creator Pro Plan with 7-day free trial - You will be charged $9.99/month after the trial period"
+                        "description": "Creator Pro Plan with 7-day free trial - You will be charged $49/month after the trial period"
                     },
-                    "unit_amount": 999,  # $9.99 in cents
+                    "unit_amount": 4900,  # $49.00 in cents
                     "recurring": {
                         "interval": "month"
                     }

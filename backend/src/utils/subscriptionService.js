@@ -30,7 +30,7 @@ export class SubscriptionService {
 
   /**
    * Create or update user subscription tier
-   * @param {string} tier - Tier name ('basic', 'premium', 'creator_network')
+   * @param {string} tier - Tier name ('free', 'pro')
    * @param {Object} additionalData - Additional subscription data
    * @returns {Promise<Object|null>} Updated subscription or null on error
    */
@@ -77,71 +77,58 @@ export class SubscriptionService {
    */
   static getTierConfig(tier) {
     const tierConfigs = {
-      basic: {
-        name: 'Basic Tier',
+      free: {
+        name: 'Free Trial',
         price: 'Free',
+        serviceFee: 0.30, // 30%
         features: [
           'Upload videos',
           'Basic analytics',
           'Standard features',
-          'Community access'
+          'Community access',
+          '7-day free trial period'
         ],
         maxFriends: 0,
         revenueShare: 0,
         canInviteFriends: false,
         showFriendsSidebar: false
       },
-      premium: {
-        name: 'Premium Tier',
-        price: '$9.99/month',
+      pro: {
+        name: 'Pro Plan',
+        price: '$49/month',
+        serviceFee: 0.30, // 30%
         features: [
-          'Everything in Basic',
+          'Everything in Free Trial',
           'Advanced analytics',
           'Priority support',
           'Custom branding',
-          'Enhanced upload limits'
+          'Enhanced upload limits',
+          'Advanced monetization tools'
         ],
         maxFriends: 0,
         revenueShare: 0,
         canInviteFriends: false,
         showFriendsSidebar: false
-      },
-      creator_network: {
-        name: 'Creator Network Tier',
-        price: '$29.99/month',
-        features: [
-          'Everything in Premium',
-          'Invite friends to create content',
-          'Friends list sidebar',
-          'Revenue sharing (15%)',
-          'Advanced creator tools',
-          'Network analytics',
-          'Up to 50 friends'
-        ],
-        maxFriends: 50,
-        revenueShare: 0.15,
-        canInviteFriends: true,
-        showFriendsSidebar: true
       }
     };
 
-    return tierConfigs[tier] || tierConfigs.basic;
+    return tierConfigs[tier] || tierConfigs.free;
   }
 
   /**
-   * Subscribe user to basic (free) tier
+   * Subscribe user to free tier
    * @returns {Promise<Object>} Operation result
    */
-  static async subscribeToBasicTier() {
+  static async subscribeToFreeTier() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         return { success: false, error: 'User not authenticated' };
       }
 
-      const subscription = await this.upsertUserSubscription('basic', {
+      const subscription = await this.upsertUserSubscription('free', {
         current_period_start: new Date().toISOString(),
-        // Basic tier doesn't expire
+        // Free tier doesn't expire
         current_period_end: null
       });
 
@@ -149,22 +136,22 @@ export class SubscriptionService {
         return { 
           success: true, 
           subscription,
-          tier: this.getTierConfig('basic')
+          tier: this.getTierConfig('free')
         };
       } else {
         return { success: false, error: 'Failed to create subscription' };
       }
     } catch (error) {
-      console.error('Error subscribing to basic tier:', error);
+      console.error('Error subscribing to free tier:', error);
       return { success: false, error: error.message };
     }
   }
 
   /**
-   * Subscribe user to premium tier with Stripe
+   * Subscribe user to pro tier with Stripe
    * @returns {Promise<Object>} Operation result
    */
-  static async subscribeToPremiumTier() {
+  static async subscribeToProTier() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -172,7 +159,7 @@ export class SubscriptionService {
       }
 
       // Create Stripe checkout session
-      const response = await fetch('http://localhost:3002/api/create-premium-checkout', {
+      const response = await fetch('http://localhost:3002/api/create-pro-checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,7 +168,7 @@ export class SubscriptionService {
           userId: user.id,
           userEmail: user.email,
           userName: user.user_metadata?.name || 'User',
-          tier: 'premium'
+          tier: 'pro'
         }),
       });
 
@@ -196,66 +183,25 @@ export class SubscriptionService {
       
       return { success: true, redirecting: true };
     } catch (error) {
-      console.error('Error subscribing to premium tier:', error);
+      console.error('Error subscribing to pro tier:', error);
       return { success: false, error: error.message };
     }
   }
 
   /**
-   * Subscribe user to creator network tier with Stripe
-   * @returns {Promise<Object>} Operation result
-   */
-  static async subscribeToCreatorNetworkTier() {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: false, error: 'User not authenticated' };
-      }
-
-      // Create Stripe checkout session for Creator Network
-      const response = await fetch('http://localhost:3002/api/create-creator-network-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          userEmail: user.email,
-          userName: user.user_metadata?.name || 'User',
-          tier: 'creator_network'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create checkout session');
-      }
-
-      const { url } = await response.json();
-      
-      // Redirect to Stripe checkout
-      window.location.href = url;
-      
-      return { success: true, redirecting: true };
-    } catch (error) {
-      console.error('Error subscribing to creator network tier:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Handle successful premium subscription
+   * Handle successful pro subscription
    * @param {string} stripeSubscriptionId - Stripe subscription ID
    * @param {string} stripeCustomerId - Stripe customer ID
    * @returns {Promise<Object>} Operation result
    */
-  static async activatePremiumSubscription(stripeSubscriptionId, stripeCustomerId) {
+  static async activateProSubscription(stripeSubscriptionId, stripeCustomerId) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         return { success: false, error: 'User not authenticated' };
       }
 
-      const subscription = await this.upsertUserSubscription('premium', {
+      const subscription = await this.upsertUserSubscription('pro', {
         stripe_subscription_id: stripeSubscriptionId,
         stripe_customer_id: stripeCustomerId,
         current_period_start: new Date().toISOString(),
@@ -266,13 +212,13 @@ export class SubscriptionService {
         return { 
           success: true, 
           subscription,
-          tier: this.getTierConfig('premium')
+          tier: this.getTierConfig('pro')
         };
       } else {
         return { success: false, error: 'Failed to activate subscription' };
       }
     } catch (error) {
-      console.error('Error activating premium subscription:', error);
+      console.error('Error activating pro subscription:', error);
       return { success: false, error: error.message };
     }
   }
@@ -288,9 +234,8 @@ export class SubscriptionService {
       if (!subscription) return false;
 
       const tierHierarchy = {
-        basic: 1,
-        premium: 2,
-        creator_network: 3
+        free: 1,
+        pro: 2
       };
 
       const userTierLevel = tierHierarchy[subscription.tier] || 0;
@@ -330,10 +275,9 @@ export const {
   getCurrentUserSubscription,
   upsertUserSubscription,
   getTierConfig,
-  subscribeToBasicTier,
-  subscribeToPremiumTier,
-  subscribeToCreatorNetworkTier,
-  activatePremiumSubscription,
+  subscribeToFreeTier,
+  subscribeToProTier,
+  activateProSubscription,
   hasMinimumTier,
   getUserSubscriptionWithConfig
 } = SubscriptionService; 
