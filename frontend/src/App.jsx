@@ -15,6 +15,7 @@ import Sidebar from "./Components/Sidebar/Sidebar";
 import ComingSoon from "./Pages/ComingSoon/ComingSoon";
 import Admin from "./Pages/Admin/Admin";
 import AuthForm from "./Components/AuthForm";
+import Login from "./Pages/Login/Login";
 import PrivacyPolicy from "./Pages/PrivacyPolicy/PrivacyPolicy";
 import TermsOfService from "./Pages/TermsOfService/TermsOfService";
 import Search from "./Pages/Search/Search";
@@ -83,7 +84,7 @@ const App = () => {
               <Route path="/coming-soon" element={<ComingSoon />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/auth" element={<AuthForm />} />
-              <Route path="/login" element={<AuthForm />} />
+              <Route path="/login" element={<Login />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/search" element={<Search />} />
