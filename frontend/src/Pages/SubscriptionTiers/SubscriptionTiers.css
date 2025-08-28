@@ -482,6 +482,54 @@
     text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
 }
 
+/* Calculation Breakdown */
+.calculation-breakdown {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    padding: 30px;
+    margin-top: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.calculation-breakdown h5 {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-size: 1.3rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.breakdown-item {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    padding: 15px 20px;
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+    font-size: 0.95rem;
+    color: #495057;
+    transition: all 0.3s ease;
+}
+
+.breakdown-item.highlight {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    border-color: #28a745;
+    color: #155724;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.breakdown-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .subscription-tiers {
@@ -522,6 +570,16 @@
     .story-grid {
         grid-template-columns: 1fr;
         gap: 20px;
+    }
+    
+    .breakdown-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .calculation-breakdown {
+        padding: 20px;
+        margin-top: 20px;
     }
     
     .revenue-amount {

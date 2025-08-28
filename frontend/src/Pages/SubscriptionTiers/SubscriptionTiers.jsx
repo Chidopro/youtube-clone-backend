@@ -16,6 +16,21 @@ const SubscriptionTiers = () => {
         monthlySales: 175 // 175 average monthly sales
     };
 
+    // Calculate earnings for each tier
+    const calculateEarnings = (revenue, serviceFee, monthlyCost = 0) => {
+        const annualSubscriptionCost = monthlyCost * 12;
+        const grossEarnings = revenue * (1 - serviceFee);
+        const netEarnings = grossEarnings - annualSubscriptionCost;
+        return {
+            grossEarnings: Math.round(grossEarnings),
+            netEarnings: Math.round(netEarnings),
+            annualSubscriptionCost
+        };
+    };
+
+    const freeTierEarnings = calculateEarnings(hypotheticalData.totalRevenue, 0.30, 0);
+    const proTierEarnings = calculateEarnings(hypotheticalData.totalRevenue, 0.30, 49);
+
     const [currentUser, setCurrentUser] = useState(null);
     const [userSubscription, setUserSubscription] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -181,16 +196,16 @@ const SubscriptionTiers = () => {
                             <span className="tier-fee">30% Service Fee</span>
                         </div>
                         <div className="tier-revenue">
-                            <span className="revenue-amount">${(hypotheticalData.totalRevenue * 0.7).toLocaleString()}</span>
-                            <span className="revenue-label">You Keep</span>
+                            <span className="revenue-amount">${freeTierEarnings.grossEarnings.toLocaleString()}</span>
+                            <span className="revenue-label">You Keep (Gross)</span>
                         </div>
                         <div className="tier-cost">
                             <span className="cost-amount">Free</span>
                             <span className="cost-label">7-Day Trial</span>
                         </div>
                         <div className="tier-savings">
-                            <span className="savings-amount">$0</span>
-                            <span className="savings-label">Additional Savings</span>
+                            <span className="savings-amount">${freeTierEarnings.netEarnings.toLocaleString()}</span>
+                            <span className="savings-label">Net Annual Earnings</span>
                         </div>
                     </div>
 
@@ -201,15 +216,15 @@ const SubscriptionTiers = () => {
                             <span className="tier-fee">30% Service Fee</span>
                         </div>
                         <div className="tier-revenue">
-                            <span className="revenue-amount">${(hypotheticalData.totalRevenue * 0.7).toLocaleString()}</span>
-                            <span className="revenue-label">You Keep</span>
+                            <span className="revenue-amount">${proTierEarnings.grossEarnings.toLocaleString()}</span>
+                            <span className="revenue-label">You Keep (Gross)</span>
                         </div>
                         <div className="tier-cost">
                             <span className="cost-amount">$49/month</span>
                             <span className="cost-label">Monthly Cost</span>
                         </div>
                         <div className="tier-savings">
-                            <span className="savings-amount">+${(hypotheticalData.totalRevenue * 0.7 - 588).toLocaleString()}</span>
+                            <span className="savings-amount">${proTierEarnings.netEarnings.toLocaleString()}</span>
                             <span className="savings-label">Net Annual Earnings</span>
                         </div>
                     </div>
@@ -226,6 +241,28 @@ const SubscriptionTiers = () => {
                     <p className="trial-notice">
                         <strong>7-Day Free Trial</strong> • Auto-converts to Pro • Cancel anytime
                     </p>
+                </div>
+
+                {/* Calculation Breakdown */}
+                <div className="calculation-breakdown">
+                    <h5>📊 How We Calculate Your Earnings</h5>
+                    <div className="breakdown-grid">
+                        <div className="breakdown-item">
+                            <strong>Total Revenue:</strong> ${hypotheticalData.totalRevenue.toLocaleString()}
+                        </div>
+                        <div className="breakdown-item">
+                            <strong>Service Fee (30%):</strong> ${(hypotheticalData.totalRevenue * 0.30).toLocaleString()}
+                        </div>
+                        <div className="breakdown-item">
+                            <strong>Gross Earnings:</strong> ${freeTierEarnings.grossEarnings.toLocaleString()}
+                        </div>
+                        <div className="breakdown-item">
+                            <strong>Pro Tier Cost:</strong> ${proTierEarnings.annualSubscriptionCost.toLocaleString()}/year
+                        </div>
+                        <div className="breakdown-item highlight">
+                            <strong>Net Earnings (Pro):</strong> ${proTierEarnings.netEarnings.toLocaleString()}
+                        </div>
+                    </div>
                 </div>
             </div>
 
