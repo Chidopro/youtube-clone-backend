@@ -86,7 +86,7 @@ const SubscriptionTiers = () => {
             
             if (result.success) {
                 if (result.redirecting) {
-                    setMessage('Redirecting to Stripe checkout... You will be charged $9.99/month after your 7-day free trial ends.');
+                    setMessage('Redirecting to Stripe checkout... You will be charged $49/month after your 7-day free trial ends.');
                 } else {
                     setUserSubscription(result.subscription);
                     setMessage('Welcome to Pro! Your 7-day free trial is now active.');
@@ -131,7 +131,7 @@ const SubscriptionTiers = () => {
         <div className="subscription-tiers">
             <div className="tiers-header">
                 <h1>💰 Creator Earnings Calculator</h1>
-                <p>See how much you could earn with different ScreenMerch tiers</p>
+                <p>See how much you could earn with ScreenMerch's simple 2-tier system</p>
             </div>
 
             {message && (
@@ -169,24 +169,24 @@ const SubscriptionTiers = () => {
             {/* Tier Comparison Calculator */}
             <div className="tier-calculator-section">
                 <div className="calculator-header">
-                    <h4>💎 Choose Your Earnings Tier</h4>
-                    <p>Lower fees = Higher earnings. See the difference each tier makes</p>
+                    <h4>💎 Simple 2-Tier System</h4>
+                    <p>Start free for 7 days, then upgrade to Pro for maximum earnings</p>
                 </div>
                 
                 <div className="tier-comparison-grid">
-                    {/* Current Tier (50% fee) */}
+                    {/* Free Trial Tier (30% fee) */}
                     <div className="tier-card current">
                         <div className="tier-header">
-                            <h5>Current Tier</h5>
-                            <span className="tier-fee">50% Service Fee</span>
+                            <h5>Free Trial</h5>
+                            <span className="tier-fee">30% Service Fee</span>
                         </div>
                         <div className="tier-revenue">
-                            <span className="revenue-amount">${(hypotheticalData.totalRevenue * 0.5).toLocaleString()}</span>
+                            <span className="revenue-amount">${(hypotheticalData.totalRevenue * 0.7).toLocaleString()}</span>
                             <span className="revenue-label">You Keep</span>
                         </div>
                         <div className="tier-cost">
                             <span className="cost-amount">Free</span>
-                            <span className="cost-label">Monthly Cost</span>
+                            <span className="cost-label">7-Day Trial</span>
                         </div>
                         <div className="tier-savings">
                             <span className="savings-amount">$0</span>
@@ -194,63 +194,23 @@ const SubscriptionTiers = () => {
                         </div>
                     </div>
 
-                    {/* Tier 2 (20% fee) */}
+                    {/* Pro Tier (30% fee, $49/month) */}
                     <div className="tier-card upgrade">
                         <div className="tier-header">
                             <h5>Pro Tier</h5>
-                            <span className="tier-fee">20% Service Fee</span>
+                            <span className="tier-fee">30% Service Fee</span>
                         </div>
                         <div className="tier-revenue">
-                            <span className="revenue-amount">${(hypotheticalData.totalRevenue * 0.8).toLocaleString()}</span>
+                            <span className="revenue-amount">${(hypotheticalData.totalRevenue * 0.7).toLocaleString()}</span>
                             <span className="revenue-label">You Keep</span>
                         </div>
                         <div className="tier-cost">
-                            <span className="cost-amount">$99/month</span>
+                            <span className="cost-amount">$49/month</span>
                             <span className="cost-label">Monthly Cost</span>
                         </div>
                         <div className="tier-savings">
-                            <span className="savings-amount">+${(hypotheticalData.totalRevenue * 0.1 - 1200).toLocaleString()}</span>
-                            <span className="savings-label">Net Additional Earnings</span>
-                        </div>
-                    </div>
-
-                    {/* Tier 3 (10% fee) */}
-                    <div className="tier-card upgrade">
-                        <div className="tier-header">
-                            <h5>Premium Tier</h5>
-                            <span className="tier-fee">10% Service Fee</span>
-                        </div>
-                        <div className="tier-revenue">
-                            <span className="revenue-amount">${(hypotheticalData.totalRevenue * 0.9).toLocaleString()}</span>
-                            <span className="revenue-label">You Keep</span>
-                        </div>
-                        <div className="tier-cost">
-                            <span className="cost-amount">$299/month</span>
-                            <span className="cost-label">Monthly Cost</span>
-                        </div>
-                        <div className="tier-savings">
-                            <span className="savings-amount">+${(hypotheticalData.totalRevenue * 0.2 - 3600).toLocaleString()}</span>
-                            <span className="savings-label">Net Additional Earnings</span>
-                        </div>
-                    </div>
-
-                    {/* Enterprise Tier (5% fee) */}
-                    <div className="tier-card enterprise">
-                        <div className="tier-header">
-                            <h5>Enterprise</h5>
-                            <span className="tier-fee">5% Service Fee</span>
-                        </div>
-                        <div className="tier-revenue">
-                            <span className="revenue-amount">${(hypotheticalData.totalRevenue * 0.95).toLocaleString()}</span>
-                            <span className="revenue-label">You Keep</span>
-                        </div>
-                        <div className="tier-cost">
-                            <span className="cost-amount">$7,500</span>
-                            <span className="cost-label">One-time License</span>
-                        </div>
-                        <div className="tier-savings">
-                            <span className="savings-amount">+${(hypotheticalData.totalRevenue * 0.25 - 7500).toLocaleString()}</span>
-                            <span className="savings-label">Net Additional Earnings</span>
+                            <span className="savings-amount">+${(hypotheticalData.totalRevenue * 0.7 - 588).toLocaleString()}</span>
+                            <span className="savings-label">Net Annual Earnings</span>
                         </div>
                     </div>
                 </div>
@@ -261,37 +221,37 @@ const SubscriptionTiers = () => {
                         onClick={() => handleProTier()}
                         disabled={actionLoading}
                     >
-                        {actionLoading ? 'Processing...' : '🚀 Start Pro Trial - Keep 20% More'}
+                        {actionLoading ? 'Processing...' : '🚀 Start 7-Day Free Trial'}
                     </button>
                     <p className="trial-notice">
-                        <strong>7-Day Free Trial</strong> • Cancel anytime • No charges during trial
+                        <strong>7-Day Free Trial</strong> • Auto-converts to Pro • Cancel anytime
                     </p>
                 </div>
             </div>
 
             {/* Value Proposition */}
             <div className="value-proposition">
-                <h3>🎯 Why Upgrade?</h3>
+                <h3>🎯 Why Choose Pro?</h3>
                 <div className="value-grid">
                     <div className="value-item">
                         <div className="value-icon">💰</div>
-                        <h4>Higher Earnings</h4>
-                        <p>Keep up to 25% more of your revenue with premium tiers</p>
+                        <h4>Same Great Rates</h4>
+                        <p>Keep 70% of your earnings with our competitive 30% service fee</p>
                     </div>
                     <div className="value-item">
                         <div className="value-icon">📈</div>
-                        <h4>Scale Faster</h4>
-                        <p>Advanced analytics and tools to grow your audience</p>
+                        <h4>Advanced Analytics</h4>
+                        <p>Track your sales, understand your audience, and optimize for growth</p>
                     </div>
                     <div className="value-item">
                         <div className="value-icon">🎨</div>
                         <h4>Custom Branding</h4>
-                        <p>Professional storefronts that match your brand</p>
+                        <p>Professional storefronts that match your brand identity</p>
                     </div>
                     <div className="value-item">
                         <div className="value-icon">🚀</div>
                         <h4>Priority Support</h4>
-                        <p>Get help when you need it most</p>
+                        <p>Get help when you need it most with dedicated support</p>
                     </div>
                 </div>
             </div>
@@ -301,15 +261,15 @@ const SubscriptionTiers = () => {
                     <h3>💫 Creator Success Stories</h3>
                     <div className="story-grid">
                         <div className="story-card">
-                            <p>"Upgraded to Pro and my earnings increased by $2,400 in the first month!"</p>
+                            <p>"Started with the free trial and was making sales within days!"</p>
                             <span className="story-author">- Sarah M., Lifestyle Creator</span>
                         </div>
                         <div className="story-card">
-                            <p>"The 20% fee reduction paid for itself in just 2 weeks of sales."</p>
+                            <p>"The 30% fee is fair and the platform handles everything for me."</p>
                             <span className="story-author">- Mike R., Tech Reviewer</span>
                         </div>
                         <div className="story-card">
-                            <p>"Premium tier gave me the tools to scale to $50K+ monthly revenue."</p>
+                            <p>"Pro tier gave me the tools to scale to $10K+ monthly revenue."</p>
                             <span className="story-author">- Alex K., Fitness Influencer</span>
                         </div>
                     </div>

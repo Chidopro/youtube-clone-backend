@@ -140,8 +140,9 @@ export class SubscriptionService {
   static getTierConfig(tier) {
     const tierConfigs = {
       free: {
-        name: 'Free for Fans',
+        name: 'Free Trial',
         price: 'Free',
+        serviceFee: 0.30, // 30%
         features: [
           'Upload videos (up to 100MB, 10 minutes)',
           'Basic analytics',
@@ -149,17 +150,19 @@ export class SubscriptionService {
           'Community access',
           'Grab screenshots',
           'Preview merch',
-          'Buy merchandise'
+          'Buy merchandise',
+          '7-day free trial period'
         ],
         maxUploadSize: '100MB',
         maxVideoLength: '10 minutes'
       },
       pro: {
-        name: 'Pro Plan for Creators',
-        price: '$9.99/month',
+        name: 'Pro Plan',
+        price: '$49/month',
+        serviceFee: 0.30, // 30%
         trialDays: 7,
         features: [
-          'Everything in Free',
+          'Everything in Free Trial',
           'Priority support',
           'Custom branding',
           'Enhanced upload limits (2GB, 60 minutes)',
@@ -168,7 +171,8 @@ export class SubscriptionService {
           'Monetization tools',
           'Revenue tracking',
           'Custom channel colors',
-          'Branded merchandise'
+          'Branded merchandise',
+          'Advanced analytics'
         ],
         maxUploadSize: '2GB',
         maxVideoLength: '60 minutes'
