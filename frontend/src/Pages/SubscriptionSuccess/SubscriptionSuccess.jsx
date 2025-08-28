@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { SubscriptionService } from '../../utils/subscriptionService';
 import { API_CONFIG } from '../../config/apiConfig';
+import { supabase } from '../../supabaseClient';
 import './SubscriptionSuccess.css';
 
 const SubscriptionSuccess = () => {
@@ -22,16 +23,25 @@ const SubscriptionSuccess = () => {
             }
 
             try {
+                // Check if user is authenticated
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                
+                if (authError || !user) {
+                    setError('Please sign in to complete your subscription activation');
+                    setLoading(false);
+                    return;
+                }
+
                 // Verify the subscription with our backend
                 const response = await fetch(`${API_CONFIG.ENDPOINTS.VERIFY_SUBSCRIPTION}/${sessionId}`);
                 const data = await response.json();
 
                 if (data.success) {
-                                    // Activate the subscription in our system
-                const result = await SubscriptionService.activateProSubscription(
-                    data.subscription_id, 
-                    data.customer_id
-                );
+                    // Activate the subscription in our system
+                    const result = await SubscriptionService.activateProSubscription(
+                        data.subscription_id, 
+                        data.customer_id
+                    );
 
                     if (result.success) {
                         setSuccess(true);
@@ -75,12 +85,21 @@ const SubscriptionSuccess = () => {
                     <div className="error-icon">❌</div>
                     <h2>Subscription Error</h2>
                     <p>{error}</p>
-                    <button 
-                        onClick={() => navigate('/subscription')}
-                        className="retry-btn"
-                    >
-                        Try Again
-                    </button>
+                    {error.includes('sign in') ? (
+                        <button 
+                            onClick={() => navigate('/login')}
+                            className="retry-btn"
+                        >
+                            Sign In
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={() => navigate('/subscription')}
+                            className="retry-btn"
+                        >
+                            Try Again
+                        </button>
+                    )}
                 </div>
             </div>
         );
