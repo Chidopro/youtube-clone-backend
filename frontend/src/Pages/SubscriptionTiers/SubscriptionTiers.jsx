@@ -10,9 +10,9 @@ const SubscriptionTiers = () => {
     
     // Hypothetical but realistic high-potential earnings data
     const hypotheticalData = {
-        totalRevenue: 25000, // $25,000 in total sales
+        totalRevenue: 42000, // $42,000 annual revenue (based on $3,500 monthly)
         monthlyRevenue: 3500, // $3,500 average monthly sales
-        totalSales: 1250, // 1,250 total products sold
+        totalSales: 2100, // 2,100 total products sold (175 monthly × 12)
         monthlySales: 175 // 175 average monthly sales
     };
 
