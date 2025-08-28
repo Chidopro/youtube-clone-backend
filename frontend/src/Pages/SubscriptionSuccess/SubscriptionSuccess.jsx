@@ -16,23 +16,73 @@ const SubscriptionSuccess = () => {
     useEffect(() => {
         const verifySubscription = async () => {
             const sessionId = searchParams.get('session_id');
+            const pendingSession = localStorage.getItem('pendingSubscriptionSession');
             
-            if (!sessionId) {
+            console.log('🔍 Session ID Debug:', {
+                sessionIdFromURL: sessionId,
+                pendingSessionFromStorage: pendingSession,
+                searchParams: Object.fromEntries(searchParams.entries())
+            });
+            
+            // Use session ID from URL or from localStorage
+            const sessionToUse = sessionId || pendingSession;
+            
+            console.log('🎯 Session to use:', sessionToUse);
+            
+            if (!sessionToUse) {
+                console.error('❌ No session ID found in URL or localStorage');
                 setError('No session ID found');
                 setLoading(false);
                 return;
             }
 
+            // Store session ID if it's from URL
+            if (sessionId && !pendingSession) {
+                localStorage.setItem('pendingSubscriptionSession', sessionId);
+                console.log('💾 Stored session ID from URL:', sessionId);
+            }
+
             try {
-                // Check if user is authenticated
-                const { data: { user }, error: authError } = await supabase.auth.getUser();
-                
-                console.log('Auth check:', { user: !!user, authError, sessionId });
+                // Check if user is authenticated with retry mechanism
+                let user = null;
+                let authError = null;
+                let retryCount = 0;
+                const maxRetries = 3;
+
+                while (retryCount < maxRetries) {
+                    try {
+                        const { data: { user: authUser }, error: authErr } = await supabase.auth.getUser();
+                        user = authUser;
+                        authError = authErr;
+                        
+                        console.log(`🔐 Auth check attempt ${retryCount + 1}:`, { 
+                            user: !!user, 
+                            authError, 
+                            sessionId,
+                            userEmail: user?.email 
+                        });
+                        
+                        if (user && !authError) {
+                            break; // User is authenticated, proceed
+                        }
+                        
+                        if (retryCount < maxRetries - 1) {
+                            console.log(`⏳ Auth not ready, retrying in 1 second... (${retryCount + 1}/${maxRetries})`);
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                        
+                        retryCount++;
+                    } catch (err) {
+                        console.error(`❌ Auth check error on attempt ${retryCount + 1}:`, err);
+                        retryCount++;
+                        if (retryCount < maxRetries) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    }
+                }
                 
                 if (authError || !user) {
-                    console.log('User not authenticated, redirecting to login...');
-                    // Store the session ID in localStorage for after login
-                    localStorage.setItem('pendingSubscriptionSession', sessionId);
+                    console.log('⚠️ User not authenticated after retries, redirecting to login...');
                     // Show redirecting message
                     setRedirecting(true);
                     setLoading(false);
@@ -42,21 +92,20 @@ const SubscriptionSuccess = () => {
                     return;
                 }
 
-                // Check if there's a pending subscription session from before login
-                const pendingSession = localStorage.getItem('pendingSubscriptionSession');
-                const sessionToUse = pendingSession || sessionId;
-                
+                console.log('✅ User authenticated successfully:', user.email);
+
+                // Clear the pending session since we're using it
                 if (pendingSession) {
-                    // Clear the pending session
                     localStorage.removeItem('pendingSubscriptionSession');
+                    console.log('🧹 Cleared pending session from localStorage');
                 }
 
                 // Verify the subscription with our backend
-                console.log('Verifying subscription with session:', sessionToUse);
+                console.log('🔍 Verifying subscription with session:', sessionToUse);
                 const response = await fetch(`${API_CONFIG.ENDPOINTS.VERIFY_SUBSCRIPTION}/${sessionToUse}`);
                 const data = await response.json();
                 
-                console.log('Verification response:', data);
+                console.log('📡 Verification response:', data);
 
                 if (data.success) {
                     // Activate the subscription in our system
@@ -67,6 +116,8 @@ const SubscriptionSuccess = () => {
 
                     if (result.success) {
                         setSuccess(true);
+                        // Clear any pending session
+                        localStorage.removeItem('pendingSubscriptionSession');
                         // Redirect to dashboard after 3 seconds
                         setTimeout(() => {
                             navigate('/dashboard');
@@ -78,7 +129,7 @@ const SubscriptionSuccess = () => {
                     setError(data.message || 'Payment verification failed');
                 }
             } catch (err) {
-                console.error('Error verifying subscription:', err);
+                console.error('❌ Error verifying subscription:', err);
                 setError('Failed to verify payment');
             } finally {
                 setLoading(false);
