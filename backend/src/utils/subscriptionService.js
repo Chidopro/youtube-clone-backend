@@ -133,6 +133,14 @@ export class SubscriptionService {
       });
 
       if (subscription) {
+        // Send welcome email for free tier
+        try {
+          await this.sendWelcomeEmail(user.email, user.user_metadata?.full_name || user.email, 'Free Trial');
+        } catch (emailError) {
+          console.error('Failed to send welcome email:', emailError);
+          // Don't fail the subscription activation if email fails
+        }
+
         return { 
           success: true, 
           subscription,
@@ -189,6 +197,35 @@ export class SubscriptionService {
   }
 
   /**
+   * Send welcome email to new subscriber
+   * @param {string} userEmail - User's email address
+   * @param {string} userName - User's name
+   * @param {string} tier - Subscription tier
+   * @returns {Promise<boolean>} Success status
+   */
+  static async sendWelcomeEmail(userEmail, userName, tier = 'Pro') {
+    try {
+      const response = await fetch('/api/test-welcome-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          name: userName,
+          tier: tier
+        })
+      });
+
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      console.error('Error sending welcome email:', error);
+      return false;
+    }
+  }
+
+  /**
    * Handle successful pro subscription
    * @param {string} stripeSubscriptionId - Stripe subscription ID
    * @param {string} stripeCustomerId - Stripe customer ID
@@ -209,6 +246,14 @@ export class SubscriptionService {
       });
 
       if (subscription) {
+        // Send welcome email
+        try {
+          await this.sendWelcomeEmail(user.email, user.user_metadata?.full_name || user.email, 'Pro');
+        } catch (emailError) {
+          console.error('Failed to send welcome email:', emailError);
+          // Don't fail the subscription activation if email fails
+        }
+
         return { 
           success: true, 
           subscription,
@@ -279,5 +324,6 @@ export const {
   subscribeToProTier,
   activateProSubscription,
   hasMinimumTier,
-  getUserSubscriptionWithConfig
+  getUserSubscriptionWithConfig,
+  sendWelcomeEmail
 } = SubscriptionService; 

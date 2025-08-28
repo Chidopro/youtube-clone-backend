@@ -304,6 +304,114 @@ def calculate_shipping():
         logger.error(f"Shipping calculation API error: {str(e)}")
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
+def send_welcome_email(user_email, user_name, tier="Pro"):
+    """Send welcome email to new subscribers"""
+    try:
+        subject = f"Welcome to ScreenMerch {tier}! 🚀 Here's Your Next Steps"
+        
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Welcome to ScreenMerch {tier}!</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                .step {{ background: white; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #667eea; }}
+                .step h3 {{ color: #667eea; margin-top: 0; }}
+                .cta {{ background: #667eea; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0; }}
+                .footer {{ text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🎉 Welcome to ScreenMerch {tier}!</h1>
+                <p>Your 7-day free trial is now active</p>
+            </div>
+            
+            <div class="content">
+                <p>Hi {user_name or 'there'},</p>
+                
+                <p>Congratulations! You're now part of ScreenMerch {tier}. Your 7-day free trial is active, and you have access to all our premium features.</p>
+                
+                <h2>🚀 Here's what you can do next:</h2>
+                
+                <div class="step">
+                    <h3>1. Set Up Your Store (5 minutes)</h3>
+                    <p>• Upload your first design</p>
+                    <p>• Choose products to sell (t-shirts, hoodies, etc.)</p>
+                    <p>• Set your pricing strategy</p>
+                    <a href="https://screenmerch.com/dashboard" class="cta">Go to Dashboard</a>
+                </div>
+                
+                <div class="step">
+                    <h3>2. Customize Your Brand</h3>
+                    <p>• Add your logo and brand colors</p>
+                    <p>• Write your creator bio</p>
+                    <p>• Design your store layout</p>
+                    <a href="https://screenmerch.com/dashboard/settings" class="cta">Customize Store</a>
+                </div>
+                
+                <div class="step">
+                    <h3>3. Start Promoting</h3>
+                    <p>• Share your store link on social media</p>
+                    <p>• Use our built-in social media tools</p>
+                    <p>• Track your sales analytics</p>
+                    <a href="https://screenmerch.com/dashboard/analytics" class="cta">View Analytics</a>
+                </div>
+                
+                <h3>💰 Your Earnings</h3>
+                <p>With ScreenMerch {tier}, you keep <strong>70% of your earnings</strong> with our competitive 30% service fee. No hidden costs!</p>
+                
+                <h3>❓ Need Help?</h3>
+                <p>• Reply to this email for support</p>
+                <p>• Check our <a href="https://screenmerch.com/help">Help Center</a></p>
+                <p>• Join our <a href="https://discord.gg/screenmerch">Creator Community</a></p>
+                
+                <p><strong>Best regards,<br>The ScreenMerch Team</strong></p>
+            </div>
+            
+            <div class="footer">
+                <p>© 2024 ScreenMerch. All rights reserved.</p>
+                <p>You're receiving this email because you signed up for ScreenMerch {tier}.</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Send email using Resend
+        data = {
+            "from": RESEND_FROM,
+            "to": user_email,
+            "subject": subject,
+            "html": html_body
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers=headers,
+            json=data
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"Welcome email sent successfully to {user_email}")
+            return True
+        else:
+            logger.error(f"Failed to send welcome email: {response.text}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error sending welcome email: {str(e)}")
+        return False
+
 @app.route("/api/test-order-email", methods=["POST"])
 def test_order_email():
     """Test endpoint to send a sample order confirmation email"""
@@ -363,6 +471,26 @@ def test_order_email():
     except Exception as e:
         logger.error(f"Error in test_order_email: {str(e)}")
         return jsonify({"success": False, "error": "Internal server error"}), 500
+
+@app.route("/api/test-welcome-email", methods=["POST"])
+def test_welcome_email():
+    """Test endpoint to send a welcome email"""
+    try:
+        data = request.get_json() or {}
+        user_email = data.get("email", "test@example.com")
+        user_name = data.get("name", "Test User")
+        tier = data.get("tier", "Pro")
+        
+        success = send_welcome_email(user_email, user_name, tier)
+        
+        if success:
+            return jsonify({"success": True, "message": f"Welcome email sent successfully to {user_email}"})
+        else:
+            return jsonify({"success": False, "error": "Failed to send welcome email"}), 500
+            
+    except Exception as e:
+        logger.error(f"Test welcome email error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 PRODUCTS = [
     # Products with both COLOR and SIZE options
