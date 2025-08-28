@@ -238,9 +238,6 @@ const SubscriptionTiers = () => {
                     >
                         {actionLoading ? 'Processing...' : '🚀 Start 7-Day Free Trial'}
                     </button>
-                    <p className="trial-notice">
-                        <strong>7-Day Free Trial</strong> • Auto-converts to Pro • Cancel anytime
-                    </p>
                 </div>
 
                 {/* Calculation Breakdown */}
