@@ -174,14 +174,14 @@ const SubscriptionTiers = () => {
                 </div>
                 
                 <div className="tier-comparison-grid">
-                    {/* Current Tier (30% fee) */}
+                    {/* Current Tier (50% fee) */}
                     <div className="tier-card current">
                         <div className="tier-header">
                             <h5>Current Tier</h5>
-                            <span className="tier-fee">30% Service Fee</span>
+                            <span className="tier-fee">50% Service Fee</span>
                         </div>
                         <div className="tier-revenue">
-                            <span className="revenue-amount">${(hypotheticalData.totalRevenue * 0.7).toLocaleString()}</span>
+                            <span className="revenue-amount">${(hypotheticalData.totalRevenue * 0.5).toLocaleString()}</span>
                             <span className="revenue-label">You Keep</span>
                         </div>
                         <div className="tier-cost">
