@@ -83,6 +83,7 @@ const App = () => {
               <Route path="/coming-soon" element={<ComingSoon />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/auth" element={<AuthForm />} />
+              <Route path="/login" element={<AuthForm />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/search" element={<Search />} />

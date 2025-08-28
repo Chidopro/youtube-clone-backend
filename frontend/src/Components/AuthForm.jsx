@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const AuthForm = () => {
   const [email, setEmail] = useState('');
@@ -8,6 +8,8 @@ const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,7 +22,7 @@ const AuthForm = () => {
       } else {
         setMessage('Logged in! Redirecting...');
         setTimeout(() => {
-          navigate('/');
+          navigate(returnTo);
         }, 1000);
       }
     } else {

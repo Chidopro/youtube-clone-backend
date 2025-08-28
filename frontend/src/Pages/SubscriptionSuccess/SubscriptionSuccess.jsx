@@ -11,6 +11,7 @@ const SubscriptionSuccess = () => {
     const [loading, setLoading] = useState(true);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState(null);
+    const [redirecting, setRedirecting] = useState(false);
 
     useEffect(() => {
         const verifySubscription = async () => {
@@ -26,11 +27,18 @@ const SubscriptionSuccess = () => {
                 // Check if user is authenticated
                 const { data: { user }, error: authError } = await supabase.auth.getUser();
                 
+                console.log('Auth check:', { user: !!user, authError, sessionId });
+                
                 if (authError || !user) {
+                    console.log('User not authenticated, redirecting to login...');
                     // Store the session ID in localStorage for after login
                     localStorage.setItem('pendingSubscriptionSession', sessionId);
-                    // Redirect to login with return URL
-                    navigate('/login?returnTo=/subscription-success');
+                    // Show redirecting message
+                    setRedirecting(true);
+                    setLoading(false);
+                    setTimeout(() => {
+                        navigate('/login?returnTo=/subscription-success');
+                    }, 3000);
                     return;
                 }
 
@@ -44,8 +52,11 @@ const SubscriptionSuccess = () => {
                 }
 
                 // Verify the subscription with our backend
+                console.log('Verifying subscription with session:', sessionToUse);
                 const response = await fetch(`${API_CONFIG.ENDPOINTS.VERIFY_SUBSCRIPTION}/${sessionToUse}`);
                 const data = await response.json();
+                
+                console.log('Verification response:', data);
 
                 if (data.success) {
                     // Activate the subscription in our system
@@ -84,6 +95,27 @@ const SubscriptionSuccess = () => {
                     <div className="loading-spinner"></div>
                     <h2>Verifying your subscription...</h2>
                     <p>Please wait while we confirm your payment.</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (redirecting) {
+        return (
+            <div className="subscription-success-page">
+                <div className="success-container">
+                    <div className="loading-spinner"></div>
+                    <h2>Payment Successful! 🎉</h2>
+                    <p>Your payment has been processed successfully.</p>
+                    <p><strong>Please sign in to complete your subscription activation.</strong></p>
+                    <p>You will be redirected to the login page in a few seconds...</p>
+                    <button 
+                        onClick={() => navigate('/login?returnTo=/subscription-success')}
+                        className="retry-btn"
+                        style={{ marginTop: '20px' }}
+                    >
+                        Sign In Now
+                    </button>
                 </div>
             </div>
         );
