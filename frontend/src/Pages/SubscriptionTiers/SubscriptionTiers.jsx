@@ -8,12 +8,13 @@ const SubscriptionTiers = () => {
     const navigate = useNavigate();
     const location = useLocation();
     
-    // Hypothetical but realistic high-potential earnings data
+    // Realistic earnings data based on actual ScreenMerch product prices
+    // Average product price: $25.50 (mix of t-shirts $21.99-$24.99, hoodies $22.99-$39.99, etc.)
     const hypotheticalData = {
-        totalRevenue: 42000, // $42,000 annual revenue (based on $3,500 monthly)
-        monthlyRevenue: 3500, // $3,500 average monthly sales
-        totalSales: 2100, // 2,100 total products sold (175 monthly × 12)
-        monthlySales: 175 // 175 average monthly sales
+        totalRevenue: 61200, // $61,200 annual revenue (based on $5,100 monthly)
+        monthlyRevenue: 5100, // $5,100 average monthly revenue
+        totalProductsSold: 2400, // 2,400 total products sold (200 monthly × 12)
+        monthlyProductsSold: 200 // 200 average monthly products sold
     };
 
     // Calculate earnings for each tier
@@ -164,19 +165,19 @@ const SubscriptionTiers = () => {
                 <div className="metrics-grid">
                     <div className="metric-card">
                         <div className="metric-value">${hypotheticalData.totalRevenue.toLocaleString()}</div>
-                        <div className="metric-label">Total Revenue</div>
+                        <div className="metric-label">Total Revenue (Annual)</div>
                     </div>
                     <div className="metric-card">
                         <div className="metric-value">${hypotheticalData.monthlyRevenue.toLocaleString()}</div>
                         <div className="metric-label">Monthly Revenue</div>
                     </div>
                     <div className="metric-card">
-                        <div className="metric-value">{hypotheticalData.totalSales.toLocaleString()}</div>
-                        <div className="metric-label">Products Sold</div>
+                        <div className="metric-value">{hypotheticalData.totalProductsSold.toLocaleString()}</div>
+                        <div className="metric-label">Products Sold (Annual)</div>
                     </div>
                     <div className="metric-card">
-                        <div className="metric-value">{hypotheticalData.monthlySales}</div>
-                        <div className="metric-label">Monthly Sales</div>
+                        <div className="metric-value">{hypotheticalData.monthlyProductsSold}</div>
+                        <div className="metric-label">Monthly Products Sold</div>
                     </div>
                 </div>
             </div>
