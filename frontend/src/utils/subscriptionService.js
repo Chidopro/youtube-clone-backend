@@ -231,4 +231,83 @@ export class SubscriptionService {
       return 0;
     }
   }
+
+  /**
+   * Activate pro subscription after payment verification
+   * @param {string} subscriptionId - Stripe subscription ID
+   * @param {string} customerId - Stripe customer ID
+   * @returns {Promise<Object>} Result
+   */
+  static async activateProSubscription(subscriptionId, customerId) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Calculate trial end date (7 days from now)
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 7);
+
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .upsert({
+          user_id: user.id,
+          tier: 'pro',
+          status: 'active',
+          stripe_subscription_id: subscriptionId,
+          stripe_customer_id: customerId,
+          trial_end: trialEnd.toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Send welcome email
+      try {
+        await this.sendWelcomeEmail(user.email);
+      } catch (emailError) {
+        console.error('Error sending welcome email:', emailError);
+        // Don't fail the subscription activation if email fails
+      }
+
+      return {
+        success: true,
+        subscription: data
+      };
+    } catch (error) {
+      console.error('Error activating pro subscription:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Send welcome email to new subscribers
+   * @param {string} email - User email
+   * @returns {Promise<Object>} Result
+   */
+  static async sendWelcomeEmail(email) {
+    try {
+      const response = await fetch('https://copy5-backend.fly.dev/api/send-welcome-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email })
+      });
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error sending welcome email:', error);
+      throw error;
+    }
+  }
 } 
