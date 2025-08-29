@@ -1518,13 +1518,16 @@ def ensure_user_exists():
         email = data.get('email')
         display_name = data.get('display_name')
         
+        # If no user_id provided, generate one from email
         if not user_id:
-            return jsonify({"error": "user_id is required"}), 400
+            import uuid
+            user_id = str(uuid.uuid4())
+            logger.info(f"Generated UUID for user: {user_id}")
         
         # Check if user exists
         result = supabase.table('users').select('*').eq('id', user_id).execute()
         
-        if result.data:
+        if result.data and len(result.data) > 0:
             # User exists, update if needed
             if display_name and result.data[0].get('display_name') != display_name:
                 supabase.table('users').update({
@@ -1546,7 +1549,10 @@ def ensure_user_exists():
             
             try:
                 result = supabase.table('users').insert(new_user).execute()
-                return jsonify({"message": "User created", "user": result.data[0]})
+                if result.data and len(result.data) > 0:
+                    return jsonify({"message": "User created", "user": result.data[0]})
+                else:
+                    return jsonify({"message": "User created", "user": new_user})
             except Exception as insert_error:
                 # If insert fails due to duplicate key, try to update existing user
                 if "duplicate key" in str(insert_error).lower():
@@ -1555,7 +1561,10 @@ def ensure_user_exists():
                         'role': 'creator',
                         'updated_at': 'now()'
                     }).eq('id', user_id).execute()
-                    return jsonify({"message": "User updated", "user": result.data[0]})
+                    if result.data and len(result.data) > 0:
+                        return jsonify({"message": "User updated", "user": result.data[0]})
+                    else:
+                        return jsonify({"message": "User updated", "user": {"id": user_id, "email": email}})
                 else:
                     raise insert_error
             
@@ -1640,10 +1649,10 @@ def create_pro_checkout():
         # Stripe will collect email during checkout if not provided
         
         # Create Stripe checkout session for Pro subscription with 7-day trial
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            mode="subscription",
-            line_items=[{
+        session_params = {
+            "payment_method_types": ["card"],
+            "mode": "subscription",
+            "line_items": [{
                 "price_data": {
                     "currency": "usd",
                     "product_data": {
@@ -1657,28 +1666,33 @@ def create_pro_checkout():
                 },
                 "quantity": 1,
             }],
-            subscription_data={
+            "subscription_data": {
                 "trial_period_days": 7,
                 "metadata": {
                     "user_id": user_id or "guest",
                     "tier": tier
                 }
             },
-            success_url="https://screenmerch.com/subscription-success?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url="https://screenmerch.com/subscription-tiers",
-            customer_email=email,  # Pre-fill email if available
-            metadata={
+            "success_url": "https://screenmerch.com/subscription-success?session_id={CHECKOUT_SESSION_ID}",
+            "cancel_url": "https://screenmerch.com/subscription-tiers",
+            "metadata": {
                 "user_id": user_id or "guest",
                 "tier": tier
             }
-        )
+        }
+        
+        # Only add customer_email if email is provided
+        if email:
+            session_params["customer_email"] = email
+        
+        session = stripe.checkout.Session.create(**session_params)
         
         logger.info(f"Created Pro checkout session for user {user_id or 'guest'}")
         return jsonify({"url": session.url})
         
     except Exception as e:
-        logger.error(f"Error creating checkout session: {str(e)}")
-        return jsonify({"error": f"Failed to create checkout session: {str(e)}"}), 500
+        logger.error(f"Error creating Pro checkout session: {str(e)}")
+        return jsonify({"error": "Failed to create checkout session"}), 500
 
 # Test endpoint to verify Stripe configuration
 @app.route("/api/test-stripe", methods=["GET"])

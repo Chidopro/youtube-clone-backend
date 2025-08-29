@@ -83,7 +83,8 @@ export class SubscriptionService {
         body: JSON.stringify({
           userId: user?.id || null, // Allow null for guest checkout
           tier: 'pro',
-          email: user?.email || null
+          // Don't send email - let Stripe collect it during checkout for new accounts
+          email: null
         })
       });
 
@@ -240,7 +241,7 @@ export class SubscriptionService {
    */
   static async activateProSubscription(subscriptionId, customerId) {
     try {
-      // Use the same auth system as login (check localStorage instead of Supabase)
+      // Get the authenticated user from localStorage (matching login system)
       const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
       const userEmail = localStorage.getItem('user_email');
       
@@ -248,43 +249,95 @@ export class SubscriptionService {
         throw new Error('User not authenticated');
       }
 
-      // For now, we'll use the email as the user ID since we don't have a proper user ID
-      // In a real system, you'd want to get the user ID from the backend
-      const userId = userEmail; // Using email as temporary user ID
+      console.log('🔍 User authenticated via localStorage:', userEmail);
+
+      // First, ensure the user exists in the custom users table
+      console.log('🔍 Ensuring user exists in database...');
+      
+      // Call the ensure-exists endpoint to create user in custom users table if needed
+      // Let the backend handle UUID generation
+      const ensureResponse = await fetch('https://copy5-backend.fly.dev/api/users/ensure-exists', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          display_name: userEmail.split('@')[0]
+        })
+      });
+
+      if (!ensureResponse.ok) {
+        console.error('❌ Failed to ensure user exists:', await ensureResponse.text());
+        throw new Error('Failed to ensure user exists in database');
+      }
+
+      const ensureResult = await ensureResponse.json();
+      console.log('✅ User ensured in database:', ensureResult);
+
+      // Get the user ID from the ensure-exists response
+      const finalUserId = ensureResult.user.id;
+      console.log('✅ Using user ID from ensure-exists response:', finalUserId);
 
       // Calculate trial end date (7 days from now)
       const trialEnd = new Date();
       trialEnd.setDate(trialEnd.getDate() + 7);
 
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .upsert({
-          user_id: userId,
+      // Insert or update subscription in database using backend API
+      const subscriptionResponse = await fetch('https://copy5-backend.fly.dev/api/subscriptions/activate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: finalUserId,
           tier: 'pro',
           status: 'active',
           stripe_subscription_id: subscriptionId,
           stripe_customer_id: customerId,
-          trial_end: trialEnd.toISOString(),
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
+          trial_end: trialEnd.toISOString()
         })
-        .select()
-        .single();
+      });
 
-      if (error) throw error;
+      if (!subscriptionResponse.ok) {
+        console.error('❌ Failed to activate subscription:', await subscriptionResponse.text());
+        throw new Error('Failed to activate subscription in database');
+      }
 
-      // Send welcome email
+      const subscriptionResult = await subscriptionResponse.json();
+      console.log('✅ Subscription activated:', subscriptionResult);
+
+      // Generate and store channel URL for the user
       try {
-        await this.sendWelcomeEmail(userEmail);
-      } catch (emailError) {
-        console.error('Error sending welcome email:', emailError);
-        // Don't fail the subscription activation if email fails
+        const channelSlug = userEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+        const channelUrl = `https://screenmerch.com/channel/${channelSlug}`;
+        
+        const channelResponse = await fetch('https://copy5-backend.fly.dev/api/users/update-channel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: finalUserId,
+            channel_slug: channelSlug,
+            channel_url: channelUrl
+          })
+        });
+
+        if (!channelResponse.ok) {
+          console.error('Error updating channel URL:', await channelResponse.text());
+          // Don't throw error - channel URL is not critical for subscription
+        } else {
+          console.log('✅ Channel URL generated:', channelUrl);
+        }
+      } catch (channelError) {
+        console.error('Error generating channel URL:', channelError);
+        // Don't throw error - channel URL is not critical for subscription
       }
 
       return {
         success: true,
-        subscription: data
+        subscription: subscriptionResult.subscription || subscriptionResult
       };
     } catch (error) {
       console.error('Error activating pro subscription:', error);

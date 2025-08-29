@@ -773,7 +773,7 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Women’s fitted racerback tank top",
+        "name": "Women's fitted racerback tank top",
         "price": 20.95,
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
@@ -2313,13 +2313,29 @@ def ensure_user_exists():
         email = data.get('email')
         display_name = data.get('display_name')
         
-        if not user_id:
-            return jsonify({"error": "user_id is required"}), 400
+        # First, check if a user with this email already exists
+        if email:
+            existing_user_result = supabase.table('users').select('*').eq('email', email).execute()
+            if existing_user_result.data and len(existing_user_result.data) > 0:
+                # User exists, update if needed and return existing user
+                existing_user = existing_user_result.data[0]
+                if display_name and existing_user.get('display_name') != display_name:
+                    supabase.table('users').update({
+                        'display_name': display_name,
+                        'updated_at': 'now()'
+                    }).eq('id', existing_user['id']).execute()
+                return jsonify({"message": "User exists", "user": existing_user})
         
-        # Check if user exists
+        # If no user_id provided and no existing user found, generate one
+        if not user_id:
+            import uuid
+            user_id = str(uuid.uuid4())
+            logger.info(f"Generated UUID for user: {user_id}")
+        
+        # Check if user exists by ID
         result = supabase.table('users').select('*').eq('id', user_id).execute()
         
-        if result.data:
+        if result.data and len(result.data) > 0:
             # User exists, update if needed
             if display_name and result.data[0].get('display_name') != display_name:
                 supabase.table('users').update({
@@ -2341,16 +2357,33 @@ def ensure_user_exists():
             
             try:
                 result = supabase.table('users').insert(new_user).execute()
-                return jsonify({"message": "User created", "user": result.data[0]})
+                if result.data and len(result.data) > 0:
+                    return jsonify({"message": "User created", "user": result.data[0]})
+                else:
+                    return jsonify({"message": "User created", "user": new_user})
             except Exception as insert_error:
                 # If insert fails due to duplicate key, try to update existing user
                 if "duplicate key" in str(insert_error).lower():
                     logger.info(f"Duplicate key detected for user {user_id}, updating existing user")
-                    result = supabase.table('users').update({
-                        'role': 'creator',
-                        'updated_at': 'now()'
-                    }).eq('id', user_id).execute()
-                    return jsonify({"message": "User updated", "user": result.data[0]})
+                    try:
+                        result = supabase.table('users').update({
+                            'role': 'creator',
+                            'updated_at': 'now()'
+                        }).eq('id', user_id).execute()
+                        
+                        # Check if update was successful and return appropriate response
+                        if result.data and len(result.data) > 0:
+                            return jsonify({"message": "User updated", "user": result.data[0]})
+                        else:
+                            # If no data returned from update, fetch the user to return
+                            fetch_result = supabase.table('users').select('*').eq('id', user_id).execute()
+                            if fetch_result.data and len(fetch_result.data) > 0:
+                                return jsonify({"message": "User updated", "user": fetch_result.data[0]})
+                            else:
+                                return jsonify({"message": "User updated", "user": {"id": user_id, "email": email}})
+                    except Exception as update_error:
+                        logger.error(f"Error updating user after duplicate key: {str(update_error)}")
+                        return jsonify({"message": "User updated", "user": {"id": user_id, "email": email}})
                 else:
                     raise insert_error
             
@@ -2435,10 +2468,10 @@ def create_pro_checkout():
         # Stripe will collect email during checkout if not provided
         
         # Create Stripe checkout session for Pro subscription with 7-day trial
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            mode="subscription",
-            line_items=[{
+        session_params = {
+            "payment_method_types": ["card"],
+            "mode": "subscription",
+            "line_items": [{
                 "price_data": {
                     "currency": "usd",
                     "product_data": {
@@ -2452,28 +2485,33 @@ def create_pro_checkout():
                 },
                 "quantity": 1,
             }],
-            subscription_data={
+            "subscription_data": {
                 "trial_period_days": 7,
                 "metadata": {
                     "user_id": user_id or "guest",
                     "tier": tier
                 }
             },
-            success_url="https://screenmerch.com/subscription-success?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url="https://screenmerch.com/subscription-tiers",
-            customer_email=email,  # Pre-fill email if available
-            metadata={
+            "success_url": "https://screenmerch.com/subscription-success?session_id={CHECKOUT_SESSION_ID}",
+            "cancel_url": "https://screenmerch.com/subscription-tiers",
+            "metadata": {
                 "user_id": user_id or "guest",
                 "tier": tier
             }
-        )
+        }
+        
+        # Only add customer_email if email is provided
+        if email:
+            session_params["customer_email"] = email
+        
+        session = stripe.checkout.Session.create(**session_params)
         
         logger.info(f"Created Pro checkout session for user {user_id or 'guest'}")
         return jsonify({"url": session.url})
         
     except Exception as e:
-        logger.error(f"Error creating checkout session: {str(e)}")
-        return jsonify({"error": f"Failed to create checkout session: {str(e)}"}), 500
+        logger.error(f"Error creating Pro checkout session: {str(e)}")
+        return jsonify({"error": "Failed to create checkout session"}), 500
 
 # Test endpoint to verify Stripe configuration
 @app.route("/api/test-stripe", methods=["GET"])
@@ -3055,6 +3093,94 @@ def fix_database_schema():
         
     except Exception as e:
         logger.error(f"❌ Error fixing database schema: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/subscriptions/activate", methods=["POST"])
+def activate_subscription():
+    """Activate a subscription in the database"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        tier = data.get('tier', 'pro')
+        status = data.get('status', 'active')
+        stripe_subscription_id = data.get('stripe_subscription_id')
+        stripe_customer_id = data.get('stripe_customer_id')
+        trial_end = data.get('trial_end')
+        
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id is required"}), 400
+        
+        # Insert or update subscription in database
+        subscription_data = {
+            'user_id': user_id,
+            'tier': tier,
+            'status': status,
+            'updated_at': 'now()'
+        }
+        
+        if stripe_subscription_id:
+            subscription_data['stripe_subscription_id'] = stripe_subscription_id
+        if stripe_customer_id:
+            subscription_data['stripe_customer_id'] = stripe_customer_id
+        if trial_end:
+            subscription_data['trial_end'] = trial_end
+        
+        # Use upsert to handle both insert and update
+        result = supabase.table('user_subscriptions').upsert(
+            subscription_data,
+            on_conflict='user_id'
+        ).execute()
+        
+        if result.data and len(result.data) > 0:
+            logger.info(f"✅ Subscription activated for user {user_id}")
+            return jsonify({
+                "success": True,
+                "subscription": result.data[0]
+            })
+        else:
+            logger.error(f"❌ Failed to activate subscription for user {user_id}")
+            return jsonify({"success": False, "error": "Failed to activate subscription"}), 500
+            
+    except Exception as e:
+        logger.error(f"❌ Error activating subscription: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/users/update-channel", methods=["POST"])
+def update_user_channel():
+    """Update user's channel information"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        channel_slug = data.get('channel_slug')
+        channel_url = data.get('channel_url')
+        
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id is required"}), 400
+        
+        update_data = {
+            'updated_at': 'now()'
+        }
+        
+        if channel_slug:
+            update_data['channel_slug'] = channel_slug
+        if channel_url:
+            update_data['channel_url'] = channel_url
+        
+        # Update user record
+        result = supabase.table('users').update(update_data).eq('id', user_id).execute()
+        
+        if result.data and len(result.data) > 0:
+            logger.info(f"✅ Channel updated for user {user_id}")
+            return jsonify({
+                "success": True,
+                "user": result.data[0]
+            })
+        else:
+            logger.error(f"❌ Failed to update channel for user {user_id}")
+            return jsonify({"success": False, "error": "Failed to update channel"}), 500
+            
+    except Exception as e:
+        logger.error(f"❌ Error updating channel: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/api/verify-subscription/<session_id>", methods=["GET"])
