@@ -1,7 +1,6 @@
 [build]
-  base = "frontend"
-  command = "npm install && npm run build"
-  publish = "dist"
+  command = "chmod +x build.sh && ./build.sh"
+  publish = "frontend/dist"
 
 [build.environment]
   NODE_VERSION = "18"
