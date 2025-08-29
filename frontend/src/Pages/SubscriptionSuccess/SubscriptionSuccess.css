@@ -73,6 +73,77 @@
     font-size: 1rem;
 }
 
+.next-steps {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 3px solid #5a67d8;
+    border-radius: 16px;
+    padding: 30px;
+    margin: 30px 0;
+    text-align: left;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.next-steps h3 {
+    color: white;
+    font-size: 1.3rem;
+    margin: 0 0 20px 0;
+    text-align: center;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    letter-spacing: 0.5px;
+}
+
+.next-steps ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: step-counter;
+}
+
+.next-steps li {
+    color: white;
+    font-size: 1.1rem;
+    margin: 16px 0;
+    padding: 16px 20px 16px 60px;
+    position: relative;
+    font-weight: 500;
+    line-height: 1.6;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.next-steps li:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.next-steps li::before {
+    content: counter(step-counter);
+    counter-increment: step-counter;
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: white;
+    color: #5a67d8;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
 .trial-notice {
     background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
     border: 2px solid #28a745;
@@ -136,6 +207,15 @@
     transform: translateY(-2px);
 }
 
+.dashboard-btn.secondary {
+    background: #6c757d;
+}
+
+.dashboard-btn.secondary:hover {
+    background: #545b62;
+    transform: translateY(-2px);
+}
+
 .retry-btn {
     background: #dc3545;
 }
@@ -160,6 +240,88 @@
     100% { transform: rotate(360deg); }
 }
 
+.channel-link-section {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 2px solid #ffc107;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 25px 0;
+    text-align: left;
+}
+
+.channel-link-section h3 {
+    color: #856404;
+    font-size: 1.3rem;
+    margin: 0 0 15px 0;
+    text-align: center;
+    font-weight: 700;
+}
+
+.channel-link-section p {
+    color: #856404;
+    font-size: 1rem;
+    margin: 0 0 15px 0;
+    text-align: center;
+}
+
+.channel-link-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 15px 0;
+    flex-wrap: wrap;
+}
+
+.channel-link {
+    font-family: 'Courier New', monospace;
+    background: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 4px;
+    color: #007bff;
+    font-size: 0.9rem;
+    flex: 1;
+    min-width: 200px;
+    word-break: break-all;
+}
+
+.copy-link-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.copy-link-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+.channel-tip {
+    color: #856404 !important;
+    font-size: 0.9rem !important;
+    font-style: italic;
+    margin: 15px 0 0 0 !important;
+    text-align: center;
+}
+
+.monthly-payouts {
+    color: #007bff !important;
+    font-weight: 600 !important;
+    font-size: 1.1rem !important;
+    margin: 20px 0 0 0 !important;
+    text-align: center;
+}
+
 @media (max-width: 600px) {
     .success-container {
         padding: 30px 20px;
@@ -176,5 +338,19 @@
     
     .premium-features {
         padding: 15px;
+    }
+    
+    .channel-link-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .channel-link {
+        min-width: auto;
+        text-align: center;
+    }
+    
+    .copy-link-btn {
+        width: 100%;
     }
 } 
