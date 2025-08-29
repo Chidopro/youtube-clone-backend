@@ -138,9 +138,9 @@ const SubscriptionSuccess = () => {
                         setSuccess(true);
                         // Clear any pending session
                         localStorage.removeItem('pendingSubscriptionSession');
-                        // Redirect to dashboard after 3 seconds
+                        // Redirect to creator dashboard after 3 seconds
                         setTimeout(() => {
-                            navigate('/dashboard');
+                            navigate('/creator-dashboard');
                         }, 3000);
                     } else {
                         setError(result.error || 'Failed to activate subscription');
