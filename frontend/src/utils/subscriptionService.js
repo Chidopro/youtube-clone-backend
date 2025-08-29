@@ -240,10 +240,17 @@ export class SubscriptionService {
    */
   static async activateProSubscription(subscriptionId, customerId) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Use the same auth system as login (check localStorage instead of Supabase)
+      const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+      const userEmail = localStorage.getItem('user_email');
+      
+      if (!isAuthenticated || !userEmail) {
         throw new Error('User not authenticated');
       }
+
+      // For now, we'll use the email as the user ID since we don't have a proper user ID
+      // In a real system, you'd want to get the user ID from the backend
+      const userId = userEmail; // Using email as temporary user ID
 
       // Calculate trial end date (7 days from now)
       const trialEnd = new Date();
@@ -252,7 +259,7 @@ export class SubscriptionService {
       const { data, error } = await supabase
         .from('user_subscriptions')
         .upsert({
-          user_id: user.id,
+          user_id: userId,
           tier: 'pro',
           status: 'active',
           stripe_subscription_id: subscriptionId,
@@ -269,7 +276,7 @@ export class SubscriptionService {
 
       // Send welcome email
       try {
-        await this.sendWelcomeEmail(user.email);
+        await this.sendWelcomeEmail(userEmail);
       } catch (emailError) {
         console.error('Error sending welcome email:', emailError);
         // Don't fail the subscription activation if email fails
