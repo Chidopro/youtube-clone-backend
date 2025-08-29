@@ -1785,7 +1785,11 @@ def test_email_config():
 @app.route("/api/auth/login", methods=["POST", "OPTIONS"])
 def auth_login():
     if request.method == "OPTIONS":
-        return jsonify(success=True)
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
     """Handle user login with email and password validation"""
     try:
         data = request.get_json()
@@ -1812,7 +1816,7 @@ def auth_login():
                 # Simple password verification (replace with bcrypt in production)
                 if password == stored_password:  # Simple check for demo
                     logger.info(f"User {email} logged in successfully")
-                    return jsonify({
+                    response = jsonify({
                         "success": True, 
                         "message": "Login successful",
                         "user": {
@@ -1822,6 +1826,8 @@ def auth_login():
                             "role": user.get('role', 'customer')
                         }
                     })
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response
                 else:
                     return jsonify({"success": False, "error": "Invalid email or password"}), 401
             else:
@@ -1838,7 +1844,11 @@ def auth_login():
 @app.route("/api/auth/signup", methods=["POST", "OPTIONS"])
 def auth_signup():
     if request.method == "OPTIONS":
-        return jsonify(success=True)
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
     """Handle user signup with email and password validation"""
     try:
         data = request.get_json()
