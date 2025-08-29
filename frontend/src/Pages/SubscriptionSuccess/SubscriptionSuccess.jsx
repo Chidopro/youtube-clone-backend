@@ -316,6 +316,10 @@ const SubscriptionSuccess = () => {
                 <h2>Welcome to Pro!</h2>
                 <p>Your 7-day free trial has been successfully activated.</p>
                 
+                <p className="welcome-message">
+                    🎉 <strong>Welcome to ScreenMerch Pro!</strong> You're all set to start sharing amazing content and earning from your merchandise.
+                </p>
+                
                 <div className="trial-notice">
                     <h3>🎁 7-Day Free Trial Active</h3>
                     <p><strong>You're now in your free trial period!</strong></p>
@@ -373,10 +377,6 @@ const SubscriptionSuccess = () => {
                         💡 <strong>Pro Tip:</strong> Add this link to your YouTube descriptions, social media bios, and website to start selling merch to your audience!
                     </p>
                 </div>
-                
-                <p className="welcome-message">
-                    🎉 <strong>Welcome to ScreenMerch Pro!</strong> You're all set to start sharing amazing content and earning from your merchandise.
-                </p>
                 
                 <div className="action-buttons">
                     <button 
