@@ -55,6 +55,12 @@ const Login = () => {
         localStorage.setItem('user_authenticated', 'true');
         localStorage.setItem('user_email', email.trim());
         
+        // Set flag to indicate user just logged in (for subscription success page)
+        if (returnTo.includes('/subscription-success')) {
+          localStorage.setItem('justLoggedIn', 'true');
+          console.log('🏷️ Set justLoggedIn flag for subscription success page');
+        }
+        
         console.log('🔐 Auth success - storing auth state');
         
         setMessage({ type: 'success', text: data.message || 'Login successful! Redirecting...' });

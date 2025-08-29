@@ -17,10 +17,12 @@ const SubscriptionSuccess = () => {
         const verifySubscription = async () => {
             const sessionId = searchParams.get('session_id');
             const pendingSession = localStorage.getItem('pendingSubscriptionSession');
+            const justLoggedIn = localStorage.getItem('justLoggedIn');
             
             console.log('🔍 Session ID Debug:', {
                 sessionIdFromURL: sessionId,
                 pendingSessionFromStorage: pendingSession,
+                justLoggedIn,
                 searchParams: Object.fromEntries(searchParams.entries())
             });
             
@@ -42,12 +44,19 @@ const SubscriptionSuccess = () => {
                 console.log('💾 Stored session ID from URL:', sessionId);
             }
 
+            // If user just logged in, wait longer for auth state to settle
+            if (justLoggedIn) {
+                console.log('🔄 User just logged in, waiting for auth state to settle...');
+                localStorage.removeItem('justLoggedIn'); // Clear the flag
+                await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+            }
+
             try {
                 // Check if user is authenticated with retry mechanism
                 let user = null;
                 let authError = null;
                 let retryCount = 0;
-                const maxRetries = 3;
+                const maxRetries = 5; // Increased retries
 
                 while (retryCount < maxRetries) {
                     try {
@@ -67,8 +76,9 @@ const SubscriptionSuccess = () => {
                         }
                         
                         if (retryCount < maxRetries - 1) {
-                            console.log(`⏳ Auth not ready, retrying in 1 second... (${retryCount + 1}/${maxRetries})`);
-                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            const delay = retryCount === 0 ? 2000 : 1000; // Longer delay on first retry
+                            console.log(`⏳ Auth not ready, retrying in ${delay/1000} seconds... (${retryCount + 1}/${maxRetries})`);
+                            await new Promise(resolve => setTimeout(resolve, delay));
                         }
                         
                         retryCount++;
