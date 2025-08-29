@@ -60,15 +60,25 @@ const SubscriptionSuccess = () => {
 
                 while (retryCount < maxRetries) {
                     try {
-                        const { data: { user: authUser }, error: authErr } = await supabase.auth.getUser();
-                        user = authUser;
-                        authError = authErr;
+                        // Use the same auth system as login (check localStorage instead of Supabase)
+                        const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+                        const userEmail = localStorage.getItem('user_email');
+                        
+                        if (isAuthenticated && userEmail) {
+                            user = { email: userEmail };
+                            authError = null;
+                        } else {
+                            user = null;
+                            authError = 'Not authenticated';
+                        }
                         
                         console.log(`🔐 Auth check attempt ${retryCount + 1}:`, { 
                             user: !!user, 
                             authError, 
                             sessionId,
-                            userEmail: user?.email 
+                            userEmail: user?.email,
+                            isAuthenticated,
+                            storedEmail: userEmail
                         });
                         
                         if (user && !authError) {
