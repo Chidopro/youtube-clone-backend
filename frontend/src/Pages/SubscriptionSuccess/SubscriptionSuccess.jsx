@@ -320,17 +320,6 @@ const SubscriptionSuccess = () => {
                     🎉 <strong>Welcome to ScreenMerch Pro!</strong> You're all set to start sharing amazing content and earning from your merchandise.
                 </p>
                 
-                <div className="trial-notice">
-                    <h3>🎁 7-Day Free Trial Active</h3>
-                    <p><strong>You're now in your free trial period!</strong></p>
-                    <ul>
-                        <li>✅ No charges for the next 7 days</li>
-                        <li>✅ Full access to all Pro features</li>
-                        <li>✅ Cancel anytime before trial ends</li>
-                        <li>✅ After 7 days, you'll be charged $49/month</li>
-                    </ul>
-                </div>
-                
                 <div className="next-steps">
                     <h3>🚀 Your Next Steps:</h3>
                     <ol>
