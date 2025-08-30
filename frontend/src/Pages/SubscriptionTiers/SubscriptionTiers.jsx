@@ -272,15 +272,25 @@ const SubscriptionTiers = () => {
                             <strong>Net Earnings (Pro):</strong> ${proTierEarnings.netEarnings.toLocaleString()}
                         </div>
                     </div>
-                    <div className="profit-per-item-breakdown">
-                        <h6>💰 Per Item Breakdown (Example: $21.69 T-Shirt)</h6>
-                        <div className="item-breakdown">
-                            <span><strong>Your Selling Price:</strong> ${hypotheticalData.averageProductPrice}</span>
-                            <span><strong>Printful Cost:</strong> -${hypotheticalData.printfulCost}</span>
-                                                         <span><strong>Creator Commission (20%):</strong> -${hypotheticalData.creatorCommission}</span>
-                            <span className="final-profit"><strong>Your Profit:</strong> ${hypotheticalData.yourProfitPerItem}</span>
-                        </div>
-                    </div>
+                                         <div className="profit-per-item-breakdown">
+                         <div className="breakdown-header">
+                             <h6>💰 Per Item Breakdown (Example: $21.69 T-Shirt)</h6>
+                             <div className="product-visual">
+                                 <img 
+                                     src="/unisexclassictee.png" 
+                                     alt="White T-Shirt Example" 
+                                     className="product-image"
+                                 />
+                                 <p className="product-caption">Just one t-shirt design at 200 sales/month!</p>
+                             </div>
+                         </div>
+                         <div className="item-breakdown">
+                             <span><strong>Your Selling Price:</strong> ${hypotheticalData.averageProductPrice}</span>
+                             <span><strong>Printful Cost:</strong> -${hypotheticalData.printfulCost}</span>
+                             <span><strong>Creator Commission (20%):</strong> -${hypotheticalData.creatorCommission}</span>
+                             <span className="final-profit"><strong>Your Profit:</strong> ${hypotheticalData.yourProfitPerItem}</span>
+                         </div>
+                     </div>
                 </div>
             </div>
 
