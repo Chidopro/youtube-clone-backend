@@ -5,6 +5,7 @@ import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
 
+
 const Dashboard = ({ sidebar }) => {
     const [user, setUser] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
@@ -39,6 +40,8 @@ const Dashboard = ({ sidebar }) => {
         videos_with_sales: []
     });
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
+    
+
     const navigate = useNavigate();
 
     // Sales data for the chart (will be updated from API)
@@ -139,6 +142,8 @@ const Dashboard = ({ sidebar }) => {
             setAnalyticsLoading(false);
         }
     };
+
+
 
     // Fetch analytics when analytics tab is active
     useEffect(() => {
@@ -526,6 +531,7 @@ const Dashboard = ({ sidebar }) => {
                     📊 Analytics
                 </button>
 
+
             </div>
 
             {/* Tab Content */}
@@ -785,6 +791,8 @@ const Dashboard = ({ sidebar }) => {
                         </div>
                     </div>
                 )}
+
+
 
 
             </div>
