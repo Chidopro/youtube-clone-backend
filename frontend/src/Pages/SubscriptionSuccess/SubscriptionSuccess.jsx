@@ -290,6 +290,7 @@ const SubscriptionSuccess = () => {
                 
                 <p className="welcome-message">
                     🎉 <strong>Welcome to ScreenMerch Pro!</strong> You're all set to start sharing amazing content and earning from your merchandise.
+                    <div className="trial-notice-simple">✅ Your 7-day free trial starts now!</div>
                 </p>
                 
                 <div className="next-steps">
