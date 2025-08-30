@@ -22,6 +22,7 @@ import Search from "./Pages/Search/Search";
 import MerchandiseCategories from "./Pages/MerchandiseCategories/MerchandiseCategories";
 // import ScreenshotSelection from "./Pages/ScreenshotSelection/ScreenshotSelection";
 import TestCropTool from "./Pages/TestCropTool/TestCropTool";
+import PaymentPortal from "./Pages/PaymentPortal/PaymentPortal";
 import { API_CONFIG } from "./config/apiConfig";
 
 const App = () => {
@@ -90,6 +91,7 @@ const App = () => {
               <Route path="/search" element={<Search />} />
               <Route path="/merchandise" element={<MerchandiseCategories />} />
               <Route path="/test-crop-tool" element={<TestCropTool />} />
+              <Route path="/payment-portal" element={<PaymentPortal />} />
               {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
             </Routes>
           </div>
