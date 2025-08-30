@@ -298,24 +298,14 @@ const SubscriptionSuccess = () => {
                     <ol>
                         <li><strong>Sign in create password</strong></li>
                         <li><strong>Go to dashboard</strong></li>
-                        <li><strong>Personalize page and share content</strong></li>
+                        <li><strong>Personalize your page and post content</strong></li>
                         <li><strong>Promote with your personal link</strong></li>
                         <li><strong>Track your sales in Analytics</strong></li>
                     </ol>
                     <p className="monthly-payouts">Monthly Payouts</p>
                 </div>
                 
-                <div className="premium-features">
-                    <h3>You now have access to:</h3>
-                    <ul>
-                        <li>✅ Upload and share your videos</li>
-                        <li>✅ Enhanced upload limits (2GB, 60 minutes)</li>
-                        <li>✅ Analytics and sales tracking</li>
-                        <li>✅ Creator dashboard and tools</li>
-                        <li>✅ Ad-free viewing experience</li>
-                        <li>✅ Early access to new features</li>
-                    </ul>
-                </div>
+
                 
                 <div className="channel-link-section">
                     <h3>🛍️ Your ScreenMerch Channel</h3>
