@@ -1,0 +1,11 @@
+# Ignore backend files in Netlify build
+app.py
+backend/
+*.py
+requirements.txt
+fly.toml
+Dockerfile
+__pycache__/
+*.sql
+*.md
+node_modules/
