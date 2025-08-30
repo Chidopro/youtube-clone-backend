@@ -10,7 +10,7 @@ const SubscriptionTiers = () => {
     
     // Realistic earnings data based on actual ScreenMerch product prices and Printful costs
     // Average product price: $21.69 (from your actual t-shirt pricing)
-    // Printful cost: ~$11.69, Your profit: ~$3.49 per item after 30% creator commission
+    // Printful cost: ~$11.69, Your profit: ~$4.00 per item after 20% creator commission
     const hypotheticalData = {
         totalRevenue: 52056, // $52,056 annual revenue (based on $4,338 monthly)
         monthlyRevenue: 4338, // $4,338 average monthly revenue
@@ -18,8 +18,8 @@ const SubscriptionTiers = () => {
         monthlyProductsSold: 200, // 200 average monthly products sold
         averageProductPrice: 21.69, // Average t-shirt price from your Printful dashboard
         printfulCost: 11.69, // Average Printful wholesale cost
-        creatorCommission: 6.51, // 30% of $21.69
-        yourProfitPerItem: 3.49 // $21.69 - $11.69 - $6.51
+        creatorCommission: 2.00, // 20% of gross profit ($21.69 - $11.69 = $10.00, then 20% = $2.00)
+        yourProfitPerItem: 8.00 // $21.69 - $11.69 - $2.00 (20% commission)
     };
 
     // Calculate earnings for each tier
@@ -34,8 +34,8 @@ const SubscriptionTiers = () => {
         };
     };
 
-    const freeTierEarnings = calculateEarnings(hypotheticalData.totalRevenue, 0.30, 0);
-    const proTierEarnings = calculateEarnings(hypotheticalData.totalRevenue, 0.30, 49);
+    const freeTierEarnings = calculateEarnings(hypotheticalData.totalRevenue, 0.20, 0);
+    const proTierEarnings = calculateEarnings(hypotheticalData.totalRevenue, 0.20, 49);
 
     const [currentUser, setCurrentUser] = useState(null);
     const [userSubscription, setUserSubscription] = useState(null);
@@ -193,7 +193,7 @@ const SubscriptionTiers = () => {
                     <h4>💎 Simple 2-Tier System</h4>
                     <p>Start free for 7 days, then upgrade to Pro for maximum earnings</p>
                     <div className="pricing-note">
-                        <small>💡 Based on actual Printful costs and 30% creator commission structure</small>
+                        <small>💡 Based on actual Printful costs and 20% creator commission structure</small>
                     </div>
                 </div>
                 
@@ -202,7 +202,7 @@ const SubscriptionTiers = () => {
                     <div className="tier-card current">
                         <div className="tier-header">
                             <h5>Free Trial</h5>
-                            <span className="tier-fee">30% Service Fee</span>
+                            <span className="tier-fee">20% Service Fee</span>
                         </div>
                         <div className="tier-revenue">
                             <span className="revenue-amount">${freeTierEarnings.grossEarnings.toLocaleString()}</span>
@@ -222,7 +222,7 @@ const SubscriptionTiers = () => {
                     <div className="tier-card upgrade">
                         <div className="tier-header">
                             <h5>Pro Tier</h5>
-                            <span className="tier-fee">30% Service Fee</span>
+                            <span className="tier-fee">20% Service Fee</span>
                         </div>
                         <div className="tier-revenue">
                             <span className="revenue-amount">${proTierEarnings.grossEarnings.toLocaleString()}</span>
@@ -260,7 +260,7 @@ const SubscriptionTiers = () => {
                             <strong>Printful Costs:</strong> ${(hypotheticalData.totalProductsSold * hypotheticalData.printfulCost).toLocaleString()}
                         </div>
                         <div className="breakdown-item">
-                            <strong>Creator Commission (30%):</strong> ${(hypotheticalData.totalRevenue * 0.30).toLocaleString()}
+                            <strong>Creator Commission (20%):</strong> ${(hypotheticalData.totalRevenue * 0.20).toLocaleString()}
                         </div>
                         <div className="breakdown-item">
                             <strong>Your Gross Profit:</strong> ${(hypotheticalData.totalProductsSold * hypotheticalData.yourProfitPerItem).toLocaleString()}
@@ -277,7 +277,7 @@ const SubscriptionTiers = () => {
                         <div className="item-breakdown">
                             <span><strong>Your Selling Price:</strong> ${hypotheticalData.averageProductPrice}</span>
                             <span><strong>Printful Cost:</strong> -${hypotheticalData.printfulCost}</span>
-                            <span><strong>Creator Commission (30%):</strong> -${hypotheticalData.creatorCommission}</span>
+                                                         <span><strong>Creator Commission (20%):</strong> -${hypotheticalData.creatorCommission}</span>
                             <span className="final-profit"><strong>Your Profit:</strong> ${hypotheticalData.yourProfitPerItem}</span>
                         </div>
                     </div>
@@ -290,8 +290,8 @@ const SubscriptionTiers = () => {
                 <div className="value-grid">
                     <div className="value-item">
                         <div className="value-icon">💰</div>
-                        <h4>Same Great Rates</h4>
-                        <p>Keep 70% of your earnings with our competitive 30% service fee</p>
+                                                 <h4>Better Rates</h4>
+                         <p>Keep 80% of your earnings with our competitive 20% service fee</p>
                     </div>
                     <div className="value-item">
                         <div className="value-icon">📈</div>
