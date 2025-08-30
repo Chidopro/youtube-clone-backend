@@ -614,6 +614,42 @@
     border: 1px solid #e9ecef;
 }
 
+.breakdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    gap: 20px;
+}
+
+.breakdown-header h6 {
+    margin: 0;
+    flex: 1;
+}
+
+.product-visual {
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.product-image {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 8px;
+}
+
+.product-caption {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin: 0;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
 .profit-per-item-breakdown h6 {
     margin: 0 0 15px 0;
     color: #495057;
@@ -661,5 +697,20 @@
     
     .profit-per-item-breakdown {
         padding: 15px;
+    }
+    
+    .breakdown-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .product-image {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .product-caption {
+        font-size: 0.8rem;
     }
 } 
