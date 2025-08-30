@@ -298,7 +298,7 @@ const SubscriptionSuccess = () => {
                     <ol>
                         <li><strong>Sign in create password</strong></li>
                         <li><strong>Go to dashboard</strong></li>
-                        <li><strong>Personalize your page and sharing videos</strong></li>
+                        <li><strong>Personalize page and share content</strong></li>
                         <li><strong>Promote with your personal link</strong></li>
                         <li><strong>Track your sales in Analytics</strong></li>
                     </ol>
