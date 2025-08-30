@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { SubscriptionService } from '../../utils/subscriptionService';
 import { API_CONFIG } from '../../config/apiConfig';
 import { supabase } from '../../supabaseClient';
-import PaymentSetup from '../../components/PaymentSetup/PaymentSetup';
 import './SubscriptionSuccess.css';
 
 const SubscriptionSuccess = () => {
@@ -14,7 +13,6 @@ const SubscriptionSuccess = () => {
     const [error, setError] = useState(null);
     const [redirecting, setRedirecting] = useState(false);
     const [userEmail, setUserEmail] = useState(null);
-    const [showPaymentSetup, setShowPaymentSetup] = useState(false);
 
     useEffect(() => {
         // Scroll to top when page loads
@@ -66,8 +64,6 @@ const SubscriptionSuccess = () => {
             if (processedSessions.includes(sessionToUse)) {
                 console.log('⚠️ Session already processed, redirecting to dashboard');
                 setSuccess(true);
-                // Show payment setup instead of auto-redirecting
-                setShowPaymentSetup(true);
                 return;
             }
 
@@ -210,8 +206,6 @@ const SubscriptionSuccess = () => {
                         setSuccess(true);
                         // Clear any pending session
                         localStorage.removeItem('pendingSubscriptionSession');
-                        // Show payment setup after successful subscription
-                        setShowPaymentSetup(true);
                     } else {
                         setError(result.error || 'Failed to activate subscription');
                     }
@@ -228,16 +222,6 @@ const SubscriptionSuccess = () => {
 
         verifySubscription();
     }, [searchParams, navigate]);
-
-    const handlePaymentComplete = () => {
-        console.log('✅ Payment setup completed');
-        navigate('/dashboard');
-    };
-
-    const handlePaymentSkip = () => {
-        console.log('⏭️ Payment setup skipped');
-        setShowPaymentSetup(false); // Hide payment setup and show congratulations page
-    };
 
     if (loading) {
         return (
@@ -296,16 +280,6 @@ const SubscriptionSuccess = () => {
                     )}
                 </div>
             </div>
-        );
-    }
-
-    // Show payment setup if subscription is successful and we should show it
-    if (success && showPaymentSetup) {
-        return (
-            <PaymentSetup 
-                onComplete={handlePaymentComplete}
-                onSkip={handlePaymentSkip}
-            />
         );
     }
 
