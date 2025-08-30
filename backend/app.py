@@ -228,7 +228,7 @@ def add_security_headers(response):
     if request.method == 'OPTIONS':
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
     
     return response
 
@@ -2707,20 +2707,33 @@ def auth_signup():
             if existing_user.data:
                 return jsonify({"success": False, "error": "An account with this email already exists"}), 409
             
-            # Create new user
-            # For demo purposes, store password as-is (replace with bcrypt in production)
+            # Create new user - simple free account
             new_user = {
                 'email': email,
                 'password_hash': password,  # Replace with bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()) in production
                 'role': 'customer',
                 'status': 'active',
-                'email_verified': False
+                'email_verified': False,
+                'display_name': email.split('@')[0]  # Use email prefix as display name
             }
             
             result = supabase.table('users').insert(new_user).execute()
             
             if result.data:
                 logger.info(f"New user {email} created successfully")
+                
+                # Create a simple free subscription entry
+                try:
+                    supabase.table('user_subscriptions').insert({
+                        'user_id': result.data[0].get('id'),
+                        'tier': 'free',
+                        'status': 'active',
+                        'current_period_start': 'now()',
+                        'current_period_end': None  # Free forever
+                    }).execute()
+                except Exception as sub_error:
+                    logger.warning(f"Could not create subscription entry: {str(sub_error)}")
+                
                 return jsonify({
                     "success": True, 
                     "message": "Account created successfully!",

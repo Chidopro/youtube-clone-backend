@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { SubscriptionService } from '../utils/subscriptionService';
 import { supabase } from '../supabaseClient';
+import { SubscriptionService } from '../utils/subscriptionService';
 
 export const useSubscription = () => {
   const [subscription, setSubscription] = useState(null);
@@ -18,7 +18,7 @@ export const useSubscription = () => {
         return;
       }
 
-      const subscriptionData = await SubscriptionService.getUserSubscriptionWithConfig();
+      const subscriptionData = await SubscriptionService.getCurrentUserSubscription();
       setSubscription(subscriptionData);
     } catch (err) {
       console.error('Error fetching subscription:', err);
@@ -42,7 +42,7 @@ export const useSubscription = () => {
   const subscribeToBasic = async () => {
     try {
       setError(null);
-      const result = await SubscriptionService.subscribeToBasicTier();
+      const result = await SubscriptionService.subscribeToFreeTier();
       
       if (result.success) {
         await fetchSubscription(); // Refresh subscription data
