@@ -287,8 +287,6 @@ const SubscriptionSuccess = () => {
         <div className="subscription-success-page">
             <div className="success-container">
                 <div className="success-icon">🎉</div>
-                <h2>Welcome to Pro!</h2>
-                <p>Your 7-day free trial has been successfully activated.</p>
                 
                 <p className="welcome-message">
                     🎉 <strong>Welcome to ScreenMerch Pro!</strong> You're all set to start sharing amazing content and earning from your merchandise.
