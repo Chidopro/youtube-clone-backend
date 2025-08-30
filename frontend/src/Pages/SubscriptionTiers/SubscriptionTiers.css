@@ -604,3 +604,62 @@
         font-size: 2rem;
     }
 } 
+
+/* Profit Breakdown Styles */
+.profit-per-item-breakdown {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid #e9ecef;
+}
+
+.profit-per-item-breakdown h6 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.item-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+}
+
+.item-breakdown span {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 300px;
+    padding: 6px 0;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.95rem;
+}
+
+.item-breakdown span:last-child {
+    border-bottom: none;
+}
+
+.item-breakdown .final-profit {
+    font-weight: 700;
+    color: #28a745;
+    font-size: 1.1rem;
+    border-top: 2px solid #28a745;
+    padding-top: 10px;
+    margin-top: 5px;
+}
+
+/* Responsive adjustments for profit breakdown */
+@media (max-width: 768px) {
+    .item-breakdown span {
+        max-width: 100%;
+        font-size: 0.9rem;
+    }
+    
+    .profit-per-item-breakdown {
+        padding: 15px;
+    }
+} 

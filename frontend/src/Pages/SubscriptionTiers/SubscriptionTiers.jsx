@@ -8,13 +8,18 @@ const SubscriptionTiers = () => {
     const navigate = useNavigate();
     const location = useLocation();
     
-    // Realistic earnings data based on actual ScreenMerch product prices
-    // Average product price: $25.50 (mix of t-shirts $21.99-$24.99, hoodies $22.99-$39.99, etc.)
+    // Realistic earnings data based on actual ScreenMerch product prices and Printful costs
+    // Average product price: $21.69 (from your actual t-shirt pricing)
+    // Printful cost: ~$11.69, Your profit: ~$3.49 per item after 30% creator commission
     const hypotheticalData = {
-        totalRevenue: 61200, // $61,200 annual revenue (based on $5,100 monthly)
-        monthlyRevenue: 5100, // $5,100 average monthly revenue
+        totalRevenue: 52056, // $52,056 annual revenue (based on $4,338 monthly)
+        monthlyRevenue: 4338, // $4,338 average monthly revenue
         totalProductsSold: 2400, // 2,400 total products sold (200 monthly × 12)
-        monthlyProductsSold: 200 // 200 average monthly products sold
+        monthlyProductsSold: 200, // 200 average monthly products sold
+        averageProductPrice: 21.69, // Average t-shirt price from your Printful dashboard
+        printfulCost: 11.69, // Average Printful wholesale cost
+        creatorCommission: 6.51, // 30% of $21.69
+        yourProfitPerItem: 3.49 // $21.69 - $11.69 - $6.51
     };
 
     // Calculate earnings for each tier
@@ -187,6 +192,9 @@ const SubscriptionTiers = () => {
                 <div className="calculator-header">
                     <h4>💎 Simple 2-Tier System</h4>
                     <p>Start free for 7 days, then upgrade to Pro for maximum earnings</p>
+                    <div className="pricing-note">
+                        <small>💡 Based on actual Printful costs and 30% creator commission structure</small>
+                    </div>
                 </div>
                 
                 <div className="tier-comparison-grid">
@@ -249,16 +257,28 @@ const SubscriptionTiers = () => {
                             <strong>Total Revenue:</strong> ${hypotheticalData.totalRevenue.toLocaleString()}
                         </div>
                         <div className="breakdown-item">
-                            <strong>Service Fee (30%):</strong> ${(hypotheticalData.totalRevenue * 0.30).toLocaleString()}
+                            <strong>Printful Costs:</strong> ${(hypotheticalData.totalProductsSold * hypotheticalData.printfulCost).toLocaleString()}
                         </div>
                         <div className="breakdown-item">
-                            <strong>Gross Earnings:</strong> ${freeTierEarnings.grossEarnings.toLocaleString()}
+                            <strong>Creator Commission (30%):</strong> ${(hypotheticalData.totalRevenue * 0.30).toLocaleString()}
+                        </div>
+                        <div className="breakdown-item">
+                            <strong>Your Gross Profit:</strong> ${(hypotheticalData.totalProductsSold * hypotheticalData.yourProfitPerItem).toLocaleString()}
                         </div>
                         <div className="breakdown-item">
                             <strong>Pro Tier Cost:</strong> ${proTierEarnings.annualSubscriptionCost.toLocaleString()}/year
                         </div>
                         <div className="breakdown-item highlight">
                             <strong>Net Earnings (Pro):</strong> ${proTierEarnings.netEarnings.toLocaleString()}
+                        </div>
+                    </div>
+                    <div className="profit-per-item-breakdown">
+                        <h6>💰 Per Item Breakdown (Example: $21.69 T-Shirt)</h6>
+                        <div className="item-breakdown">
+                            <span><strong>Your Selling Price:</strong> ${hypotheticalData.averageProductPrice}</span>
+                            <span><strong>Printful Cost:</strong> -${hypotheticalData.printfulCost}</span>
+                            <span><strong>Creator Commission (30%):</strong> -${hypotheticalData.creatorCommission}</span>
+                            <span className="final-profit"><strong>Your Profit:</strong> ${hypotheticalData.yourProfitPerItem}</span>
                         </div>
                     </div>
                 </div>
