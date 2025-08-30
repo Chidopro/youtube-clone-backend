@@ -23,6 +23,7 @@ import MerchandiseCategories from "./Pages/MerchandiseCategories/MerchandiseCate
 // import ScreenshotSelection from "./Pages/ScreenshotSelection/ScreenshotSelection";
 import TestCropTool from "./Pages/TestCropTool/TestCropTool";
 import PaymentPortal from "./Pages/PaymentPortal/PaymentPortal";
+import PaymentSetup from "./Pages/PaymentSetup/PaymentSetup";
 import { API_CONFIG } from "./config/apiConfig";
 
 const App = () => {
@@ -86,12 +87,14 @@ const App = () => {
               <Route path="/admin" element={<Admin />} />
               <Route path="/auth" element={<AuthForm />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Login />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/search" element={<Search />} />
               <Route path="/merchandise" element={<MerchandiseCategories />} />
               <Route path="/test-crop-tool" element={<TestCropTool />} />
               <Route path="/payment-portal" element={<PaymentPortal />} />
+              <Route path="/payment-setup" element={<PaymentSetup />} />
               {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
             </Routes>
           </div>

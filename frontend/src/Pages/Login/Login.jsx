@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
 import './Login.css';
 
@@ -7,6 +7,14 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoginMode, setIsLoginMode] = useState(true);
+  const location = useLocation();
+  
+  // Auto-switch to signup mode if accessed via /signup route
+  useEffect(() => {
+    if (location.pathname === '/signup') {
+      setIsLoginMode(false);
+    }
+  }, [location.pathname]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
@@ -101,7 +109,7 @@ const Login = () => {
             <strong>{isLoginMode ? 'Welcome Back!' : 'Join ScreenMerch'}</strong><br />
             {isLoginMode 
               ? 'Sign in to access your account and continue creating amazing merchandise.'
-              : 'Create your account to start building your creator business with ScreenMerch.'
+              : 'Create your free account to start selling merchandise with our 30% transaction fee model.'
             }
           </div>
 
