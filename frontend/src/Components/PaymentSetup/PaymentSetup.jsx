@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import './PaymentSetup.css';
 
-const PaymentSetup = ({ onComplete, onSkip }) => {
+const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
     const [paypalEmail, setPaypalEmail] = useState('');
     const [taxId, setTaxId] = useState('');
     const [loading, setLoading] = useState(false);
@@ -174,8 +174,19 @@ const PaymentSetup = ({ onComplete, onSkip }) => {
         <div className="payment-setup-container">
             <div className="payment-setup-card">
                 <div className="payment-setup-header">
-                    <h2>💰 Set Up Your Payouts</h2>
-                    <p>Get paid for your merch sales with PayPal Business - No monthly fees!</p>
+                    <div className="header-content">
+                        <h2>💰 Set Up Your Payouts</h2>
+                        <p>Get paid for your merch sales with PayPal Business - No monthly fees!</p>
+                    </div>
+                    {onClose && (
+                        <button 
+                            className="payment-setup-close-btn"
+                            onClick={onClose}
+                            aria-label="Close payment setup"
+                        >
+                            ✕
+                        </button>
+                    )}
                 </div>
 
                 {currentStep === 1 && (

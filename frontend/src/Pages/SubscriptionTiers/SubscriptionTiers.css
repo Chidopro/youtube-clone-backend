@@ -870,6 +870,66 @@
     .product-caption {
         font-size: 0.8rem;
     }
+    
+    /* Fix for Per Item Example mobile overflow */
+    .item-breakdown-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        width: 100%;
+        overflow-x: hidden;
+    }
+    
+    .product-visual {
+        flex-shrink: 0;
+        width: 100%;
+        max-width: 120px;
+    }
+    
+    .item-breakdown {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+    
+    .breakdown-row {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        max-width: 100%;
+        padding: 6px 0;
+        border-bottom: 1px solid #e9ecef;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+    
+    .breakdown-row:last-child {
+        border-bottom: none;
+    }
+    
+    .breakdown-label {
+        flex: 1;
+        text-align: left;
+        padding-right: 10px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    .breakdown-value {
+        flex-shrink: 0;
+        text-align: right;
+        font-weight: 600;
+    }
+    
+    .breakdown-row.final-profit {
+        font-weight: 700;
+        color: #28a745;
+        font-size: 1rem;
+        border-top: 2px solid #28a745;
+        padding-top: 10px;
+        margin-top: 5px;
+    }
 }
 
 /* Earnings Display Styles */
@@ -1034,5 +1094,116 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 5px;
+    }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+    .subscription-tiers {
+        padding: 15px 10px;
+    }
+    
+    .tiers-header h1 {
+        font-size: 2rem;
+    }
+    
+    .tiers-header p {
+        font-size: 1rem;
+    }
+    
+    .performance-metrics,
+    .tier-calculator-section,
+    .value-proposition,
+    .success-stories {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .tier-comparison-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .value-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .story-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .breakdown-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .calculation-breakdown {
+        padding: 15px;
+        margin-top: 15px;
+    }
+    
+    .revenue-amount {
+        font-size: 1.8rem;
+    }
+    
+    .cost-amount {
+        font-size: 1.2rem;
+    }
+    
+    .savings-amount {
+        font-size: 1.1rem;
+    }
+    
+    .upgrade-btn {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 1rem;
+    }
+    
+    .metric-value {
+        font-size: 1.8rem;
+    }
+    
+    /* Extra mobile fixes for Per Item Example */
+    .item-breakdown-container {
+        gap: 10px;
+    }
+    
+    .product-visual {
+        max-width: 100px;
+    }
+    
+    .product-image {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .product-caption {
+        font-size: 0.7rem;
+    }
+    
+    .breakdown-row {
+        font-size: 0.8rem;
+        padding: 4px 0;
+    }
+    
+    .breakdown-label {
+        font-size: 0.8rem;
+        padding-right: 5px;
+    }
+    
+    .breakdown-value {
+        font-size: 0.8rem;
+    }
+    
+    .breakdown-row.final-profit {
+        font-size: 0.9rem;
     }
 } 

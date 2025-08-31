@@ -86,11 +86,22 @@ const Login = () => {
         
         setMessage({ type: 'success', text: data.message || 'Login successful! Redirecting...' });
         
-        // For new signups, redirect to PayPal setup first
+        // For new signups, check if they have pending PayPal info
         if (!isLoginMode) {
-          setTimeout(() => {
-            navigate('/payment-setup?flow=new_user');
-          }, 1500);
+          const pendingPaypalEmail = localStorage.getItem('pending_paypal_email');
+          const pendingTaxId = localStorage.getItem('pending_tax_id');
+          
+          if (pendingPaypalEmail || pendingTaxId) {
+            // User has PayPal info, redirect to instruction page with channel link
+            setTimeout(() => {
+              navigate('/subscription-success');
+            }, 1500);
+          } else {
+            // No PayPal info, redirect to PayPal setup
+            setTimeout(() => {
+              navigate('/payment-setup?flow=new_user');
+            }, 1500);
+          }
         } else {
           // For logins, redirect to specified page
           setTimeout(() => {

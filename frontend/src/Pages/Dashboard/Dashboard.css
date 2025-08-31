@@ -1913,7 +1913,8 @@
     background: rgba(0,0,0,0.5);
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    padding-top: 5vh;
     z-index: 1000;
 }
 
@@ -1923,7 +1924,7 @@
     padding: 0;
     max-width: 500px;
     width: 90%;
-    max-height: 90vh;
+    max-height: 85vh;
     overflow-y: auto;
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
