@@ -94,8 +94,8 @@ export class SubscriptionService {
         showFriendsSidebar: false
       },
       pro: {
-        name: 'Pro Plan',
-        price: '$49/month',
+        name: 'Free Plan',
+        price: 'Free',
         serviceFee: 0.30, // 30%
         features: [
           'Everything in Free Trial',

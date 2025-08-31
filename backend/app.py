@@ -14,6 +14,8 @@ from supabase import create_client, Client
 from pathlib import Path
 import sys
 from functools import wraps
+from datetime import datetime
+import time
 
 
 # NEW: Import Printful integration
@@ -2455,63 +2457,44 @@ def delete_user_account(user_id):
         logger.error(f"Error in delete_user_account: {str(e)}")
         return jsonify({"success": False, "error": f"Failed to delete account: {str(e)}"}), 500
 
-# Create Pro checkout session with 7-day trial
+# Create free signup flow - redirects to PayPal setup or email signup
 @app.route("/api/create-pro-checkout", methods=["POST"])
 def create_pro_checkout():
     try:
         data = request.get_json()
         user_id = data.get('userId')
-        tier = data.get('tier', 'pro')
+        tier = data.get('tier', 'free')
         email = data.get('email')
         
-        # Allow guest checkout - user_id can be null
-        # Stripe will collect email during checkout if not provided
+        # For the new free flow, redirect directly to payment setup
+        # This bypasses Stripe entirely since we don't need payment processing
         
-        # Create Stripe checkout session for Pro subscription with 7-day trial
-        session_params = {
-            "payment_method_types": ["card"],
-            "mode": "subscription",
-            "line_items": [{
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {
-                        "name": "ScreenMerch Pro Plan",
-                        "description": "Creator Pro Plan with 7-day free trial - You will be charged $49/month after the trial period"
-                    },
-                    "unit_amount": 4900,  # $49.00 in cents
-                    "recurring": {
-                        "interval": "month"
-                    }
-                },
-                "quantity": 1,
-            }],
-            "subscription_data": {
-                "trial_period_days": 7,
-                "metadata": {
-                    "user_id": user_id or "guest",
-                    "tier": tier
-                }
-            },
-            "success_url": "https://screenmerch.com/subscription-success?session_id={CHECKOUT_SESSION_ID}",
-            "cancel_url": "https://screenmerch.com/subscription-tiers",
-            "metadata": {
-                "user_id": user_id or "guest",
-                "tier": tier
-            }
+        # Create a simple session ID for tracking
+        session_id = f"free_setup_{int(time.time())}"
+        
+        # Store session info for tracking
+        session_data = {
+            "session_id": session_id,
+            "user_id": user_id or "guest",
+            "tier": "free",
+            "setup_type": "paypal_setup",
+            "created_at": datetime.now().isoformat()
         }
         
-        # Only add customer_email if email is provided
-        if email:
-            session_params["customer_email"] = email
+        # In a real implementation, you might store this in a database
+        # For now, we'll just log it
+        logger.info(f"Created free signup session: {session_data}")
         
-        session = stripe.checkout.Session.create(**session_params)
+        # Redirect directly to payment setup
+        payment_setup_url = "https://screenmerch.com/payment-setup"
+        if user_id:
+            payment_setup_url += f"?user_id={user_id}"
         
-        logger.info(f"Created Pro checkout session for user {user_id or 'guest'}")
-        return jsonify({"url": session.url})
+        return jsonify({"url": payment_setup_url})
         
     except Exception as e:
-        logger.error(f"Error creating Pro checkout session: {str(e)}")
-        return jsonify({"error": "Failed to create checkout session"}), 500
+        logger.error(f"Error creating free signup flow: {str(e)}")
+        return jsonify({"error": "Failed to create signup flow"}), 500
 
 # Test endpoint to verify Stripe configuration
 @app.route("/api/test-stripe", methods=["GET"])
@@ -2722,17 +2705,9 @@ def auth_signup():
             if result.data:
                 logger.info(f"New user {email} created successfully")
                 
-                # Create a simple free subscription entry
-                try:
-                    supabase.table('user_subscriptions').insert({
-                        'user_id': result.data[0].get('id'),
-                        'tier': 'free',
-                        'status': 'active',
-                        'current_period_start': 'now()',
-                        'current_period_end': None  # Free forever
-                    }).execute()
-                except Exception as sub_error:
-                    logger.warning(f"Could not create subscription entry: {str(sub_error)}")
+                # Skip subscription creation for now - just create the user account
+                # Subscription can be created later when needed
+                logger.info(f"User account created successfully - subscription will be created later if needed")
                 
                 return jsonify({
                     "success": True, 

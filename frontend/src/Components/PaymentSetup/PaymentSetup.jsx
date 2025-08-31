@@ -47,6 +47,16 @@ const PaymentSetup = ({ onComplete, onSkip }) => {
         setError(null);
 
         try {
+            // Check if this is a new user flow
+            const isNewUserFlow = new URLSearchParams(window.location.search).get('flow') === 'new_user';
+            
+            if (isNewUserFlow) {
+                // For new users, just store PayPal email in localStorage for later
+                localStorage.setItem('pending_paypal_email', paypalEmail);
+                setCurrentStep(2);
+                return;
+            }
+            
             // Use localStorage authentication to match the rest of the system
             const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
             const userEmail = localStorage.getItem('user_email');
@@ -98,6 +108,20 @@ const PaymentSetup = ({ onComplete, onSkip }) => {
         setError(null);
 
         try {
+            // Check if this is a new user flow
+            const isNewUserFlow = new URLSearchParams(window.location.search).get('flow') === 'new_user';
+            
+            if (isNewUserFlow) {
+                // For new users, store tax info in localStorage for later
+                localStorage.setItem('pending_tax_id', taxId);
+                
+                // Complete payment setup
+                if (onComplete) {
+                    onComplete();
+                }
+                return;
+            }
+            
             // Use localStorage authentication to match the rest of the system
             const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
             const userEmail = localStorage.getItem('user_email');
@@ -151,7 +175,7 @@ const PaymentSetup = ({ onComplete, onSkip }) => {
             <div className="payment-setup-card">
                 <div className="payment-setup-header">
                     <h2>💰 Set Up Your Payouts</h2>
-                    <p>Get paid for your merch sales with PayPal Business</p>
+                    <p>Get paid for your merch sales with PayPal Business - No monthly fees!</p>
                 </div>
 
                 {currentStep === 1 && (
@@ -204,7 +228,7 @@ const PaymentSetup = ({ onComplete, onSkip }) => {
                                     className="btn-secondary"
                                     onClick={handleSkip}
                                 >
-                                    Skip for now
+                                    Set up later
                                 </button>
                             </div>
                         </form>

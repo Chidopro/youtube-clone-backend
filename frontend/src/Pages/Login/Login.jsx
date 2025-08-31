@@ -73,10 +73,28 @@ const Login = () => {
         
         setMessage({ type: 'success', text: data.message || 'Login successful! Redirecting...' });
         
-        // Redirect after a short delay
-        setTimeout(() => {
-          navigate(returnTo);
-        }, 1500);
+        // For new signups, check if they have pending PayPal info
+        if (!isLoginMode) {
+          const pendingPaypalEmail = localStorage.getItem('pending_paypal_email');
+          const pendingTaxId = localStorage.getItem('pending_tax_id');
+          
+          if (pendingPaypalEmail || pendingTaxId) {
+            // User has PayPal info, redirect to dashboard
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 1500);
+          } else {
+            // No PayPal info, redirect to PayPal setup
+            setTimeout(() => {
+              navigate('/payment-setup');
+            }, 1500);
+          }
+        } else {
+          // For logins, redirect to specified page
+          setTimeout(() => {
+            navigate(returnTo);
+          }, 1500);
+        }
       } else {
         setMessage({ type: 'error', text: data.error || 'Authentication failed' });
       }
