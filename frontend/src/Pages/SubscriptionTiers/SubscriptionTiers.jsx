@@ -65,10 +65,15 @@ const SubscriptionTiers = () => {
 
         try {
             if (!currentUser) {
-                // For new users, go directly to PayPal setup flow
-                setMessage('Redirecting to PayPal setup...');
+                // For new users, redirect to signup first
+                setMessage('Redirecting to signup...');
                 setTimeout(() => {
-                    window.location.href = '/payment-setup?flow=new_user';
+                    navigate('/signup', { 
+                        state: { 
+                            from: location.pathname,
+                            message: 'Sign up to get started with ScreenMerch!' 
+                        } 
+                    });
                 }, 1500);
                 return;
             }
