@@ -79,9 +79,9 @@ const Login = () => {
           const pendingTaxId = localStorage.getItem('pending_tax_id');
           
           if (pendingPaypalEmail || pendingTaxId) {
-            // User has PayPal info, redirect to dashboard
+            // User has PayPal info, redirect to instruction page with channel link
             setTimeout(() => {
-              navigate('/dashboard');
+              navigate('/subscription-success');
             }, 1500);
           } else {
             // No PayPal info, redirect to PayPal setup

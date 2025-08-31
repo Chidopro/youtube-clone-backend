@@ -264,12 +264,12 @@
               const pendingPaypalEmail = localStorage.getItem('pending_paypal_email');
               const pendingTaxId = localStorage.getItem('pending_tax_id');
               
-              if (pendingPaypalEmail || pendingTaxId) {
-                // User has PayPal info, redirect to dashboard
-                setTimeout(() => {
-                  window.location.href = '/dashboard';
-                }, 1500);
-              } else {
+                             if (pendingPaypalEmail || pendingTaxId) {
+                 // User has PayPal info, redirect to instruction page with channel link
+                 setTimeout(() => {
+                   window.location.href = '/subscription-success';
+                 }, 1500);
+               } else {
                 // No PayPal info, redirect to PayPal setup
                 setTimeout(() => {
                   window.location.href = '/payment-setup';
