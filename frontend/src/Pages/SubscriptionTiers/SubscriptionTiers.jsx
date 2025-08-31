@@ -65,27 +65,25 @@ const SubscriptionTiers = () => {
 
         try {
             if (!currentUser) {
-                setMessage('Please sign up or log in to get started with ScreenMerch!');
+                // For new users, go directly to PayPal setup flow
+                setMessage('Redirecting to PayPal setup...');
                 setTimeout(() => {
-                    navigate('/signup', { 
-                        state: { 
-                            from: location.pathname,
-                            message: 'Sign up to get started with ScreenMerch!' 
-                        } 
-                    });
+                    window.location.href = '/payment-setup?flow=new_user';
                 }, 1500);
                 return;
             }
 
-            // Navigate to dashboard or home page
-            navigate('/dashboard', { 
-                state: { 
-                    from: location.pathname,
-                    message: 'Welcome to ScreenMerch! Start creating your merchandise.' 
-                } 
-            });
+            // For existing users, start the PayPal setup flow
+            const result = await SubscriptionService.subscribeToProTier();
+            
+            if (result.success) {
+                setMessage('Redirecting to PayPal setup...');
+                // The redirect will happen automatically
+            } else {
+                setMessage(result.error || 'An error occurred. Please try again.');
+            }
         } catch (error) {
-            console.error('Error navigating:', error);
+            console.error('Error starting PayPal setup:', error);
             setMessage('An error occurred. Please try again.');
         } finally {
             setActionLoading(false);
@@ -104,7 +102,7 @@ const SubscriptionTiers = () => {
         <div className="subscription-tiers">
             <div className="tiers-header">
                 <h1>💰 Creator Earnings Calculator</h1>
-                <p>See how much you could earn with ScreenMerch's simple free merch system.</p>
+                <p>See how much you could earn with ScreenMerch's completely free merch system - No monthly fees!</p>
             </div>
 
             {message && (
@@ -143,7 +141,7 @@ const SubscriptionTiers = () => {
             <div className="tier-calculator-section">
                 <div className="calculator-header">
                     <h4>🎯 ScreenMerch Free Plan</h4>
-                    <p>It's always free to use ScreenMerch! You earn 70% of all sales, 30% house commission.</p>
+                    <p>It's completely free to use ScreenMerch! No monthly fees, no recurring charges. You earn 70% of all sales, 30% house commission.</p>
                     <div className="pricing-note">
                         <small>💡 Based on actual product overhead costs and 30% house commission structure</small>
                     </div>
@@ -213,7 +211,7 @@ const SubscriptionTiers = () => {
                         onClick={() => handleGetStarted()}
                         disabled={actionLoading}
                     >
-                        {actionLoading ? 'Processing...' : currentUser ? '🚀 Get Started Free' : '🚀 Sign Up & Get Started Free'}
+                        {actionLoading ? 'Processing...' : currentUser ? '🚀 Set Up PayPal & Start Earning' : '🚀 Sign Up & Set Up PayPal'}
                     </button>
                 </div>
 
@@ -261,8 +259,8 @@ const SubscriptionTiers = () => {
                     </div>
                     <div className="value-item">
                         <div className="value-icon">🚀</div>
-                        <h4>Always Free</h4>
-                        <p>No monthly fees, no hidden costs - just start earning immediately</p>
+                        <h4>Completely Free</h4>
+                        <p>No monthly fees, no recurring charges, no hidden costs - just start earning immediately</p>
                     </div>
                 </div>
             </div>

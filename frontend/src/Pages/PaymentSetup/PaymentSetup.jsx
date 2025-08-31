@@ -15,11 +15,15 @@ const PaymentSetup = () => {
             try {
                 const { data: { user }, error } = await supabase.auth.getUser();
                 
-                if (!user) {
-                    navigate('/login', { 
+                // Check if this is a new user flow (allow unauthenticated access)
+                const isNewUserFlow = new URLSearchParams(window.location.search).get('flow') === 'new_user';
+                
+                if (!user && !isNewUserFlow) {
+                    // Only redirect to signup if not in new user flow
+                    navigate('/signup', { 
                         state: { 
                             from: location.pathname,
-                            message: 'Please log in to set up your payment information.' 
+                            message: 'Please sign up to set up your payment information and start earning.' 
                         } 
                     });
                     return;
@@ -28,7 +32,11 @@ const PaymentSetup = () => {
                 setUser(user);
             } catch (error) {
                 console.error('Error checking authentication:', error);
-                navigate('/login');
+                // Don't redirect on error for new user flow
+                const isNewUserFlow = new URLSearchParams(window.location.search).get('flow') === 'new_user';
+                if (!isNewUserFlow) {
+                    navigate('/signup');
+                }
             } finally {
                 setLoading(false);
             }
@@ -38,21 +46,45 @@ const PaymentSetup = () => {
     }, [navigate, location]);
 
     const handleComplete = () => {
-        // Navigate to dashboard after payment setup is complete
-        navigate('/dashboard', { 
-            state: { 
-                message: 'Payment information set up successfully! You can now start earning with ScreenMerch.' 
-            } 
-        });
+        // Check if this is a new user flow
+        const isNewUserFlow = new URLSearchParams(window.location.search).get('flow') === 'new_user';
+        
+        if (isNewUserFlow) {
+            // For new users, redirect to account creation after PayPal setup
+            navigate('/signup', { 
+                state: { 
+                    message: 'Great! Your PayPal is set up. Now create your account to start earning!' 
+                } 
+            });
+        } else {
+            // For existing users, navigate to dashboard
+            navigate('/dashboard', { 
+                state: { 
+                    message: 'Payment information set up successfully! You can now start earning with ScreenMerch - completely free!' 
+                } 
+            });
+        }
     };
 
     const handleSkip = () => {
-        // Navigate to dashboard if user skips payment setup
-        navigate('/dashboard', { 
-            state: { 
-                message: 'You can set up payment information later in your dashboard.' 
-            } 
-        });
+        // Check if this is a new user flow
+        const isNewUserFlow = new URLSearchParams(window.location.search).get('flow') === 'new_user';
+        
+        if (isNewUserFlow) {
+            // For new users, redirect to account creation even if they skip PayPal
+            navigate('/signup', { 
+                state: { 
+                    message: 'No problem! You can set up PayPal later. Let\'s create your account!' 
+                } 
+            });
+        } else {
+            // For existing users, navigate to dashboard
+            navigate('/dashboard', { 
+                state: { 
+                    message: 'Welcome to ScreenMerch! You can set up payment information later in your dashboard to start earning.' 
+                } 
+            });
+        }
     };
 
     if (loading) {
@@ -70,7 +102,7 @@ const PaymentSetup = () => {
         <div className="payment-setup-page">
             <div className="payment-setup-header">
                 <h1>💰 Welcome to ScreenMerch!</h1>
-                <p>Set up your payment information to start earning from your merchandise sales</p>
+                <p>Set up your payment information to start earning from your merchandise sales - It's completely free!</p>
             </div>
             
             <PaymentSetupComponent 

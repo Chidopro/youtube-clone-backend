@@ -259,10 +259,28 @@
               createMerchProduct(JSON.parse(pendingMerchData));
             }, 1500);
           } else {
-            // Redirect to home or specified page
-            setTimeout(() => {
-              window.location.href = '/';
-            }, 1500);
+            // For new signups, check if they have pending PayPal info
+            if (!isLoginMode) {
+              const pendingPaypalEmail = localStorage.getItem('pending_paypal_email');
+              const pendingTaxId = localStorage.getItem('pending_tax_id');
+              
+              if (pendingPaypalEmail || pendingTaxId) {
+                // User has PayPal info, redirect to dashboard
+                setTimeout(() => {
+                  window.location.href = '/dashboard';
+                }, 1500);
+              } else {
+                // No PayPal info, redirect to PayPal setup
+                setTimeout(() => {
+                  window.location.href = '/payment-setup';
+                }, 1500);
+              }
+            } else {
+              // For logins, redirect to home or specified page
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 1500);
+            }
           }
         } else {
           messageDiv.innerHTML = `<div class="error">${data.error}</div>`;

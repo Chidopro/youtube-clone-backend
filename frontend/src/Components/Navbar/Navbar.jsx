@@ -104,8 +104,15 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     };
 
     const handleSubscribeClick = () => {
-        // Always redirect to tiers page for new user signups
-        navigate('/subscription');
+        // For new users, go directly to PayPal setup flow
+        // For existing users, go to subscription tiers
+        if (!user) {
+            // New user - go directly to PayPal setup
+            window.location.href = '/payment-setup?flow=new_user';
+        } else {
+            // Existing user - go to subscription tiers
+            navigate('/subscription-tiers');
+        }
     };
 
     const handleSubscribeModalClick = () => {
@@ -177,7 +184,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         className="subscribe-btn"
                         onClick={handleSubscribeClick}
                     >
-                        Subscribe
+                        Get Started Free
                     </button>
                     {loading ? (
                         <div className="loading-spinner-navbar"></div>

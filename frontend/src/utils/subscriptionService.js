@@ -67,41 +67,30 @@ export class SubscriptionService {
   }
 
   /**
-   * Subscribe to pro tier (starts 7-day trial)
+   * Start free signup flow - redirects to PayPal setup first, then account creation
    * @returns {Promise<Object>} Result
    */
   static async subscribeToProTier() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Create Stripe checkout session for Pro tier with 7-day trial
-      const response = await fetch('https://copy5-backend.fly.dev/api/create-pro-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user?.id || null, // Allow null for guest checkout
-          tier: 'pro',
-          // Don't send email - let Stripe collect it during checkout for new accounts
-          email: null
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.url) {
-        // Redirect to Stripe checkout
-        window.location.href = result.url;
+      // If user is already authenticated, go directly to PayPal setup
+      if (user) {
+        window.location.href = '/payment-setup';
         return {
           success: true,
           redirecting: true
         };
-      } else {
-        throw new Error(result.error || 'Failed to create checkout session');
       }
+      
+      // For new users, redirect to PayPal setup first (without account creation)
+      window.location.href = '/payment-setup?flow=new_user';
+      return {
+        success: true,
+        redirecting: true
+      };
     } catch (error) {
-      console.error('Error subscribing to pro tier:', error);
+      console.error('Error starting PayPal setup flow:', error);
       return {
         success: false,
         error: error.message
@@ -158,10 +147,10 @@ export class SubscriptionService {
         maxVideoLength: '10 minutes'
       },
       pro: {
-        name: 'Pro Plan',
-        price: '$49/month',
+        name: 'Free Plan',
+        price: 'Free',
         serviceFee: 0.30, // 30%
-        trialDays: 7,
+        trialDays: 0,
         features: [
           'Everything in Free Trial',
           'Priority support',
