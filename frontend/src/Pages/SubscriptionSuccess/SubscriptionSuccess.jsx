@@ -53,11 +53,23 @@ const SubscriptionSuccess = () => {
             
             console.log('🎯 Session to use:', sessionToUse);
             
+            // If no session ID, check if user is logged in and show instructions
             if (!sessionToUse) {
-                console.error('❌ No session ID found in URL or localStorage');
-                setError('No session ID found');
-                setLoading(false);
-                return;
+                console.log('📋 No session ID - checking if user is logged in for instructions');
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                if (user) {
+                    console.log('✅ User is logged in, showing instructions');
+                    setUserEmail(user.email);
+                    setSuccess(true);
+                    setLoading(false);
+                    return;
+                } else {
+                    console.error('❌ No session ID and user not logged in');
+                    setError('Please sign in to view your instructions and personal link');
+                    setLoading(false);
+                    return;
+                }
             }
 
             // Check if this session has already been processed to prevent loops
@@ -261,7 +273,7 @@ const SubscriptionSuccess = () => {
             <div className="subscription-success-page">
                 <div className="success-container error">
                     <div className="error-icon">❌</div>
-                    <h2>Subscription Error</h2>
+                    <h2>Access Required</h2>
                     <p>{error}</p>
                     {error.includes('sign in') ? (
                         <button 
@@ -272,10 +284,10 @@ const SubscriptionSuccess = () => {
                         </button>
                     ) : (
                         <button 
-                            onClick={() => navigate('/subscription')}
+                            onClick={() => navigate('/subscription-tiers')}
                             className="retry-btn"
                         >
-                            Try Again
+                            Get Started
                         </button>
                     )}
                 </div>

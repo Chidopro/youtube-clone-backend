@@ -19,6 +19,40 @@
 .payment-setup-header {
     text-align: center;
     margin-bottom: 30px;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.header-content {
+    flex: 1;
+    text-align: center;
+}
+
+.payment-setup-close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.payment-setup-close-btn:hover {
+    background: #f5f5f5;
+    color: #333;
+    transform: scale(1.1);
 }
 
 .payment-setup-header h2 {

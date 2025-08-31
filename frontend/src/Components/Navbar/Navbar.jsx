@@ -193,6 +193,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 <p>Signed in as <strong>{user?.user_metadata?.name}</strong></p>
                                 <hr/>
                                 <Link to="/dashboard" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Dashboard</Link>
+                                <Link to="/subscription-success" className="dropdown-item" onClick={() => setDropdownOpen(false)}>📋 Instructions & Link</Link>
                                 <Link to="/payment-portal" className="dropdown-item" onClick={() => setDropdownOpen(false)}>💰 Payment Portal</Link>
                                 <Link to="/admin" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Admin Portal</Link>
                                 <button 

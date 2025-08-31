@@ -162,6 +162,7 @@ const PaymentPortal = () => {
                                     fetchPaymentData();
                                 }}
                                 onSkip={() => setShowPaymentSetup(false)}
+                                onClose={() => setShowPaymentSetup(false)}
                             />
                         </div>
                     </div>

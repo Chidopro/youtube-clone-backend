@@ -45,6 +45,7 @@ const EarningsDashboard = () => {
             <PaymentSetup 
                 onComplete={handlePaymentSetupComplete}
                 onSkip={handlePaymentSetupSkip}
+                onClose={handlePaymentSetupSkip}
             />
         );
     }
