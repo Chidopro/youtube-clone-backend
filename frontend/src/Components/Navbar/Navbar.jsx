@@ -104,15 +104,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     };
 
     const handleSubscribeClick = () => {
-        // For new users, go directly to PayPal setup flow
-        // For existing users, go to subscription tiers
-        if (!user) {
-            // New user - go directly to PayPal setup
-            window.location.href = '/payment-setup?flow=new_user';
-        } else {
-            // Existing user - go to subscription tiers
-            navigate('/subscription-tiers');
-        }
+        // Always redirect to the free earnings calculator page
+        navigate('/subscription-tiers');
     };
 
     const handleSubscribeModalClick = () => {
