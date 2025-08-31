@@ -289,18 +289,18 @@ const SubscriptionSuccess = () => {
                 <div className="success-icon">🎉</div>
                 
                 <p className="welcome-message">
-                    🎉 <strong>Welcome to ScreenMerch Pro!</strong> You're all set to start sharing amazing content and earning from your merchandise.
-                    <div className="trial-notice-simple">✅ Your 7-day free trial starts now!</div>
+                    🎉 <strong>Welcome to ScreenMerch!</strong> You're all set to start sharing amazing content and earning from your merchandise.
+                    <div className="trial-notice-simple">✅ Your account is ready to start earning!</div>
                 </p>
                 
                 <div className="next-steps">
                     <h3>🚀 Your Next Steps:</h3>
                     <ol>
-                        <li><strong>Sign in create password</strong></li>
                         <li><strong>Go to dashboard</strong></li>
                         <li><strong>Personalize your page and post content</strong></li>
                         <li><strong>Promote with your personal link</strong></li>
                         <li><strong>Track your sales in Analytics</strong></li>
+                        <li><strong>Start earning from your merch sales!</strong></li>
                     </ol>
                     <p className="monthly-payouts">Monthly Payouts</p>
                 </div>
@@ -332,8 +332,14 @@ const SubscriptionSuccess = () => {
                 
                 <div className="action-buttons">
                     <button 
-                        onClick={() => navigate('/')}
+                        onClick={() => navigate('/dashboard')}
                         className="dashboard-btn primary"
+                    >
+                        🚀 Go to Dashboard
+                    </button>
+                    <button 
+                        onClick={() => navigate('/')}
+                        className="dashboard-btn secondary"
                     >
                         🏠 Go to Homepage
                     </button>
