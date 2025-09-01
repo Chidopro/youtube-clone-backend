@@ -1,11 +1,11 @@
 .payment-setup-page {
     min-height: 100vh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-    padding: 40px 20px;
+    padding: 120px 20px 40px 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .payment-setup-header {
@@ -61,7 +61,7 @@
 /* Responsive Design */
 @media (max-width: 768px) {
     .payment-setup-page {
-        padding: 20px 15px;
+        padding: 80px 15px 20px 15px;
     }
     
     .payment-setup-header h1 {
@@ -70,5 +70,23 @@
     
     .payment-setup-header p {
         font-size: 1.1rem;
+    }
+}
+
+@media (min-width: 769px) {
+    .payment-setup-page {
+        padding: 140px 40px 60px 40px;
+    }
+    
+    .payment-setup-header {
+        margin-bottom: 50px;
+    }
+    
+    .payment-setup-header h1 {
+        font-size: 3.5rem;
+    }
+    
+    .payment-setup-header p {
+        font-size: 1.4rem;
     }
 }

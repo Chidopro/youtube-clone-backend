@@ -64,3 +64,4 @@ SELECT 'Trigger updated successfully' as status;
 
 ## 🔍 **If You Still Have Issues**
 If the signup still fails after this fix, please share the new error message and I'll help you resolve it.
+
