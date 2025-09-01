@@ -23,3 +23,4 @@ CREATE TRIGGER auto_create_user_subscription
 
 -- Verify the fix
 SELECT 'Trigger updated successfully' as status;
+
