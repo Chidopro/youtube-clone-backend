@@ -437,25 +437,28 @@
 }
 
 .upgrade-btn {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
     color: white;
-    border: none;
+    border: 3px solid #e55a2b;
     padding: 18px 40px;
     border-radius: 15px;
     font-size: 1.2rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5), 0 4px 15px rgba(0, 0, 0, 0.2);
     margin-bottom: 20px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
 }
 
 .upgrade-btn:hover {
-    background: linear-gradient(135deg, #5a6fd8, #6a4190);
+    background: linear-gradient(135deg, #e55a2b, #ff6b35);
     transform: translateY(-3px);
-    box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
+    box-shadow: 0 12px 35px rgba(255, 107, 53, 0.7), 0 6px 20px rgba(0, 0, 0, 0.3);
+    border-color: #d14a1a;
 }
 
 .upgrade-btn:disabled {
@@ -463,6 +466,32 @@
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+}
+
+/* Add a subtle pulsing glow effect to make the button more prominent */
+.upgrade-btn::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(135deg, #ff6b35, #f7931e, #ff6b35);
+    border-radius: 17px;
+    z-index: -1;
+    opacity: 0.3;
+    animation: pulse-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-glow {
+    0% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0.6;
+        transform: scale(1.02);
+    }
 }
 
 .trial-notice {

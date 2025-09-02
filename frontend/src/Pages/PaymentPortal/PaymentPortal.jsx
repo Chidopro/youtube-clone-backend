@@ -182,7 +182,7 @@ const PaymentPortal = () => {
                             <div className="setup-required">
                                 <p>⚠️ You need to set up your payment information to receive earnings from your content.</p>
                                 <ul>
-                                    <li>Add your PayPal Business email</li>
+                                    <li>Choose your preferred payment method (PayPal, ACH, or Stripe)</li>
                                     <li>Provide tax information for 1099-K reporting</li>
                                     <li>Set up automatic monthly payouts</li>
                                 </ul>
@@ -247,8 +247,12 @@ const PaymentPortal = () => {
                         <p>You earn 70% of all sales from your merchandise. The remaining 30% covers platform fees and processing costs.</p>
                     </div>
                     <div className="info-card">
+                        <h4>💳 Payment Methods</h4>
+                        <p>Choose from PayPal Business, Direct Bank Transfer (ACH), or Stripe Connect. Each method has different fees and processing times.</p>
+                    </div>
+                    <div className="info-card">
                         <h4>📅 Payout Schedule</h4>
-                        <p>Payouts are processed monthly on the 1st of each month for earnings above $50.00.</p>
+                        <p>Payouts are processed monthly on the 1st of each month. Minimum thresholds vary by payment method.</p>
                     </div>
                     <div className="info-card">
                         <h4>📊 Tax Reporting</h4>
