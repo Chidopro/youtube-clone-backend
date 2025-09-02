@@ -11,11 +11,12 @@ const SubscriptionTiers = () => {
     // Realistic earnings data based on actual ScreenMerch product prices and product overhead costs
     // Average product price: $21.69 (from your actual t-shirt pricing)
     // Product overhead cost: ~$11.69, Your profit: ~$7.00 per item after 30% house commission
+    // Based on ONE shirt design selling 50 units per week for a full year
     const hypotheticalData = {
-        totalRevenue: 52056, // $52,056 annual revenue (based on $4,338 monthly)
-        monthlyRevenue: 4338, // $4,338 average monthly revenue
-        totalProductsSold: 2400, // 2,400 total products sold (200 monthly × 12)
-        monthlyProductsSold: 200, // 200 average monthly products sold
+        totalRevenue: 56388, // $56,388 annual revenue (2,600 shirts × $21.69)
+        monthlyRevenue: 4699, // $4,699 average monthly revenue
+        totalProductsSold: 2600, // 2,600 total products sold (50 weekly × 52 weeks)
+        monthlyProductsSold: 217, // 217 average monthly products sold
         averageProductPrice: 21.69, // Average t-shirt price from your product dashboard
         productOverheadCost: 11.69, // Average product overhead cost
         houseCommission: 3.00, // 30% of gross profit ($21.69 - $11.69 = $10.00, then 30% = $3.00)
@@ -23,15 +24,19 @@ const SubscriptionTiers = () => {
     };
 
     // Calculate earnings for free subscription
-    const calculateEarnings = (revenue, commissionRate) => {
-        const grossEarnings = revenue * (1 - commissionRate);
+    // Based on actual profit per item after overhead and commission
+    const calculateEarnings = () => {
+        const totalGrossProfit = hypotheticalData.totalProductsSold * (hypotheticalData.averageProductPrice - hypotheticalData.productOverheadCost);
+        const totalHouseCommission = hypotheticalData.totalProductsSold * hypotheticalData.houseCommission;
+        const netEarnings = totalGrossProfit - totalHouseCommission;
+        
         return {
-            grossEarnings: Math.round(grossEarnings),
-            netEarnings: Math.round(grossEarnings)
+            grossEarnings: Math.round(totalGrossProfit),
+            netEarnings: Math.round(netEarnings)
         };
     };
 
-    const freeSubscriptionEarnings = calculateEarnings(hypotheticalData.totalRevenue, 0.30);
+    const freeSubscriptionEarnings = calculateEarnings();
 
     const [currentUser, setCurrentUser] = useState(null);
     const [userSubscription, setUserSubscription] = useState(null);
@@ -226,7 +231,7 @@ const SubscriptionTiers = () => {
                             <strong>Product Overhead Costs:</strong> ${(hypotheticalData.totalProductsSold * hypotheticalData.productOverheadCost).toLocaleString()}
                         </div>
                         <div className="breakdown-item">
-                            <strong>House Commission (30%):</strong> ${(hypotheticalData.totalRevenue * 0.30).toLocaleString()}
+                            <strong>House Commission (30% of Gross Profit):</strong> ${(hypotheticalData.totalProductsSold * hypotheticalData.houseCommission).toLocaleString()}
                         </div>
                         <div className="breakdown-item highlight creator-earnings">
                             <strong>🎯 Your Total Net Earnings:</strong> ${(hypotheticalData.totalProductsSold * hypotheticalData.yourProfitPerItem).toLocaleString()}
