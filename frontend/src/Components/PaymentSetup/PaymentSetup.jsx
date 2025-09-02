@@ -564,6 +564,14 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
                                     required
                                 />
                                 <small>Your Social Security Number or Employer Identification Number</small>
+                                
+                                {/* Security Notice */}
+                                <div className="security-notice">
+                                    <div className="security-icon">🔒</div>
+                                    <div className="security-text">
+                                        <strong>Security Notice:</strong> All payment information is securely stored and encrypted. We never store your full payment details.
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="form-actions">

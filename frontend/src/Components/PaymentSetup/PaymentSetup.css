@@ -464,3 +464,64 @@
         padding: 3px 6px;
     }
 }
+
+/* Security Notice Styles */
+.security-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    border-left: 4px solid #28a745;
+}
+
+.security-icon {
+    font-size: 1.2rem;
+    color: #28a745;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.security-text {
+    color: #495057;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.security-text strong {
+    color: #28a745;
+}
+
+/* Responsive adjustments for security notice */
+@media (max-width: 768px) {
+    .security-notice {
+        padding: 12px;
+        margin-top: 12px;
+    }
+    
+    .security-icon {
+        font-size: 1.1rem;
+    }
+    
+    .security-text {
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .security-notice {
+        padding: 10px;
+        margin-top: 10px;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .security-icon {
+        margin-top: 0;
+        margin-bottom: 8px;
+    }
+}
