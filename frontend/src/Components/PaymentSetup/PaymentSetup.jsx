@@ -550,7 +550,7 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
                         </div>
                         
                         <h3>Tax Information</h3>
-                        <p>Required for 1099-K reporting (if earning >$600/year)</p>
+                        <p>Required for 1099-K reporting (if earning &gt;$600/year)</p>
                         
                         <form onSubmit={handleTaxSubmit} className="payment-form">
                             <div className="form-group">
