@@ -409,19 +409,15 @@
 
 .info-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
 }
 
 .info-card {
     background: #f8f9fa;
-    padding: 18px;
+    padding: 20px;
     border-radius: 8px;
     transition: transform 0.2s ease;
-    min-height: 140px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
 }
 
 .info-card:hover {
@@ -446,35 +442,6 @@
     .payment-portal-container {
         padding: 16px;
     }
-    
-    .info-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-    
-    .info-card {
-        padding: 16px;
-    }
-    
-    .info-card h4 {
-        font-size: 1rem;
-    }
-    
-    .info-card p {
-        font-size: 0.9rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .info-grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-    
-    .info-card {
-        padding: 14px;
-    }
-}
     
     .payment-portal-header {
         padding: 16px;
@@ -503,20 +470,7 @@
     }
     
     .info-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-    }
-    
-    .info-card {
-        padding: 16px;
-    }
-    
-    .info-card h4 {
-        font-size: 1rem;
-    }
-    
-    .info-card p {
-        font-size: 0.9rem;
+        grid-template-columns: 1fr;
     }
     
     .modal-content {

@@ -7,10 +7,10 @@
     bottom: 0;
     background: rgba(0, 0, 0, 0.8);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     z-index: 1000;
-    padding: 20px;
+    padding: 40px 20px 20px 20px;
     overflow-y: auto;
 }
 
@@ -23,7 +23,7 @@
     overflow-y: auto;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     position: relative;
-    margin: auto;
+    margin: 20px auto auto auto;
     transform: translateY(0);
 }
 
@@ -355,14 +355,13 @@
 /* Responsive Design */
 @media (max-width: 768px) {
     .payment-setup-container {
-        padding: 10px;
+        padding: 20px 10px 10px 10px;
         align-items: flex-start;
-        padding-top: 20px;
     }
     
     .payment-setup-card {
         max-height: 90vh;
-        margin: 0;
+        margin: 20px 0 0 0;
     }
     
     .payment-setup-header {
@@ -420,12 +419,12 @@
 @media (max-width: 480px) {
     .payment-setup-container {
         align-items: flex-start;
-        padding-top: 10px;
+        padding: 15px 5px 5px 5px;
     }
     
     .payment-setup-card {
         max-height: 95vh;
-        margin: 0;
+        margin: 15px 0 0 0;
     }
     
     .payment-setup-header {

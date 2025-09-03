@@ -317,8 +317,6 @@ const SubscriptionSuccess = () => {
                     <p className="monthly-payouts">Monthly Payouts</p>
                 </div>
                 
-
-                
                 <div className="channel-link-section">
                     <h3>🛍️ Your ScreenMerch Channel</h3>
                     <p><strong>Share this link with your audience to sell merch:</strong></p>
