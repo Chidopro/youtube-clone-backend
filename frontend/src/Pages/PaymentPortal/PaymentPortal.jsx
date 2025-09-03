@@ -78,15 +78,15 @@ const PaymentPortal = () => {
                 <button className="back-button" onClick={() => navigate(-1)}>
                     ← Back
                 </button>
-                <h1>💰 Payment Portal</h1>
-                <p>Manage your payment settings and track your earnings</p>
+                <h1>💰 Connect Payment Method</h1>
+                <p>Please connect your payment method to receive payouts</p>
             </div>
 
             {/* Payment Status Overview */}
             <div className="payment-status-section">
                 <div className="payment-status-cards">
                     <div className="status-card">
-                        <h4>📋 Payment Setup</h4>
+                        <h4>📋 Payment Method</h4>
                         <div className="status-indicator">
                             {paymentData?.user?.payout_enabled ? (
                                 <span className="status-success">✅ Complete</span>
@@ -133,13 +133,13 @@ const PaymentPortal = () => {
             {/* Payment Setup Section */}
             <div className="payment-setup-section">
                 <div className="section-header">
-                    <h3>🔧 Payment Setup</h3>
+                    <h3>🔧 Payment Method Required</h3>
                     {!paymentData?.user?.payout_enabled && (
                         <button 
                             className="setup-payment-btn"
                             onClick={() => setShowPaymentSetup(true)}
                         >
-                            Set Up Payments
+                            Connect Payment Method
                         </button>
                     )}
                 </div>
@@ -148,7 +148,7 @@ const PaymentPortal = () => {
                     <div className="payment-setup-modal">
                         <div className="modal-content">
                             <div className="modal-header">
-                                <h4>Set Up Payment Information</h4>
+                                <h4>Connect Payment Method</h4>
                                 <button 
                                     className="close-btn"
                                     onClick={() => setShowPaymentSetup(false)}
@@ -170,20 +170,20 @@ const PaymentPortal = () => {
                     <div className="setup-info">
                         {paymentData?.user?.payout_enabled ? (
                             <div className="setup-complete">
-                                <p>✅ Your payment information is set up and ready to receive payouts.</p>
+                                <p>✅ Your payment method is connected and ready to receive payouts.</p>
                                 <button 
                                     className="edit-payment-btn"
                                     onClick={() => setShowPaymentSetup(true)}
                                 >
-                                    Edit Payment Info
+                                    Edit Payment Method
                                 </button>
                             </div>
                         ) : (
                             <div className="setup-required">
-                                <p>⚠️ You need to set up your payment information to receive earnings from your content.</p>
+                                <p>⚠️ Complete your tax information to receive payouts</p>
                                 <ul>
-                                    <li>Add your PayPal Business email</li>
-                                    <li>Provide tax information for 1099-K reporting</li>
+                                    <li>Connect your payment method</li>
+                                    <li>Complete payment setup</li>
                                     <li>Set up automatic monthly payouts</li>
                                 </ul>
                             </div>
@@ -240,11 +240,11 @@ const PaymentPortal = () => {
 
             {/* Payment Information */}
             <div className="payment-info-section">
-                <h3>ℹ️ Payment Information</h3>
+                <h3>ℹ️ Payment Method</h3>
                 <div className="info-grid">
                     <div className="info-card">
-                        <h4>💰 How You Earn</h4>
-                        <p>You earn 70% of all sales from your merchandise. The remaining 30% covers platform fees and processing costs.</p>
+                        <h4>💰 Payment Method</h4>
+                        <p>Connect payment method to receive payouts</p>
                     </div>
                     <div className="info-card">
                         <h4>📅 Payout Schedule</h4>
@@ -252,11 +252,11 @@ const PaymentPortal = () => {
                     </div>
                     <div className="info-card">
                         <h4>📊 Tax Reporting</h4>
-                        <p>You'll receive a 1099-K form for tax reporting if you earn more than $600 in a year.</p>
+                        <p>Complete tax forms to receive payouts</p>
                     </div>
                     <div className="info-card">
                         <h4>🔒 Security</h4>
-                        <p>All payment information is securely stored and encrypted. We never store your full payment details.</p>
+                        <p>Connect payment method to receive payouts</p>
                     </div>
                 </div>
             </div>
