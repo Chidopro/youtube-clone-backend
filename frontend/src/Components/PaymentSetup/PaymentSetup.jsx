@@ -459,8 +459,8 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
             <div className="payment-setup-card">
                 <div className="payment-setup-header">
                     <div className="header-content">
-                        <h2>💰 Set Up Your Payouts</h2>
-                        <p>Choose your preferred payment method and start earning from your merch sales!</p>
+                        <h2>💰 Connect Payment Method</h2>
+                        <p>Please connect your payment method to receive payouts</p>
                     </div>
                     {onClose && (
                         <button 
@@ -480,8 +480,8 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
                             <span className="step">2</span>
                         </div>
                         
-                        <h3>Choose Payment Method</h3>
-                        <p>Select how you'd like to receive your earnings</p>
+                        <h3>Connect Payment Method</h3>
+                        <p>Please connect your payment method to receive payouts</p>
                         
                         {/* Payment Method Selection */}
                         <div className="payment-method-selection">
@@ -534,7 +534,7 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
                                 onClick={handlePaymentSubmit}
                                 disabled={loading}
                             >
-                                {loading ? 'Processing...' : 'Continue to Tax Info'}
+                                {loading ? 'Processing...' : 'Connect Payment Method'}
                             </button>
                         </div>
 
@@ -549,8 +549,8 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
                             <span className="step active">2</span>
                         </div>
                         
-                        <h3>Tax Information</h3>
-                        <p>Required for 1099-K reporting (if earning &gt;$600/year)</p>
+                        <h3>Payment Method</h3>
+                        <p>Please connect your payment method to receive payouts</p>
                         
                         <form onSubmit={handleTaxSubmit} className="payment-form">
                             <div className="form-group">
@@ -580,7 +580,7 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
                                     className="submit-btn"
                                     disabled={loading}
                                 >
-                                    {loading ? 'Processing...' : 'Complete Setup'}
+                                    {loading ? 'Processing...' : 'Connect Payment Method'}
                                 </button>
                                 <button 
                                     type="button" 
