@@ -549,27 +549,27 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
                             <span className="step active">2</span>
                         </div>
                         
-                        <h3>Payment Method</h3>
+                        <h3>Connect Payment Method</h3>
                         <p>Please connect your payment method to receive payouts</p>
                         
                         <form onSubmit={handleTaxSubmit} className="payment-form">
                             <div className="form-group">
-                                <label htmlFor="tax-id">Tax ID (SSN or EIN)</label>
+                                <label htmlFor="payment-email">Payment Email</label>
                                 <input
-                                    type="text"
-                                    id="tax-id"
+                                    type="email"
+                                    id="payment-email"
                                     value={taxId}
                                     onChange={(e) => setTaxId(e.target.value)}
-                                    placeholder="123-45-6789 or 12-3456789"
+                                    placeholder="your-email@example.com"
                                     required
                                 />
-                                <small>Your Social Security Number or Employer Identification Number</small>
+                                <small>Enter the email associated with your payment method (PayPal, Stripe, etc.)</small>
                                 
                                 {/* Security Notice */}
                                 <div className="security-notice">
                                     <div className="security-icon">🔒</div>
                                     <div className="security-text">
-                                        <strong>Security Notice:</strong> All payment information is securely stored and encrypted. We never store your full payment details.
+                                        <strong>Security Notice:</strong> Your payment information is securely handled through trusted third-party processors. We never store sensitive payment details.
                                     </div>
                                 </div>
                             </div>
