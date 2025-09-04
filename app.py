@@ -861,6 +861,10 @@ def send_order():
         if not cart:
             return jsonify({"success": False, "error": "Cart is empty"}), 400
 
+        # Generate order ID and number
+        order_id = str(uuid.uuid4())
+        order_number = order_id[-8:].upper()
+
         # --- Email Formatting ---
         html_body = "<h1>New ScreenMerch Order</h1>"
         sms_body = "New Order Received!\n"
@@ -2276,6 +2280,20 @@ def fix_database_schema():
         
     except Exception as e:
         logger.error(f"❌ Error fixing database schema: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# NEW: Video Deletion Endpoint
+@app.route("/api/videos/<video_id>", methods=["DELETE"])
+def delete_video(video_id):
+    """Delete a video and all associated data"""
+    try:
+        # Delete from videos2 table
+        result = supabase.table('videos2').delete().eq('id', video_id).execute()
+        
+        logger.info(f"Video {video_id} deleted successfully")
+        return jsonify({"success": True, "message": "Video deleted successfully"})
+    except Exception as e:
+        logger.error(f"Error deleting video {video_id}: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == "__main__":

@@ -1406,12 +1406,19 @@
                 filename: '{{ product.filename }}',
                 preview_image: '{{ product.preview_image }}',
                 options: {{ product.options | tojson }},
-                size_pricing: {{ (product.size_pricing | tojson) if (product.size_pricing is defined) else 'null' }}
+                size_pricing: {{ (product.size_pricing | tojson) if (product.size_pricing is defined) else 'null' }},
+                size_color_availability: {{ (product.size_color_availability | tojson) if (product.size_color_availability is defined) else 'null' }}
               });
             {% endfor %}
           {% endif %}
           
           console.log('🛍️ Products to display:', window.products.length);
+          console.log('🔍 First product data:', window.products[0]);
+          if (window.products[0] && window.products[0].size_color_availability) {
+            console.log('✅ size_color_availability found:', window.products[0].size_color_availability);
+          } else {
+            console.log('❌ size_color_availability NOT found in product data');
+          }
           
                      if (window.products.length > 0) {
              productRow.innerHTML = ''; // Clear existing content
@@ -1420,9 +1427,10 @@
              const productsToShow = window.products.slice(0, 30);
              
              productsToShow.forEach((product, index) => {
-              const productCard = document.createElement("div");
-              productCard.className = "product-card";
-                             productCard.innerHTML = `
+              try {
+                const productCard = document.createElement("div");
+                productCard.className = "product-card";
+                productCard.innerHTML = `
                  <!-- Top Image (Blank Product) -->
                  <img src="/static/images/${product.filename}" alt="${product.name} - Blank" style="width:100%;height:120px;object-fit:contain;border-radius:6px;margin-bottom:8px;">
                  
@@ -1431,7 +1439,7 @@
                  
                  <div class="product-title">${product.name}</div>
                  <div class="product-price" id="price-${index}">$${product.price.toFixed(2)}</div>
-                 ${product.options.color ? `
+                 ${product.options && product.options.color && product.options.color.length > 0 ? `
                    <div class="variant-selector">
                      <label>Color:</label>
                      <select class="variant-select color-select">
@@ -1439,33 +1447,128 @@
                      </select>
                    </div>
                  ` : ''}
-                 ${product.options.size ? `
+                 ${product.options && product.options.size && product.options.size.length > 0 ? `
                    <div class="variant-selector">
                      <label>Size:</label>
-                     <select class="variant-select size-select" onchange="updatePrice(${index}, '${product.name}', this.value)">
+                     <select class="variant-select size-select" data-product-index="${index}" data-product-name="${product.name}">
                        ${product.options.size.map(size => `<option value="${size}">${size}</option>`).join('')}
                      </select>
                    </div>
                  ` : ''}
                  <hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;">
-                 <button class="btn add-to-cart-btn" onclick="addToCart('${product.name}', ${product.price}, this)">Add ${product.name} to Cart</button>
+                 <button class="btn add-to-cart-btn" data-product-name="${product.name}" data-product-price="${product.price}">Add ${product.name} to Cart</button>
                `;
-                             productRow.appendChild(productCard);
+                productRow.appendChild(productCard);
+              } catch (error) {
+                console.error(`❌ Error creating product card for ${product.name}:`, error);
+                // Create a fallback product card
+                const fallbackCard = document.createElement("div");
+                fallbackCard.className = "product-card";
+                fallbackCard.innerHTML = `
+                  <div class="product-title">${product.name}</div>
+                  <div class="product-price">$${product.price.toFixed(2)}</div>
+                  <button class="btn add-to-cart-btn" data-product-name="${product.name}" data-product-price="${product.price}">Add ${product.name} to Cart</button>
+                `;
+                productRow.appendChild(fallbackCard);
+              }
              });
              
              console.log(`✅ Added ${productsToShow.length} product cards (showing first 30)`);
              
-             // Add event listeners to all size dropdowns
+             // Add event listeners to all Add to Cart buttons
+             setTimeout(() => {
+               const addToCartButtons = document.querySelectorAll('.add-to-cart-btn');
+               console.log(`🔍 Found ${addToCartButtons.length} Add to Cart buttons`);
+               addToCartButtons.forEach((button) => {
+                 button.addEventListener('click', function() {
+                   const productName = this.getAttribute('data-product-name');
+                   const productPrice = parseFloat(this.getAttribute('data-product-price'));
+                   addToCart(productName, productPrice, this);
+                 });
+               });
+             }, 100);
+             
+             
+        // Size-based color filtering function
+        function filterColorsBySize(selectedSize, productIndex) {
+            console.log(`🎨 Filtering colors for size: ${selectedSize}, product: ${productIndex}`);
+            console.log('🔍 Available products:', window.products);
+            console.log('🔍 Product at index:', productIndex, ':', window.products[productIndex]);
+            
+            const product = window.products[productIndex];
+            if (!product) {
+                console.log('⚠️ Product not found at index:', productIndex);
+                return;
+            }
+            if (!product.size_color_availability) {
+                console.log('⚠️ No size_color_availability data found for product:', product.name);
+                console.log('🔍 Product keys:', Object.keys(product));
+                return;
+            }
+            
+            const availableColors = product.size_color_availability[selectedSize];
+            if (!availableColors) {
+                console.log('⚠️ No colors available for size:', selectedSize);
+                return;
+            }
+            
+            // Find the color dropdown for this product
+            const productCard = document.querySelector(`[data-product-index="${productIndex}"]`)?.closest('.product-card');
+            if (!productCard) {
+                console.log('⚠️ Product card not found');
+                return;
+            }
+            
+            const colorSelect = productCard.querySelector('.color-select');
+            if (!colorSelect) {
+                console.log('⚠️ Color select not found');
+                return;
+            }
+            
+            // Store current selection
+            const currentColor = colorSelect.value;
+            
+            // Clear existing options
+            colorSelect.innerHTML = '';
+            
+            // Add available colors
+            availableColors.forEach(color => {
+                const option = document.createElement('option');
+                option.value = color;
+                option.textContent = color;
+                colorSelect.appendChild(option);
+            });
+            
+            // Restore selection if it's still available, otherwise select first option
+            if (availableColors.includes(currentColor)) {
+                colorSelect.value = currentColor;
+            } else {
+                colorSelect.value = availableColors[0];
+            }
+            
+            console.log(`✅ Updated color options for ${selectedSize}: ${availableColors.length} colors available`);
+        }
+        
+        // Enhanced size dropdown change handler
+        function handleSizeChange(productIndex, productName, selectedSize) {
+            console.log(`🔄 Size changed to: ${selectedSize} for product: ${productName}`);
+            
+            // Update price
+            updatePrice(productIndex, productName, selectedSize);
+            
+            // Filter colors based on size
+            filterColorsBySize(selectedSize, productIndex);
+        }
+        // Add event listeners to all size dropdowns
              setTimeout(() => {
                const sizeDropdowns = document.querySelectorAll('.size-select');
                console.log(`🔍 Found ${sizeDropdowns.length} size dropdowns`);
-               sizeDropdowns.forEach((dropdown, index) => {
-                 console.log(`🔍 Adding event listener to dropdown ${index}`);
+               sizeDropdowns.forEach((dropdown) => {
                  dropdown.addEventListener('change', function() {
-                   console.log(`🔄 Dropdown ${index} changed to: ${this.value}`);
-                   const productIndex = index;
-                   const productName = window.products[index].name;
-                   updatePrice(productIndex, productName, this.value);
+                   const productIndex = parseInt(this.getAttribute('data-product-index'));
+                   const productName = this.getAttribute('data-product-name');
+                   console.log(`🔄 Dropdown changed to: ${this.value} for product: ${productName}`);
+                   handleSizeChange(productIndex, productName, this.value);
                  });
                });
              }, 100);
@@ -1476,6 +1579,19 @@
         }
        
                         console.log('✅ Merchandise page initialized');
+                        
+                        // Set default screenshot selection after a short delay to ensure DOM is ready
+                        setTimeout(() => {
+                          setDefaultScreenshot();
+                        }, 500);
+                        
+                        // Retry after a longer delay in case screenshots are still loading
+                        setTimeout(() => {
+                          if (!selectedScreenshotUrl) {
+                            console.log('🔄 Retrying default screenshot selection...');
+                            setDefaultScreenshot();
+                          }
+                        }, 2000);
          
          // Test function to manually trigger price update
          window.testPriceUpdate = function() {
@@ -1510,6 +1626,40 @@
          
          // Update all product cards to show selected image
          updateProductImages(screenshotUrl);
+       }
+       
+       // Set default selected screenshot if available
+       function setDefaultScreenshot() {
+         console.log('🎯 Attempting to set default screenshot...');
+         
+         // Try multiple times with different selectors
+         const selectors = [
+           '.screenshot-thumbnail',
+           '.video-thumbnail', 
+           '.thumbnail-image',
+           'img[src*="screenshot"]',
+           'img[src*="thumbnail"]'
+         ];
+         
+         let firstScreenshot = null;
+         for (const selector of selectors) {
+           firstScreenshot = document.querySelector(selector);
+           if (firstScreenshot) {
+             console.log(`🎯 Found screenshot with selector: ${selector}`);
+             break;
+           }
+         }
+         
+         if (firstScreenshot && !selectedScreenshotUrl) {
+           const screenshotUrl = firstScreenshot.src;
+           selectScreenshot(firstScreenshot, screenshotUrl);
+           console.log(`🎯 Auto-selected first screenshot: ${screenshotUrl}`);
+         } else if (!selectedScreenshotUrl) {
+           console.log('⚠️ No screenshots found, setting fallback default');
+           // Set a fallback default image if no screenshots are available
+           selectedScreenshotUrl = '/static/images/default-thumbnail.png';
+           console.log('🎯 Set fallback default image');
+         }
        }
        
                function updateProductImages(selectedImageUrl) {
@@ -1595,12 +1745,20 @@
          const selectedSize = sizeSelect ? sizeSelect.value : 'Default';
          const note = noteInput ? noteInput.value : '';
          
+         console.log(`🛒 Adding to cart: ${productName}, Color: ${selectedColor}, Size: ${selectedSize}`);
+         
          // Check if user has selected a screenshot
          const hasScreenshot = selectedScreenshotUrl !== null;
          
          if (!hasScreenshot) {
-           alert('Please choose Thumbnail or Screenshot');
-           return;
+           // Try to set a default screenshot one more time
+           setDefaultScreenshot();
+           
+           // If still no screenshot, show alert
+           if (!selectedScreenshotUrl) {
+             alert('Please choose Thumbnail or Screenshot');
+             return;
+           }
          }
          
          // Get the selected screenshot URL
@@ -1610,7 +1768,7 @@
          const cartItem = {
            screenshot: selectedScreenshot,
            name: productName,
-           details: `Color: ${selectedColor} | Size: ${selectedSize} | $${currentPrice.toFixed(2)}${note ? ` | Note: ${note}` : ''}`,
+           details: `Color: ${selectedColor} | Size: ${selectedSize} | $${currentPrice.toFixed(2)}${note ? ' | Note: ' + note : ''}`,
            price: currentPrice,
            variants: {
              color: selectedColor,
@@ -1814,9 +1972,17 @@
                  <div style="font-weight:bold; color:#333;">${item.name}</div>
                  <div style="color:#666; font-size:12px;">${item.details}</div>
                </div>
-               <button onclick="removeFromCartModal(${index})" style="background:#dc3545; color:white; border:none; padding:2px 8px; border-radius:3px; font-size:10px;">Remove</button>
+               <button class="remove-cart-item-btn" data-index="${index}" style="background:#dc3545; color:white; border:none; padding:2px 8px; border-radius:3px; font-size:10px;">Remove</button>
              `;
              cartContent.appendChild(cartItem);
+             
+             // Add event listener for remove button
+             const removeBtn = cartItem.querySelector('.remove-cart-item-btn');
+             if (removeBtn) {
+               removeBtn.addEventListener('click', function() {
+                 removeFromCartModal(index);
+               });
+             }
            });
            
            // Add checkout button
