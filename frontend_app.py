@@ -1409,6 +1409,20 @@ def stripe_webhook():
 #         logger.error(f"Printful order creation error: {str(e)}")
 #         return jsonify(success=False, error="Internal server error"), 500
 
+# NEW: Video Deletion Endpoint (ADDED SAFELY)
+@app.route("/api/videos/<video_id>", methods=["DELETE"])
+def delete_video(video_id):
+    """Delete a video and all associated data"""
+    try:
+        # Delete from videos2 table
+        result = supabase.table('videos2').delete().eq('id', video_id).execute()
+        
+        logger.info(f"Video {video_id} deleted successfully")
+        return jsonify({"success": True, "message": "Video deleted successfully"})
+    except Exception as e:
+        logger.error(f"Error deleting video {video_id}: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))

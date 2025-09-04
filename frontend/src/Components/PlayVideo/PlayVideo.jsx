@@ -236,6 +236,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 
                 console.log(`Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
                 
+                // Add timeout to prevent long delays
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                
                 const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
                     method: 'POST',
                     headers: {
@@ -245,8 +249,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         video_url: videoUrl,
                         timestamp: currentTime,
                         quality: 85
-                    })
+                    }),
+                    signal: controller.signal
                 });
+                
+                clearTimeout(timeoutId);
                 
                 if (!response.ok) {
                     throw new Error(`Server responded with status: ${response.status}`);
@@ -355,6 +362,43 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
 
         try {
+            // Mobile-specific optimizations
+            if (isMobile) {
+                console.log('Mobile device detected, using optimized capture');
+                
+                // On mobile, ensure video is fully loaded and playing
+                if (videoElement.readyState < 3) {
+                    console.log('Mobile: Video not fully loaded, waiting...');
+                    await new Promise((resolve) => {
+                        const handleCanPlay = () => {
+                            videoElement.removeEventListener('canplay', handleCanPlay);
+                            resolve();
+                        };
+                        videoElement.addEventListener('canplay', handleCanPlay);
+                        setTimeout(() => {
+                            videoElement.removeEventListener('canplay', handleCanPlay);
+                            resolve();
+                        }, 1000);
+                    });
+                }
+                
+                // Ensure video has dimensions on mobile
+                if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+                    console.log('Mobile: Video has no dimensions, waiting for metadata');
+                    await new Promise((resolve) => {
+                        const handleLoadedMetadata = () => {
+                            videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+                            resolve();
+                        };
+                        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+                        setTimeout(() => {
+                            videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+                            resolve();
+                        }, 1000);
+                    });
+                }
+            }
+            
             // Create a canvas element
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -364,20 +408,36 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             canvas.width = videoRect.width;
             canvas.height = videoRect.height;
             
-            // Ensure video is loaded and ready
-            if (videoElement.readyState < 2) {
-                console.log('Video not ready, waiting for loadeddata event');
+            // Ensure video is loaded and ready (desktop)
+            if (!isMobile && videoElement.readyState < 2) {
+                console.log('Desktop: Video not ready, waiting for loadeddata event');
                 await new Promise((resolve) => {
                     const handleLoadedData = () => {
                         videoElement.removeEventListener('loadeddata', handleLoadedData);
                         resolve();
                     };
                     videoElement.addEventListener('loadeddata', handleLoadedData);
-                    // Timeout after 5 seconds
+                    // Reduced timeout to 500ms for faster response
                     setTimeout(() => {
                         videoElement.removeEventListener('loadeddata', handleLoadedData);
                         resolve();
-                    }, 5000);
+                    }, 500);
+                });
+            }
+            
+            // Additional check: ensure video has actual dimensions (desktop)
+            if (!isMobile && (videoElement.videoWidth === 0 || videoElement.videoHeight === 0)) {
+                console.log('Desktop: Video has no dimensions, waiting for loadedmetadata');
+                await new Promise((resolve) => {
+                    const handleLoadedMetadata = () => {
+                        videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+                        resolve();
+                    };
+                    videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+                    setTimeout(() => {
+                        videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+                        resolve();
+                    }, 500);
                 });
             }
             
@@ -394,7 +454,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.error('Error capturing video frame:', error);
             return null;
         }
-    }, []);
+    }, [isMobile]);
 
     // Make Merch handler
     const handleMakeMerch = async () => {

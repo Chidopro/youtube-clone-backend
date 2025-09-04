@@ -632,13 +632,140 @@ PRODUCTS = [
             "XXXL": 2
         }
     },
-    {
+            {
         "name": "Unisex Heavyweight T-Shirt",
-        "price": 25.29,
+        "price": 25.6,
         "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
         "preview_image": "womenshdshirtpreview.png",
-        "options": {"color": ["Berry", "Blue Jean", "Brick", "Moss", "Black", "True Navy", "Grey", "Violet", "White", "Blue Spruce", "Bay", "Lagoon Blue", "Butter", "Pepper", "Flo Blue", "Ivory", "Navy", "Red", "Sage", "Midnight"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
+        "options": {"color": ["Anthracite", "Black", "Burgundy", "Cotton Pink", "Dark Heather Grey", "Desert Dust", "Fraiche Peche", "French Navy", "Heather Grey", "India Ink Grey", "Khaki", "Lavender", "Red", "Stargazer", "White"], "size": ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]},
+        "size_pricing": {
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "2XL": 2.1,
+            "3XL": 4.1,
+            "4XL": 6.1,
+            "5XL": 8.1
+},
+        "size_color_availability": {
+            "S": [
+                        "Black",
+                        "French Navy",
+                        "Heather Grey",
+                        "White",
+                        "Dark Heather Grey",
+                        "Burgundy",
+                        "India Ink Grey",
+                        "Anthracite",
+                        "Red",
+                        "Stargazer",
+                        "Khaki",
+                        "Desert Dust",
+                        "Fraiche Peche",
+                        "Cotton Pink",
+                        "Lavender"
+            ],
+            "M": [
+                        "Black",
+                        "French Navy",
+                        "Heather Grey",
+                        "White",
+                        "Dark Heather Grey",
+                        "Burgundy",
+                        "India Ink Grey",
+                        "Anthracite",
+                        "Red",
+                        "Stargazer",
+                        "Khaki",
+                        "Desert Dust",
+                        "Fraiche Peche",
+                        "Cotton Pink",
+                        "Lavender"
+            ],
+            "L": [
+                        "Black",
+                        "French Navy",
+                        "Heather Grey",
+                        "White",
+                        "Dark Heather Grey",
+                        "Burgundy",
+                        "India Ink Grey",
+                        "Anthracite",
+                        "Red",
+                        "Stargazer",
+                        "Khaki",
+                        "Desert Dust",
+                        "Fraiche Peche",
+                        "Cotton Pink",
+                        "Lavender"
+            ],
+            "XL": [
+                        "Black",
+                        "French Navy",
+                        "Heather Grey",
+                        "White",
+                        "Dark Heather Grey",
+                        "Burgundy",
+                        "India Ink Grey",
+                        "Anthracite",
+                        "Red",
+                        "Stargazer",
+                        "Khaki",
+                        "Desert Dust",
+                        "Fraiche Peche",
+                        "Cotton Pink",
+                        "Lavender"
+            ],
+            "2XL": [
+                        "Black",
+                        "French Navy",
+                        "Heather Grey",
+                        "White",
+                        "Dark Heather Grey",
+                        "Burgundy",
+                        "India Ink Grey",
+                        "Anthracite",
+                        "Red",
+                        "Stargazer",
+                        "Khaki",
+                        "Desert Dust",
+                        "Fraiche Peche",
+                        "Cotton Pink",
+                        "Lavender"
+            ],
+            "3XL": [
+                        "Black",
+                        "French Navy",
+                        "Heather Grey",
+                        "White"
+            ],
+            "4XL": [
+                        "Black",
+                        "French Navy",
+                        "Heather Grey",
+                        "White"
+            ],
+            "5XL": [
+                        "Black",
+                        "French Navy",
+                        "Heather Grey",
+                        "White"
+            ]
+}
+    },
+        "size_pricing": {
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "2XL": 2.1,
+            "3XL": 4.1,
+            "4XL": 6.1,
+            "5XL": 8.1
+}
+    },
         "size_pricing": {
             "S": 0,
             "M": 0,
@@ -2157,6 +2284,19 @@ def get_videos():
     except Exception as e:
         logger.error(f"Error fetching videos: {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/videos/<video_id>", methods=["DELETE"])
+def delete_video(video_id):
+    """Delete a video and all associated data"""
+    try:
+        # Delete from videos2 table
+        result = supabase.table('videos2').delete().eq('id', video_id).execute()
+        
+        logger.info(f"Video {video_id} deleted successfully")
+        return jsonify({"success": True, "message": "Video deleted successfully"})
+    except Exception as e:
+        logger.error(f"Error deleting video {video_id}: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # NEW: Video Screenshot Capture Endpoints
 @app.route("/api/capture-screenshot", methods=["POST", "OPTIONS"])
