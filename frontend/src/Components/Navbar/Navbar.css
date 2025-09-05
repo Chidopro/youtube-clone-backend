@@ -147,6 +147,11 @@ nav{
          overflow: hidden;
          text-overflow: ellipsis;
      }
+     
+     /* Give Get Started Free button more vertical height to match Sign In button */
+     .nav-right .subscribe-btn {
+         padding: 10px 12px; /* Increased vertical padding from 8px to 10px */
+     }
     .sign-in-btn {
         background: #065fd4;
         color: white;

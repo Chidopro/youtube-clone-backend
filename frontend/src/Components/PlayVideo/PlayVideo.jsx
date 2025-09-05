@@ -1279,22 +1279,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 fontSize: '22px'
             }}>{video.title}</h3>
 
-            {/* Video description moved up for cleaner layout */}
-            <div className="vid-description" style={{
-                marginBottom: isMobile ? '5px' : '15px',
-                padding: '10px 0'
-            }}>
-                <p style={{
-                    fontSize: '14px',
-                    marginBottom: '5px',
-                    color: '#5a5a5a'
-                }}>{video.description}</p>
-            </div>
-            
-            <div className="play-video-info">
-                <p>{moment(video.created_at).fromNow()}</p>
-            </div>
-            <hr />
             <div className="publisher">
                 <div>
                     {/* Publisher info area */}
