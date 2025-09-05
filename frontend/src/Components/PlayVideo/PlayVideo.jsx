@@ -238,7 +238,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 
                 // Add timeout to prevent long delays
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for ffmpeg processing
                 
                 const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
                     method: 'POST',
@@ -274,6 +274,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 
             } catch (error) {
                 console.log('❌ Server capture failed, using thumbnail as last resort:', error);
+                
+                // Check if it's a timeout/abort error
+                if (error.name === 'AbortError') {
+                    console.log('Screenshot capture timed out after 30 seconds');
+                    safeAlert('Screenshot capture timed out. The video might be too large or slow to process. Using thumbnail instead.');
+                }
                 
                 // Last resort: use thumbnail
                 const thumbnailUrl = video?.thumbnail || video?.poster || videoElement.poster;
@@ -362,6 +368,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
 
         try {
+            // Set crossOrigin to anonymous to avoid canvas taint issues
+            if (videoElement.crossOrigin !== 'anonymous') {
+                videoElement.crossOrigin = 'anonymous';
+                console.log('Set video crossOrigin to anonymous');
+            }
+            
             // Mobile-specific optimizations
             if (isMobile) {
                 console.log('Mobile device detected, using optimized capture');

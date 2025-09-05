@@ -39,12 +39,16 @@ class VideoScreenshotCapture:
             with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False, dir=self.temp_dir) as temp_file:
                 screenshot_path = temp_file.name
             
-            # Use ffmpeg to capture the frame with maximum quality
+            # Use ffmpeg to capture the frame with optimized settings for speed
             stream = ffmpeg.input(video_url, ss=timestamp)
-            stream = ffmpeg.output(stream, screenshot_path, vframes=1, **{'q:v': 1, 'pix_fmt': 'yuv420p'})
+            stream = ffmpeg.output(stream, screenshot_path, vframes=1, **{
+                'q:v': 2,  # Slightly lower quality for faster processing
+                'pix_fmt': 'yuv420p',
+                'vf': 'scale=640:-1'  # Scale down for faster processing
+            })
             
-            # Run the ffmpeg command
-            ffmpeg.run(stream, overwrite_output=True, quiet=True)
+            # Run the ffmpeg command with timeout
+            ffmpeg.run(stream, overwrite_output=True, quiet=True, timeout=25)  # 25 second timeout
             
             # Check if the screenshot was created
             if not os.path.exists(screenshot_path):
