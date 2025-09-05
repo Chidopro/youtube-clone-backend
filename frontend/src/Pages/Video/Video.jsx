@@ -36,11 +36,24 @@ const Video = () => {
       const timer = setTimeout(() => {
         const screenshotsSection = document.getElementById('screenshotsSection');
         if (screenshotsSection) {
-          // Scroll to show the top of the screenshots section
-          screenshotsSection.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
-          });
+          // Get the video container to calculate proper scroll position
+          const videoContainer = document.querySelector('.video-container');
+          if (videoContainer) {
+            // Calculate scroll position to show screenshots just below video
+            const videoBottom = videoContainer.getBoundingClientRect().bottom + window.scrollY;
+            const targetScrollPosition = videoBottom - 20; // 20px padding above screenshots
+            
+            window.scrollTo({
+              top: targetScrollPosition,
+              behavior: 'smooth'
+            });
+          } else {
+            // Fallback: scroll to screenshots section with some offset
+            screenshotsSection.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start' 
+            });
+          }
         }
       }, 500); // 500ms delay to ensure video player is loaded
       
