@@ -41,7 +41,7 @@ const Video = () => {
           if (videoContainer) {
             // Calculate scroll position to show top of video player with more space above
             const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
-            const targetScrollPosition = videoTop - 60; // 60px padding above video player
+            const targetScrollPosition = videoTop - 20; // 20px padding above video player
             
             window.scrollTo({
               top: targetScrollPosition,
