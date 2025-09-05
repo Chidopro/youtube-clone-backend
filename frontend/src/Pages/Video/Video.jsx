@@ -29,31 +29,28 @@ const Video = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Auto-scroll to screenshots section on mobile when page loads
+  // Auto-scroll to top of video player for clean landing experience
   useEffect(() => {
     if (isMobile && videoId) {
       // Small delay to ensure page is fully rendered
       const timer = setTimeout(() => {
-        const screenshotsSection = document.getElementById('screenshotsSection');
-        if (screenshotsSection) {
-          // Get the video container to calculate proper scroll position
-          const videoContainer = document.querySelector('.video-container');
-          if (videoContainer) {
-            // Calculate scroll position to show top of video player with more space above
-            const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
-            const targetScrollPosition = videoTop - 20; // 20px padding above video player
-            
-            window.scrollTo({
-              top: targetScrollPosition,
-              behavior: 'smooth'
-            });
-          } else {
-            // Fallback: scroll to screenshots section with some offset
-            screenshotsSection.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'start' 
-            });
-          }
+        // Get the video container to position it at the top
+        const videoContainer = document.querySelector('.video-container');
+        if (videoContainer) {
+          // Calculate scroll position to show video player at the very top
+          const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
+          const targetScrollPosition = videoTop - 10; // Minimal padding for clean top positioning
+          
+          window.scrollTo({
+            top: targetScrollPosition,
+            behavior: 'smooth'
+          });
+        } else {
+          // Fallback: scroll to top of page
+          window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
         }
       }, 500); // 500ms delay to ensure video player is loaded
       
