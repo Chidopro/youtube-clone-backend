@@ -29,24 +29,36 @@ const Video = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Auto-scroll to top of video player for clean landing experience
+  // Auto-scroll to position video player just below the navigation bar
   useEffect(() => {
     if (isMobile && videoId) {
       // Small delay to ensure page is fully rendered
       const timer = setTimeout(() => {
-        // Get the video container to position it at the top
+        // Get the video container to position it below the navbar
         const videoContainer = document.querySelector('.video-container');
-        if (videoContainer) {
-          // Calculate scroll position to show video player at the very top
+        const navbar = document.querySelector('nav');
+        
+        if (videoContainer && navbar) {
+          // Calculate navbar height to position video just below it
+          const navbarHeight = navbar.offsetHeight;
           const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
-          const targetScrollPosition = videoTop - 10; // Minimal padding for clean top positioning
+          const targetScrollPosition = videoTop - navbarHeight - 10; // Position just below navbar with small padding
+          
+          window.scrollTo({
+            top: targetScrollPosition,
+            behavior: 'smooth'
+          });
+        } else if (videoContainer) {
+          // Fallback: position video at top with navbar height estimate
+          const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
+          const targetScrollPosition = videoTop - 70; // Estimate navbar height (~60px) + padding
           
           window.scrollTo({
             top: targetScrollPosition,
             behavior: 'smooth'
           });
         } else {
-          // Fallback: scroll to top of page
+          // Final fallback: scroll to top of page
           window.scrollTo({
             top: 0,
             behavior: 'smooth'
