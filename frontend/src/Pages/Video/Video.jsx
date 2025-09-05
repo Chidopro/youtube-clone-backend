@@ -39,9 +39,9 @@ const Video = () => {
           // Get the video container to calculate proper scroll position
           const videoContainer = document.querySelector('.video-container');
           if (videoContainer) {
-            // Calculate scroll position to show screenshots just below video
-            const videoBottom = videoContainer.getBoundingClientRect().bottom + window.scrollY;
-            const targetScrollPosition = videoBottom - 20; // 20px padding above screenshots
+            // Calculate scroll position to show top of video player with more space above
+            const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
+            const targetScrollPosition = videoTop - 60; // 60px padding above video player
             
             window.scrollTo({
               top: targetScrollPosition,
