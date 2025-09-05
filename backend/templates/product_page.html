@@ -1573,7 +1573,7 @@
                });
              }, 100);
           } else {
-            productRow.innerHTML = '<p style="text-align:center; color:#666; padding:20px;">No products available at the moment.</p>';
+            productRow.innerHTML = ''; // Show nothing when no products
             console.log('⚠️ No products to display');
           }
         }

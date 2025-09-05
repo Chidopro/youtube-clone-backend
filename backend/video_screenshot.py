@@ -47,8 +47,26 @@ class VideoScreenshotCapture:
                 'vf': 'scale=640:-1'  # Scale down for faster processing
             })
             
-            # Run the ffmpeg command with timeout
-            ffmpeg.run(stream, overwrite_output=True, quiet=True, timeout=25)  # 25 second timeout
+            # Run the ffmpeg command with timeout using subprocess
+            import subprocess
+            import signal
+            
+            # Create the ffmpeg command
+            cmd = ffmpeg.compile(stream, overwrite_output=True)
+            
+            # Run with timeout
+            try:
+                result = subprocess.run(cmd, capture_output=True, timeout=25, check=True)
+            except subprocess.TimeoutExpired:
+                return {
+                    'success': False,
+                    'error': 'Screenshot capture timed out'
+                }
+            except subprocess.CalledProcessError as e:
+                return {
+                    'success': False,
+                    'error': f'FFmpeg error: {e.stderr.decode()}'
+                }
             
             # Check if the screenshot was created
             if not os.path.exists(screenshot_path):

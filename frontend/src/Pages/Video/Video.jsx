@@ -29,6 +29,25 @@ const Video = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Auto-scroll to screenshots section on mobile when page loads
+  useEffect(() => {
+    if (isMobile && videoId) {
+      // Small delay to ensure page is fully rendered
+      const timer = setTimeout(() => {
+        const screenshotsSection = document.getElementById('screenshotsSection');
+        if (screenshotsSection) {
+          // Scroll to show the top of the screenshots section
+          screenshotsSection.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }
+      }, 500); // 500ms delay to ensure video player is loaded
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile, videoId]);
+
   // Add thumbnail as first screenshot when available
   useEffect(() => {
     if (thumbnail && screenshots.length === 0) {
