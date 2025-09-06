@@ -1040,11 +1040,33 @@ def show_product_page_new(product_id):
         if product_id in product_data_store:
             logger.info(f"🔄 Found product in memory storage")
             product_data = product_data_store[product_id]
+            
+            # Find the specific product data from PRODUCTS array
+            specific_product = None
+            for p in PRODUCTS:
+                if p.get('name') == product_data.get('name'):
+                    specific_product = p
+                    break
+            
+            if not specific_product:
+                # Fallback: create product data from memory storage
+                specific_product = {
+                    'name': product_data.get('name', 'Unknown Product'),
+                    'price': product_data.get('price', 0),
+                    'main_image': product_data.get('main_image', ''),
+                    'filename': product_data.get('filename', ''),
+                    'preview_image': product_data.get('preview_image', ''),
+                    'options': product_data.get('options', {}),
+                    'size_pricing': product_data.get('size_pricing', {}),
+                    'size_color_availability': product_data.get('size_color_availability', {})
+                }
+            
             return render_template(
                 'product_page.html',
                 img_url=product_data.get('thumbnail'),
                 screenshots=product_data.get('screenshots', []),
                 products=filtered_products,
+                product=specific_product,
                 product_id=product_id,
                 email='',
                 channel_id='',
@@ -1123,11 +1145,32 @@ def show_product_page(product_id):
                     timestamp = int(time.time())
                     cache_buster = uuid.uuid4().hex[:8]
                     
+                    # Find the specific product data from PRODUCTS array
+                    specific_product = None
+                    for p in PRODUCTS:
+                        if p.get('name') == product_data.get('name'):
+                            specific_product = p
+                            break
+                    
+                    if not specific_product:
+                        # Fallback: create product data from Supabase data
+                        specific_product = {
+                            'name': product_data.get('name', 'Unknown Product'),
+                            'price': product_data.get('price', 0),
+                            'main_image': product_data.get('main_image', ''),
+                            'filename': product_data.get('filename', ''),
+                            'preview_image': product_data.get('preview_image', ''),
+                            'options': product_data.get('options', {}),
+                            'size_pricing': product_data.get('size_pricing', {}),
+                            'size_color_availability': product_data.get('size_color_availability', {})
+                        }
+                    
                     response = make_response(render_template(
                         'product_page.html',
                         img_url=product_data.get('thumbnail_url'),
                         screenshots=screenshots,
                         products=filtered_products,
+                        product=specific_product,
                         product_id=product_id,
                         email='',
                         channel_id='',
@@ -1161,11 +1204,33 @@ def show_product_page(product_id):
         if product_id in product_data_store:
             logger.info(f"🔄 Found product in memory storage")
             product_data = product_data_store[product_id]
+            
+            # Find the specific product data from PRODUCTS array
+            specific_product = None
+            for p in PRODUCTS:
+                if p.get('name') == product_data.get('name'):
+                    specific_product = p
+                    break
+            
+            if not specific_product:
+                # Fallback: create product data from memory storage
+                specific_product = {
+                    'name': product_data.get('name', 'Unknown Product'),
+                    'price': product_data.get('price', 0),
+                    'main_image': product_data.get('main_image', ''),
+                    'filename': product_data.get('filename', ''),
+                    'preview_image': product_data.get('preview_image', ''),
+                    'options': product_data.get('options', {}),
+                    'size_pricing': product_data.get('size_pricing', {}),
+                    'size_color_availability': product_data.get('size_color_availability', {})
+                }
+            
             return render_template(
                 'product_page.html',
                 img_url=product_data.get('thumbnail'),
                 screenshots=product_data.get('screenshots', []),
                 products=filtered_products,
+                product=specific_product,
                 product_id=product_id,
                 email='',
                 channel_id='',
