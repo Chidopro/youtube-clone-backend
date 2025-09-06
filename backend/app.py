@@ -1352,6 +1352,19 @@ def send_order():
                 </div>
             """
             sms_body += f"Product: {product_name}, Color: {color}, Size: {size}, Note: {note}, Image: {image_url}\n"
+        # Generate order ID and order number
+        order_id = str(uuid.uuid4())
+        order_number = order_id[-8:].upper()
+        
+        # Store order in order_store for admin dashboard
+        order_store[order_id] = {
+            "cart": cart,
+            "timestamp": data.get("timestamp"),
+            "order_id": order_id,
+            "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+            "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
+        }
+        
         # Record each sale
         for item in cart:
             record_sale(item)
