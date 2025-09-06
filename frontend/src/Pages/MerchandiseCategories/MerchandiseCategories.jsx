@@ -92,7 +92,7 @@ const MerchandiseCategories = () => {
       
       console.log('Request data:', requestData);
       
-      const response = await fetch(`${API_CONFIG.BASE_URL}/create_product`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/create-product`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

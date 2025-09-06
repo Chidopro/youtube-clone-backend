@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🎯 FRESH TEMPLATE v3.0 - Customize Your Product - {{ timestamp }} - {{ cache_buster }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta http-equiv="Last-Modified" content="{{ timestamp }}">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9f9f9; text-align: center; padding: 0; margin: 0; }
+    h1 { color: #3f51b5; }
+    
+         /* Simple Logo Header - Bigger Logo, Less Height */
+     .simple-header {
+       background: white;
+       padding: 5px 2%;
+       position: relative;
+       z-index: 10;
+       border-bottom: 1px solid #eee;
+     }
+
+    .simple-header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+    }
+
+    .simple-logo {
+      display: flex;
+      align-items: center;
+    }
+
+    .simple-logo .logo-img {
+      width: 40px;
+      height: 40px;
+      display: block;
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      margin-right: 10px;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .user-info {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      display: flex;
+      gap: 20px;
+      min-height: calc(100vh - 100px);
+    }
+
+    .left-column {
+      flex: 1;
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .right-column {
+      flex: 1;
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .product-image {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .product-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .product-price {
+      font-size: 20px;
+      color: #3f51b5;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .variant-selector {
+      margin-bottom: 15px;
+    }
+
+    .variant-selector label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .variant-select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .add-to-cart-btn {
+      background: #3f51b5;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    .add-to-cart-btn:hover {
+      background: #2c3e8a;
+    }
+
+    .product-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      background: white;
+    }
+
+    .product-card img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .product-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .product-price {
+      font-size: 18px;
+      color: #3f51b5;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .note-input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      margin-top: 10px;
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .products-selected {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .selected-products {
+      min-height: 100px;
+      border: 2px dashed #ddd;
+      border-radius: 4px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .checkout-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .checkout-btn:hover {
+      background: #218838;
+    }
+
+    .user-flow-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .step-number {
+      background: #3f51b5;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    .step-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .step-description {
+      color: #666;
+      margin-bottom: 15px;
+    }
+
+    .screenshots-container {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+
+    .screenshot-thumbnail {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+
+    .screenshot-thumbnail.selected {
+      border-color: #3f51b5;
+    }
+
+    .screenshot-thumbnail:hover {
+      border-color: #3f51b5;
+      opacity: 0.8;
+    }
+
+    .resolution-notice {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .mobile-action-buttons {
+      display: none;
+      gap: 10px;
+      margin: 20px 0;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .desktop-cart-button {
+      display: none;
+      gap: 10px;
+      margin: 20px 0;
+      justify-content: center;
+      width: 100%;
+    }
+
+    @media (max-width: 768px) {
+      .main-container {
+        flex-direction: column;
+        padding: 10px;
+      }
+      
+      .mobile-action-buttons {
+        display: flex;
+      }
+      
+      .desktop-cart-button {
+        display: none;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .mobile-action-buttons {
+        display: none;
+      }
+      
+      .desktop-cart-button {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Simple Header -->
+  <div class="simple-header">
+    <div class="simple-header-content">
+      <div class="simple-logo">
+        <img src="/static/images/logo.png" alt="Logo" class="logo-img">
+        <span class="header-title">ScreenMerch</span>
+      </div>
+      <div class="header-right">
+        <div class="user-info">
+          {% if authenticated %}
+            Logged in as: {{ email }}
+          {% else %}
+            Not logged in
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <!-- Left Column - Product Display -->
+    <div class="left-column">
+      <!-- User Flow Section - Only Step 3 since we're already at merchandise page -->
+     <div class="user-flow-section">
+           <!-- Make Merchandise Section - Now positioned above Screenshots Selected -->
+           <div style="display: flex; align-items: center; margin-bottom: 15px;">
+             <div class="step-number">3</div>
+             <div class="step-title">Make Merchandise</div>
+           </div>
+           <div class="step-description">Create custom products with your screenshot</div>
+           
+           <!-- Screenshots Selected Section -->
+           <div style="margin-bottom: 15px;">
+             <h4 style="margin-bottom: 10px; color: #333;">Screenshot Selected</h4>
+             <div class="screenshots-container" id="screenshotsContainer">
+               {% if screenshots %}
+                 {% for screenshot in screenshots %}
+                   <img src="{{ screenshot }}" alt="Screenshot {{ loop.index }}" class="screenshot-thumbnail" data-screenshot="{{ screenshot }}">
+                 {% endfor %}
+               {% else %}
+                 <p style="color: #666; font-style: italic;">No screenshots available</p>
+               {% endif %}
+             </div>
+           </div>
+         </div>
+
+      <!-- Product Display -->
+      {% if img_url %}
+        <img src="{{ img_url }}" alt="Product" class="product-image">
+      {% endif %}
+      
+      <div class="product-title">{{ video_title or 'Custom Product' }}</div>
+      <div class="product-price">$0.00</div>
+      
+      <!-- Product Options -->
+      <div class="variant-selector">
+        <label>Color:</label>
+        <select class="variant-select" id="colorSelect">
+          <option value="Black">Black</option>
+          <option value="White">White</option>
+          <option value="Navy">Navy</option>
+        </select>
+      </div>
+      
+      <div class="variant-selector">
+        <label>Size:</label>
+        <select class="variant-select" id="sizeSelect">
+          <option value="S">S</option>
+          <option value="M">M</option>
+          <option value="L">L</option>
+          <option value="XL">XL</option>
+          <option value="XXL">XXL</option>
+        </select>
+      </div>
+      
+      <button class="add-to-cart-btn" onclick="addToCart()">Add to Cart</button>
+      
+      <!-- Bottom Window: Products Selected -->
+      <div class="products-selected" id="productsSelected">
+        <h3>Products Selected</h3>
+        <div class="selected-products" id="selectedProducts">
+          <p>No products selected yet</p>
+        </div>
+        <button class="btn checkout-btn" onclick="goToCheckout()" style="margin-top: 15px; width: 100%;">Go to Checkout</button>
+      </div>
+    </div>
+
+    <!-- Right Column - Available Products -->
+    <div class="products-section" id="productsSection">
+      <h3>Available Products</h3>
+      <div class="product-row" id="productRow"></div>
+    </div>
+  </div>
+
+  <script>
+    console.log('🔍 FRESH TEMPLATE SCRIPT LOADING - Template script starting...');
+    console.log('🔍 CACHE BUSTER: {{ cache_buster }}');
+    console.log('🔍 TIMESTAMP: {{ timestamp }}');
+    
+    // Global variables - Make them more robust against conflicts
+    window.products = window.products || [];
+    let products = window.products;
+    
+    console.log('🔍 FRESH TEMPLATE - Products array initialized:', products);
+
+    // Price update function - Make it more robust against conflicts
+    // Use a unique name to avoid conflicts with frontend scripts
+    window.freshUpdatePrice = function(productIndex, selectedSize) {
+      console.log('🔍 FRESH updatePrice function DEFINED and called:', productIndex, selectedSize);
+      console.log('🔍 FRESH updatePrice called:', productIndex, selectedSize);
+      console.log('🔍 Products array length:', products.length);
+      console.log('🔍 Products array:', products);
+      console.log('🔍 Products array details at updatePrice:', products.map((p, i) => ({ index: i, name: p?.name, hasSizePricing: !!p?.size_pricing })));
+      
+      // Check if products array exists and has the expected length
+      if (!products || !Array.isArray(products)) {
+        console.log('❌ Products array is not valid:', products);
+        return;
+      }
+      
+      if (productIndex < 0 || productIndex >= products.length) {
+        console.log('❌ Product index out of range:', productIndex, 'Array length:', products.length);
+        return;
+      }
+      
+      if (!products[productIndex]) {
+        console.log('❌ Product not found at index:', productIndex);
+        console.log('🔍 Available products:', products.map((p, i) => ({ index: i, name: p?.name })));
+        return;
+      }
+      
+      const product = products[productIndex];
+      console.log('🔍 Product data:', product);
+      console.log('🔍 Product name:', product.name);
+      console.log('🔍 Product size_pricing:', product.size_pricing);
+      
+      const basePrice = product.price;
+      const sizePricing = product.size_pricing || {};
+      const sizeIncrease = sizePricing[selectedSize] || 0;
+      const totalPrice = basePrice + sizeIncrease;
+      
+      console.log('🔍 Price calculation:', { basePrice, sizePricing, sizeIncrease, totalPrice });
+      
+      const priceElement = document.getElementById(`price-${productIndex}`);
+      if (priceElement) {
+        priceElement.textContent = `$${totalPrice.toFixed(2)}`;
+        if (sizeIncrease > 0) {
+          priceElement.innerHTML = `$${totalPrice.toFixed(2)} <span style="font-size: 0.8em; color: #666;">(+$${sizeIncrease.toFixed(2)})</span>`;
+        }
+        console.log('🔍 Price updated to:', priceElement.textContent);
+      } else {
+        console.log('🔍 Price element not found:', `price-${productIndex}`);
+      }
+    }
+    
+    // Backup function to ensure our updatePrice works even if frontend overrides it
+    window.updatePrice = window.freshUpdatePrice;
+    
+    // Also create a fallback that runs after a delay to override any frontend scripts
+    setTimeout(() => {
+      window.updatePrice = window.freshUpdatePrice;
+      console.log('🔍 Backup updatePrice function installed');
+    }, 1000);
+
+    // Add to cart function
+    function addToCart() {
+      const color = document.getElementById('colorSelect').value;
+      const size = document.getElementById('sizeSelect').value;
+      const selectedProducts = document.getElementById('selectedProducts');
+      
+      const productItem = document.createElement('div');
+      productItem.innerHTML = `
+        <div>${color} ${size} - $0.00</div>
+        <div>Custom Product</div>
+        <img src="{{ img_url or '/static/images/placeholder.png' }}" alt="Product" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+      `;
+      
+      if (selectedProducts.children.length === 0 || selectedProducts.children[0].tagName === 'P') {
+        selectedProducts.innerHTML = '';
+      }
+      
+      selectedProducts.appendChild(productItem);
+    }
+
+    // Go to checkout function
+    function goToCheckout() {
+      const selectedProducts = document.getElementById('selectedProducts');
+      
+      if (selectedProducts.children.length === 0) {
+        alert('Please add some products to your cart first!');
+        return;
+      }
+      
+      // Collect all selected products for checkout
+      const selectedProductsForCheckout = [];
+      selectedProducts.querySelectorAll('div').forEach(item => {
+        const nameElement = item.querySelector('div');
+        const detailsElement = item.querySelector('div:nth-child(2)');
+        const imageElement = item.querySelector('img');
+        
+        if (nameElement && detailsElement) {
+          const productName = nameElement.textContent;
+          const details = detailsElement.textContent;
+          const image = imageElement ? imageElement.src : '';
+          
+          selectedProductsForCheckout.push({
+            name: productName,
+            details: details,
+            image: image
+          });
+        }
+      });
+      
+      console.log('🛒 Proceeding to checkout with:', selectedProductsForCheckout);
+      
+      // Redirect to checkout page with product data
+      const productId = '{{ product_id }}';
+      const checkoutUrl = `/checkout/${productId}`;
+      
+      console.log('🛒 Redirecting to:', checkoutUrl);
+      
+      // Store cart data in sessionStorage for checkout page
+      sessionStorage.setItem('cartData', JSON.stringify(selectedProductsForCheckout));
+      
+      // Redirect to checkout
+      window.location.href = checkoutUrl;
+    }
+
+    // Screenshot selection
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('🔍 FRESH TEMPLATE - DOM loaded successfully');
+      
+      // Handle screenshot selection
+      const screenshots = document.querySelectorAll('.screenshot-thumbnail');
+      screenshots.forEach(screenshot => {
+        screenshot.addEventListener('click', function() {
+          // Remove selected class from all screenshots
+          screenshots.forEach(s => s.classList.remove('selected'));
+          // Add selected class to clicked screenshot
+          this.classList.add('selected');
+        });
+      });
+      
+      // Auto-select first screenshot if available
+      if (screenshots.length > 0) {
+        screenshots[0].classList.add('selected');
+      }
+
+      // Populate products - Protect against overwrites
+      if (!window.products || window.products.length === 0) {
+        products = [];
+        window.products = products;
+      } else {
+        products = window.products;
+        console.log('🔍 Using existing products array:', products.length, 'items');
+      }
+      
+      {% if products %}
+        {% for product in products %}
+          products.push({
+            name: '{{ product.name }}',
+            price: {{ product.price }},
+            main_image: '{{ product.main_image }}',
+            filename: '{{ product.filename }}',
+            options: {{ product.options | tojson }},
+            size_pricing: {{ product.size_pricing | tojson if product.size_pricing else '{}' }}
+          }));
+        {% endfor %}
+      {% endif %}
+      console.log('🔍 All products loaded:', products);
+      console.log('🔍 Products array details:', products.map((p, i) => ({ index: i, name: p?.name, hasSizePricing: !!p?.size_pricing })));
+      console.log('🔍 Backend products data:', {{ products | tojson if products else '[]' }});
+
+      // Display products
+      const productRow = document.getElementById("productRow");
+      products.forEach((product, index) => {
+        const productCard = document.createElement("div");
+        productCard.className = "product-card";
+        productCard.innerHTML = `
+          <img src="/static/images/${product.main_image}" alt="${product.name}" style="width:100%;height:180px;object-fit:cover;border-radius:6px;">
+          <div class="product-title">${product.name}</div>
+          <div class="product-price" id="price-${index}">$${product.price.toFixed(2)}</div>
+          ${product.options.color ? `
+            <div style="font-weight:bold; color:#3f51b5; margin-bottom:6px;">Choose Color & Size:</div>
+            <div class="variant-selector">
+              <label>Color:</label>
+              <select class="variant-select color-select" data-product-index="${index}">
+                ${product.options.color.map(color => `<option value="${color}">${color}</option>`).join('')}
+              </select>
+            </div>
+          ` : ''}
+          ${product.options.size ? `
+            <div class="variant-selector">
+              <label>Size:</label>
+              <select class="variant-select size-select" data-product-index="${index}" onchange="freshUpdatePrice(${index}, this.value)">
+                ${product.options.size.map(size => `<option value="${size}">${size}</option>`).join('')}
+              </select>
+            </div>
+          ` : ''}
+                     <textarea class="note-input" placeholder="Add a note (optional)"></textarea>
+          <button class="add-to-cart-btn" onclick="addProductToCart(${index})" data-price="${product.price}">Add ${product.name} to Cart</button>
+        `;
+        productRow.appendChild(productCard);
+      });
+    });
+
+    // Add product to cart function
+    function addProductToCart(productIndex) {
+      const product = products[productIndex];
+      if (!product) {
+        console.log('❌ Product not found at index:', productIndex);
+        return;
+      }
+      
+      const productCard = document.querySelector(`[data-product-index="${productIndex}"]`).closest('.product-card');
+      const colorSelect = productCard.querySelector('.color-select');
+      const sizeSelect = productCard.querySelector('.size-select');
+      const noteInput = productCard.querySelector('.note-input');
+      
+      const color = colorSelect ? colorSelect.value : 'Default';
+      const size = sizeSelect ? sizeSelect.value : 'Default';
+      const note = noteInput ? noteInput.value : '';
+      const price = productCard.querySelector('.add-to-cart-btn').getAttribute('data-price');
+      
+      const selectedProducts = document.getElementById('selectedProducts');
+      
+      const productItem = document.createElement('div');
+      productItem.innerHTML = `
+        <div>${color} ${size} - $${parseFloat(price).toFixed(2)}</div>
+        <div>${product.name}</div>
+        <img src="/static/images/${product.main_image}" alt="${product.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+        ${note ? `<div style="font-size: 12px; color: #666;">Note: ${note}</div>` : ''}
+      `;
+      
+      if (selectedProducts.children.length === 0 || selectedProducts.children[0].tagName === 'P') {
+        selectedProducts.innerHTML = '';
+      }
+      
+      selectedProducts.appendChild(productItem);
+      
+      // Update button data-price
+      const button = productCard.querySelector('.add-to-cart-btn');
+      const currentPrice = parseFloat(button.getAttribute('data-price'));
+      button.setAttribute('data-price', currentPrice);
+      
+      console.log('✅ Product added to cart:', product.name, color, size, price);
+    }
+
+    // Image preloader function
+    function preloadImage(url, callback) {
+      const img = new Image();
+      img.onload = function() {
+        callback(url);
+      };
+      img.onerror = function() {
+        // If image fails to load, just use the original URL
+        callback(url);
+      };
+      img.src = url;
+    }
+  </script>
+</body>
+</html>

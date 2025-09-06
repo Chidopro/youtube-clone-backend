@@ -1,7 +1,7 @@
 export const products = {
   "unisexstapletshirt": {
     "name": "Unisex Staple T-Shirt",
-    "price": 31.99,
+    "price": 21.99,
     "description": "Comfortable soft t-shirt with custom design",
     "image": "/static/images/guidontee.png",
     "preview": "/static/images/guidonteepreview.png",
@@ -104,7 +104,7 @@ export const products = {
   },
   "unisexclassictee": {
     "name": "Unisex Classic Tee",
-    "price": 34.99,
+    "price": 24.99,
     "description": "Classic unisex t-shirt",
     "image": "/static/images/unisexclassictee.png",
     "preview": "/static/images/unisexclassicteepreview.png",
@@ -297,7 +297,7 @@ export const products = {
   },
   "men'stanktop": {
     "name": "Men's Tank Top",
-    "price": 24.23,
+    "price": 14.23,
     "description": "Comfortable men's tank top",
     "image": "/static/images/random.png",
     "preview": "/static/images/randompreview.png",
@@ -318,7 +318,7 @@ export const products = {
   },
   "unisexhoodie": {
     "name": "Unisex Hoodie",
-    "price": 37.95,
+    "price": 27.95,
     "description": "Comfortable unisex hoodie",
     "image": "/static/images/tested.png",
     "preview": "/static/images/testedpreview.png",
@@ -359,7 +359,7 @@ export const products = {
   },
   "croppedhoodie": {
     "name": "Cropped Hoodie",
-    "price": 49.99,
+    "price": 39.99,
     "description": "Stylish cropped hoodie",
     "image": "/static/images/croppedhoodie.png",
     "preview": "/static/images/croppedhoodiepreview.png",
@@ -432,7 +432,7 @@ export const products = {
   },
   "unisexchampionhoodie": {
     "name": "Unisex Champion Hoodie",
-    "price": 39.99,
+    "price": 29.99,
     "description": "Premium Champion brand hoodie",
     "image": "/static/images/hoodiechampion.png",
     "preview": "/static/images/hoodiechampionpreview.jpg",
@@ -495,21 +495,11 @@ export const products = {
   },
   "women'sribbedneck": {
     "name": "Women's Ribbed Neck",
-    "price": 25.60,
+    "price": 25.99,
     "description": "Women's shirt with ribbed neck design",
     "image": "/static/images/womensribbedneck.png",
     "preview": "/static/images/womensribbedneckpreview.jpg",
     "category": "women's-shirts",
-    "size_pricing": {
-      "S": 0,
-      "M": 0,
-      "L": 0,
-      "XL": 0,
-      "XXL": 2,
-      "XXXL": 4,
-      "XXXXL": 6,
-      "XXXXXL": 8
-    },
     "variables": {
       "sizes": [
         "S",
@@ -647,7 +637,7 @@ export const products = {
   },
   "women'sshirt": {
     "name": "Women's Shirt",
-    "price": 36.99,
+    "price": 26.99,
     "description": "Comfortable women's shirt",
     "image": "/static/images/womensshirt.png",
     "preview": "/static/images/womensshirtkevin.png",
@@ -730,7 +720,7 @@ export const products = {
   },
   "women'shdshirt": {
     "name": "Women's HD Shirt",
-    "price": 38.99,
+    "price": 28.99,
     "description": "High-definition print women's shirt",
     "image": "/static/images/womenshdshirt.png",
     "preview": "/static/images/womenshdshirtpreview.png",
@@ -813,7 +803,7 @@ export const products = {
   },
   "kidsshirt": {
     "name": "Kids Shirt",
-    "price": 29.99,
+    "price": 19.99,
     "description": "Comfortable kids t-shirt",
     "image": "/static/images/kidshirt.png",
     "preview": "/static/images/kidshirtpreview.jpg",
@@ -861,7 +851,7 @@ export const products = {
   },
   "kidshoodie": {
     "name": "Kids Hoodie",
-    "price": 39.99,
+    "price": 29.99,
     "description": "Warm kids hoodie",
     "image": "/static/images/kidhoodie.png",
     "preview": "/static/images/kidhoodiepreview.jpg",
@@ -909,7 +899,7 @@ export const products = {
   },
   "kidslongsleeve": {
     "name": "Kids Long Sleeve",
-    "price": 34.99,
+    "price": 24.99,
     "description": "Comfortable kids long sleeve shirt",
     "image": "/static/images/kidlongsleeve.png",
     "preview": "/static/images/kidlongsleevepreview.jpg",
@@ -957,7 +947,7 @@ export const products = {
   },
   "canvastote": {
     "name": "Canvas Tote",
-    "price": 28.99,
+    "price": 18.99,
     "description": "Eco-friendly canvas tote bag",
     "image": "/static/images/allovertotebag.png",
     "preview": "/static/images/allovertotebagpreview.png",
@@ -973,7 +963,7 @@ export const products = {
   },
   "totebag": {
     "name": "Tote Bag",
-    "price": 31.99,
+    "price": 21.99,
     "description": "Versatile tote bag",
     "image": "/static/images/drawstringbag.png",
     "preview": "/static/images/drawstringbagpreview.png",
@@ -990,7 +980,7 @@ export const products = {
   },
   "largecanvasbag": {
     "name": "Large Canvas Bag",
-    "price": 34.99,
+    "price": 24.99,
     "description": "Large canvas bag for all your needs",
     "image": "/static/images/largecanvasbag.png",
     "preview": "/static/images/largecanvasbagpreview.png",
@@ -1007,7 +997,7 @@ export const products = {
   },
   "greetingcard": {
     "name": "Greeting Card",
-    "price": 32.99,
+    "price": 22.99,
     "description": "Beautiful greeting card",
     "image": "/static/images/greetingcard.png",
     "preview": "/static/images/greetingcardpreview.png",
@@ -1023,7 +1013,7 @@ export const products = {
   },
   "notebook": {
     "name": "Notebook",
-    "price": 24.99,
+    "price": 14.99,
     "description": "Hardcover notebook",
     "image": "/static/images/hardcovernotebook.png",
     "preview": "/static/images/hardcovernotebookpreview.png",
@@ -1039,7 +1029,7 @@ export const products = {
   },
   "coasters": {
     "name": "Coasters",
-    "price": 23.99,
+    "price": 13.99,
     "description": "Set of custom coasters",
     "image": "/static/images/coaster.png",
     "preview": "/static/images/coasterpreview.jpg",
@@ -1056,7 +1046,7 @@ export const products = {
   },
   "stickerpack": {
     "name": "Sticker Pack",
-    "price": 18.99,
+    "price": 8.99,
     "description": "Set of custom stickers",
     "image": "/static/images/stickers.png",
     "preview": "/static/images/stickerspreview.png",
@@ -1069,7 +1059,7 @@ export const products = {
   },
   "dogbowl": {
     "name": "Dog Bowl",
-    "price": 22.99,
+    "price": 12.99,
     "description": "Custom dog bowl",
     "image": "/static/images/dogbowl.png",
     "preview": "/static/images/dogbowlpreview.png",
@@ -1082,7 +1072,7 @@ export const products = {
   },
   "magnetset": {
     "name": "Magnet Set",
-    "price": 21.99,
+    "price": 11.99,
     "description": "Set of custom magnets",
     "image": "/static/images/magnet.png",
     "preview": "/static/images/magnetpreview.png",
@@ -1095,7 +1085,7 @@ export const products = {
   },
   "men'slongsleeve": {
     "name": "Men's Long Sleeve",
-    "price": 39.99,
+    "price": 29.99,
     "description": "Comfortable men's long sleeve shirt",
     "image": "/static/images/menslongsleeve.png",
     "preview": "/static/images/menslongsleevepreview.jpg",
@@ -1168,7 +1158,7 @@ export const products = {
   },
   "women'stank": {
     "name": "Women's Tank",
-    "price": 32.99,
+    "price": 22.99,
     "description": "Comfortable women's tank top",
     "image": "/static/images/womenstank.png",
     "preview": "/static/images/womenstankpreview.jpg",
@@ -1251,7 +1241,7 @@ export const products = {
   },
   "women'stee": {
     "name": "Women's Tee",
-    "price": 33.99,
+    "price": 23.99,
     "description": "Comfortable women's t-shirt",
     "image": "/static/images/womenstee.png",
     "preview": "/static/images/womensteepreview.jpg",
@@ -1334,7 +1324,7 @@ export const products = {
   },
   "distresseddadhat": {
     "name": "Distressed Dad Hat",
-    "price": 24.99,
+    "price": 14.99,
     "description": "Stylish distressed dad hat",
     "image": "/static/images/distresseddadhat.jpg",
     "preview": "/static/images/distresseddadhatpreview.jpg",
@@ -1355,7 +1345,7 @@ export const products = {
   },
   "snapbackhat": {
     "name": "Snapback Hat",
-    "price": 26.89,
+    "price": 16.89,
     "description": "Classic snapback hat",
     "image": "/static/images/snapbackhat.png",
     "preview": "/static/images/snapbackhatpreview.png",
@@ -1376,7 +1366,7 @@ export const products = {
   },
   "fivepaneltruckerhat": {
     "name": "Five Panel Trucker Hat",
-    "price": 36.99,
+    "price": 26.99,
     "description": "Five panel trucker hat",
     "image": "/static/images/fivepaneltruckerhat.png",
     "preview": "/static/images/fivepaneltruckerhatpreview.jpg",
@@ -1401,7 +1391,7 @@ export const products = {
   },
   "flatbillcap": {
     "name": "Flat Bill Cap",
-    "price": 34.99,
+    "price": 24.99,
     "description": "Flat bill cap",
     "image": "/static/images/flatbillcap.png",
     "preview": "/static/images/flatbillcappreview.png",
@@ -1428,7 +1418,7 @@ export const products = {
   },
   "crossbodybag": {
     "name": "Crossbody Bag",
-    "price": 42.99,
+    "price": 32.99,
     "description": "Stylish crossbody bag",
     "image": "/static/images/crossbodybag.png",
     "preview": "/static/images/crossbodybagpreview.png",
@@ -1445,7 +1435,7 @@ export const products = {
   },
   "babybib": {
     "name": "Baby Bib",
-    "price": 26.99,
+    "price": 16.99,
     "description": "Custom baby bib",
     "image": "/static/images/babybib.png",
     "preview": "/static/images/babybibpreview.jpg",

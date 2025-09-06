@@ -1,0 +1,3 @@
+[33ma0f8020ce[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Adjust mobile scroll position to top of video player
+[33ma5a82dd5c[m Fix mobile screenshot visibility - auto-scroll to screenshots section on mobile when video page loads
+[33m3af2af64a[m Force redeploy with cache busting - 1757030817
