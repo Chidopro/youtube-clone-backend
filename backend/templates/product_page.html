@@ -1505,9 +1505,7 @@
              
         // Size-based color filtering function
         function filterColorsBySize(selectedSize, productIndex) {
-            console.log(`🎨 Filtering colors for size: ${selectedSize}, product: ${productIndex}`);
-            console.log('🔍 Available products:', window.products);
-            console.log('🔍 Product at index:', productIndex, ':', window.products[productIndex]);
+            // Filtering colors for size
             
             const product = window.products[productIndex];
             if (!product) {
@@ -1713,7 +1711,7 @@
           // Default size pricing adjustments (fallback)
           const defaultSizeAdjustments = { "XS": 0, "S": 0, "M": 0, "L": 0, "XL": 2, "XXL": 3, "XXXL": 4, "XXXXL": 5, "XXXXXL": 8 };
           
-          console.log(`📊 Available products:`, window.products);
+          // Finding product for price calculation
           
           // Find base price from products array
           const product = window.products.find(p => {
@@ -1724,7 +1722,6 @@
           });
           if (!product) {
             console.log(`❌ Product not found: ${productName}`);
-            console.log(`🔍 Available product names:`, window.products.map(p => p.name));
             return;
           }
           
