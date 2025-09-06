@@ -1,6 +1,7 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, session
+from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, session, make_response
 import os
 import logging
+import time
 from dotenv import load_dotenv
 from flask_cors import CORS
 import uuid
@@ -306,252 +307,432 @@ def test_order_email():
 PRODUCTS = [
     # Products with both COLOR and SIZE options
     {
-        "name": "Soft Tee",
-        "price": 24.99,
+        "name": "Unisex T-Shirt",
+        "price": 21.69,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "preview_image": "guidonpreview.png",
-        "category": "mens",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Dark Gray", "Navy", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "size_pricing": {
+            "XS": 0,      # No extra charge
+            "S": 0,       # No extra charge  
+            "M": 0,       # No extra charge
+            "L": 0,       # No extra charge
+            "XL": 0,      # No extra charge
+            "XXL": 2,     # +$2 (2XL)
+            "XXXL": 4,    # +$4 (3XL)
+            "XXXXL": 6,   # +$6 (4XL)
+            "XXXXXL": 8   # +$8 (5XL)
+        }
     },
     {
         "name": "Unisex Classic Tee",
-        "price": 24.99,
+        "price": 19.25,
         "filename": "unisexclassictee.png",
         "main_image": "unisexclassictee.png",
         "preview_image": "unisexclassicteepreview.png",
-        "category": "mens",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "Navy", "Sport Grey", "White", "Maroon", "Red", "Natural", "Military Green", "Orange", "Irish Green", "Gold", "Sky", "Ash", "Purple", "Cardinal"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "size_pricing": {
+            "XS": 0,      # No extra charge
+            "S": 0,       # No extra charge  
+            "M": 0,       # No extra charge
+            "L": 0,       # No extra charge
+            "XL": 0,      # No extra charge
+            "XXL": 2,     # +$2 (2XL)
+            "XXXL": 4,    # +$4 (3XL)
+            "XXXXL": 6,   # +$6 (4XL)
+            "XXXXXL": 8   # +$8 (5XL)
+        }
     },
     {
         "name": "Men's Tank Top",
-        "price": 19.99,
+        "price": 24.23,
         "filename": "random.png",
         "main_image": "random.png",
         "preview_image": "randompreview.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Navy", "True Royal", "Athletic Heather", "Red", "Charcoal-Black Triblend", "Oatmeal Triblend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
+        "size_pricing": {
+            "XS": 0,      # No extra charge
+            "S": 0,       # No extra charge  
+            "M": 0,       # No extra charge
+            "L": 0,       # No extra charge
+            "XL": 0,      # No extra charge
+            "XXL": 2,     # +$2 (2XL)
+        }
     },
     {
         "name": "Unisex Hoodie",
-        "price": 22.99,
+        "price": 36.95,
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "testedpreview.png",
-        "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "Navy Blazer", "Carbon Grey", "White", "Maroon", "Charcoal Heather", "Vintage Black", "Forest Green", "Military Green", "Team Red", "Dusty Rose", "Sky Blue", "Bone", "Purple", "Team Royal"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
+        "size_pricing": {
+            "S": 0,       # Base price $36.95
+            "M": 0,       # Base price $36.95
+            "L": 0,       # Base price $36.95
+            "XL": 0,      # Base price $36.95
+            "XXL": 2,     # +$2 = $38.95
+            "XXXL": 4     # +$4 = $40.95
+        }
     },
     {
         "name": "Cropped Hoodie",
-        "price": 39.99,
+        "price": 45.15,
         "filename": "croppedhoodie.png",
         "main_image": "croppedhoodie.png",
         "preview_image": "croppedhoodiepreview.png",
-        "options": {"color": ["Black", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "Military Green", "Storm", "Peach"], "size": ["S", "M", "L", "XL", "XXL"]},
+        "size_pricing": {
+            "S": 0,       # Base price $43.15
+            "M": 0,       # Base price $43.15
+            "L": 0,       # Base price $43.15
+            "XL": 0,      # Base price $43.15
+            "XXL": 2      # +$2 = $45.15
+        }
     },
     {
         "name": "Unisex Champion Hoodie",
-        "price": 29.99,
+        "price": 45.00,
         "filename": "hoodiechampion.png",
         "main_image": "hoodiechampion.png",
         "preview_image": "hoodiechampionpreview.jpg",
-        "options": {"color": ["Black", "Gray"], "size": ["13 inch", "15 inch"]}
+        "options": {"color": ["Black", "Gray"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
+        "size_pricing": {
+            "S": 0,       # Base price $45
+            "M": 0,       # Base price $45
+            "L": 0,       # Base price $45
+            "XL": 0,      # Base price $45
+            "XXL": 2,     # +$2 = $47
+            "XXXL": 4     # +$4 = $49
+        }
     },
     {
         "name": "Women's Ribbed Neck",
-        "price": 25.99,
+        "price": 25.60,
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
         "preview_image": "womensribbedneckpreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+         "size_pricing": {
+            "S": 0,       # Base price $25.60
+            "M": 0,       # Base price $25.60
+            "L": 0,       # Base price $25.60
+            "XL": 0,      # Base price $25.60
+            "XXL": 2,     # +$2 = $27.60
+            "XXXL": 4,     # +$4 = $29.60
+            "XXXXL": 6,   # +$6 = $31.60
+            "XXXXXL": 8   # +$8 = $33.60
+        }
     },
     {
         "name": "Women's Shirt",
-        "price": 26.99,
+        "price": 23.69,
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
         "preview_image": "womensshirtkevin.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Dark Grey Heather", "Pink", "Navy", "Heather Mauve", "Poppy", "Heather Red", "Berry", "Leaf", "Heather Blue Lagoon", "Athletic Heather", "Heather Stone", "Heather Prism Lilac", "Citron"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 2,
+            "XXXL": 2
+        }
     },
     {
-        "name": "Women's HD Shirt",
-        "price": 28.99,
+        "name": "Unisex Heavyweight T-Shirt",
+        "price": 25.29,
         "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
         "preview_image": "womenshdshirtpreview.png",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Berry", "Blue Jean", "Brick", "Moss", "Black", "True Navy", "Grey", "Violet", "White", "Blue Spruce", "Bay", "Lagoon Blue", "Butter", "Pepper", "Flo Blue", "Ivory", "Navy", "Red", "Sage", "Midnight"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
+        "size_pricing": {
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 2,
+            "XXXL": 2,
+            "XXXXL": 2
+        }
     },
     {
         "name": "Kids Shirt",
-        "price": 19.99,
+        "price": 23.49,
         "filename": "kidshirt.png",
         "main_image": "kidshirt.png",
         "preview_image": "kidshirtpreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "Navy", "Maroon", "Forest", "Red", "Dark Grey Heather", "True Royal", "Berry", "Heather Forest", "Kelly", "Heather Columbia Blue", "Athletic Heather", "Mustard", "Pink", "Heather Dust", "Natural", "White"], "size": ["XS", "S", "M", "L", "XL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 2
+        }
     },
     {
-        "name": "Kids Hoodie",
-        "price": 29.99,
+        "name": "Youth Heavy Blend Hoodie",
+        "price": 29.33,
         "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
         "preview_image": "kidhoodiepreview.jpg",
-        "category": "kids",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "Navy", "Royal", "White", "Dark Heather", "Carolina Blue"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 2,
+            "XXL": 3,
+            "XXXL": 4,
+            "XXXXL": 5,
+            "XXXXXL": 8
+        }
     },
     {
         "name": "Kids Long Sleeve",
-        "price": 24.99,
+        "price": 26.49,
         "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
         "preview_image": "kidlongsleevepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "Navy", "Red", "Athletic Heather", "White"], "size": ["S", "M", "L"]},
+        "size_pricing": {
+            "S": 0,
+            "M": 0,
+            "L": 0
+        }
     },
     {
-        "name": "Canvas Tote",
-        "price": 18.99,
+        "name": "All-Over Print Tote Bag",
+        "price": 24.23,
         "filename": "allovertotebag.png",
         "main_image": "allovertotebag.png",
         "preview_image": "allovertotebagpreview.png",
-        "options": {"color": ["Natural", "Black"], "size": []}
+        "options": {"color": ["Black", "Red", "Yellow"], "size": ["15\"x15\""]},
+        "size_pricing": {
+            "15\"x15\"": 0
+        }
     },
     {
-        "name": "Tote Bag",
-        "price": 21.99,
+        "name": "All-Over Print Drawstring Bag",
+        "price": 25.25,
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
         "preview_image": "drawstringbagpreview.png",
-        "options": {"color": ["White", "Black", "Blue"], "size": []}
+        "options": {"color": ["White", "Black", "Blue"], "size": ["15\"x17\""]},
+        "size_pricing": {
+            "15\"x17\"": 0
+        }
     },
     {
-        "name": "Large Canvas Bag",
-        "price": 24.99,
+        "name": "All-Over Print Crossbody Bag",
+        "price": 32.14,
         "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
         "preview_image": "largecanvasbagpreview.png",
-        "options": {"color": ["Natural", "Black", "Navy"], "size": []}
+        "options": {"color": ["Natural", "Black", "Navy"], "size": ["11\"x8\"x1.5\""]},
+        "size_pricing": {
+            "11\"x8\"x1.5\"": 0
+        }
     },
     {
         "name": "Greeting Card",
-        "price": 22.99,
+        "price": 5.00,
         "filename": "greetingcard.png",
         "main_image": "greetingcard.png",
         "preview_image": "greetingcardpreview.png",
-        "options": {"color": ["White", "Cream"], "size": []}
+        "options": {"color": ["White"], "size": ["4\"x6\""]},
+        "size_pricing": {
+            "4\"x6\"": 0
+        }
     },
     {
-        "name": "Notebook",
-        "price": 14.99,
+        "name": "Hardcover Bound Notebook",
+        "price": 23.21,
         "filename": "hardcovernotebook.png",
         "main_image": "hardcovernotebook.png",
         "preview_image": "hardcovernotebookpreview.png",
-        "options": {"color": ["Black", "Blue"], "size": []}
+        "options": {"color": ["Black", "Navy", "Red", "Blue", "Turquoise", "Orange", "Silver", "Lime", "White"], "size": ["5.5\"x8.5\""]},
+        "size_pricing": {
+            "5.5\"x8.5\"": 0
+        }
     },
     {
         "name": "Coasters",
-        "price": 13.99,
+        "price": 33.99,
         "filename": "coaster.png",
         "main_image": "coaster.png",
         "preview_image": "coasterpreview.jpg",
         "options": {"color": ["Wood", "Cork", "Black"], "size": []}
     },
     {
-        "name": "Sticker Pack",
-        "price": 8.99,
+        "name": "Kiss-Cut Stickers",
+        "price": 4.29,
         "filename": "stickers.png",
         "main_image": "stickers.png",
         "preview_image": "stickerspreview.png",
-        "category": "stickers",
-        "options": {"color": [], "size": []}
+        "options": {"color": ["White"], "size": ["3\"x3\"", "4\"x4\"", "5.5\"x5.5\"", "15\"x3.75\""]},
+        "size_pricing": {
+            "3\"x3\"": 0,
+            "4\"x4\"": 0.20,
+            "5.5\"x5.5\"": 0.40,
+            "15\"x3.75\"": 3.07
+        }
     },
     {
-        "name": "Dog Bowl",
-        "price": 12.99,
+        "name": "Pet Bowl All-Over Print",
+        "price": 31.49,
         "filename": "dogbowl.png",
         "main_image": "dogbowl.png",
         "preview_image": "dogbowlpreview.png",
-        "category": "pets",
-        "options": {"color": [], "size": []}
+        "options": {"color": ["White"], "size": ["18oz", "32oz"]},
+        "size_pricing": {
+            "18oz": 0,
+            "32oz": 2
+        }
     },
     {
-        "name": "Magnet Set",
-        "price": 11.99,
+        "name": "Die-Cut Magnets",
+        "price": 5.32,
         "filename": "magnet.png",
         "main_image": "magnet.png",
         "preview_image": "magnetpreview.png",
-        "options": {"color": [], "size": []}
+        "options": {"color": ["White"], "size": ["3\"x3\"", "4\"x4\"", "6\"x6\""]},
+        "size_pricing": {
+            "3\"x3\"": 0,
+            "4\"x4\"": 0.51,
+            "6\"x6\"": 2.55
+        }
     },
     {
-        "name": "Men's Long Sleeve",
-        "price": 29.99,
+        "name": "Men's Long Sleeve Shirt",
+        "price": 24.79,
         "filename": "menslongsleeve.png",
         "main_image": "menslongsleeve.png",
         "preview_image": "menslongsleevepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Light Pink", "Ash"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 2,
+            "XXXL": 2,
+            "XXXXL": 2
+        }
     },
     {
-        "name": "Women's Tank",
-        "price": 22.99,
+        "name": "Women fitted racerback tank top",
+        "price": 20.95,
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "Hot Pink", "Light Orange", "Tahiti Blue", "Heather Gray", "Cancun", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 2
+        }
     },
     {
-        "name": "Women's Tee",
-        "price": 23.99,
+        "name": "Women's Micro-Rib Tank Top",
+        "price": 25.81,
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
         "preview_image": "womensteepreview.jpg",
-        "category": "womens",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Solid Black Blend", "Solid Navy Blend", "Athletic Heather", "Solid Baby Blue Blend", "Solid Pink Blend", "Solid White Blend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0,
+            "XXL": 2
+        }
     },
     {
         "name": "Distressed Dad Hat",
-        "price": 24.99,
+        "price": 23.99,
         "filename": "distresseddadhat.jpg",
         "main_image": "distresseddadhat.jpg",
         "preview_image": "distresseddadhatpreview.jpg",
-        "category": "hats",
-        "options": {"color": ["Black", "Navy", "Gray"], "size": ["One Size"]}
+        "options": {"color": ["Black", "Navy", "Charcoal Gray"], "size": ["One Size"]},
+        "size_pricing": {
+            "One Size": 0
+        }
     },
     {
         "name": "Snapback Hat",
-        "price": 25.99,
+        "price": 26.89,
         "filename": "snapbackhat.png",
         "main_image": "snapbackhat.png",
         "preview_image": "snapbackhatpreview.png",
-        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}
+        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]},
+        "size_pricing": {
+            "One Size": 0
+        }
     },
     {
         "name": "Five Panel Trucker Hat",
-        "price": 26.99,
+        "price": 24.85,
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
         "preview_image": "fivepaneltruckerhatpreview.jpg",
-        "options": {"color": ["Black", "White", "Navy"], "size": ["One Size"]}
+        "options": {"color": [
+            "Black",
+            "Black/ White",
+            "Charcoal",
+            "Black/ White/ Black",
+            "Red/ White/ Red",
+            "Navy/ White/ Navy",
+            "White",
+            "Royal/ White/ Royal",
+            "Kelly/ White/ Kelly",
+            "Navy",
+            "Navy/ White",
+            "Charcoal/ White",
+            "Silver/ Black"
+        ], "size": ["One Size"]},
+        "size_pricing": {
+            "One Size": 0
+        }
     },
     {
-        "name": "Flat Bill Cap",
-        "price": 24.99,
+        "name": "White Glossy Mug",
+        "price": 19.95,
         "filename": "flatbillcap.png",
         "main_image": "flatbillcap.png",
         "preview_image": "flatbillcappreview.png",
-        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}
+        "options": {"color": ["White"], "size": ["11 oz", "15 oz", "20 oz"]},
+        "size_pricing": {
+            "11 oz": 0,
+            "15 oz": 2.00,
+            "20 oz": 4.00
+        }
     },
     {
-        "name": "Crossbody Bag",
-        "price": 32.99,
+        "name": "All-Over Print Crossbody Bag",
+        "price": 30.35,
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
         "preview_image": "crossbodybagpreview.png",
-        "category": "bags",
-        "options": {"color": ["Black", "Brown", "Tan"], "size": []}
+        "options": {"color": ["White"], "size": []}
     },
     {
-        "name": "Baby Bib",
-        "price": 16.99,
+        "name": "Baby Short Sleeve One Piece",
+        "price": 23.52,
         "filename": "babybib.png",
         "main_image": "babybib.png",
         "preview_image": "babybibpreview.jpg",
-        "options": {"color": ["White", "Pink", "Blue"], "size": []}
+        "options": {"color": ["Black", "Dark Grey Heather", "Heather Columbia Blue", "Athletic Heather", "Pink", "Yellow", "White"], "size": ["3-6m", "6-12m", "12-18m", "18-24m"]}
     }
 ]
 
@@ -565,56 +746,51 @@ def filter_products_by_category(category):
     # Define category mappings based on actual product names from PRODUCTS list
     category_mappings = {
         'mens': [
-            "Men's Long Sleeve",
+            "Men's Long Sleeve Shirt",
             "Men's Tank Top", 
             "Unisex Classic Tee",
-            "Soft Tee",
+            "Unisex T-Shirt",
             "Unisex Hoodie",
             "Unisex Champion Hoodie"
         ],
         'womens': [
             "Cropped Hoodie",
-            "Women's Tank",
-            "Women's Tee",
+            "Women fitted racerback tank top",
+            "Women's Micro-Rib Tank Top", 
             "Women's Ribbed Neck",
             "Women's Shirt",
-            "Women's HD Shirt"
+            "Unisex Heavyweight T-Shirt"
         ],
         'kids': [
-            "Kids Hoodie",
+            "Youth Heavy Blend Hoodie",
             "Kids Shirt",
             "Kids Long Sleeve"
         ],
         'bags': [
-            "Canvas Tote",
-            "Tote Bag", 
-            "Large Canvas Bag",
-            "Crossbody Bag"
+            "All-Over Print Tote Bag",
+            "All-Over Print Drawstring Bag", 
+            "All-Over Print Crossbody Bag"
         ],
         'hats': [
             "Distressed Dad Hat",
             "Snapback Hat",
-            "Five Panel Trucker Hat",
-            "Flat Bill Cap"
+            "Five Panel Trucker Hat"
         ],
         'mugs': [
-            # No mugs in current PRODUCTS array
+            "White Glossy Mug"
         ],
         'pets': [
-            "Dog Bowl",
-            "Baby Bib"
+            "Pet Bowl All-Over Print",
+            "Baby Short Sleeve One Piece"
         ],
         'stickers': [
-            "Sticker Pack",
-            "Magnet Set"
+            "Kiss-Cut Stickers",
+            "Die-Cut Magnets"
         ],
         'misc': [
             "Greeting Card",
-            "Notebook", 
+            "Hardcover Bound Notebook", 
             "Coasters"
-        ],
-        'thumbnails': [
-            # No thumbnail products in current PRODUCTS array
         ]
     }
     
@@ -774,14 +950,15 @@ def create_product():
                     "created_at": "now"
                 }
 
-        # Get authentication data from request
+        # Get authentication data and category from request
         is_authenticated = data.get("isAuthenticated", False)
         user_email = data.get("userEmail", "")
+        category = data.get("category", "all")
         
-        # Build product URL with authentication parameters
-        product_url = f"https://copy5-backend.fly.dev/product/{product_id}"
+        # Build product URL with authentication parameters and category
+        product_url = f"https://copy5-backend.fly.dev/product/{product_id}?category={category}"
         if is_authenticated and user_email:
-            product_url += f"?authenticated=true&email={user_email}"
+            product_url += f"&authenticated=true&email={user_email}"
         
         return jsonify({
             "success": True,
@@ -793,6 +970,114 @@ def create_product():
         logger.error(f"❌ Error type: {type(e).__name__}")
         logger.error(f"❌ Full error details: {repr(e)}")
         return jsonify(success=False, error="Internal server error"), 500
+
+@app.route("/product-new/<product_id>")
+def show_product_page_new(product_id):
+    logger.info(f"🔍 NEW ROUTE: Attempting to show product page for ID: {product_id}")
+    
+    # Get category parameter from query string
+    category = request.args.get('category', 'all')
+    logger.info(f"📂 Category filter: {category}")
+    
+    # Filter products by category using comprehensive mapping
+    filtered_products = filter_products_by_category(category)
+    logger.info(f"🔍 Filtered {len(filtered_products)} products for category '{category}'")
+    
+    try:
+        # Try to get from Supabase first
+        try:
+            logger.info(f"📊 Querying Supabase for product {product_id}")
+            result = supabase.table('products').select('*').eq('product_id', product_id).execute()
+            logger.info(f"🧪 Raw Supabase result: {result}")
+
+            logger.info(f"📊 Supabase query result: {len(result.data) if result.data else 0} records")
+            
+            if result.data:
+                product_data = result.data[0]
+                logger.info(f"✅ Found product in database: {product_data.get('name', 'No name')}")
+                
+                screenshots = []
+                if product_data.get('screenshots_urls'):
+                    try:
+                        screenshots = json.loads(product_data.get('screenshots_urls'))
+                        logger.info(f"📸 Parsed {len(screenshots)} screenshots")
+                    except Exception as json_error:
+                        logger.error(f"❌ JSON parsing error for screenshots: {str(json_error)}")
+                        screenshots = []
+                
+                logger.info(f"📊 Product data summary:")
+                logger.info(f"   name: {product_data.get('name', 'No name')}")
+                logger.info(f"   screenshots: {len(screenshots)} items")
+                logger.info(f"   products: {len(PRODUCTS)} items")
+                logger.info(f"   product_id: {product_id}")
+                
+                try:
+                    return render_template(
+                        'product_page.html',
+                        img_url=product_data.get('thumbnail_url'),
+                        screenshots=screenshots,
+                        products=filtered_products,
+                        product_id=product_id,
+                        email='',
+                        channel_id='',
+                        video_title=product_data.get('video_title', 'Unknown Video'),
+                        creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                        current_category=category,
+                        timestamp=int(time.time()),
+                        cache_buster=uuid.uuid4().hex[:8]
+                    )
+                except Exception as template_error:
+                    logger.error(f"❌ Template rendering error: {str(template_error)}")
+                    logger.error(f"❌ Template error type: {type(template_error).__name__}")
+                    raise template_error
+            else:
+                logger.warning(f"⚠️ No product found in Supabase for ID: {product_id}")
+        except Exception as supabase_error:
+            logger.error(f"❌ Supabase error: {str(supabase_error)}")
+            logger.error(f"❌ Supabase error type: {type(supabase_error).__name__}")
+        
+        # Fallback to in-memory storage
+        if product_id in product_data_store:
+            logger.info(f"🔄 Found product in memory storage")
+            product_data = product_data_store[product_id]
+            return render_template(
+                'product_page.html',
+                img_url=product_data.get('thumbnail'),
+                screenshots=product_data.get('screenshots', []),
+                products=filtered_products,
+                product_id=product_id,
+                email='',
+                channel_id='',
+                video_title=product_data.get('video_title', 'Unknown Video'),
+                creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                current_category=category,
+                timestamp=int(time.time()),
+                cache_buster=uuid.uuid4().hex[:8]
+            )
+        else:
+            logger.warning(f"⚠️ Product not found in memory storage either")
+            
+    except Exception as e:
+        logger.error(f"❌ Error in show_product_page for {product_id}: {str(e)}")
+        logger.error(f"❌ Error type: {type(e).__name__}")
+        logger.error(f"❌ Full error details: {repr(e)}")
+
+    logger.warning(f"⚠️ Product not found, but rendering template with default values")
+    # Even if product is not found, render the template with default values
+    return render_template(
+        'product_page.html',
+        img_url='',
+        screenshots=[],
+        products=filtered_products,
+        product_id=product_id,
+        email='',
+        channel_id='',
+        video_title='Unknown Video',
+        creator_name='Unknown Creator',
+        current_category=category,
+        timestamp=int(time.time()),
+        cache_buster=uuid.uuid4().hex[:8]
+    )
 
 @app.route("/product/<product_id>")
 def show_product_page(product_id):
@@ -835,7 +1120,10 @@ def show_product_page(product_id):
                 logger.info(f"   product_id: {product_id}")
                 
                 try:
-                    return render_template(
+                    timestamp = int(time.time())
+                    cache_buster = uuid.uuid4().hex[:8]
+                    
+                    response = make_response(render_template(
                         'product_page.html',
                         img_url=product_data.get('thumbnail_url'),
                         screenshots=screenshots,
@@ -845,8 +1133,19 @@ def show_product_page(product_id):
                         channel_id='',
                         video_title=product_data.get('video_title', 'Unknown Video'),
                         creator_name=product_data.get('creator_name', 'Unknown Creator'),
-                        current_category=category
-                    )
+                        current_category=category,
+                        timestamp=timestamp,
+                        cache_buster=cache_buster
+                    ))
+                    
+                    # Set aggressive no-cache headers
+                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+                    response.headers['Pragma'] = 'no-cache'
+                    response.headers['Expires'] = '0'
+                    response.headers['Last-Modified'] = str(timestamp)
+                    response.headers['ETag'] = cache_buster
+                    
+                    return response
                 except Exception as template_error:
                     logger.error(f"❌ Template rendering error: {str(template_error)}")
                     logger.error(f"❌ Template error type: {type(template_error).__name__}")
@@ -872,7 +1171,9 @@ def show_product_page(product_id):
                 channel_id='',
                 video_title=product_data.get('video_title', 'Unknown Video'),
                 creator_name=product_data.get('creator_name', 'Unknown Creator'),
-                current_category=category
+                current_category=category,
+                timestamp=int(time.time()),
+                cache_buster=uuid.uuid4().hex[:8]
             )
         else:
             logger.warning(f"⚠️ Product not found in memory storage either")
@@ -894,7 +1195,9 @@ def show_product_page(product_id):
         channel_id='',
         video_title='Unknown Video',
         creator_name='Unknown Creator',
-        current_category=category
+        current_category=category,
+        timestamp=int(time.time()),
+        cache_buster=uuid.uuid4().hex[:8]
     )
 
 @app.route("/checkout/<product_id>")
