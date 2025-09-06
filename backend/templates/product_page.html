@@ -1412,6 +1412,20 @@
             {% endfor %}
           {% endif %}
           
+          {% if product %}
+            // Also add the individual product data to ensure it's available
+            window.products.push({
+              name: '{{ product.name }}',
+              price: {{ product.price }},
+              main_image: '{{ product.main_image }}',
+              filename: '{{ product.filename }}',
+              preview_image: '{{ product.preview_image }}',
+              options: {{ product.options | tojson }},
+              size_pricing: {{ (product.size_pricing | tojson) if (product.size_pricing is defined) else 'null' }},
+              size_color_availability: {{ (product.size_color_availability | tojson) if (product.size_color_availability is defined) else 'null' }}
+            });
+          {% endif %}
+          
           console.log('🛍️ Products to display:', window.products.length);
           console.log('🔍 First product data:', window.products[0]);
           if (window.products[0] && window.products[0].size_color_availability) {
