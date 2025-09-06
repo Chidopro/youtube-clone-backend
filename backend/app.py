@@ -357,7 +357,7 @@ PRODUCTS = [
             "M": 0,       # No extra charge
             "L": 0,       # No extra charge
             "XL": 0,      # No extra charge
-            "XXL": 2,     # +$2 (2XL)
+            "XXL": 2      # +$2 (2XL)
         }
     },
     {
