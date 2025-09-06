@@ -1285,46 +1285,42 @@
   </div>
 
      <script>
-     console.log('🚀 Merchandise page script loaded');
+     // Merchandise page script loaded
      
      // EMERGENCY FIX: Clear any existing screenshot capture intervals
      if (window.screenshotInterval) {
        clearInterval(window.screenshotInterval);
-       console.log('🛑 Cleared existing screenshot interval');
+       // Cleared existing screenshot interval
      }
      
      // Clear all intervals to stop screenshot loops
      for (let i = 1; i < 99999; i++) {
        clearInterval(i);
      }
-     console.log('🛑 Cleared all intervals to stop screenshot loops');
+     // Cleared all intervals to stop screenshot loops
      
              // Simple initialization
         document.addEventListener('DOMContentLoaded', function() {
-          console.log('✅ DOM loaded successfully');
+          // DOM loaded successfully
           
           // Show/hide mobile buttons based on screen size and category selection
           function toggleMobileButtons() {
             const mobileButtons = document.getElementById('mobileActionButtons');
             const desktopCartButton = document.getElementById('desktopCartButton');
             
-            console.log('🔍 toggleMobileButtons called');
-            console.log('🔍 Window width:', window.innerWidth);
-            console.log('🔍 Mobile buttons element:', mobileButtons);
-            console.log('🔍 Desktop cart button element:', desktopCartButton);
+            // Toggle mobile buttons based on screen size
             
             if (window.innerWidth <= 768) {
               // Mobile view
               if (mobileButtons) {
                 // Check if we're on the category selection page using data attribute
                 const isCategorySelection = mobileButtons.getAttribute('data-category-page') === 'true';
-                console.log('🔍 Data category page attribute:', mobileButtons.getAttribute('data-category-page'));
-                console.log('🔍 Is category selection:', isCategorySelection);
+                // Check category page attribute
                 
                 // Hide mobile buttons on category selection page
                 const shouldShow = !isCategorySelection;
                 mobileButtons.style.display = shouldShow ? 'flex' : 'none';
-                console.log('🔍 Setting mobile buttons display to:', shouldShow ? 'flex' : 'none');
+                // Set mobile buttons display
               }
               if (desktopCartButton) desktopCartButton.style.display = 'none';
             } else {
@@ -1349,8 +1345,7 @@
          {% endfor %}
        {% endif %}
        
-       console.log('📸 Video thumbnail:', videoThumbnail);
-       console.log('📸 Screenshots:', screenshots);
+       // Video thumbnail and screenshots loaded
        
        // Display screenshots
        const row = document.getElementById("screenshotPreviewRow");
@@ -1364,7 +1359,7 @@
           const thumbnailsContainer = document.createElement("div");
           thumbnailsContainer.className = "screenshot-thumbnails";
           
-          console.log('📸 Processing screenshots:', screenshots);
+          // Processing screenshots
           
           // Video thumbnail is automatically included in screenshots array from frontend
           // No need to add it separately here to avoid duplication
@@ -1372,7 +1367,7 @@
           // Add screenshots
           let screenshotsToShow = screenshots;
           screenshotsToShow.forEach((src, index) => {
-            console.log(`📸 Screenshot ${index + 1}:`, src);
+            // Processing screenshot
             if (src && src !== 'None' && src !== '') {
               const img = document.createElement("img");
               img.src = src;
@@ -1382,14 +1377,14 @@
                 selectScreenshot(img, src);
               });
               thumbnailsContainer.appendChild(img);
-              console.log(`✅ Added screenshot ${index + 1}`);
+              // Added screenshot
             } else {
-              console.log(`⚠️ Skipping screenshot ${index + 1} - invalid source:`, src);
+              // Skipping invalid screenshot
             }
           });
           
           row.appendChild(thumbnailsContainer);
-          console.log(`✅ Added ${thumbnailsContainer.children.length} screenshots to container`);
+          // Added screenshots to container
        }
        
                // Display products
@@ -1426,13 +1421,7 @@
             });
           {% endif %}
           
-          console.log('🛍️ Products to display:', window.products.length);
-          console.log('🔍 First product data:', window.products[0]);
-          if (window.products[0] && window.products[0].size_color_availability) {
-            console.log('✅ size_color_availability found:', window.products[0].size_color_availability);
-          } else {
-            console.log('❌ size_color_availability NOT found in product data');
-          }
+          // Products loaded for display
           
                      if (window.products.length > 0) {
              productRow.innerHTML = ''; // Clear existing content
@@ -1474,7 +1463,7 @@
                `;
                 productRow.appendChild(productCard);
               } catch (error) {
-                console.error(`❌ Error creating product card for ${product.name}:`, error);
+                // Error creating product card
                 // Create a fallback product card
                 const fallbackCard = document.createElement("div");
                 fallbackCard.className = "product-card";
@@ -1487,12 +1476,12 @@
               }
              });
              
-             console.log(`✅ Added ${productsToShow.length} product cards (showing first 30)`);
+             // Added product cards
              
              // Add event listeners to all Add to Cart buttons
              setTimeout(() => {
                const addToCartButtons = document.querySelectorAll('.add-to-cart-btn');
-               console.log(`🔍 Found ${addToCartButtons.length} Add to Cart buttons`);
+               // Found Add to Cart buttons
                addToCartButtons.forEach((button) => {
                  button.addEventListener('click', function() {
                    const productName = this.getAttribute('data-product-name');
@@ -1509,31 +1498,30 @@
             
             const product = window.products[productIndex];
             if (!product) {
-                console.log('⚠️ Product not found at index:', productIndex);
+                // Product not found at index
                 return;
             }
             if (!product.size_color_availability) {
-                console.log('⚠️ No size_color_availability data found for product:', product.name);
-                console.log('🔍 Product keys:', Object.keys(product));
+                // No size_color_availability data found
                 return;
             }
             
             const availableColors = product.size_color_availability[selectedSize];
             if (!availableColors) {
-                console.log('⚠️ No colors available for size:', selectedSize);
+                // No colors available for size
                 return;
             }
             
             // Find the color dropdown for this product
             const productCard = document.querySelector(`[data-product-index="${productIndex}"]`)?.closest('.product-card');
             if (!productCard) {
-                console.log('⚠️ Product card not found');
+                // Product card not found
                 return;
             }
             
             const colorSelect = productCard.querySelector('.color-select');
             if (!colorSelect) {
-                console.log('⚠️ Color select not found');
+                // Color select not found
                 return;
             }
             
@@ -1558,12 +1546,12 @@
                 colorSelect.value = availableColors[0];
             }
             
-            console.log(`✅ Updated color options for ${selectedSize}: ${availableColors.length} colors available`);
+            // Updated color options for size
         }
         
         // Enhanced size dropdown change handler
         function handleSizeChange(productIndex, productName, selectedSize) {
-            console.log(`🔄 Size changed to: ${selectedSize} for product: ${productName}`);
+            // Size changed for product
             
             // Update price
             updatePrice(productIndex, productName, selectedSize);
@@ -1574,23 +1562,23 @@
         // Add event listeners to all size dropdowns
              setTimeout(() => {
                const sizeDropdowns = document.querySelectorAll('.size-select');
-               console.log(`🔍 Found ${sizeDropdowns.length} size dropdowns`);
+               // Found size dropdowns
                sizeDropdowns.forEach((dropdown) => {
                  dropdown.addEventListener('change', function() {
                    const productIndex = parseInt(this.getAttribute('data-product-index'));
                    const productName = this.getAttribute('data-product-name');
-                   console.log(`🔄 Dropdown changed to: ${this.value} for product: ${productName}`);
+                   // Dropdown changed for product
                    handleSizeChange(productIndex, productName, this.value);
                  });
                });
              }, 100);
           } else {
             productRow.innerHTML = ''; // Show nothing when no products
-            console.log('⚠️ No products to display');
+            // No products to display
           }
         }
        
-                        console.log('✅ Merchandise page initialized');
+                        // Merchandise page initialized
                         
                         // Set default screenshot selection after a short delay to ensure DOM is ready
                         setTimeout(() => {
@@ -1600,24 +1588,22 @@
                         // Retry after a longer delay in case screenshots are still loading
                         setTimeout(() => {
                           if (!selectedScreenshotUrl) {
-                            console.log('🔄 Retrying default screenshot selection...');
+                            // Retrying default screenshot selection
                             setDefaultScreenshot();
                           }
                         }, 2000);
          
          // Test function to manually trigger price update
+         // Test function to manually trigger price update
          window.testPriceUpdate = function() {
-           console.log('🧪 Testing price update...');
            if (window.products && window.products.length > 0) {
              updatePrice(0, window.products[0].name, 'XXXXXL');
            }
          };
          
          // Test if updatePrice function is accessible
-         console.log('🔍 Testing if updatePrice function exists:', typeof updatePrice);
-         console.log('🔍 Testing if window.products exists:', typeof window.products);
          if (window.products && window.products.length > 0) {
-           console.log('🔍 First product:', window.products[0]);
+           // First product loaded
          }
        });
       
@@ -1634,7 +1620,7 @@
          imgElement.classList.add('selected-image');
          selectedScreenshotUrl = screenshotUrl;
          
-         console.log(`🎯 Selected screenshot: ${screenshotUrl}`);
+         // Selected screenshot
          
          // Update all product cards to show selected image
          updateProductImages(screenshotUrl);
@@ -1642,7 +1628,7 @@
        
        // Set default selected screenshot if available
        function setDefaultScreenshot() {
-         console.log('🎯 Attempting to set default screenshot...');
+         // Attempting to set default screenshot
          
          // Try multiple times with different selectors
          const selectors = [
@@ -1657,7 +1643,7 @@
          for (const selector of selectors) {
            firstScreenshot = document.querySelector(selector);
            if (firstScreenshot) {
-             console.log(`🎯 Found screenshot with selector: ${selector}`);
+             // Found screenshot with selector
              break;
            }
          }
@@ -1665,23 +1651,23 @@
          if (firstScreenshot && !selectedScreenshotUrl) {
            const screenshotUrl = firstScreenshot.src;
            selectScreenshot(firstScreenshot, screenshotUrl);
-           console.log(`🎯 Auto-selected first screenshot: ${screenshotUrl}`);
+           // Auto-selected first screenshot
          } else if (!selectedScreenshotUrl) {
-           console.log('⚠️ No screenshots found, setting fallback default');
+           // No screenshots found, setting fallback default
            // Set a fallback default image if no screenshots are available
            selectedScreenshotUrl = '/static/images/default-thumbnail.png';
-           console.log('🎯 Set fallback default image');
+           // Set fallback default image
          }
        }
        
                function updateProductImages(selectedImageUrl) {
           // Don't update product images - just show selection
-          console.log('🎯 Screenshot selected for preview only');
+          // Screenshot selected for preview only
         }
 
         // Simplified category switching function - just reload with new category filter
         function switchCategory(category) {
-          console.log('🔄 Switching to category:', category);
+          // Switching to category
           
           // Show loading feedback
           const categoryIcons = document.querySelectorAll('.category-icon');
@@ -1700,11 +1686,11 @@
        
                // Dynamic pricing function
         function updatePrice(productIndex, productName, selectedSize) {
-          console.log(`🔄 updatePrice called: productIndex=${productIndex}, productName=${productName}, selectedSize=${selectedSize}`);
+          // updatePrice called
           
           const priceElement = document.getElementById(`price-${productIndex}`);
           if (!priceElement) {
-            console.log(`❌ Price element not found for index ${productIndex}`);
+            // Price element not found for index
             return;
           }
           
@@ -1721,7 +1707,7 @@
             return normalizedProductName === normalizedSearchName;
           });
           if (!product) {
-            console.log(`❌ Product not found: ${productName}`);
+            // Product not found
             return;
           }
           
@@ -1730,7 +1716,7 @@
           const adjustment = sizeAdjustments[selectedSize] || 0;
           const newPrice = basePrice + adjustment;
           
-          console.log(`💰 Price calculation: basePrice=${basePrice}, adjustment=${adjustment}, newPrice=${newPrice}`);
+          // Price calculation completed
           
           priceElement.textContent = `$${newPrice.toFixed(2)}`;
           
@@ -1739,10 +1725,10 @@
           const addButton = card.querySelector('.add-to-cart-btn');
           if (addButton) {
             addButton.setAttribute('data-price', newPrice);
-            console.log(`✅ Updated button data-price to ${newPrice}`);
+            // Updated button data-price
           }
           
-          console.log(`✅ Price updated to $${newPrice.toFixed(2)}`);
+          // Price updated successfully
         }
        
 
@@ -1762,7 +1748,7 @@
          const selectedSize = sizeSelect ? sizeSelect.value : 'Default';
          const note = noteInput ? noteInput.value : '';
          
-         console.log(`🛒 Adding to cart: ${productName}, Color: ${selectedColor}, Size: ${selectedSize}`);
+         // Adding to cart
          
          // Check if user has selected a screenshot
          const hasScreenshot = selectedScreenshotUrl !== null;
@@ -1820,7 +1806,7 @@
            button.style.background = '#4CAF50';
          }, 2000);
          
-         console.log(`🛒 Added to cart: ${productName} - ${selectedColor} ${selectedSize} - $${currentPrice.toFixed(2)}`);
+         // Added to cart successfully
          
          // Show success notification
          const notification = document.createElement('div');
@@ -1847,7 +1833,7 @@
 
       
                    function goToCheckout() {
-        console.log('🛒 goToCheckout function called');
+        // goToCheckout function called
         
         // Get cart data from localStorage
         const savedCart = localStorage.getItem('persistent_cart');
@@ -1860,7 +1846,7 @@
           }
         }
         
-        console.log('🛒 Cart items from localStorage:', cartItems);
+        // Cart items from localStorage
         
         if (cartItems.length === 0) {
           alert('Please add some products to your cart first!');
@@ -1878,7 +1864,7 @@
           creator_name: '{{ creator_name }}'
         }));
         
-        console.log('🛒 Proceeding to checkout with:', products);
+        // Proceeding to checkout
         
         // Redirect to checkout page with product data
         const productId = '{{ product_id }}';
@@ -1888,8 +1874,7 @@
         const isAuthenticated = urlParams.get('authenticated') || localStorage.getItem('user_authenticated');
         const userEmail = urlParams.get('email') || localStorage.getItem('user_email');
         
-        console.log('🔐 Authentication check - isAuthenticated:', isAuthenticated);
-        console.log('🔐 Authentication check - userEmail:', userEmail);
+        // Authentication check
         
         // Build checkout URL with authentication parameters
         let checkoutUrl = `/checkout/${productId}`;
@@ -1897,7 +1882,7 @@
           checkoutUrl += `?authenticated=true&email=${encodeURIComponent(userEmail)}`;
         }
         
-        console.log('🛒 Redirecting to:', checkoutUrl);
+        // Redirecting to checkout
         
         // Store cart data in sessionStorage for checkout page
         sessionStorage.setItem('cartData', JSON.stringify(products));
@@ -1908,7 +1893,7 @@
        
        // Cart view function for both mobile and desktop
        function viewCart() {
-         console.log('🛒 View cart function called');
+         // View cart function called
          
          // Get cart data from localStorage
          const savedCart = localStorage.getItem('persistent_cart');
