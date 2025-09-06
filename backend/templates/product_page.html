@@ -1716,9 +1716,15 @@
           console.log(`📊 Available products:`, window.products);
           
           // Find base price from products array
-          const product = window.products.find(p => p.name === productName);
+          const product = window.products.find(p => {
+            // Normalize both names for comparison (handle HTML entities and case)
+            const normalizedProductName = p.name.replace(/&#39;/g, "'").replace(/&amp;/g, "&").toLowerCase().trim();
+            const normalizedSearchName = productName.replace(/&#39;/g, "'").replace(/&amp;/g, "&").toLowerCase().trim();
+            return normalizedProductName === normalizedSearchName;
+          });
           if (!product) {
             console.log(`❌ Product not found: ${productName}`);
+            console.log(`🔍 Available product names:`, window.products.map(p => p.name));
             return;
           }
           
