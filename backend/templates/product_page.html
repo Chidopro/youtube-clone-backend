@@ -14,26 +14,24 @@
        text-align: center; 
        padding: 0; 
        margin: 0; 
-       overflow-x: hidden !important;
-       width: 100% !important;
-       box-sizing: border-box !important;
+       overflow-x: hidden;
+       width: 100%;
+       box-sizing: border-box;
      }
      h1 { color: #3f51b5; }
     
-    
-    
          /* Ensure main container is always visible */
      .main-container {
-       display: flex !important;
+       display: flex;
        width: 100%;
-       padding: 20px; /* Increased padding for better centering */
-       gap: 20px; /* Increased gap */
+       padding: 20px;
+       gap: 20px;
        min-height: 400px;
-       overflow-x: hidden !important;
-       box-sizing: border-box !important;
+       overflow-x: hidden;
+       box-sizing: border-box;
      }
     
-         /* Simple Logo Header - Bigger Logo, Less Height */
+         /* Simple Logo Header */
      .simple-header {
        background: white;
        padding: 5px 2%;
@@ -184,7 +182,7 @@
       transform: translateY(-1px);
     }
     
-         /* User Flow Section Styles - Matching Home Page */
+         /* User Flow Section Styles */
      .user-flow-section {
        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
        margin: 0;
@@ -325,12 +323,12 @@
         flex-direction: column;
       }
       
-             /* Hide desktop cart button on mobile */
+       /* Hide desktop cart button on mobile */
        .desktop-cart-button {
          display: none !important;
        }
        
-               /* Show mobile action buttons on mobile (but hide on category selection page) */
+       /* Show mobile action buttons on mobile */
         .mobile-action-buttons {
           display: flex !important;
           gap: 10px;
@@ -339,7 +337,7 @@
           width: 100%;
         }
         
-        /* Hide mobile buttons when category selection is shown */
+       /* Hide mobile buttons when category selection is shown */
         .category-selection-landing ~ .mobile-action-buttons,
         .category-selection-landing + .mobile-action-buttons,
         .mobile-action-buttons[data-category-page="true"] {
@@ -351,51 +349,63 @@
       .screenshots-section h3 {
         font-size: 16px;
         margin-bottom: 12px;
+        text-align: center;
+      }
+      
+      /* Mobile orientation - center screenshots title */
+      @media (max-width: 768px) {
+        #screenshotsTitle {
+          text-align: center;
+          font-weight: bold;
+          color: #333;
+          font-size: 18px;
+          margin-bottom: 15px;
+        }
       }
       
       /* Fix screenshot layout on mobile */
       .screenshot-preview-row {
-        flex-wrap: wrap !important;
-        overflow-x: visible !important;
-        justify-content: center !important;
-        gap: 8px !important;
-        padding: 0 5px !important;
+        flex-wrap: wrap;
+        overflow-x: visible;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 5px;
       }
       
       .screenshot-thumbnails {
-        flex-wrap: wrap !important;
-        overflow-x: visible !important;
-        justify-content: center !important;
-        gap: 8px !important;
-        margin-left: 0 !important;
+        flex-wrap: wrap;
+        overflow-x: visible;
+        justify-content: center;
+        gap: 8px;
+        margin-left: 0;
       }
       
       .video-thumbnail,
       .screenshot-thumbnail {
-        width: 80px !important;
-        height: 60px !important;
-        flex-shrink: 0 !important;
+        width: 80px;
+        height: 60px;
+        flex-shrink: 0;
       }
       
       /* Prevent horizontal scrolling on mobile */
       body {
-        overflow-x: hidden !important;
+        overflow-x: hidden;
       }
       
       .main-container {
-        overflow-x: hidden !important;
-        width: 100% !important;
-        max-width: 100% !important;
+        overflow-x: hidden;
+        width: 100%;
+        max-width: 100%;
       }
       
       .top-section {
-        overflow-x: hidden !important;
-        width: 100% !important;
-        max-width: 100% !important;
+        overflow-x: hidden;
+        width: 100%;
+        max-width: 100%;
       }
     }
 
-                                                                               /* Top Section - Thumbnails and Screenshots with Products Selected Sidebar */
+         /* Top Section - Thumbnails and Screenshots with Products Selected Sidebar */
         .top-section {
           background: #fff;
           border-radius: 12px;
@@ -403,8 +413,8 @@
           box-shadow: 0 2px 10px rgba(0,0,0,0.1);
           margin: 20px 0;
           width: 100%;
-          box-sizing: border-box !important;
-          overflow-x: hidden !important;
+          box-sizing: border-box;
+          overflow-x: hidden;
         }
       
              .top-section-content {
@@ -417,6 +427,7 @@
       .screenshots-section {
         flex: 1;
         min-width: 0; /* Allow flex item to shrink */
+        position: relative; /* For absolute positioning of counter */
       }
     
     .top-section h3 {
@@ -435,7 +446,7 @@
        min-height: 100vh;
      }
 
-         /* Products Selected Sidebar - Now positioned next to screenshots */
+         /* Products Selected Sidebar */
      .products-selected {
        width: 300px;
        background: #fff;
@@ -459,7 +470,7 @@
       font-size: 16px;
     }
 
-                   /* Right Column - Available Products */
+         /* Right Column - Available Products */
       .products-section {
         flex: 1;
         min-width: 400px;
@@ -467,11 +478,11 @@
         border-radius: 12px;
         padding: 20px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        box-sizing: border-box !important;
-        overflow-x: hidden !important;
+        box-sizing: border-box;
+        overflow-x: hidden;
       }
 
-           /* Category Navigation Icons */
+         /* Category Navigation Icons */
       .category-navigation {
         margin-bottom: 20px;
         border-bottom: 1px solid #eee;
@@ -547,54 +558,54 @@
       box-sizing: border-box;
       display: block;
     }
-                                                                                                                                                     .screenshot-preview-row { 
-          display: flex !important; 
-          flex-direction: row !important;
-          gap: 10px !important; /* Slightly more space between thumbnails */
-          margin: 6px 0 10px 0 !important;
-          min-height: 90px !important;
-          align-items: center !important;
-          justify-content: flex-start !important; /* Align to start instead of space-between */
-          flex-wrap: nowrap !important;
-          overflow-x: auto !important;
-          width: 100% !important;
-          padding: 0 10px !important; /* Add some padding to prevent edge cutoff */
+         .screenshot-preview-row { 
+          display: flex; 
+          flex-direction: row;
+          gap: 10px;
+          margin: 6px 0 10px 0;
+          min-height: 90px;
+          align-items: center;
+          justify-content: flex-start;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          width: 100%;
+          padding: 0 10px;
         }
       
-                                   /* Video thumbnail styling - Much bigger size */
-                .video-thumbnail {
-           width: 120px !important;
-           height: 90px !important;
-           object-fit: cover !important;
-           border-radius: 8px !important;
-           border: 2px solid #4CAF50 !important;
-           cursor: pointer !important;
-           flex-shrink: 0 !important;
+         /* Video thumbnail styling */
+         .video-thumbnail {
+           width: 120px;
+           height: 90px;
+           object-fit: cover;
+           border-radius: 8px;
+           border: 2px solid #4CAF50;
+           cursor: pointer;
+           flex-shrink: 0;
          }
     
-                                                               /* Screenshot thumbnails container - full width spread */
+         /* Screenshot thumbnails container */
         .screenshot-thumbnails {
-          display: flex !important;
-          flex-direction: row !important;
-          gap: 10px !important; /* Slightly more space between thumbnails */
-          flex: 1 !important;
-          margin-left: 8px !important;
-          overflow-x: auto !important;
-          scrollbar-width: thin !important;
-          justify-content: center !important; /* Center the thumbnails */
-          width: 100% !important;
+          display: flex;
+          flex-direction: row;
+          gap: 10px;
+          flex: 1;
+          margin-left: 8px;
+          overflow-x: auto;
+          scrollbar-width: thin;
+          justify-content: center;
+          width: 100%;
         }
     
-                                                               /* Individual screenshot styling - much bigger */
+         /* Individual screenshot styling */
         .screenshot-thumbnail {
-          width: 120px !important;
-          height: 90px !important;
-          object-fit: cover !important;
-          border-radius: 8px !important;
-          cursor: pointer !important;
-          border: 1px solid #ddd !important;
-          transition: border-color 0.2s !important;
-          flex-shrink: 0 !important;
+          width: 120px;
+          height: 90px;
+          object-fit: cover;
+          border-radius: 8px;
+          cursor: pointer;
+          border: 1px solid #ddd;
+          transition: border-color 0.2s;
+          flex-shrink: 0;
         }
     
     .screenshot-thumbnail:hover {
@@ -637,7 +648,7 @@
       display: none;
     }
     
-         /* Mobile Responsive - STABILIZED */
+         /* Mobile Responsive */
      @media (max-width: 768px) {
        /* Prevent all horizontal scrolling */
        body {
@@ -651,21 +662,21 @@
          flex-direction: column;
          padding: 10px;
          gap: 15px;
-         overflow-x: hidden !important;
-         width: 100% !important;
-         max-width: 100% !important;
-         box-sizing: border-box !important;
+         overflow-x: hidden;
+         width: 100%;
+         max-width: 100%;
+         box-sizing: border-box;
        }
        
        .left-column {
          min-width: auto;
          max-width: 100%;
-         overflow-x: hidden !important;
+         overflow-x: hidden;
        }
        
        .right-column {
          min-width: auto;
-         overflow-x: hidden !important;
+         overflow-x: hidden;
        }
        
        .screenshots-selected,
@@ -673,20 +684,20 @@
        .products-section {
          padding: 15px;
          margin-bottom: 15px;
-         overflow-x: hidden !important;
-         width: 100% !important;
-         box-sizing: border-box !important;
+         overflow-x: hidden;
+         width: 100%;
+         box-sizing: border-box;
        }
        
        .screenshot-preview-row {
          min-height: 100px;
          margin: 8px 0 10px 0;
-         flex-wrap: wrap !important;
-         overflow-x: hidden !important;
-         justify-content: center !important;
-         gap: 8px !important;
-         width: 100% !important;
-         box-sizing: border-box !important;
+         flex-wrap: wrap;
+         overflow-x: hidden;
+         justify-content: center;
+         gap: 8px;
+         width: 100%;
+         box-sizing: border-box;
        }
        
        .video-thumbnail {
@@ -696,36 +707,36 @@
        }
        
        .screenshot-thumbnails {
-         display: flex !important;
-         flex-wrap: wrap !important;
-         overflow-x: hidden !important;
-         justify-content: center !important;
-         gap: 8px !important;
+         display: flex;
+         flex-wrap: wrap;
+         overflow-x: hidden;
+         justify-content: center;
+         gap: 8px;
          margin-top: 8px;
-         margin-left: 0 !important;
-         width: 100% !important;
-         box-sizing: border-box !important;
+         margin-left: 0;
+         width: 100%;
+         box-sizing: border-box;
        }
        
        .screenshot-thumbnail {
-         width: 80px !important;
-         height: 60px !important;
-         flex-shrink: 0 !important;
-         max-width: 100% !important;
+         width: 80px;
+         height: 60px;
+         flex-shrink: 0;
+         max-width: 100%;
        }
        
        .product-row {
          grid-template-columns: 1fr;
          gap: 12px;
          margin-top: 15px;
-         overflow-x: hidden !important;
+         overflow-x: hidden;
        }
        
        .product-card {
          padding: 12px;
-         overflow-x: hidden !important;
-         width: 100% !important;
-         box-sizing: border-box !important;
+         overflow-x: hidden;
+         width: 100%;
+         box-sizing: border-box;
        }
        
        .product-card img {
@@ -736,7 +747,7 @@
        .variant-selector {
          padding: 8px;
          margin-bottom: 10px;
-         overflow-x: hidden !important;
+         overflow-x: hidden;
        }
        
        .variant-selector label {
@@ -753,47 +764,84 @@
          padding: 5px;
          font-size: 11px;
          margin-bottom: 10px;
-         max-width: 100% !important;
-         box-sizing: border-box !important;
+         max-width: 100%;
+         box-sizing: border-box;
        }
        
        /* Additional mobile stabilization */
-               .category-grid {
-          grid-template-columns: repeat(3, 1fr) !important;
-          gap: 10px !important;
-          max-width: 100% !important;
-          overflow-x: hidden !important;
+       .category-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 20px;
+          max-width: 800px;
+          margin: 0 auto;
+        }
+        
+       @media (max-width: 768px) {
+         .category-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-width: 100%;
+            overflow-x: hidden;
+          }
         }
        
-               .category-card {
-          max-width: 100% !important;
-          box-sizing: border-box !important;
-          overflow-x: hidden !important;
-          padding: 15px 10px !important;
-          min-height: 80px !important;
+       .category-card {
+          cursor: pointer;
+          padding: 20px;
+          background: #f8f9fa;
+          border-radius: 12px;
+          transition: all 0.3s;
+          border: 2px solid transparent;
+          max-width: 100%;
+          box-sizing: border-box;
+          overflow-x: hidden;
+          min-height: 80px;
         }
         
-        .category-card span:first-child {
-          font-size: 1.8rem !important;
-          margin-bottom: 5px !important;
+       @media (max-width: 768px) {
+         .category-card {
+            padding: 15px 10px;
+            min-height: 80px;
+          }
         }
         
-        .category-card span:last-child {
-          font-size: 0.7rem !important;
-          line-height: 1.2 !important;
+        .category-icon {
+          font-size: 2.5rem;
+          display: block;
+          margin-bottom: 8px;
+        }
+        
+        .category-label {
+          font-weight: 600;
+          color: #333;
+        }
+        
+        @media (max-width: 768px) {
+          .category-icon {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+          }
+          
+          .category-label {
+            font-size: 0.7rem;
+            line-height: 1.2;
+          }
         }
        
        .category-selection-landing {
-         overflow-x: hidden !important;
-         width: 100% !important;
-         max-width: 100% !important;
-         box-sizing: border-box !important;
+         text-align: center;
+         padding: 40px 20px;
+         box-sizing: border-box;
+         overflow-x: hidden;
+         width: 100%;
+         max-width: 100%;
        }
        
        /* Prevent any horizontal scrolling on all elements */
        * {
-         max-width: 100% !important;
-         box-sizing: border-box !important;
+         max-width: 100%;
+         box-sizing: border-box;
        }
        
        .btn {
@@ -802,24 +850,40 @@
          width: 100%;
        }
        
+       .user-flow-section {
+          padding: 15px 12px;
+          min-height: 80px;
+          max-height: 100px;
+          margin: -10px 0 20px 0;
+          border-radius: 0;
+          width: 100vw;
+          position: relative;
+          left: 50%;
+          transform: translateX(-50%);
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          flex-direction: column;
+          gap: 15px;
+          justify-content: center;
+        }
+       
        .user-flow-section .flow-steps {
-         flex-direction: row !important;
+         flex-direction: row;
          gap: 8px;
-         justify-content: space-evenly !important;
+         justify-content: space-evenly;
          flex-wrap: nowrap;
          width: 100%;
          padding: 0 10px;
-         position: static !important;
-         transform: none !important;
-         left: auto !important;
+         position: static;
+         transform: none;
+         left: auto;
          margin: 0 auto;
        }
        
        .user-flow-section .flow-arrow {
-         display: none !important;
+         display: none;
        }
        
-               .user-flow-section .flow-step {
+       .user-flow-section .flow-step {
           min-width: auto;
           flex-direction: column;
           gap: 2px;
@@ -830,43 +894,27 @@
         }
        
        .user-flow-section .step-number {
-         width: 32px !important;
-         height: 32px !important;
-         font-size: 1rem !important;
-         margin-bottom: 6px !important;
-         padding: 2px !important;
+         width: 32px;
+         height: 32px;
+         font-size: 1rem;
+         margin-bottom: 6px;
+         padding: 2px;
        }
        
        .user-flow-section .step-content h3 {
-         font-size: 0.8rem !important;
-         margin: 0 !important;
+         font-size: 0.8rem;
+         margin: 0;
          line-height: 1.2;
          text-align: center;
        }
        
        .user-flow-section .step-content p {
-         display: block !important;
-         font-size: 0.6rem !important;
-         margin: 0 !important;
+         display: block;
+         font-size: 0.6rem;
+         margin: 0;
          line-height: 1.1;
          text-align: center;
        }
-       
-               .user-flow-section {
-          padding: 15px 12px;
-          min-height: 80px !important;
-          max-height: 100px !important;
-          margin: -10px 0 20px 0 !important;
-          border-radius: 0 !important;
-          width: 100vw !important;
-          position: relative !important;
-          left: 50% !important;
-          transform: translateX(-50%) !important;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-          flex-direction: column;
-          gap: 15px;
-          justify-content: center;
-        }
        
        /* Make content extend to full width like purple bar */
        .top-section {
@@ -972,66 +1020,49 @@
        
        .user-flow-section .flow-steps {
          gap: 4px;
-         justify-content: space-evenly !important;
          padding: 0 8px;
        }
        
-       .user-flow-section .flow-arrow {
-         display: none !important;
-       }
-       
        .user-flow-section .step-number {
-         width: 28px !important;
-         height: 28px !important;
-         font-size: 0.9rem !important;
-         padding: 2px !important;
-         margin-bottom: 4px !important;
+         width: 28px;
+         height: 28px;
+         font-size: 0.9rem;
+         padding: 2px;
+         margin-bottom: 4px;
        }
        
        .user-flow-section .step-content h3 {
-         font-size: 0.7rem !important;
-         margin-bottom: 2px !important;
+         font-size: 0.7rem;
+         margin-bottom: 2px;
        }
        
        .user-flow-section .step-content p {
-         display: block !important;
-         font-size: 0.5rem !important;
-         margin: 0 !important;
-         line-height: 1.1;
-         text-align: center;
+         font-size: 0.5rem;
        }
        
-               .user-flow-section {
+       .user-flow-section {
           padding: 12px 10px;
-          min-height: 75px !important;
-          max-height: 95px !important;
-          margin: -10px 0 20px 0 !important;
-          border-radius: 0 !important;
-          width: 100vw !important;
-          position: relative !important;
-          left: 50% !important;
-          transform: translateX(-50%) !important;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-          justify-content: center;
-        }
+          min-height: 75px;
+          max-height: 95px;
+       }
        
        /* Make content extend to full width like purple bar */
        .top-section {
-         padding-left: 0 !important;
-         padding-right: 0 !important;
-         margin: 0 !important;
-         width: 100vw !important;
-         position: relative !important;
-         left: 50% !important;
-         transform: translateX(-50%) !important;
+         padding-left: 0;
+         padding-right: 0;
+         margin: 0;
+         width: 100vw;
+         position: relative;
+         left: 50%;
+         transform: translateX(-50%);
        }
        
        /* Ensure content extends to edges */
        .screenshots-section, .products-selected {
-         margin-left: 0 !important;
-         margin-right: 0 !important;
-         width: 100% !important;
-         max-width: 100% !important;
+         margin-left: 0;
+         margin-right: 0;
+         width: 100%;
+         max-width: 100%;
        }
        
        .shipping-info {
@@ -1068,7 +1099,25 @@
    <div class="top-section{% if show_category_selection %} category-selection-mode{% endif %}">
     <div class="top-section-content">
       <div class="screenshots-section">
-        <h3>Screenshots Selected</h3>
+        <h3 id="screenshotsTitle">Screenshots Selected</h3>
+        <div id="screenshotCounter" style="
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          background: #fff;
+          border: 2px solid #ddd;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 16px;
+          color: #333;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          z-index: 100;
+        "></div>
         <div class="screenshot-preview-row" id="screenshotPreviewRow">
           <!-- Video thumbnail will be auto-inserted here -->
         </div>
@@ -1125,50 +1174,50 @@
     <div class="products-section" id="productsSection">
       {% if show_category_selection %}
       <!-- Category Selection Landing -->
-             <div class="category-selection-landing" style="text-align: center; padding: 40px 20px; box-sizing: border-box !important; overflow-x: hidden !important; width: 100% !important;">
+             <div class="category-selection-landing">
         <h2 style="color: #333; margin-bottom: 10px;">Choose a Product Category</h2>
         <p style="color: #666; margin-bottom: 30px;">Select a category to browse products for your custom merchandise</p>
         
-                 <div class="category-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; max-width: 800px; margin: 0 auto;">
-           <div class="category-card" onclick="switchCategory('womens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👩</span>
-             <span style="font-weight: 600; color: #333;">Women's</span>
+                 <div class="category-grid">
+           <div class="category-card" onclick="switchCategory('womens')">
+             <span class="category-icon">👩</span>
+             <span class="category-label">Women's</span>
            </div>
-           <div class="category-card" onclick="switchCategory('mens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👨</span>
-             <span style="font-weight: 600; color: #333;">Men's</span>
+           <div class="category-card" onclick="switchCategory('mens')">
+             <span class="category-icon">👨</span>
+             <span class="category-label">Men's</span>
            </div>
-           <div class="category-card" onclick="switchCategory('kids')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👶</span>
-             <span style="font-weight: 600; color: #333;">Kids</span>
+           <div class="category-card" onclick="switchCategory('kids')">
+             <span class="category-icon">👶</span>
+             <span class="category-label">Kids</span>
            </div>
-           <div class="category-card" onclick="switchCategory('mugs')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">☕</span>
-             <span style="font-weight: 600; color: #333;">Mugs</span>
+           <div class="category-card" onclick="switchCategory('mugs')">
+             <span class="category-icon">☕</span>
+             <span class="category-label">Mugs</span>
            </div>
-           <div class="category-card" onclick="switchCategory('hats')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🧢</span>
-             <span style="font-weight: 600; color: #333;">Hats</span>
+           <div class="category-card" onclick="switchCategory('hats')">
+             <span class="category-icon">🧢</span>
+             <span class="category-label">Hats</span>
            </div>
-           <div class="category-card" onclick="switchCategory('bags')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👜</span>
-             <span style="font-weight: 600; color: #333;">Bags</span>
+           <div class="category-card" onclick="switchCategory('bags')">
+             <span class="category-icon">👜</span>
+             <span class="category-label">Bags</span>
            </div>
-           <div class="category-card" onclick="switchCategory('pets')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🐕</span>
-             <span style="font-weight: 600; color: #333;">Pets</span>
+           <div class="category-card" onclick="switchCategory('pets')">
+             <span class="category-icon">🐕</span>
+             <span class="category-label">Pets</span>
            </div>
-           <div class="category-card" onclick="switchCategory('stickers')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🌟</span>
-             <span style="font-weight: 600; color: #333;">Stickers & Magnets</span>
+           <div class="category-card" onclick="switchCategory('stickers')">
+             <span class="category-icon">🌟</span>
+             <span class="category-label">Stickers & Magnets</span>
            </div>
-           <div class="category-card" onclick="switchCategory('thumbnails')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🖼️</span>
-             <span style="font-weight: 600; color: #333;">Thumbnails</span>
+           <div class="category-card" onclick="switchCategory('thumbnails')">
+             <span class="category-icon">🖼️</span>
+             <span class="category-label">Thumbnails</span>
            </div>
-           <div class="category-card" onclick="switchCategory('misc')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">📦</span>
-             <span style="font-weight: 600; color: #333;">Miscellaneous</span>
+           <div class="category-card" onclick="switchCategory('misc')">
+             <span class="category-icon">📦</span>
+             <span class="category-label">Miscellaneous</span>
            </div>
            
          </div>
@@ -1278,8 +1327,22 @@
       </div>
       {% endif %}
       
-      <h3>Available Products</h3>
-      <div class="product-row" id="productRow"></div>
+      <!-- Products Grid - Only show when not in category selection mode -->
+      {% if not show_category_selection %}
+      <div id="productRow" class="product-grid" style="
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 25px;
+        margin: 30px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      ">
+        <!-- Products will be dynamically inserted here by JavaScript -->
+      </div>
+      {% endif %}
+      
       {% endif %}
     </div>
   </div>
@@ -1287,17 +1350,10 @@
      <script>
      // Merchandise page script loaded - Cache: {{ cache_buster if cache_buster is defined else 'no-cache' }}
      
-     // EMERGENCY FIX: Clear any existing screenshot capture intervals
+     // Clear any existing screenshot capture intervals
      if (window.screenshotInterval) {
        clearInterval(window.screenshotInterval);
-       // Cleared existing screenshot interval
      }
-     
-     // Clear all intervals to stop screenshot loops
-     for (let i = 1; i < 99999; i++) {
-       clearInterval(i);
-     }
-     // Cleared all intervals to stop screenshot loops
      
              // Simple initialization
         document.addEventListener('DOMContentLoaded', function() {
@@ -1335,6 +1391,78 @@
           
           // Listen for window resize
           window.addEventListener('resize', toggleMobileButtons);
+          
+          // Update screenshot counter
+          function updateScreenshotCounter() {
+            const counter = document.getElementById('screenshotCounter');
+            if (counter) {
+              const screenshotElements = document.querySelectorAll('.screenshot-thumbnail, .video-thumbnail');
+              const currentCount = screenshotElements.length;
+              
+              if (window.innerWidth <= 768) {
+                // Show counter on mobile - just the number
+                counter.textContent = currentCount;
+                counter.style.display = 'flex';
+                
+                // Turn red when reaching 5 or more
+                if (currentCount >= 5) {
+                  counter.style.background = '#ff4444';
+                  counter.style.color = '#fff';
+                  counter.style.borderColor = '#ff4444';
+                } else {
+                  counter.style.background = '#fff';
+                  counter.style.color = '#333';
+                  counter.style.borderColor = '#ddd';
+                }
+              } else {
+                // Hide counter on desktop
+                counter.style.display = 'none';
+              }
+            }
+          }
+          
+          // Mobile orientation detection and text updates
+          function updateMobileText() {
+            const screenshotsTitle = document.getElementById('screenshotsTitle');
+            
+            if (window.innerWidth <= 768) {
+              const isPortrait = window.innerHeight > window.innerWidth;
+              
+              if (isPortrait) {
+                // Mobile portrait: show "Selected Screenshots Below"
+                if (screenshotsTitle) {
+                  screenshotsTitle.textContent = 'Selected Screenshots Below';
+                }
+              } else {
+                // Mobile landscape: show "Selected Screenshots"
+                if (screenshotsTitle) {
+                  screenshotsTitle.textContent = 'Selected Screenshots';
+                }
+              }
+            }
+            
+            // Update counter after text update
+            updateScreenshotCounter();
+          }
+          
+          // Initial text setup
+          updateMobileText();
+          
+          // Listen for window resize and orientation change
+          window.addEventListener('resize', function() {
+            updateMobileText();
+            updateScreenshotCounter();
+          });
+          window.addEventListener('orientationchange', function() {
+            // Small delay to ensure orientation change is complete
+            setTimeout(function() {
+              updateMobileText();
+              updateScreenshotCounter();
+            }, 100);
+          });
+          
+          // Ensure mobile text is set after DOM is ready
+          setTimeout(updateMobileText, 100);
        
        // Get data from backend
        const videoThumbnail = '{{ img_url }}';
@@ -1385,6 +1513,9 @@
           
           row.appendChild(thumbnailsContainer);
           // Added screenshots to container
+          
+          // Update counter after screenshots are displayed
+          setTimeout(updateScreenshotCounter, 200);
        }
        
                // Display products
@@ -1423,43 +1554,74 @@
           
           // Products loaded for display
           
-                     if (window.products.length > 0) {
+          if (window.products.length > 0) {
              productRow.innerHTML = ''; // Clear existing content
              
-             // Only show first 30 products to avoid duplicates
-             const productsToShow = window.products.slice(0, 30);
+             // Filter out only "Unknown Product" entries and only show first 30 products
+             const validProducts = window.products.filter(product => product.name !== 'Unknown Product');
+             const productsToShow = validProducts.slice(0, 30);
              
              productsToShow.forEach((product, index) => {
               try {
                 const productCard = document.createElement("div");
                 productCard.className = "product-card";
+                productCard.style.cssText = `
+                  background: white;
+                  border-radius: 12px;
+                  padding: 15px;
+                  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                  transition: all 0.3s ease;
+                  border: 1px solid #e9ecef;
+                  cursor: pointer;
+                `;
+                
+                // Add hover effect
+                productCard.addEventListener('mouseenter', function() {
+                  this.style.transform = 'translateY(-5px)';
+                  this.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
+                });
+                
+                productCard.addEventListener('mouseleave', function() {
+                  this.style.transform = 'translateY(0)';
+                  this.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+                });
                 productCard.innerHTML = `
                  <!-- Top Image (Blank Product) -->
-                 <img src="/static/images/${product.filename}" alt="${product.name} - Blank" style="width:100%;height:120px;object-fit:contain;border-radius:6px;margin-bottom:8px;">
+                 <img src="/static/images/${product.filename}" alt="${product.name} - Blank" style="width:100%;height:140px;object-fit:contain;border-radius:8px;margin-bottom:12px;background:#f8f9fa;">
                  
                  <!-- Bottom Image (Preview with Design) -->
-                 <img src="/static/images/${product.preview_image || product.filename}" alt="${product.name} - Preview" style="width:100%;height:120px;object-fit:contain;border-radius:6px;">
+                 <img src="/static/images/${product.preview_image || product.filename}" alt="${product.name} - Preview" style="width:100%;height:140px;object-fit:contain;border-radius:8px;background:#f8f9fa;">
                  
-                 <div class="product-title">${product.name}</div>
-                 <div class="product-price" id="price-${index}">$${product.price.toFixed(2)}</div>
+                 <div class="product-title" style="font-weight:600;font-size:14px;color:#333;margin:12px 0 8px 0;line-height:1.3;">${product.name}</div>
+                 <div class="product-price" id="price-${index}" style="font-size:18px;font-weight:bold;color:#28a745;margin-bottom:12px;">$${product.price.toFixed(2)}</div>
                  ${product.options && product.options.color && product.options.color.length > 0 ? `
-                   <div class="variant-selector">
-                     <label>Color:</label>
-                     <select class="variant-select color-select">
+                   <div class="variant-selector" style="margin-bottom:10px;">
+                     <label style="display:block;font-size:12px;font-weight:500;color:#666;margin-bottom:4px;">Color:</label>
+                     <select class="variant-select color-select" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:12px;">
                        ${product.options.color.map(color => `<option value="${color}">${color}</option>`).join('')}
                      </select>
                    </div>
                  ` : ''}
                  ${product.options && product.options.size && product.options.size.length > 0 ? `
-                   <div class="variant-selector">
-                     <label>Size:</label>
-                     <select class="variant-select size-select" data-product-index="${index}" data-product-name="${product.name}">
+                   <div class="variant-selector" style="margin-bottom:15px;">
+                     <label style="display:block;font-size:12px;font-weight:500;color:#666;margin-bottom:4px;">Size:</label>
+                     <select class="variant-select size-select" data-product-index="${index}" data-product-name="${product.name}" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:12px;">
                        ${product.options.size.map(size => `<option value="${size}">${size}</option>`).join('')}
                      </select>
                    </div>
                  ` : ''}
-                 <hr style="margin: 8px 0; border: none; border-top: 1px solid #eee;">
-                 <button class="btn add-to-cart-btn" data-product-name="${product.name}" data-product-price="${product.price}">Add ${product.name} to Cart</button>
+                 <button class="btn add-to-cart-btn" data-product-name="${product.name}" data-product-price="${product.price}" style="
+                   width:100%;
+                   background:#007bff;
+                   color:white;
+                   border:none;
+                   padding:10px;
+                   border-radius:6px;
+                   font-weight:600;
+                   font-size:13px;
+                   cursor:pointer;
+                   transition:all 0.2s ease;
+                 ">Add to Cart</button>
                `;
                 productRow.appendChild(productCard);
               } catch (error) {
@@ -1578,33 +1740,11 @@
           }
         }
        
-                        // Merchandise page initialized
-                        
-                        // Set default screenshot selection after a short delay to ensure DOM is ready
-                        setTimeout(() => {
-                          setDefaultScreenshot();
-                        }, 500);
-                        
-                        // Retry after a longer delay in case screenshots are still loading
-                        setTimeout(() => {
-                          if (!selectedScreenshotUrl) {
-                            // Retrying default screenshot selection
-                            setDefaultScreenshot();
-                          }
-                        }, 2000);
+        // Merchandise page initialized
+        
+        // Set default screenshot selection after DOM is ready
+        setTimeout(setDefaultScreenshot, 500);
          
-         // Test function to manually trigger price update
-         // Test function to manually trigger price update
-         window.testPriceUpdate = function() {
-           if (window.products && window.products.length > 0) {
-             updatePrice(0, window.products[0].name, 'XXXXXL');
-           }
-         };
-         
-         // Test if updatePrice function is accessible
-         if (window.products && window.products.length > 0) {
-           // First product loaded
-         }
        });
       
              // Screenshot selection functionality
@@ -1660,10 +1800,6 @@
          }
        }
        
-               function updateProductImages(selectedImageUrl) {
-          // Don't update product images - just show selection
-          // Screenshot selected for preview only
-        }
 
         // Simplified category switching function - just reload with new category filter
         function switchCategory(category) {
@@ -1738,7 +1874,7 @@
        // Add to cart functionality
               function addToCart(productName, price, button) {
                 // Get the current price from the button's data attribute or use the passed price
-                const currentPrice = parseFloat(button.getAttribute('data-price')) || price;
+         const currentPrice = parseFloat(button.getAttribute('data-price')) || price;
          const card = button.closest('.product-card');
          const colorSelect = card.querySelector('.color-select');
          const sizeSelect = card.querySelector('.size-select');
@@ -1748,35 +1884,30 @@
          const selectedSize = sizeSelect ? sizeSelect.value : 'Default';
          const note = noteInput ? noteInput.value : '';
          
-         // Adding to cart
-         
          // Check if user has selected a screenshot
-         const hasScreenshot = selectedScreenshotUrl !== null;
-         
-         if (!hasScreenshot) {
-           // Try to set a default screenshot one more time
+         if (!selectedScreenshotUrl) {
            setDefaultScreenshot();
-           
-           // If still no screenshot, show alert
            if (!selectedScreenshotUrl) {
              alert('Please choose Thumbnail or Screenshot');
              return;
            }
          }
          
-         // Get the selected screenshot URL
-         const selectedScreenshot = selectedScreenshotUrl;
+         // Get screenshot timestamp from localStorage
+         const screenshotTimestamps = JSON.parse(localStorage.getItem('screenshot_timestamps') || '[]');
+         const screenshotTimestamp = screenshotTimestamps.length > 0 ? screenshotTimestamps[0] : 0;
          
          // Create cart item object
          const cartItem = {
-           screenshot: selectedScreenshot,
+           screenshot: selectedScreenshotUrl,
            name: productName,
            details: `Color: ${selectedColor} | Size: ${selectedSize} | $${currentPrice.toFixed(2)}${note ? ' | Note: ' + note : ''}`,
            price: currentPrice,
            variants: {
              color: selectedColor,
              size: selectedSize
-           }
+           },
+           timestamp: screenshotTimestamp
          };
          
          // Get existing cart from localStorage
@@ -1786,7 +1917,7 @@
            try {
              cartItems = JSON.parse(savedCart);
            } catch (error) {
-             console.error('Error parsing cart data:', error);
+             // Error parsing cart data - using fallback
            }
          }
          
@@ -1800,13 +1931,11 @@
          button.textContent = 'Added to Cart';
          button.style.background = '#28a745';
          
-         // Reset button after 2 seconds to allow re-adding with different images
+         // Reset button after 2 seconds
          setTimeout(() => {
            button.textContent = `Add ${productName} to Cart`;
            button.style.background = '#4CAF50';
          }, 2000);
-         
-         // Added to cart successfully
          
          // Show success notification
          const notification = document.createElement('div');
@@ -1833,7 +1962,12 @@
 
       
                    function goToCheckout() {
-        // goToCheckout function called
+        // Clear old cart items before proceeding to checkout
+        localStorage.removeItem('cart');
+        localStorage.removeItem('cart_items');
+        localStorage.removeItem('screenshots');
+        localStorage.removeItem('screenshot_timestamps');
+        localStorage.removeItem('pending_merch_data');
         
         // Get cart data from localStorage
         const savedCart = localStorage.getItem('persistent_cart');
@@ -1842,14 +1976,40 @@
           try {
             cartItems = JSON.parse(savedCart);
           } catch (error) {
-            console.error('Error parsing cart data:', error);
+            // Error parsing cart data - using fallback
           }
         }
         
-        // Cart items from localStorage
-        
         if (cartItems.length === 0) {
-          alert('Please add some products to your cart first!');
+          // Show a more user-friendly message instead of alert
+          const notification = document.createElement('div');
+          notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ff6b6b;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+            z-index: 10000;
+            animation: slideIn 0.3s ease-out;
+            max-width: 350px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          `;
+          notification.innerHTML = `
+            <span style="font-size: 20px;">🛒</span>
+            <div>
+              <div style="font-weight: 600; margin-bottom: 4px;">Cart is Empty</div>
+              <div style="font-size: 12px; opacity: 0.9;">Add some products to continue</div>
+            </div>
+          `;
+          document.body.appendChild(notification);
+          setTimeout(() => document.body.removeChild(notification), 4000);
           return;
         }
         
@@ -1861,20 +2021,17 @@
           price: item.price,
           variants: item.variants,
           video_title: '{{ video_title }}',
-          creator_name: '{{ creator_name }}'
+          creator_name: '{{ creator_name }}',
+          video_url: '{{ video_url }}'
         }));
-        
-        // Proceeding to checkout
         
         // Redirect to checkout page with product data
         const productId = '{{ product_id }}';
         
-        // Get authentication state from URL parameters (passed from frontend)
+        // Get authentication state from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const isAuthenticated = urlParams.get('authenticated') || localStorage.getItem('user_authenticated');
         const userEmail = urlParams.get('email') || localStorage.getItem('user_email');
-        
-        // Authentication check
         
         // Build checkout URL with authentication parameters
         let checkoutUrl = `/checkout/${productId}`;
@@ -1882,18 +2039,21 @@
           checkoutUrl += `?authenticated=true&email=${encodeURIComponent(userEmail)}`;
         }
         
-        // Redirecting to checkout
-        
         // Store cart data in sessionStorage for checkout page
         sessionStorage.setItem('cartData', JSON.stringify(products));
         
-                 // Redirect to checkout
-         window.location.href = checkoutUrl;
+        // Redirect to checkout
+        window.location.href = checkoutUrl;
        }
        
        // Cart view function for both mobile and desktop
        function viewCart() {
-         // View cart function called
+         // Clear old cart items before viewing cart
+         localStorage.removeItem('cart');
+         localStorage.removeItem('cart_items');
+         localStorage.removeItem('screenshots');
+         localStorage.removeItem('screenshot_timestamps');
+         localStorage.removeItem('pending_merch_data');
          
          // Get cart data from localStorage
          const savedCart = localStorage.getItem('persistent_cart');
@@ -1902,7 +2062,7 @@
            try {
              cartItems = JSON.parse(savedCart);
            } catch (error) {
-             console.error('Error parsing cart data:', error);
+             // Error parsing cart data - using fallback
            }
          }
          
@@ -1950,10 +2110,57 @@
          cartContent.appendChild(title);
          
          if (cartItems.length === 0) {
-           const emptyMessage = document.createElement('p');
+           // Create a more engaging empty cart experience
+           const emptyCartContainer = document.createElement('div');
+           emptyCartContainer.style.cssText = 'text-align: center; padding: 40px 20px;';
+           
+           // Add empty cart icon
+           const emptyIcon = document.createElement('div');
+           emptyIcon.innerHTML = '🛒';
+           emptyIcon.style.cssText = 'font-size: 48px; margin-bottom: 16px; opacity: 0.6;';
+           emptyCartContainer.appendChild(emptyIcon);
+           
+           // Add main message
+           const emptyMessage = document.createElement('h4');
            emptyMessage.textContent = 'Your cart is empty';
-           emptyMessage.style.cssText = 'color: #666; text-align: center; padding: 20px;';
-           cartContent.appendChild(emptyMessage);
+           emptyMessage.style.cssText = 'color: #666; margin: 0 0 8px 0; font-size: 18px; font-weight: 500;';
+           emptyCartContainer.appendChild(emptyMessage);
+           
+           // Add helpful subtext
+           const subMessage = document.createElement('p');
+           subMessage.textContent = 'Add some products to get started!';
+           subMessage.style.cssText = 'color: #999; margin: 0 0 20px 0; font-size: 14px;';
+           emptyCartContainer.appendChild(subMessage);
+           
+           // Add a "Start Shopping" button
+           const startShoppingBtn = document.createElement('button');
+           startShoppingBtn.textContent = 'Start Shopping';
+           startShoppingBtn.style.cssText = `
+             background: linear-gradient(135deg, #667eea, #764ba2);
+             color: white;
+             border: none;
+             padding: 12px 24px;
+             border-radius: 25px;
+             cursor: pointer;
+             font-weight: 600;
+             font-size: 14px;
+             transition: all 0.3s ease;
+             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+           `;
+           startShoppingBtn.onmouseover = function() {
+             this.style.transform = 'translateY(-2px)';
+             this.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+           };
+           startShoppingBtn.onmouseout = function() {
+             this.style.transform = 'translateY(0)';
+             this.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)';
+           };
+           startShoppingBtn.onclick = function() {
+             document.body.removeChild(cartModal);
+           };
+           emptyCartContainer.appendChild(startShoppingBtn);
+           
+           cartContent.appendChild(emptyCartContainer);
          } else {
            // Add cart items
            cartItems.forEach((item, index) => {
@@ -2036,7 +2243,7 @@
                viewCart();
              }
            } catch (error) {
-             console.error('Error removing item from cart:', error);
+             // Error removing item from cart
            }
          }
        }
