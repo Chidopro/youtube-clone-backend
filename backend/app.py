@@ -1140,6 +1140,7 @@ def show_product_page_new(product_id):
         channel_id='',
         video_title='Unknown Video',
         creator_name='Unknown Creator',
+        video_url='Not provided',
         current_category=category,
         timestamp=int(time.time()),
         cache_buster=uuid.uuid4().hex[:8]
@@ -1223,6 +1224,7 @@ def show_product_page(product_id):
                         channel_id='',
                         video_title=product_data.get('video_title', 'Unknown Video'),
                         creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                        video_url=product_data.get('video_url', 'Not provided'),
                         current_category=category,
                         show_category_selection=show_category_selection,
                         timestamp=timestamp,
@@ -1310,6 +1312,7 @@ def show_product_page(product_id):
         channel_id='',
         video_title='Unknown Video',
         creator_name='Unknown Creator',
+        video_url='Not provided',
         current_category=category,
         timestamp=int(time.time()),
         cache_buster=uuid.uuid4().hex[:8]
