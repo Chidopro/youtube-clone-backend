@@ -2778,6 +2778,15 @@ def auth_login():
         if not re.match(email_pattern, email):
             return jsonify({"success": False, "error": "Please enter a valid email address"}), 400
         
+        # Email whitelist validation
+        allowed_emails = [
+            'chidopro@proton.me',
+            'alancraigdigital@gmail.com', 
+            'digitalavatartutorial@gmail.com'
+        ]
+        if email not in allowed_emails:
+            return jsonify({"success": False, "error": "Access restricted to authorized users only"}), 403
+        
         # Check if user exists in database
         try:
             result = supabase.table('users').select('*').eq('email', email).execute()
@@ -2837,6 +2846,15 @@ def auth_signup():
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(email_pattern, email):
             return jsonify({"success": False, "error": "Please enter a valid email address"}), 400
+        
+        # Email whitelist validation
+        allowed_emails = [
+            'chidopro@proton.me',
+            'alancraigdigital@gmail.com', 
+            'digitalavatartutorial@gmail.com'
+        ]
+        if email not in allowed_emails:
+            return jsonify({"success": False, "error": "Access restricted to authorized users only"}), 403
         
         # Validate password strength
         if len(password) < 6:
@@ -3056,6 +3074,15 @@ def admin_login():
         
         if not email or not password:
             return render_template('admin_login.html', error="Email and password are required")
+        
+        # Email whitelist validation
+        allowed_emails = [
+            'chidopro@proton.me',
+            'alancraigdigital@gmail.com', 
+            'digitalavatartutorial@gmail.com'
+        ]
+        if email not in allowed_emails:
+            return render_template('admin_login.html', error="Access restricted to authorized users only")
         
         try:
             # Check if user exists and has admin role
