@@ -2782,7 +2782,8 @@ def auth_login():
         allowed_emails = [
             'chidopro@proton.me',
             'alancraigdigital@gmail.com', 
-            'digitalavatartutorial@gmail.com'
+            'digitalavatartutorial@gmail.com',
+            'admin@screenmerch.com'
         ]
         if email not in allowed_emails:
             return jsonify({"success": False, "error": "Access restricted to authorized users only"}), 403
@@ -2851,7 +2852,8 @@ def auth_signup():
         allowed_emails = [
             'chidopro@proton.me',
             'alancraigdigital@gmail.com', 
-            'digitalavatartutorial@gmail.com'
+            'digitalavatartutorial@gmail.com',
+            'admin@screenmerch.com'
         ]
         if email not in allowed_emails:
             return jsonify({"success": False, "error": "Access restricted to authorized users only"}), 403
@@ -3079,7 +3081,8 @@ def admin_login():
         allowed_emails = [
             'chidopro@proton.me',
             'alancraigdigital@gmail.com', 
-            'digitalavatartutorial@gmail.com'
+            'digitalavatartutorial@gmail.com',
+            'admin@screenmerch.com'
         ]
         if email not in allowed_emails:
             return render_template('admin_login.html', error="Access restricted to authorized users only")
