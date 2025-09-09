@@ -1586,11 +1586,15 @@
                   this.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
                 });
                 productCard.innerHTML = `
-                 <!-- Top Image (Blank Product) -->
-                 <img src="/static/images/${product.filename}" alt="${product.name} - Blank" style="width:100%;height:140px;object-fit:contain;border-radius:8px;margin-bottom:12px;background:#f8f9fa;">
+                 <img src="/static/images/${product.filename}" alt="${product.name}" style="width:100%;height:180px;object-fit:cover;border-radius:6px;margin-bottom:10px;">
                  
-                 <!-- Bottom Image (Preview with Design) -->
-                 <img src="/static/images/${product.preview_image || product.filename}" alt="${product.name} - Preview" style="width:100%;height:140px;object-fit:contain;border-radius:8px;background:#f8f9fa;">
+                 ${product.screenshots && product.screenshots.length > 0 ? `
+                   <div class="screenshots-preview" style="display:flex;gap:4px;margin-bottom:10px;overflow-x:auto;">
+                     ${product.screenshots.slice(0, 5).map(screenshot => `
+                       <img src="/static/images/${screenshot}" alt="Screenshot" style="width:40px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0;">
+                     `).join('')}
+                   </div>
+                 ` : ''}
                  
                  <div class="product-title" style="font-weight:600;font-size:14px;color:#333;margin:12px 0 8px 0;line-height:1.3;">${product.name}</div>
                  <div class="product-price" id="price-${index}" style="font-size:18px;font-weight:bold;color:#28a745;margin-bottom:12px;">$${product.price.toFixed(2)}</div>
