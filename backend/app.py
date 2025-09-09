@@ -122,6 +122,47 @@ app = Flask(__name__,
 # Configure session secret key
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-secret-key-change-in-production")
 
+# Template filter for formatting timestamps
+@app.template_filter('format_timestamp')
+def format_timestamp(timestamp):
+    """Convert timestamp to MM:SS format"""
+    try:
+        # Debug logging
+        logger.info(f"🔍 Formatting timestamp: {timestamp} (type: {type(timestamp)})")
+        
+        if isinstance(timestamp, str):
+            # Handle ISO timestamp format
+            if 'T' in timestamp:
+                from datetime import datetime
+                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                total_seconds = dt.timestamp()
+            else:
+                # Try to convert string to float
+                total_seconds = float(timestamp)
+        else:
+            total_seconds = float(timestamp)
+        
+        # Handle very large timestamps (might be milliseconds or microseconds)
+        if total_seconds > 86400:  # More than 24 hours, likely wrong format
+            if total_seconds > 1000000000:  # Looks like milliseconds since epoch
+                total_seconds = total_seconds / 1000
+            elif total_seconds > 1000000000000:  # Looks like microseconds since epoch
+                total_seconds = total_seconds / 1000000
+        
+        # If still too large, it might be a timestamp in seconds but for a very long video
+        # Cap it at 24 hours (86400 seconds) for display purposes
+        if total_seconds > 86400:
+            total_seconds = total_seconds % 86400  # Get the remainder to show reasonable time
+        
+        minutes = int(total_seconds // 60)
+        seconds = int(total_seconds % 60)
+        result = f"{minutes:02d}:{seconds:02d}"
+        logger.info(f"✅ Formatted timestamp: {timestamp} -> {result}")
+        return result
+    except (ValueError, TypeError) as e:
+        logger.error(f"❌ Error formatting timestamp {timestamp}: {str(e)}")
+        return str(timestamp)
+
 # Add custom Jinja2 filters
 @app.template_filter('get_product_price')
 def get_product_price(product_name):
@@ -440,7 +481,7 @@ PRODUCTS = [
             "XL": 0,
             "XXL": 2,
             "XXXL": 2
-        }
+        } 
     },
     {
         "name": "Unisex Heavyweight T-Shirt",
@@ -740,8 +781,8 @@ def filter_products_by_category(category):
     """Filter products based on category selection"""
     print(f"🔍 FILTER DEBUG: Received category: '{category}'")
     if not category or category == "all":
-        print(f"🔍 FILTER DEBUG: No category or 'all', returning empty list - user must select category first")
-        return []  # Show no products until category is selected
+        print(f"🔍 FILTER DEBUG: No category or 'all', returning all products")
+        return PRODUCTS  # Show all products when category is 'all'
     
     # Define category mappings based on actual product names from PRODUCTS list
     category_mappings = {
@@ -1022,6 +1063,7 @@ def show_product_page_new(product_id):
                         channel_id='',
                         video_title=product_data.get('video_title', 'Unknown Video'),
                         creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                        video_url=product_data.get('video_url', 'Not provided'),
                         current_category=category,
                         timestamp=int(time.time()),
                         cache_buster=uuid.uuid4().hex[:8]
@@ -1072,7 +1114,9 @@ def show_product_page_new(product_id):
                 channel_id='',
                 video_title=product_data.get('video_title', 'Unknown Video'),
                 creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                video_url=product_data.get('video_url', 'Not provided'),
                 current_category=category,
+                show_category_selection=show_category_selection,
                 timestamp=int(time.time()),
                 cache_buster=uuid.uuid4().hex[:8]
             )
@@ -1108,6 +1152,9 @@ def show_product_page(product_id):
     # Get category parameter from query string
     category = request.args.get('category', 'all')
     logger.info(f"📂 Category filter: {category}")
+    
+    # Determine if we should show category selection or products
+    show_category_selection = (category == 'all')
     
     # Filter products by category using comprehensive mapping
     filtered_products = filter_products_by_category(category)
@@ -1177,6 +1224,7 @@ def show_product_page(product_id):
                         video_title=product_data.get('video_title', 'Unknown Video'),
                         creator_name=product_data.get('creator_name', 'Unknown Creator'),
                         current_category=category,
+                        show_category_selection=show_category_selection,
                         timestamp=timestamp,
                         cache_buster=cache_buster
                     ))
@@ -1236,7 +1284,9 @@ def show_product_page(product_id):
                 channel_id='',
                 video_title=product_data.get('video_title', 'Unknown Video'),
                 creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                video_url=product_data.get('video_url', 'Not provided'),
                 current_category=category,
+                show_category_selection=show_category_selection,
                 timestamp=int(time.time()),
                 cache_buster=uuid.uuid4().hex[:8]
             )
@@ -1356,13 +1406,29 @@ def send_order():
         order_id = str(uuid.uuid4())
         order_number = order_id[-8:].upper()
         
+        # Enrich cart items with video metadata
+        enriched_cart = []
+        for item in cart:
+            enriched_item = item.copy()
+            # Add video metadata to each cart item
+            enriched_item.update({
+                "videoName": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+                "creatorName": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                "timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided"))
+            })
+            enriched_cart.append(enriched_item)
+        
         # Store order in order_store for admin dashboard
         order_store[order_id] = {
-            "cart": cart,
+            "cart": enriched_cart,
             "timestamp": data.get("timestamp"),
             "order_id": order_id,
             "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
-            "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
+            "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+            "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
+            "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
+            "status": "pending",
+            "created_at": data.get("created_at", "Recent")
         }
         
         # Record each sale
@@ -1379,11 +1445,25 @@ def send_order():
                     <p><strong>Items:</strong> {len(cart)}</p>
                     <p><strong>Total Value:</strong> ${sum([next((p['price'] for p in PRODUCTS if p['name'] == item.get('product')), 0) for item in cart]):.2f}</p>
                     <br>
+                    <hr>
+                    <h2>📹 Video Information</h2>
+                    <p><strong>Video Title:</strong> {data.get("videoTitle", data.get("video_title", "Unknown Video"))}</p>
+                    <p><strong>Creator:</strong> {data.get("creatorName", data.get("creator_name", "Unknown Creator"))}</p>
+                    <p><strong>Video URL:</strong> {data.get("videoUrl", data.get("video_url", "Not provided"))}</p>
+                    <p><strong>Screenshot Timestamp:</strong> {data.get("screenshot_timestamp", data.get("timestamp", "Not provided"))} seconds</p>
+                    <br>
                     <p><strong>📋 View Full Order Details:</strong></p>
-                    <p><a href="https://backend-hidden-firefly-7865.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <p><a href="https://copy5-backend.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
                     <br>
                     <p><strong>📊 All Orders Dashboard:</strong></p>
-                    <p><a href="https://backend-hidden-firefly-7865.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
+                    <p><a href="https://copy5-backend.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
+                    <br>
+                    <hr>
+                    <h2>🖨️ Print Quality Images</h2>
+                    <p><strong>For Printify Upload:</strong></p>
+                    <p>Use the print quality generator to get 300 DPI images:</p>
+                    <p><strong>Web Interface:</strong> <a href="https://copy5-backend.fly.dev/print-quality">https://copy5-backend.fly.dev/print-quality</a></p>
+                    <p>This will generate professional print-ready images (2400x3000+ pixels, PNG format)</p>
                     <br>
                     <p><small>This is an automated notification from ScreenMerch</small></p>
                 """
@@ -1405,7 +1485,11 @@ def send_order():
             logger.error(f"Resend API error: {response.text}")
             return jsonify({"success": False, "error": "Failed to send order email"}), 500
 
-        return jsonify({"success": True})
+        return jsonify({
+            "success": True, 
+            "message": "Order sent successfully. Cart will be cleared on the frontend.",
+            "clear_cart": True
+        })
 
     except Exception as e:
         logger.error(f"Error in send_order: {str(e)}")
@@ -1416,11 +1500,23 @@ def success():
     order_id = request.args.get('order_id')
     logger.info(f"🎯 Success page visited with order_id: {order_id}")
     
-    if order_id and order_id in order_store:
-        logger.info(f"✅ Found order {order_id} in store, processing email...")
+    if order_id:
+        logger.info(f"🔍 Looking for order {order_id}...")
         try:
-            order_data = order_store[order_id]
-            cart = order_data.get("cart", [])
+            # First try to get order from database
+            db_result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
+            
+            if db_result.data:
+                order_data = db_result.data[0]
+                cart = order_data.get("cart", [])
+                logger.info(f"✅ Found order {order_id} in database, processing email...")
+            elif order_id in order_store:
+                order_data = order_store[order_id]
+                cart = order_data.get("cart", [])
+                logger.info(f"✅ Found order {order_id} in memory store, processing email...")
+            else:
+                logger.warning(f"⚠️ Order {order_id} not found in database or memory store")
+                return render_template('success.html')
             
             # Generate a simple order number (last 8 characters of order_id)
             order_number = order_id[-8:].upper()
@@ -1443,10 +1539,10 @@ def success():
             html_body += f"<p><strong>Total Value:</strong> ${total_value:.2f}</p>"
             html_body += f"<br>"
             html_body += f"<p><strong>📋 View Full Order Details:</strong></p>"
-            html_body += f"<p><a href='https://backend-hidden-firefly-7865.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
+            html_body += f"<p><a href='https://copy5-backend.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
             html_body += f"<br>"
             html_body += f"<p><strong>📊 All Orders Dashboard:</strong></p>"
-            html_body += f"<p><a href='https://backend-hidden-firefly-7865.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
+            html_body += f"<p><a href='https://copy5-backend.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
             html_body += f"<br>"
             html_body += f"<p><small>This is an automated notification from ScreenMerch</small></p>"
             
@@ -1454,33 +1550,8 @@ def success():
             for item in cart:
                 record_sale(item)
             
-            # Send email using Resend
-            email_data = {
-                "from": RESEND_FROM,
-                "to": [MAIL_TO],
-                "subject": f"New Paid Order #{order_number}: {len(cart)} Item(s)",
-                "html": html_body
-            }
-            
-            logger.info(f"📤 Sending email to {MAIL_TO} with Resend API...")
-            
-            response = requests.post(
-                "https://api.resend.com/emails",
-                headers={
-                    "Authorization": f"Bearer {RESEND_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json=email_data
-            )
-            
-            logger.info(f"📨 Resend response status: {response.status_code}")
-            
-            if response.status_code == 200:
-                logger.info(f"✅ Email sent successfully for order {order_number}")
-                # Keep order in store for admin dashboard (don't delete)
-                # del order_store[order_id]  # Commented out to keep orders visible
-            else:
-                logger.error(f"❌ Failed to send email for order {order_number}: {response.status_code}")
+            # Email is already sent from webhook, no need to send duplicate
+            logger.info(f"✅ Order {order_number} processed - email already sent from webhook")
                 
         except Exception as e:
             logger.error(f"❌ Error processing order {order_id}: {str(e)}")
@@ -1496,6 +1567,7 @@ def create_checkout_session():
         cart = data.get("cart", [])
         product_id = data.get("product_id")
         sms_consent = data.get("sms_consent", False)
+        shipping_cost = data.get("shipping_cost", 5.99)  # Default to $5.99 if not provided
 
         logger.info(f"🛒 Received checkout request - Cart: {cart}")
         logger.info(f"🛒 Product ID: {product_id}")
@@ -1510,14 +1582,69 @@ def create_checkout_session():
 
         # Generate a unique order ID and store the full cart (with images) and SMS consent
         order_id = str(uuid.uuid4())
-        order_store[order_id] = {
-            "cart": cart,
-            "sms_consent": sms_consent,
-            "timestamp": data.get("timestamp"),
+        
+        # Calculate total amount
+        total_amount = sum(item.get('price', 0) for item in cart) + shipping_cost
+        
+        # Enrich cart items with video metadata
+        enriched_cart = []
+        for item in cart:
+            enriched_item = item.copy()
+            # Add video metadata to each cart item
+            enriched_item.update({
+                "videoName": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+                "creatorName": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                "timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided"))
+            })
+            enriched_cart.append(enriched_item)
+        
+        # Store order in database instead of in-memory store
+        order_data = {
             "order_id": order_id,
+            "cart": enriched_cart,
+            "sms_consent": sms_consent,
+            "customer_email": data.get("user_email", ""),
             "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
-            "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
+            "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+            "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
+            "total_amount": total_amount,
+            "shipping_cost": shipping_cost,
+            "status": "pending"
         }
+        
+        try:
+            # Store in database
+            supabase.table('orders').insert(order_data).execute()
+            logger.info(f"✅ Order {order_id} stored in database")
+            
+            # Keep in-memory store as backup for admin dashboard
+            order_store[order_id] = {
+                "cart": enriched_cart,
+                "sms_consent": sms_consent,
+                "timestamp": data.get("timestamp"),
+                "order_id": order_id,
+                "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
+                "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
+                "status": "pending",
+                "created_at": data.get("created_at", "Recent")
+            }
+        except Exception as db_error:
+            logger.error(f"❌ Failed to store order in database: {str(db_error)}")
+            # Fallback to in-memory storage
+            order_store[order_id] = {
+                "cart": enriched_cart,
+                "sms_consent": sms_consent,
+                "timestamp": data.get("timestamp"),
+                "order_id": order_id,
+                "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
+                "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
+                "status": "pending",
+                "created_at": data.get("created_at", "Recent")
+            }
 
         line_items = []
         for item in cart:
@@ -1559,6 +1686,20 @@ def create_checkout_session():
                 "quantity": 1,
             })
 
+        # Add shipping cost as a separate line item
+        if shipping_cost and shipping_cost > 0:
+            line_items.append({
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": "Shipping",
+                    },
+                    "unit_amount": int(shipping_cost * 100),
+                },
+                "quantity": 1,
+            })
+            logger.info(f"🚚 Added shipping cost: ${shipping_cost}")
+
         logger.info(f"🛒 Created line items: {line_items}")
         if not line_items:
             logger.error("❌ No valid items in cart to check out")
@@ -1568,7 +1709,7 @@ def create_checkout_session():
             payment_method_types=["card"],
             mode="payment",
             line_items=line_items,
-            success_url=f"https://backend-hidden-firefly-7865.fly.dev/success?order_id={order_id}",
+            success_url=f"https://copy5-backend.fly.dev/success?order_id={order_id}",
             cancel_url=f"https://screenmerch.com/checkout/{product_id}",
             # A2P 10DLC Compliance: Collect phone number for SMS notifications
             phone_number_collection={"enabled": True},
@@ -1601,32 +1742,189 @@ def stripe_webhook():
         # Handle product orders
         if order_id:
             try:
-                order_data = order_store[order_id]
-                cart = order_data.get("cart", [])
-                sms_consent = order_data.get("sms_consent", False)
+                # First try to get order from database
+                db_result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
+                
+                if db_result.data:
+                    order_data = db_result.data[0]
+                    cart = order_data.get("cart", [])
+                    sms_consent = order_data.get("sms_consent", False)
+                    logger.info(f"✅ Retrieved order {order_id} from database")
+                else:
+                    # Fallback to in-memory store
+                    order_data = order_store[order_id]
+                    cart = order_data.get("cart", [])
+                    sms_consent = order_data.get("sms_consent", False)
+                    logger.info(f"✅ Retrieved order {order_id} from in-memory store")
+                    
             except KeyError:
-                logger.error(f"Order ID {order_id} not found in order_store")
+                logger.error(f"Order ID {order_id} not found in database or order_store")
                 return "", 200
 
             # Get customer phone number from Stripe session
             customer_phone = session.get("customer_details", {}).get("phone", "")
             
-            # Format and send the order email
-            html_body = f"<h1>New Paid ScreenMerch Order #{order_id}</h1>"
-            html_body += f"<p><strong>SMS Consent:</strong> {'Yes' if sms_consent else 'No'}</p>"
-            html_body += f"<p><strong>Customer Phone:</strong> {customer_phone}</p>"
+            # Get customer details from Stripe session
+            customer_details = session.get("customer_details", {})
+            customer_name = customer_details.get("name", "Not provided")
+            customer_email = customer_details.get("email", "Not provided")
             
-            for item in cart:
+            # Get shipping address from Stripe session (handle None case)
+            shipping_details = session.get("shipping_details")
+            if shipping_details:
+                shipping_address = shipping_details.get("address", {})
+                address_line1 = shipping_address.get("line1", "Not provided")
+                address_line2 = shipping_address.get("line2", "")
+                city = shipping_address.get("city", "Not provided")
+                state = shipping_address.get("state", "Not provided")
+                postal_code = shipping_address.get("postal_code", "Not provided")
+                country = shipping_address.get("country", "Not provided")
+            else:
+                # Fallback if shipping details are not available
+                address_line1 = "Not provided"
+                address_line2 = ""
+                city = "Not provided"
+                state = "Not provided"
+                postal_code = "Not provided"
+                country = "Not provided"
+            
+            # Calculate total amount
+            total_amount = sum(item.get('price', 0) for item in cart)
+            
+            # Format and send the comprehensive order email
+            html_body = f"<h1>🎯 New ScreenMerch Order #{order_id}</h1>"
+            html_body += f"<p><strong>Items:</strong> {len(cart)}</p>"
+            html_body += f"<p><strong>Total Amount:</strong> ${total_amount:.2f}</p>"
+            html_body += f"<hr>"
+            
+            # Customer Information
+            html_body += f"<h2>👤 Customer Information</h2>"
+            html_body += f"<p><strong>Customer Name:</strong> {customer_name}</p>"
+            html_body += f"<p><strong>Customer Email:</strong> {customer_email}</p>"
+            html_body += f"<p><strong>Customer Phone:</strong> {customer_phone}</p>"
+            html_body += f"<hr>"
+            
+            # Shipping Address
+            html_body += f"<h2>📦 Shipping Address</h2>"
+            html_body += f"<p><strong>Address:</strong> {address_line1}"
+            if address_line2:
+                html_body += f"<br>{address_line2}"
+            html_body += f"<br>{city}, {state} {postal_code}<br>{country}</p>"
+            html_body += f"<hr>"
+            
+            # Products with Images
+            html_body += f"<h2>🛍️ Products</h2>"
+            
+            # Generate print-quality images for each product
+            print_quality_images = []
+            for i, item in enumerate(cart):
+                try:
+                    # Extract video URL and timestamp from the screenshot
+                    screenshot_url = item.get('img', '')
+                    if screenshot_url and 'data:image' in screenshot_url:
+                        # This is a base64 screenshot, we need to get the original video info
+                        # For now, we'll include both preview and note about print quality
+                        print_quality_images.append({
+                            'index': i,
+                            'preview': screenshot_url,
+                            'note': 'Print quality version available via API'
+                        })
+                except Exception as e:
+                    logger.error(f"Error processing print quality for item {i}: {str(e)}")
+                    print_quality_images.append({
+                        'index': i,
+                        'preview': item.get('img', ''),
+                        'note': 'Preview only'
+                    })
+            
+            for i, item in enumerate(cart):
+                # Determine category based on product name
+                product_name = item.get('product', 'N/A')
+                color = item.get('variants', {}).get('color', 'N/A')
+                size = item.get('variants', {}).get('size', 'N/A')
+                
+                # Map product names to categories
+                if 'Cropped Hoodie' in product_name:
+                    category = "Women's"
+                elif 'Youth Heavy Blend Hoodie' in product_name or 'Kids' in product_name:
+                    category = "Kids"
+                elif 'Unisex' in product_name or 'Men' in product_name:
+                    category = "Men's"
+                else:
+                    category = "Unisex"
+                
+                # Get timestamp from order data
+                timestamp = order_data.get('created_at', 'N/A')
+                if timestamp != 'N/A':
+                    try:
+                        from datetime import datetime
+                        if isinstance(timestamp, str):
+                            timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                        timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')
+                    except:
+                        timestamp_str = str(timestamp)
+                else:
+                    timestamp_str = 'N/A'
+                
+                # Get print quality info
+                print_info = print_quality_images[i] if i < len(print_quality_images) else {'preview': item.get('img', ''), 'note': 'Preview only'}
+                
                 html_body += f"""
                     <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
-                        <h2>{item.get('product', 'N/A')}</h2>
-                        <p><strong>Color:</strong> {item.get('variants', {}).get('color', 'N/A')}</p>
-                        <p><strong>Size:</strong> {item.get('variants', {}).get('size', 'N/A')}</p>
+                        <h3>{category} - {product_name}</h3>
+                        <p><strong>Color:</strong> {color}</p>
+                        <p><strong>Size:</strong> {size}</p>
+                        <p><strong>Price:</strong> ${item.get('price', 0):.2f}</p>
                         <p><strong>Note:</strong> {item.get('note', 'None')}</p>
-                        <p><strong>Image:</strong></p>
-                        <img src="{item.get('img', '')}" alt='Product Image' style='max-width: 300px; border-radius: 6px;'>
+                        <p><strong>📅 Order Time:</strong> {timestamp_str}</p>
+                        <p><strong>📸 Screenshot Selected (Preview):</strong></p>
+                        <img src="{print_info['preview']}" alt='Product Screenshot' style='max-width: 400px; border-radius: 6px; border: 2px solid #007bff;'>
+                        <p><strong>🖨️ Print Quality:</strong> {print_info['note']}</p>
                     </div>
                 """
+            
+            # Add video information section
+            html_body += f"""
+                <hr>
+                <h2>📹 Video Information</h2>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p><strong>Video Title:</strong> {order_data.get('video_title', 'Unknown Video')}</p>
+                    <p><strong>Creator:</strong> {order_data.get('creator_name', 'Unknown Creator')}</p>
+                    <p><strong>Video URL:</strong> {order_data.get('video_url', 'Not provided')}</p>
+                    <p><strong>Screenshot Timestamp:</strong> {order_data.get('screenshot_timestamp', 'Not provided')} seconds</p>
+                </div>
+            """
+            
+            # Add action buttons section with better email client compatibility
+            html_body += f"""
+                <hr>
+                <h2>🚀 Order Management & Print Quality</h2>
+                <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                    <tr>
+                        <td align="center">
+                            <table cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="padding: 10px;">
+                                        <a href="https://copy5-backend.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
+                                    </td>
+                                    <td style="padding: 10px;">
+                                        <a href="https://copy5-backend.fly.dev/print-quality" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3>📝 Quick Instructions:</h3>
+                    <ol>
+                        <li><strong>View Order:</strong> Click "View Order Details" to see full order information</li>
+                        <li><strong>Print Quality:</strong> Click "Generate Print Quality Images" to create 300 DPI images for Printify</li>
+                        <li><strong>Video URL:</strong> Copy the video URL from order details and paste it into the print quality tool</li>
+                        <li><strong>Timestamp:</strong> Use the timestamp shown above in the print quality tool</li>
+                    </ol>
+                </div>
+            """
             
             # Record each sale with creator and video information
             for item in cart:
@@ -1641,20 +1939,12 @@ def stripe_webhook():
                 
             # Email notifications only - no SMS
             logger.info("📧 Order notifications will be sent via email")
-                
-            # Send admin notification email to alancraigdigital@gmail.com
-            admin_email_body = f"New ScreenMerch Order #{order_id}!\n"
-            admin_email_body += f"Items: {len(cart)}\n"
-            admin_email_body += f"Customer Phone: {customer_phone}\n"
-            for item in cart:
-                admin_email_body += f"• {item.get('product', 'N/A')} ({item.get('variants', {}).get('color', 'N/A')}, {item.get('variants', {}).get('size', 'N/A')})\n"
-            send_order_email(admin_email_body)
             
-            # Send confirmation email to alancraigdigital@gmail.com
+            # Send confirmation email to chidopro@proton.me (verified email for Resend)
             email_data = {
                 "from": RESEND_FROM,
-                "to": ["alancraigdigital@gmail.com"],
-                "subject": f"🎯 ScreenMerch Payment Confirmation - Order #{order_id}",
+                "to": ["chidopro@proton.me"],
+                "subject": f"🛍️ New ScreenMerch Order - {len(cart)} Item(s) - ${total_amount:.2f} - {customer_name}",
                 "html": html_body
             }
             
@@ -1670,6 +1960,18 @@ def stripe_webhook():
                 logger.error(f"Resend API error: {response.text}")
             else:
                 logger.info(f"Order email sent successfully via Resend")
+                
+                # Update order status in database to 'paid'
+                try:
+                    supabase.table('orders').update({
+                        'status': 'paid',
+                        'customer_phone': customer_phone,
+                        'stripe_session_id': session.get('id'),
+                        'payment_intent_id': session.get('payment_intent')
+                    }).eq('order_id', order_id).execute()
+                    logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
+                except Exception as db_error:
+                    logger.error(f"❌ Failed to update order status in database: {str(db_error)}")
         
         # Handle subscription events
         elif session.get("mode") == "subscription":
@@ -1971,6 +2273,54 @@ def get_video_info():
         logger.error(f"Error in get_video_info: {str(e)}")
         return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
 
+@app.route("/api/capture-print-quality", methods=["POST", "OPTIONS"])
+def capture_print_quality():
+    """Capture a high-quality screenshot optimized for print production"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        video_url = data.get('video_url')
+        timestamp = data.get('timestamp', 0)
+        crop_area = data.get('crop_area')
+        print_dpi = data.get('print_dpi', 300)
+        
+        if not video_url:
+            return jsonify({"success": False, "error": "video_url is required"}), 400
+        
+        logger.info(f"Capturing PRINT QUALITY screenshot from {video_url} at timestamp {timestamp}")
+        if crop_area:
+            logger.info(f"Crop area provided: {crop_area}")
+        
+        result = screenshot_capture.capture_print_quality_screenshot(
+            video_url, 
+            timestamp, 
+            crop_area, 
+            print_dpi
+        )
+        
+        if result['success']:
+            logger.info(f"Print quality screenshot captured: {result.get('dimensions', {}).get('width', 'unknown')}x{result.get('dimensions', {}).get('height', 'unknown')}, {result.get('file_size', 0):,} bytes")
+            response = jsonify(result)
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
+        else:
+            logger.error(f"Print quality screenshot capture failed: {result['error']}")
+            response = jsonify(result)
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 500
+            
+    except Exception as e:
+        logger.error(f"Error in capture_print_quality: {str(e)}")
+        response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
 @app.route("/api/process-shirt-image", methods=["POST", "OPTIONS"])
 def process_shirt_image():
     """Process an image to be shirt-print ready with feathered edges"""
@@ -2008,6 +2358,11 @@ def process_shirt_image():
     except Exception as e:
         logger.error(f"Error processing shirt image: {str(e)}")
         return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+
+@app.route("/print-quality")
+def print_quality_page():
+    """Serve the print quality image generator page"""
+    return render_template('print_quality.html')
 
 @app.route("/api/users/ensure-exists", methods=["POST"])
 def ensure_user_exists():
@@ -2217,6 +2572,110 @@ def test_stripe():
             "error": f"Stripe configuration error: {str(e)}",
             "stripe_key_configured": bool(os.getenv("STRIPE_SECRET_KEY"))
         }), 500
+
+@app.route("/api/calculate-shipping", methods=["POST", "OPTIONS"])
+def calculate_shipping():
+    """Calculate shipping cost for an order using Printify API"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        
+        # Get shipping address from frontend
+        shipping_address = data.get('shipping_address', {})
+        country = shipping_address.get('country_code', 'US')
+        postal_code = shipping_address.get('zip', '')
+        
+        # Get cart items from frontend
+        cart = data.get('cart', [])
+        
+        if not cart:
+            return jsonify({
+                "success": False,
+                "error": "No cart items provided"
+            }), 400
+        
+        # Printify API configuration
+        printify_api_key = "C6c4vKYLebPS1Zsu66o8fp2DE9Mye2FYmE5ATiNf"
+        printify_base_url = "https://api.printify.com/v1"
+        
+        # Calculate shipping using Printify API
+        shipping_data = {
+            "line_items": [],
+            "shipping_address": {
+                "country": country,
+                "postal_code": postal_code
+            }
+        }
+        
+        # Convert cart items to Printify format
+        for item in cart:
+            shipping_data["line_items"].append({
+                "variant_id": item.get('variant_id', 1),
+                "quantity": item.get('quantity', 1)
+            })
+        
+        # Make request to Printify shipping API
+        headers = {
+            'Authorization': f'Bearer {printify_api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        response = requests.post(
+            f"{printify_base_url}/shipping/rates",
+            json=shipping_data,
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            shipping_rates = response.json()
+            
+            # Get the first available shipping rate
+            if shipping_rates and len(shipping_rates) > 0:
+                rate = shipping_rates[0]
+                return jsonify({
+                    "success": True,
+                    "shipping_cost": rate.get('cost', 5.99),
+                    "currency": "USD",
+                    "delivery_days": rate.get('estimated_days', '5-7'),
+                    "shipping_method": rate.get('name', 'Standard Shipping')
+                })
+            else:
+                # Fallback if no rates available
+                return jsonify({
+                    "success": True,
+                    "shipping_cost": 5.99,
+                    "currency": "USD",
+                    "delivery_days": "5-7",
+                    "shipping_method": "Standard Shipping"
+                })
+        else:
+            logger.error(f"Printify API error: {response.status_code} - {response.text}")
+            # Fallback to default shipping
+            return jsonify({
+                "success": True,
+                "shipping_cost": 5.99,
+                "currency": "USD",
+                "delivery_days": "5-7",
+                "shipping_method": "Standard Shipping"
+            })
+        
+    except Exception as e:
+        logger.error(f"Error calculating shipping: {str(e)}")
+        # Fallback to default shipping
+        return jsonify({
+            "success": True,
+            "shipping_cost": 5.99,
+            "currency": "USD",
+            "delivery_days": "5-7",
+            "shipping_method": "Standard Shipping"
+        })
 
 @app.route("/api/test-email-config", methods=["GET"])
 def test_email_config():
@@ -2628,6 +3087,59 @@ def admin_login():
 @app.route("/admin/logout")
 def admin_logout():
     """Admin logout"""
+    session.clear()
+    return redirect(url_for('admin_login'))
+
+@app.route("/admin/setup", methods=["GET", "POST"])
+def admin_setup():
+    """Create admin user endpoint"""
+    if request.method == "POST":
+        try:
+            # Create admin user
+            admin_user = {
+                'email': 'admin@screenmerch.com',
+                'password_hash': 'admin123',
+                'role': 'admin',
+                'display_name': 'Admin User',
+                'status': 'active'
+            }
+            
+            # Check if admin already exists
+            existing = supabase.table('users').select('*').eq('email', 'admin@screenmerch.com').execute()
+            
+            if existing.data:
+                # Update existing user to admin
+                result = supabase.table('users').update({
+                    'role': 'admin',
+                    'password_hash': 'admin123'
+                }).eq('email', 'admin@screenmerch.com').execute()
+                message = "Admin user updated successfully!"
+            else:
+                # Create new admin user
+                result = supabase.table('users').insert(admin_user).execute()
+                message = "Admin user created successfully!"
+            
+            return f"""
+            <h1>Admin Setup Complete!</h1>
+            <p>{message}</p>
+            <p><strong>Login Credentials:</strong></p>
+            <ul>
+                <li>Email: admin@screenmerch.com</li>
+                <li>Password: admin123</li>
+            </ul>
+            <p><a href="/admin/login">Go to Admin Login</a></p>
+            """
+            
+        except Exception as e:
+            return f"<h1>Error</h1><p>Failed to create admin user: {str(e)}</p>"
+    
+    return """
+    <h1>Admin Setup</h1>
+    <p>Click the button below to create an admin user:</p>
+    <form method="POST">
+        <button type="submit">Create Admin User</button>
+    </form>
+    """
     session.pop('admin_logged_in', None)
     session.pop('admin_email', None)
     session.pop('admin_id', None)
@@ -2648,9 +3160,27 @@ def admin_orders():
             order_data['created_at'] = order_data.get('timestamp', 'N/A')
             all_orders.append(order_data)
         
-        # Get orders from database (sales table)
+        # Get orders from database (orders table)
         try:
-            # Only select the columns we need to avoid timeout
+            orders_result = supabase.table('orders').select('*').order('created_at', desc=True).execute()
+            for order in orders_result.data:
+                order_data = {
+                    'order_id': order.get('order_id'),
+                    'cart': order.get('cart', []),
+                    'status': order.get('status', 'pending'),
+                    'created_at': order.get('created_at', 'N/A'),
+                    'total_value': order.get('total_amount', 0),
+                    'customer_email': order.get('customer_email', ''),
+                    'customer_phone': order.get('customer_phone', ''),
+                    'video_title': order.get('video_title', ''),
+                    'creator_name': order.get('creator_name', '')
+                }
+                all_orders.append(order_data)
+        except Exception as db_error:
+            logger.error(f"Database error loading orders: {str(db_error)}")
+            
+        # Also get legacy sales data
+        try:
             sales_result = supabase.table('sales').select('id,product_name,amount,image_url').execute()
             for sale in sales_result.data:
                 # Convert database sale to order format
@@ -2668,10 +3198,24 @@ def admin_orders():
                 }
                 all_orders.append(order_data)
         except Exception as db_error:
-            logger.error(f"Database error loading orders: {str(db_error)}")
+            logger.error(f"Database error loading sales: {str(db_error)}")
         
-        # Sort by creation time (newest first)
-        all_orders.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        # Sort by creation time (newest first) - handle mixed data types
+        def sort_key(order):
+            created_at = order.get('created_at', '')
+            if isinstance(created_at, (int, float)):
+                return created_at
+            elif isinstance(created_at, str):
+                try:
+                    # Try to parse as timestamp
+                    return float(created_at)
+                except (ValueError, TypeError):
+                    # If it's a date string, use a default value
+                    return 0
+            else:
+                return 0
+        
+        all_orders.sort(key=sort_key, reverse=True)
         
         return render_template('admin_orders.html', orders=all_orders, admin_email=session.get('admin_email'))
     except Exception as e:
@@ -2683,9 +3227,80 @@ def admin_orders():
 def admin_order_detail(order_id):
     """Detailed view of a specific order"""
     try:
+        # First try to get order from in-memory store
         order_data = order_store.get(order_id)
+        
         if not order_data:
-            return "Order not found", 404
+            # If not in memory, try to get from database
+            try:
+                db_result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
+                if db_result.data:
+                    db_order = db_result.data[0]
+                    # Convert database format to expected format
+                    order_data = {
+                        'cart': db_order.get('cart', []),
+                        'status': db_order.get('status', 'pending'),
+                        'created_at': db_order.get('created_at', 'N/A'),
+                        'video_title': db_order.get('video_title', 'Unknown Video'),
+                        'creator_name': db_order.get('creator_name', 'Unknown Creator'),
+                        'video_url': db_order.get('video_url', 'Not provided'),
+                        'shipping_cost': db_order.get('shipping_cost', 0)
+                    }
+                    logger.info(f"✅ Retrieved order {order_id} from database for admin view")
+                else:
+                    return "Order not found", 404
+            except Exception as db_error:
+                logger.error(f"Database error loading order {order_id}: {str(db_error)}")
+                return "Error loading order from database", 500
+        
+        # Try to extract video metadata from video URL if missing
+        if (order_data.get('video_title') == 'Unknown Video' or 
+            order_data.get('creator_name') == 'Unknown Creator' or 
+            order_data.get('video_url') == 'Not provided'):
+            
+            video_url = order_data.get('video_url', '')
+            if video_url and video_url != 'Not provided':
+                try:
+                    # Extract video ID from URL like https://screenmerch.com/video/0/9a4b97e6-e165-44b0-b7c8-08019620a0eb
+                    if 'screenmerch.com/video/' in video_url:
+                        video_id = video_url.split('/')[-1]
+                        logger.info(f"🔍 Extracting metadata for video ID: {video_id}")
+                        
+                        # Fetch video data from videos2 table
+                        video_result = supabase.table('videos2').select('*').eq('id', video_id).execute()
+                        if video_result.data:
+                            video_info = video_result.data[0]
+                            logger.info(f"🔍 Video data from database: {video_info}")
+                            
+                            # Try different possible field names for title and creator
+                            video_title = (video_info.get('title') or 
+                                         video_info.get('video_title') or 
+                                         video_info.get('name') or 
+                                         'Unknown Video')
+                            
+                            creator_name = (video_info.get('channelTitle') or 
+                                           video_info.get('channel_title') or 
+                                           video_info.get('creator') or 
+                                           video_info.get('creator_name') or 
+                                           video_info.get('author') or 
+                                           'Unknown Creator')
+                            
+                            # Update order data with extracted metadata
+                            order_data['video_title'] = video_title
+                            order_data['creator_name'] = creator_name
+                            
+                            # Update the database record
+                            update_data = {
+                                'video_title': video_title,
+                                'creator_name': creator_name
+                            }
+                            supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
+                            
+                            logger.info(f"✅ Updated order {order_id} with video metadata: {video_title} by {creator_name}")
+                        else:
+                            logger.warning(f"⚠️ No video found in database for ID: {video_id}")
+                except Exception as extract_error:
+                    logger.error(f"Error extracting video metadata: {str(extract_error)}")
         
         return render_template('admin_order_detail.html', order=order_data, order_id=order_id, admin_email=session.get('admin_email'))
     except Exception as e:
@@ -2709,6 +3324,61 @@ def update_order_status(order_id):
     except Exception as e:
         logger.error(f"Error updating order status: {str(e)}")
         return jsonify({"error": "Failed to update status"}), 500
+
+@app.route("/api/supabase-webhook", methods=["POST"])
+def supabase_webhook():
+    """Handle Supabase webhook for order creation to capture video metadata"""
+    try:
+        data = request.get_json()
+        logger.info(f"🔗 Supabase webhook received: {data}")
+        
+        # Extract order data from webhook
+        order_id = data.get('record', {}).get('order_id')
+        if not order_id:
+            return jsonify({"error": "No order_id in webhook data"}), 400
+        
+        # Get the full order data
+        try:
+            db_result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
+            if db_result.data:
+                order_data = db_result.data[0]
+                logger.info(f"✅ Retrieved order {order_id} for webhook processing")
+                
+                # Extract video metadata from cart items
+                cart = order_data.get('cart', [])
+                for item in cart:
+                    # Look for video metadata in the item
+                    if 'img' in item and item['img'].startswith('data:image'):
+                        # This is a screenshot, extract metadata
+                        video_url = item.get('videoUrl') or item.get('video_url')
+                        video_title = item.get('videoTitle') or item.get('video_title')
+                        creator_name = item.get('creatorName') or item.get('creator_name')
+                        timestamp = item.get('timestamp')
+                        
+                        if video_url or video_title or creator_name:
+                            # Update the order with extracted metadata
+                            update_data = {}
+                            if video_url and not order_data.get('video_url'):
+                                update_data['video_url'] = video_url
+                            if video_title and not order_data.get('video_title'):
+                                update_data['video_title'] = video_title
+                            if creator_name and not order_data.get('creator_name'):
+                                update_data['creator_name'] = creator_name
+                            
+                            if update_data:
+                                supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
+                                logger.info(f"✅ Updated order {order_id} with video metadata: {update_data}")
+                
+                return jsonify({"success": True, "message": "Webhook processed successfully"})
+            else:
+                return jsonify({"error": "Order not found"}), 404
+        except Exception as db_error:
+            logger.error(f"Database error in webhook: {str(db_error)}")
+            return jsonify({"error": "Database error"}), 500
+            
+    except Exception as e:
+        logger.error(f"Webhook error: {str(e)}")
+        return jsonify({"error": "Webhook processing failed"}), 500
 
 @app.route("/api/fix-database-schema", methods=["POST"])
 def fix_database_schema():
