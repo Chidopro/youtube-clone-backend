@@ -30,23 +30,39 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+        }
+        
+        .back-btn {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+        
+        .header-content h1 {
+            flex: 1;
+            text-align: center;
+            margin: 0;
+            min-width: 0;
+        }
+        
+        .admin-info {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+            min-width: 0;
         }
         
         .header h1 {
             font-size: 2rem;
         }
         
-        .admin-info {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            text-align: right;
-        }
-        
         .admin-email {
             font-size: 0.9rem;
             opacity: 0.8;
-            margin-bottom: 5px;
+            white-space: nowrap;
         }
         
         .logout-btn {
@@ -323,6 +339,10 @@
                 text-align: center;
             }
             
+            .admin-info {
+                align-items: center;
+            }
+            
             .item-header {
                 flex-direction: column;
                 gap: 10px;
@@ -333,17 +353,38 @@
                 flex-direction: column;
             }
         }
+        
+        @media (max-width: 480px) {
+            .header-content {
+                padding: 0 10px;
+                gap: 10px;
+            }
+            
+            .back-btn {
+                font-size: 0.9rem;
+                padding: 8px 16px;
+            }
+            
+            .admin-email {
+                font-size: 0.8rem;
+            }
+            
+            .logout-btn {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="admin-info">
-            <div class="admin-email">{{ admin_email }}</div>
-            <a href="/admin/logout" class="logout-btn">Logout</a>
-        </div>
         <div class="header-content">
-            <h1>📦 Order #{{ order_id[-8:].upper() }}</h1>
             <a href="/admin/orders" class="back-btn">← Back to Orders</a>
+            <h1>📦 Order #{{ order_id[-8:].upper() }}</h1>
+            <div class="admin-info">
+                <div class="admin-email">{{ admin_email }}</div>
+                <a href="/admin/logout" class="logout-btn">Logout</a>
+            </div>
         </div>
     </div>
     
@@ -434,9 +475,12 @@
                         {% for screenshot in item.screenshots %}
                         <div class="screenshot-info">
                             <ul>
-                                <li><strong>Video:</strong> {{ screenshot.videoName if screenshot.videoName else item.videoName }}</li>
-                                <li><strong>Timestamp:</strong> {{ screenshot.timestamp }} seconds</li>
-                                <li><strong>Reference:</strong> Use screenshot at {{ screenshot.timestamp }}s from video</li>
+                                <li><strong>Type:</strong> Video Screenshot</li>
+                                <li><strong>Video:</strong> {{ screenshot.videoName if screenshot.videoName else (item.videoName if item.videoName else order.video_title) }}</li>
+                                <li><strong>Creator:</strong> {{ screenshot.creatorName if screenshot.creatorName else (item.creatorName if item.creatorName else order.creator_name) }}</li>
+                                <li><strong>Timestamp:</strong> {{ screenshot.timestamp|format_timestamp }}</li>
+                                <li><strong>Video URL:</strong> <a href="{{ order.video_url if order.video_url else 'N/A' }}" target="_blank">{{ order.video_url if order.video_url else 'N/A' }}</a></li>
+                                <li><strong>Reference:</strong> Use screenshot at {{ screenshot.timestamp|format_timestamp }} from video</li>
                             </ul>
                             {% if screenshot.img and not screenshot.img.startswith('data:image') %}
                             <img src="{{ screenshot.img }}" alt="Screenshot" class="screenshot-image">
@@ -445,11 +489,26 @@
                             {% endif %}
                         </div>
                         {% endfor %}
+                    {% elif item.img and item.img.startswith('data:image') %}
+                        <!-- This is a base64 screenshot, not a thumbnail -->
+                        <div class="screenshot-info">
+                            <ul>
+                                <li><strong>Type:</strong> Video Screenshot</li>
+                                <li><strong>Video:</strong> {{ item.videoName if item.videoName else order.video_title }}</li>
+                                <li><strong>Creator:</strong> {{ item.creatorName if item.creatorName else order.creator_name }}</li>
+                                <li><strong>Timestamp:</strong> {{ item.timestamp|format_timestamp if item.timestamp else 'N/A' }}</li>
+                                <li><strong>Video URL:</strong> <a href="{{ order.video_url if order.video_url else 'N/A' }}" target="_blank">{{ order.video_url if order.video_url else 'N/A' }}</a></li>
+                                <li><strong>Reference:</strong> Use screenshot at {{ item.timestamp|format_timestamp if item.timestamp else 'N/A' }} from video</li>
+                            </ul>
+                            <p><em>📧 Screenshot not shown due to size - use timestamp reference above</em></p>
+                        </div>
                     {% else %}
+                        <!-- This is likely a thumbnail URL -->
                         <div class="screenshot-info">
                             <ul>
                                 <li><strong>Type:</strong> Video Thumbnail</li>
                                 <li><strong>Video:</strong> {{ item.videoName if item.videoName else 'N/A' }}</li>
+                                <li><strong>Creator:</strong> {{ item.creatorName if item.creatorName else 'N/A' }}</li>
                                 <li><strong>Reference:</strong> Use video thumbnail</li>
                             </ul>
                             {% if item.img and not item.img.startswith('data:image') %}
