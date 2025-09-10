@@ -3131,7 +3131,7 @@ def admin_setup():
             # Create admin user
             admin_user = {
                 'email': 'admin@screenmerch.com',
-                'password_hash': 'admin123',
+                'password_hash': 'VieG369Bbk8!',
                 'role': 'admin',
                 'display_name': 'Admin User',
                 'status': 'active'
@@ -3144,7 +3144,7 @@ def admin_setup():
                 # Update existing user to admin
                 result = supabase.table('users').update({
                     'role': 'admin',
-                    'password_hash': 'admin123'
+                    'password_hash': 'VieG369Bbk8!'
                 }).eq('email', 'admin@screenmerch.com').execute()
                 message = "Admin user updated successfully!"
             else:
@@ -3158,7 +3158,7 @@ def admin_setup():
             <p><strong>Login Credentials:</strong></p>
             <ul>
                 <li>Email: admin@screenmerch.com</li>
-                <li>Password: admin123</li>
+                <li>Password: VieG369Bbk8!</li>
             </ul>
             <p><a href="/admin/login">Go to Admin Login</a></p>
             """
