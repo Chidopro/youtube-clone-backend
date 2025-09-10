@@ -1364,6 +1364,9 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None):
         "product_name": item.get('product', ''),
         "video_id": item.get('video_id', ''),
         "video_title": item.get('video_title', ''),
+        "video_url": item.get('video_url', ''),
+        "creator_name": item.get('creator_name', ''),
+        "screenshot_timestamp": item.get('screenshot_timestamp', ''),
         "image_url": item.get('img', ''),
         "amount": item_price,
         "friend_id": friend_id,
@@ -1434,8 +1437,17 @@ def send_order():
             "created_at": data.get("created_at", "Recent")
         }
         
-        # Record each sale
+        # Record each sale with video metadata
         for item in cart:
+            # Add video metadata to each item if available
+            if 'video_url' in data:
+                item['video_url'] = data['video_url']
+            if 'video_title' in data:
+                item['video_title'] = data['video_title']
+            if 'creator_name' in data:
+                item['creator_name'] = data['creator_name']
+            if 'screenshot_timestamp' in data:
+                item['screenshot_timestamp'] = data['screenshot_timestamp']
             record_sale(item)
         # --- Send Email with Resend ---
         email_data = {
