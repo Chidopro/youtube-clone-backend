@@ -1729,7 +1729,10 @@ def create_checkout_session():
             # A2P 10DLC Compliance: Collect phone number for SMS notifications
             phone_number_collection={"enabled": True},
             metadata={
-                "order_id": order_id  # Only store the small order ID in Stripe
+                "order_id": order_id,  # Only store the small order ID in Stripe
+                "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
+                "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
             }
         )
         return jsonify({"url": session.url})
