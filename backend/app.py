@@ -3333,14 +3333,19 @@ def admin_order_detail(order_id):
                                            video_info.get('author') or 
                                            'Unknown Creator')
                             
+                            # Extract video URL
+                            video_url = video_info.get('video_url', 'Not provided')
+                            
                             # Update order data with extracted metadata
                             order_data['video_title'] = video_title
                             order_data['creator_name'] = creator_name
+                            order_data['video_url'] = video_url
                             
                             # Update the database record
                             update_data = {
                                 'video_title': video_title,
-                                'creator_name': creator_name
+                                'creator_name': creator_name,
+                                'video_url': video_url
                             }
                             supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
                             
