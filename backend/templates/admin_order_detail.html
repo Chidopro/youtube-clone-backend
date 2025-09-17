@@ -128,6 +128,26 @@
             font-weight: bold;
             color: #333;
             font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .print-quality-btn {
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .print-quality-btn:hover {
+            background: #218838;
+            color: white;
         }
         
         .status-badge {
@@ -393,7 +413,10 @@
             <div class="order-info">
                 <div class="info-item">
                     <div class="info-label">Order ID</div>
-                    <div class="info-value">{{ order_id[-8:].upper() }}</div>
+                    <div class="info-value">
+                        {{ order_id[-8:].upper() }}
+                        <a href="/print-quality?order_id={{ order_id }}" target="_blank" class="print-quality-btn" onclick="openPrintQualityTool('{{ order_id }}')" title="Open Print Quality Tool">🖨️</a>
+                    </div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Status</div>
@@ -529,7 +552,7 @@
                 <button class="btn btn-success" onclick="updateStatus('{{ order_id }}', 'processing')">Mark as Processing</button>
                 <button class="btn btn-warning" onclick="updateStatus('{{ order_id }}', 'shipped')">Mark as Shipped</button>
                 <button class="btn btn-info" onclick="copyOrderInfo()">Copy Order Info</button>
-                <a href="https://printful.com/dashboard" target="_blank" class="btn btn-primary">Open Printful</a>
+                <a href="https://www.printful.com/dashboard/order/update" target="_blank" class="btn btn-secondary">Open Printful</a>
             </div>
         </div>
     </div>
@@ -578,6 +601,12 @@ Customer: {{ order.cart[0].email if order.cart and order.cart[0].email else 'N/A
             }).catch(() => {
                 alert('Failed to copy order information');
             });
+        }
+        
+        function openPrintQualityTool(orderId) {
+            // Open the print quality tool with the order ID
+            const url = `/print-quality?order_id=${orderId}`;
+            window.open(url, '_blank');
         }
     </script>
 </body>

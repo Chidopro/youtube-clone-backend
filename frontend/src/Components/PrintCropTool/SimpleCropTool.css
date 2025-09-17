@@ -403,6 +403,19 @@
     box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
 }
 
+.crop-btn.feather {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(238, 90, 36, 0.3);
+}
+
+.crop-btn.feather:hover {
+    background: linear-gradient(135deg, #ee5a24 0%, #d63031 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(238, 90, 36, 0.4);
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .simple-crop-modal {

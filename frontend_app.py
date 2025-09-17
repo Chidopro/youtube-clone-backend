@@ -203,14 +203,14 @@ PRODUCTS = [
     {
         "name": "Women's Ribbed Neck",
         "price": 25.99,
-        "filename": "womensribbedneckpreview.jpg",
+        "filename": "womensribbedneckpreview.png",
         "main_image": "womensribbedneck.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Shirt",
         "price": 26.99,
-        "filename": "womensshirtkevin.png",
+        "filename": "womensshirtpreview.png",
         "main_image": "womensshirt.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
@@ -322,7 +322,7 @@ PRODUCTS = [
     {
         "name": "Women's Tee",
         "price": 23.99,
-        "filename": "womensteepreview.jpg",
+        "filename": "womensteepreview.png",
         "main_image": "womenstee.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
@@ -408,14 +408,14 @@ PRODUCTS = [
     {
         "name": "Women's Ribbed Neck",
         "price": 25.99,
-        "filename": "womensribbedneckpreview.jpg",
+        "filename": "womensribbedneckpreview.png",
         "main_image": "womensribbedneck.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Women's Shirt",
         "price": 26.99,
-        "filename": "womensshirtkevin.png",
+        "filename": "womensshirtpreview.png",
         "main_image": "womensshirt.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
@@ -527,7 +527,7 @@ PRODUCTS = [
     {
         "name": "Women's Tee",
         "price": 23.99,
-        "filename": "womensteepreview.jpg",
+        "filename": "womensteepreview.png",
         "main_image": "womenstee.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
@@ -620,7 +620,7 @@ PRODUCTS = [
         "price": 25.99,
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
-        "preview_image": "womensribbedneckpreview.jpg",
+        "preview_image": "womensribbedneckpreview.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
@@ -628,7 +628,7 @@ PRODUCTS = [
         "price": 26.99,
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
-        "preview_image": "womensshirtkevin.png",
+        "preview_image": "womensshirtpreview.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
@@ -756,7 +756,7 @@ PRODUCTS = [
         "price": 23.99,
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
-        "preview_image": "womensteepreview.jpg",
+        "preview_image": "womensteepreview.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
@@ -833,7 +833,7 @@ PRODUCTS = [
     {
         "name": "Women's Ribbed Neck",
         "price": 24.99,
-        "filename": "womensribbedneckpreview.jpg",
+        "filename": "womensribbedneckpreview.png",
         "main_image": "womensribbedneck.png",
         "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
@@ -1004,6 +1004,14 @@ PRODUCTS = [
         "filename": "iphoneimagepreview.png",
         "main_image": "iphoneimage.png",
         "options": {"color": ["Black", "White"], "size": []}
+    },
+    {
+        "name": "Unisex Pullover Hoodie",
+        "price": 29.99,
+        "filename": "unisexpulloverhoodie.png",
+        "main_image": "unisexpulloverhoodie.png",
+        "preview_image": "unisexpulloverhoodiepreview.png",
+        "options": {"color": ["Black", "White", "Gray", "Navy", "Red"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     }
 ]
 

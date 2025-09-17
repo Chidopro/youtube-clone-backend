@@ -122,6 +122,29 @@ class PrintfulAPI:
         except Exception as e:
             logger.error(f"Failed to generate mockup: {str(e)}")
             raise
+    
+    def calculate_shipping(self, items: list, country_code: str, state_code: str = None, zip_code: str = None) -> dict:
+        """Calculate shipping costs using Printful API"""
+        try:
+            shipping_data = {
+                "recipient": {
+                    "country_code": country_code.upper(),
+                    "state_code": state_code.upper() if state_code else None,
+                    "zip": zip_code
+                },
+                "items": items
+            }
+            
+            # Remove None values
+            if not shipping_data["recipient"]["state_code"]:
+                del shipping_data["recipient"]["state_code"]
+            
+            result = self._make_request("/shipping/rates", "POST", shipping_data)
+            logger.info(f"Shipping calculation successful for {country_code}")
+            return result['result']
+        except Exception as e:
+            logger.error(f"Failed to calculate shipping: {str(e)}")
+            raise
 
 class ScreenMerchPrintfulIntegration:
     """Main integration class for ScreenMerch with Printful"""

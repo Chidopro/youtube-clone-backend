@@ -447,9 +447,12 @@
          user_email: userEmail,
          sms_consent: false, // No SMS consent needed for email notifications
          phone_number: '', // Will be collected by Stripe
-         timestamp: new Date().toISOString(),
+         timestamp: cart.length > 0 ? (cart[0].timestamp || 0) : 0,
          video_title: cart.length > 0 ? (cart[0].video_title || 'Unknown Video') : (productData ? productData.video_title : 'Unknown Video'),
          creator_name: cart.length > 0 ? (cart[0].creator_name || 'Unknown Creator') : (productData ? productData.creator_name : 'Unknown Creator'),
+         video_url: cart.length > 0 ? (cart[0].video_url || 'Not provided') : (productData ? productData.video_url : 'Not provided'),
+         // Include calculated shipping cost
+         shipping_cost: window.calculatedShippingCost || 5.99,
          // Pass shipping address so backend can charge exact shipping
          shipping_address: {
            country_code: document.getElementById('country_code')?.value || 'US',
@@ -498,12 +501,18 @@
         const el = document.getElementById('shipping-result');
         if (data.success) {
           el.textContent = `Shipping: $${Number(data.shipping_cost).toFixed(2)} ${data.currency}${data.delivery_days ? ` • ETA ${data.delivery_days} days` : ''}`;
+          // Store shipping cost for checkout
+          window.calculatedShippingCost = Number(data.shipping_cost);
         } else {
           el.textContent = 'Could not calculate shipping. It will be shown at Stripe.';
+          // Default shipping cost
+          window.calculatedShippingCost = 5.99;
         }
       } catch (e) {
         console.error('Shipping calc error', e);
         document.getElementById('shipping-result').textContent = 'Error calculating shipping.';
+        // Default shipping cost on error
+        window.calculatedShippingCost = 5.99;
       }
     }
 

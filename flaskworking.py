@@ -1893,6 +1893,15 @@ def auth_signup():
         if not re.match(email_pattern, email):
             return jsonify({"success": False, "error": "Please enter a valid email address"}), 400
         
+        # Email whitelist validation
+        allowed_emails = [
+            'chidopro@proton.me',
+            'alancraigdigital@gmail.com', 
+            'digitalavatartutorial@gmail.com'
+        ]
+        if email not in allowed_emails:
+            return jsonify({"success": False, "error": "Access restricted to authorized users only"}), 403
+        
         # Validate password strength
         if len(password) < 6:
             return jsonify({"success": False, "error": "Password must be at least 6 characters long"}), 400

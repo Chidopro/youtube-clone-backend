@@ -10,26 +10,34 @@ import AuthModal from '../AuthModal/AuthModal'
 // Mobile detection hook
 const useIsMobile = () => {
     const [isMobile, setIsMobile] = useState(false);
+    const [isMobilePortrait, setIsMobilePortrait] = useState(false);
     
     useEffect(() => {
         const checkIsMobile = () => {
-            setIsMobile(window.innerWidth <= 768);
+            const mobile = window.innerWidth <= 768;
+            const portrait = mobile && window.innerHeight > window.innerWidth;
+            setIsMobile(mobile);
+            setIsMobilePortrait(portrait);
         };
         
         checkIsMobile();
         window.addEventListener('resize', checkIsMobile);
+        window.addEventListener('orientationchange', checkIsMobile);
         
-        return () => window.removeEventListener('resize', checkIsMobile);
+        return () => {
+            window.removeEventListener('resize', checkIsMobile);
+            window.removeEventListener('orientationchange', checkIsMobile);
+        };
     }, []);
     
-    return isMobile;
+    return { isMobile, isMobilePortrait };
 };
 
 const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData, onScreenshotFunction }) => {
     // Use prop if provided, otherwise fallback to URL param
     const params = useParams();
     const videoId = propVideoId || params.videoId;
-    const isMobile = useIsMobile();
+    const { isMobile, isMobilePortrait } = useIsMobile();
     const [video, setVideo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -56,10 +64,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const [resizeDirection, setResizeDirection] = useState(null);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     
+    // Screenshot timestamps state
+    const [screenshotTimestamps, setScreenshotTimestamps] = useState([]);
+    
     // Safe alert function to prevent rapid-fire alerts - DISABLED TO STOP LOOPS
     const safeAlert = useCallback((message) => {
         // DISABLED TO STOP ENDLESS LOOPS
-        console.log('Alert disabled:', message);
         return;
     }, []);
 
@@ -112,7 +122,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         const fetchVideo = async () => {
             setLoading(true);
             setError('');
-            console.log('Fetching video with ID:', videoId);
             let { data, error } = await supabase
                 .from('videos2')
                 .select('*')
@@ -123,10 +132,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 setError('Video not found.');
                 setVideo(null);
             } else {
-                console.log('Video data fetched:', data);
-                console.log('Video URL:', data.video_url);
-                console.log('Video thumbnail:', data.thumbnail);
-                console.log('Video poster:', data.poster);
+                // console.log('Video data fetched:', data);
+                // console.log('Video URL:', data.video_url);
+                // console.log('Video thumbnail:', data.thumbnail);
+                // console.log('Video poster:', data.poster);
                 
                 // Validate video URL
                 if (!data.video_url) {
@@ -140,7 +149,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 // Test if video URL is accessible
                 try {
                     const response = await fetch(data.video_url, { method: 'HEAD' });
-                    console.log('Video URL accessibility test:', response.status, response.statusText);
+                    // console.log('Video URL accessibility test:', response.status, response.statusText);
                     if (!response.ok) {
                         console.warn('Video URL may not be accessible:', response.status);
                     }
@@ -152,15 +161,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 // Automatically set thumbnail if available
                 if (data.thumbnail || data.poster) {
                     const thumbnailUrl = data.thumbnail || data.poster;
-                    console.log('Setting thumbnail:', thumbnailUrl);
+                    // console.log('Setting thumbnail:', thumbnailUrl);
                     setThumbnail(thumbnailUrl);
                     // Only add thumbnail as first screenshot if screenshots are empty
                     if (setScreenshots && screenshots.length === 0) {
-                        console.log('Adding thumbnail as first screenshot');
+                        // console.log('Adding thumbnail as first screenshot');
                         setScreenshots([thumbnailUrl]);
                     }
                 } else {
-                    console.log('No thumbnail found in video data');
+                    // console.log('No thumbnail found in video data');
                 }
                 // Pass video data to parent component
                 if (onVideoData) {
@@ -179,6 +188,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
         // Clear screenshots when video changes
         setScreenshots([]);
+        // Clear screenshot timestamps when video changes
+        setScreenshotTimestamps([]);
         // Reset capturing state and alert timer
         setIsCapturingScreenshot(false);
         setLastAlertTime(0);
@@ -195,7 +206,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Create a function that can be called from parent component
     // Note: This function is memoized to prevent endless loops when passed to parent
     const captureScreenshotFromParent = useCallback(async () => {
-        console.log('Capture screenshot called from parent component');
+        // console.log('Capture screenshot called from parent component');
         
         // Get current screenshots length from state
         const currentScreenshotsLength = screenshots.length;
@@ -211,19 +222,27 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             return;
         }
 
+        // Get current timestamp
+        const currentTime = videoElement.currentTime || 0;
+
         // Use client-side capture as primary method
-        console.log('Attempting client-side capture from parent...');
+        // console.log('Attempting client-side capture from parent...');
         const clientScreenshot = await captureCurrentVideoFrame();
         
         if (clientScreenshot) {
-            console.log('✅ Client-side screenshot captured successfully from parent');
+            // console.log('✅ Client-side screenshot captured successfully from parent');
             setScreenshots(prev => {
                 const newScreenshots = prev.length < 6 ? [...prev, clientScreenshot] : prev;
                 showGreenFlagConfirmation(prev.length);
                 return newScreenshots;
             });
+            // Store the timestamp
+            setScreenshotTimestamps(prev => {
+                const newTimestamps = prev.length < 6 ? [...prev, currentTime] : prev;
+                return newTimestamps;
+            });
         } else {
-            console.log('❌ Client-side capture failed, trying server-side...');
+            // console.log('❌ Client-side capture failed, trying server-side...');
             
             // Fallback to server-side capture
             try {
@@ -234,7 +253,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     throw new Error('No video URL available');
                 }
                 
-                console.log(`Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
+                // console.log(`Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
                 
                 // Add timeout to prevent long delays
                 const controller = new AbortController();
@@ -262,22 +281,27 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 const result = await response.json();
                 
                 if (result.success && result.screenshot) {
-                    console.log('✅ Server-side screenshot captured successfully');
+                    // console.log('✅ Server-side screenshot captured successfully');
                     setScreenshots(prev => {
                         const newScreenshots = prev.length < 6 ? [...prev, result.screenshot] : prev;
                         showGreenFlagConfirmation(prev.length);
                         return newScreenshots;
+                    });
+                    // Store the timestamp
+                    setScreenshotTimestamps(prev => {
+                        const newTimestamps = prev.length < 6 ? [...prev, currentTime] : prev;
+                        return newTimestamps;
                     });
                 } else {
                     throw new Error(result.error || 'Server failed to capture screenshot');
                 }
                 
             } catch (error) {
-                console.log('❌ Server capture failed, using thumbnail as last resort:', error);
+                // console.log('❌ Server capture failed, using thumbnail as last resort:', error);
                 
                 // Check if it's a timeout/abort error
                 if (error.name === 'AbortError') {
-                    console.log('Screenshot capture timed out after 30 seconds');
+                    // console.log('Screenshot capture timed out after 30 seconds');
                     safeAlert('Screenshot capture timed out. The video might be too large or slow to process. Using thumbnail instead.');
                 }
                 
@@ -285,7 +309,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 const thumbnailUrl = video?.thumbnail || video?.poster || videoElement.poster;
                 
                 if (thumbnailUrl) {
-                    console.log('Using thumbnail as last resort:', thumbnailUrl);
+                    // console.log('Using thumbnail as last resort:', thumbnailUrl);
                     setScreenshots(prev => {
                         const newScreenshots = prev.length < 6 ? [...prev, thumbnailUrl] : prev;
                         showGreenFlagConfirmation(prev.length);
@@ -319,7 +343,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Pass the screenshot function to parent component - DISABLED TO PREVENT LOOPS
     // useEffect(() => {
     //     if (onScreenshotFunction && video && !loading && !screenshotFunctionPassedRef.current) {
-    //         console.log('Passing screenshot function to parent component');
+    //         // console.log('Passing screenshot function to parent component');
     //         onScreenshotFunction(captureScreenshotFromParent);
     //         screenshotFunctionPassedRef.current = true;
     //     }
@@ -327,18 +351,18 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     // Grab Screenshot handler for the button in PlayVideo
     const handleGrabScreenshot = async () => {
-        console.log('Grab Screenshot clicked from PlayVideo button');
+        // console.log('Grab Screenshot clicked from PlayVideo button');
         
         // Prevent multiple simultaneous captures
         if (isCapturingScreenshot) {
-            console.log('Screenshot capture already in progress, ignoring click');
+            // console.log('Screenshot capture already in progress, ignoring click');
             return;
         }
         
         // Minimal protection against rapid clicks (reduced from 1000ms to 100ms)
         const now = Date.now();
         if (now - lastAlertTime < 100) { // Prevent calls within 100ms of last alert
-            console.log('Too soon since last screenshot attempt, ignoring click');
+            // console.log('Too soon since last screenshot attempt, ignoring click');
             return;
         }
         
@@ -372,9 +396,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             
             // Quick check - if video is ready, proceed immediately
             if (videoElement.readyState >= 2 && videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
-                console.log('Video ready for instant capture');
+                // console.log('Video ready for instant capture');
             } else {
-                console.log('Video not ready, using fallback');
+                // console.log('Video not ready, using fallback');
                 return null; // Let it fall back to server-side capture
             }
             
@@ -395,7 +419,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             // Convert to data URL with high quality
             const screenshotData = canvas.toDataURL('image/jpeg', 0.9);
             
-            console.log('Client-side screenshot captured successfully');
+            // console.log('Client-side screenshot captured successfully');
             return screenshotData;
             
         } catch (error) {
@@ -406,23 +430,23 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     // Make Merch handler
     const handleMakeMerch = async () => {
-        console.log('🛍️ Make Merch button clicked');
-        console.log('📱 Is mobile:', isMobile);
-        console.log('📱 User agent:', navigator.userAgent);
+        // console.log('🛍️ Make Merch button clicked');
+        // console.log('📱 Is mobile:', isMobile);
+        // console.log('📱 User agent:', navigator.userAgent);
         
         // Check if user is authenticated
         const isAuthenticated = localStorage.getItem('user_authenticated');
-        console.log('🔐 Auth state:', isAuthenticated);
-        console.log('🔐 Auth state type:', typeof isAuthenticated);
-        console.log('🔐 Auth state length:', isAuthenticated ? isAuthenticated.length : 0);
-        console.log('🔐 All localStorage keys:', Object.keys(localStorage));
+        // console.log('🔐 Auth state:', isAuthenticated);
+        // console.log('🔐 Auth state type:', typeof isAuthenticated);
+        // console.log('🔐 Auth state length:', isAuthenticated ? isAuthenticated.length : 0);
+        // console.log('🔐 All localStorage keys:', Object.keys(localStorage));
         
         if (!isAuthenticated || isAuthenticated === 'false' || isAuthenticated === 'null') {
-            console.log('❌ Not authenticated - showing auth modal');
+            // console.log('❌ Not authenticated - showing auth modal');
             // Store screenshot data for after login
             const merchData = {
                 thumbnail,
-                videoUrl: window.location.href,
+                videoUrl: video?.video_url || window.location.href,
                 screenshots: screenshots.slice(0, 6),
             };
             localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
@@ -432,7 +456,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             return;
         }
         
-        console.log('✅ Authenticated - proceeding with merch creation');
+        // console.log('✅ Authenticated - proceeding with merch creation');
         // User is authenticated, proceed with merch creation
         await createMerchProduct();
     };
@@ -665,7 +689,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         
         try {
             // Use server-side screenshot capture to avoid cross-origin issues
-            console.log('Using server-side screenshot capture for crop...');
+            // console.log('Using server-side screenshot capture for crop...');
             
             if (!video?.video_url) {
                 alert('Video URL not available. Please try again.');
@@ -675,7 +699,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             const currentTime = videoElement.currentTime || 0;
             const videoUrl = video.video_url;
             
-            console.log(`Requesting server-side screenshot at ${currentTime}s from ${videoUrl}`);
+            // console.log(`Requesting server-side screenshot at ${currentTime}s from ${videoUrl}`);
             
             const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
                 method: 'POST',
@@ -729,13 +753,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     const finalCropWidth = Math.min(screenshotCropWidth, img.width - finalCropX);
                     const finalCropHeight = Math.min(screenshotCropHeight, img.height - finalCropY);
                     
-                    console.log('Crop coordinates:', {
-                        display: cropArea,
-                        screenshot: { x: finalCropX, y: finalCropY, width: finalCropWidth, height: finalCropHeight },
-                        scale: { x: scaleX, y: scaleY },
-                        imageSize: { width: img.width, height: img.height },
-                        displaySize: { width: displayWidth, height: displayHeight }
-                    });
+                    // console.log('Crop coordinates:', {
+                    //     display: cropArea,
+                    //     screenshot: { x: finalCropX, y: finalCropY, width: finalCropWidth, height: finalCropHeight },
+                    //     scale: { x: scaleX, y: scaleY },
+                    //     imageSize: { width: img.width, height: img.height },
+                    //     displaySize: { width: displayWidth, height: displayHeight }
+                    // });
                     
                     // Set canvas size to crop area
                     canvas.width = finalCropWidth;
@@ -754,7 +778,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     // Convert to data URL
                     const croppedImageUrl = canvas.toDataURL('image/jpeg', 0.9);
                     
-                    console.log('Crop successful, image size:', finalCropWidth, 'x', finalCropHeight);
+                    // console.log('Crop successful, image size:', finalCropWidth, 'x', finalCropHeight);
                     
                     // Add to screenshots
                     setScreenshots(prev => {
@@ -800,16 +824,19 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Create merch product function
     const createMerchProduct = async () => {
         try {
-            console.log('🎯 CreateMerchProduct function called');
-            console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
+            // console.log('🎯 CreateMerchProduct function called');
+            // console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
             
             const requestData = {
                 thumbnail,
-                videoUrl: window.location.href,
+                videoUrl: video?.video_url || window.location.href,
                 screenshots: screenshots.slice(0, 6),
+                screenshot_timestamp: screenshotTimestamps[0] || 0, // Use first screenshot timestamp
+                videoTitle: video?.title || 'Unknown Video',
+                creatorName: video?.channelTitle || 'Unknown Creator'
             };
             
-            console.log('Request data:', requestData);
+            // console.log('Request data:', requestData);
             
             const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
                 method: 'POST',
@@ -820,8 +847,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 body: JSON.stringify(requestData)
             });
             
-            console.log('Response status:', response.status);
-            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+            // console.log('Response status:', response.status);
+            // console.log('Response headers:', Object.fromEntries(response.headers.entries()));
             
             if (!response.ok) {
                 const errorText = await response.text();
@@ -830,7 +857,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             }
             
             const data = await response.json();
-            console.log('Response data:', data);
+            // console.log('Response data:', data);
             
             if (data.success && data.product_url) {
                 if (isMobile) {
@@ -870,18 +897,18 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
 
         const video = videoRef.current;
-        console.log('Testing video playback...');
-        console.log('Video URL:', video.src);
-        console.log('Video ready state:', video.readyState);
-        console.log('Video network state:', video.networkState);
-        console.log('Video paused:', video.paused);
-        console.log('Video current time:', video.currentTime);
-        console.log('Video duration:', video.duration);
+        // console.log('Testing video playback...');
+        // console.log('Video URL:', video.src);
+        // console.log('Video ready state:', video.readyState);
+        // console.log('Video network state:', video.networkState);
+        // console.log('Video paused:', video.paused);
+        // console.log('Video current time:', video.currentTime);
+        // console.log('Video duration:', video.duration);
 
         try {
             // Try to play the video
             await video.play();
-            console.log('Video play() successful');
+            // console.log('Video play() successful');
             alert('Video playback test successful! Video should be playing now.');
         } catch (error) {
             console.error('Video play() failed:', error);
@@ -892,7 +919,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Green flag confirmation function - DISABLED TO STOP LOOPS
     const showGreenFlagConfirmation = useCallback((screenshotCount) => {
         // DISABLED TO STOP ENDLESS LOOPS
-        console.log('Green flag disabled for screenshot:', screenshotCount + 1);
+        // console.log('Green flag disabled for screenshot:', screenshotCount + 1);
         return;
     }, []);
 
@@ -903,8 +930,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             return;
         }
 
-        console.log('Testing video URL accessibility...');
-        console.log('Video URL:', video.video_url);
+        // console.log('Testing video URL accessibility...');
+        // console.log('Video URL:', video.video_url);
 
         try {
             // Test with HEAD request first
@@ -912,9 +939,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 method: 'HEAD',
                 mode: 'cors'
             });
-            console.log('HEAD request result:', headResponse.status, headResponse.statusText);
-            console.log('Content-Type:', headResponse.headers.get('content-type'));
-            console.log('Content-Length:', headResponse.headers.get('content-length'));
+            // console.log('HEAD request result:', headResponse.status, headResponse.statusText);
+            // console.log('Content-Type:', headResponse.headers.get('content-type'));
+            // console.log('Content-Length:', headResponse.headers.get('content-length'));
 
             if (headResponse.ok) {
                 alert(`✅ Video URL is accessible!\nStatus: ${headResponse.status}\nContent-Type: ${headResponse.headers.get('content-type')}`);
@@ -988,14 +1015,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     <video 
                         key={videoId}
                         ref={videoRef} 
-                        controls 
+                        controls
                         poster={video.thumbnail || ''}
                         width="100%" 
                         height={isMobile ? "320" : "360"}
                         style={{
                             background: '#000', 
                             width: '100%',
-                            height: isMobile ? '320px' : '360px'
+                            height: isMobile ? '320px' : '360px',
+                            outline: 'none'
                         }} 
                         src={video.video_url}
                         crossOrigin="anonymous"
@@ -1003,12 +1031,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         webkit-playsinline="true"
                         x-webkit-airplay="allow"
                         preload="metadata"
+                        disablePictureInPicture
                         onCanPlay={() => {
-                            console.log('Video can play');
+                            // console.log('Video can play');
                             setLoading(false);
                         }}
                         onLoadedData={() => {
-                            console.log('Video data loaded');
+                            // console.log('Video data loaded');
                             setLoading(false);
                         }}
                     />
@@ -1276,7 +1305,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 marginTop: '10px',
                 marginBottom: isMobile ? '5px' : '15px',
                 fontWeight: '600',
-                fontSize: '22px'
+                fontSize: '22px',
+                textAlign: isMobilePortrait ? 'center' : 'left'
             }}>{video.title}</h3>
 
             <div className="publisher">
@@ -1300,8 +1330,8 @@ export default PlayVideo
 
 
 export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot }) => {
-    console.log('ScreenmerchImages: Received screenshots:', screenshots);
-    console.log('ScreenmerchImages: Received thumbnail:', thumbnail);
+    // console.log('ScreenmerchImages: Received screenshots:', screenshots);
+    // console.log('ScreenmerchImages: Received thumbnail:', thumbnail);
     
     return (
         <div className="screenmerch-images-grid">
@@ -1322,7 +1352,9 @@ export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot }
                                     objectFit: 'contain'
                                 }}
                                 onError={(e) => console.error(`Failed to load screenshot ${idx + 1}:`, e.target.src)}
-                                onLoad={() => console.log(`Screenshot ${idx + 1} loaded successfully:`, screenshots[idx])}
+                                onLoad={() => {
+                                    // console.log(`Screenshot ${idx + 1} loaded successfully:`, screenshots[idx]);
+                                }}
                             />
                             <div className="screenmerch-buttons">
                                 <button className="screenmerch-delete-btn" onClick={() => onDeleteScreenshot(idx)} title="Delete screenshot">×</button>
