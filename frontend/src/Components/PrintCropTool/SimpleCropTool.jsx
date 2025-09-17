@@ -269,6 +269,86 @@ const SimpleCropTool = ({ isOpen, image, onCrop, onCancel }) => {
         }
     };
 
+    const handleFeatherEffect = async () => {
+        try {
+            // First crop the image
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            // Convert display coordinates to original image coordinates
+            const originalCropArea = convertToOriginalCoords(cropArea);
+            
+            img.onload = async () => {
+                canvas.width = originalCropArea.width;
+                canvas.height = originalCropArea.height;
+                
+                // Clear canvas and draw the cropped portion
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(
+                    img,
+                    originalCropArea.x, originalCropArea.y, originalCropArea.width, originalCropArea.height,
+                    0, 0, originalCropArea.width, originalCropArea.height
+                );
+                
+                const croppedImageData = canvas.toDataURL('image/png');
+                
+                // Apply feather effect to the cropped image
+                const featherPayload = {
+                    image_data: croppedImageData,
+                    feather_radius: 12
+                };
+                
+                const featherResponse = await fetch('https://copy5-backend.fly.dev/api/process-shirt-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(featherPayload)
+                });
+                
+                if (featherResponse.ok) {
+                    const featherResult = await featherResponse.json();
+                    
+                    // Automatically generate print quality image with feather effect
+                    const printPayload = {
+                        thumbnail_data: featherResult.processed_image,
+                        print_dpi: 300,
+                        soft_corners: false,
+                        edge_feather: true
+                    };
+                    
+                    const printResponse = await fetch('https://copy5-backend.fly.dev/api/process-thumbnail-print-quality', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(printPayload)
+                    });
+                    
+                    if (printResponse.ok) {
+                        const printResult = await printResponse.json();
+                        // Return the final print quality image with feather effect
+                        onCrop(printResult.screenshot);
+                        alert('✨ Feather effect applied and print quality image generated!');
+                    } else {
+                        // Fallback to just the feather effect
+                        onCrop(featherResult.processed_image);
+                        alert('✨ Feather effect applied!');
+                    }
+                } else {
+                    const error = await featherResponse.json();
+                    alert('Error applying feather effect: ' + (error.error || 'Unknown error'));
+                }
+            };
+            
+            img.src = image;
+        } catch (error) {
+            console.error('Error during feather effect:', error);
+            alert('Error applying feather effect. Please try again.');
+        }
+    };
+
     // Check if crop size meets print requirements
     const getPrintSizeStatus = () => {
         const results = {};
@@ -389,6 +469,7 @@ const SimpleCropTool = ({ isOpen, image, onCrop, onCancel }) => {
                 <div className="simple-crop-footer">
                     <button className="crop-btn cancel" onClick={onCancel}>Cancel</button>
                     <button className="crop-btn apply" onClick={handleCrop}>Apply Crop</button>
+                    <button className="crop-btn feather" onClick={handleFeatherEffect}>✨ Apply Feather & Generate Print Quality</button>
                 </div>
             </div>
         </div>

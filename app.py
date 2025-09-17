@@ -310,7 +310,8 @@ PRODUCTS = [
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "preview_image": "guidonpreview.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "mens"
     },
     {
         "name": "Unisex Classic Tee",
@@ -318,7 +319,8 @@ PRODUCTS = [
         "filename": "unisexclassictee.png",
         "main_image": "unisexclassictee.png",
         "preview_image": "unisexclassicteepreview.png",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "mens"
     },
     {
         "name": "Men's Tank Top",
@@ -326,7 +328,8 @@ PRODUCTS = [
         "filename": "random.png",
         "main_image": "random.png",
         "preview_image": "randompreview.png",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "mens"
     },
     {
         "name": "Unisex Hoodie",
@@ -334,7 +337,8 @@ PRODUCTS = [
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "testedpreview.png",
-        "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "mens"
     },
     {
         "name": "Cropped Hoodie",
@@ -342,7 +346,8 @@ PRODUCTS = [
         "filename": "croppedhoodie.png",
         "main_image": "croppedhoodie.png",
         "preview_image": "croppedhoodiepreview.png",
-        "options": {"color": ["Black", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "womens"
     },
     {
         "name": "Unisex Champion Hoodie",
@@ -350,23 +355,26 @@ PRODUCTS = [
         "filename": "hoodiechampion.png",
         "main_image": "hoodiechampion.png",
         "preview_image": "hoodiechampionpreview.jpg",
-        "options": {"color": ["Black", "Gray"], "size": ["13 inch", "15 inch"]}
+        "options": {"color": ["Black", "Gray"], "size": ["13 inch", "15 inch"]},
+        "category": "mens"
     },
     {
         "name": "Women's Ribbed Neck",
         "price": 25.99,
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
-        "preview_image": "womensribbedneckpreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "preview_image": "womensribbedneckpreview.png",
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "womens"
     },
     {
         "name": "Women's Shirt",
         "price": 26.99,
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
-        "preview_image": "womensshirtkevin.png",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "preview_image": "womensshirtpreview.png",
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "womens"
     },
     {
         "name": "Women's HD Shirt",
@@ -374,7 +382,8 @@ PRODUCTS = [
         "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
         "preview_image": "womenshdshirtpreview.png",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "womens"
     },
     {
         "name": "Kids Shirt",
@@ -382,7 +391,8 @@ PRODUCTS = [
         "filename": "kidshirt.png",
         "main_image": "kidshirt.png",
         "preview_image": "kidshirtpreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "kids"
     },
     {
         "name": "Kids Hoodie",
@@ -390,7 +400,8 @@ PRODUCTS = [
         "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
         "preview_image": "kidhoodiepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "kids"
     },
     {
         "name": "Kids Long Sleeve",
@@ -398,7 +409,8 @@ PRODUCTS = [
         "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
         "preview_image": "kidlongsleevepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "kids"
     },
     {
         "name": "Canvas Tote",
@@ -406,7 +418,8 @@ PRODUCTS = [
         "filename": "allovertotebag.png",
         "main_image": "allovertotebag.png",
         "preview_image": "allovertotebagpreview.png",
-        "options": {"color": ["Natural", "Black"], "size": []}
+        "options": {"color": ["Natural", "Black"], "size": []},
+        "category": "bags"
     },
     {
         "name": "Tote Bag",
@@ -414,7 +427,8 @@ PRODUCTS = [
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
         "preview_image": "drawstringbagpreview.png",
-        "options": {"color": ["White", "Black", "Blue"], "size": []}
+        "options": {"color": ["White", "Black", "Blue"], "size": []},
+        "category": "bags"
     },
     {
         "name": "Large Canvas Bag",
@@ -422,7 +436,8 @@ PRODUCTS = [
         "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
         "preview_image": "largecanvasbagpreview.png",
-        "options": {"color": ["Natural", "Black", "Navy"], "size": []}
+        "options": {"color": ["Natural", "Black", "Navy"], "size": []},
+        "category": "bags"
     },
     {
         "name": "Greeting Card",
@@ -430,7 +445,8 @@ PRODUCTS = [
         "filename": "greetingcard.png",
         "main_image": "greetingcard.png",
         "preview_image": "greetingcardpreview.png",
-        "options": {"color": ["White", "Cream"], "size": []}
+        "options": {"color": ["White", "Cream"], "size": []},
+        "category": "misc"
     },
     {
         "name": "Notebook",
@@ -438,7 +454,8 @@ PRODUCTS = [
         "filename": "hardcovernotebook.png",
         "main_image": "hardcovernotebook.png",
         "preview_image": "hardcovernotebookpreview.png",
-        "options": {"color": ["Black", "Blue"], "size": []}
+        "options": {"color": ["Black", "Blue"], "size": []},
+        "category": "misc"
     },
     {
         "name": "Coasters",
@@ -446,7 +463,8 @@ PRODUCTS = [
         "filename": "coaster.png",
         "main_image": "coaster.png",
         "preview_image": "coasterpreview.jpg",
-        "options": {"color": ["Wood", "Cork", "Black"], "size": []}
+        "options": {"color": ["Wood", "Cork", "Black"], "size": []},
+        "category": "misc"
     },
     {
         "name": "Sticker Pack",
@@ -454,7 +472,8 @@ PRODUCTS = [
         "filename": "stickers.png",
         "main_image": "stickers.png",
         "preview_image": "stickerspreview.png",
-        "options": {"color": [], "size": []}
+        "options": {"color": [], "size": []},
+        "category": "stickers"
     },
     {
         "name": "Dog Bowl",
@@ -462,7 +481,8 @@ PRODUCTS = [
         "filename": "dogbowl.png",
         "main_image": "dogbowl.png",
         "preview_image": "dogbowlpreview.png",
-        "options": {"color": [], "size": []}
+        "options": {"color": [], "size": []},
+        "category": "pets"
     },
     {
         "name": "Magnet Set",
@@ -470,7 +490,8 @@ PRODUCTS = [
         "filename": "magnet.png",
         "main_image": "magnet.png",
         "preview_image": "magnetpreview.png",
-        "options": {"color": [], "size": []}
+        "options": {"color": [], "size": []},
+        "category": "stickers"
     },
     {
         "name": "Men's Long Sleeve",
@@ -478,7 +499,17 @@ PRODUCTS = [
         "filename": "menslongsleeve.png",
         "main_image": "menslongsleeve.png",
         "preview_image": "menslongsleevepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "mens"
+    },
+    {
+        "name": "Unisex Pullover Hoodie",
+        "price": 29.99,
+        "filename": "unisexpulloverhoodie.png",
+        "main_image": "unisexpulloverhoodie.png",
+        "preview_image": "unisexpulloverhoodiepreview.png",
+        "options": {"color": ["Black", "White", "Gray", "Navy", "Red"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "womens"
     },
     {
         "name": "Women's Tank",
@@ -486,15 +517,17 @@ PRODUCTS = [
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "womens"
     },
     {
         "name": "Women's Tee",
         "price": 23.99,
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
-        "preview_image": "womensteepreview.jpg",
-        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
+        "preview_image": "womensteepreview.png",
+        "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "womens"
     },
     {
         "name": "Distressed Dad Hat",
@@ -502,7 +535,8 @@ PRODUCTS = [
         "filename": "distresseddadhat.jpg",
         "main_image": "distresseddadhat.jpg",
         "preview_image": "distresseddadhatpreview.jpg",
-        "options": {"color": ["Black", "Navy", "Gray"], "size": ["One Size"]}
+        "options": {"color": ["Black", "Navy", "Gray"], "size": ["One Size"]},
+        "category": "hats"
     },
     {
         "name": "Snapback Hat",
@@ -510,7 +544,8 @@ PRODUCTS = [
         "filename": "snapbackhat.png",
         "main_image": "snapbackhat.png",
         "preview_image": "snapbackhatpreview.png",
-        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}
+        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]},
+        "category": "hats"
     },
     {
         "name": "Five Panel Trucker Hat",
@@ -518,7 +553,8 @@ PRODUCTS = [
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
         "preview_image": "fivepaneltruckerhatpreview.jpg",
-        "options": {"color": ["Black", "White", "Navy"], "size": ["One Size"]}
+        "options": {"color": ["Black", "White", "Navy"], "size": ["One Size"]},
+        "category": "hats"
     },
     {
         "name": "Flat Bill Cap",
@@ -526,7 +562,8 @@ PRODUCTS = [
         "filename": "flatbillcap.png",
         "main_image": "flatbillcap.png",
         "preview_image": "flatbillcappreview.png",
-        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]}
+        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]},
+        "category": "hats"
     },
     {
         "name": "Crossbody Bag",
@@ -534,7 +571,8 @@ PRODUCTS = [
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
         "preview_image": "crossbodybagpreview.png",
-        "options": {"color": ["Black", "Brown", "Tan"], "size": []}
+        "options": {"color": ["Black", "Brown", "Tan"], "size": []},
+        "category": "bags"
     },
     {
         "name": "Baby Bib",
@@ -542,7 +580,17 @@ PRODUCTS = [
         "filename": "babybib.png",
         "main_image": "babybib.png",
         "preview_image": "babybibpreview.jpg",
-        "options": {"color": ["White", "Pink", "Blue"], "size": []}
+        "options": {"color": ["White", "Pink", "Blue"], "size": []},
+        "category": "kids"
+    },
+    {
+        "name": "Pajama Shorts",
+        "price": 24.99,
+        "filename": "pajamashorts.png",
+        "main_image": "pajamashorts.png",
+        "preview_image": "pajamashortspreview.png",
+        "options": {"color": ["Black", "White", "Gray", "Navy", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "womens"
     }
 ]
 
@@ -708,6 +756,16 @@ def create_product():
 def show_product_page(product_id):
     logger.info(f"🔍 Attempting to show product page for ID: {product_id}")
     
+    # Get category filter from URL parameters
+    category = request.args.get('category', None)
+    logger.info(f"🎯 Category filter: {category}")
+    
+    # Filter products by category if specified
+    filtered_products = PRODUCTS
+    if category:
+        filtered_products = [p for p in PRODUCTS if p.get('category') == category]
+        logger.info(f"🔍 Filtered {len(filtered_products)} products for category '{category}'")
+    
     try:
         # Try to get from Supabase first
         try:
@@ -741,12 +799,13 @@ def show_product_page(product_id):
                         'product_page.html',
                         img_url=product_data.get('thumbnail_url'),
                         screenshots=screenshots,
-                        products=PRODUCTS,
+                        products=filtered_products,
                         product_id=product_id,
                         email='',
                         channel_id='',
                         video_title=product_data.get('video_title', 'Unknown Video'),
-                        creator_name=product_data.get('creator_name', 'Unknown Creator')
+                        creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                        current_category=category
                     )
                 except Exception as template_error:
                     logger.error(f"❌ Template rendering error: {str(template_error)}")
@@ -767,12 +826,13 @@ def show_product_page(product_id):
                 'product_page.html',
                 img_url=product_data.get('thumbnail'),
                 screenshots=product_data.get('screenshots', []),
-                products=PRODUCTS,
+                products=filtered_products,
                 product_id=product_id,
                 email='',
                 channel_id='',
                 video_title=product_data.get('video_title', 'Unknown Video'),
-                creator_name=product_data.get('creator_name', 'Unknown Creator')
+                creator_name=product_data.get('creator_name', 'Unknown Creator'),
+                current_category=category
             )
         else:
             logger.warning(f"⚠️ Product not found in memory storage either")
@@ -788,12 +848,13 @@ def show_product_page(product_id):
         'product_page.html',
         img_url='',
         screenshots=[],
-        products=PRODUCTS,
+        products=filtered_products,
         product_id=product_id,
         email='',
         channel_id='',
         video_title='Unknown Video',
-        creator_name='Unknown Creator'
+        creator_name='Unknown Creator',
+        current_category=category
     )
 
 @app.route("/checkout/<product_id>")
@@ -1376,6 +1437,69 @@ def create_printful_order():
         logger.error(f"Printful order creation error: {str(e)}")
         return jsonify(success=False, error="Internal server error"), 500
 
+@app.route("/api/calculate-shipping", methods=["POST", "OPTIONS"])
+def calculate_shipping():
+    """Calculate shipping costs using Printful API"""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    
+    try:
+        data = request.get_json()
+        items = data.get('items', [])
+        country_code = data.get('country', 'US')
+        state_code = data.get('state')
+        zip_code = data.get('zip')
+        
+        if not items:
+            return jsonify({
+                "success": False,
+                "error": "No items provided for shipping calculation"
+            }), 400
+        
+        # Format items for Printful API
+        printful_items = []
+        for item in items:
+            # Get the variant ID from the item
+            variant_id = item.get('printful_variant_id') or item.get('variant_id')
+            if not variant_id:
+                # Try to get variant ID from product mapping
+                product_type = item.get('product_type', 'Unisex Classic Tee')
+                color = item.get('color', 'Black')
+                size = item.get('size', 'M')
+                
+                # Get variant ID from product mappings
+                product_mapping = printful_integration.product_mappings.get(product_type)
+                if product_mapping and color in product_mapping['colors']:
+                    variant_id = product_mapping['colors'][color]
+                else:
+                    # Default to a common variant ID
+                    variant_id = 4012  # Bella + Canvas 3001 Unisex Short Sleeve Jersey T-Shirt
+            
+            printful_items.append({
+                "variant_id": variant_id,
+                "quantity": item.get('quantity', 1)
+            })
+        
+        # Calculate shipping using Printful API
+        shipping_rates = printful_integration.printful.calculate_shipping(
+            items=printful_items,
+            country_code=country_code,
+            state_code=state_code,
+            zip_code=zip_code
+        )
+        
+        return jsonify({
+            "success": True,
+            "shipping_rates": shipping_rates
+        })
+        
+    except Exception as e:
+        logger.error(f"Shipping calculation error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": f"Failed to calculate shipping: {str(e)}"
+        }), 500
+
 @app.route("/api/videos", methods=["GET"])
 def get_videos():
     try:
@@ -1883,6 +2007,15 @@ def auth_signup():
         if not re.match(email_pattern, email):
             return jsonify({"success": False, "error": "Please enter a valid email address"}), 400
         
+        # Email whitelist validation
+        allowed_emails = [
+            'chidopro@proton.me',
+            'alancraigdigital@gmail.com', 
+            'digitalavatartutorial@gmail.com'
+        ]
+        if email not in allowed_emails:
+            return jsonify({"success": False, "error": "Access restricted to authorized users only"}), 403
+        
         # Validate password strength
         if len(password) < 6:
             return jsonify({"success": False, "error": "Password must be at least 6 characters long"}), 400
@@ -2281,6 +2414,551 @@ def fix_database_schema():
     except Exception as e:
         logger.error(f"❌ Error fixing database schema: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+# NEW: Print Quality Page
+@app.route("/print-quality")
+def print_quality_page():
+    """Serve the print quality image generator page"""
+    order_id = request.args.get('order_id')
+    return render_template('print_quality.html', order_id=order_id)
+
+# NEW: Get Order Details API
+@app.route("/api/get-order-details/<order_id>")
+def get_order_details(order_id):
+    """Get order details for customer info copying"""
+    try:
+        # Get order from database
+        result = supabase.table('orders').select('*').eq('id', order_id).execute()
+        
+        if result.data:
+            order = result.data[0]
+            customer_info = {
+                'name': order.get('customer_name', ''),
+                'email': order.get('customer_email', ''),
+                'phone': order.get('customer_phone', ''),
+                'shipping_address': order.get('shipping_address', '')
+            }
+            return jsonify({"success": True, "customer_info": customer_info})
+        else:
+            return jsonify({"success": False, "error": "Order not found"}), 404
+    except Exception as e:
+        logger.error(f"Error getting order details: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# NEW: Stage 1 - Apply Radius Only API
+@app.route("/api/apply-radius-only", methods=["POST"])
+def apply_radius_only():
+    """Apply only radius effect to an image"""
+    import signal
+    import time
+    
+    def timeout_handler(signum, frame):
+        raise TimeoutError("Processing timeout")
+    
+    try:
+        # Set a 5-second timeout for single effect
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(5)
+        
+        from PIL import Image, ImageFilter, ImageDraw
+        import io
+        import base64
+        
+        data = request.get_json()
+        thumbnail_data = data.get('thumbnail_data')
+        crop_area = data.get('crop_area')
+        
+        if not thumbnail_data:
+            return jsonify({"success": False, "error": "No thumbnail data provided"}), 400
+        
+        # Decode base64 image
+        if thumbnail_data.startswith('data:image'):
+            thumbnail_data = thumbnail_data.split(',')[1]
+        
+        image_data = base64.b64decode(thumbnail_data)
+        image = Image.open(io.BytesIO(image_data))
+        
+        # Apply crop if specified
+        if crop_area:
+            x = int(crop_area['x'] * image.width)
+            y = int(crop_area['y'] * image.height)
+            width = int(crop_area['width'] * image.width)
+            height = int(crop_area['height'] * image.height)
+            image = image.crop((x, y, x + width, y + height))
+        
+        # Apply only radius effect
+        try:
+            logger.info("Applying radius effect only...")
+            image = apply_soft_corners_fast(image)
+            logger.info("Radius effect applied successfully")
+        except Exception as e:
+            logger.error(f"Error applying radius: {str(e)}")
+            return jsonify({"success": False, "error": f"Failed to apply radius: {str(e)}"}), 500
+        
+        # Convert to base64 for response
+        output_buffer = io.BytesIO()
+        image.save(output_buffer, format='PNG')
+        output_buffer.seek(0)
+        processed_image_data = base64.b64encode(output_buffer.getvalue()).decode()
+        
+        # Cancel timeout
+        signal.alarm(0)
+        
+        return jsonify({
+            "success": True,
+            "screenshot": f"data:image/png;base64,{processed_image_data}",
+            "effect": "radius_only"
+        })
+        
+    except TimeoutError as e:
+        signal.alarm(0)
+        logger.error(f"Processing timeout: {str(e)}")
+        return jsonify({"success": False, "error": "Processing timeout"}), 408
+    except Exception as e:
+        signal.alarm(0)
+        logger.error(f"Error processing radius: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# NEW: Stage 2 - Apply Feather Only API
+@app.route("/api/apply-feather-only", methods=["POST"])
+def apply_feather_only():
+    """Apply only feather effect to an image"""
+    import signal
+    import time
+    
+    def timeout_handler(signum, frame):
+        raise TimeoutError("Processing timeout")
+    
+    try:
+        # Set a 5-second timeout for single effect
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(5)
+        
+        from PIL import Image, ImageFilter, ImageDraw
+        import io
+        import base64
+        
+        data = request.get_json()
+        thumbnail_data = data.get('thumbnail_data')
+        crop_area = data.get('crop_area')
+        
+        if not thumbnail_data:
+            return jsonify({"success": False, "error": "No thumbnail data provided"}), 400
+        
+        # Decode base64 image
+        if thumbnail_data.startswith('data:image'):
+            thumbnail_data = thumbnail_data.split(',')[1]
+        
+        image_data = base64.b64decode(thumbnail_data)
+        image = Image.open(io.BytesIO(image_data))
+        
+        # Apply crop if specified
+        if crop_area:
+            x = int(crop_area['x'] * image.width)
+            y = int(crop_area['y'] * image.height)
+            width = int(crop_area['width'] * image.width)
+            height = int(crop_area['height'] * image.height)
+            image = image.crop((x, y, x + width, y + height))
+        
+        # Apply only feather effect
+        try:
+            logger.info("Applying feather effect only...")
+            image = apply_edge_feather_fast(image)
+            logger.info("Feather effect applied successfully")
+        except Exception as e:
+            logger.error(f"Error applying feather: {str(e)}")
+            return jsonify({"success": False, "error": f"Failed to apply feather: {str(e)}"}), 500
+        
+        # Convert to base64 for response
+        output_buffer = io.BytesIO()
+        image.save(output_buffer, format='PNG')
+        output_buffer.seek(0)
+        processed_image_data = base64.b64encode(output_buffer.getvalue()).decode()
+        
+        # Cancel timeout
+        signal.alarm(0)
+        
+        return jsonify({
+            "success": True,
+            "screenshot": f"data:image/png;base64,{processed_image_data}",
+            "effect": "feather_only"
+        })
+        
+    except TimeoutError as e:
+        signal.alarm(0)
+        logger.error(f"Processing timeout: {str(e)}")
+        return jsonify({"success": False, "error": "Processing timeout"}), 408
+    except Exception as e:
+        signal.alarm(0)
+        logger.error(f"Error processing feather: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# NEW: Process Thumbnail Print Quality API
+@app.route("/api/process-thumbnail-print-quality", methods=["POST"])
+def process_thumbnail_print_quality():
+    """Process thumbnail image for print quality with soft corners and edge feathering"""
+    import signal
+    import time
+    
+    def timeout_handler(signum, frame):
+        raise TimeoutError("Processing timeout")
+    
+    try:
+        # Set a 10-second timeout (should be much faster now)
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(10)
+        from PIL import Image, ImageFilter, ImageDraw
+        import io
+        import base64
+        
+        data = request.get_json()
+        thumbnail_data = data.get('thumbnail_data')
+        print_dpi = data.get('print_dpi', 300)
+        soft_corners = data.get('soft_corners', False)
+        edge_feather = data.get('edge_feather', False)
+        crop_area = data.get('crop_area')
+        
+        # Debug logging
+        logger.info(f"Processing thumbnail - soft_corners: {soft_corners}, edge_feather: {edge_feather}")
+        print(f"DEBUG: soft_corners={soft_corners}, edge_feather={edge_feather}")
+        
+        if not thumbnail_data:
+            return jsonify({"success": False, "error": "No thumbnail data provided"}), 400
+        
+        # Decode base64 image
+        if thumbnail_data.startswith('data:image'):
+            thumbnail_data = thumbnail_data.split(',')[1]
+        
+        image_data = base64.b64decode(thumbnail_data)
+        image = Image.open(io.BytesIO(image_data))
+        
+        # Apply crop if specified
+        if crop_area:
+            x = int(crop_area['x'] * image.width)
+            y = int(crop_area['y'] * image.height)
+            width = int(crop_area['width'] * image.width)
+            height = int(crop_area['height'] * image.height)
+            image = image.crop((x, y, x + width, y + height))
+        
+        # Apply effects separately for better performance and control
+        if soft_corners:
+            try:
+                logger.info("Applying soft corners...")
+                image = apply_soft_corners_fast(image)
+                logger.info("Soft corners applied successfully")
+            except Exception as e:
+                logger.error(f"Error applying soft corners: {str(e)}")
+                return jsonify({"success": False, "error": f"Failed to apply soft corners: {str(e)}"}), 500
+        
+        if edge_feather:
+            try:
+                logger.info("Applying edge feathering...")
+                image = apply_edge_feather_fast(image)
+                logger.info("Edge feathering applied successfully")
+            except Exception as e:
+                logger.error(f"Error applying edge feathering: {str(e)}")
+                return jsonify({"success": False, "error": f"Failed to apply edge feathering: {str(e)}"}), 500
+        
+        # Resize for print quality (maintain aspect ratio) - optimized for performance
+        target_width = int(print_dpi * 8)  # 8 inches wide
+        aspect_ratio = image.height / image.width
+        target_height = int(target_width * aspect_ratio)
+        
+        # Limit maximum size to prevent performance issues
+        max_size = 4000  # Maximum dimension to prevent memory issues
+        if target_width > max_size or target_height > max_size:
+            if target_width > target_height:
+                target_width = max_size
+                target_height = int(target_width * aspect_ratio)
+            else:
+                target_height = max_size
+                target_width = int(target_height / aspect_ratio)
+        
+        image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+        
+        # Save processed image
+        output_buffer = io.BytesIO()
+        image.save(output_buffer, format='PNG', dpi=(print_dpi, print_dpi))
+        output_buffer.seek(0)
+        
+        # Convert to base64 for response
+        processed_image_data = base64.b64encode(output_buffer.getvalue()).decode()
+        
+        # Cancel timeout
+        signal.alarm(0)
+        
+        return jsonify({
+            "success": True,
+            "screenshot": f"data:image/png;base64,{processed_image_data}",
+            "dimensions": {
+                "width": target_width,
+                "height": target_height,
+                "dpi": print_dpi
+            },
+            "file_size": len(output_buffer.getvalue()),
+            "format": "PNG",
+            "quality": "Print Ready"
+        })
+        
+    except TimeoutError as e:
+        signal.alarm(0)
+        logger.error(f"Processing timeout: {str(e)}")
+        return jsonify({"success": False, "error": "Processing timeout - image too large or complex"}), 408
+    except Exception as e:
+        signal.alarm(0)
+        logger.error(f"Error processing thumbnail: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# NEW: Capture Print Quality API
+@app.route("/api/capture-print-quality", methods=["POST"])
+def capture_print_quality():
+    """Capture screenshot from video and process for print quality"""
+    try:
+        from PIL import Image, ImageFilter, ImageDraw
+        import io
+        import base64
+        
+        data = request.get_json()
+        video_url = data.get('video_url')
+        timestamp = data.get('timestamp', 0)
+        print_dpi = data.get('print_dpi', 300)
+        soft_corners = data.get('soft_corners', False)
+        edge_feather = data.get('edge_feather', False)
+        crop_area = data.get('crop_area')
+        
+        # Debug logging
+        logger.info(f"Capturing print quality - soft_corners: {soft_corners}, edge_feather: {edge_feather}")
+        print(f"DEBUG: soft_corners={soft_corners}, edge_feather={edge_feather}")
+        
+        if not video_url:
+            return jsonify({"success": False, "error": "No video URL provided"}), 400
+        
+        # Capture screenshot from video (using existing screenshot_capture function)
+        screenshot_data = screenshot_capture(video_url, timestamp)
+        
+        if not screenshot_data:
+            return jsonify({"success": False, "error": "Failed to capture screenshot"}), 500
+        
+        # Decode base64 image
+        if screenshot_data.startswith('data:image'):
+            screenshot_data = screenshot_data.split(',')[1]
+        
+        image_data = base64.b64decode(screenshot_data)
+        image = Image.open(io.BytesIO(image_data))
+        
+        # Apply crop if specified
+        if crop_area:
+            x = int(crop_area['x'] * image.width)
+            y = int(crop_area['y'] * image.height)
+            width = int(crop_area['width'] * image.width)
+            height = int(crop_area['height'] * image.height)
+            image = image.crop((x, y, x + width, y + height))
+        
+        # Apply soft corners
+        if soft_corners:
+            image = apply_soft_corners(image)
+        
+        # Apply edge feathering
+        if edge_feather:
+            image = apply_edge_feather(image)
+        
+        # Resize for print quality
+        target_width = int(print_dpi * 8)  # 8 inches wide
+        aspect_ratio = image.height / image.width
+        target_height = int(target_width * aspect_ratio)
+        
+        image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+        
+        # Save processed image
+        output_buffer = io.BytesIO()
+        image.save(output_buffer, format='PNG', dpi=(print_dpi, print_dpi))
+        output_buffer.seek(0)
+        
+        # Convert to base64 for response
+        processed_image_data = base64.b64encode(output_buffer.getvalue()).decode()
+        
+        return jsonify({
+            "success": True,
+            "screenshot": f"data:image/png;base64,{processed_image_data}",
+            "dimensions": {
+                "width": target_width,
+                "height": target_height,
+                "dpi": print_dpi
+            },
+            "file_size": len(output_buffer.getvalue()),
+            "format": "PNG",
+            "quality": "Print Ready"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error capturing print quality: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+def apply_soft_corners_fast(image, radius=112):
+    """Apply EXTREME soft rounded corners to an image - FAST VERSION"""
+    from PIL import Image, ImageDraw
+    
+    try:
+        # Convert to RGBA if not already
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+        
+        width, height = image.size
+        
+        # Ensure radius doesn't exceed image dimensions - but make it more aggressive
+        max_radius = min(width, height) // 3  # More aggressive radius
+        radius = min(radius, max_radius)
+        
+        # Create a mask for EXTREMELY rounded corners
+        mask = Image.new('L', image.size, 0)
+        draw = ImageDraw.Draw(mask)
+        draw.rounded_rectangle([0, 0, width, height], radius=radius, fill=255)
+        
+        # Apply the mask
+        output = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        output.paste(image, mask=mask)
+        
+        return output
+        
+    except Exception as e:
+        logger.error(f"Error in apply_soft_corners_fast: {str(e)}")
+        # Return original image if soft corners fails
+        return image
+
+def apply_soft_corners(image, radius=150):
+    """Apply EXTREME soft rounded corners to an image"""
+    from PIL import Image, ImageDraw
+    
+    try:
+        # Convert to RGBA if not already
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+        
+        width, height = image.size
+        
+        # Ensure radius doesn't exceed image dimensions
+        max_radius = min(width, height) // 2
+        radius = min(radius, max_radius)
+        
+        # Create a mask for EXTREMELY rounded corners
+        mask = Image.new('L', image.size, 0)
+        draw = ImageDraw.Draw(mask)
+        draw.rounded_rectangle([0, 0, width, height], radius=radius, fill=255)
+        
+        # Apply the mask
+        output = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        output.paste(image, mask=mask)
+        
+        return output
+        
+    except Exception as e:
+        logger.error(f"Error in apply_soft_corners: {str(e)}")
+        # Return original image if soft corners fails
+        return image
+
+def apply_combined_effects(image, feather_radius=20, corner_radius=150):
+    """Apply both edge feathering and soft corners together for optimal performance"""
+    try:
+        # Apply soft corners first
+        image = apply_soft_corners(image, corner_radius)
+        
+        # Then apply edge feathering
+        image = apply_edge_feather(image, feather_radius)
+        
+        return image
+        
+    except Exception as e:
+        logger.error(f"Error in apply_combined_effects: {str(e)}")
+        # Fallback to individual effects if combined fails
+        try:
+            image = apply_soft_corners(image, corner_radius)
+            return apply_edge_feather(image, feather_radius)
+        except:
+            return image
+
+def apply_edge_feather_fast(image, feather_radius=100):
+    """Apply EXTREME edge feathering to create soft gradient fade-out at edges - FAST VERSION"""
+    from PIL import Image, ImageFilter, ImageDraw
+    
+    try:
+        # Convert to RGBA if not already
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+        
+        width, height = image.size
+        
+        # Make feather effect EXTREME - use much larger radius
+        max_feather = min(width, height) // 2  # EXTREME: Increased from //4 to //2
+        feather_radius = min(feather_radius, max_feather)
+        
+        # Create a mask with soft edges
+        mask = Image.new('L', (width, height), 255)
+        draw = ImageDraw.Draw(mask)
+        
+        # Draw a rounded rectangle with soft edges
+        # The feather_radius controls how much the edges fade
+        draw.rounded_rectangle(
+            [feather_radius, feather_radius, width-feather_radius, height-feather_radius], 
+            radius=feather_radius, 
+            fill=255
+        )
+        
+        # Apply EXTREME Gaussian blur to create very noticeable soft gradient
+        blur_radius = max(15, int(feather_radius//1.5))  # EXTREME: Much stronger blur
+        mask = mask.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+        
+        # Apply the mask to create soft edge fade
+        output = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        output.paste(image, mask=mask)
+        
+        return output
+        
+    except Exception as e:
+        logger.error(f"Error in apply_edge_feather_fast: {str(e)}")
+        # Return original image if feathering fails
+        return image
+
+def apply_edge_feather(image, feather_radius=20):
+    """Apply edge feathering to create soft gradient fade-out at edges"""
+    from PIL import Image, ImageFilter, ImageDraw
+    
+    try:
+        # Convert to RGBA if not already
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+        
+        width, height = image.size
+        
+        # Ensure feather_radius doesn't exceed image dimensions
+        max_feather = min(width, height) // 4
+        feather_radius = min(feather_radius, max_feather)
+        
+        # Create a mask with soft edges
+        mask = Image.new('L', (width, height), 255)
+        draw = ImageDraw.Draw(mask)
+        
+        # Draw a rounded rectangle with soft edges
+        # The feather_radius controls how much the edges fade
+        draw.rounded_rectangle(
+            [feather_radius, feather_radius, width-feather_radius, height-feather_radius], 
+            radius=feather_radius, 
+            fill=255
+        )
+        
+        # Apply Gaussian blur to the mask to create soft gradient (reduced by 10%)
+        blur_radius = max(1, int(feather_radius//2 * 0.9))  # Ensure minimum blur radius of 1
+        mask = mask.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+        
+        # Apply the mask to create soft edge fade
+        output = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        output.paste(image, mask=mask)
+        
+        return output
+        
+    except Exception as e:
+        logger.error(f"Error in apply_edge_feather: {str(e)}")
+        # Return original image if feathering fails
+        return image
 
 # NEW: Video Deletion Endpoint
 @app.route("/api/videos/<video_id>", methods=["DELETE"])

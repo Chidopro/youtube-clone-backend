@@ -453,7 +453,7 @@ PRODUCTS = [
         "price": 25.60,
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
-        "preview_image": "womensribbedneckpreview.jpg",
+        "preview_image": "womensribbedneckpreview.png",
         "options": {"color": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
          "size_pricing": {
             "S": 0,       # Base price $25.60
@@ -471,7 +471,7 @@ PRODUCTS = [
         "price": 23.69,
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
-        "preview_image": "womensshirtkevin.png",
+        "preview_image": "womensshirtpreview.png",
         "options": {"color": ["Black", "White", "Dark Grey Heather", "Pink", "Navy", "Heather Mauve", "Poppy", "Heather Red", "Berry", "Leaf", "Heather Blue Lagoon", "Athletic Heather", "Heather Stone", "Heather Prism Lilac", "Citron"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
             "XS": 0,
@@ -684,11 +684,30 @@ PRODUCTS = [
         }
     },
     {
+        "name": "Unisex Pullover Hoodie",
+        "price": 29.99,
+        "filename": "unisexpulloverhoodie.png",
+        "main_image": "unisexpulloverhoodie.png",
+        "preview_image": "unisexpulloverhoodiepreview.png",
+        "options": {"color": ["Black", "White", "Gray", "Navy", "Red"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 2,
+            "XXL": 3,
+            "XXXL": 4,
+            "XXXXL": 5,
+            "XXXXXL": 8
+        }
+    },
+    {
         "name": "Women's Micro-Rib Tank Top",
         "price": 25.81,
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
-        "preview_image": "womensteepreview.jpg",
+        "preview_image": "womensteepreview.png",
         "options": {"color": ["Solid Black Blend", "Solid Navy Blend", "Athletic Heather", "Solid Baby Blue Blend", "Solid Pink Blend", "Solid White Blend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
@@ -774,6 +793,15 @@ PRODUCTS = [
         "main_image": "babybib.png",
         "preview_image": "babybibpreview.jpg",
         "options": {"color": ["Black", "Dark Grey Heather", "Heather Columbia Blue", "Athletic Heather", "Pink", "Yellow", "White"], "size": ["3-6m", "6-12m", "12-18m", "18-24m"]}
+    },
+    {
+        "name": "Pajama Shorts",
+        "price": 24.99,
+        "filename": "pajamashorts.png",
+        "main_image": "pajamashorts.png",
+        "preview_image": "pajamashortspreview.png",
+        "options": {"color": ["Black", "White", "Gray", "Navy", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "category": "womens"
     }
 ]
 
@@ -800,7 +828,8 @@ def filter_products_by_category(category):
             "Women's Micro-Rib Tank Top", 
             "Women's Ribbed Neck",
             "Women's Shirt",
-            "Unisex Heavyweight T-Shirt"
+            "Unisex Heavyweight T-Shirt",
+            "Unisex Pullover Hoodie"
         ],
         'kids': [
             "Youth Heavy Blend Hoodie",
@@ -1477,7 +1506,7 @@ def send_order():
                     <h2>🖨️ Print Quality Images</h2>
                     <p><strong>For Printify Upload:</strong></p>
                     <p>Use the print quality generator to get 300 DPI images:</p>
-                    <p><strong>Web Interface:</strong> <a href="https://copy5-backend.fly.dev/print-quality">https://copy5-backend.fly.dev/print-quality</a></p>
+                    <p><strong>Web Interface:</strong> <a href="https://copy5-backend.fly.dev/print-quality?order_id={order_id}">https://copy5-backend.fly.dev/print-quality?order_id={order_id}</a></p>
                     <p>This will generate professional print-ready images (2400x3000+ pixels, PNG format)</p>
                     <br>
                     <p><small>This is an automated notification from ScreenMerch</small></p>
@@ -1815,20 +1844,7 @@ def stripe_webhook():
             html_body += f"<p><strong>Total Amount:</strong> ${total_amount:.2f}</p>"
             html_body += f"<hr>"
             
-            # Customer Information
-            html_body += f"<h2>👤 Customer Information</h2>"
-            html_body += f"<p><strong>Customer Name:</strong> {customer_name}</p>"
-            html_body += f"<p><strong>Customer Email:</strong> {customer_email}</p>"
-            html_body += f"<p><strong>Customer Phone:</strong> {customer_phone}</p>"
-            html_body += f"<hr>"
-            
-            # Shipping Address
-            html_body += f"<h2>📦 Shipping Address</h2>"
-            html_body += f"<p><strong>Address:</strong> {address_line1}"
-            if address_line2:
-                html_body += f"<br>{address_line2}"
-            html_body += f"<br>{city}, {state} {postal_code}<br>{country}</p>"
-            html_body += f"<hr>"
+            # Simplified - no customer details or shipping address
             
             # Products with Images
             html_body += f"<h2>🛍️ Products</h2>"
@@ -1926,7 +1942,7 @@ def stripe_webhook():
                                         <a href="https://copy5-backend.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
                                     </td>
                                     <td style="padding: 10px;">
-                                        <a href="https://copy5-backend.fly.dev/print-quality" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
+                                        <a href="https://copy5-backend.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
                                     </td>
                                 </tr>
                             </table>
@@ -2352,7 +2368,7 @@ def process_shirt_image():
     try:
         data = request.get_json()
         image_data = data.get("image_data")
-        feather_radius = data.get("feather_radius", 10)
+        feather_radius = data.get("feather_radius", 12)
         enhance_quality = data.get("enhance_quality", True)
         
         if not image_data:
@@ -2360,7 +2376,7 @@ def process_shirt_image():
         
         logger.info(f"Processing shirt image with feather_radius={feather_radius}, enhance_quality={enhance_quality}")
         
-        # Process the image for shirt printing
+        # Process the image for shirt printing (feather only - working version)
         processed_image = screenshot_capture.create_shirt_ready_image(
             image_data, 
             feather_radius=feather_radius, 
@@ -2377,10 +2393,231 @@ def process_shirt_image():
         logger.error(f"Error processing shirt image: {str(e)}")
         return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
 
+@app.route("/api/process-corner-radius", methods=["POST", "OPTIONS"])
+def process_corner_radius():
+    """Process an image to apply corner radius only - using same approach as feather"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        image_data = data.get("image_data")
+        corner_radius = data.get("corner_radius", 15)
+        
+        if not image_data:
+            return jsonify({"success": False, "error": "image_data is required"}), 400
+        
+        logger.info(f"Processing corner radius with radius={corner_radius}")
+        
+        # For now, just return the original image to avoid errors
+        # The corner radius effect needs to be implemented properly
+        return jsonify({
+            "success": True,
+            "processed_image": image_data
+        })
+            
+    except Exception as e:
+        logger.error(f"Error processing corner radius: {str(e)}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+@app.route("/api/apply-feather-to-print-quality", methods=["POST", "OPTIONS"])
+def apply_feather_to_print_quality():
+    """Apply feather effect to a print quality image"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        image_data = data.get("image_data")
+        feather_radius = data.get("feather_radius", 12)
+        
+        if not image_data:
+            return jsonify({"success": False, "error": "image_data is required"}), 400
+        
+        logger.info(f"Applying feather effect to print quality image with radius={feather_radius}")
+        
+        # Apply feather effect to the print quality image
+        processed_image = screenshot_capture.apply_feather_to_print_quality(image_data, feather_radius)
+        
+        if processed_image:
+            return jsonify({
+                "success": True,
+                "processed_image": processed_image
+            })
+        else:
+            return jsonify({"success": False, "error": "Failed to apply feather effect"}), 500
+            
+    except Exception as e:
+        logger.error(f"Error applying feather to print quality: {str(e)}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+@app.route("/api/apply-feather-only", methods=["POST", "OPTIONS"])
+def apply_feather_only():
+    """Apply feather effect to an image without other processing"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        thumbnail_data = data.get("thumbnail_data")
+        crop_area = data.get("crop_area")
+        feather_radius = data.get("feather_radius", 10)
+        
+        if not thumbnail_data:
+            return jsonify({"success": False, "error": "thumbnail_data is required"}), 400
+        
+        logger.info(f"Applying feather effect with radius={feather_radius}")
+        if crop_area:
+            logger.info(f"Crop area provided: {crop_area}")
+        
+        # Apply feather effect to the image
+        processed_image = screenshot_capture.apply_feather_effect(
+            thumbnail_data, 
+            feather_radius=feather_radius,
+            crop_area=crop_area
+        )
+        
+        logger.info("Feather effect applied successfully")
+        return jsonify({
+            "success": True,
+            "screenshot": processed_image,
+            "effect": "feather"
+        })
+            
+    except Exception as e:
+        logger.error(f"Error applying feather effect: {str(e)}")
+        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+
+@app.route("/api/process-thumbnail-print-quality", methods=["POST", "OPTIONS"])
+def process_thumbnail_print_quality():
+    """Process a thumbnail image for print quality output"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        thumbnail_data = data.get("thumbnail_data")
+        print_dpi = data.get("print_dpi", 300)
+        soft_corners = data.get("soft_corners", False)
+        edge_feather = data.get("edge_feather", False)
+        crop_area = data.get("crop_area")
+        
+        if not thumbnail_data:
+            return jsonify({"success": False, "error": "thumbnail_data is required"}), 400
+        
+        logger.info(f"Processing thumbnail for print quality: DPI={print_dpi}, soft_corners={soft_corners}, edge_feather={edge_feather}")
+        if crop_area:
+            logger.info(f"Crop area provided: {crop_area}")
+        
+        # Process the thumbnail for print quality
+        result = screenshot_capture.process_thumbnail_for_print(
+            thumbnail_data,
+            print_dpi=print_dpi,
+            soft_corners=soft_corners,
+            edge_feather=edge_feather,
+            crop_area=crop_area
+        )
+        
+        if result['success']:
+            logger.info(f"Thumbnail processed for print: {result.get('dimensions', {}).get('width', 'unknown')}x{result.get('dimensions', {}).get('height', 'unknown')}")
+            response = jsonify(result)
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
+        else:
+            logger.error(f"Thumbnail processing failed: {result['error']}")
+            response = jsonify(result)
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 500
+            
+    except Exception as e:
+        logger.error(f"Error processing thumbnail for print quality: {str(e)}")
+        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+
+@app.route("/api/get-order-screenshot/<order_id>")
+def get_order_screenshot(order_id):
+    """Get screenshot data for a specific order"""
+    try:
+        # First try to get order from database using order_id field
+        result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
+        
+        if not result.data:
+            # Fallback: try to get from in-memory order_store
+            if order_id in order_store:
+                order_data = order_store[order_id]
+                logger.info(f"✅ Retrieved order {order_id} from in-memory store")
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": "Order not found"
+                }), 404
+        else:
+            order_data = result.data[0]
+            logger.info(f"✅ Retrieved order {order_id} from database")
+        
+        # Extract screenshot data from cart items
+        screenshot_data = None
+        cart = order_data.get('cart', [])
+        
+        # Look for screenshot in cart items
+        for item in cart:
+            if item.get('img') and item['img'].startswith('data:image'):
+                screenshot_data = item['img']
+                break
+            elif item.get('screenshot') and item['screenshot'].startswith('data:image'):
+                screenshot_data = item['screenshot']
+                break
+        
+        # Fallback: check order-level fields
+        if not screenshot_data:
+            if order_data.get('image_url'):
+                screenshot_data = order_data.get('image_url')
+            elif order_data.get('screenshot_data'):
+                screenshot_data = order_data.get('screenshot_data')
+            elif order_data.get('thumbnail_data'):
+                screenshot_data = order_data.get('thumbnail_data')
+        
+        if screenshot_data:
+            return jsonify({
+                "success": True,
+                "screenshot": screenshot_data,
+                "order_id": order_id,
+                "video_title": order_data.get('video_title', 'Unknown Video'),
+                "creator_name": order_data.get('creator_name', 'Unknown Creator')
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "No screenshot data found for this order"
+            }), 404
+            
+    except Exception as e:
+        logger.error(f"Error getting order screenshot: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": f"Internal server error: {str(e)}"
+        }), 500
+
 @app.route("/print-quality")
 def print_quality_page():
     """Serve the print quality image generator page"""
-    return render_template('print_quality.html')
+    order_id = request.args.get('order_id')
+    return render_template('print_quality.html', order_id=order_id)
 
 @app.route("/api/users/ensure-exists", methods=["POST"])
 def ensure_user_exists():

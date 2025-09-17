@@ -13,20 +13,29 @@ const Video = () => {
   const [thumbnail, setThumbnail] = useState(null);
   const [screenshots, setScreenshots] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
+  const [isMobilePortrait, setIsMobilePortrait] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [videoData, setVideoData] = useState(null);
   const videoRef = useRef(null);
+  const [screenshotCount, setScreenshotCount] = useState(0);
 
-  // Check if device is mobile
+  // Check if device is mobile and orientation
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
+      const mobile = window.innerWidth <= 768;
+      const portrait = mobile && window.innerHeight > window.innerWidth;
+      setIsMobile(mobile);
+      setIsMobilePortrait(portrait);
     };
     
     checkMobile();
     window.addEventListener('resize', checkMobile);
+    window.addEventListener('orientationchange', checkMobile);
     
-    return () => window.removeEventListener('resize', checkMobile);
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
   }, []);
 
   // Auto-scroll to position video player just below the navigation bar
@@ -73,16 +82,19 @@ const Video = () => {
   // Add thumbnail as first screenshot when available
   useEffect(() => {
     if (thumbnail && screenshots.length === 0) {
-      console.log('Video.jsx: Adding thumbnail as first screenshot:', thumbnail);
       // Add the thumbnail as the first screenshot
       setScreenshots([thumbnail]);
     }
   }, [thumbnail, screenshots.length]);
 
+  // Update screenshot count when screenshots change
+  useEffect(() => {
+    setScreenshotCount(screenshots.length);
+  }, [screenshots]);
+
   // Reset screenshots when video changes and set thumbnail as first image
   useEffect(() => {
     if (videoId && thumbnail) {
-      console.log('Video.jsx: Video changed, resetting screenshots with thumbnail:', thumbnail);
       // Clear existing screenshots and set thumbnail as first
       setScreenshots([thumbnail]);
     }
@@ -102,7 +114,6 @@ const Video = () => {
 
   // Fast Screenshot handler - DISABLED TO STOP LOOPS
   const handleGrabScreenshot = async () => {
-    console.log('=== PURPLE BAR SCREENSHOT DISABLED ===');
     return;
   };
 
@@ -111,13 +122,10 @@ const Video = () => {
 
   // Debug when screenshot function is set - DISABLED TO PREVENT LOOPS
   // useEffect(() => {
-  //   console.log('Screenshot function state changed:', typeof playVideoScreenshotFunction);
   // }, [playVideoScreenshotFunction]);
 
   // Callback to receive screenshot function from PlayVideo - DISABLED TO PREVENT LOOPS
   const handleScreenshotFunction = (screenshotFunction) => {
-    // console.log('Received screenshot function from PlayVideo');
-    // console.log('Function type:', typeof screenshotFunction);
     // setPlayVideoScreenshotFunction(screenshotFunction);
   };
 
@@ -139,7 +147,6 @@ const Video = () => {
   // Create merch product function
   const createMerchProduct = async () => {
     try {
-      console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
       
       // Get authentication state from localStorage
       const isAuthenticated = localStorage.getItem('user_authenticated');
@@ -152,8 +159,6 @@ const Video = () => {
       const videoTitle = videoData?.title || 'Unknown Video';
       const creatorName = videoData?.channelTitle || 'Unknown Creator';
       
-      console.log('🔍 Video data found:', { videoTitle, creatorName, videoUrl });
-      console.log('🔍 API URL being called:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
       
       const requestData = {
         thumbnail,
@@ -165,7 +170,6 @@ const Video = () => {
         userEmail: userEmail || ''
       };
       
-      console.log('Request data:', requestData);
       
       const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
         method: 'POST',
@@ -176,8 +180,6 @@ const Video = () => {
         body: JSON.stringify(requestData)
       });
       
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -186,7 +188,6 @@ const Video = () => {
       }
       
       const data = await response.json();
-      console.log('Response data:', data);
       
       if (data.success && data.product_url) {
         // Check if we're on mobile and handle accordingly
@@ -268,7 +269,6 @@ const Video = () => {
 
        // Scroll to screenshots section and grab screenshot - DISABLED TO STOP LOOPS
     const scrollToScreenshots = () => {
-      console.log('=== SCROLL TO SCREENSHOTS DISABLED ===');
       return;
     };
 
@@ -338,16 +338,45 @@ const Video = () => {
            )}
          </div>
 
-         {/* Middle Column - Screenshots */}
-         <div className="screenshots-section" id="screenshotsSection">
-           <h3>Screenshot Selection</h3>
-           <ScreenmerchImages 
-             thumbnail={thumbnail} 
-             screenshots={screenshots} 
-             onDeleteScreenshot={handleDeleteScreenshot} 
-             onCropScreenshot={handleCropScreenshot} 
-           />
-         </div>
+        {/* Middle Column - Screenshots */}
+        <div className="screenshots-section" id="screenshotsSection" style={{ position: 'relative' }}>
+          {/* Screenshot Counter - Mobile Only on Video Page */}
+          {isMobile && videoId && (
+            <div 
+              id="screenshotCounter"
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                background: screenshotCount >= 6 ? '#ff4444' : '#fff',
+                border: `2px solid ${screenshotCount >= 6 ? '#ff4444' : '#ddd'}`,
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                color: screenshotCount >= 6 ? '#fff' : '#333',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                zIndex: 100
+              }}
+            >
+              {screenshotCount}
+            </div>
+          )}
+          
+          <h3 style={{
+            textAlign: isMobile ? 'center' : 'left'
+          }}>{isMobilePortrait ? 'Selected Screenshots Below' : isMobile ? 'Selected Screenshots' : 'Screenshot Selection'}</h3>
+          <ScreenmerchImages 
+            thumbnail={thumbnail} 
+            screenshots={screenshots} 
+            onDeleteScreenshot={handleDeleteScreenshot} 
+            onCropScreenshot={handleCropScreenshot} 
+          />
+        </div>
        </div>
 
        {/* Authentication Modal */}

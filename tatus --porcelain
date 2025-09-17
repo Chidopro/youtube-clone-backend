@@ -1,5 +1,0 @@
-[33m29974e97[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Restore project files after folder copy/rename operation
-[33m2eb663e3[m[33m ([m[1;31morigin/main[m[33m)[m Replace VidTube logo with ScreenMerch logo in footer
-[33m49730df0[m Fix frontend index.html - restore correct YouTube clone content
-[33ma7428543[m Update Netlify config to fix submodule deployment issue
-[33mdf090ce8[m Add empty .gitmodules file to fix Netlify deployment

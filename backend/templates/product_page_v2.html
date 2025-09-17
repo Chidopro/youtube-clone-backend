@@ -1066,13 +1066,17 @@
    
    <!-- Top Section - Thumbnails and Screenshots with Products Selected Sidebar -->
    <div class="top-section{% if show_category_selection %} category-selection-mode{% endif %}">
+    <!-- Hidden video metadata for JavaScript access -->
+    <div data-video-title="{{ video_title }}" data-creator-name="{{ creator_name }}" data-video-url="{{ video_url }}" style="display: none;"></div>
     <div class="top-section-content">
+      {% if not show_category_selection %}
       <div class="screenshots-section">
-        <h3>Screenshots Selected</h3>
+        <h3>Select A Screenshot</h3>
         <div class="screenshot-preview-row" id="screenshotPreviewRow">
           <!-- Video thumbnail will be auto-inserted here -->
         </div>
       </div>
+      {% endif %}
        
                <!-- Mobile Action Buttons - Hidden on desktop, shown on mobile -->
         <div class="mobile-action-buttons" id="mobileActionButtons" style="display: none;" data-category-page="{{ 'true' if show_category_selection else 'false' }}">
@@ -1764,6 +1768,11 @@
          // Get the selected screenshot URL
          const selectedScreenshot = selectedScreenshotUrl;
          
+         // Get video metadata from the page
+         const videoTitle = document.querySelector('[data-video-title]')?.getAttribute('data-video-title') || 'Unknown Video';
+         const creatorName = document.querySelector('[data-creator-name]')?.getAttribute('data-creator-name') || 'Unknown Creator';
+         const videoUrl = document.querySelector('[data-video-url]')?.getAttribute('data-video-url') || 'Not provided';
+         
          // Create cart item object
          const cartItem = {
            screenshot: selectedScreenshot,
@@ -1773,7 +1782,13 @@
            variants: {
              color: selectedColor,
              size: selectedSize
-           }
+           },
+           // Add video metadata
+           video_title: videoTitle,
+           creator_name: creatorName,
+           video_url: videoUrl,
+           videoName: videoTitle,
+           creatorName: creatorName
          };
          
          // Get existing cart from localStorage

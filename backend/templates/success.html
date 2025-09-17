@@ -311,6 +311,13 @@
   </div>
   
   <script>
+    // Clear cart data after successful purchase
+    localStorage.removeItem('persistent_cart');
+    localStorage.removeItem('cart');
+    localStorage.removeItem('cartData');
+    sessionStorage.removeItem('cartData');
+    console.log('🛒 Cart cleared after successful purchase');
+    
     // Display order tracking information if available
     const trackingData = localStorage.getItem('order_tracking');
     if (trackingData) {

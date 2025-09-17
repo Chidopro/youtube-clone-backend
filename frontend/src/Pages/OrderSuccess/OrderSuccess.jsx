@@ -20,6 +20,15 @@ const OrderSuccess = () => {
       }
     }
 
+    // Clear cart after successful order
+    localStorage.removeItem('cart');
+    localStorage.removeItem('cart_items');
+    localStorage.removeItem('screenshots');
+    localStorage.removeItem('screenshot_timestamps');
+    
+    // Clear any pending merch data
+    localStorage.removeItem('pending_merch_data');
+
     // Add animation
     const container = document.querySelector('.order-success-container');
     if (container) {

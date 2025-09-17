@@ -134,8 +134,8 @@ const MerchandiseCategories = () => {
   return (
     <div className="merchandise-categories">
       <div className="categories-container">
-        <h1 className="categories-title">Choose Your Product Category</h1>
-        <p className="categories-subtitle">Select a category to see available products</p>
+        <h1 className="categories-title">Shop Other Categories</h1>
+        <p className="categories-subtitle">Select a category to browse products for your custom merchandise</p>
       
         <div className="categories-grid">
           {categories.map((cat, index) => (

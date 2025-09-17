@@ -498,7 +498,7 @@ export const products = {
     "price": 25.60,
     "description": "Women's shirt with ribbed neck design",
     "image": "/static/images/womensribbedneck.png",
-    "preview": "/static/images/womensribbedneckpreview.jpg",
+    "preview": "/static/images/womensribbedneckpreview.png",
     "category": "women's-shirts",
     "size_pricing": {
       "S": 0,
@@ -650,7 +650,7 @@ export const products = {
     "price": 36.99,
     "description": "Comfortable women's shirt",
     "image": "/static/images/womensshirt.png",
-    "preview": "/static/images/womensshirtkevin.png",
+    "preview": "/static/images/womensshirtpreview.png",
     "category": "women's-shirts",
     "variables": {
       "sizes": [
@@ -1249,12 +1249,40 @@ export const products = {
       }
     }
   },
+  "unisexpulloverhoodie": {
+    "name": "Unisex Pullover Hoodie",
+    "price": 29.99,
+    "description": "Comfortable unisex pullover hoodie",
+    "image": "/static/images/unisexpulloverhoodie.png",
+    "preview": "/static/images/unisexpulloverhoodiepreview.png",
+    "category": "women's-shirts",
+    "variables": {
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL",
+        "XXXXL",
+        "XXXXXL"
+      ],
+      "colors": [
+        "Black",
+        "White",
+        "Gray",
+        "Navy",
+        "Red"
+      ]
+    }
+  },
   "women'stee": {
     "name": "Women's Tee",
     "price": 33.99,
     "description": "Comfortable women's t-shirt",
     "image": "/static/images/womenstee.png",
-    "preview": "/static/images/womensteepreview.jpg",
+    "preview": "/static/images/womensteepreview.png",
     "category": "women's-shirts",
     "variables": {
       "sizes": [
