@@ -816,7 +816,7 @@ export const products = {
     "price": 29.99,
     "description": "Comfortable kids t-shirt",
     "image": "/static/images/kidshirt.png",
-    "preview": "/static/images/kidshirtpreview.jpg",
+    "preview": "/static/images/kidshirtpreview.png",
     "category": "kids",
     "variables": {
       "sizes": [
@@ -864,7 +864,7 @@ export const products = {
     "price": 39.99,
     "description": "Warm kids hoodie",
     "image": "/static/images/kidhoodie.png",
-    "preview": "/static/images/kidhoodiepreview.jpg",
+    "preview": "/static/images/kidhoodiepreview.png",
     "category": "kids",
     "variables": {
       "sizes": [
@@ -912,7 +912,7 @@ export const products = {
     "price": 34.99,
     "description": "Comfortable kids long sleeve shirt",
     "image": "/static/images/kidlongsleeve.png",
-    "preview": "/static/images/kidlongsleevepreview.jpg",
+    "preview": "/static/images/kidlongsleevepreview.png",
     "category": "kids",
     "variables": {
       "sizes": [
@@ -951,6 +951,128 @@ export const products = {
           "White": true,
           "Gray": true,
           "Pink": true
+        }
+      }
+    }
+  },
+  "youthswimsuit": {
+    "name": "Youth All Over Print Swimsuit",
+    "price": 24.99,
+    "description": "Comfortable youth swimsuit with all-over print",
+    "image": "/static/images/Youthalloverprintswimsuit.png",
+    "preview": "/static/images/youthalloverprintswimsuitpreview.png",
+    "category": "kids",
+    "variables": {
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "colors": [
+        "White",
+        "Navy",
+        "Black",
+        "Pink",
+        "Blue"
+      ],
+      "availability": {
+        "XS": {
+          "White": true,
+          "Navy": true,
+          "Black": true,
+          "Pink": true,
+          "Blue": true
+        },
+        "S": {
+          "White": true,
+          "Navy": true,
+          "Black": true,
+          "Pink": true,
+          "Blue": true
+        },
+        "M": {
+          "White": true,
+          "Navy": true,
+          "Black": true,
+          "Pink": true,
+          "Blue": true
+        },
+        "L": {
+          "White": true,
+          "Navy": true,
+          "Black": true,
+          "Pink": true,
+          "Blue": true
+        },
+        "XL": {
+          "White": true,
+          "Navy": true,
+          "Black": true,
+          "Pink": true,
+          "Blue": true
+        }
+      }
+    }
+  },
+  "girlsleggings": {
+    "name": "Girls Leggings",
+    "price": 22.99,
+    "description": "Comfortable girls leggings with all-over print",
+    "image": "/static/images/girlsleggings.png",
+    "preview": "/static/images/girlsleggingspreview.png",
+    "category": "kids",
+    "variables": {
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "colors": [
+        "White",
+        "Black",
+        "Navy",
+        "Pink",
+        "Purple"
+      ],
+      "availability": {
+        "XS": {
+          "White": true,
+          "Black": true,
+          "Navy": true,
+          "Pink": true,
+          "Purple": true
+        },
+        "S": {
+          "White": true,
+          "Black": true,
+          "Navy": true,
+          "Pink": true,
+          "Purple": true
+        },
+        "M": {
+          "White": true,
+          "Black": true,
+          "Navy": true,
+          "Pink": true,
+          "Purple": true
+        },
+        "L": {
+          "White": true,
+          "Black": true,
+          "Navy": true,
+          "Pink": true,
+          "Purple": true
+        },
+        "XL": {
+          "White": true,
+          "Black": true,
+          "Navy": true,
+          "Pink": true,
+          "Purple": true
         }
       }
     }
