@@ -168,6 +168,7 @@ export class AdminService {
    */
   static async updateUserStatus(userId, status) {
     try {
+      console.log(`Updating user ${userId} status to ${status}`);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         return { success: false, error: 'Not authenticated' };
@@ -180,7 +181,12 @@ export class AdminService {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database update error:', error);
+        throw error;
+      }
+
+      console.log('Database update successful:', data);
 
       // Log admin action
       await this.logAdminAction('update_user_status', 'user', userId, {

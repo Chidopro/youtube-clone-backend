@@ -224,21 +224,21 @@ PRODUCTS = [
     {
         "name": "Kids Shirt",
         "price": 19.99,
-        "filename": "kidshirtpreview.jpg",
+        "filename": "kidshirtpreview.png",
         "main_image": "kidshirt.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}
     },
     {
         "name": "Kids Hoodie",
         "price": 29.99,
-        "filename": "kidhoodiepreview.jpg",
+        "filename": "kidhoodiepreview.png",
         "main_image": "kidhoodie.png",
         "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L"]}
     },
     {
         "name": "Kids Long Sleeve",
         "price": 24.99,
-        "filename": "kidlongsleevepreview.jpg",
+        "filename": "kidlongsleevepreview.png",
         "main_image": "kidlongsleeve.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L"]}
     },
@@ -429,21 +429,21 @@ PRODUCTS = [
     {
         "name": "Kids Shirt",
         "price": 19.99,
-        "filename": "kidshirtpreview.jpg",
+        "filename": "kidshirtpreview.png",
         "main_image": "kidshirt.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kids Hoodie",
         "price": 29.99,
-        "filename": "kidhoodiepreview.jpg",
+        "filename": "kidhoodiepreview.png",
         "main_image": "kidhoodie.png",
         "options": {"color": ["Black", "White", "Gray", "Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kids Long Sleeve",
         "price": 24.99,
-        "filename": "kidlongsleevepreview.jpg",
+        "filename": "kidlongsleevepreview.png",
         "main_image": "kidlongsleeve.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
@@ -847,21 +847,21 @@ PRODUCTS = [
     {
         "name": "Kid's Shirt",
         "price": 19.99,
-        "filename": "kidshirtpreview.jpg",
+        "filename": "kidshirtpreview.png",
         "main_image": "kidshirt.png",
         "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kid's Hoodie",
         "price": 29.99,
-        "filename": "kidhoodiepreview.jpg",
+        "filename": "kidhoodiepreview.png",
         "main_image": "kidhoodie.png",
         "options": {"color": ["Black", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
         "name": "Kid's Long Sleeve",
         "price": 24.99,
-        "filename": "kidlongsleevepreview.jpg",
+        "filename": "kidlongsleevepreview.png",
         "main_image": "kidlongsleeve.png",
         "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
@@ -945,8 +945,8 @@ PRODUCTS = [
     {
         "name": "Mug",
         "price": 14.99,
-        "filename": "mug1preview.jpg",
-        "main_image": "mug1.jpg",
+        "filename": "enamalmugpreview.png",
+        "main_image": "enamalmug.png",
         "options": {"color": ["White"], "size": []}
     },
     {

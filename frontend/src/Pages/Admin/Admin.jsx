@@ -62,6 +62,7 @@ const Admin = () => {
   const loadUsers = async () => {
     try {
       const result = await AdminService.getUsers(0, 100, searchTerm, filterStatus);
+      console.log('Loaded users:', result.users);
       setUsers(result.users);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -111,14 +112,20 @@ const Admin = () => {
       if (action === 'delete') {
         result = await AdminService.deleteUser(userId);
       } else if (action === 'suspend') {
+        console.log(`Suspending user ${userId}...`);
         result = await AdminService.updateUserStatus(userId, 'suspended');
+        console.log('Suspend result:', result);
       } else if (action === 'activate') {
+        console.log(`Activating user ${userId}...`);
         result = await AdminService.updateUserStatus(userId, 'active');
+        console.log('Activate result:', result);
       }
 
       if (result.success) {
         alert(`User ${action}d successfully`);
-        loadUsers();
+        console.log('Reloading users...');
+        await loadUsers();
+        console.log('Users reloaded');
       } else {
         alert(`Failed to ${action} user: ${result.error}`);
       }
@@ -320,7 +327,7 @@ const Admin = () => {
                         <td>{new Date(user.created_at).toLocaleDateString()}</td>
                         <td>
                           <span className={`status-badge ${user.status || 'active'}`}>
-                            {user.status || 'active'}
+                            {user.status ? user.status.toUpperCase() : 'ACTIVE'}
                           </span>
                         </td>
                         <td>

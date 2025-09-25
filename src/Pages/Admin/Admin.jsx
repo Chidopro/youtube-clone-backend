@@ -320,7 +320,7 @@ const Admin = () => {
                         <td>{new Date(user.created_at).toLocaleDateString()}</td>
                         <td>
                           <span className={`status-badge ${user.status || 'active'}`}>
-                            {user.status || 'active'}
+                            {user.status ? user.status.toUpperCase() : 'ACTIVE'}
                           </span>
                         </td>
                         <td>

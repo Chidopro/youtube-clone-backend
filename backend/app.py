@@ -352,7 +352,7 @@ PRODUCTS = [
         "price": 21.69,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
-        "preview_image": "guidonpreview.png",
+        "preview_image": "guidonteepreview.png",
         "options": {"color": ["Black", "White", "Dark Gray", "Navy", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
         "size_pricing": {
             "XS": 0,      # No extra charge
@@ -367,22 +367,39 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Unisex Classic Tee",
-        "price": 19.25,
-        "filename": "unisexclassictee.png",
-        "main_image": "unisexclassictee.png",
-        "preview_image": "unisexclassicteepreview.png",
-        "options": {"color": ["Black", "Navy", "Sport Grey", "White", "Maroon", "Red", "Natural", "Military Green", "Orange", "Irish Green", "Gold", "Sky", "Ash", "Purple", "Cardinal"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "name": "Mens Fitted T-Shirt",
+        "price": 26.58,
+        "filename": "mensfittedtshirt.png",
+        "main_image": "mensfittedtshirt.png",
+        "preview_image": "mensfittedtshirtpreview.png",
+        "options": {"color": ["Black", "White", "Heather Grey", "Red", "Royal Blue", "Midnight Navy", "Desert Pink", "Light Blue"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
             "XS": 0,      # No extra charge
             "S": 0,       # No extra charge  
             "M": 0,       # No extra charge
             "L": 0,       # No extra charge
             "XL": 0,      # No extra charge
-            "XXL": 2,     # +$2 (2XL)
-            "XXXL": 4,    # +$4 (3XL)
-            "XXXXL": 6,   # +$6 (4XL)
-            "XXXXXL": 8   # +$8 (5XL)
+            "XXL": 1.00,  # $27.58
+            "XXXL": 3.00  # $29.58
+        }
+    },
+    {
+        "name": "Unisex Oversized T-Shirt",
+        "price": 26.49,
+        "filename": "unisexoversizedtshirt.png",
+        "main_image": "unisexoversizedtshirt.png",
+        "preview_image": "unisexoversizedtshirtpreview.png",
+        "options": {"color": ["Washed Black", "Washed Maroon", "Washed Charcoal", "Khaki", "Light Washed Denim", "Vintage White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "size_pricing": {
+            "XS": 0,      # No extra charge
+            "S": 0,       # No extra charge  
+            "M": 0,       # No extra charge
+            "L": 0,       # No extra charge
+            "XL": 0,      # No extra charge
+            "XXL": 2.00,  # $28.49
+            "XXXL": 4.00, # $30.49
+            "XXXXL": 0,   # No extra charge
+            "XXXXXL": 0   # No extra charge
         }
     },
     {
@@ -399,6 +416,25 @@ PRODUCTS = [
             "L": 0,       # No extra charge
             "XL": 0,      # No extra charge
             "XXL": 2      # +$2 (2XL)
+        }
+    },
+    {
+        "name": "Men's Fitted Long Sleeve",
+        "price": 29.33,
+        "filename": "mensfittedlongsleeve.png",
+        "main_image": "mensfittedlongsleeve.png",
+        "preview_image": "mensfittedlongsleevepreview.png",
+        "options": {"color": ["Black", "Heavy Metal", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "size_pricing": {
+            "XS": 0,      # No extra charge
+            "S": 0,       # No extra charge  
+            "M": 0,       # No extra charge
+            "L": 0,       # No extra charge
+            "XL": 0,      # No extra charge
+            "XXL": 2.00,  # $31.33
+            "XXXL": 0,    # No extra charge
+            "XXXXL": 0,   # No extra charge
+            "XXXXXL": 0   # No extra charge
         }
     },
     {
@@ -419,7 +455,7 @@ PRODUCTS = [
     },
     {
         "name": "Cropped Hoodie",
-        "price": 45.15,
+        "price": 43.15,
         "filename": "croppedhoodie.png",
         "main_image": "croppedhoodie.png",
         "preview_image": "croppedhoodiepreview.png",
@@ -454,16 +490,17 @@ PRODUCTS = [
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
         "preview_image": "womensribbedneckpreview.png",
-        "options": {"color": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "options": {"color": ["Black", "French Navy", "Green Bay", "Fiesta", "Bubble Pink", "Heather Grey", "Cool Heather Grey", "Off White", "White", "Lavender"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
          "size_pricing": {
+            "XS": 0,      # Base price $25.60
             "S": 0,       # Base price $25.60
             "M": 0,       # Base price $25.60
             "L": 0,       # Base price $25.60
             "XL": 0,      # Base price $25.60
-            "XXL": 2,     # +$2 = $27.60
-            "XXXL": 4,     # +$4 = $29.60
-            "XXXXL": 6,   # +$6 = $31.60
-            "XXXXXL": 8   # +$8 = $33.60
+            "XXL": 2      # +$2 = $27.60
+        },
+        "color_size_restrictions": {
+            "Lavender": ["XS", "S", "M"]  # Lavender does not come in Large or XLarge sizes
         }
     },
     {
@@ -480,7 +517,7 @@ PRODUCTS = [
             "L": 0,
             "XL": 0,
             "XXL": 2,
-            "XXXL": 2
+            "XXXL": 4  # +$4 = $27.69
         } 
     },
     {
@@ -489,15 +526,15 @@ PRODUCTS = [
         "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
         "preview_image": "womenshdshirtpreview.png",
-        "options": {"color": ["Berry", "Blue Jean", "Brick", "Moss", "Black", "True Navy", "Grey", "Violet", "White", "Blue Spruce", "Bay", "Lagoon Blue", "Butter", "Pepper", "Flo Blue", "Ivory", "Navy", "Red", "Sage", "Midnight"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
+        "options": {"color": ["Berry", "Blue Jean", "Grey", "Violet", "White", "Black", "True Navy", "Brick", "Moss", "Lagoon Blue", "Blue Spruce", "Flo Blue", "Bay", "Butter", "Pepper", "Ivory"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
             "S": 0,
             "M": 0,
             "L": 0,
             "XL": 0,
             "XXL": 2,
-            "XXXL": 2,
-            "XXXXL": 2
+            "XXXL": 4,    # +$4 = $29.29
+            "XXXXL": 6    # +$6 = $31.29
         }
     },
     {
@@ -505,14 +542,13 @@ PRODUCTS = [
         "price": 23.49,
         "filename": "kidshirt.png",
         "main_image": "kidshirt.png",
-        "preview_image": "kidshirtpreview.jpg",
-        "options": {"color": ["Black", "Navy", "Maroon", "Forest", "Red", "Dark Grey Heather", "True Royal", "Berry", "Heather Forest", "Kelly", "Heather Columbia Blue", "Athletic Heather", "Mustard", "Pink", "Heather Dust", "Natural", "White"], "size": ["XS", "S", "M", "L", "XL"]},
+        "preview_image": "kidshirtpreview.png",
+        "options": {"color": ["Black", "Navy", "Maroon", "Forest", "Red", "Dark Grey Heather", "True Royal", "Berry", "Heather Forest", "Kelly", "Heather Columbia Blue", "Athletic Heather", "Mustard", "Pink", "Heather Dust", "Natural", "White"], "size": ["S", "M", "L", "XL"]},
         "size_pricing": {
-            "XS": 0,
-            "S": 0,
-            "M": 0,
-            "L": 0,
-            "XL": 2
+            "S": 0,      # $23.49
+            "M": 0,      # $23.49
+            "L": 0,      # $23.49
+            "XL": 0      # $23.49
         }
     },
     {
@@ -520,18 +556,14 @@ PRODUCTS = [
         "price": 29.33,
         "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
-        "preview_image": "kidhoodiepreview.jpg",
-        "options": {"color": ["Black", "Navy", "Royal", "White", "Dark Heather", "Carolina Blue"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "preview_image": "kidhoodiepreview.png",
+        "options": {"color": ["Black", "Navy", "Royal", "White", "Dark Heather", "Carolina Blue"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
-            "XS": 0,
-            "S": 0,
-            "M": 0,
-            "L": 0,
-            "XL": 2,
-            "XXL": 3,
-            "XXXL": 4,
-            "XXXXL": 5,
-            "XXXXXL": 8
+            "XS": 0,      # $29.33
+            "S": 0,       # $29.33
+            "M": 0,       # $29.33
+            "L": 0,       # $29.33
+            "XL": 0       # $29.33
         }
     },
     {
@@ -539,7 +571,7 @@ PRODUCTS = [
         "price": 26.49,
         "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
-        "preview_image": "kidlongsleevepreview.jpg",
+        "preview_image": "kidlongsleevepreview.png",
         "options": {"color": ["Black", "Navy", "Red", "Athletic Heather", "White"], "size": ["S", "M", "L"]},
         "size_pricing": {
             "S": 0,
@@ -548,14 +580,91 @@ PRODUCTS = [
         }
     },
     {
-        "name": "All-Over Print Tote Bag",
-        "price": 24.23,
-        "filename": "allovertotebag.png",
-        "main_image": "allovertotebag.png",
-        "preview_image": "allovertotebagpreview.png",
-        "options": {"color": ["Black", "Red", "Yellow"], "size": ["15\"x15\""]},
+        "name": "Kids Sweatshirt",
+        "price": 27.29,
+        "filename": "kidssweatshirt.png",
+        "main_image": "kidssweatshirt.png",
+        "preview_image": "kidssweatshirtpreview.png",
+        "options": {"color": ["Black", "Navy", "Maroon", "Red", "Dark Heather", "Royal", "Sport Grey", "White"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
-            "15\"x15\"": 0
+            "XS": 0,      # No extra charge
+            "S": 0,       # No extra charge  
+            "M": 0,       # No extra charge
+            "L": 0,       # No extra charge
+            "XL": 0       # No extra charge
+        }
+    },
+    {
+        "name": "Youth All Over Print Swimsuit",
+        "price": 33.95,
+        "filename": "youthalloverprintswimsuit.png",
+        "main_image": "youthalloverprintswimsuit.png",
+        "preview_image": "youthalloverprintswimsuitpreview.png",
+        "options": {"color": ["White"], "size": ["10", "12", "14", "16", "18", "20"]},
+        "size_pricing": {
+            "10": 0,      # $33.95
+            "12": 0,      # $33.95
+            "14": 0,      # $33.95
+            "16": 0,      # $33.95
+            "18": 0,      # $33.95
+            "20": 0       # $33.95
+        }
+    },
+    {
+        "name": "Girls Leggings",
+        "price": 28.31,
+        "filename": "girlsleggings.png",
+        "main_image": "girlsleggings.png",
+        "preview_image": "girlsleggingspreview.png",
+        "options": {"color": ["White"], "size": ["2T", "3T", "4T", "5T", "6", "6X", "7"]},
+        "size_pricing": {
+            "2T": 0,      # $28.31
+            "3T": 0,      # $28.31
+            "4T": 0,      # $28.31
+            "5T": 0,      # $28.31
+            "6": 0,       # $28.31
+            "6X": 0,      # $28.31
+            "7": 0        # $28.31
+        }
+    },
+    {
+        "name": "Toddler Short Sleeve T-Shirt",
+        "price": 22.75,
+        "filename": "toddlershortsleevet.png",
+        "main_image": "toddlershortsleevet.png",
+        "preview_image": "toddlershortsleevetpreview.png",
+        "options": {"color": ["Black", "Blue", "Pink", "White"], "size": ["2T", "3T", "4T", "5T"]},
+        "size_pricing": {
+            "2T": 0,      # $22.75
+            "3T": 0,      # $22.75
+            "4T": 0,      # $22.75
+            "5T": 0       # $22.75
+        }
+    },
+    {
+        "name": "Toddler Jersey Shirt",
+        "price": 20.29,
+        "filename": "toddlerjerseytshirt.png",
+        "main_image": "toddlerjerseytshirt.png",
+        "preview_image": "toddlerjerseytshirtpreview.png",
+        "options": {"color": ["Black", "Navy", "Hot Pink", "Heather", "Light Blue", "White"], "size": ["2", "3", "4", "5/6"]},
+        "size_pricing": {
+            "2": 0,       # No extra charge
+            "3": 0,       # No extra charge
+            "4": 0,       # No extra charge
+            "5/6": 0      # No extra charge
+        }
+    },
+    {
+        "name": "Laptop Sleeve",
+        "price": 31.16,
+        "filename": "laptopsleeve.png",
+        "main_image": "laptopsleeve.png",
+        "preview_image": "laptopsleevepreview.png",
+        "options": {"color": ["White"], "size": ["13\" (13.5\" x 10.5\" x 0.59\")", "15\" (14.75\" x 11.25\" x 0.59\")"]},
+        "size_pricing": {
+            "13\" (13.5\" x 10.5\" x 0.59\")": 0,      # $31.16 (Printful $21.16 + $10 ScreenMerch fee)
+            "15\" (14.75\" x 11.25\" x 0.59\")": 2.04    # $33.20 (Printful $23.20 + $10 ScreenMerch fee)
         }
     },
     {
@@ -564,20 +673,20 @@ PRODUCTS = [
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
         "preview_image": "drawstringbagpreview.png",
-        "options": {"color": ["White", "Black", "Blue"], "size": ["15\"x17\""]},
+        "options": {"color": ["White"], "size": ["15\"x17\""]},
         "size_pricing": {
             "15\"x17\"": 0
         }
     },
     {
-        "name": "All-Over Print Crossbody Bag",
-        "price": 32.14,
+        "name": "All Over Print Tote",
+        "price": 33.41,
         "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
         "preview_image": "largecanvasbagpreview.png",
-        "options": {"color": ["Natural", "Black", "Navy"], "size": ["11\"x8\"x1.5\""]},
+        "options": {"color": ["Black", "Red", "Yellow"], "size": ["16\"x20\""]},
         "size_pricing": {
-            "11\"x8\"x1.5\"": 0
+            "16\"x20\"": 0
         }
     },
     {
@@ -608,7 +717,24 @@ PRODUCTS = [
         "filename": "coaster.png",
         "main_image": "coaster.png",
         "preview_image": "coasterpreview.jpg",
-        "options": {"color": ["Wood", "Cork", "Black"], "size": []}
+        "options": {"color": ["Wood", "Cork", "Black"], "size": ["4\"x4\""]},
+        "size_pricing": {
+            "4\"x4\"": 0
+        }
+    },
+    {
+        "name": "Apron",
+        "price": 19.99,
+        "filename": "apron.png",
+        "main_image": "apron.png",
+        "preview_image": "apronpreview.png",
+        "options": {"color": ["Black", "White", "Navy", "Red", "Green"], "size": ["S", "M", "L", "XL"]},
+        "size_pricing": {
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0
+        }
     },
     {
         "name": "Kiss-Cut Stickers",
@@ -634,6 +760,60 @@ PRODUCTS = [
         "size_pricing": {
             "18oz": 0,
             "32oz": 2
+        }
+    },
+    {
+        "name": "Scarf Collar",
+        "price": 15.99,
+        "filename": "scarfcollar.png",
+        "main_image": "scarfcollar.png",
+        "preview_image": "scarfcollarpreview.png",
+        "options": {"color": ["Black", "Red", "Blue", "Green"], "size": ["Small", "Medium", "Large"]},
+        "size_pricing": {
+            "Small": 0,
+            "Medium": 0,
+            "Large": 0
+        }
+    },
+    {
+        "name": "Bandana",
+        "price": 12.99,
+        "filename": "bandana.png",
+        "main_image": "bandana.png",
+        "preview_image": "bandanapreview.png",
+        "options": {"color": ["Black", "Red", "Blue", "Green", "Pink"], "size": ["Small", "Medium", "Large"]},
+        "size_pricing": {
+            "Small": 0,
+            "Medium": 0,
+            "Large": 0
+        }
+    },
+    {
+        "name": "Leash",
+        "price": 18.99,
+        "filename": "leash.png",
+        "main_image": "leash.png",
+        "preview_image": "leashpreview.png",
+        "options": {"color": ["Black", "Brown", "Blue", "Red"], "size": ["4ft", "6ft", "8ft"]},
+        "size_pricing": {
+            "4ft": 0,
+            "6ft": 0,
+            "8ft": 0
+        }
+    },
+    {
+        "name": "Collar",
+        "price": 14.99,
+        "filename": "collar.png",
+        "main_image": "collar.png",
+        "preview_image": "collarpreview.png",
+        "options": {"color": ["Black", "Brown", "Blue", "Red", "Green"], "size": ["XS", "S", "M", "L", "XL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0
         }
     },
     {
@@ -685,21 +865,18 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Pullover Hoodie",
-        "price": 29.99,
+        "price": 41.06,
         "filename": "unisexpulloverhoodie.png",
         "main_image": "unisexpulloverhoodie.png",
         "preview_image": "unisexpulloverhoodiepreview.png",
-        "options": {"color": ["Black", "White", "Gray", "Navy", "Red"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "options": {"color": ["Black", "White", "Heather Forest", "Heather Navy"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
             "S": 0,
             "M": 0,
             "L": 0,
-            "XL": 2,
-            "XXL": 3,
-            "XXXL": 4,
-            "XXXXL": 5,
-            "XXXXXL": 8
+            "XL": 0,
+            "XXL": 2      # +$2 = $43.06
         }
     },
     {
@@ -735,25 +912,46 @@ PRODUCTS = [
         "filename": "snapbackhat.png",
         "main_image": "snapbackhat.png",
         "preview_image": "snapbackhatpreview.png",
-        "options": {"color": ["Black", "White", "Navy", "Gray"], "size": ["One Size"]},
+        "options": {"color": [
+            "Dark Navy",
+            "Black",
+            "Black/ Red",
+            "Black/ Teal",
+            "Black/ Silver",
+            "Maroon",
+            "Royal Blue",
+            "Navy",
+            "Spruce",
+            "Red",
+            "Green Camo",
+            "Heather/Black",
+            "Heather Grey",
+            "Black/ Neon Pink",
+            "Dark Grey",
+            "Silver",
+            "Natural/ Black",
+            "Navy/ Red",
+            "Heather Grey/ Navy",
+            "Heather Grey/ Red"
+        ], "size": ["One Size"]},
         "size_pricing": {
             "One Size": 0
         }
     },
     {
         "name": "Five Panel Trucker Hat",
-        "price": 24.85,
+        "price": 24.79,
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
         "preview_image": "fivepaneltruckerhatpreview.jpg",
         "options": {"color": [
-            "Black",
             "Black/ White",
+            "Black",
             "Charcoal",
             "Black/ White/ Black",
             "Red/ White/ Red",
-            "Navy/ White/ Navy",
             "White",
+            "Navy/ White/ Navy",
             "Royal/ White/ Royal",
             "Kelly/ White/ Kelly",
             "Navy",
@@ -766,16 +964,70 @@ PRODUCTS = [
         }
     },
     {
+        "name": "5 Panel Baseball Cap",
+        "price": 21.72,
+        "filename": "youthbaseballcap.png",
+        "main_image": "youthbaseballcap.png",
+        "preview_image": "youthbaseballcappreview.png",
+        "options": {"color": ["Black", "Black/Natural", "Red/Natural", "Navy/Natural", "Dark Green/Natural", "Royal/Natural", "White"], "size": ["One Size"]},
+        "size_pricing": {
+            "One Size": 0
+        }
+    },
+    {
         "name": "White Glossy Mug",
-        "price": 19.95,
-        "filename": "flatbillcap.png",
-        "main_image": "flatbillcap.png",
-        "preview_image": "flatbillcappreview.png",
+        "price": 15.95,
+        "filename": "mug1.jpg",
+        "main_image": "mug1.jpg",
+        "preview_image": "mug1preview.jpg",
         "options": {"color": ["White"], "size": ["11 oz", "15 oz", "20 oz"]},
         "size_pricing": {
-            "11 oz": 0,
-            "15 oz": 2.00,
-            "20 oz": 4.00
+            "11 oz": 0,      # $15.95 (Printful $5.95 + $10 ScreenMerch fee)
+            "15 oz": 2.00,   # $17.95 (Printful $7.95 + $10 ScreenMerch fee)
+            "20 oz": 3.55    # $19.50 (Printful $9.50 + $10 ScreenMerch fee)
+        }
+    },
+    {
+        "name": "Travel Mug w Handle",
+        "price": 32.10,
+        "filename": "travelmug.png",
+        "main_image": "travelmug.png",
+        "preview_image": "travelmugpreview.png",
+        "options": {"color": ["White", "Black", "Navy", "Gray"], "size": ["25 oz", "40 oz"]},
+        "size_pricing": {
+            "25 oz": 0,      # $32.10 (Printful $22.10 + $10 ScreenMerch fee)
+            "40 oz": 1.10    # $33.20 (Printful $23.20 + $10 ScreenMerch fee)
+        }
+    },
+    {
+        "name": "Enamel Mug",
+        "price": 22.42,
+        "filename": "enamalmug.png",
+        "main_image": "enamalmug.png",
+        "preview_image": "enamalmugpreview.png",
+        "options": {"color": ["White", "Black", "Navy", "Red"], "size": ["12 oz"]},
+        "size_pricing": {
+            "12 oz": 0       # $22.42 (Printful $12.42 + $10 ScreenMerch fee)
+        }
+    },
+    {
+        "name": "Colored Mug",
+        "price": 17.95,
+        "filename": "coloredmug.png",
+        "main_image": "coloredmug.png",
+        "preview_image": "coloredmugpreview.png",
+        "options": {"color": ["Black", "Red", "Blue", "Yellow", "Pink", "Orange", "Dark Green", "Dark Blue", "Golden Yellow", "Green"], "size": ["11 oz", "15 oz"]},
+        "size_pricing": {
+            "11 oz": 0,      # $17.95 (Printful $7.95 + $10 ScreenMerch fee)
+            "15 oz": 0       # $17.95 (Printful $7.95 + $10 ScreenMerch fee)
+        },
+        "color_size_restrictions": {
+            "Yellow": ["11 oz"],
+            "Pink": ["11 oz"],
+            "Orange": ["11 oz"],
+            "Dark Blue": ["11 oz"],
+            "Golden Yellow": ["11 oz"],
+            "Green": ["11 oz"]
         }
     },
     {
@@ -784,23 +1036,30 @@ PRODUCTS = [
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
         "preview_image": "crossbodybagpreview.png",
-        "options": {"color": ["White"], "size": []}
+        "options": {"color": ["White"], "size": ["5.7\" × 7.7\" × 2\""]},
+        "size_pricing": {
+            "5.7\" × 7.7\" × 2\"": 0
+        }
     },
     {
-        "name": "Baby Short Sleeve One Piece",
-        "price": 23.52,
-        "filename": "babybib.png",
-        "main_image": "babybib.png",
-        "preview_image": "babybibpreview.jpg",
-        "options": {"color": ["Black", "Dark Grey Heather", "Heather Columbia Blue", "Athletic Heather", "Pink", "Yellow", "White"], "size": ["3-6m", "6-12m", "12-18m", "18-24m"]}
-    },
-    {
-        "name": "Pajama Shorts",
-        "price": 24.99,
-        "filename": "pajamashorts.png",
-        "main_image": "pajamashorts.png",
-        "preview_image": "pajamashortspreview.png",
-        "options": {"color": ["Black", "White", "Gray", "Navy", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "name": "T Shirt Dress",
+        "price": 37.95,
+        "filename": "tshirtdress.png",
+        "main_image": "tshirtdress.png",
+        "preview_image": "tshirtdresspreview.png",
+        "options": {"color": ["White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL", "XXXXXXL"]},
+        "size_pricing": {
+            "XS": 0,      # $37.95
+            "S": 2,       # $39.95
+            "M": 2,       # $39.95
+            "L": 2,       # $39.95
+            "XL": 2,      # $39.95
+            "XXL": 4,     # $41.95
+            "XXXL": 6,    # $43.95
+            "XXXXL": 8,   # $45.95
+            "XXXXXL": 10, # $47.95
+            "XXXXXXL": 12 # $49.95
+        },
         "category": "womens"
     }
 ]
@@ -812,14 +1071,30 @@ def filter_products_by_category(category):
         print(f"🔍 FILTER DEBUG: No category or 'all', returning all products")
         return PRODUCTS  # Show all products when category is 'all'
     
+    # Special handling for thumbnails category - Coming Soon
+    if category == "thumbnails":
+        print(f"🔍 FILTER DEBUG: Thumbnails category selected - returning Coming Soon")
+        return [{
+            "name": "Coming Soon",
+            "price": 0,
+            "filename": "",
+            "main_image": "",
+            "preview_image": "",
+            "options": {"color": [], "size": []},
+            "size_pricing": {},
+            "coming_soon": True
+        }]
+    
     # Define category mappings based on actual product names from PRODUCTS list
     category_mappings = {
         'mens': [
-            "Men's Long Sleeve Shirt",
-            "Men's Tank Top", 
-            "Unisex Classic Tee",
-            "Unisex T-Shirt",
             "Unisex Hoodie",
+            "Men's Tank Top", 
+            "Mens Fitted T-Shirt",
+            "Men's Fitted Long Sleeve",
+            "Unisex T-Shirt",
+            "Unisex Oversized T-Shirt",
+            "Men's Long Sleeve Shirt",
             "Unisex Champion Hoodie"
         ],
         'womens': [
@@ -829,29 +1104,43 @@ def filter_products_by_category(category):
             "Women's Ribbed Neck",
             "Women's Shirt",
             "Unisex Heavyweight T-Shirt",
-            "Unisex Pullover Hoodie"
+            "Unisex Pullover Hoodie",
+            "T Shirt Dress"
         ],
         'kids': [
             "Youth Heavy Blend Hoodie",
             "Kids Shirt",
-            "Kids Long Sleeve"
+            "Kids Long Sleeve",
+            "Toddler Short Sleeve T-Shirt",
+            "Toddler Jersey Shirt",
+            "Kids Sweatshirt",
+            "Youth All Over Print Swimsuit",
+            "Girls Leggings"
         ],
         'bags': [
-            "All-Over Print Tote Bag",
+            "Laptop Sleeve",
             "All-Over Print Drawstring Bag", 
+            "All Over Print Tote",
             "All-Over Print Crossbody Bag"
         ],
         'hats': [
             "Distressed Dad Hat",
             "Snapback Hat",
-            "Five Panel Trucker Hat"
+            "Five Panel Trucker Hat",
+            "5 Panel Baseball Cap"
         ],
         'mugs': [
-            "White Glossy Mug"
+            "White Glossy Mug",
+            "Travel Mug w Handle",
+            "Enamel Mug",
+            "Colored Mug"
         ],
         'pets': [
             "Pet Bowl All-Over Print",
-            "Baby Short Sleeve One Piece"
+            "Scarf Collar",
+            "Bandana",
+            "Leash",
+            "Collar"
         ],
         'stickers': [
             "Kiss-Cut Stickers",
@@ -860,8 +1149,10 @@ def filter_products_by_category(category):
         'misc': [
             "Greeting Card",
             "Hardcover Bound Notebook", 
-            "Coasters"
-        ]
+            "Coasters",
+            "Apron"
+        ],
+        'thumbnails': []  # Coming Soon - no products yet
     }
     
     # Get product names for the selected category
