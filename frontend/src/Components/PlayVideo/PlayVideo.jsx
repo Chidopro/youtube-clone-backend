@@ -1340,7 +1340,7 @@ export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot }
         <div className="screenmerch-images-grid">
             {[0,1,2,3,4,5].map(idx => (
                 <div className="screenmerch-image-box" key={idx}>
-                    <h4>Screenshot {idx + 1}</h4>
+                    {/* Removed "Screenshot X" labels - they're obvious from context */}
                     {screenshots[idx] ? (
                         <div className="screenmerch-img-wrapper">
                             <img 
