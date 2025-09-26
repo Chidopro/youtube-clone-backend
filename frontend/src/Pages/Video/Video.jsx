@@ -155,8 +155,15 @@ const Video = () => {
 
   // Fast Screenshot handler - now enabled to work with purple bar
   const handleGrabScreenshot = async () => {
+    console.log('Step 2 clicked - attempting screenshot capture');
+    console.log('Screenshot function available:', !!playVideoScreenshotFunction);
+    
     if (playVideoScreenshotFunction) {
+      console.log('Calling screenshot function...');
       await playVideoScreenshotFunction();
+      console.log('Screenshot function completed');
+    } else {
+      console.log('Screenshot function not available yet - video may still be loading');
     }
   };
 
@@ -361,7 +368,6 @@ const Video = () => {
                setScreenshots={setScreenshots}
                videoRef={videoRef}
                onVideoData={setVideoData}
-               onGrabScreenshot={handleGrabScreenshot}
                onScreenshotFunction={handleScreenshotFunction}
              />
            ) : (
