@@ -234,33 +234,6 @@ def apply_corner_radius(image, corner_radius):
         logger.error(f"Error applying corner radius: {str(e)}")
         return image
 
-def apply_corner_radius_only(image_data, corner_radius):
-    """Apply corner radius to an image and return base64 result"""
-    try:
-        # Decode base64 image
-        import base64
-        if image_data.startswith('data:image'):
-            image_data = image_data.split(',')[1]
-        
-        image_bytes = base64.b64decode(image_data)
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        if image is None:
-            return None
-        
-        # Apply corner radius
-        processed_image = apply_corner_radius(image, corner_radius)
-        
-        # Convert back to base64
-        _, buffer = cv2.imencode('.jpg', processed_image, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        processed_image_data = base64.b64encode(buffer).decode('utf-8')
-        
-        return f"data:image/jpeg;base64,{processed_image_data}"
-        
-    except Exception as e:
-        logger.error(f"Error applying corner radius only: {str(e)}")
-        return None
 
 def apply_simple_corner_radius(image_data, corner_radius):
     """Apply simple corner radius by cropping corners - very basic approach"""
@@ -422,6 +395,75 @@ def apply_feather_to_print_quality(image_data, feather_radius):
         logger.error(f"Error applying feather to print quality: {str(e)}")
         return None
 
+def apply_corner_radius_only(image_data, corner_radius=15):
+    """Apply corner radius effect to an image without changing DPI"""
+    try:
+        # Decode base64 image
+        import base64
+        if image_data.startswith('data:image'):
+            image_data = image_data.split(',')[1]
+        
+        image_bytes = base64.b64decode(image_data)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if image is None:
+            return {"success": False, "error": "Failed to decode image"}
+        
+        height, width = image.shape[:2]
+        
+        logger.info(f"Applying corner radius {corner_radius} to image {width}x{height}")
+        
+        # Create a proper rounded rectangle mask
+        mask = np.zeros(image.shape[:2], dtype=np.uint8)
+        
+        # Create rounded rectangle using cv2.ellipse for smooth corners
+        # Top-left corner
+        cv2.ellipse(mask, (corner_radius, corner_radius), (corner_radius, corner_radius), 180, 0, 90, 255, -1)
+        # Top-right corner  
+        cv2.ellipse(mask, (width - corner_radius, corner_radius), (corner_radius, corner_radius), 270, 0, 90, 255, -1)
+        # Bottom-left corner
+        cv2.ellipse(mask, (corner_radius, height - corner_radius), (corner_radius, corner_radius), 90, 0, 90, 255, -1)
+        # Bottom-right corner
+        cv2.ellipse(mask, (width - corner_radius, height - corner_radius), (corner_radius, corner_radius), 0, 0, 90, 255, -1)
+        
+        # Fill the center rectangle
+        cv2.rectangle(mask, (corner_radius, 0), (width - corner_radius, height), 255, -1)
+        cv2.rectangle(mask, (0, corner_radius), (width, height - corner_radius), 255, -1)
+        
+        # Create a new image with transparent background
+        result = np.zeros((height, width, 4), dtype=np.uint8)
+        
+        # Copy the original image to the result
+        result[:, :, :3] = image
+        
+        # Set alpha channel based on mask
+        result[:, :, 3] = mask
+        
+        # Create a 4-channel image with transparency
+        final_image = np.zeros((height, width, 4), dtype=np.uint8)
+        
+        # Copy the original image to the first 3 channels
+        final_image[:, :, :3] = image
+        
+        # Set alpha channel based on mask (255 = opaque, 0 = transparent)
+        final_image[:, :, 3] = mask
+        
+        # Convert back to base64 as PNG to preserve transparency
+        _, buffer = cv2.imencode('.png', final_image)
+        processed_image_data = base64.b64encode(buffer).decode('utf-8')
+        
+        logger.info("Corner radius effect applied successfully")
+        
+        return {
+            "success": True,
+            "processed_image": f"data:image/png;base64,{processed_image_data}"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error applying corner radius: {str(e)}")
+        return {"success": False, "error": f"Failed to apply corner radius: {str(e)}"}
+
 def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None):
     """Process a thumbnail image for print quality output"""
     try:
@@ -462,22 +504,53 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             target_width = int(base_size * aspect_ratio)
         
         # Resize image to print quality dimensions while preserving aspect ratio
-        # Use INTER_LANCZOS4 for better quality preservation of effects
+        # Use INTER_LANCZOS4 for better quality preservation
         image = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_LANCZOS4)
         
-        # Apply feather effect to the print quality image
+        # Apply corner radius effect to the HIGH-RESOLUTION print quality image (AFTER resize)
+        if soft_corners:
+            logger.info(f"Applying corner radius effect to HIGH-RESOLUTION print quality image {target_width}x{target_height}")
+            
+            # Create a mask for rounded corners
+            mask = np.zeros(image.shape[:2], dtype=np.uint8)
+            
+            # Calculate corner radius (proportional to image size)
+            corner_radius = min(target_width, target_height) // 12  # Adjust this ratio as needed
+            
+            logger.info(f"Using corner radius: {corner_radius} for high-res image")
+            
+            # Create rounded rectangle mask
+            cv2.rectangle(mask, (0, 0), (target_width, target_height), 255, -1)
+            
+            # Create rounded corners by drawing circles at corners and subtracting
+            # Top-left corner
+            cv2.circle(mask, (corner_radius, corner_radius), corner_radius, 0, -1)
+            # Top-right corner
+            cv2.circle(mask, (target_width - corner_radius, corner_radius), corner_radius, 0, -1)
+            # Bottom-left corner
+            cv2.circle(mask, (corner_radius, target_height - corner_radius), corner_radius, 0, -1)
+            # Bottom-right corner
+            cv2.circle(mask, (target_width - corner_radius, target_height - corner_radius), corner_radius, 0, -1)
+            
+            # Apply the mask to each color channel
+            for i in range(3):
+                image[:, :, i] = cv2.bitwise_and(image[:, :, i], mask)
+            
+            logger.info("Corner radius effect applied successfully to high-resolution image")
+        
+        # Apply feather effect to the HIGH-RESOLUTION print quality image (AFTER resize)
         if edge_feather:
-            logger.info(f"Applying feather effect to print quality image {target_width}x{target_height}")
+            logger.info(f"Applying feather effect to HIGH-RESOLUTION print quality image {target_width}x{target_height}")
             
             # Create feather mask
             mask = np.ones(image.shape[:2], dtype=np.uint8) * 255
             
-            # Use a MUCH larger feather radius for visibility
-            feather_radius = min(target_width, target_height) // 10  # Much larger radius
+            # Use a MUCH larger feather radius for visibility on high-res image
+            feather_radius = min(target_width, target_height) // 8  # Even larger radius for high-res
             
-            logger.info(f"Using feather radius: {feather_radius}")
+            logger.info(f"Using feather radius: {feather_radius} for high-res image")
             
-            # Apply multiple blur passes for stronger effect
+            # Apply multiple blur passes for stronger effect on high-res image
             mask = cv2.GaussianBlur(mask, (feather_radius*2+1, feather_radius*2+1), feather_radius/2)
             mask = cv2.GaussianBlur(mask, (feather_radius*2+1, feather_radius*2+1), feather_radius/2)
             
@@ -485,7 +558,7 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             for i in range(3):
                 image[:, :, i] = cv2.bitwise_and(image[:, :, i], mask)
             
-            logger.info("Feather effect applied successfully")
+            logger.info("Feather effect applied successfully to high-resolution image")
         
         # Convert to PNG for better quality
         _, buffer = cv2.imencode('.png', image)

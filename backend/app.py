@@ -2723,7 +2723,7 @@ def process_shirt_image():
 
 @app.route("/api/process-corner-radius", methods=["POST", "OPTIONS"])
 def process_corner_radius():
-    """Process an image to apply corner radius only - using same approach as feather"""
+    """Process an image to apply corner radius only"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -2741,12 +2741,16 @@ def process_corner_radius():
         
         logger.info(f"Processing corner radius with radius={corner_radius}")
         
-        # For now, just return the original image to avoid errors
-        # The corner radius effect needs to be implemented properly
-        return jsonify({
-            "success": True,
-            "processed_image": image_data
-        })
+        # Apply corner radius effect using the new function
+        import screenshot_capture
+        result = screenshot_capture.apply_corner_radius_only(image_data, corner_radius)
+        
+        if result['success']:
+            response = jsonify(result)
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
+        else:
+            return jsonify(result), 500
             
     except Exception as e:
         logger.error(f"Error processing corner radius: {str(e)}")

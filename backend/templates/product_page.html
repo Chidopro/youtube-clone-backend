@@ -981,11 +981,17 @@
 </head>
 <body>
   
-   
-
      <!-- User Flow Section - Only Step 3 since we're already at merchandise page -->
    <div class="user-flow-section">
      <div class="flow-steps">
+       <!-- ScreenMerch Logo on the left -->
+       <div class="logo-container" style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); z-index: 1000;">
+         <a href="https://famous-custard-4c8894.netlify.app/" style="text-decoration: none; display: flex; align-items: center;">
+           <img src="/static/icons/screenmerch_logo.png?v={{ cache_buster }}" alt="ScreenMerch Logo" style="width: 100px; height: auto;" />
+         </a>
+       </div>
+       
+       <!-- Step content in the center -->
        <div class="flow-step">
          <div class="step-number">3</div>
          <div class="step-content">
