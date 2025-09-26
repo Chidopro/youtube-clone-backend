@@ -33,20 +33,21 @@
        box-sizing: border-box !important;
      }
     
-         /* Simple Logo Header - Bigger Logo, Less Height */
+         /* Simple Logo Header - Matching other pages */
      .simple-header {
        background: white;
-       padding: 5px 2%;
+       padding: 15px 2%;
        position: relative;
        z-index: 10;
        border-bottom: 1px solid #eee;
+       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
      }
 
     .simple-header-content {
       max-width: 1400px;
       margin: 0 auto;
       display: flex;
-      justify-content: flex-start;
+      justify-content: space-between;
       align-items: center;
     }
 
@@ -184,18 +185,14 @@
       transform: translateY(-1px);
     }
     
-         /* User Flow Section Styles - Matching Home Page */
+         /* User Flow Section Styles - Matching other pages */
      .user-flow-section {
        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-       margin: 0;
-       padding: 40px 20px;
+       margin: -10px -20px 20px -20px;
+       padding: 20px 20px;
        color: white;
        text-align: center;
-       display: flex;
-       justify-content: space-between;
-       align-items: center;
-       position: relative;
-       width: 100%;
+       border-radius: 0;
        box-sizing: border-box;
        min-height: 120px;
      }
@@ -981,16 +978,56 @@
 </head>
 <body>
   
+  <!-- White Header with SCREEN MERCH logo, search, and buttons -->
+  <div class="simple-header">
+    <div class="simple-header-content">
+      <div class="simple-logo">
+        <a href="https://famous-custard-4c8894.netlify.app/" style="text-decoration: none; display: flex; align-items: center;">
+          <img src="/static/icons/screenmerch_logo.png?v={{ cache_buster }}" alt="SCREEN MERCH" class="logo-img" />
+        </a>
+      </div>
+      <div class="header-search">
+        <input type="text" placeholder="Search creators..." style="
+          padding: 8px 12px;
+          border: 1px solid #ddd;
+          border-radius: 20px;
+          width: 300px;
+          font-size: 14px;
+        " />
+      </div>
+      <div class="header-buttons" style="display: flex; gap: 10px; align-items: center;">
+        <button style="
+          background: #ff4444;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 5px;
+          font-weight: bold;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        ">
+          📷 Get Started Free
+        </button>
+        <button style="
+          background: #007bff;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 5px;
+          font-weight: bold;
+          cursor: pointer;
+        ">
+          Sign In
+        </button>
+      </div>
+    </div>
+  </div>
+  
      <!-- User Flow Section - Only Step 3 since we're already at merchandise page -->
    <div class="user-flow-section">
      <div class="flow-steps">
-       <!-- ScreenMerch Logo on the left -->
-       <div class="logo-container" style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); z-index: 1000;">
-         <a href="https://famous-custard-4c8894.netlify.app/" style="text-decoration: none; display: flex; align-items: center;">
-           <img src="/static/icons/screenmerch_logo.png?v={{ cache_buster }}" alt="ScreenMerch Logo" style="width: 100px; height: auto;" />
-         </a>
-       </div>
-       
        <!-- Step content in the center -->
        <div class="flow-step">
          <div class="step-number">3</div>
