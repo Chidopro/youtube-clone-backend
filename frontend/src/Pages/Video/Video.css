@@ -74,12 +74,10 @@
 
 .clickable-step:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
 .clickable-step:hover .step-number {
   transform: scale(1.15);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .clickable-step::after {

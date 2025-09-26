@@ -126,6 +126,10 @@ const Video = () => {
         setPulseStep2(true);
         setPulseStep3(false);
       }
+    } else {
+      // If user hasn't taken screenshot yet, keep step 2 pulsing and step 3 not pulsing
+      setPulseStep2(true);
+      setPulseStep3(false);
     }
   }, [screenshots, userHasTakenScreenshot]);
 
