@@ -1307,7 +1307,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 marginBottom: isMobile ? '5px' : '15px',
                 fontWeight: '600',
                 fontSize: '22px',
-                textAlign: isMobilePortrait ? 'center' : 'left'
+                textAlign: 'center'
             }}>{video.title}</h3>
 
             <div className="publisher">
