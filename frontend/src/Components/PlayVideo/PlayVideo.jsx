@@ -1262,7 +1262,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                  display: 'flex',
                  gap: '10px',
                  marginBottom: isMobile ? '0px' : '0px',
-                 marginTop: isMobile ? '-5px' : '-5px',
+                 marginTop: isMobile ? '-5px' : '-2px',
                  flexWrap: 'wrap'
              }}>
                 <button 
@@ -1277,7 +1277,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         borderRadius: '5px',
                         cursor: (isCapturingScreenshot || screenshots.length >= 6) ? 'not-allowed' : 'pointer',
                         fontWeight: 'bold',
-                        opacity: (isCapturingScreenshot || screenshots.length >= 6) ? 0.7 : 1
+                        opacity: (isCapturingScreenshot || screenshots.length >= 6) ? 0.7 : 1,
+                        textAlign: isMobile ? 'left' : 'center'
                     }}
                 >
                     {isCapturingScreenshot ? 'Capturing...' : screenshots.length >= 6 ? 'Max Screenshots' : 'Select Screenshot'}
