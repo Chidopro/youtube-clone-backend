@@ -1270,7 +1270,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     onClick={handleGrabScreenshot}
                     disabled={isCapturingScreenshot || screenshots.length >= 6}
                     style={{
-                        padding: '10px 20px',
+                        padding: '14px 24px',
                         backgroundColor: (isCapturingScreenshot || screenshots.length >= 6) ? '#6c757d' : '#007bff',
                         color: 'white',
                         border: 'none',
@@ -1278,7 +1278,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         cursor: (isCapturingScreenshot || screenshots.length >= 6) ? 'not-allowed' : 'pointer',
                         fontWeight: 'bold',
                         opacity: (isCapturingScreenshot || screenshots.length >= 6) ? 0.7 : 1,
-                        textAlign: 'center'
+                        textAlign: 'center',
+                        lineHeight: '1.2',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                     }}
                 >
                     {isCapturingScreenshot ? 'Capturing...' : screenshots.length >= 6 ? 'Max Screenshots' : 'Select Screenshot'}
