@@ -115,19 +115,15 @@ const Video = () => {
   useEffect(() => {
     setScreenshotCount(screenshots.length);
     
-    // Only switch pulse states if user has manually taken a screenshot
-    if (userHasTakenScreenshot) {
-      // If we have screenshots, stop pulsing step 2 and start pulsing step 3
-      if (screenshots.length > 0) {
-        setPulseStep2(false);
-        setPulseStep3(true);
-      } else {
-        // If no screenshots, pulse step 2 and stop pulsing step 3
-        setPulseStep2(true);
-        setPulseStep3(false);
-      }
+    // Check if user has manually taken screenshots (more than just the automatic thumbnail)
+    const hasUserScreenshots = userHasTakenScreenshot || screenshots.length > 1;
+    
+    if (hasUserScreenshots) {
+      // If user has taken screenshots, stop pulsing step 2 and start pulsing step 3
+      setPulseStep2(false);
+      setPulseStep3(true);
     } else {
-      // If user hasn't taken screenshot yet, keep step 2 pulsing and step 3 not pulsing
+      // If no user screenshots yet, pulse step 2 and stop pulsing step 3
       setPulseStep2(true);
       setPulseStep3(false);
     }

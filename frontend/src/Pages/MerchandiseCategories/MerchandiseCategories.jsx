@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import './MerchandiseCategories.css';
 import { API_CONFIG } from '../../config/apiConfig';
 import AuthModal from '../../Components/AuthModal/AuthModal';
+import Navbar from '../../Components/Navbar/Navbar';
 
 const MerchandiseCategories = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -132,10 +133,26 @@ const MerchandiseCategories = () => {
   };
 
   return (
-    <div className="merchandise-categories">
-      <div className="categories-container">
-        <h1 className="categories-title">Shop Other Categories</h1>
-        <p className="categories-subtitle">Select a category to browse products for your custom merchandise</p>
+    <>
+      <Navbar setSidebar={() => {}} resetCategory={() => {}} />
+      
+      {/* User Flow Section - Step 3 Only */}
+      <div className="user-flow-section">
+        <div className="flow-steps">
+          <div className="flow-step">
+            <div className="step-number">3</div>
+            <div className="step-content">
+              <h3>Make Merchandise</h3>
+              <p>Create custom products with your screenshot</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="merchandise-categories">
+        <div className="categories-container">
+          <h1 className="categories-title">Choose a Product Category</h1>
+          <p className="categories-subtitle">Select a category to browse products for your custom merchandise</p>
       
         <div className="categories-grid">
           {categories.map((cat, index) => (
@@ -174,7 +191,8 @@ const MerchandiseCategories = () => {
         }}
         onSuccess={handleAuthSuccess}
       />
-    </div>
+      </div>
+    </>
   );
 };
 
