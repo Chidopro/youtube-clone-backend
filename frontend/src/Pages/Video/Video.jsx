@@ -418,9 +418,7 @@ const Video = () => {
             </div>
           )}
           
-          <h3 style={{
-            textAlign: isMobile ? 'center' : 'left'
-          }}>{isMobilePortrait ? 'Selected Screenshots Below' : isMobile ? 'Selected Screenshots' : 'Screenshot Selection'}</h3>
+          {/* Removed "Screenshot Selection" title - it's obvious from context */}
           <ScreenmerchImages 
             thumbnail={thumbnail} 
             screenshots={screenshots} 
