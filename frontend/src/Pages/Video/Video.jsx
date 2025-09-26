@@ -79,18 +79,30 @@ const Video = () => {
           }
         } else {
           // Desktop positioning - position video player right below white header
-          const videoPageContainer = document.querySelector('.video-page-container');
-          if (videoPageContainer) {
-            // Position the page so the video player is right below the header
-            const containerTop = videoPageContainer.getBoundingClientRect().top + window.scrollY;
-            const targetScrollPosition = containerTop; // No margin - video player right below header
+          const videoContainer = document.querySelector('.video-container');
+          const navbar = document.querySelector('nav');
+          
+          if (videoContainer && navbar) {
+            // Calculate navbar height to position video player right below header
+            const navbarHeight = navbar.offsetHeight;
+            const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
+            const targetScrollPosition = videoTop - navbarHeight; // Video player right below header
+            
+            window.scrollTo({
+              top: targetScrollPosition,
+              behavior: 'smooth'
+            });
+          } else if (videoContainer) {
+            // Fallback: position video player with estimated header height
+            const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
+            const targetScrollPosition = videoTop - 80; // Estimate header height (~80px)
             
             window.scrollTo({
               top: targetScrollPosition,
               behavior: 'smooth'
             });
           } else {
-            // Fallback: scroll to top
+            // Final fallback: scroll to top
             window.scrollTo({
               top: 0,
               behavior: 'smooth'
