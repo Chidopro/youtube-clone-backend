@@ -164,28 +164,10 @@
   pointer-events: none;
 }
 
-.category-box::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
-  opacity: 0;
-  transition: all 0.4s ease;
-  z-index: 1;
-  border-radius: 24px;
-}
-
-.category-box:hover::before {
-  opacity: 1;
-}
-
 .category-box:hover {
-  transform: translateY(-12px) scale(1.05);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border-color: #667eea;
 }
 
 /* Touch devices hover effects */
@@ -212,10 +194,9 @@
 .category-name {
   font-size: 1.2rem;
   font-weight: 600;
-  color: white;
+  color: #333;
   z-index: 2;
   position: relative;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .back-button-container {
@@ -224,23 +205,21 @@
 }
 
 .back-button {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  background: #667eea;
+  border: 1px solid #667eea;
+  border-radius: 8px;
   padding: 12px 24px;
   color: white;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .back-button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: #5a6fd8;
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .loading-overlay {
