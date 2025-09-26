@@ -18,6 +18,8 @@ const Video = () => {
   const [videoData, setVideoData] = useState(null);
   const videoRef = useRef(null);
   const [screenshotCount, setScreenshotCount] = useState(0);
+  const [pulseStep2, setPulseStep2] = useState(true); // Start with step 2 pulsing
+  const [pulseStep3, setPulseStep3] = useState(false); // Step 3 starts not pulsing
 
   // Check if device is mobile and orientation
   useEffect(() => {
@@ -38,40 +40,61 @@ const Video = () => {
     };
   }, []);
 
-  // Auto-scroll to position video player just below the navigation bar
+  // Auto-scroll to position video player consistently
   useEffect(() => {
-    if (isMobile && videoId) {
+    if (videoId) {
       // Small delay to ensure page is fully rendered
       const timer = setTimeout(() => {
-        // Get the video container to position it below the navbar
-        const videoContainer = document.querySelector('.video-container');
-        const navbar = document.querySelector('nav');
-        
-        if (videoContainer && navbar) {
-          // Calculate navbar height to position video just below it
-          const navbarHeight = navbar.offsetHeight;
-          const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
-          const targetScrollPosition = videoTop - navbarHeight - 10; // Position just below navbar with small padding
+        if (isMobile) {
+          // Mobile positioning - position video just below navbar
+          const videoContainer = document.querySelector('.video-container');
+          const navbar = document.querySelector('nav');
           
-          window.scrollTo({
-            top: targetScrollPosition,
-            behavior: 'smooth'
-          });
-        } else if (videoContainer) {
-          // Fallback: position video at top with navbar height estimate
-          const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
-          const targetScrollPosition = videoTop - 70; // Estimate navbar height (~60px) + padding
-          
-          window.scrollTo({
-            top: targetScrollPosition,
-            behavior: 'smooth'
-          });
+          if (videoContainer && navbar) {
+            // Calculate navbar height to position video just below it
+            const navbarHeight = navbar.offsetHeight;
+            const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
+            const targetScrollPosition = videoTop - navbarHeight - 10; // Position just below navbar with small padding
+            
+            window.scrollTo({
+              top: targetScrollPosition,
+              behavior: 'smooth'
+            });
+          } else if (videoContainer) {
+            // Fallback: position video at top with navbar height estimate
+            const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
+            const targetScrollPosition = videoTop - 70; // Estimate navbar height (~60px) + padding
+            
+            window.scrollTo({
+              top: targetScrollPosition,
+              behavior: 'smooth'
+            });
+          } else {
+            // Final fallback: scroll to top of page
+            window.scrollTo({
+              top: 0,
+              behavior: 'smooth'
+            });
+          }
         } else {
-          // Final fallback: scroll to top of page
-          window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-          });
+          // Desktop positioning - ensure consistent placement with video player and buttons visible
+          const videoPageContainer = document.querySelector('.video-page-container');
+          if (videoPageContainer) {
+            // Position the page so the video player and buttons are optimally visible
+            const containerTop = videoPageContainer.getBoundingClientRect().top + window.scrollY;
+            const targetScrollPosition = containerTop - 80; // Position with some top margin for optimal viewing
+            
+            window.scrollTo({
+              top: targetScrollPosition,
+              behavior: 'smooth'
+            });
+          } else {
+            // Fallback: scroll to top
+            window.scrollTo({
+              top: 0,
+              behavior: 'smooth'
+            });
+          }
         }
       }, 500); // 500ms delay to ensure video player is loaded
       
@@ -90,6 +113,16 @@ const Video = () => {
   // Update screenshot count when screenshots change
   useEffect(() => {
     setScreenshotCount(screenshots.length);
+    
+    // If we have screenshots, stop pulsing step 2 and start pulsing step 3
+    if (screenshots.length > 0) {
+      setPulseStep2(false);
+      setPulseStep3(true);
+    } else {
+      // If no screenshots, pulse step 2 and stop pulsing step 3
+      setPulseStep2(true);
+      setPulseStep3(false);
+    }
   }, [screenshots]);
 
   // Reset screenshots when video changes and set thumbnail as first image
@@ -112,21 +145,19 @@ const Video = () => {
     });
   };
 
-  // Fast Screenshot handler - DISABLED TO STOP LOOPS
-  const handleGrabScreenshot = async () => {
-    return;
-  };
-
   // Store the screenshot function from PlayVideo
   const [playVideoScreenshotFunction, setPlayVideoScreenshotFunction] = useState(null);
 
-  // Debug when screenshot function is set - DISABLED TO PREVENT LOOPS
-  // useEffect(() => {
-  // }, [playVideoScreenshotFunction]);
-
-  // Callback to receive screenshot function from PlayVideo - DISABLED TO PREVENT LOOPS
+  // Callback to receive screenshot function from PlayVideo
   const handleScreenshotFunction = (screenshotFunction) => {
-    // setPlayVideoScreenshotFunction(screenshotFunction);
+    setPlayVideoScreenshotFunction(() => screenshotFunction);
+  };
+
+  // Fast Screenshot handler - now enabled to work with purple bar
+  const handleGrabScreenshot = async () => {
+    if (playVideoScreenshotFunction) {
+      await playVideoScreenshotFunction();
+    }
   };
 
   // Make Merch handler
@@ -284,17 +315,17 @@ const Video = () => {
        <div className="user-flow-section">
          <div className="flow-steps">
            <div 
-             className="flow-step" 
+             className="flow-step clickable-step" 
+             onClick={handleGrabScreenshot}
              style={{ 
-               cursor: 'default',
+               cursor: 'pointer',
                userSelect: 'none',
-               WebkitTapHighlightColor: 'transparent',
-               opacity: '0.6'
+               WebkitTapHighlightColor: 'transparent'
              }}
            >
-             <div className="step-number">2</div>
+             <div className={`step-number ${pulseStep2 ? 'pulse' : ''}`}>2</div>
              <div className="step-content">
-               <h3>Pick Screenshot</h3>
+               <h3>Select Screenshot</h3>
                <p>Select the perfect moment to capture</p>
              </div>
            </div>
@@ -308,7 +339,7 @@ const Video = () => {
                WebkitTapHighlightColor: 'transparent'
              }}
            >
-             <div className="step-number">3</div>
+             <div className={`step-number ${pulseStep3 ? 'pulse' : ''}`}>3</div>
              <div className="step-content">
                <h3>Make Merchandise</h3>
                <p>Create custom products with your screenshot</p>

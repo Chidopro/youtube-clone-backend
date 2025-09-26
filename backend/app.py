@@ -738,16 +738,53 @@ PRODUCTS = [
     },
     {
         "name": "Kiss-Cut Stickers",
-        "price": 4.29,
+        "price": 14.29,
         "filename": "stickers.png",
         "main_image": "stickers.png",
         "preview_image": "stickerspreview.png",
-        "options": {"color": ["White"], "size": ["3\"x3\"", "4\"x4\"", "5.5\"x5.5\"", "15\"x3.75\""]},
+        "options": {"color": ["White"], "size": ["3\" x 3\" (8 x 8 cm)", "4\" x 4\" (10 x 10 cm)", "5.5\" x 5.5\" (14 x 14 cm)", "15\" x 3.75\" (38 x 9.5 cm)"]},
         "size_pricing": {
-            "3\"x3\"": 0,
-            "4\"x4\"": 0.20,
-            "5.5\"x5.5\"": 0.40,
-            "15\"x3.75\"": 3.07
+            "3\" x 3\" (8 x 8 cm)": 0,
+            "4\" x 4\" (10 x 10 cm)": 0.20,
+            "5.5\" x 5.5\" (14 x 14 cm)": 0.40,
+            "15\" x 3.75\" (38 x 9.5 cm)": 3.07
+        }
+    },
+    {
+        "name": "Kiss-Cut Sticker Sheet",
+        "price": 15.05,
+        "filename": "stickersheet.png",
+        "main_image": "stickersheet.png",
+        "preview_image": "stickersheetpreview.png",
+        "options": {"color": ["White"], "size": ["5.8\" x 8.3\" (14.8 x 21 cm)"]},
+        "size_pricing": {
+            "5.8\" x 8.3\" (14.8 x 21 cm)": 0
+        }
+    },
+    {
+        "name": "Kiss-Cut Holographic Stickers",
+        "price": 14.08,
+        "filename": "holographicstickers.png",
+        "main_image": "holographicstickers.png",
+        "preview_image": "holographicstickerspreview.png",
+        "options": {"color": ["White"], "size": ["3\" x 3\" (8 x 8 cm)", "4\" x 4\" (10 x 10 cm)", "5.5\" x 5.5\" (14 x 14 cm)"]},
+        "size_pricing": {
+            "3\" x 3\" (8 x 8 cm)": 0,
+            "4\" x 4\" (10 x 10 cm)": 0.20,
+            "5.5\" x 5.5\" (14 x 14 cm)": 0.40
+        }
+    },
+    {
+        "name": "Car Magnet",
+        "price": 13.05,
+        "filename": "carmagnet.png",
+        "main_image": "carmagnet.png",
+        "preview_image": "carmagnet.png",
+        "options": {"color": ["White"], "size": ["5\" x 5\"", "7.5\" x 4.5\"", "10\" x 3\""]},
+        "size_pricing": {
+            "5\" x 5\"": 0,
+            "7.5\" x 4.5\"": 0,
+            "10\" x 3\"": 0
         }
     },
     {
@@ -758,21 +795,22 @@ PRODUCTS = [
         "preview_image": "dogbowlpreview.png",
         "options": {"color": ["White"], "size": ["18oz", "32oz"]},
         "size_pricing": {
-            "18oz": 0,
-            "32oz": 2
+            "18oz": 0,      # $31.49
+            "32oz": 3       # $34.49
         }
     },
     {
-        "name": "Scarf Collar",
+        "name": "Pet Bandana Collar",
         "price": 15.99,
         "filename": "scarfcollar.png",
         "main_image": "scarfcollar.png",
         "preview_image": "scarfcollarpreview.png",
-        "options": {"color": ["Black", "Red", "Blue", "Green"], "size": ["Small", "Medium", "Large"]},
+        "options": {"color": ["Black", "Red", "Blue", "Green"], "size": ["S: 10″–16.75″ (25.4 cm–42.5 cm)", "M: 12″–20.25″ (30.5 cm–51.4 cm)", "L: 14.25″–23″ (36.2 cm–58.4 cm)", "XL: 15.5″–23.5″ (39.4 cm–59.7 cm)"]},
         "size_pricing": {
-            "Small": 0,
-            "Medium": 0,
-            "Large": 0
+            "S: 10″–16.75″ (25.4 cm–42.5 cm)": 0,
+            "M: 12″–20.25″ (30.5 cm–51.4 cm)": 0,
+            "L: 14.25″–23″ (36.2 cm–58.4 cm)": 0,
+            "XL: 15.5″–23.5″ (39.4 cm–59.7 cm)": 0
         }
     },
     {
@@ -789,31 +827,27 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Leash",
+        "name": "All Over Print Leash",
         "price": 18.99,
         "filename": "leash.png",
         "main_image": "leash.png",
         "preview_image": "leashpreview.png",
-        "options": {"color": ["Black", "Brown", "Blue", "Red"], "size": ["4ft", "6ft", "8ft"]},
+        "options": {"color": ["White"], "size": ["6' x 1\""]},
         "size_pricing": {
-            "4ft": 0,
-            "6ft": 0,
-            "8ft": 0
+            "6' x 1\"": 0
         }
     },
     {
-        "name": "Collar",
-        "price": 14.99,
+        "name": "All Over Print Collar",
+        "price": 23.08,
         "filename": "collar.png",
         "main_image": "collar.png",
         "preview_image": "collarpreview.png",
-        "options": {"color": ["Black", "Brown", "Blue", "Red", "Green"], "size": ["XS", "S", "M", "L", "XL"]},
+        "options": {"color": ["White"], "size": ["S: 11.8\"-17.8\" (30-45 cm)", "M: 13.5\"-20.5\" (35-52 cm)", "L: 14.8\"-23.8\" (38-60 cm)"]},
         "size_pricing": {
-            "XS": 0,
-            "S": 0,
-            "M": 0,
-            "L": 0,
-            "XL": 0
+            "S: 11.8\"-17.8\" (30-45 cm)": 0,
+            "M: 13.5\"-20.5\" (35-52 cm)": 0,
+            "L: 14.8\"-23.8\" (38-60 cm)": 0
         }
     },
     {
@@ -1137,20 +1171,23 @@ def filter_products_by_category(category):
         ],
         'pets': [
             "Pet Bowl All-Over Print",
-            "Scarf Collar",
-            "Bandana",
-            "Leash",
-            "Collar"
+            "Pet Bandana Collar",
+            "All Over Print Leash",
+            "All Over Print Collar"
         ],
         'stickers': [
             "Kiss-Cut Stickers",
-            "Die-Cut Magnets"
+            "Kiss-Cut Sticker Sheet",
+            "Kiss-Cut Holographic Stickers"
         ],
         'misc': [
             "Greeting Card",
             "Hardcover Bound Notebook", 
             "Coasters",
-            "Apron"
+            "Apron",
+            "Bandana",
+            "Die-Cut Magnets",
+            "Car Magnet"
         ],
         'thumbnails': []  # Coming Soon - no products yet
     }
