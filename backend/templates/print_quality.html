@@ -71,6 +71,9 @@
             border: 1px solid #c3e6cb;
             color: #155724;
         }
+        .success .image-preview {
+            background: transparent !important;
+        }
         .error {
             background: #f8d7da;
             border: 1px solid #f5c6cb;
@@ -85,6 +88,7 @@
             margin-top: 10px;
             border: 1px solid #ddd;
             border-radius: 5px;
+            background: transparent;
         }
         .button-container {
             display: flex;
@@ -251,30 +255,18 @@
             </div>
             -->
             
-            <!-- Stage 1: Corner Radius Tool -->
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #28a745;">
-                <h3 style="margin-top: 0; color: #28a745;">🔄 Stage 1: Corner Radius Tool</h3>
-                
-                <div class="form-group">
-                    <label style="font-size: 16px; font-weight: bold;">
-                        <input type="checkbox" id="softCorners" name="softCorners" style="margin-right: 8px; transform: scale(1.2);">
-                        Apply Rounded Corners
-                    </label>
-                    <small style="display: block; color: #666; margin-top: 4px;">
-                        Adds rounded corners to make images look better on shirts, hoodies, and other apparel
-                    </small>
-                </div>
-                
-                <div class="form-group" id="cornerRadiusGroup" style="display: none;">
-                    <label for="cornerRadius">Corner Radius (pixels):</label>
-                    <input type="range" id="cornerRadius" name="cornerRadius" min="5" max="50" value="15" style="width: 100%;">
-                    <small style="color: #666;">Adjust the roundness of corners (5-50 pixels)</small>
-                </div>
+            <!-- STEP 1: CREATE 300 DPI IMAGE (STANDALONE) -->
+            <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin: 20px 0; border: 3px solid #28a745; text-align: center;">
+                <h2 style="margin-top: 0; color: #28a745; font-size: 24px;">🎯 STEP 1: Create 300 DPI Image</h2>
+                <p style="color: #666; margin-bottom: 20px; font-size: 16px;">Generate high-resolution 300 DPI image for print quality</p>
+                <button type="button" id="generate300dpiBtn" style="background: #28a745; color: white; border: none; padding: 15px 40px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 18px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    🎯 Generate 300 DPI Image
+                </button>
             </div>
             
-            <!-- Stage 2: Feather Tool -->
+            <!-- STEP 2: FEATHER EDGE TOOL (OPTIONAL) -->
             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #17a2b8;">
-                <h3 style="margin-top: 0; color: #17a2b8;">✨ Stage 2: Feather Tool</h3>
+                <h3 style="margin-top: 0; color: #17a2b8;">✨ STEP 2: Feather Edge Tool (Optional)</h3>
                 
                 <div class="form-group">
                     <label style="font-size: 16px; font-weight: bold;">
@@ -291,29 +283,46 @@
                     <input type="range" id="featherRadius" name="featherRadius" min="5" max="25" value="12" style="width: 100%;">
                     <small style="color: #666;">Adjust the softness of edges (5-25 pixels)</small>
                 </div>
-            </div>
-            
-            <!-- Feather Effect Button -->
-            <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #007bff; text-align: center;">
-                <h3 style="margin-top: 0; color: #007bff;">✨ Feather Effect</h3>
-                <p style="color: #666; margin-bottom: 15px;">Apply feather effect to soften edges for better print quality</p>
-                <button type="button" id="processImageBtn" style="background: #007bff; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px;">
-                    ✨ Apply Feather & Generate Print Quality
+                
+                <button type="button" id="applyFeatherBtn" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; display: none;">
+                    Apply Feather Effect
                 </button>
             </div>
             
-            <!-- Corner Radius Button -->
-            <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #28a745; text-align: center;">
-                <h3 style="margin-top: 0; color: #28a745;">🔲 Corner Radius</h3>
-                <p style="color: #666; margin-bottom: 15px;">Apply rounded corners to the image</p>
-                <button type="button" id="cornerRadiusBtn" style="background: #28a745; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px;">
-                    🔲 Apply Corner Radius
+            <!-- STEP 3: CORNER RADIUS TOOL (OPTIONAL) -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #28a745;">
+                <h3 style="margin-top: 0; color: #28a745;">🔄 STEP 3: Corner Radius Tool (Optional)</h3>
+                
+                <div class="form-group">
+                    <label style="font-size: 16px; font-weight: bold;">
+                        <input type="checkbox" id="softCorners" name="softCorners" style="margin-right: 8px; transform: scale(1.2);">
+                        Apply Rounded Corners
+                    </label>
+                    <small style="display: block; color: #666; margin-top: 4px;">
+                        Adds rounded corners to make images look better on shirts, hoodies, and other apparel
+                    </small>
+                </div>
+                
+                <div class="form-group" id="cornerRadiusGroup" style="display: none;">
+                    <label for="cornerRadius">Corner Radius (pixels):</label>
+                    <input type="range" id="cornerRadius" name="cornerRadius" min="5" max="50" value="15" style="width: 100%;">
+                    <small style="color: #666;">Adjust the roundness of corners (5-50 pixels)</small>
+                </div>
+                
+                <button type="button" id="applyRadiusBtn" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; display: none;">
+                    Apply Corner Radius
                 </button>
             </div>
             
-            <button type="submit" id="generateBtn" style="background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 20px;">
-                Generate Print Quality Image
-            </button>
+            
+            <!-- STEP 4: READY FOR DOWNLOAD -->
+            <div id="downloadSection" style="background: #fff3cd; padding: 20px; border-radius: 10px; margin: 20px 0; border: 3px solid #ffc107; text-align: center; display: none;">
+                <h2 style="margin-top: 0; color: #856404; font-size: 24px;">📥 STEP 4: Ready for Download</h2>
+                <p style="color: #856404; margin-bottom: 20px; font-size: 16px;">Your print-quality image is ready! Download the high-resolution file for production.</p>
+                <div id="downloadButtons" style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <!-- Download buttons will be added here by JavaScript -->
+                </div>
+            </div>
         </form>
         
         <div id="result" class="result"></div>
@@ -389,42 +398,63 @@
             document.getElementById('screenshotPreview').innerHTML = '<p style="color: orange;">⚠️ No order ID provided. Please enter an order ID above or access this page from an order.</p>';
         }
 
-        document.getElementById('printQualityForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const generateBtn = document.getElementById('generateBtn');
+        // STEP 1: Generate 300 DPI Image (Standalone)
+        document.getElementById('generate300dpiBtn').addEventListener('click', async function() {
+            const generateBtn = this;
             const resultDiv = document.getElementById('result');
-            const inputMode = document.querySelector('input[name="inputMode"]:checked').value;
+            
+            if (!orderScreenshot) {
+                alert('No order screenshot available. Please load a screenshot first.');
+                return;
+            }
             
             // Show loading state
             generateBtn.disabled = true;
-            generateBtn.textContent = 'Generating...';
+            generateBtn.textContent = 'Generating 300 DPI Image...';
             resultDiv.style.display = 'none';
             
             try {
-                let response;
+                const dpi = parseInt(document.getElementById('dpi').value);
                 
-                if (inputMode === 'image') {
-                    // Handle image upload mode
-                    response = await handleImageUpload();
-                } else {
-                    // Handle video URL mode
-                    response = await handleVideoUrl();
+                const payload = {
+                    thumbnail_data: orderScreenshot,
+                    print_dpi: dpi,
+                    soft_corners: false,  // No effects in step 1
+                    edge_feather: false   // No effects in step 1
+                };
+                
+                // Build crop area if provided
+                const cropArea = getCropArea();
+                if (cropArea) {
+                    payload.crop_area = cropArea;
                 }
+                
+                const response = await fetch('https://copy5-backend.fly.dev/api/process-thumbnail-print-quality', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
                 
                 if (response.ok) {
                     const result = await response.json();
                     displayResult(result);
+                    // Show download section
+                    document.getElementById('downloadSection').style.display = 'block';
+                    // Enable optional tools
+                    document.getElementById('applyFeatherBtn').style.display = 'inline-block';
+                    document.getElementById('applyRadiusBtn').style.display = 'inline-block';
                 } else {
                     const error = await response.json();
-                    displayError(error.error || 'Unknown error occurred');
+                    displayError(error.error || 'Failed to generate 300 DPI image');
                 }
             } catch (error) {
                 displayError('Network error: ' + error.message);
             } finally {
                 // Reset button state
                 generateBtn.disabled = false;
-                generateBtn.textContent = 'Generate Print Quality Image';
+                generateBtn.textContent = '🎯 Generate 300 DPI Image';
             }
         });
         
@@ -498,9 +528,9 @@
             featherGroup.style.display = this.checked ? 'block' : 'none';
         });
         
-        // Simple Feather Button Handler (working version)
-        document.getElementById('processImageBtn').addEventListener('click', async function() {
-            const processBtn = this;
+        // STEP 2: Apply Feather Effect (Optional)
+        document.getElementById('applyFeatherBtn').addEventListener('click', async function() {
+            const featherBtn = this;
             const edgeFeather = document.getElementById('edgeFeather').checked;
             
             if (!edgeFeather) {
@@ -514,8 +544,8 @@
             }
             
             // Update button state
-            processBtn.disabled = true;
-            processBtn.textContent = 'Applying Feather...';
+            featherBtn.disabled = true;
+            featherBtn.textContent = 'Applying Feather...';
             
             try {
                 const payload = {
@@ -539,57 +569,13 @@
                 
                 if (response.ok) {
                     const result = await response.json();
-                    
+                    displayEffectResult({
+                        success: true,
+                        screenshot: result.processed_image,
+                        effect: "feather"
+                    }, 'Feather Effect Applied!');
                     // Update the orderScreenshot with the processed image
                     orderScreenshot = result.processed_image;
-                    
-                    // Automatically generate print quality image after feather effect
-                    try {
-                        const dpi = parseInt(document.getElementById('dpi').value);
-                        const softCorners = document.getElementById('softCorners').checked;
-                        
-                        const printPayload = {
-                            thumbnail_data: orderScreenshot,
-                            print_dpi: dpi,
-                            soft_corners: softCorners,
-                            edge_feather: true  // Apply feather to print quality
-                        };
-                        
-                        // Build crop area if provided
-                        const cropArea = getCropArea();
-                        if (cropArea) {
-                            printPayload.crop_area = cropArea;
-                        }
-                        
-                        const printResponse = await fetch('https://copy5-backend.fly.dev/api/process-thumbnail-print-quality', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(printPayload)
-                        });
-                        
-                        if (printResponse.ok) {
-                            const printResult = await printResponse.json();
-                            displayEffectResult({
-                                success: true,
-                                screenshot: printResult.screenshot,
-                                effect: "feather + print quality"
-                            }, 'Feather Effect Applied & Print Quality Generated!');
-                        } else {
-                            displayEffectResult({
-                                success: true,
-                                screenshot: result.processed_image,
-                                effect: "feather"
-                            }, 'Feather Effect Applied!');
-                        }
-                    } catch (printError) {
-                        displayEffectResult({
-                            success: true,
-                            screenshot: result.processed_image,
-                            effect: "feather"
-                        }, 'Feather Effect Applied!');
-                    }
                 } else {
                     const error = await response.json();
                     displayError(error.error || 'Failed to apply feather effect');
@@ -598,14 +584,14 @@
                 displayError('Network error: ' + error.message);
             } finally {
                 // Reset button state
-                processBtn.disabled = false;
-                processBtn.textContent = '✨ Apply Feather & Generate Print Quality';
+                featherBtn.disabled = false;
+                featherBtn.textContent = 'Apply Feather Effect';
             }
         });
         
-        // Corner Radius Button Handler
-        document.getElementById('cornerRadiusBtn').addEventListener('click', async function() {
-            const cornerBtn = this;
+        // STEP 3: Apply Corner Radius (Optional)
+        document.getElementById('applyRadiusBtn').addEventListener('click', async function() {
+            const radiusBtn = this;
             const softCorners = document.getElementById('softCorners').checked;
             
             if (!softCorners) {
@@ -619,8 +605,8 @@
             }
             
             // Update button state
-            cornerBtn.disabled = true;
-            cornerBtn.textContent = 'Applying Corner Radius...';
+            radiusBtn.disabled = true;
+            radiusBtn.textContent = 'Applying Radius...';
             
             try {
                 const payload = {
@@ -659,77 +645,12 @@
                 displayError('Network error: ' + error.message);
             } finally {
                 // Reset button state
-                cornerBtn.disabled = false;
-                cornerBtn.textContent = '🔲 Apply Corner Radius';
+                radiusBtn.disabled = false;
+                radiusBtn.textContent = 'Apply Corner Radius';
             }
         });
         
-        async function handleImageUpload() {
-            const dpi = parseInt(document.getElementById('dpi').value);
-            const softCorners = document.getElementById('softCorners').checked;
-            const edgeFeather = document.getElementById('edgeFeather').checked;
-            
-            if (!orderScreenshot) {
-                throw new Error('No order screenshot available');
-            }
-            
-            const payload = {
-                thumbnail_data: orderScreenshot,
-                print_dpi: dpi,
-                soft_corners: softCorners,
-                edge_feather: true  // Apply feather to the print quality image
-            };
-            
-            // Build crop area if provided
-            const cropArea = getCropArea();
-            if (cropArea) {
-                payload.crop_area = cropArea;
-            }
-            
-            return fetch('https://copy5-backend.fly.dev/api/process-thumbnail-print-quality', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-        }
         
-        async function handleVideoUrl() {
-            const formData = new FormData(document.getElementById('printQualityForm'));
-            const videoUrl = formData.get('videoUrl');
-            const timestamp = parseFloat(formData.get('timestamp'));
-            const dpi = parseInt(formData.get('dpi'));
-            const softCorners = document.getElementById('softCorners').checked;
-            const edgeFeather = document.getElementById('edgeFeather').checked;
-            
-            if (!videoUrl) {
-                throw new Error('Please enter a video URL');
-            }
-            
-            // Build crop area if provided
-            const cropArea = getCropArea();
-            
-            const payload = {
-                video_url: videoUrl,
-                timestamp: timestamp,
-                print_dpi: dpi,
-                soft_corners: softCorners,
-                edge_feather: edgeFeather
-            };
-            
-            if (cropArea) {
-                payload.crop_area = cropArea;
-            }
-            
-            return fetch('https://copy5-backend.fly.dev/api/capture-print-quality', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-        }
         
         function getCropArea() {
             const cropX = document.getElementById('cropX').value;

@@ -47,7 +47,7 @@ const Home = ({ sidebar, category, selectedCategory, setSelectedCategory }) => {
             <div className="flow-step">
               <div className="step-number">2</div>
               <div className="step-content">
-                <h3>Pick Screenshot</h3>
+                <h3>Select Screenshot</h3>
                 <p>Select the perfect moment to capture</p>
               </div>
             </div>
