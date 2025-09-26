@@ -1278,7 +1278,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         cursor: (isCapturingScreenshot || screenshots.length >= 6) ? 'not-allowed' : 'pointer',
                         fontWeight: 'bold',
                         opacity: (isCapturingScreenshot || screenshots.length >= 6) ? 0.7 : 1,
-                        textAlign: isMobile ? 'left' : 'center'
+                        textAlign: 'center'
                     }}
                 >
                     {isCapturingScreenshot ? 'Capturing...' : screenshots.length >= 6 ? 'Max Screenshots' : 'Select Screenshot'}
