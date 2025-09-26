@@ -78,12 +78,12 @@ const Video = () => {
             });
           }
         } else {
-          // Desktop positioning - ensure consistent placement with video player and buttons visible
+          // Desktop positioning - position video player right below white header
           const videoPageContainer = document.querySelector('.video-page-container');
           if (videoPageContainer) {
-            // Position the page so the video player and buttons are optimally visible
+            // Position the page so the video player is right below the header
             const containerTop = videoPageContainer.getBoundingClientRect().top + window.scrollY;
-            const targetScrollPosition = containerTop - 80; // Position with some top margin for optimal viewing
+            const targetScrollPosition = containerTop; // No margin - video player right below header
             
             window.scrollTo({
               top: targetScrollPosition,
