@@ -155,28 +155,30 @@ const Video = () => {
     });
   };
 
-  // Store the screenshot function from PlayVideo
-  const [playVideoScreenshotFunction, setPlayVideoScreenshotFunction] = useState(null);
-
-  // Callback to receive screenshot function from PlayVideo
-  const handleScreenshotFunction = (screenshotFunction) => {
-    setPlayVideoScreenshotFunction(() => screenshotFunction);
-  };
-
-  // Fast Screenshot handler - now enabled to work with purple bar
+  // Fast Screenshot handler - directly trigger the screenshot button click
   const handleGrabScreenshot = async () => {
     console.log('Step 2 clicked - attempting screenshot capture');
-    console.log('Screenshot function available:', !!playVideoScreenshotFunction);
     
-    if (playVideoScreenshotFunction) {
-      console.log('Calling screenshot function...');
-      await playVideoScreenshotFunction();
-      console.log('Screenshot function completed');
+    const beforeCount = screenshots.length;
+    
+    // Find the working screenshot button and click it directly
+    const screenshotButton = document.querySelector('.screenmerch-btn');
+    if (screenshotButton && screenshotButton.textContent.includes('Select Screenshot')) {
+      console.log('Clicking working screenshot button...');
+      screenshotButton.click();
       
       // Mark that user has manually taken a screenshot
       setUserHasTakenScreenshot(true);
+      console.log('Screenshot function completed');
+      
+      // Wait a bit for the screenshot to be added, then check
+      setTimeout(() => {
+        if (screenshots.length > beforeCount) {
+          console.log('Screenshot successfully added, switching pulse states');
+        }
+      }, 500);
     } else {
-      console.log('Screenshot function not available yet - video may still be loading');
+      console.log('Screenshot button not found or not ready yet');
     }
   };
 
@@ -381,7 +383,6 @@ const Video = () => {
                setScreenshots={setScreenshots}
                videoRef={videoRef}
                onVideoData={setVideoData}
-               onScreenshotFunction={handleScreenshotFunction}
              />
            ) : (
              <div style={{padding: 24, color: 'red'}}>No video selected.</div>
