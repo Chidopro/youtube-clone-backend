@@ -340,14 +340,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
     }, [video, videoRef, setScreenshots]);
 
-    // Pass the screenshot function to parent component - DISABLED TO PREVENT LOOPS
-    // useEffect(() => {
-    //     if (onScreenshotFunction && video && !loading && !screenshotFunctionPassedRef.current) {
-    //         // console.log('Passing screenshot function to parent component');
-    //         onScreenshotFunction(captureScreenshotFromParent);
-    //         screenshotFunctionPassedRef.current = true;
-    //     }
-    // }, [onScreenshotFunction, video, loading]);
+    // Pass the screenshot function to parent component
+    useEffect(() => {
+        if (onScreenshotFunction && video && !loading && !screenshotFunctionPassedRef.current) {
+            // console.log('Passing screenshot function to parent component');
+            onScreenshotFunction(captureScreenshotFromParent);
+            screenshotFunctionPassedRef.current = true;
+        }
+    }, [onScreenshotFunction, video, loading]);
 
     // Grab Screenshot handler for the button in PlayVideo
     const handleGrabScreenshot = async () => {
@@ -1261,7 +1261,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
              <div className="screenmerch-actions" style={{
                  display: 'flex',
                  gap: '10px',
-                 marginBottom: isMobile ? '0px' : '15px',
+                 marginBottom: isMobile ? '0px' : '0px',
+                 marginTop: isMobile ? '2px' : '2px',
                  flexWrap: 'wrap'
              }}>
                 <button 
