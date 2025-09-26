@@ -593,7 +593,7 @@
 
 .play-video video {
     width: 100% !important;
-    max-width: 640px !important;
+    max-width: 100% !important;
     height: 360px !important;
     object-fit: contain !important;
     /* Professional video constraints - fixed height to prevent size changes */
@@ -713,7 +713,7 @@
 /* Video container to maintain consistent dimensions */
 .play-video .video-container {
     width: 100%;
-    max-width: 640px;
+    max-width: 100%;
     height: 360px;
     margin: 0 auto;
     display: flex;

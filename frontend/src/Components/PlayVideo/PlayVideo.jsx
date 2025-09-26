@@ -1010,7 +1010,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     position: 'relative', 
                     display: 'inline-block', 
                     width: '100%', 
-                    maxWidth: '640px'
+                    maxWidth: '100%'
                 }}>
                     <video 
                         key={videoId}
@@ -1262,7 +1262,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                  display: 'flex',
                  gap: '10px',
                  marginBottom: isMobile ? '0px' : '0px',
-                 marginTop: isMobile ? '-20px' : '-20px',
+                 marginTop: isMobile ? '-30px' : '-30px',
                  flexWrap: 'wrap'
              }}>
                 <button 
