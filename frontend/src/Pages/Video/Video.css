@@ -70,13 +70,7 @@
   transition: all 0.3s ease;
 }
 
-.clickable-step:hover {
-  transform: translateY(-3px);
-}
-
-.clickable-step:hover .step-number {
-  transform: scale(1.15);
-}
+/* Removed all hover effects from clickable-step to eliminate any box appearance */
 
 /* Removed ::after pseudo-element that was creating the box effect on hover */
 
