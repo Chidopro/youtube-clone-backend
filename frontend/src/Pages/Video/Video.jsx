@@ -20,6 +20,7 @@ const Video = () => {
   const [screenshotCount, setScreenshotCount] = useState(0);
   const [pulseStep2, setPulseStep2] = useState(true); // Start with step 2 pulsing
   const [pulseStep3, setPulseStep3] = useState(false); // Step 3 starts not pulsing
+  const [userHasTakenScreenshot, setUserHasTakenScreenshot] = useState(false); // Track if user manually took screenshot
 
   // Check if device is mobile and orientation
   useEffect(() => {
@@ -114,22 +115,27 @@ const Video = () => {
   useEffect(() => {
     setScreenshotCount(screenshots.length);
     
-    // If we have screenshots, stop pulsing step 2 and start pulsing step 3
-    if (screenshots.length > 0) {
-      setPulseStep2(false);
-      setPulseStep3(true);
-    } else {
-      // If no screenshots, pulse step 2 and stop pulsing step 3
-      setPulseStep2(true);
-      setPulseStep3(false);
+    // Only switch pulse states if user has manually taken a screenshot
+    if (userHasTakenScreenshot) {
+      // If we have screenshots, stop pulsing step 2 and start pulsing step 3
+      if (screenshots.length > 0) {
+        setPulseStep2(false);
+        setPulseStep3(true);
+      } else {
+        // If no screenshots, pulse step 2 and stop pulsing step 3
+        setPulseStep2(true);
+        setPulseStep3(false);
+      }
     }
-  }, [screenshots]);
+  }, [screenshots, userHasTakenScreenshot]);
 
   // Reset screenshots when video changes and set thumbnail as first image
   useEffect(() => {
     if (videoId && thumbnail) {
       // Clear existing screenshots and set thumbnail as first
       setScreenshots([thumbnail]);
+      // Reset user screenshot flag when video changes
+      setUserHasTakenScreenshot(false);
     }
   }, [videoId, thumbnail]);
 
@@ -162,6 +168,9 @@ const Video = () => {
       console.log('Calling screenshot function...');
       await playVideoScreenshotFunction();
       console.log('Screenshot function completed');
+      
+      // Mark that user has manually taken a screenshot
+      setUserHasTakenScreenshot(true);
     } else {
       console.log('Screenshot function not available yet - video may still be loading');
     }
