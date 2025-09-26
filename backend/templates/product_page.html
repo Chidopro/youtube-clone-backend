@@ -33,34 +33,107 @@
        box-sizing: border-box !important;
      }
     
-         /* Simple Logo Header - Matching other pages */
-     .simple-header {
-       background: white;
-       padding: 15px 2%;
-       position: relative;
-       z-index: 10;
-       border-bottom: 1px solid #eee;
-       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+         /* Exact same header CSS as home page */
+     nav{
+       padding: 10px 2%;
+       justify-content: space-between;
+       box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+       background: #fff;
+       position: sticky;
+       top: 0;
+       z-index: 1001;
      }
 
-    .simple-header-content {
-      max-width: 1400px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+     .flex-div {
+       display: flex;
+       align-items: center;
+     }
 
-    .simple-logo {
-      display: flex;
-      align-items: center;
-    }
+     /* Consistent button styling for navbar */
+     .sign-in-btn, .nav-right .subscribe-btn {
+       border: none;
+       padding: 8px 16px;
+       border-radius: 25px;
+       cursor: pointer;
+       font-size: 14px;
+       font-weight: 500;
+       transition: all 0.2s ease;
+       margin-right: 10px;
+       white-space: nowrap;
+       text-decoration: none;
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+       /* Pillow shape styling */
+       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+     }
 
-    .simple-logo .logo-img {
-      width: 40px;
-      height: 40px;
-      display: block;
-    }
+     .sign-in-btn {
+       background-color: #065fd4;
+       color: white;
+       border: 1px solid #065fd4;
+     }
+
+     .sign-in-btn:hover {
+       background-color: #0448a0;
+       transform: translateY(-1px);
+     }
+
+     /* Subscribe button with YouTube-style red */
+     .nav-right .subscribe-btn {
+       background: #cc0000;
+       color: white;
+       border: 1px solid #cc0000;
+     }
+
+     .nav-right .subscribe-btn:hover {
+       background: #a00000;
+       transform: translateY(-1px);
+     }
+
+     .nav-right img{
+       width: 30px;
+       margin-right: 15px;
+       transition: transform 0.2s ease;
+     }
+
+     .nav-right img:hover {
+       transform: scale(1.1);
+     }
+
+     .nav-left .menu-icon{
+       width: 22px;
+       margin-right: 25px;
+     }
+
+     .nav-left .logo{
+       width: 100px;
+       margin-right: 15px;
+     }
+
+     .nav-middle .search-box{
+       border: 1px solid #ccc;
+       margin-right: 15px;
+       padding: 12px 18px;
+       border-radius: 30px;
+       transition: border-color 0.2s ease;
+     }
+
+     .nav-middle .search-box:focus-within {
+       border-color: #065fd4;
+     }
+
+     .nav-middle .search-box input{
+       width: 500px;
+       border: 0;
+       outline: 0;
+       background: transparent;
+       font-size: 16px;
+     }
+
+     .nav-middle .search-box  img{
+       width: 20px;
+     }
 
     .header-content {
       max-width: 1400px;
@@ -978,52 +1051,40 @@
 </head>
 <body>
   
-  <!-- White Header with SCREEN MERCH logo, search, and buttons -->
-  <div class="simple-header">
-    <div class="simple-header-content">
-      <div class="simple-logo">
-        <a href="https://famous-custard-4c8894.netlify.app/" style="text-decoration: none; display: flex; align-items: center;">
-          <img src="/static/icons/screenmerch_logo.png?v={{ cache_buster }}" alt="SCREEN MERCH" class="logo-img" />
-        </a>
-      </div>
-      <div class="header-search">
-        <input type="text" placeholder="Search creators..." style="
-          padding: 8px 12px;
-          border: 1px solid #ddd;
-          border-radius: 20px;
-          width: 300px;
-          font-size: 14px;
-        " />
-      </div>
-      <div class="header-buttons" style="display: flex; gap: 10px; align-items: center;">
-        <button style="
-          background: #ff4444;
-          color: white;
-          border: none;
-          padding: 8px 16px;
-          border-radius: 5px;
-          font-weight: bold;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 5px;
-        ">
-          📷 Get Started Free
-        </button>
-        <button style="
-          background: #007bff;
-          color: white;
-          border: none;
-          padding: 8px 16px;
-          border-radius: 5px;
-          font-weight: bold;
-          cursor: pointer;
-        ">
-          Sign In
-        </button>
+  <!-- Exact same header as home page -->
+  <nav class="flex-div">
+    <div class="nav-left flex-div">
+      <img src="/static/icons/menu.png?v={{ cache_buster }}" alt="" class="menu-icon" />
+      <a href="https://famous-custard-4c8894.netlify.app/">
+        <img src="/static/icons/screenmerch_logo.png?v={{ cache_buster }}" alt="" class="logo" />
+      </a>
+    </div>
+    <div class="nav-middle flex-div">
+      <div class="search-box flex-div">
+        <input 
+          type="text" 
+          placeholder="Search creators..." 
+        />
+        <img 
+          src="/static/icons/search.png?v={{ cache_buster }}" 
+          alt="Search" 
+        />
       </div>
     </div>
-  </div>
+    <div class="nav-right flex-div">
+      <img 
+        src="/static/icons/upload.png?v={{ cache_buster }}" 
+        alt="Upload" 
+        title="Sign in to upload videos"
+      />
+      <button class="subscribe-btn">
+        Get Started Free
+      </button>
+      <button class="sign-in-btn">
+        Sign In
+      </button>
+    </div>
+  </nav>
   
      <!-- User Flow Section - Only Step 3 since we're already at merchandise page -->
    <div class="user-flow-section">
