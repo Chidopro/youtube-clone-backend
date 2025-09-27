@@ -140,6 +140,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     };
 
     console.log('🔍 Navbar component rendering, setSidebar function:', typeof setSidebar);
+    console.log('🔍 Current location:', window.location.pathname);
+    console.log('🔍 User state:', user ? 'logged in' : 'not logged in');
     
     return (
         <>
@@ -153,6 +155,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             e.preventDefault();
                             e.stopPropagation();
                             console.log('🍔 Hamburger clicked, setSidebar type:', typeof setSidebar);
+                            console.log('🍔 Current path:', window.location.pathname);
+                            alert('Hamburger clicked!'); // Temporary test
                             if (setSidebar) {
                                 setSidebar(prev => {
                                     console.log('🍔 Sidebar toggling from:', prev, 'to:', !prev);
@@ -243,12 +247,14 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     ) : (
                         <button 
                             className="sign-in-btn" 
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                console.log('🔐 Sign In button clicked!');
-                                handleLogin();
-                            }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('🔐 Sign In button clicked!');
+                            console.log('🔐 Current path:', window.location.pathname);
+                            alert('Sign In clicked!'); // Temporary test
+                            handleLogin();
+                        }}
                             style={{ pointerEvents: 'auto', zIndex: 10000 }}
                         >
                             Sign In
