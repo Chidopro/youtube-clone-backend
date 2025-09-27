@@ -5,7 +5,8 @@ nav{
     background: #fff;
     position: sticky;
     top: 0;
-    z-index: 1001;
+    z-index: 9999;
+    pointer-events: auto;
 }
 
 .auth-section {
@@ -30,6 +31,8 @@ nav{
     justify-content: center;
     /* Pillow shape styling */
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    pointer-events: auto;
+    z-index: 10000;
 }
 
 .sign-in-btn {
@@ -75,6 +78,8 @@ nav{
 .nav-left .menu-icon{
     width: 22px;
     margin-right: 25px;
+    pointer-events: auto;
+    cursor: pointer;
 }
 
 .nav-left .logo{
@@ -104,6 +109,8 @@ nav{
 
 .nav-middle .search-box  img{
     width: 20px;
+    pointer-events: auto;
+    cursor: pointer;
 }
 
 @media (max-width: 768px){
