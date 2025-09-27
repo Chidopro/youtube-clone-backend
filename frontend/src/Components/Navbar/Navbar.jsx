@@ -145,10 +145,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     
     return (
         <>
-            <div style={{ position: 'fixed', top: 0, left: 0, background: 'yellow', color: 'black', padding: '5px', zIndex: 10000, fontSize: '12px' }}>
-                NAVBAR RENDERED - Path: {window.location.pathname}
-            </div>
-            <nav className='flex-div' style={{ position: 'sticky', top: 0, zIndex: 9999, pointerEvents: 'auto', border: '3px solid red' }}>
+            <nav className='flex-div' style={{ position: 'sticky', top: 0, zIndex: 9999, pointerEvents: 'auto' }}>
                 <div className="nav-left flex-div">
                     <img 
                         src={menu_icon} 
@@ -158,8 +155,6 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             e.preventDefault();
                             e.stopPropagation();
                             console.log('🍔 Hamburger clicked, setSidebar type:', typeof setSidebar);
-                            console.log('🍔 Current path:', window.location.pathname);
-                            alert('Hamburger clicked!'); // Temporary test
                             if (setSidebar) {
                                 setSidebar(prev => {
                                     console.log('🍔 Sidebar toggling from:', prev, 'to:', !prev);
@@ -254,8 +249,6 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             e.preventDefault();
                             e.stopPropagation();
                             console.log('🔐 Sign In button clicked!');
-                            console.log('🔐 Current path:', window.location.pathname);
-                            alert('Sign In clicked!'); // Temporary test
                             handleLogin();
                         }}
                             style={{ pointerEvents: 'auto', zIndex: 10000 }}

@@ -20,6 +20,7 @@ import PrivacyPolicy from "./Pages/PrivacyPolicy/PrivacyPolicy";
 import TermsOfService from "./Pages/TermsOfService/TermsOfService";
 import Search from "./Pages/Search/Search";
 import MerchandiseCategories from "./Pages/MerchandiseCategories/MerchandiseCategories";
+import ProductPage from "./Pages/ProductPage/ProductPage";
 // import ScreenshotSelection from "./Pages/ScreenshotSelection/ScreenshotSelection";
 import TestCropTool from "./Pages/TestCropTool/TestCropTool";
 import PaymentPortal from "./Pages/PaymentPortal/PaymentPortal";
@@ -94,6 +95,7 @@ const App = () => {
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/search" element={<Search />} />
               <Route path="/merchandise" element={<MerchandiseCategories sidebar={sidebar} />} />
+              <Route path="/product/:productId" element={<ProductPage sidebar={sidebar} />} />
               <Route path="/test-crop-tool" element={<TestCropTool />} />
               <Route path="/payment-portal" element={<PaymentPortal />} />
               <Route path="/payment-setup" element={<PaymentSetup />} />
