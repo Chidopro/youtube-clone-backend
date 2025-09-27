@@ -143,7 +143,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     
     return (
         <>
-            <nav className='flex-div' style={{ position: 'relative', zIndex: 1001, pointerEvents: 'auto', backgroundColor: 'lightblue', border: '2px solid red' }}>
+            <nav className='flex-div' style={{ position: 'relative', zIndex: 1001, pointerEvents: 'auto' }}>
                 <div className="nav-left flex-div">
                     <img 
                         src={menu_icon} 

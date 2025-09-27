@@ -838,7 +838,7 @@
 /* Social interactions removed - keeping space for video description */
 
 .publisher button {
-    background: red;
+    background: #cc0000;
     color: #fff;
     padding: 8px 30px;
     border: 0;
