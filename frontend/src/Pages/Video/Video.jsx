@@ -355,8 +355,8 @@ const Video = () => {
            >
              <div className={`step-number ${pulseStep2 ? 'pulse' : ''}`}>2</div>
              <div className="step-content">
-               <h3>Select Screenshot</h3>
-               <p>Select the perfect moment to capture</p>
+               <h3>Play The Video</h3>
+               <p>Select the perfect screenshot to capture</p>
              </div>
            </div>
            <div className="flow-arrow">→</div>
