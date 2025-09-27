@@ -1262,7 +1262,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                  display: 'flex',
                  gap: '10px',
                  marginBottom: isMobile ? '0px' : '0px',
-                 marginTop: isMobile ? '-5px' : '-65px',
+                 marginTop: isMobile ? '5px' : '10px',
                  flexWrap: 'wrap'
              }}>
                 <button 
@@ -1305,7 +1305,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
             {/* Video title moved up */}
             <h3 style={{
-                marginTop: '10px',
+                marginTop: '5px',
                 marginBottom: isMobile ? '5px' : '15px',
                 fontWeight: '600',
                 fontSize: '22px',
