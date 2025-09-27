@@ -230,7 +230,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             <div className="screenmerch-actions" style={{
                 display: 'flex',
                 gap: '10px',
-                marginTop: '-40px',
+                marginTop: '-52px',
                 flexWrap: 'wrap'
             }}>
                 <button className="screenmerch-btn" onClick={handleGrabScreenshot}>Grab Screenshot</button>
