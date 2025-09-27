@@ -1262,7 +1262,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                  display: 'flex',
                  gap: '10px',
                  marginBottom: isMobile ? '0px' : '0px',
-                 marginTop: isMobile ? '-5px' : '-100px',
+                 marginTop: isMobile ? '-5px' : '-50px',
                  flexWrap: 'wrap'
              }}>
                 <button 
