@@ -301,6 +301,7 @@
   /* Remove bottom margin from screenmerch actions on mobile */
   .screenmerch-actions {
     margin-bottom: 0 !important;
+    margin-top: 5px !important;
   }
   
   /* Improved screenshot grid for mobile */
@@ -883,7 +884,7 @@
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 0px;
-    margin-top: 0px;
+    margin-top: 10px;
 }
 
 .screenmerch-btn {
