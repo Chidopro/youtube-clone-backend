@@ -1,5 +1,5 @@
 // Cache busting file - forces rebuild with new API configuration
-// Version: 2025-09-26-15:55 - REDEPLOY AFTER YET ANOTHER CANCELLED BUILD
+// Version: 2025-09-26-18:30 - REDEPLOY AFTER BACKEND CSS FIXES CANCELLED
 console.log('Cache busted - using production API configuration');
 console.log('Timestamp:', new Date().toISOString());
 console.log('Build ID:', Math.random().toString(36).substring(7));
