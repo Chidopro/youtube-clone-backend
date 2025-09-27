@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import './MerchandiseCategories.css';
 import { API_CONFIG } from '../../config/apiConfig';
 import AuthModal from '../../Components/AuthModal/AuthModal';
-import Navbar from '../../Components/Navbar/Navbar';
 
-const MerchandiseCategories = () => {
+const MerchandiseCategories = ({ sidebar }) => {
+  console.log('🎯 MerchandiseCategories component rendering - sidebar prop:', sidebar);
   const [isCreating, setIsCreating] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -34,6 +34,7 @@ const MerchandiseCategories = () => {
     }
   })();
 
+  // Categories with Stickers name update - CACHE BUST 2025-01-27
   const categories = [
     { name: "Women's", emoji: "👩", category: "womens" },
     { name: "Men's", emoji: "👨", category: "mens" },
@@ -42,7 +43,7 @@ const MerchandiseCategories = () => {
     { name: "Hats", emoji: "🧢", category: "hats" },
     { name: "Bags", emoji: "👜", category: "bags" },
     { name: "Pets", emoji: "🐕", category: "pets" },
-    { name: "Stickers & Magnets", emoji: "🌟", category: "stickers" },
+    { name: "Stickers", emoji: "🌟", category: "stickers" },
     { name: "Miscellaneous", emoji: "📦", category: "misc" },
     { name: "Thumbnails", emoji: "🖼️", category: "thumbnails" }
   ];
@@ -134,8 +135,6 @@ const MerchandiseCategories = () => {
 
   return (
     <>
-      <Navbar setSidebar={() => {}} resetCategory={() => {}} />
-      
       {/* User Flow Section - Step 3 Only */}
       <div className="user-flow-section">
         <div className="flow-steps">

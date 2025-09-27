@@ -30,7 +30,7 @@
   animation: pulse 2s infinite;
 }
 
-/* User Flow Section Styles - Matching Home Page */
+/* User Flow Section Styles - Matching Home Page - CACHE BUST 2025-01-27 */
 .user-flow-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   margin: -10px -20px 20px -20px;
@@ -115,7 +115,7 @@
   margin: 0 6px;
 }
 
-/* Video Page Container */
+/* Video Page Container - CACHE BUST 2025-01-27 */
 .video-page-container {
   background: #f9f9f9;
   padding-top: 10px;
@@ -155,8 +155,9 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   overflow: hidden;
-  padding: 0;
+  padding: 0 0 0px 0;
   margin: 0;
+  height: fit-content;
 }
 
 .screenshots-section {
@@ -164,9 +165,10 @@
   background: white;
   border-radius: 0;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  padding: 10px 20px 20px 20px;
-  max-height: 600px;
-  overflow-y: auto;
+  padding: 10px 20px 10px 20px;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
 }
 
 .screenshots-section h3 {
@@ -342,7 +344,50 @@
   
   .user-flow-section {
     margin: -10px -10px 20px -10px;
-    padding: 15px 10px;
+    padding: 10px 12px;
+    min-height: 70px !important;
+    max-height: 90px !important;
+    width: calc(100% + 20px);
+    margin-left: -10px;
+    margin-right: -10px;
+  }
+  
+  .user-flow-section .flow-steps {
+    flex-direction: row !important;
+    gap: 8px;
+    justify-content: space-evenly !important;
+    flex-wrap: nowrap;
+    overflow-x: hidden;
+  }
+  
+  .user-flow-section .flow-arrow {
+    display: none !important;
+  }
+  
+  .user-flow-section .flow-step {
+    min-width: auto;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    max-width: 80px;
+  }
+  
+  .user-flow-section .step-number {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 1rem !important;
+    margin-bottom: 4px;
+  }
+  
+  .user-flow-section .step-content h3 {
+    font-size: 0.8rem !important;
+    margin: 0 !important;
+    line-height: 1.2;
+    text-align: center;
+  }
+  
+  .user-flow-section .step-content p {
+    display: none !important;
   }
   
   /* Touch-friendly interactions */
@@ -439,7 +484,29 @@
   }
   
   .user-flow-section {
-    padding: 12px 8px;
+    padding: 8px 10px;
+    min-height: 65px !important;
+    max-height: 85px !important;
+  }
+  
+  .user-flow-section .flow-steps {
+    gap: 4px;
+    justify-content: space-evenly !important;
+    padding: 0 8px;
+  }
+  
+  .user-flow-section .flow-arrow {
+    display: none !important;
+  }
+  
+  .user-flow-section .step-number {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.9rem !important;
+  }
+  
+  .user-flow-section .step-content h3 {
+    font-size: 0.7rem !important;
   }
   
   .flow-step {

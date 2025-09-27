@@ -1,4 +1,4 @@
-/* User Flow Section Styles - Matching other pages */
+/* User Flow Section Styles - Matching other pages - FORCE CACHE BUST 2025-01-27-MOBILE-FIX */
 .user-flow-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   margin: -10px -20px 20px -20px;
@@ -135,8 +135,8 @@
 
 .categories-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
   margin-bottom: 3rem;
 }
 
@@ -250,6 +250,61 @@
     box-sizing: border-box !important;
   }
   
+  /* Mobile user flow section */
+  .user-flow-section {
+    padding: 10px 12px;
+    min-height: 70px !important;
+    max-height: 90px !important;
+    margin: -10px -10px 20px -10px !important;
+    border-radius: 0 !important;
+    width: calc(100% + 20px) !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  
+  .user-flow-section .flow-steps {
+    flex-direction: row !important;
+    gap: 8px;
+    justify-content: space-evenly !important;
+    flex-wrap: nowrap;
+    width: 100%;
+    padding: 0 10px;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+  
+  .user-flow-section .flow-arrow {
+    display: none !important;
+  }
+  
+  .user-flow-section .flow-step {
+    min-width: auto;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    max-width: none;
+    align-items: center;
+  }
+  
+  .user-flow-section .step-number {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 1rem !important;
+    margin-bottom: 4px !important;
+  }
+  
+  .user-flow-section .step-content h3 {
+    font-size: 0.8rem !important;
+    margin: 0 !important;
+    line-height: 1.2;
+    text-align: center;
+  }
+  
+  .user-flow-section .step-content p {
+    display: none !important;
+  }
+  
   .merchandise-categories {
     padding: 1rem;
     overflow-x: hidden !important;
@@ -293,12 +348,13 @@
   }
   
   .categories-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
     max-width: 100% !important;
     overflow-x: hidden !important;
     width: 100% !important;
     box-sizing: border-box !important;
+    display: grid !important;
   }
   
   .category-box {
@@ -346,8 +402,9 @@
   }
   
   .categories-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+    display: grid !important;
   }
   
   .category-box {
@@ -362,5 +419,22 @@
   
   .category-name {
     font-size: 0.8rem;
+  }
+}
+
+/* ULTRA SPECIFIC MOBILE OVERRIDE - FORCE 2 COLUMNS */
+@media (max-width: 768px) {
+  .merchandise-categories .categories-container .categories-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    display: grid !important;
+    gap: 0.75rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .merchandise-categories .categories-container .categories-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    display: grid !important;
+    gap: 0.5rem !important;
   }
 }

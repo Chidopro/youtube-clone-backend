@@ -6,7 +6,7 @@ import './Video.css'
 import { useParams } from "react-router-dom";
 import { API_CONFIG } from '../../config/apiConfig'
 
-const Video = () => {
+const Video = ({ sidebar }) => {
 
   const {videoId,categoryId} = useParams();
   // State for thumbnail/screenshots
@@ -355,7 +355,7 @@ const Video = () => {
            >
              <div className={`step-number ${pulseStep2 ? 'pulse' : ''}`}>2</div>
              <div className="step-content">
-               <h3>Play The Video</h3>
+               <h3>Select Screenshot</h3>
                <p>Select the perfect screenshot to capture</p>
              </div>
            </div>
