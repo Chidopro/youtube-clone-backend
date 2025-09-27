@@ -553,8 +553,8 @@
 }
 
 .play-video {
-    width: 100%;
-    max-width: 100%;
+    width: 67%;
+    max-width: 67%;
     margin: 0 auto;
     padding: 0;
     background: transparent;
@@ -624,6 +624,11 @@
 
 /* Mobile override for video container height */
 @media (max-width: 768px) {
+  .play-video {
+    width: 67%;
+    max-width: 67%;
+  }
+  
   .play-video .video-container {
     min-height: 320px !important;
     height: 320px !important;
