@@ -64,6 +64,8 @@ const App = () => {
   // Hide main sidebar for third tier profile pages
   const shouldShowSidebar = sidebar && !(currentProfileTier?.isThirdTier);
   
+  console.log('🚀 App.jsx rendering - current path:', location.pathname);
+  
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navbar setSidebar={setSidebar} resetCategory={resetCategory} />
@@ -75,7 +77,7 @@ const App = () => {
           <div style={{ flex: 1 }}>
             <Routes>
               <Route path="/" element={<Home sidebar={sidebar} category={category} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />} />
-              <Route path="/video/:categoryId/:videoId" element={<Video />} />
+              <Route path="/video/:categoryId/:videoId" element={<Video sidebar={sidebar} />} />
               <Route path="/upload" element={<Upload sidebar={sidebar} />} />
               <Route path="/profile/:username" element={<Profile sidebar={sidebar} />} />
               <Route path="/approve-subscription" element={<ApproveSubscription />} />
@@ -91,7 +93,7 @@ const App = () => {
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/search" element={<Search />} />
-              <Route path="/merchandise" element={<MerchandiseCategories />} />
+              <Route path="/merchandise" element={<MerchandiseCategories sidebar={sidebar} />} />
               <Route path="/test-crop-tool" element={<TestCropTool />} />
               <Route path="/payment-portal" element={<PaymentPortal />} />
               <Route path="/payment-setup" element={<PaymentSetup />} />

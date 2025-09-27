@@ -1257,14 +1257,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 </div>
             </div>
             
-                         {/* Action buttons for screenshots and merchandise */}
-             <div className="screenmerch-actions" style={{
-                 display: 'flex',
-                 gap: '10px',
-                 marginBottom: isMobile ? '0px' : '0px',
-                 marginTop: isMobile ? '5px' : '10px',
-                 flexWrap: 'wrap'
-             }}>
+                         {/* Action buttons for screenshots and merchandise - CACHE BUST 2025-01-27 */}
+        <div className="screenmerch-actions" style={{
+            display: 'flex',
+            gap: '10px',
+            marginBottom: isMobile ? '0px' : '0px',
+            marginTop: isMobile ? '5px' : '0px',
+            flexWrap: 'wrap'
+        }}>
                 <button 
                     className="screenmerch-btn" 
                     onClick={handleGrabScreenshot}
@@ -1304,13 +1304,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             </div>
 
             {/* Video title moved up */}
-            <h3 style={{
-                marginTop: '5px',
-                marginBottom: isMobile ? '5px' : '15px',
-                fontWeight: '600',
-                fontSize: '22px',
-                textAlign: 'center'
-            }}>{video.title}</h3>
+        <h3 style={{
+            marginTop: '15px',
+            marginBottom: isMobile ? '5px' : '15px',
+            fontWeight: '600',
+            fontSize: '22px',
+            textAlign: 'center'
+        }}>{video.title}</h3>
 
             <div className="publisher">
                 <div>

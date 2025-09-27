@@ -1,4 +1,4 @@
-/* CACHE BUST: Mobile header update - All 3 steps visible on mobile */
+/* FORCE CACHE BUST: Mobile header update - All 3 steps visible on mobile - MOBILE-FIX-2025-01-27 */
 body {
   overflow-x: hidden !important;
   width: 100% !important;
@@ -119,6 +119,8 @@ body {
     flex-wrap: nowrap;
     width: 100%;
     padding: 0 10px;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
   }
   
   .user-flow-section .flow-arrow {
@@ -156,13 +158,12 @@ body {
     padding: 10px 12px;
     min-height: 70px !important;
     max-height: 90px !important;
-    margin: -10px 0 20px 0 !important;
+    margin: -10px -10px 20px -10px !important;
     border-radius: 0 !important;
-    width: 100vw !important;
-    position: relative !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
+    width: calc(100% + 20px) !important;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
   }
   
   /* Make video content extend to full width like purple bar */
@@ -170,10 +171,7 @@ body {
     padding-left: 0 !important;
     padding-right: 0 !important;
     margin: 0 !important;
-    width: 100vw !important;
-    position: relative !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
+    width: 100% !important;
   }
   
   /* Ensure video cards extend to edges */
@@ -211,13 +209,12 @@ body {
     padding: 8px 10px;
     min-height: 65px !important;
     max-height: 85px !important;
-    margin: -10px 0 20px 0 !important;
+    margin: -10px -10px 20px -10px !important;
     border-radius: 0 !important;
-    width: 100vw !important;
-    position: relative !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
+    width: calc(100% + 20px) !important;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
   }
   
   /* Make video content extend to full width like purple bar */
@@ -225,10 +222,7 @@ body {
     padding-left: 0 !important;
     padding-right: 0 !important;
     margin: 0 !important;
-    width: 100vw !important;
-    position: relative !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
+    width: 100% !important;
   }
   
   /* Ensure video cards extend to edges */

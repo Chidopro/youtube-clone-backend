@@ -61,6 +61,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     }, [dropdownOpen]);
 
     const handleLogin = async () => {
+        console.log('🔐 Sign In clicked - starting Google OAuth');
         const { error } = await supabase.auth.signInWithOAuth({ 
             provider: 'google',
             options: {
@@ -70,6 +71,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
             }
         });
         if (error) {
+            console.error('Login error:', error);
             alert('Login failed: ' + error.message);
         }
     };
@@ -104,6 +106,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     };
 
     const handleSubscribeClick = () => {
+        console.log('🚀 Get Started Free clicked - navigating to subscription tiers');
         // Always redirect to the free earnings calculator page
         navigate('/subscription-tiers');
     };
@@ -136,11 +139,27 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         }
     };
 
+    console.log('🔍 Navbar component rendering, setSidebar function:', typeof setSidebar);
+    
     return (
         <>
-            <nav className='flex-div'>
+            <nav className='flex-div' style={{ position: 'relative', zIndex: 1001, pointerEvents: 'auto', backgroundColor: 'lightblue', border: '2px solid red' }}>
                 <div className="nav-left flex-div">
-                    <img src={menu_icon} alt="" className="menu-icon" onClick={() => setSidebar(prev => !prev)} />
+                    <img 
+                        src={menu_icon} 
+                        alt="" 
+                        className="menu-icon" 
+                        onClick={() => {
+                            console.log('🍔 Hamburger clicked, setSidebar type:', typeof setSidebar);
+                            if (setSidebar) {
+                                setSidebar(prev => {
+                                    console.log('🍔 Sidebar toggling from:', prev, 'to:', !prev);
+                                    return !prev;
+                                });
+                            }
+                        }}
+                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                    />
                     <Link to="/" onClick={resetCategory}> <img src={logo} alt="" className="logo" /></Link>
                 </div>
                 <div className="nav-middle flex-div">
@@ -173,12 +192,13 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             title="Sign in to upload videos"
                         />
                     )}
-                    <button 
+                    <Link 
+                        to="/subscription-tiers" 
                         className="subscribe-btn"
-                        onClick={handleSubscribeClick}
+                        onClick={() => console.log('🚀 Get Started Free Link clicked!')}
                     >
                         Get Started Free
-                    </button>
+                    </Link>
                     {loading ? (
                         <div className="loading-spinner-navbar"></div>
                     ) : user ? (
@@ -211,7 +231,13 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             </div>
                         </div>
                     ) : (
-                        <button className="sign-in-btn" onClick={handleLogin}>
+                        <button 
+                            className="sign-in-btn" 
+                            onClick={() => {
+                                console.log('🔐 Sign In button clicked!');
+                                handleLogin();
+                            }}
+                        >
                             Sign In
                         </button>
                     )}
