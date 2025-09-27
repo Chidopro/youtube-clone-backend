@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './MerchandiseCategories.css';
+import '../Home/Home.css';
 import { API_CONFIG } from '../../config/apiConfig';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 
@@ -135,20 +136,21 @@ const MerchandiseCategories = ({ sidebar }) => {
 
   return (
     <>
-      {/* User Flow Section - Step 3 Only */}
-      <div className="user-flow-section">
-        <div className="flow-steps">
-          <div className="flow-step">
-            <div className="step-number">3</div>
-            <div className="step-content">
-              <h3>Make Merchandise</h3>
-              <p>Create custom products with your screenshot</p>
+      <div className={`container ${sidebar ? "" : " large-container"}`}>
+        {/* User Flow Section - Step 3 Only */}
+        <div className="user-flow-section">
+          <div className="flow-steps">
+            <div className="flow-step">
+              <div className="step-number">3</div>
+              <div className="step-content">
+                <h3>Make Merchandise</h3>
+                <p>Create custom products with your screenshot</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="merchandise-categories">
+        <div className="merchandise-categories">
         <div className="categories-container">
           <h1 className="categories-title">Choose a Product Category</h1>
           <p className="categories-subtitle">Select a category to browse products for your custom merchandise</p>
@@ -181,15 +183,16 @@ const MerchandiseCategories = ({ sidebar }) => {
         </div>
       </div>
 
-      {/* Authentication Modal */}
-      <AuthModal 
-        isOpen={showAuthModal}
-        onClose={() => {
-          setShowAuthModal(false);
-          setSelectedCategory(null);
-        }}
-        onSuccess={handleAuthSuccess}
-      />
+        {/* Authentication Modal */}
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => {
+            setShowAuthModal(false);
+            setSelectedCategory(null);
+          }}
+          onSuccess={handleAuthSuccess}
+        />
+        </div>
       </div>
     </>
   );

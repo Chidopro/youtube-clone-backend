@@ -143,7 +143,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     
     return (
         <>
-            <nav className='flex-div' style={{ position: 'relative', zIndex: 1001, pointerEvents: 'auto' }}>
+            <nav className='flex-div' style={{ position: 'sticky', top: 0, zIndex: 9999, pointerEvents: 'auto' }}>
                 <div className="nav-left flex-div">
                     <img 
                         src={menu_icon} 
@@ -158,7 +158,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 });
                             }
                         }}
-                        style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                        style={{ cursor: 'pointer', pointerEvents: 'auto', zIndex: 10000 }}
                     />
                     <Link to="/" onClick={resetCategory}> <img src={logo} alt="" className="logo" /></Link>
                 </div>
@@ -175,7 +175,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             src={search_icon} 
                             alt="Search" 
                             onClick={handleSearch}
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: 'pointer', pointerEvents: 'auto', zIndex: 10000 }}
                             title="Search creators"
                         />
                     </div>
@@ -196,6 +196,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         to="/subscription-tiers" 
                         className="subscribe-btn"
                         onClick={() => console.log('🚀 Get Started Free Link clicked!')}
+                        style={{ pointerEvents: 'auto', zIndex: 10000 }}
                     >
                         Get Started Free
                     </Link>
@@ -237,6 +238,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 console.log('🔐 Sign In button clicked!');
                                 handleLogin();
                             }}
+                            style={{ pointerEvents: 'auto', zIndex: 10000 }}
                         >
                             Sign In
                         </button>
