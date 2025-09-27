@@ -227,7 +227,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     return (
         <div className="play-video">
-            <div className="screenmerch-actions">
+            <div className="screenmerch-actions" style={{
+                display: 'flex',
+                gap: '10px',
+                marginTop: '-15px',
+                flexWrap: 'wrap'
+            }}>
                 <button className="screenmerch-btn" onClick={handleGrabScreenshot}>Grab Screenshot</button>
                 <button className="screenmerch-btn" onClick={handleMakeMerch}>Make Merch</button>
             </div>
