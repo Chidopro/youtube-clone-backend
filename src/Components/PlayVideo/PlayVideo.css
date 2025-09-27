@@ -14,7 +14,7 @@
     width: 67%;
     max-width: 67%;
     margin: 0 auto;
-    padding: 0 16px;
+    padding: 0 8px;
 }
 /* .play-video video{
     width: 100%;
@@ -24,8 +24,8 @@
     height: 37vw;
 }
 .play-video h3 {
-    margin-top: 5px;
-    margin-bottom: 5px;
+    margin-top: 2px;
+    margin-bottom: 2px;
     font-weight: 600;
     font-size: 22px;
 }
