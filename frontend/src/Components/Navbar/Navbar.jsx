@@ -145,7 +145,10 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     
     return (
         <>
-            <nav className='flex-div' style={{ position: 'sticky', top: 0, zIndex: 9999, pointerEvents: 'auto' }}>
+            <div style={{ position: 'fixed', top: 0, left: 0, background: 'yellow', color: 'black', padding: '5px', zIndex: 10000, fontSize: '12px' }}>
+                NAVBAR RENDERED - Path: {window.location.pathname}
+            </div>
+            <nav className='flex-div' style={{ position: 'sticky', top: 0, zIndex: 9999, pointerEvents: 'auto', border: '3px solid red' }}>
                 <div className="nav-left flex-div">
                     <img 
                         src={menu_icon} 
