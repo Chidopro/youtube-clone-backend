@@ -154,7 +154,6 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            alert('Hamburger clicked!');
                             console.log('🍔 Hamburger clicked, setSidebar type:', typeof setSidebar);
                             if (setSidebar) {
                                 setSidebar(prev => {
@@ -206,7 +205,6 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         to="/subscription-tiers" 
                         className="subscribe-btn"
                         onClick={(e) => {
-                            alert('Get Started Free clicked!');
                             console.log('🚀 Get Started Free Link clicked!');
                         }}
                         style={{ pointerEvents: 'auto', zIndex: 10000 }}
@@ -250,7 +248,6 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            alert('Sign In clicked!');
                             console.log('🔐 Sign In button clicked!');
                             handleLogin();
                         }}
