@@ -149,7 +149,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         src={menu_icon} 
                         alt="" 
                         className="menu-icon" 
-                        onClick={() => {
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             console.log('🍔 Hamburger clicked, setSidebar type:', typeof setSidebar);
                             if (setSidebar) {
                                 setSidebar(prev => {
@@ -174,7 +176,12 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         <img 
                             src={search_icon} 
                             alt="Search" 
-                            onClick={handleSearch}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('🔍 Search icon clicked!');
+                                handleSearch();
+                            }}
                             style={{ cursor: 'pointer', pointerEvents: 'auto', zIndex: 10000 }}
                             title="Search creators"
                         />
@@ -195,7 +202,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     <Link 
                         to="/subscription-tiers" 
                         className="subscribe-btn"
-                        onClick={() => console.log('🚀 Get Started Free Link clicked!')}
+                        onClick={(e) => {
+                            console.log('🚀 Get Started Free Link clicked!');
+                        }}
                         style={{ pointerEvents: 'auto', zIndex: 10000 }}
                     >
                         Get Started Free
@@ -234,7 +243,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     ) : (
                         <button 
                             className="sign-in-btn" 
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
                                 console.log('🔐 Sign In button clicked!');
                                 handleLogin();
                             }}
