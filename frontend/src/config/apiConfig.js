@@ -10,9 +10,9 @@ const config = {
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no'
   },
   production: {
-    API_BASE_URL: 'https://copy5-backend.fly.dev',
-    EMAIL_API_URL: 'https://copy5-backend.fly.dev',
-    SUBSCRIPTION_API_URL: 'https://copy5-backend.fly.dev',
+    API_BASE_URL: 'https://youtube-clone-dev-backend.fly.dev',
+    EMAIL_API_URL: 'https://youtube-clone-dev-backend.fly.dev',
+    SUBSCRIPTION_API_URL: 'https://youtube-clone-dev-backend.fly.dev',
     SUPABASE_URL: 'https://sojxbydpcdcdzfdtbypd.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no'
   }

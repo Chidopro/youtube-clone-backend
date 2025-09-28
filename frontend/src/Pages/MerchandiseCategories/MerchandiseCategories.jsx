@@ -52,18 +52,8 @@ const MerchandiseCategories = ({ sidebar }) => {
   const handleCategoryClick = async (category) => {
     console.log('🎯 Category selected:', category);
     
-    // Check authentication first
-    const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
-    
-    if (!isAuthenticated) {
-      // Store the selected category and show auth modal
-      setSelectedCategory(category);
-      setShowAuthModal(true);
-      return;
-    }
-    
-    // User is authenticated, proceed with product creation
-    await createProduct(category);
+    // Redirect to home page instead of creating products
+    window.location.href = '/';
   };
 
   const createProduct = async (category) => {

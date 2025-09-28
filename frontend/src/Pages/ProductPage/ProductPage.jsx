@@ -18,7 +18,7 @@ const ProductPage = ({ sidebar }) => {
       try {
         setLoading(true);
         // Fetch product data from backend API
-        const response = await fetch(`https://copy5-backend.fly.dev/api/product/${productId}?category=${category}&authenticated=${authenticated}&email=${email}`);
+        const response = await fetch(`https://youtube-clone-dev-backend.fly.dev/api/product/${productId}?category=${category}&authenticated=${authenticated}&email=${email}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch product data: ${response.status}`);
