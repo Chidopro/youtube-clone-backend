@@ -8,102 +8,15 @@ import more_icon from '../../assets/more.png'
 import notification_icon from '../../assets/notification.png'
 import { Link, useNavigate } from 'react-router-dom'
 import SubscriptionModal from '../SubscriptionModal/SubscriptionModal'
-import { supabase } from '../../supabaseClient'
-import { upsertUserProfile, deleteUserAccount } from '../../utils/userService'
 
 const Navbar = ({ setSidebar, resetCategory }) => {
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [dropdownOpen, setDropdownOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const navigate = useNavigate();
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-            setLoading(false);
-            if (user) {
-                // Upsert user profile in users table
-                const upsertPayload = {
-                    id: user.id,
-                    username: user.user_metadata?.name?.replace(/\s+/g, '').toLowerCase() || user.email,
-                    display_name: user.user_metadata?.name || user.email,
-                    email: user.email,
-                    role: 'creator'  // Set default role for all users
-                };
-                console.log('Upserting user profile with:', upsertPayload);
-                const result = await upsertUserProfile(upsertPayload);
-                console.log('Upsert result:', result);
-            }
-        };
-        fetchUser();
+    // Simplified navbar - no complex authentication logic needed
 
-        // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-            fetchUser();
-        });
-
-        return () => subscription.unsubscribe();
-    }, []);
-
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownOpen && !event.target.closest('.user-profile-container')) {
-                setDropdownOpen(false);
-            }
-        };
-
-        document.addEventListener('click', handleClickOutside);
-        return () => document.removeEventListener('click', handleClickOutside);
-    }, [dropdownOpen]);
-
-    const handleLogin = async () => {
-        console.log('🔐 Sign In clicked - starting Google OAuth');
-        const { error } = await supabase.auth.signInWithOAuth({ 
-            provider: 'google',
-            options: {
-                queryParams: {
-                    prompt: 'select_account'
-                }
-            }
-        });
-        if (error) {
-            console.error('Login error:', error);
-            alert('Login failed: ' + error.message);
-        }
-    };
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        setUser(null);
-        navigate('/');
-    };
-
-    const handleDeleteAccount = async () => {
-        if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-            try {
-                const result = await deleteUserAccount();
-                
-                if (result.success) {
-                    // Sign out and redirect
-                    await supabase.auth.signOut();
-                    setUser(null);
-                    navigate('/');
-                    alert('Your account has been successfully deleted.');
-                    // Force page reload to clear any cached data
-                    window.location.reload();
-                } else {
-                    alert(`Failed to delete account: ${result.error || 'Unknown error'}`);
-                }
-            } catch (error) {
-                console.error('Error deleting account:', error);
-                alert('There was an error deleting your account. Please try again or contact support.');
-            }
-        }
-    };
+    // Simplified navbar - authentication handled elsewhere
 
     const handleSubscribeClick = () => {
         console.log('🚀 Get Started Free clicked - navigating to subscription tiers');
@@ -139,9 +52,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         }
     };
 
-    console.log('🔍 Navbar component rendering, setSidebar function:', typeof setSidebar);
-    console.log('🔍 Current location:', window.location.pathname);
-    console.log('🔍 User state:', user ? 'logged in' : 'not logged in');
+    console.log('🔍 Navbar component rendering - simplified version');
     
     return (
         <>
@@ -149,20 +60,16 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                 <div className="nav-left flex-div">
                     <img 
                         src={menu_icon} 
-                        alt="" 
+                        alt="Menu" 
                         className="menu-icon" 
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log('🍔 Hamburger clicked, setSidebar type:', typeof setSidebar);
-                            if (setSidebar) {
-                                setSidebar(prev => {
-                                    console.log('🍔 Sidebar toggling from:', prev, 'to:', !prev);
-                                    return !prev;
-                                });
-                            }
+                            console.log('🍔 Hamburger clicked - redirecting to home');
+                            navigate('/');
                         }}
-                        style={{ cursor: 'pointer', pointerEvents: 'auto', zIndex: 10000 }}
+                        style={{ cursor: 'pointer', pointerEvents: 'auto', zIndex: 10001 }}
+                        title="Go to Home"
                     />
                     <Link to="/" onClick={resetCategory}> <img src={logo} alt="" className="logo" /></Link>
                 </div>
@@ -190,17 +97,18 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     </div>
                 </div>
                 <div className="nav-right flex-div">
-                    {user ? (
-                        <Link to="/upload"><img src={upload_icon} alt="Upload" /></Link>
-                    ) : (
-                        <img 
-                            src={upload_icon} 
-                            alt="Upload" 
-                            style={{ cursor: 'pointer' }}
-                            onClick={handleLogin}
-                            title="Sign in to upload videos"
-                        />
-                    )}
+                    <img 
+                        src={upload_icon} 
+                        alt="Upload" 
+                        style={{ cursor: 'pointer', pointerEvents: 'auto', zIndex: 10001 }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('📤 Upload button clicked - redirecting to home');
+                            navigate('/');
+                        }}
+                        title="Go to Home"
+                    />
                     <Link 
                         to="/subscription-tiers" 
                         className="subscribe-btn"
@@ -211,51 +119,19 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     >
                         Get Started Free
                     </Link>
-                    {loading ? (
-                        <div className="loading-spinner-navbar"></div>
-                    ) : user ? (
-                        <div className="user-profile-container">
-                            <img 
-                                className='user-profile' 
-                                src={user?.user_metadata?.picture || '/default-avatar.jpg'} 
-                                alt={user?.user_metadata?.name || 'User'} 
-                                onClick={() => setDropdownOpen(!dropdownOpen)}
-                            />
-                            <div className={`user-dropdown ${dropdownOpen ? 'open' : ''}`}>
-                                <p>Signed in as <strong>{user?.user_metadata?.name}</strong></p>
-                                <hr/>
-                                <Link to="/dashboard" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Dashboard</Link>
-                                <Link to="/subscription-success" className="dropdown-item" onClick={() => setDropdownOpen(false)}>📋 Instructions & Link</Link>
-                                <Link to="/payment-portal" className="dropdown-item" onClick={() => setDropdownOpen(false)}>💰 Payment Portal</Link>
-                                <Link to="/admin" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Admin Portal</Link>
-                                <button 
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setDropdownOpen(false);
-                                        handleDeleteAccount();
-                                    }} 
-                                    className="dropdown-item delete-account-btn"
-                                >
-                                    Delete Account
-                                </button>
-                                <button onClick={() => { setDropdownOpen(false); handleLogout(); }}>Logout</button>
-                            </div>
-                        </div>
-                    ) : (
-                        <button 
-                            className="sign-in-btn" 
+                    <button 
+                        className="sign-in-btn" 
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log('🔐 Sign In button clicked!');
-                            handleLogin();
+                            console.log('🔐 Sign In button clicked - redirecting to home');
+                            navigate('/');
                         }}
-                            style={{ pointerEvents: 'auto', zIndex: 10000 }}
-                        >
-                            Sign In
-                        </button>
-                    )}
+                        style={{ pointerEvents: 'auto', zIndex: 10001 }}
+                        title="Go to Home"
+                    >
+                        Sign In
+                    </button>
                 </div>
             </nav>
             

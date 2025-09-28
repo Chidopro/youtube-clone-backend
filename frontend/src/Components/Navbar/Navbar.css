@@ -39,6 +39,9 @@ nav{
     background-color: #065fd4;
     color: white;
     border: 1px solid #065fd4;
+    pointer-events: auto;
+    z-index: 10001;
+    position: relative;
 }
 
 .sign-in-btn:hover {
@@ -51,6 +54,9 @@ nav{
     background: #cc0000;
     color: white;
     border: 1px solid #cc0000;
+    pointer-events: auto;
+    z-index: 10001;
+    position: relative;
 }
 
 .nav-right .subscribe-btn:hover {
@@ -80,6 +86,13 @@ nav{
     margin-right: 25px;
     pointer-events: auto;
     cursor: pointer;
+    display: block;
+    z-index: 10001;
+    transition: transform 0.2s ease;
+}
+
+.nav-left .menu-icon:hover {
+    transform: scale(1.1);
 }
 
 .nav-left .logo{
@@ -115,7 +128,12 @@ nav{
 
 @media (max-width: 768px){
     .menu-icon{
-        display: none;
+        display: block !important;
+        width: 22px;
+        margin-right: 25px;
+        pointer-events: auto;
+        cursor: pointer;
+        z-index: 10001;
     }
     .nav-right img{
         display: none;
