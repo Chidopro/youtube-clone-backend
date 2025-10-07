@@ -110,46 +110,6 @@ const ProductPage = ({ sidebar }) => {
         </div>
       </div>
 
-      {/* Screenshot Selection Section */}
-      <div className="screenshots-section">
-        <h2 className="screenshots-title">Select Your Screenshot</h2>
-        <p className="screenshots-subtitle">Choose which screenshot to use for your custom merchandise</p>
-        <div className="screenshots-preview">
-          <div className="screenshot-grid">
-            {/* Thumbnail */}
-            {productData.thumbnail_url && (
-              <div 
-                className={`screenshot-item ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
-                onClick={() => setSelectedScreenshot('thumbnail')}
-              >
-                <img 
-                  src={productData.thumbnail_url} 
-                  alt="Thumbnail" 
-                  className="screenshot-image"
-                />
-                <div className="screenshot-label">Thumbnail</div>
-              </div>
-            )}
-            
-            {/* Screenshots */}
-            {productData.screenshots && productData.screenshots.map((screenshot, index) => (
-              <div 
-                key={index}
-                className={`screenshot-item ${selectedScreenshot === index ? 'selected' : ''}`}
-                onClick={() => setSelectedScreenshot(index)}
-              >
-                <img 
-                  src={screenshot} 
-                  alt={`Screenshot ${index + 1}`} 
-                  className="screenshot-image"
-                />
-                <div className="screenshot-label">Screenshot {index + 1}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* Category Selection Section */}
       <div className="merchandise-categories">
         <div className="categories-container">
@@ -171,7 +131,50 @@ const ProductPage = ({ sidebar }) => {
         </div>
       </div>
 
-      <div className="product-page-container">
+      {/* Products Section - Only show when category is selected and has products */}
+      {productData.products && productData.products.length > 0 && (
+        <>
+          {/* Screenshot Selection Section */}
+          <div className="screenshots-section">
+            <h2 className="screenshots-title">Select Your Screenshot</h2>
+            <p className="screenshots-subtitle">Choose which screenshot to use for your custom merchandise</p>
+            <div className="screenshots-preview">
+              <div className="screenshot-grid">
+                {/* Thumbnail */}
+                {productData.thumbnail_url && (
+                  <div 
+                    className={`screenshot-item ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
+                    onClick={() => setSelectedScreenshot('thumbnail')}
+                  >
+                    <img 
+                      src={productData.thumbnail_url} 
+                      alt="Thumbnail" 
+                      className="screenshot-image"
+                    />
+                    <div className="screenshot-label">Thumbnail</div>
+                  </div>
+                )}
+                
+                {/* Screenshots */}
+                {productData.screenshots && productData.screenshots.map((screenshot, index) => (
+                  <div 
+                    key={index}
+                    className={`screenshot-item ${selectedScreenshot === index ? 'selected' : ''}`}
+                    onClick={() => setSelectedScreenshot(index)}
+                  >
+                    <img 
+                      src={screenshot} 
+                      alt={`Screenshot ${index + 1}`} 
+                      className="screenshot-image"
+                    />
+                    <div className="screenshot-label">Screenshot {index + 1}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="product-page-container">
         <div className="product-main">
           <div className="product-image-section">
             {productData.img_url && (
@@ -262,6 +265,8 @@ const ProductPage = ({ sidebar }) => {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };
