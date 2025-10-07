@@ -450,7 +450,16 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
         
         // console.log('✅ Authenticated - proceeding with merch creation');
-        // User is authenticated, proceed with merch creation
+        // User is authenticated, save data to localStorage AND proceed with merch creation
+        const merchData = {
+            thumbnail,
+            videoUrl: video?.video_url || window.location.href,
+            screenshots: screenshots.slice(0, 6),
+            videoTitle: video?.title || 'Unknown Video',
+            creatorName: video?.channelTitle || 'Unknown Creator'
+        };
+        localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+        
         await createMerchProduct();
     };
     
