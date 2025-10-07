@@ -11,29 +11,27 @@ const MerchandiseCategories = ({ sidebar }) => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   
   // Get data from localStorage with validation
-  const screenshots = (() => {
+  const pendingMerchData = (() => {
     try {
-      const data = localStorage.getItem('merch_screenshots');
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      console.warn('Invalid screenshots data in localStorage, clearing...');
-      localStorage.removeItem('merch_screenshots');
-      return [];
-    }
-  })();
-  
-  const thumbnail = localStorage.getItem('merch_thumbnail');
-  
-  const videoData = (() => {
-    try {
-      const data = localStorage.getItem('merch_video_data');
+      const data = localStorage.getItem('pending_merch_data');
       return data ? JSON.parse(data) : {};
     } catch (e) {
-      console.warn('Invalid video data in localStorage, clearing...');
-      localStorage.removeItem('merch_video_data');
+      console.warn('Invalid merch data in localStorage, clearing...');
+      localStorage.removeItem('pending_merch_data');
       return {};
     }
   })();
+  
+  const screenshots = pendingMerchData.screenshots || [];
+  const thumbnail = pendingMerchData.thumbnail || '';
+  const videoData = {
+    title: pendingMerchData.videoTitle || 'Unknown Video',
+    channelTitle: pendingMerchData.creatorName || 'Unknown Creator',
+    url: pendingMerchData.videoUrl || ''
+  };
+  
+  console.log('📸 Loaded from localStorage - Screenshots count:', screenshots.length);
+  console.log('📸 Thumbnail present:', !!thumbnail);
 
   // Categories with Stickers name update - CACHE BUST 2025-01-27
   const categories = [

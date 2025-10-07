@@ -439,6 +439,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 thumbnail,
                 videoUrl: video?.video_url || window.location.href,
                 screenshots: screenshots.slice(0, 6),
+                videoTitle: video?.title || 'Unknown Video',
+                creatorName: video?.channelTitle || 'Unknown Creator'
             };
             localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
             
