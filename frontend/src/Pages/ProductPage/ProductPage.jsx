@@ -113,7 +113,6 @@ const ProductPage = ({ sidebar }) => {
       <div className="merchandise-categories">
         <div className="categories-container">
           <h1 className="categories-title">Choose a Product Category</h1>
-          <p className="categories-subtitle">Select a category to browse products for your custom merchandise</p>
           
           <div className="categories-grid">
             {categories.map((cat, index) => (
@@ -212,6 +211,12 @@ const ProductPage = ({ sidebar }) => {
                   </button>
                 </div>
               ))}
+            </div>
+
+            {/* Cart Buttons Below Products */}
+            <div className="cart-section cart-section-bottom">
+              <button className="view-cart-btn">View Cart</button>
+              <button className="checkout-btn">Checkout</button>
             </div>
           </div>
         </div>
