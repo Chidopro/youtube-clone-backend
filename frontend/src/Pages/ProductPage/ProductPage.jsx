@@ -183,9 +183,12 @@ const ProductPage = ({ sidebar }) => {
                 
                 {/* Screenshots */}
                 {(() => {
-                  const shots = (productData?.product?.screenshots && productData.product.screenshots.length > 0)
+                  const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
+                  const baseShots = (productData?.product?.screenshots && productData.product.screenshots.length > 0)
                     ? productData.product.screenshots
                     : fallbackImages.screenshots;
+                  // Ensure we don't duplicate the thumbnail in the screenshots grid
+                  const shots = (baseShots || []).filter((s) => s && s !== thumbnailUrl);
                   return shots && shots.length > 0 ? shots.map((screenshot, index) => (
                     <div 
                       key={index}
