@@ -110,8 +110,8 @@ const ProductPage = ({ sidebar }) => {
         </div>
       </div>
 
-      {/* Category Selection Section - Only show when NO products */}
-      {(!productData.products || productData.products.length === 0) && (
+      {/* Category Selection Section - Only show when category is "all" or no specific category */}
+      {(category === 'all' || !productData.products || productData.products.length === 0) && (
         <div className="merchandise-categories">
           <div className="categories-container">
             <h1 className="categories-title">Choose a Product Category</h1>
@@ -133,8 +133,8 @@ const ProductPage = ({ sidebar }) => {
         </div>
       )}
 
-      {/* Products Section - Only show when category is selected and has products */}
-      {productData.products && productData.products.length > 0 && (
+      {/* Products Section - Only show when specific category is selected (not "all") and has products */}
+      {category !== 'all' && productData.products && productData.products.length > 0 && (
         <>
           {/* Screenshot Selection Section */}
           <div className="screenshots-section">
