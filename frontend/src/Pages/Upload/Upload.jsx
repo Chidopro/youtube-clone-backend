@@ -166,7 +166,7 @@ const Upload = ({ sidebar }) => {
             console.log('User ID:', user.id);
             
             // Ensure user exists in database before upload
-            const ensureUserResponse = await fetch('https://screenmerch.fly.dev/api/users/ensure-exists', {
+            const ensureUserResponse = await fetch('https://youtube-clone-dev-backend.fly.dev/api/users/ensure-exists', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

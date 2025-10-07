@@ -1293,7 +1293,7 @@ export const products = {
     "price": 32.99,
     "description": "Comfortable women's tank top",
     "image": "/static/images/womenstank.png",
-    "preview": "/static/images/womenstankpreview.jpg",
+    "preview": "/static/images/womenstankpreview.png",
     "category": "women's-shirts",
     "variables": {
       "sizes": [

@@ -299,7 +299,7 @@ const SimpleCropTool = ({ isOpen, image, onCrop, onCancel }) => {
                     feather_radius: 12
                 };
                 
-                const featherResponse = await fetch('https://screenmerch.fly.dev/api/process-shirt-image', {
+                const featherResponse = await fetch('https://youtube-clone-dev-backend.fly.dev/api/process-shirt-image', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -318,7 +318,7 @@ const SimpleCropTool = ({ isOpen, image, onCrop, onCancel }) => {
                         edge_feather: true
                     };
                     
-                    const printResponse = await fetch('https://screenmerch.fly.dev/api/process-thumbnail-print-quality', {
+                    const printResponse = await fetch('https://youtube-clone-dev-backend.fly.dev/api/process-thumbnail-print-quality', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
