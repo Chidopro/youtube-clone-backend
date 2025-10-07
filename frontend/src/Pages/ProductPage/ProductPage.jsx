@@ -48,8 +48,9 @@ const ProductPage = ({ sidebar }) => {
         
         const data = await response.json();
         console.log('📦 Product Data Received:', data);
-        console.log('📸 Thumbnail URL:', data.thumbnail_url);
-        console.log('📸 Screenshots:', data.screenshots);
+        console.log('📸 Thumbnail URL:', data.product?.thumbnail_url);
+        console.log('📸 Screenshots:', data.product?.screenshots);
+        console.log('📸 Screenshots Length:', data.product?.screenshots?.length || 0);
         setProductData(data);
       } catch (err) {
         console.error('Error fetching product data:', err);
@@ -146,13 +147,13 @@ const ProductPage = ({ sidebar }) => {
             <div className="screenshots-preview">
               <div className="screenshot-grid">
                 {/* Thumbnail */}
-                {productData.thumbnail_url && (
+                {productData.product && productData.product.thumbnail_url && (
                   <div 
                     className={`screenshot-item ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
                     onClick={() => setSelectedScreenshot('thumbnail')}
                   >
                     <img 
-                      src={productData.thumbnail_url} 
+                      src={productData.product.thumbnail_url} 
                       alt="Thumbnail" 
                       className="screenshot-image"
                     />
@@ -161,7 +162,7 @@ const ProductPage = ({ sidebar }) => {
                 )}
                 
                 {/* Screenshots */}
-                {productData.screenshots && productData.screenshots.map((screenshot, index) => (
+                {productData.product && productData.product.screenshots && productData.product.screenshots.length > 0 && productData.product.screenshots.map((screenshot, index) => (
                   <div 
                     key={index}
                     className={`screenshot-item ${selectedScreenshot === index ? 'selected' : ''}`}
