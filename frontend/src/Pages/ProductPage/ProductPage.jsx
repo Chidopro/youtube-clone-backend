@@ -110,26 +110,28 @@ const ProductPage = ({ sidebar }) => {
         </div>
       </div>
 
-      {/* Category Selection Section */}
-      <div className="merchandise-categories">
-        <div className="categories-container">
-          <h1 className="categories-title">Choose a Product Category</h1>
-          
-          <div className="categories-grid">
-            {categories.map((cat, index) => (
-              <div
-                key={index}
-                className={`category-box ${cat.category === category ? 'active' : ''}`}
-                onClick={() => handleCategoryClick(cat.category)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="category-emoji">{cat.emoji}</div>
-                <div className="category-name">{cat.name}</div>
-              </div>
-            ))}
+      {/* Category Selection Section - Only show when NO products */}
+      {(!productData.products || productData.products.length === 0) && (
+        <div className="merchandise-categories">
+          <div className="categories-container">
+            <h1 className="categories-title">Choose a Product Category</h1>
+            
+            <div className="categories-grid">
+              {categories.map((cat, index) => (
+                <div
+                  key={index}
+                  className={`category-box ${cat.category === category ? 'active' : ''}`}
+                  onClick={() => handleCategoryClick(cat.category)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="category-emoji">{cat.emoji}</div>
+                  <div className="category-name">{cat.name}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Products Section - Only show when category is selected and has products */}
       {productData.products && productData.products.length > 0 && (
