@@ -188,6 +188,19 @@
         flex-direction: column;
       }
     }
+    
+    /* Mobile responsive styles */
+    @media (max-width: 768px) {
+      .product-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 15px;
+      }
+      
+      .product-card {
+        padding: 12px;
+      }
+    }
   </style>
 </head>
 <body>

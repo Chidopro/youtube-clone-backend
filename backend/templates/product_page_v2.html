@@ -715,7 +715,7 @@
        }
        
        .product-row {
-         grid-template-columns: 1fr;
+         grid-template-columns: repeat(2, 1fr);
          gap: 12px;
          margin-top: 15px;
          overflow-x: hidden !important;
@@ -1168,9 +1168,9 @@
              <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🐕</span>
              <span style="font-weight: 600; color: #333;">Pets</span>
            </div>
-           <div class="category-card" onclick="switchCategory('stickers')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
-             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🌟</span>
-             <span style="font-weight: 600; color: #333;">Stickers & Magnets</span>
+           <div class="category-card" onclick="switchCategory('home-living')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+             <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🏠</span>
+             <span style="font-weight: 600; color: #333;">Home&Living</span>
            </div>
            <div class="category-card" onclick="switchCategory('thumbnails')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
              <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🖼️</span>
@@ -1225,9 +1225,9 @@
             <span class="icon">🐕</span>
             <span class="label">Pets</span>
           </div>
-          <div class="category-icon" onclick="switchCategory('stickers')" title="Stickers">
-            <span class="icon">🌟</span>
-            <span class="label">Stickers</span>
+          <div class="category-icon" onclick="switchCategory('home-living')" title="Home&Living">
+            <span class="icon">🏠</span>
+            <span class="label">Home&Living</span>
           </div>
           <div class="category-icon" onclick="switchCategory('misc')" title="Misc">
             <span class="icon">📦</span>

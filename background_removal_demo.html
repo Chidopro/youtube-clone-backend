@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background Removal Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .control-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        
+        .control-group select, .control-group input {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .result-card {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+        }
+        
+        .result-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .result-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin: 10px 0;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .download-btn {
+            background: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .download-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Background Removal Demo</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>📁 Drag & drop an image here or click to select</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="methodSelect">Removal Method:</label>
+                <select id="methodSelect">
+                    <option value="adaptive">Adaptive (Recommended)</option>
+                    <option value="threshold">Threshold</option>
+                    <option value="color_range">Color Range</option>
+                    <option value="edge_detection">Edge Detection</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="featherEdges">Feather Edges:</label>
+                <select id="featherEdges">
+                    <option value="true">Yes (Smooth)</option>
+                    <option value="false">No (Sharp)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="contrastBoost">Contrast Boost:</label>
+                <input type="range" id="contrastBoost" min="1.0" max="2.0" step="0.1" value="1.2">
+                <span id="contrastValue">1.2</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="saturationBoost">Saturation Boost:</label>
+                <input type="range" id="saturationBoost" min="1.0" max="2.0" step="0.1" value="1.1">
+                <span id="saturationValue">1.1</span>
+            </div>
+        </div>
+        
+        <div class="buttons">
+            <button class="btn btn-primary" id="removeBackgroundBtn" disabled>Remove Background</button>
+            <button class="btn btn-secondary" id="enhanceBtn" disabled>Enhance Image</button>
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing image...</p>
+        </div>
+        
+        <div id="messages"></div>
+        
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        let currentImageData = null;
+        let processedImageData = null;
+        
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const removeBackgroundBtn = document.getElementById('removeBackgroundBtn');
+        const enhanceBtn = document.getElementById('enhanceBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const loading = document.getElementById('loading');
+        const messages = document.getElementById('messages');
+        const results = document.getElementById('results');
+        
+        // Slider value displays
+        const contrastValue = document.getElementById('contrastValue');
+        const saturationValue = document.getElementById('saturationValue');
+        
+        document.getElementById('contrastBoost').addEventListener('input', (e) => {
+            contrastValue.textContent = e.target.value;
+        });
+        
+        document.getElementById('saturationBoost').addEventListener('input', (e) => {
+            saturationValue.textContent = e.target.value;
+        });
+        
+        // File upload handling
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showMessage('Please select an image file.', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentImageData = e.target.result;
+                removeBackgroundBtn.disabled = false;
+                showMessage('Image loaded successfully!', 'success');
+                displayImage(e.target.result, 'Original Image');
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function displayImage(imageData, title) {
+            const resultCard = document.createElement('div');
+            resultCard.className = 'result-card';
+            resultCard.innerHTML = `
+                <h3>${title}</h3>
+                <img src="${imageData}" class="result-image" alt="${title}">
+                <br>
+                <button class="download-btn" onclick="downloadImage('${imageData}', '${title.replace(/\s+/g, '_').toLowerCase()}.png')">Download</button>
+            `;
+            results.appendChild(resultCard);
+        }
+        
+        function downloadImage(imageData, filename) {
+            const link = document.createElement('a');
+            link.href = imageData;
+            link.download = filename;
+            link.click();
+        }
+        
+        // Background removal
+        removeBackgroundBtn.addEventListener('click', async () => {
+            if (!currentImageData) return;
+            
+            showLoading(true);
+            hideMessages();
+            
+            try {
+                const method = document.getElementById('methodSelect').value;
+                const featherEdges = document.getElementById('featherEdges').value === 'true';
+                
+                const response = await fetch('/api/image/remove-background', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image_data: currentImageData,
+                        method: method,
+                        feather_edges: featherEdges
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    processedImageData = result.image_data;
+                    enhanceBtn.disabled = false;
+                    showMessage('Background removed successfully!', 'success');
+                    displayImage(result.image_data, 'Background Removed');
+                } else {
+                    showMessage(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage(`Network error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+        
+        // Enhancement
+        enhanceBtn.addEventListener('click', async () => {
+            if (!processedImageData) return;
+            
+            showLoading(true);
+            hideMessages();
+            
+            try {
+                const contrastBoost = parseFloat(document.getElementById('contrastBoost').value);
+                const saturationBoost = parseFloat(document.getElementById('saturationBoost').value);
+                
+                const response = await fetch('/api/image/enhance-transparency', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image_data: processedImageData,
+                        contrast_boost: contrastBoost,
+                        saturation_boost: saturationBoost
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('Image enhanced successfully!', 'success');
+                    displayImage(result.image_data, 'Enhanced Image');
+                } else {
+                    showMessage(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage(`Network error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+        
+        // Reset
+        resetBtn.addEventListener('click', () => {
+            currentImageData = null;
+            processedImageData = null;
+            removeBackgroundBtn.disabled = true;
+            enhanceBtn.disabled = true;
+            results.innerHTML = '';
+            hideMessages();
+        });
+        
+        function showLoading(show) {
+            loading.style.display = show ? 'block' : 'none';
+        }
+        
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            messages.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+        
+        function hideMessages() {
+            messages.innerHTML = '';
+        }
+    </script>
+</body>
+</html>

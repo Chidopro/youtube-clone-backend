@@ -164,6 +164,17 @@
   pointer-events: none;
 }
 
+.category-box.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+}
+
+.category-box.active .category-name {
+  color: white;
+}
+
 .category-box:hover {
   transform: translateY(-8px) scale(1.02);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);

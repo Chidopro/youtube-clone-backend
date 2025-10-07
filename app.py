@@ -516,7 +516,7 @@ PRODUCTS = [
         "price": 22.99,
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
-        "preview_image": "womenstankpreview.jpg",
+        "preview_image": "womenstankpreview.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
         "category": "womens"
     },
@@ -2982,6 +2982,111 @@ def delete_video(video_id):
     except Exception as e:
         logger.error(f"Error deleting video {video_id}: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+# Background Removal Endpoints
+@app.route('/api/image/remove-background', methods=['POST'])
+def remove_background():
+    """Remove white background from image"""
+    try:
+        data = request.get_json()
+        image_data = data.get('image_data')
+        method = data.get('method', 'adaptive')
+        feather_edges = data.get('feather_edges', True)
+        
+        if not image_data:
+            return jsonify({"success": False, "error": "No image data provided"}), 400
+        
+        # Import background removal
+        from background_removal import remove_white_background
+        
+        result = remove_white_background(image_data, method, feather_edges)
+        
+        return jsonify({
+            "success": True,
+            "image_data": result,
+            "message": "Background removed successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error removing background: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/image/enhance-transparency', methods=['POST'])
+def enhance_transparency():
+    """Enhance image after background removal"""
+    try:
+        data = request.get_json()
+        image_data = data.get('image_data')
+        contrast_boost = data.get('contrast_boost', 1.2)
+        saturation_boost = data.get('saturation_boost', 1.1)
+        
+        if not image_data:
+            return jsonify({"success": False, "error": "No image data provided"}), 400
+        
+        # Import enhancement function
+        from background_removal import enhance_transparent_image
+        
+        result = enhance_transparent_image(image_data, contrast_boost, saturation_boost)
+        
+        return jsonify({
+            "success": True,
+            "image_data": result,
+            "message": "Image enhanced successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error enhancing image: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/image/batch-remove-backgrounds', methods=['POST'])
+def batch_remove_backgrounds():
+    """Remove backgrounds from multiple images"""
+    try:
+        data = request.get_json()
+        image_data_list = data.get('image_data_list', [])
+        method = data.get('method', 'adaptive')
+        
+        if not image_data_list:
+            return jsonify({"success": False, "error": "No image data provided"}), 400
+        
+        # Import batch function
+        from background_removal import batch_remove_backgrounds
+        
+        results = batch_remove_backgrounds(image_data_list, method)
+        
+        return jsonify({
+            "success": True,
+            "results": results,
+            "message": "Batch background removal completed"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in batch background removal: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/image/background-removal-methods', methods=['GET'])
+def get_background_removal_methods():
+    """Get available background removal methods"""
+    return jsonify({
+        "success": True,
+        "methods": {
+            "adaptive": "Advanced adaptive white detection with color variance analysis",
+            "threshold": "Simple threshold-based white detection",
+            "color_range": "Color range-based white detection",
+            "edge_detection": "Edge detection with boundary preservation"
+        },
+        "default_method": "adaptive",
+        "features": {
+            "feather_edges": "Smooth edge transitions",
+            "enhance_transparency": "Post-processing enhancement",
+            "batch_processing": "Process multiple images"
+        }
+    })
+
+@app.route('/background-removal-demo')
+def background_removal_demo():
+    """Serve the background removal demo page"""
+    return send_from_directory('.', 'background_removal_demo.html')
 
 if __name__ == "__main__":
     import os

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import './ProductPage.css';
 
 const ProductPage = ({ sidebar }) => {
   const { productId } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [productData, setProductData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,6 +13,26 @@ const ProductPage = ({ sidebar }) => {
   const category = searchParams.get('category') || 'all';
   const authenticated = searchParams.get('authenticated') === 'true';
   const email = searchParams.get('email') || '';
+
+  // Categories for selection
+  const categories = [
+    { name: "All Products", emoji: "🛍️", category: "all" },
+    { name: "Women's", emoji: "👩", category: "womens" },
+    { name: "Men's", emoji: "👨", category: "mens" },
+    { name: "Kids", emoji: "👶", category: "kids" },
+    { name: "Mugs", emoji: "☕", category: "mugs" },
+    { name: "Hats", emoji: "🧢", category: "hats" },
+    { name: "Bags", emoji: "👜", category: "bags" },
+    { name: "Pets", emoji: "🐕", category: "pets" },
+    { name: "Misc", emoji: "📦", category: "misc" },
+    { name: "Thumbnails", emoji: "🖼️", category: "thumbnails" }
+  ];
+
+  const handleCategoryClick = (newCategory) => {
+    // Update URL with new category
+    const newUrl = `/product/${productId}?category=${newCategory}&authenticated=${authenticated}&email=${email}`;
+    navigate(newUrl);
+  };
 
   useEffect(() => {
     const fetchProductData = async () => {
@@ -84,6 +105,28 @@ const ProductPage = ({ sidebar }) => {
               <h3>Make Merchandise</h3>
               <p>Create custom products with your screenshot</p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Category Selection Section */}
+      <div className="merchandise-categories">
+        <div className="categories-container">
+          <h1 className="categories-title">Choose a Product Category</h1>
+          <p className="categories-subtitle">Select a category to browse products for your custom merchandise</p>
+          
+          <div className="categories-grid">
+            {categories.map((cat, index) => (
+              <div
+                key={index}
+                className={`category-box ${cat.category === category ? 'active' : ''}`}
+                onClick={() => handleCategoryClick(cat.category)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="category-emoji">{cat.emoji}</div>
+                <div className="category-name">{cat.name}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -258,8 +258,8 @@ def apply_simple_corner_radius(image_data, corner_radius):
         if corner_size <= 0:
             return None
         
-        # Create a white background
-        result = np.ones_like(image) * 255
+        # Create transparent background instead of white
+        result = np.zeros_like(image)
         
         # Copy the image with corners cropped
         result[corner_size:height-corner_size, corner_size:width-corner_size] = image[corner_size:height-corner_size, corner_size:width-corner_size]
@@ -297,8 +297,8 @@ def apply_corner_radius_effect(image_data, corner_radius):
         if corner_size <= 0:
             return None
         
-        # Create white background
-        result = np.ones_like(image) * 255
+        # Create transparent background instead of white
+        result = np.zeros_like(image)
         
         # Copy image with corners cropped
         result[corner_size:height-corner_size, corner_size:width-corner_size] = image[corner_size:height-corner_size, corner_size:width-corner_size]
