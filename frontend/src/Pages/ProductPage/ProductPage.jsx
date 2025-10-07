@@ -144,19 +144,10 @@ const ProductPage = ({ sidebar }) => {
           </div>
 
           <div className="product-options-section">
-            {/* Category Selection Above Products */}
-            <div className="categories-grid-top">
-              {categories.map((cat, index) => (
-                <div
-                  key={index}
-                  className={`category-box ${cat.category === category ? 'active' : ''}`}
-                  onClick={() => handleCategoryClick(cat.category)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="category-emoji">{cat.emoji}</div>
-                  <div className="category-name">{cat.name}</div>
-                </div>
-              ))}
+            {/* Cart Buttons Above Products */}
+            <div className="cart-section">
+              <button className="view-cart-btn">View Cart</button>
+              <button className="checkout-btn">Checkout</button>
             </div>
 
             <div className="products-grid">
@@ -223,11 +214,6 @@ const ProductPage = ({ sidebar }) => {
               ))}
             </div>
           </div>
-        </div>
-
-        <div className="cart-section">
-          <button className="view-cart-btn">View Cart</button>
-          <button className="checkout-btn">Checkout</button>
         </div>
       </div>
     </div>
