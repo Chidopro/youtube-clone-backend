@@ -3,4 +3,4 @@
 console.log('Cache busted - FORCING API CONFIG OVERRIDE');
 console.log('Timestamp:', new Date().toISOString());
 console.log('Build ID:', Math.random().toString(36).substring(7));
-console.log('🔧 FORCING BACKEND URL TO: https://copy5-backend.fly.dev');
+console.log('🔧 FORCING BACKEND URL TO: https://screenmerch.fly.dev');

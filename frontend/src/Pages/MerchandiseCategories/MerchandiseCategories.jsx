@@ -52,8 +52,18 @@ const MerchandiseCategories = ({ sidebar }) => {
   const handleCategoryClick = async (category) => {
     console.log('🎯 Category selected:', category);
     
-    // Redirect to home page instead of creating products
-    window.location.href = '/';
+    // Check authentication first
+    const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+    
+    if (!isAuthenticated) {
+      // Store the selected category and show auth modal
+      setSelectedCategory(category);
+      setShowAuthModal(true);
+      return;
+    }
+    
+    // User is authenticated, proceed with product creation
+    await createProduct(category);
   };
 
   const createProduct = async (category) => {
@@ -85,6 +95,9 @@ const MerchandiseCategories = ({ sidebar }) => {
       
       console.log('Request data:', requestData);
       
+      console.log('🔍 Making API call to:', `${API_CONFIG.BASE_URL}/api/create-product`);
+      console.log('🔍 Request data:', requestData);
+      
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/create-product`, {
         method: 'POST',
         headers: {
@@ -93,8 +106,14 @@ const MerchandiseCategories = ({ sidebar }) => {
         body: JSON.stringify(requestData)
       });
 
+      console.log('🔍 Response status:', response.status);
+      console.log('🔍 Response ok:', response.ok);
+      console.log('🔍 Response headers:', response.headers);
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Response not ok:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, text: ${errorText}`);
       }
 
       const result = await response.json();
@@ -150,7 +169,20 @@ const MerchandiseCategories = ({ sidebar }) => {
             <div
               key={index}
               className={`category-box ${isCreating ? 'disabled' : ''}`}
-              onClick={() => !isCreating && handleCategoryClick(cat.category)}
+              onClick={(e) => {
+                console.log('🖱️ Category clicked:', cat.name, cat.category);
+                console.log('🖱️ Event:', e);
+                console.log('🖱️ isCreating:', isCreating);
+                if (!isCreating) {
+                  console.log('🖱️ Calling handleCategoryClick');
+                  handleCategoryClick(cat.category);
+                } else {
+                  console.log('🖱️ Click ignored - isCreating is true');
+                }
+              }}
+              onMouseDown={() => console.log('🖱️ MOUSE DOWN on:', cat.name)}
+              onMouseUp={() => console.log('🖱️ MOUSE UP on:', cat.name)}
+              style={{ cursor: 'pointer' }}
             >
               <div className="category-emoji">{cat.emoji}</div>
               <div className="category-name">{cat.name}</div>
