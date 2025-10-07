@@ -66,19 +66,26 @@
 .screenshots-section {
   background: white;
   border-radius: 12px;
-  padding: 20px;
+  padding: 30px 20px;
+  margin: 20px auto;
   margin-bottom: 2rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 800px;
+  max-width: 1200px;
   text-align: center;
 }
 
 .screenshots-title {
   color: #333;
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 15px;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.screenshots-subtitle {
+  color: #666;
+  font-size: 1rem;
+  margin-bottom: 25px;
 }
 
 .screenshots-preview {
@@ -89,23 +96,51 @@
 
 .screenshot-grid {
   display: flex;
-  gap: 10px;
+  gap: 15px;
   flex-wrap: wrap;
   justify-content: center;
 }
 
 .screenshot-item {
-  border: 3px solid #4CAF50;
-  border-radius: 8px;
+  border: 3px solid #ddd;
+  border-radius: 12px;
   overflow: hidden;
   background: #f8f9fa;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.screenshot-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  border-color: #667eea;
+}
+
+.screenshot-item.selected {
+  border-color: #667eea;
+  border-width: 4px;
+  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
 }
 
 .screenshot-image {
-  width: 120px;
-  height: 80px;
+  width: 160px;
+  height: 120px;
   object-fit: cover;
   display: block;
+}
+
+.screenshot-label {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.screenshot-item.selected .screenshot-label {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
 }
 
 .no-screenshots {
@@ -325,22 +360,33 @@
   }
 
   .screenshots-section {
-    padding: 15px;
+    padding: 20px 15px;
+    margin: 15px auto;
     margin-bottom: 1.5rem;
   }
 
   .screenshots-title {
-    font-size: 1.2rem;
-    margin-bottom: 10px;
+    font-size: 1.4rem;
+    margin-bottom: 8px;
+  }
+
+  .screenshots-subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 20px;
   }
 
   .screenshot-image {
-    width: 80px;
-    height: 60px;
+    width: 100px;
+    height: 75px;
   }
 
   .screenshot-grid {
-    gap: 8px;
+    gap: 10px;
+  }
+
+  .screenshot-label {
+    font-size: 0.75rem;
+    padding: 6px 8px;
   }
   
   .categories-container {

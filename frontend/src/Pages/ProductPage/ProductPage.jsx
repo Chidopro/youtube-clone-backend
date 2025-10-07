@@ -9,6 +9,7 @@ const ProductPage = ({ sidebar }) => {
   const [productData, setProductData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedScreenshot, setSelectedScreenshot] = useState(null);
 
   const category = searchParams.get('category') || 'all';
   const authenticated = searchParams.get('authenticated') === 'true';
@@ -105,6 +106,46 @@ const ProductPage = ({ sidebar }) => {
               <h3>Make Merchandise</h3>
               <p>Create custom products with your screenshot</p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Screenshot Selection Section */}
+      <div className="screenshots-section">
+        <h2 className="screenshots-title">Select Your Screenshot</h2>
+        <p className="screenshots-subtitle">Choose which screenshot to use for your custom merchandise</p>
+        <div className="screenshots-preview">
+          <div className="screenshot-grid">
+            {/* Thumbnail */}
+            {productData.thumbnail_url && (
+              <div 
+                className={`screenshot-item ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
+                onClick={() => setSelectedScreenshot('thumbnail')}
+              >
+                <img 
+                  src={productData.thumbnail_url} 
+                  alt="Thumbnail" 
+                  className="screenshot-image"
+                />
+                <div className="screenshot-label">Thumbnail</div>
+              </div>
+            )}
+            
+            {/* Screenshots */}
+            {productData.screenshots && productData.screenshots.map((screenshot, index) => (
+              <div 
+                key={index}
+                className={`screenshot-item ${selectedScreenshot === index ? 'selected' : ''}`}
+                onClick={() => setSelectedScreenshot(index)}
+              >
+                <img 
+                  src={screenshot} 
+                  alt={`Screenshot ${index + 1}`} 
+                  className="screenshot-image"
+                />
+                <div className="screenshot-label">Screenshot {index + 1}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
