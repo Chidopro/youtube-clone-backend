@@ -33,7 +33,7 @@ const MerchandiseCategories = ({ sidebar }) => {
   console.log('📸 Loaded from localStorage - Screenshots count:', screenshots.length);
   console.log('📸 Thumbnail present:', !!thumbnail);
 
-  // Categories with Stickers name update - CACHE BUST 2025-01-27
+  // Categories with Stickers name update - FORCE REBUILD 2025-10-07
   const categories = [
     { name: "Women's", emoji: "👩", category: "womens" },
     { name: "Men's", emoji: "👨", category: "mens" },
