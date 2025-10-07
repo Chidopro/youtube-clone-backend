@@ -132,11 +132,6 @@ const ProductPage = ({ sidebar }) => {
       </div>
 
       <div className="product-page-container">
-        <div className="product-header">
-          <h1>Customize Your Product</h1>
-          <p>Select your preferred options and add to cart</p>
-        </div>
-
         <div className="product-main">
           <div className="product-image-section">
             {productData.img_url && (
@@ -149,7 +144,21 @@ const ProductPage = ({ sidebar }) => {
           </div>
 
           <div className="product-options-section">
-            <h2>Available Products</h2>
+            {/* Category Selection Above Products */}
+            <div className="categories-grid-top">
+              {categories.map((cat, index) => (
+                <div
+                  key={index}
+                  className={`category-box ${cat.category === category ? 'active' : ''}`}
+                  onClick={() => handleCategoryClick(cat.category)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="category-emoji">{cat.emoji}</div>
+                  <div className="category-name">{cat.name}</div>
+                </div>
+              ))}
+            </div>
+
             <div className="products-grid">
               {productData.products && productData.products.map((product, index) => (
                 <div key={index} className="product-card">
