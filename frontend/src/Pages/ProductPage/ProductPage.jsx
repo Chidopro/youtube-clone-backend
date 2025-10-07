@@ -10,6 +10,17 @@ const ProductPage = ({ sidebar }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedScreenshot, setSelectedScreenshot] = useState(null);
+  const [selectedColors, setSelectedColors] = useState({});
+  const [selectedSizes, setSelectedSizes] = useState({});
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const raw = localStorage.getItem('cart_items');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [fallbackImages, setFallbackImages] = useState({ screenshots: [], thumbnail: '' });
 
   const category = searchParams.get('category') || 'all';
@@ -34,6 +45,43 @@ const ProductPage = ({ sidebar }) => {
     // Update URL with new category
     const newUrl = `/product/${productId}?category=${newCategory}&authenticated=${authenticated}&email=${email}`;
     navigate(newUrl);
+  };
+
+  const getSelectedScreenshotUrl = () => {
+    const allShots = (productData?.product?.screenshots && productData.product.screenshots.length > 0)
+      ? productData.product.screenshots
+      : fallbackImages.screenshots;
+    if (selectedScreenshot === 'thumbnail') {
+      return productData?.product?.thumbnail_url || fallbackImages.thumbnail || '';
+    }
+    if (typeof selectedScreenshot === 'number' && allShots && allShots[selectedScreenshot]) {
+      return allShots[selectedScreenshot];
+    }
+    return '';
+  };
+
+  const persistCart = (items) => {
+    setCartItems(items);
+    try { localStorage.setItem('cart_items', JSON.stringify(items)); } catch (e) {}
+  };
+
+  const handleAddToCart = (product, index) => {
+    const chosenColor = selectedColors[index] || (product?.options?.color?.[0] || 'Default');
+    const chosenSize = selectedSizes[index] || (product?.options?.size?.[0] || 'One Size');
+    const screenshotUrl = getSelectedScreenshotUrl();
+
+    const item = {
+      name: product?.name || 'Product',
+      price: product?.price || 0,
+      image: product?.preview_image ? `https://screenmerch.fly.dev/static/images/${product.preview_image}` : (product?.main_image ? `https://screenmerch.fly.dev/static/images/${product.main_image}` : ''),
+      color: chosenColor,
+      size: chosenSize,
+      screenshot: screenshotUrl,
+      qty: 1
+    };
+    const next = [...cartItems, item];
+    persistCart(next);
+    alert('Added to cart!');
   };
 
   // Load fallback screenshots/thumbnail from localStorage in case backend data is empty
@@ -223,8 +271,8 @@ const ProductPage = ({ sidebar }) => {
           <div className="product-options-section">
             {/* Cart Buttons Above Products */}
             <div className="cart-section">
-              <button className="view-cart-btn">View Cart</button>
-              <button className="checkout-btn">Checkout</button>
+              <button className="view-cart-btn" onClick={() => setIsCartOpen(true)}>View Cart</button>
+              <button className="checkout-btn" onClick={() => setIsCartOpen(true)}>Checkout</button>
             </div>
 
             <div className="products-grid">
@@ -279,11 +327,7 @@ const ProductPage = ({ sidebar }) => {
                   
                   <button 
                     className="add-to-cart-btn"
-                    onClick={() => {
-                      // Add to cart functionality
-                      console.log('Adding to cart:', product);
-                      alert('Added to cart!');
-                    }}
+                    onClick={() => handleAddToCart(product, index)}
                   >
                     Add to Cart
                   </button>
@@ -293,12 +337,41 @@ const ProductPage = ({ sidebar }) => {
 
             {/* Cart Buttons Below Products */}
             <div className="cart-section cart-section-bottom">
-              <button className="view-cart-btn">View Cart</button>
-              <button className="checkout-btn">Checkout</button>
+              <button className="view-cart-btn" onClick={() => setIsCartOpen(true)}>View Cart</button>
+              <button className="checkout-btn" onClick={() => setIsCartOpen(true)}>Checkout</button>
             </div>
           </div>
         </div>
       </div>
+      {/* Simple Cart Modal */}
+      {isCartOpen && (
+        <div className="cart-modal" onClick={() => setIsCartOpen(false)}>
+          <div className="cart-modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Your Cart</h3>
+            {cartItems.length === 0 ? (
+              <p>Your cart is empty.</p>
+            ) : (
+              <div className="cart-items">
+                {cartItems.map((ci, i) => (
+                  <div key={i} className="cart-item">
+                    {ci.image && <img src={ci.image} alt={ci.name} />}
+                    <div className="cart-item-info">
+                      <div className="cart-item-name">{ci.name}</div>
+                      <div className="cart-item-meta">{ci.color} • {ci.size}</div>
+                      <div className="cart-item-price">${(ci.price || 0).toFixed(2)}</div>
+                    </div>
+                    {ci.screenshot && <img className="cart-item-shot" src={ci.screenshot} alt="screenshot" />}
+                  </div>
+                ))}
+                <div className="cart-actions">
+                  <button className="view-cart-btn" onClick={() => setIsCartOpen(false)}>Continue Shopping</button>
+                  <button className="checkout-btn" onClick={() => alert('Checkout flow coming next')}>Checkout</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
         </>
       )}
     </div>
