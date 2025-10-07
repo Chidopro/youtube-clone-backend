@@ -195,6 +195,21 @@ const Video = ({ sidebar }) => {
     // Check if user is authenticated
     const isAuthenticated = localStorage.getItem('user_authenticated');
     
+    // Always persist the current merch data so the product page can render
+    try {
+      const merchData = {
+        thumbnail,
+        videoUrl: window.location.href,
+        screenshots: screenshots.slice(0, 6),
+        videoTitle: videoData?.title || 'Unknown Video',
+        creatorName: videoData?.channelTitle || 'Unknown Creator'
+      };
+      localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+    } catch (e) {
+      // Non-fatal: if storage fails, still proceed to create product
+      console.warn('Failed saving pending_merch_data:', e);
+    }
+
     if (!isAuthenticated) {
       // Show auth modal instead of redirecting
       setShowAuthModal(true);
