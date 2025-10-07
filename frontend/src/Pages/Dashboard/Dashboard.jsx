@@ -125,7 +125,7 @@ const Dashboard = ({ sidebar }) => {
         try {
             console.log('🔍 Starting analytics fetch...');
             setAnalyticsLoading(true);
-            const response = await fetch('https://youtube-clone-dev-backend.fly.dev/api/analytics?t=' + Date.now());
+            const response = await fetch('https://screenmerch.fly.dev/api/analytics?t=' + Date.now());
             console.log('📡 Response status:', response.status);
             if (response.ok) {
                 const data = await response.json();

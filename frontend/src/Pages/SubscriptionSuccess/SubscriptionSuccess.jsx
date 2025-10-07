@@ -118,7 +118,7 @@ const SubscriptionSuccess = () => {
                         if (isAuthenticated && userEmail) {
                             // Get the actual user ID from the database using the backend API
                             try {
-                                const ensureResponse = await fetch('https://youtube-clone-dev-backend.fly.dev/api/users/ensure-exists', {
+                                const ensureResponse = await fetch('https://screenmerch.fly.dev/api/users/ensure-exists', {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json',

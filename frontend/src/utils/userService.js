@@ -204,7 +204,7 @@ export class UserService {
       }
 
       // Call the server endpoint to handle complete account deletion
-      const response = await fetch(`https://youtube-clone-dev-backend.fly.dev/api/users/${user.id}/delete-account`, {
+      const response = await fetch(`https://screenmerch.fly.dev/api/users/${user.id}/delete-account`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
