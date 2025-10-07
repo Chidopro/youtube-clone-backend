@@ -272,7 +272,7 @@ const ProductPage = ({ sidebar }) => {
             {/* Cart Buttons Above Products */}
             <div className="cart-section">
               <button className="view-cart-btn" onClick={() => setIsCartOpen(true)}>View Cart</button>
-              <button className="checkout-btn" onClick={() => setIsCartOpen(true)}>Checkout</button>
+              <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
             </div>
 
             <div className="products-grid">
@@ -338,7 +338,7 @@ const ProductPage = ({ sidebar }) => {
             {/* Cart Buttons Below Products */}
             <div className="cart-section cart-section-bottom">
               <button className="view-cart-btn" onClick={() => setIsCartOpen(true)}>View Cart</button>
-              <button className="checkout-btn" onClick={() => setIsCartOpen(true)}>Checkout</button>
+              <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
             </div>
           </div>
         </div>
