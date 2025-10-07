@@ -315,7 +315,7 @@ PRODUCTS = [
     {
         "name": "Women's Tank",
         "price": 22.99,
-        "filename": "womenstankpreview.jpg",
+        "filename": "womenstankpreview.png",
         "main_image": "womenstank.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
@@ -520,7 +520,7 @@ PRODUCTS = [
     {
         "name": "Women's Tank",
         "price": 22.99,
-        "filename": "womenstankpreview.jpg",
+        "filename": "womenstankpreview.png",
         "main_image": "womenstank.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
@@ -748,7 +748,7 @@ PRODUCTS = [
         "price": 22.99,
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
-        "preview_image": "womenstankpreview.jpg",
+        "preview_image": "womenstankpreview.png",
         "options": {"color": ["Black", "White", "Gray", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },
     {
@@ -868,7 +868,7 @@ PRODUCTS = [
     {
         "name": "Women's Tank",
         "price": 19.99,
-        "filename": "womenstankpreview.jpg",
+        "filename": "womenstankpreview.png",
         "main_image": "womenstank.png",
         "options": {"color": ["Black", "White", "Gray"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]}
     },

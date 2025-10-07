@@ -403,6 +403,15 @@
     .btn { background: #3f51b5; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
     .btn:hover { background: #2c3cb5; }
     
+    /* Category Grid Styles */
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
     /* Remove the old cart sidebar */
     #cart-sidebar { 
       display: none;
@@ -410,10 +419,19 @@
     
          /* Mobile Responsive */
      @media (max-width: 768px) {
+       body {
+         overflow-x: hidden !important;
+         width: 100% !important;
+         box-sizing: border-box !important;
+       }
+       
        .main-container {
          flex-direction: column;
          padding: 10px;
          gap: 15px;
+         overflow-x: hidden !important;
+         width: 100% !important;
+         max-width: 100% !important;
        }
        
        .left-column {
@@ -453,9 +471,15 @@
        }
        
        .product-row {
-         grid-template-columns: 1fr;
+         grid-template-columns: repeat(2, 1fr);
          gap: 12px;
          margin-top: 15px;
+       }
+       
+       .category-grid {
+         grid-template-columns: repeat(2, 1fr) !important;
+         gap: 15px !important;
+         max-width: 100% !important;
        }
        
        .product-card {
@@ -664,8 +688,59 @@
 
     <!-- Right Column - Available Products -->
     <div class="products-section" id="productsSection">
+      {% if show_category_selection %}
+      <!-- Category Selection Landing -->
+      <div class="category-selection-landing" style="text-align: center; padding: 40px 20px; box-sizing: border-box !important; overflow-x: hidden !important; width: 100% !important;">
+        <h3 style="font-size: 2rem; margin-bottom: 10px; color: #333;">Choose a Product</h3>
+        <p style="color: #666; margin-bottom: 30px;">Select a category to browse products for your custom merchandise</p>
+        
+        <div class="category-grid">
+          <div class="category-card" onclick="switchCategory('womens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👩</span>
+            <span style="font-weight: 600; color: #333;">Women's</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('mens')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👨</span>
+            <span style="font-weight: 600; color: #333;">Men's</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('kids')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🧒</span>
+            <span style="font-weight: 600; color: #333;">Kids</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('pets')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🐕</span>
+            <span style="font-weight: 600; color: #333;">Pets</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('mugs')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">☕</span>
+            <span style="font-weight: 600; color: #333;">Mugs</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('hats')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🧢</span>
+            <span style="font-weight: 600; color: #333;">Hats</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('bags')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">👜</span>
+            <span style="font-weight: 600; color: #333;">Bags</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('home-living')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🏠</span>
+            <span style="font-weight: 600; color: #333;">Home&Living</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('misc')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">📦</span>
+            <span style="font-weight: 600; color: #333;">Miscellaneous</span>
+          </div>
+          <div class="category-card" onclick="switchCategory('thumbnails')" style="cursor: pointer; padding: 20px; background: #f8f9fa; border-radius: 12px; transition: all 0.3s; border: 2px solid transparent;">
+            <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">🖼️</span>
+            <span style="font-weight: 600; color: #333;">Thumbnails</span>
+          </div>
+        </div>
+      </div>
+      {% else %}
       <h3>Available Products</h3>
       <div class="product-row" id="productRow"></div>
+      {% endif %}
     </div>
   </div>
 
@@ -988,6 +1063,14 @@
       window.updatePrice = window.backendUpdatePrice;
       console.log('🔍 Backup updatePrice function installed');
     }, 1000);
+    
+    // Category switching function
+    function switchCategory(category) {
+      console.log('🔍 Switching to category:', category);
+      const currentUrl = new URL(window.location);
+      currentUrl.searchParams.set('category', category);
+      window.location.href = currentUrl.toString();
+    }
   </script>
 </body>
 </html>
