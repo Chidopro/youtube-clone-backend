@@ -3122,9 +3122,21 @@ def calculate_shipping():
                 "error": "No cart items provided"
             }), 400
         
-        # Printify API configuration
-        printify_api_key = "C6c4vKYLebPS1Zsu66o8fp2DE9Mye2FYmE5ATiNf"
+        # Printify API configuration (read from environment)
+        printify_api_key = os.getenv("PRINTIFY_API_KEY") or os.getenv("PRINTFUL_API_KEY")
         printify_base_url = "https://api.printify.com/v1"
+
+        if not printify_api_key:
+            logger.error("PRINTIFY_API_KEY/PRINTFUL_API_KEY is not configured")
+            # Fallback to default shipping without attempting external call
+            return jsonify({
+                "success": True,
+                "shipping_cost": 5.99,
+                "currency": "USD",
+                "delivery_days": "5-7",
+                "shipping_method": "Standard Shipping",
+                "fallback": True
+            })
         
         # Calculate shipping using Printify API
         shipping_data = {
