@@ -10,6 +10,7 @@ const ProductPage = ({ sidebar }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedScreenshot, setSelectedScreenshot] = useState(null);
+  const [fallbackImages, setFallbackImages] = useState({ screenshots: [], thumbnail: '' });
 
   const category = searchParams.get('category') || 'all';
   const authenticated = searchParams.get('authenticated') === 'true';
@@ -34,6 +35,22 @@ const ProductPage = ({ sidebar }) => {
     const newUrl = `/product/${productId}?category=${newCategory}&authenticated=${authenticated}&email=${email}`;
     navigate(newUrl);
   };
+
+  // Load fallback screenshots/thumbnail from localStorage in case backend data is empty
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('pending_merch_data');
+      if (raw) {
+        const d = JSON.parse(raw);
+        setFallbackImages({
+          screenshots: Array.isArray(d?.screenshots) ? d.screenshots.slice(0, 6) : [],
+          thumbnail: d?.thumbnail || ''
+        });
+      }
+    } catch (e) {
+      console.warn('Invalid pending_merch_data in localStorage, ignoring');
+    }
+  }, [productId]);
 
   useEffect(() => {
     const fetchProductData = async () => {
@@ -147,35 +164,43 @@ const ProductPage = ({ sidebar }) => {
             <div className="screenshots-preview">
               <div className="screenshot-grid">
                 {/* Thumbnail */}
-                {productData.product && productData.product.thumbnail_url && (
+                {(() => {
+                  const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
+                  return thumbnailUrl ? (
                   <div 
                     className={`screenshot-item ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
                     onClick={() => setSelectedScreenshot('thumbnail')}
                   >
                     <img 
-                      src={productData.product.thumbnail_url} 
+                      src={thumbnailUrl} 
                       alt="Thumbnail" 
                       className="screenshot-image"
                     />
                     <div className="screenshot-label">Thumbnail</div>
                   </div>
-                )}
+                  ) : null;
+                })()}
                 
                 {/* Screenshots */}
-                {productData.product && productData.product.screenshots && productData.product.screenshots.length > 0 && productData.product.screenshots.map((screenshot, index) => (
-                  <div 
-                    key={index}
-                    className={`screenshot-item ${selectedScreenshot === index ? 'selected' : ''}`}
-                    onClick={() => setSelectedScreenshot(index)}
-                  >
-                    <img 
-                      src={screenshot} 
-                      alt={`Screenshot ${index + 1}`} 
-                      className="screenshot-image"
-                    />
-                    <div className="screenshot-label">Screenshot {index + 1}</div>
-                  </div>
-                ))}
+                {(() => {
+                  const shots = (productData?.product?.screenshots && productData.product.screenshots.length > 0)
+                    ? productData.product.screenshots
+                    : fallbackImages.screenshots;
+                  return shots && shots.length > 0 ? shots.map((screenshot, index) => (
+                    <div 
+                      key={index}
+                      className={`screenshot-item ${selectedScreenshot === index ? 'selected' : ''}`}
+                      onClick={() => setSelectedScreenshot(index)}
+                    >
+                      <img 
+                        src={screenshot} 
+                        alt={`Screenshot ${index + 1}`} 
+                        className="screenshot-image"
+                      />
+                      <div className="screenshot-label">Screenshot {index + 1}</div>
+                    </div>
+                  )) : null;
+                })()}
               </div>
             </div>
           </div>
