@@ -153,14 +153,30 @@ const ProductPage = ({ sidebar }) => {
             <div className="products-grid">
               {productData.products && productData.products.map((product, index) => (
                 <div key={index} className="product-card">
+                  {/* Product Image */}
+                  {product.preview_image && (
+                    <div className="product-image">
+                      <img 
+                        src={`https://screenmerch.fly.dev/static/images/${product.preview_image}`}
+                        alt={product.name}
+                        onError={(e) => {
+                          // Fallback to main_image if preview fails
+                          e.target.src = `https://screenmerch.fly.dev/static/images/${product.main_image}`;
+                        }}
+                      />
+                    </div>
+                  )}
+                  
                   <h3>{product.name}</h3>
-                  <p className="product-price">${product.price}</p>
+                  <p className="product-price">${product.price.toFixed(2)}</p>
+                  
                   <div className="product-options">
-                    {product.colors && (
+                    {/* Color Options */}
+                    {product.options && product.options.color && product.options.color.length > 0 && (
                       <div className="option-group">
                         <label>Color:</label>
                         <select className="color-select">
-                          {product.colors.map((color, colorIndex) => (
+                          {product.options.color.map((color, colorIndex) => (
                             <option key={colorIndex} value={color}>
                               {color}
                             </option>
@@ -168,11 +184,13 @@ const ProductPage = ({ sidebar }) => {
                         </select>
                       </div>
                     )}
-                    {product.sizes && (
+                    
+                    {/* Size Options */}
+                    {product.options && product.options.size && product.options.size.length > 0 && (
                       <div className="option-group">
                         <label>Size:</label>
                         <select className="size-select">
-                          {product.sizes.map((size, sizeIndex) => (
+                          {product.options.size.map((size, sizeIndex) => (
                             <option key={sizeIndex} value={size}>
                               {size}
                             </option>
@@ -181,6 +199,7 @@ const ProductPage = ({ sidebar }) => {
                       </div>
                     )}
                   </div>
+                  
                   <button 
                     className="add-to-cart-btn"
                     onClick={() => {
