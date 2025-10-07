@@ -24,6 +24,7 @@ import ProductPage from "./Pages/ProductPage/ProductPage";
 // import ScreenshotSelection from "./Pages/ScreenshotSelection/ScreenshotSelection";
 import TestCropTool from "./Pages/TestCropTool/TestCropTool";
 import PaymentPortal from "./Pages/PaymentPortal/PaymentPortal";
+import Checkout from "./Pages/Checkout/Checkout";
 import PaymentSetup from "./Pages/PaymentSetup/PaymentSetup";
 import { API_CONFIG } from "./config/apiConfig";
 
@@ -98,6 +99,7 @@ const App = () => {
               <Route path="/product/:productId" element={<ProductPage sidebar={sidebar} />} />
               <Route path="/test-crop-tool" element={<TestCropTool />} />
               <Route path="/payment-portal" element={<PaymentPortal />} />
+              <Route path="/checkout" element={<Checkout />} />
               <Route path="/payment-setup" element={<PaymentSetup />} />
               {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
             </Routes>
