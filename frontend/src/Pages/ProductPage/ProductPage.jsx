@@ -47,6 +47,9 @@ const ProductPage = ({ sidebar }) => {
         }
         
         const data = await response.json();
+        console.log('📦 Product Data Received:', data);
+        console.log('📸 Thumbnail URL:', data.product?.thumbnail_url);
+        console.log('📸 Screenshots:', data.product?.screenshots);
         setProductData(data);
       } catch (err) {
         console.error('Error fetching product data:', err);
