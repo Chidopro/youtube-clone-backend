@@ -7,10 +7,9 @@
 - Only 4 specific emails could sign in
 - **Fixed**: Removed whitelist from login/signup endpoints
 
-### 2. Wrong Backend URL ✅  
-- Frontend pointing to: `copy5-backend.fly.dev` ❌
-- Actual backend running on: `screenmerch.fly.dev` ✅
-- **Fixed**: Updated all frontend configs
+### 2. Correct Backend URL ✅  
+- Frontend points to: `screenmerch.fly.dev` ✅
+- **Updated**: All frontend configs and docs reference `screenmerch.fly.dev`
 
 ---
 
@@ -23,7 +22,7 @@
 ### Frontend Changes
 - `frontend/src/config/apiConfig.js` - Fixed backend URL to screenmerch.fly.dev
 - `frontend/src/cache-bust.js` - Updated logging
-- `frontend/netlify.toml` - CSP already includes screenmerch.fly.dev ✅
+- `frontend/netlify.toml` - CSP includes screenmerch.fly.dev ✅
 
 ---
 

@@ -6,7 +6,7 @@
 [build.environment]
   NODE_VERSION = "18"
   NETLIFY_USE_YARN = "false"
-  # CSP Fix - 2025-01-27
+  # CSP configuration
 
 # Ignore submodules to fix deployment
 [build.processing]
@@ -48,5 +48,5 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' https: data: https://sojxbydpcdcdzfdtbypd.supabase.co; connect-src 'self' https://api.printful.com https://api.resend.com https://api.stripe.com https://sojxbydpcdcdzfdtbypd.supabase.co https://copy5-backend.fly.dev https://screenmerch.fly.dev https://youtube-clone-dev-backend.fly.dev https://backend-hidden-firefly-7865.fly.dev; frame-src 'self' https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' https: data: https://sojxbydpcdcdzfdtbypd.supabase.co; connect-src 'self' https://api.printful.com https://api.resend.com https://api.stripe.com https://sojxbydpcdcdzfdtbypd.supabase.co https://screenmerch.fly.dev https://youtube-clone-dev-backend.fly.dev https://backend-hidden-firefly-7865.fly.dev; frame-src 'self' https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';"
     Cache-Control = "no-cache, no-store, must-revalidate"

@@ -10,16 +10,15 @@
 - Removed whitelist from `/api/auth/signup` endpoint (line 3270-3278)
 - **Note**: Admin login whitelist remains for security purposes
 
-### 2. **Wrong Backend URL Configuration** ✅
-**Problem**: Frontend was configured to connect to `copy5-backend.fly.dev`, but actual backend runs on `screenmerch.fly.dev`
+### 2. **Backend URL Configuration** ✅
+**Problem**: Frontend was configured to connect to the wrong backend; corrected to `screenmerch.fly.dev`
 
 **Fixed in**: 
 - `frontend/src/config/apiConfig.js` - Updated all backend URLs
 - `frontend/src/cache-bust.js` - Updated console logging
 - `frontend/netlify.toml` - CSP includes screenmerch.fly.dev
 
-**Corrected to**:
-- `https://screenmerch.fly.dev` (actual backend)
+**Backend URL**: `https://screenmerch.fly.dev`
 
 ## Deployment Steps
 
@@ -75,18 +74,11 @@ After deployment, users should:
 
 ## What Was Blocking Sign-In?
 
-### Before Fix:
+### Final Configuration:
 ```javascript
-// Frontend tries to connect to: https://copy5-backend.fly.dev/api/auth/login
-// ❌ CSP blocked the connection (copy5-backend.fly.dev not in connect-src)
-// ❌ If connection worked, backend would reject with "Access restricted to authorized users only"
-```
-
-### After Fix:
-```javascript
-// Frontend connects to: https://copy5-backend.fly.dev/api/auth/login
+// Frontend connects to: https://screenmerch.fly.dev/api/auth/login
 // ✅ CSP allows the connection
-// ✅ Backend processes login without whitelist restriction
+// ✅ Backend processes login
 // ✅ User successfully authenticated
 ```
 
