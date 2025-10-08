@@ -227,6 +227,18 @@ CORS(app, resources={r"/api/*": {"origins": [
     "https://*.fly.dev"
 ]}}, supports_credentials=True)
 
+# Global preflight handler for all /api/* routes
+@app.route('/api/<path:any_path>', methods=['OPTIONS'])
+def api_preflight(any_path):
+    response = jsonify(success=True)
+    origin = request.headers.get('Origin', '*')
+    response.headers.add('Access-Control-Allow-Origin', origin)
+    response.headers.add('Vary', 'Origin')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response, 200
+
 # Security middleware
 @app.before_request
 def security_check():
@@ -1764,16 +1776,16 @@ def send_order():
                     <p><strong>Screenshot Timestamp:</strong> {data.get("screenshot_timestamp", data.get("timestamp", "Not provided"))} seconds</p>
                     <br>
                     <p><strong>📋 View Full Order Details:</strong></p>
-                    <p><a href="https://copy5-backend.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <p><a href="https://screenmerch.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
                     <br>
                     <p><strong>📊 All Orders Dashboard:</strong></p>
-                    <p><a href="https://copy5-backend.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
+                    <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
                     <br>
                     <hr>
                     <h2>🖨️ Print Quality Images</h2>
                     <p><strong>For Printify Upload:</strong></p>
                     <p>Use the print quality generator to get 300 DPI images:</p>
-                    <p><strong>Web Interface:</strong> <a href="https://copy5-backend.fly.dev/print-quality?order_id={order_id}">https://copy5-backend.fly.dev/print-quality?order_id={order_id}</a></p>
+                    <p><strong>Web Interface:</strong> <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}">https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>
                     <p>This will generate professional print-ready images (2400x3000+ pixels, PNG format)</p>
                     <br>
                     <p><small>This is an automated notification from ScreenMerch</small></p>
@@ -1816,9 +1828,12 @@ def place_order():
     """
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Vary', 'Origin')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
 
     try:
@@ -1930,15 +1945,15 @@ def place_order():
         html_body += f"<p><strong>Screenshot Timestamp:</strong> {order_store[order_id]['screenshot_timestamp']} seconds</p>"
         html_body += "<br>"
         html_body += "<p><strong>📋 View Full Order Details:</strong></p>"
-        html_body += f"<p><a href='https://copy5-backend.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
+        html_body += f"<p><a href='https://screenmerch.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
         html_body += "<br>"
         html_body += "<p><strong>📊 All Orders Dashboard:</strong></p>"
-        html_body += f"<p><a href='https://copy5-backend.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
+        html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
         html_body += "<br>"
         html_body += "<hr>"
         html_body += "<h2>🖨️ Print Quality Images</h2>"
         html_body += "<p>Use the print quality generator to get 300 DPI images:</p>"
-        html_body += f"<p><strong>Web Interface:</strong> <a href='https://copy5-backend.fly.dev/print-quality?order_id={order_id}'>https://copy5-backend.fly.dev/print-quality?order_id={order_id}</a></p>"
+        html_body += f"<p><strong>Web Interface:</strong> <a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}'>https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>"
         html_body += "<br>"
         html_body += "<p><small>This is an automated notification from ScreenMerch</small></p>"
 
@@ -1966,10 +1981,20 @@ def place_order():
         else:
             logger.warning("Email service not configured; order email not sent")
 
-        return jsonify({"success": True, "order_id": order_id})
+        response = jsonify({"success": True, "order_id": order_id})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Vary', 'Origin')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
     except Exception as e:
         logger.error(f"Error in place_order: {str(e)}")
-        return jsonify({"success": False, "error": "Internal server error"}), 500
+        response = jsonify({"success": False, "error": "Internal server error"})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Vary', 'Origin')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
 
 @app.route("/success")
 def success():
@@ -2015,10 +2040,10 @@ def success():
             html_body += f"<p><strong>Total Value:</strong> ${total_value:.2f}</p>"
             html_body += f"<br>"
             html_body += f"<p><strong>📋 View Full Order Details:</strong></p>"
-            html_body += f"<p><a href='https://copy5-backend.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
+            html_body += f"<p><a href='https://screenmerch.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
             html_body += f"<br>"
             html_body += f"<p><strong>📊 All Orders Dashboard:</strong></p>"
-            html_body += f"<p><a href='https://copy5-backend.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
+            html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
             html_body += f"<br>"
             html_body += f"<p><small>This is an automated notification from ScreenMerch</small></p>"
             
@@ -2185,7 +2210,7 @@ def create_checkout_session():
             payment_method_types=["card"],
             mode="payment",
             line_items=line_items,
-            success_url=f"https://copy5-backend.fly.dev/success?order_id={order_id}",
+            success_url=f"https://screenmerch.fly.dev/success?order_id={order_id}",
             cancel_url=f"https://screenmerch.com/checkout/{product_id}",
             # A2P 10DLC Compliance: Collect phone number for SMS notifications
             phone_number_collection={"enabled": True},
@@ -2371,10 +2396,10 @@ def stripe_webhook():
                             <table cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td style="padding: 10px;">
-                                        <a href="https://copy5-backend.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
+                                        <a href="https://screenmerch.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
                                     </td>
                                     <td style="padding: 10px;">
-                                        <a href="https://copy5-backend.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
+                                        <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
                                     </td>
                                 </tr>
                             </table>
