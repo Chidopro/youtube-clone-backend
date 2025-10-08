@@ -1808,11 +1808,71 @@ def send_order():
             logger.error(f"Resend API error: {response.text}")
             return jsonify({"success": False, "error": "Failed to send order email"}), 500
 
-        return jsonify({
-            "success": True, 
+        # Optional: create a Stripe checkout session as fallback so legacy frontend can redirect
+        next_url = None
+        try:
+            shipping_cost = data.get("shipping_cost", 0) or 0
+            # Build line items (mirror logic from create_checkout_session)
+            line_items = []
+            for item in cart:
+                item_price = item.get('price')
+                if item_price and item_price > 0:
+                    unit_amount = int(item_price * 100)
+                    name = item.get("product") or item.get("name") or "Item"
+                else:
+                    product_info = next((p for p in PRODUCTS if p["name"].lower() == (item.get("product") or "").lower()), None)
+                    if not product_info:
+                        continue
+                    unit_amount = int(product_info["price"] * 100)
+                    name = product_info["name"]
+                line_items.append({
+                    "price_data": {
+                        "currency": "usd",
+                        "product_data": {"name": name},
+                        "unit_amount": unit_amount,
+                    },
+                    "quantity": 1,
+                })
+            if shipping_cost and shipping_cost > 0:
+                line_items.append({
+                    "price_data": {
+                        "currency": "usd",
+                        "product_data": {"name": "Shipping"},
+                        "unit_amount": int(shipping_cost * 100),
+                    },
+                    "quantity": 1,
+                })
+
+            if line_items:
+                session = stripe.checkout.Session.create(
+                    payment_method_types=["card"],
+                    mode="payment",
+                    line_items=line_items,
+                    success_url=f"https://screenmerch.fly.dev/success?order_id={order_id}",
+                    cancel_url=f"https://screenmerch.com/checkout",
+                    phone_number_collection={"enabled": True},
+                    metadata={
+                        "order_id": order_id,
+                        "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
+                        "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+                        "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                    },
+                )
+                next_url = session.url
+        except Exception as e:
+            logger.error(f"Stripe fallback session error: {str(e)}")
+
+        response = jsonify({
+            "success": True,
             "message": "Order sent successfully. Cart will be cleared on the frontend.",
-            "clear_cart": True
+            "clear_cart": True,
+            "next_url": next_url
         })
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Vary', 'Origin')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
 
     except Exception as e:
         logger.error(f"Error in send_order: {str(e)}")
@@ -2061,8 +2121,18 @@ def success():
     
     return render_template('success.html')
 
-@app.route("/create-checkout-session", methods=["POST"])
+@app.route("/create-checkout-session", methods=["POST", "OPTIONS"])  # legacy path
+@app.route("/api/create-checkout-session", methods=["POST", "OPTIONS"])  # CORS-covered API path
 def create_checkout_session():
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Vary', 'Origin')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
     try:
         data = request.get_json()
         cart = data.get("cart", [])
@@ -2211,7 +2281,7 @@ def create_checkout_session():
             mode="payment",
             line_items=line_items,
             success_url=f"https://screenmerch.fly.dev/success?order_id={order_id}",
-            cancel_url=f"https://screenmerch.com/checkout/{product_id}",
+            cancel_url=f"https://screenmerch.com/checkout/{product_id or ''}",
             # A2P 10DLC Compliance: Collect phone number for SMS notifications
             phone_number_collection={"enabled": True},
             metadata={
@@ -2221,10 +2291,20 @@ def create_checkout_session():
                 "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
             }
         )
-        return jsonify({"url": session.url})
+        response = jsonify({"url": session.url})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Vary', 'Origin')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
     except Exception as e:
         logger.error(f"Stripe API Error: {str(e)}")
-        return jsonify({"error": "Failed to create Stripe checkout session"}), 500
+        response = jsonify({"error": "Failed to create Stripe checkout session"})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Vary', 'Origin')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
 
 @app.route("/webhook", methods=["POST"])
 def stripe_webhook():

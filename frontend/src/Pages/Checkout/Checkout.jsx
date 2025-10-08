@@ -104,35 +104,49 @@ const Checkout = () => {
           <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
             <button onClick={() => navigate(-1)}>Continue Shopping</button>
             <button onClick={async () => {
-              // Build payload compatible with backend place-order
-              const payload = {
-                cart: items.map(it => ({
-                  name: it.name,
-                  product: it.product || it.name,
-                  variants: { color: it.color, size: it.size },
-                  img: it.image,
-                  price: it.price
-                })),
-                shipping: address,
-                shipping_cost: shipping.cost,
-                total: subtotal + (shipping.cost || 0),
-                selected_screenshot: items[0]?.image || null
-              };
               try {
-                const res = await fetch(API_CONFIG.ENDPOINTS.PLACE_ORDER, {
+                const payload = {
+                  cart: items.map(it => ({
+                    product: it.product || it.name,
+                    variants: { color: it.color, size: it.size },
+                    img: it.image,
+                    price: it.price
+                  })),
+                  product_id: items[0]?.product_id || items[0]?.id || '',
+                  sms_consent: false,
+                  shipping_cost: shipping.cost || 0,
+                  videoUrl: items[0]?.video_url,
+                  videoTitle: items[0]?.video_title,
+                  creatorName: items[0]?.creator_name
+                };
+                const res = await fetch(API_CONFIG.ENDPOINTS.CREATE_CHECKOUT_SESSION, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(payload)
                 });
                 const data = await res.json();
-                if (data?.success && data?.order_id) {
-                  localStorage.removeItem('cart_items');
-                  navigate('/success');
+                if (data?.url) {
+                  window.location.href = data.url;
                 } else {
-                  alert(data?.error || 'Failed to place order');
+                  // Fallback: hit legacy place-order which now returns next_url
+                  try {
+                    const res2 = await fetch(API_CONFIG.ENDPOINTS.PLACE_ORDER, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(payload)
+                    });
+                    const data2 = await res2.json();
+                    if (data2?.next_url) {
+                      window.location.href = data2.next_url;
+                    } else {
+                      alert(data?.error || data2?.error || 'Failed to start checkout');
+                    }
+                  } catch (e2) {
+                    alert('Network error starting checkout');
+                  }
                 }
               } catch (e) {
-                alert('Network error placing order');
+                alert('Network error starting checkout');
               }
             }}>Place Order</button>
           </div>

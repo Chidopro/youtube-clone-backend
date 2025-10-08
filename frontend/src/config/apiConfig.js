@@ -40,6 +40,7 @@ export const API_CONFIG = {
     CREATE_PRODUCT: `${currentConfig.API_BASE_URL}/api/create-product`,
     CALCULATE_SHIPPING: `${currentConfig.API_BASE_URL}/api/calculate-shipping`,
     PLACE_ORDER: `${currentConfig.API_BASE_URL}/api/place-order`,
+    CREATE_CHECKOUT_SESSION: `${currentConfig.API_BASE_URL}/api/create-checkout-session`,
     SEND_SUBSCRIPTION_EMAIL: `${currentConfig.EMAIL_API_URL}/api/send-subscription-email`,
     VERIFY_SUBSCRIPTION: `${currentConfig.SUBSCRIPTION_API_URL}/api/verify-subscription`,
     USER_SUBSCRIPTION: `${currentConfig.SUBSCRIPTION_API_URL}/api/users`,
