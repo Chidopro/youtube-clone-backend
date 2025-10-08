@@ -365,7 +365,7 @@ const ProductPage = ({ sidebar }) => {
                 ))}
                 <div className="cart-actions">
                   <button className="view-cart-btn" onClick={() => setIsCartOpen(false)}>Continue Shopping</button>
-                  <button className="checkout-btn" onClick={() => alert('Checkout flow coming next')}>Checkout</button>
+                  <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
                 </div>
               </div>
             )}

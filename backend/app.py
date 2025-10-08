@@ -1806,6 +1806,171 @@ def send_order():
         logger.error(f"Error in send_order: {str(e)}")
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
+@app.route("/api/place-order", methods=["POST", "OPTIONS"])
+def place_order():
+    """Simple place-order endpoint for frontend.
+    - Accepts cart items, totals, shipping info, and selected screenshot/thumbnail
+    - Persists to Supabase `orders` when available; falls back to in-memory `order_store`
+    - Sends email including a link to the print-quality page
+    - Returns { success: true, order_id }
+    """
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+
+    try:
+        data = request.get_json() or {}
+        cart = data.get("cart", [])
+        shipping_cost = data.get("shipping_cost", data.get("shipping", {}).get("cost", 0)) or 0
+        total_amount = data.get("total", 0) or sum(item.get('price', 0) for item in cart) + (shipping_cost or 0)
+
+        if not cart:
+            return jsonify({"success": False, "error": "Cart is empty"}), 400
+
+        # Generate order identifiers
+        order_id = str(uuid.uuid4())
+        order_number = order_id[-8:].upper()
+
+        # Normalize items to expected structure
+        normalized_cart = []
+        for item in cart:
+            # Support both existing structure and simplified frontend items
+            product_name = item.get('product') or item.get('name') or 'N/A'
+            variants = item.get('variants') or {
+                'color': item.get('color'),
+                'size': item.get('size')
+            }
+            normalized_item = {
+                **item,
+                'product': product_name,
+                'variants': variants,
+                'img': item.get('img') or item.get('image')
+            }
+            normalized_cart.append(normalized_item)
+
+        # Enrich cart items with video metadata when provided
+        enriched_cart = []
+        for item in normalized_cart:
+            enriched_item = item.copy()
+            enriched_item.update({
+                "videoName": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+                "creatorName": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                "timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
+                "selected_screenshot": data.get("selected_screenshot") or data.get("thumbnail")
+            })
+            enriched_cart.append(enriched_item)
+
+        # Prepare DB payload restricted to known columns
+        order_data = {
+            "order_id": order_id,
+            "cart": enriched_cart,
+            "sms_consent": data.get("sms_consent", False),
+            "customer_email": data.get("user_email", data.get("customer_email", "")),
+            "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+            "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+            "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
+            "total_amount": total_amount,
+            "shipping_cost": shipping_cost,
+            "status": "pending",
+        }
+
+        # Try database first; fallback to in-memory store
+        stored_in_db = False
+        try:
+            supabase.table('orders').insert(order_data).execute()
+            stored_in_db = True
+            logger.info(f"✅ Order {order_id} stored in database")
+        except Exception as db_error:
+            logger.error(f"❌ Failed to store order in database: {str(db_error)}")
+
+        # Always keep an in-memory backup for admin dashboard/tools
+        order_store[order_id] = {
+            "cart": enriched_cart,
+            "timestamp": data.get("timestamp"),
+            "order_id": order_id,
+            "video_title": order_data["video_title"],
+            "creator_name": order_data["creator_name"],
+            "video_url": order_data["video_url"],
+            "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
+            "status": "pending",
+            "created_at": data.get("created_at", "Recent"),
+        }
+
+        # Build email body
+        html_body = f"<h1>New ScreenMerch Order #{order_number}</h1>"
+        html_body += f"<p><strong>Order ID:</strong> {order_id}</p>"
+        html_body += f"<p><strong>Items:</strong> {len(enriched_cart)}</p>"
+        html_body += f"<p><strong>Total Value:</strong> ${total_amount:.2f}</p>"
+        html_body += "<br>"
+
+        for item in enriched_cart:
+            product_name = item.get('product', 'N/A')
+            color = (item.get('variants') or {}).get('color', 'N/A')
+            size = (item.get('variants') or {}).get('size', 'N/A')
+            note = item.get('note', 'None')
+            image_url = item.get('img', '')
+            html_body += f"""
+                <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
+                    <h2>{product_name}</h2>
+                    <p><strong>Color:</strong> {color}</p>
+                    <p><strong>Size:</strong> {size}</p>
+                    <p><strong>Note:</strong> {note}</p>
+                    {f"<img src='{image_url}' alt='Product Image' style='max-width: 300px; border-radius: 6px;'>" if image_url else ""}
+                </div>
+            """
+
+        html_body += "<hr>"
+        html_body += "<h2>📹 Video Information</h2>"
+        html_body += f"<p><strong>Video Title:</strong> {order_data['video_title']}</p>"
+        html_body += f"<p><strong>Creator:</strong> {order_data['creator_name']}</p>"
+        html_body += f"<p><strong>Video URL:</strong> {order_data['video_url']}</p>"
+        html_body += f"<p><strong>Screenshot Timestamp:</strong> {order_store[order_id]['screenshot_timestamp']} seconds</p>"
+        html_body += "<br>"
+        html_body += "<p><strong>📋 View Full Order Details:</strong></p>"
+        html_body += f"<p><a href='https://copy5-backend.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
+        html_body += "<br>"
+        html_body += "<p><strong>📊 All Orders Dashboard:</strong></p>"
+        html_body += f"<p><a href='https://copy5-backend.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
+        html_body += "<br>"
+        html_body += "<hr>"
+        html_body += "<h2>🖨️ Print Quality Images</h2>"
+        html_body += "<p>Use the print quality generator to get 300 DPI images:</p>"
+        html_body += f"<p><strong>Web Interface:</strong> <a href='https://copy5-backend.fly.dev/print-quality?order_id={order_id}'>https://copy5-backend.fly.dev/print-quality?order_id={order_id}</a></p>"
+        html_body += "<br>"
+        html_body += "<p><small>This is an automated notification from ScreenMerch</small></p>"
+
+        # Send email with Resend if configured; fall back to logging
+        if RESEND_API_KEY and MAIL_TO:
+            email_data = {
+                "from": RESEND_FROM,
+                "to": [MAIL_TO],
+                "subject": f"🛍️ New ScreenMerch Order #{order_number}",
+                "html": html_body,
+            }
+            try:
+                resp = requests.post(
+                    "https://api.resend.com/emails",
+                    headers={
+                        "Authorization": f"Bearer {RESEND_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json=email_data,
+                )
+                if resp.status_code != 200:
+                    logger.error(f"Resend API error: {resp.text}")
+            except Exception as e:
+                logger.error(f"Error sending email via Resend: {str(e)}")
+        else:
+            logger.warning("Email service not configured; order email not sent")
+
+        return jsonify({"success": True, "order_id": order_id})
+    except Exception as e:
+        logger.error(f"Error in place_order: {str(e)}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
 @app.route("/success")
 def success():
     order_id = request.args.get('order_id')
