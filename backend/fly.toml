@@ -1,6 +1,6 @@
 # fly.toml app configuration file for ScreenMerch backend
 
-app = "copy5-backend"
+app = "screenmerch"
 primary_region = "sjc"
 
 [build]
