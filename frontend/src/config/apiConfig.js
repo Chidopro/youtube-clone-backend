@@ -38,6 +38,8 @@ export const API_CONFIG = {
 
   ENDPOINTS: {
     CREATE_PRODUCT: `${currentConfig.API_BASE_URL}/api/create-product`,
+    CALCULATE_SHIPPING: `${currentConfig.API_BASE_URL}/api/calculate-shipping`,
+    PLACE_ORDER: `${currentConfig.API_BASE_URL}/api/place-order`,
     SEND_SUBSCRIPTION_EMAIL: `${currentConfig.EMAIL_API_URL}/api/send-subscription-email`,
     VERIFY_SUBSCRIPTION: `${currentConfig.SUBSCRIPTION_API_URL}/api/verify-subscription`,
     USER_SUBSCRIPTION: `${currentConfig.SUBSCRIPTION_API_URL}/api/users`,
