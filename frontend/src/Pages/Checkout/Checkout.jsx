@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
+import './Checkout.css';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -103,6 +104,8 @@ const Checkout = () => {
                       value={address.zip} 
                       onChange={e => setAddress(a => ({ ...a, zip: e.target.value }))}
                       className="form-input"
+                      aria-label="ZIP or Postal Code"
+                      aria-describedby="zip-help"
                     />
                   </div>
                   <div className="form-group">
@@ -111,6 +114,7 @@ const Checkout = () => {
                       value={address.country_code} 
                       onChange={e => setAddress(a => ({ ...a, country_code: e.target.value }))}
                       className="form-select"
+                      aria-label="Country"
                     >
                       <option value="US">United States</option>
                       <option value="CA">Canada</option>
@@ -126,7 +130,17 @@ const Checkout = () => {
                       onClick={fetchShipping} 
                       disabled={shipping.loading}
                     >
-                      {shipping.loading ? 'Calculating…' : 'Calculate Shipping'}
+                      {shipping.loading ? (
+                        <>
+                          <span className="loading-spinner"></span>
+                          Calculating…
+                        </>
+                      ) : (
+                        <>
+                          <span>🚚</span>
+                          Calculate Shipping
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -159,416 +173,72 @@ const Checkout = () => {
               <button className="btn-outline" onClick={() => navigate(-1)}>
                 Continue Shopping
               </button>
-              <button className="btn-primary btn-large" onClick={async () => {
-              try {
-                const payload = {
-                  cart: items.map(it => ({
-                    product: it.product || it.name,
-                    variants: { color: it.color, size: it.size },
-                    img: it.image,
-                    price: it.price
-                  })),
-                  product_id: items[0]?.product_id || items[0]?.id || '',
-                  sms_consent: false,
-                  shipping_cost: shipping.cost || 0,
-                  videoUrl: items[0]?.video_url,
-                  videoTitle: items[0]?.video_title,
-                  creatorName: items[0]?.creator_name
-                };
-                const res = await fetch(API_CONFIG.ENDPOINTS.CREATE_CHECKOUT_SESSION, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (data?.url) {
-                  window.location.href = data.url;
-                } else {
-                  // Fallback: hit legacy place-order which now returns next_url
-                  try {
-                    const res2 = await fetch(API_CONFIG.ENDPOINTS.PLACE_ORDER, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(payload)
-                    });
-                    const data2 = await res2.json();
-                    if (data2?.next_url) {
-                      window.location.href = data2.next_url;
-                    } else {
-                      alert(data?.error || data2?.error || 'Failed to start checkout');
+              <button className="btn-primary btn-large" onClick={async (event) => {
+                const button = event.target;
+                const originalContent = button.innerHTML;
+                button.innerHTML = '<span className="loading-spinner"></span>Processing Order...';
+                button.disabled = true;
+                
+                try {
+                  const payload = {
+                    cart: items.map(it => ({
+                      product: it.product || it.name,
+                      variants: { color: it.color, size: it.size },
+                      img: it.image,
+                      price: it.price
+                    })),
+                    product_id: items[0]?.product_id || items[0]?.id || '',
+                    sms_consent: false,
+                    shipping_cost: shipping.cost || 0,
+                    videoUrl: items[0]?.video_url,
+                    videoTitle: items[0]?.video_title,
+                    creatorName: items[0]?.creator_name
+                  };
+                  const res = await fetch(API_CONFIG.ENDPOINTS.CREATE_CHECKOUT_SESSION, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                  });
+                  const data = await res.json();
+                  if (data?.url) {
+                    window.location.href = data.url;
+                  } else {
+                    // Fallback: hit legacy place-order which now returns next_url
+                    try {
+                      const res2 = await fetch(API_CONFIG.ENDPOINTS.PLACE_ORDER, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                      });
+                      const data2 = await res2.json();
+                      if (data2?.next_url) {
+                        window.location.href = data2.next_url;
+                      } else {
+                        button.innerHTML = originalContent;
+                        button.disabled = false;
+                        alert(data?.error || data2?.error || 'Failed to start checkout');
+                      }
+                    } catch (e2) {
+                      button.innerHTML = originalContent;
+                      button.disabled = false;
+                      alert('Network error starting checkout');
                     }
-                  } catch (e2) {
-                    alert('Network error starting checkout');
                   }
+                } catch (e) {
+                  button.innerHTML = originalContent;
+                  button.disabled = false;
+                  alert('Network error starting checkout');
                 }
-              } catch (e) {
-                alert('Network error starting checkout');
-              }
-            }}>
-              <span>Place Order</span>
-              <span className="btn-icon">→</span>
-            </button>
+              }}>
+                <span>Place Order</span>
+                <span className="btn-icon">→</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
-      
-      <style jsx>{`
-        .checkout-container {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 24px;
-          background: #f8fafc;
-          min-height: 100vh;
-        }
-
-        .checkout-header {
-          text-align: center;
-          margin-bottom: 40px;
-        }
-
-        .checkout-header h1 {
-          font-size: 2.5rem;
-          font-weight: 700;
-          color: #1a202c;
-          margin-bottom: 20px;
-        }
-
-        .checkout-progress {
-          display: flex;
-          justify-content: center;
-          gap: 40px;
-          margin-bottom: 20px;
-        }
-
-        .progress-step {
-          padding: 12px 24px;
-          border-radius: 25px;
-          background: #e2e8f0;
-          color: #64748b;
-          font-weight: 600;
-          position: relative;
-        }
-
-        .progress-step.active {
-          background: #3b82f6;
-          color: white;
-        }
-
-        .progress-step:not(:last-child)::after {
-          content: '';
-          position: absolute;
-          right: -20px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 20px;
-          height: 2px;
-          background: #e2e8f0;
-        }
-
-        .empty-cart {
-          text-align: center;
-          padding: 80px 20px;
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .empty-cart-icon {
-          font-size: 4rem;
-          margin-bottom: 20px;
-        }
-
-        .empty-cart h2 {
-          font-size: 1.5rem;
-          color: #1a202c;
-          margin-bottom: 10px;
-        }
-
-        .empty-cart p {
-          color: #64748b;
-          margin-bottom: 30px;
-        }
-
-        .checkout-content {
-          display: grid;
-          grid-template-columns: 1fr 400px;
-          gap: 40px;
-        }
-
-        .checkout-main {
-          display: flex;
-          flex-direction: column;
-          gap: 32px;
-        }
-
-        .order-section {
-          background: white;
-          border-radius: 12px;
-          padding: 32px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .order-section h2 {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #1a202c;
-          margin-bottom: 24px;
-          border-bottom: 2px solid #f1f5f9;
-          padding-bottom: 12px;
-        }
-
-        .items-list {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .item-card {
-          display: grid;
-          grid-template-columns: 80px 1fr auto;
-          gap: 16px;
-          align-items: center;
-          padding: 20px;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          transition: all 0.2s;
-        }
-
-        .item-card:hover {
-          border-color: #3b82f6;
-          box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
-        }
-
-        .item-image {
-          width: 80px;
-          height: 80px;
-          border-radius: 8px;
-          overflow: hidden;
-        }
-
-        .item-image img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .item-details {
-          flex: 1;
-        }
-
-        .item-name {
-          font-size: 1.1rem;
-          font-weight: 600;
-          color: #1a202c;
-          margin-bottom: 4px;
-        }
-
-        .item-variants {
-          color: #64748b;
-          font-size: 0.9rem;
-        }
-
-        .item-price {
-          font-size: 1.2rem;
-          font-weight: 700;
-          color: #1a202c;
-        }
-
-        .shipping-form {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .form-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr auto;
-          gap: 16px;
-          align-items: end;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .form-group label {
-          font-weight: 600;
-          color: #374151;
-          font-size: 0.9rem;
-        }
-
-        .form-input, .form-select {
-          padding: 12px 16px;
-          border: 2px solid #e2e8f0;
-          border-radius: 8px;
-          font-size: 1rem;
-          transition: border-color 0.2s;
-        }
-
-        .form-input:focus, .form-select:focus {
-          outline: none;
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-
-        .error-message {
-          color: #dc2626;
-          font-size: 0.9rem;
-          font-weight: 500;
-        }
-
-        .shipping-result {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 16px;
-          background: #f8fafc;
-          border-radius: 8px;
-          border: 1px solid #e2e8f0;
-        }
-
-        .shipping-method {
-          font-weight: 600;
-          color: #1a202c;
-        }
-
-        .shipping-cost {
-          font-weight: 700;
-          color: #1a202c;
-          font-size: 1.1rem;
-        }
-
-        .order-summary {
-          background: white;
-          border-radius: 12px;
-          padding: 32px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          height: fit-content;
-          position: sticky;
-          top: 24px;
-        }
-
-        .order-summary h2 {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #1a202c;
-          margin-bottom: 24px;
-          border-bottom: 2px solid #f1f5f9;
-          padding-bottom: 12px;
-        }
-
-        .summary-line {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 12px 0;
-          border-bottom: 1px solid #f1f5f9;
-        }
-
-        .summary-line.total {
-          font-size: 1.2rem;
-          font-weight: 700;
-          color: #1a202c;
-          border-top: 2px solid #e2e8f0;
-          border-bottom: none;
-          margin-top: 8px;
-          padding-top: 16px;
-        }
-
-        .checkout-actions {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          margin-top: 32px;
-        }
-
-        .btn-primary, .btn-secondary, .btn-outline {
-          padding: 16px 24px;
-          border-radius: 8px;
-          font-weight: 600;
-          font-size: 1rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          border: none;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-        }
-
-        .btn-primary {
-          background: #3b82f6;
-          color: white;
-        }
-
-        .btn-primary:hover {
-          background: #2563eb;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-
-        .btn-secondary {
-          background: #f1f5f9;
-          color: #374151;
-          border: 1px solid #e2e8f0;
-        }
-
-        .btn-secondary:hover {
-          background: #e2e8f0;
-        }
-
-        .btn-outline {
-          background: transparent;
-          color: #3b82f6;
-          border: 2px solid #3b82f6;
-        }
-
-        .btn-outline:hover {
-          background: #3b82f6;
-          color: white;
-        }
-
-        .btn-large {
-          padding: 20px 32px;
-          font-size: 1.1rem;
-        }
-
-        .btn-icon {
-          font-size: 1.2rem;
-          transition: transform 0.2s;
-        }
-
-        .btn-primary:hover .btn-icon {
-          transform: translateX(4px);
-        }
-
-        @media (max-width: 768px) {
-          .checkout-content {
-            grid-template-columns: 1fr;
-            gap: 24px;
-          }
-          
-          .form-row {
-            grid-template-columns: 1fr;
-            gap: 12px;
-          }
-          
-          .checkout-progress {
-            gap: 20px;
-          }
-          
-          .progress-step {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-          }
-        }
-      `}</style>
     </div>
   );
 };
 
 export default Checkout;
-
-
