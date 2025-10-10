@@ -8,19 +8,118 @@ import more_icon from '../../assets/more.png'
 import notification_icon from '../../assets/notification.png'
 import { Link, useNavigate } from 'react-router-dom'
 import SubscriptionModal from '../SubscriptionModal/SubscriptionModal'
+import { supabase } from '../../supabaseClient'
+import { upsertUserProfile, deleteUserAccount } from '../../utils/userService'
 
 const Navbar = ({ setSidebar, resetCategory }) => {
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
     const navigate = useNavigate();
 
-    // Simplified navbar - no complex authentication logic needed
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+            setLoading(false);
+            if (user) {
+                // Upsert user profile in users table
+                const upsertPayload = {
+                    id: user.id,
+                    username: user.user_metadata?.name?.replace(/\s+/g, '').toLowerCase() || user.email,
+                    display_name: user.user_metadata?.name || user.email,
+                    email: user.email
+                };
+                console.log('Upserting user profile with:', upsertPayload);
+                const result = await upsertUserProfile(upsertPayload);
+                console.log('Upsert result:', result);
+            }
+        };
+        fetchUser();
 
-    // Simplified navbar - authentication handled elsewhere
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+            fetchUser();
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownOpen && !event.target.closest('.user-profile-container')) {
+                setDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [dropdownOpen]);
+
+    const handleLogin = async () => {
+        try {
+            console.log('🔐 Sign In button clicked - initiating Google OAuth');
+            
+            // Get the Google OAuth URL from our Flask backend
+            const response = await fetch('https://screenmerch.fly.dev/api/auth/google/login', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to initiate Google login');
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.auth_url) {
+                // Redirect to Google OAuth URL
+                window.location.href = data.auth_url;
+            } else {
+                throw new Error(data.error || 'Failed to get Google login URL');
+            }
+        } catch (error) {
+            console.error('Google login error:', error);
+            alert('Login failed: ' + error.message);
+        }
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        setUser(null);
+        navigate('/');
+    };
+
+    const handleDeleteAccount = async () => {
+        if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+            try {
+                const result = await deleteUserAccount();
+                
+                if (result.success) {
+                    // Sign out and redirect
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    navigate('/');
+                    alert('Your account has been successfully deleted.');
+                    // Force page reload to clear any cached data
+                    window.location.reload();
+                } else {
+                    alert(`Failed to delete account: ${result.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error deleting account:', error);
+                alert('There was an error deleting your account. Please try again or contact support.');
+            }
+        }
+    };
 
     const handleSubscribeClick = () => {
-        console.log('🚀 Get Started Free clicked - navigating to subscription tiers');
-        // Always redirect to the free earnings calculator page
+        // Always redirect to tiers page for new user signups
         navigate('/subscription-tiers');
     };
 
@@ -36,128 +135,75 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         navigate('/join-channel');
     };
 
-    const handleSearchInput = (e) => {
-        setSearchQuery(e.target.value);
-    };
-
-    const handleSearch = () => {
-        if (searchQuery.trim()) {
-            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-        }
-    };
-
-    const handleSearchKeyPress = (e) => {
-        if (e.key === 'Enter') {
-            handleSearch();
-        }
-    };
-
-    console.log('🔍 Navbar component rendering - simplified version');
-    
     return (
         <>
-            <nav className='flex-div' style={{ position: 'sticky', top: 0, zIndex: 9999, pointerEvents: 'auto' }}>
+            <nav className='flex-div'>
                 <div className="nav-left flex-div">
-                    <img 
-                        src={menu_icon} 
-                        alt="Menu" 
-                        className="menu-icon" 
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('🍔 Hamburger clicked - redirecting to home');
-                            navigate('/');
-                        }}
-                        style={{ cursor: 'pointer', pointerEvents: 'auto', zIndex: 10001 }}
-                        title="Go to Home"
-                    />
+                    <img src={menu_icon} alt="" className="menu-icon" onClick={() => setSidebar(prev => !prev)} />
                     <Link to="/" onClick={resetCategory}> <img src={logo} alt="" className="logo" /></Link>
                 </div>
                 <div className="nav-middle flex-div">
                     <div className="search-box flex-div">
-                        <input 
-                            type="text" 
-                            placeholder="Search creators..." 
-                            value={searchQuery}
-                            onChange={handleSearchInput}
-                            onKeyPress={handleSearchKeyPress}
-                        />
-                        <img 
-                            src={search_icon} 
-                            alt="Search" 
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                console.log('🔍 Search icon clicked!');
-                                handleSearch();
-                            }}
-                            style={{ cursor: 'pointer', pointerEvents: 'auto', zIndex: 10000 }}
-                            title="Search creators"
-                        />
+                        <input type="text" placeholder="Search" />
+                        <img src={search_icon} alt="" />
                     </div>
                 </div>
                 <div className="nav-right flex-div">
-                    <img 
-                        src={upload_icon} 
-                        alt="Upload" 
-                        style={{ cursor: 'pointer', pointerEvents: 'auto', zIndex: 10001 }}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('📤 Upload button clicked - redirecting to home');
-                            navigate('/');
-                        }}
-                        title="Go to Home"
-                    />
-                    <Link 
-                        to="/subscription-tiers" 
-                        className="subscribe-btn"
-                        onClick={(e) => {
-                            console.log('🚀 Get Started Free Link clicked!');
-                        }}
-                        style={{ pointerEvents: 'auto', zIndex: 10000 }}
-                    >
-                        Get Started Free
-                    </Link>
+                    {user ? (
+                        <Link to="/upload"><img src={upload_icon} alt="Upload" /></Link>
+                    ) : (
+                        <img 
+                            src={upload_icon} 
+                            alt="Upload" 
+                            style={{ cursor: 'pointer' }}
+                            onClick={handleLogin}
+                            title="Sign in to upload videos"
+                        />
+                    )}
                     <button 
-                        className="sign-in-btn" 
-                        onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('🔐 Sign In button clicked - initiating Google OAuth');
-                            
-                            try {
-                                // Get the Google OAuth URL from our Flask backend
-                                const response = await fetch('https://screenmerch.fly.dev/api/auth/google/login', {
-                                    method: 'GET',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    credentials: 'include'
-                                });
-                                
-                                if (!response.ok) {
-                                    throw new Error('Failed to initiate Google login');
-                                }
-                                
-                                const data = await response.json();
-                                
-                                if (data.success && data.auth_url) {
-                                    // Redirect to Google OAuth URL
-                                    window.location.href = data.auth_url;
-                                } else {
-                                    throw new Error(data.error || 'Failed to get Google login URL');
-                                }
-                            } catch (error) {
-                                console.error('Google login error:', error);
-                                alert('Login failed: ' + error.message);
-                            }
-                        }}
-                        style={{ pointerEvents: 'auto', zIndex: 10001 }}
-                        title="Sign in with Google"
+                        className="subscribe-btn"
+                        onClick={handleSubscribeClick}
                     >
-                        Sign In
+                        Subscribe
                     </button>
+                    {loading ? (
+                        <div className="loading-spinner-navbar"></div>
+                    ) : user ? (
+                        <div className="user-profile-container">
+                            <img 
+                                className='user-profile' 
+                                src={user?.user_metadata?.picture || '/default-avatar.jpg'} 
+                                alt={user?.user_metadata?.name || 'User'} 
+                                onClick={() => setDropdownOpen(!dropdownOpen)}
+                            />
+                            <div className={`user-dropdown ${dropdownOpen ? 'open' : ''}`}>
+                                <p>Signed in as <strong>{user?.user_metadata?.name}</strong></p>
+                                <hr/>
+                                <Link to="/dashboard" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Dashboard</Link>
+                                <Link to="/admin" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Admin Portal</Link>
+                                <button 
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setDropdownOpen(false);
+                                        handleDeleteAccount();
+                                    }} 
+                                    className="dropdown-item delete-account-btn"
+                                >
+                                    Delete Account
+                                </button>
+                                <button onClick={() => { setDropdownOpen(false); handleLogout(); }}>Logout</button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button 
+                            className="sign-in-btn" 
+                            onClick={handleLogin}
+                            title="Sign in with Google"
+                        >
+                            Sign In
+                        </button>
+                    )}
                 </div>
             </nav>
             
