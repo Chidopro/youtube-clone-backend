@@ -29,24 +29,10 @@ const Dashboard = ({ sidebar }) => {
     const [isEditingAvatar, setIsEditingAvatar] = useState(false);
     const [activeTab, setActiveTab] = useState('videos');
     const [currentUser, setCurrentUser] = useState(null);
-    const [analyticsData, setAnalyticsData] = useState({
-        total_sales: 0,
-        total_revenue: 0,
-        avg_order_value: 0,
-        products_sold_count: 0,
-        videos_with_sales_count: 0,
-        sales_data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        products_sold: [],
-        videos_with_sales: []
-    });
-    const [analyticsLoading, setAnalyticsLoading] = useState(false);
     
 
     const navigate = useNavigate();
 
-    // Sales data for the chart (will be updated from API)
-    const salesData = analyticsData.sales_data;
-    const maxSales = Math.max(...salesData) || 1;
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -120,39 +106,6 @@ const Dashboard = ({ sidebar }) => {
         fetchCurrentUser();
     }, []);
 
-    // Function to fetch analytics data
-    const fetchAnalyticsData = async () => {
-        try {
-            console.log('🔍 Starting analytics fetch...');
-            setAnalyticsLoading(true);
-            const response = await fetch('https://youtube-clone-dev-backend.fly.dev/api/analytics?t=' + Date.now());
-            console.log('📡 Response status:', response.status);
-            if (response.ok) {
-                const data = await response.json();
-                console.log('📊 Analytics data received:', data);
-                setAnalyticsData(data);
-            } else {
-                console.error('❌ Failed to fetch analytics data, status:', response.status);
-                const errorText = await response.text();
-                console.error('❌ Error response:', errorText);
-            }
-        } catch (error) {
-            console.error('❌ Error fetching analytics:', error);
-        } finally {
-            setAnalyticsLoading(false);
-        }
-    };
-
-
-
-    // Fetch analytics when analytics tab is active
-    useEffect(() => {
-        console.log('🔄 Tab changed to:', activeTab);
-        if (activeTab === 'analytics') {
-            console.log('📊 Analytics tab activated, fetching data...');
-            fetchAnalyticsData();
-        }
-    }, [activeTab]);
 
     const uploadImageToSupabase = async (file, type) => {
         try {
@@ -524,12 +477,6 @@ const Dashboard = ({ sidebar }) => {
                 >
                     📹 Videos ({videos.length})
                 </button>
-                <button 
-                    className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('analytics')}
-                >
-                    📊 Analytics
-                </button>
 
 
             </div>
@@ -598,7 +545,7 @@ const Dashboard = ({ sidebar }) => {
                 )}
 
                 {/* Analytics Tab */}
-                {activeTab === 'analytics' && (
+                {false && (
                     <div className="analytics-tab">
                         {/* Sales Analytics Section */}
                         <div className="sales-analytics-section">

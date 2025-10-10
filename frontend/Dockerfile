@@ -40,5 +40,8 @@ FROM base
 # Copy built application
 COPY --from=build /app /app
 
+# Install serve to serve the built files
+RUN npm install -g serve
+
 # Start the server by default, this can be overwritten at runtime
-CMD [ "npm", "run", "start" ]
+CMD [ "serve", "-s", ".", "-l", "8080" ]

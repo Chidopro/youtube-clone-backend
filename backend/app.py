@@ -3,7 +3,7 @@ import os
 import logging
 import time
 from dotenv import load_dotenv
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import uuid
 import requests
 import stripe
@@ -16,6 +16,12 @@ from pathlib import Path
 import sys
 from functools import wraps
 
+# Google OAuth imports
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build
+import google.auth
 
 # NEW: Import Printful integration
 from printful_integration import ScreenMerchPrintfulIntegration
@@ -52,6 +58,16 @@ if not supabase_url or not supabase_key:
 # Email notification setup (replacing Twilio SMS)
 ADMIN_EMAIL = os.getenv("MAIL_TO") or os.getenv("ADMIN_EMAIL")
 print(f"ADMIN_EMAIL: {'OK' if ADMIN_EMAIL else 'MISSING'}")
+
+# Google OAuth configuration
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI") or "https://screenmerch.fly.dev/api/auth/google/callback"
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+
+print(f"GOOGLE_CLIENT_ID: {'OK' if GOOGLE_CLIENT_ID else 'MISSING'}")
+print(f"GOOGLE_CLIENT_SECRET: {'OK' if GOOGLE_CLIENT_SECRET else 'MISSING'}")
+print(f"YOUTUBE_API_KEY: {'OK' if YOUTUBE_API_KEY else 'MISSING'}")
 
 # Add session configuration (will be set after app creation)
 
@@ -216,28 +232,88 @@ def get_product_price_range(product_name):
     else:
         return f"${min_price:.2f}-${max_price:.2f}"
 
-# Configure CORS for production
+# Configure CORS for production - Netlify frontend to Fly.io backend
 CORS(app, resources={r"/api/*": {"origins": [
-    "chrome-extension://*",
-    "https://screenmerch.com",
-    "https://www.screenmerch.com",
-    "https://famous-custard-4c8894.netlify.app",
-    "https://breakupplug.netlify.app",
-    "https://*.netlify.app",
-    "https://*.fly.dev"
+    "https://screenmerch.com", 
+    "https://www.screenmerch.com", 
+    "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
+    "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",  # Previous preview URL
+    "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",  # Current preview URL
+    "https://*.netlify.app",  # All Netlify apps
+    "http://localhost:3000", 
+    "http://localhost:5173",
+    "chrome-extension://*"
 ]}}, supports_credentials=True)
 
 # Global preflight handler for all /api/* routes
 @app.route('/api/<path:any_path>', methods=['OPTIONS'])
 def api_preflight(any_path):
     response = jsonify(success=True)
-    origin = request.headers.get('Origin', '*')
-    response.headers.add('Access-Control-Allow-Origin', origin)
-    response.headers.add('Vary', 'Origin')
+    origin = request.headers.get('Origin')
+    allowed_origins = [
+        "https://screenmerch.com", 
+        "https://www.screenmerch.com", 
+        "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
+        "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",  # Previous preview URL
+    "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",  # Current preview URL
+        "https://*.netlify.app",  # All Netlify apps
+        "http://localhost:3000", 
+        "http://localhost:5173",
+        "chrome-extension://*"
+    ]
+    
+    # Check if origin matches any allowed pattern
+    origin_allowed = False
+    for allowed_origin in allowed_origins:
+        if allowed_origin == origin or (allowed_origin.startswith("https://*") and origin and origin.startswith(allowed_origin.replace("*", ""))):
+            origin_allowed = True
+            break
+    
+    if origin_allowed:
+        response.headers.add('Access-Control-Allow-Origin', origin)
+    else:
+        response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+    
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response, 200
+    return response
+
+# Add CORS headers to all API responses
+@app.after_request
+def add_cors_headers(response):
+    """Add CORS headers to all API responses"""
+    if request.path.startswith('/api/'):
+        origin = request.headers.get('Origin')
+        allowed_origins = [
+            "https://screenmerch.com", 
+            "https://www.screenmerch.com", 
+            "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
+            "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",  # Previous preview URL
+    "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",  # Current preview URL
+            "https://*.netlify.app",  # All Netlify apps
+            "http://localhost:3000", 
+            "http://localhost:5173",
+            "chrome-extension://*"
+        ]
+        
+        # Check if origin matches any allowed pattern
+        origin_allowed = False
+        for allowed_origin in allowed_origins:
+            if allowed_origin == origin or (allowed_origin.startswith("https://*") and origin and origin.startswith(allowed_origin.replace("*", ""))):
+                origin_allowed = True
+                break
+        
+        if origin_allowed:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+        
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    
+    return response
 
 # Security middleware
 @app.before_request
@@ -262,11 +338,18 @@ def add_security_headers(response):
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
     
-    # Ensure CORS headers are properly set
-    if request.method == 'OPTIONS':
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
+    # Ensure CORS headers are properly set for all responses
+    origin = request.headers.get('Origin')
+    allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+    
+    if origin in allowed_origins:
+        response.headers['Access-Control-Allow-Origin'] = origin
+    else:
+        response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
+    
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
     
     return response
 
@@ -3563,9 +3646,17 @@ def test_email_config():
 def auth_login():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
+        origin = request.headers.get('Origin')
+        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+        
+        if origin in allowed_origins:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+        
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     """Handle user login with email and password validation"""
     try:
@@ -3606,17 +3697,25 @@ def auth_login():
                     response.headers.add('Access-Control-Allow-Origin', '*')
                     return response
                 else:
-                    return jsonify({"success": False, "error": "Invalid email or password"}), 401
+                    response = jsonify({"success": False, "error": "Invalid email or password"})
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 401
             else:
-                return jsonify({"success": False, "error": "Invalid email or password"}), 401
+                response = jsonify({"success": False, "error": "Invalid email or password"})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 401
                 
         except Exception as db_error:
             logger.error(f"Database error during login: {str(db_error)}")
-            return jsonify({"success": False, "error": "Authentication service unavailable"}), 500
+            response = jsonify({"success": False, "error": "Authentication service unavailable"})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 500
             
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
-        return jsonify({"success": False, "error": "Internal server error"}), 500
+        response = jsonify({"success": False, "error": "Internal server error"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 @app.route("/api/auth/signup", methods=["POST", "OPTIONS"])
 def auth_signup():
@@ -3677,18 +3776,28 @@ def auth_signup():
                         "role": result.data[0].get('role', 'customer')
                     }
                 })
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response
             else:
-                return jsonify({"success": False, "error": "Failed to create account"}), 500
+                response = jsonify({"success": False, "error": "Failed to create account"})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 500
                 
         except Exception as db_error:
             logger.error(f"Database error during signup: {str(db_error)}")
             if "duplicate key" in str(db_error).lower():
-                return jsonify({"success": False, "error": "An account with this email already exists"}), 409
-            return jsonify({"success": False, "error": "Account creation failed"}), 500
+                response = jsonify({"success": False, "error": "An account with this email already exists"})
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                return response, 409
+            response = jsonify({"success": False, "error": "Account creation failed"})
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response, 500
             
     except Exception as e:
         logger.error(f"Signup error: {str(e)}")
-        return jsonify({"success": False, "error": "Internal server error"}), 500
+        response = jsonify({"success": False, "error": "Internal server error"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 @app.route("/api/analytics", methods=["GET"])
 def get_analytics():
@@ -4266,6 +4375,220 @@ def fix_database_schema():
     except Exception as e:
         logger.error(f"❌ Error fixing database schema: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+# Google OAuth endpoints
+@app.route("/api/auth/google/login", methods=["GET", "OPTIONS"])
+@cross_origin(origins=[], supports_credentials=True)  # Disable Flask-CORS for this endpoint
+def google_login():
+    """Initiate Google OAuth login"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        origin = request.headers.get('Origin')
+        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+        
+        if origin in allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        else:
+            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+    
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        return jsonify({"success": False, "error": "Google OAuth not configured"}), 500
+    
+    try:
+        # Create OAuth flow
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [GOOGLE_REDIRECT_URI]
+                }
+            },
+            scopes=[
+                'https://www.googleapis.com/auth/userinfo.profile',
+                'https://www.googleapis.com/auth/userinfo.email',
+                'https://www.googleapis.com/auth/youtube.readonly'
+            ]
+        )
+        flow.redirect_uri = GOOGLE_REDIRECT_URI
+        
+        # Generate authorization URL
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true'
+        )
+        
+        # Store state in session for security
+        session['oauth_state'] = state
+        
+        response = jsonify({
+            "success": True,
+            "auth_url": authorization_url
+        })
+        
+        # Add CORS headers
+        origin = request.headers.get('Origin')
+        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+        
+        if origin in allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        else:
+            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Google OAuth login error: {str(e)}")
+        return jsonify({"success": False, "error": "Failed to initiate Google login"}), 500
+
+@app.route("/api/auth/google/callback", methods=["GET", "OPTIONS"])
+@cross_origin(origins=[], supports_credentials=True)  # Disable Flask-CORS for this endpoint
+def google_callback():
+    """Handle Google OAuth callback"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        origin = request.headers.get('Origin')
+        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+        
+        if origin in allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        else:
+            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+    
+    try:
+        # Get authorization code from callback
+        code = request.args.get('code')
+        state = request.args.get('state')
+        
+        if not code:
+            return jsonify({"success": False, "error": "Authorization code not provided"}), 400
+        
+        # Verify state parameter
+        if state != session.get('oauth_state'):
+            return jsonify({"success": False, "error": "Invalid state parameter"}), 400
+        
+        # Create OAuth flow
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [GOOGLE_REDIRECT_URI]
+                }
+            },
+            scopes=[
+                'https://www.googleapis.com/auth/userinfo.profile',
+                'https://www.googleapis.com/auth/userinfo.email',
+                'https://www.googleapis.com/auth/youtube.readonly'
+            ]
+        )
+        flow.redirect_uri = GOOGLE_REDIRECT_URI
+        
+        # Exchange code for tokens
+        flow.fetch_token(code=code)
+        credentials = flow.credentials
+        
+        # Get user info from Google
+        service = build('oauth2', 'v2', credentials=credentials)
+        user_info = service.userinfo().get().execute()
+        
+        # Get YouTube channel info
+        youtube_service = build('youtube', 'v3', credentials=credentials)
+        channel_response = youtube_service.channels().list(
+            part='snippet,statistics',
+            mine=True
+        ).execute()
+        
+        google_email = user_info.get('email')
+        google_name = user_info.get('name')
+        google_id = user_info.get('id')
+        
+        # Check if user exists in database
+        result = supabase.table('users').select('*').eq('email', google_email).execute()
+        
+        if result.data:
+            # User exists, update their Google info
+            user = result.data[0]
+            supabase.table('users').update({
+                'google_id': google_id,
+                'display_name': google_name,
+                'google_tokens': json.dumps({
+                    'access_token': credentials.token,
+                    'refresh_token': credentials.refresh_token,
+                    'expiry': credentials.expiry.isoformat() if credentials.expiry else None
+                })
+            }).eq('id', user['id']).execute()
+        else:
+            # Create new user
+            username = google_name.replace(' ', '').lower() if google_name else google_email.split('@')[0]
+            new_user = {
+                'email': google_email,
+                'display_name': google_name,
+                'google_id': google_id,
+                'role': 'creator',
+                'google_tokens': json.dumps({
+                    'access_token': credentials.token,
+                    'refresh_token': credentials.refresh_token,
+                    'expiry': credentials.expiry.isoformat() if credentials.expiry else None
+                })
+            }
+            result = supabase.table('users').insert(new_user).execute()
+            user = result.data[0] if result.data else None
+        
+        if not user:
+            return jsonify({"success": False, "error": "Failed to create or update user"}), 500
+        
+        # Get YouTube channel info if available
+        youtube_channel = None
+        if channel_response.get('items'):
+            channel = channel_response['items'][0]
+            youtube_channel = {
+                'id': channel['id'],
+                'title': channel['snippet']['title'],
+                'subscriber_count': channel['statistics'].get('subscriberCount', 0),
+                'video_count': channel['statistics'].get('videoCount', 0)
+            }
+        
+        # Clear OAuth state
+        session.pop('oauth_state', None)
+        
+        response = jsonify({
+            "success": True,
+            "message": "Google login successful",
+            "user": {
+                "id": user.get('id'),
+                "email": user.get('email'),
+                "display_name": user.get('display_name'),
+                "role": user.get('role', 'creator'),
+                "google_id": user.get('google_id'),
+                "youtube_channel": youtube_channel
+            }
+        })
+        
+        # Add CORS headers
+        origin = request.headers.get('Origin')
+        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+        
+        if origin in allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        else:
+            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Google OAuth callback error: {str(e)}")
+        return jsonify({"success": False, "error": "Google authentication failed"}), 500
 
 if __name__ == "__main__":
     import os

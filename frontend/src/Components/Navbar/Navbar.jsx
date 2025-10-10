@@ -121,14 +121,40 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     </Link>
                     <button 
                         className="sign-in-btn" 
-                        onClick={(e) => {
+                        onClick={async (e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log('🔐 Sign In button clicked - redirecting to home');
-                            navigate('/');
+                            console.log('🔐 Sign In button clicked - initiating Google OAuth');
+                            
+                            try {
+                                // Get the Google OAuth URL from our Flask backend
+                                const response = await fetch('https://screenmerch.fly.dev/api/auth/google/login', {
+                                    method: 'GET',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    credentials: 'include'
+                                });
+                                
+                                if (!response.ok) {
+                                    throw new Error('Failed to initiate Google login');
+                                }
+                                
+                                const data = await response.json();
+                                
+                                if (data.success && data.auth_url) {
+                                    // Redirect to Google OAuth URL
+                                    window.location.href = data.auth_url;
+                                } else {
+                                    throw new Error(data.error || 'Failed to get Google login URL');
+                                }
+                            } catch (error) {
+                                console.error('Google login error:', error);
+                                alert('Login failed: ' + error.message);
+                            }
                         }}
                         style={{ pointerEvents: 'auto', zIndex: 10001 }}
-                        title="Go to Home"
+                        title="Sign in with Google"
                     >
                         Sign In
                     </button>

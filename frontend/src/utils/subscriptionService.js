@@ -245,7 +245,7 @@ export class SubscriptionService {
       
       // Call the ensure-exists endpoint to create user in custom users table if needed
       // Let the backend handle UUID generation
-      const ensureResponse = await fetch('https://youtube-clone-dev-backend.fly.dev/api/users/ensure-exists', {
+      const ensureResponse = await fetch('https://screenmerch.fly.dev/api/users/ensure-exists', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -273,7 +273,7 @@ export class SubscriptionService {
       trialEnd.setDate(trialEnd.getDate() + 7);
 
       // Insert or update subscription in database using backend API
-      const subscriptionResponse = await fetch('https://youtube-clone-dev-backend.fly.dev/api/subscriptions/activate', {
+      const subscriptionResponse = await fetch('https://screenmerch.fly.dev/api/subscriptions/activate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -301,7 +301,7 @@ export class SubscriptionService {
         const channelSlug = userEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
         const channelUrl = `https://screenmerch.com/channel/${channelSlug}`;
         
-        const channelResponse = await fetch('https://youtube-clone-dev-backend.fly.dev/api/users/update-channel', {
+        const channelResponse = await fetch('https://screenmerch.fly.dev/api/users/update-channel', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -344,7 +344,7 @@ export class SubscriptionService {
    */
   static async sendWelcomeEmail(email) {
     try {
-      const response = await fetch('https://youtube-clone-dev-backend.fly.dev/api/send-welcome-email', {
+      const response = await fetch('https://screenmerch.fly.dev/api/send-welcome-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

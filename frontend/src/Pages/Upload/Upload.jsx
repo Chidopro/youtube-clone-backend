@@ -166,7 +166,7 @@ const Upload = ({ sidebar }) => {
             console.log('User ID:', user.id);
             
             // Ensure user exists in database before upload
-            const ensureUserResponse = await fetch('https://youtube-clone-dev-backend.fly.dev/api/users/ensure-exists', {
+            const ensureUserResponse = await fetch('https://screenmerch.fly.dev/api/users/ensure-exists', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -303,16 +303,30 @@ const Upload = ({ sidebar }) => {
                 <button 
                     className="sign-in-btn" 
                     onClick={async () => {
-                        const { error } = await supabase.auth.signInWithOAuth({ 
-                            provider: 'google',
-                            options: {
-                                redirectTo: `${window.location.origin}/upload`,
-                                queryParams: {
-                                    prompt: 'select_account'
-                                }
+                        try {
+                            // Get the Google OAuth URL from our Flask backend
+                            const response = await fetch('https://screenmerch.fly.dev/api/auth/google/login', {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                credentials: 'include'
+                            });
+                            
+                            if (!response.ok) {
+                                throw new Error('Failed to initiate Google login');
                             }
-                        });
-                        if (error) {
+                            
+                            const data = await response.json();
+                            
+                            if (data.success && data.auth_url) {
+                                // Redirect to Google OAuth URL
+                                window.location.href = data.auth_url;
+                            } else {
+                                throw new Error(data.error || 'Failed to get Google login URL');
+                            }
+                        } catch (error) {
+                            console.error('Google login error:', error);
                             alert('Login failed: ' + error.message);
                         }
                     }}

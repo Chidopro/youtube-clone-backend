@@ -59,15 +59,32 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     }, [dropdownOpen]);
 
     const handleLogin = async () => {
-        const { error } = await supabase.auth.signInWithOAuth({ 
-            provider: 'google',
-            options: {
-                queryParams: {
-                    prompt: 'select_account'
-                }
+        try {
+            console.log('🔐 Sign In button clicked - initiating Google OAuth');
+            
+            // Get the Google OAuth URL from our Flask backend
+            const response = await fetch('https://screenmerch.fly.dev/api/auth/google/login', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to initiate Google login');
             }
-        });
-        if (error) {
+            
+            const data = await response.json();
+            
+            if (data.success && data.auth_url) {
+                // Redirect to Google OAuth URL
+                window.location.href = data.auth_url;
+            } else {
+                throw new Error(data.error || 'Failed to get Google login URL');
+            }
+        } catch (error) {
+            console.error('Google login error:', error);
             alert('Login failed: ' + error.message);
         }
     };
@@ -179,7 +196,11 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             </div>
                         </div>
                     ) : (
-                        <button className="sign-in-btn" onClick={handleLogin}>
+                        <button 
+                            className="sign-in-btn" 
+                            onClick={handleLogin}
+                            title="Sign in with Google"
+                        >
                             Sign In
                         </button>
                     )}
