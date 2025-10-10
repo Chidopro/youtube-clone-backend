@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "./Components/Navbar/Navbar";
 import Footer from "./Components/Footer/Footer";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import Home from "./Pages/Home/Home";
 import Video from "./Pages/Video/Video";
 import Upload from "./Pages/Upload/Upload";
@@ -36,6 +36,35 @@ const App = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const resetCategory = () => setSelectedCategory('All');
   const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Handle Google OAuth redirect
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const loginStatus = urlParams.get('login');
+    const userData = urlParams.get('user');
+    
+    if (loginStatus === 'success' && userData) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userData));
+        console.log('🎉 Google OAuth successful! User:', user);
+        
+        // Store user data in localStorage
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('isAuthenticated', 'true');
+        
+        // Show success message
+        alert(`Welcome back, ${user.display_name}! You've been successfully logged in.`);
+        
+        // Clean up URL parameters
+        navigate('/', { replace: true });
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        alert('Login successful but there was an error processing your data. Please try again.');
+        navigate('/', { replace: true });
+      }
+    }
+  }, [location.search, navigate]);
   
   // Check if current route is a profile page and fetch subscription data
   useEffect(() => {

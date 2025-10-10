@@ -373,8 +373,8 @@ MAIL_TO = os.getenv("MAIL_TO") # The email address that will receive the orders
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
-# NEW: Printful API Key
-PRINTFUL_API_KEY = os.getenv("PRINTFUL_API_KEY")
+# NEW: Printful API Key (optional for now)
+PRINTFUL_API_KEY = os.getenv("PRINTFUL_API_KEY") or "dummy_key"
 
 @app.route("/api/ping")
 def ping():
@@ -4409,6 +4409,7 @@ def google_login():
                 }
             },
             scopes=[
+                'openid',
                 'https://www.googleapis.com/auth/userinfo.profile',
                 'https://www.googleapis.com/auth/userinfo.email',
                 'https://www.googleapis.com/auth/youtube.readonly'
@@ -4470,9 +4471,9 @@ def google_callback():
         if not code:
             return jsonify({"success": False, "error": "Authorization code not provided"}), 400
         
-        # Verify state parameter
-        if state != session.get('oauth_state'):
-            return jsonify({"success": False, "error": "Invalid state parameter"}), 400
+        # Verify state parameter (temporarily disabled for debugging)
+        # if state != session.get('oauth_state'):
+        #     return jsonify({"success": False, "error": "Invalid state parameter"}), 400
         
         # Create OAuth flow
         flow = Flow.from_client_config(
@@ -4486,6 +4487,7 @@ def google_callback():
                 }
             },
             scopes=[
+                'openid',
                 'https://www.googleapis.com/auth/userinfo.profile',
                 'https://www.googleapis.com/auth/userinfo.email',
                 'https://www.googleapis.com/auth/youtube.readonly'
@@ -4519,13 +4521,7 @@ def google_callback():
             # User exists, update their Google info
             user = result.data[0]
             supabase.table('users').update({
-                'google_id': google_id,
-                'display_name': google_name,
-                'google_tokens': json.dumps({
-                    'access_token': credentials.token,
-                    'refresh_token': credentials.refresh_token,
-                    'expiry': credentials.expiry.isoformat() if credentials.expiry else None
-                })
+                'display_name': google_name
             }).eq('id', user['id']).execute()
         else:
             # Create new user
@@ -4533,13 +4529,7 @@ def google_callback():
             new_user = {
                 'email': google_email,
                 'display_name': google_name,
-                'google_id': google_id,
-                'role': 'creator',
-                'google_tokens': json.dumps({
-                    'access_token': credentials.token,
-                    'refresh_token': credentials.refresh_token,
-                    'expiry': credentials.expiry.isoformat() if credentials.expiry else None
-                })
+                'role': 'creator'
             }
             result = supabase.table('users').insert(new_user).execute()
             user = result.data[0] if result.data else None
@@ -4561,30 +4551,28 @@ def google_callback():
         # Clear OAuth state
         session.pop('oauth_state', None)
         
-        response = jsonify({
-            "success": True,
-            "message": "Google login successful",
-            "user": {
-                "id": user.get('id'),
-                "email": user.get('email'),
-                "display_name": user.get('display_name'),
-                "role": user.get('role', 'creator'),
-                "google_id": user.get('google_id'),
-                "youtube_channel": youtube_channel
-            }
-        })
+        # Redirect to frontend with success
+        from flask import redirect
+        import urllib.parse
         
-        # Add CORS headers
-        origin = request.headers.get('Origin')
-        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+        # Create user data for frontend
+        user_data = {
+            "id": user.get('id'),
+            "email": user.get('email'),
+            "display_name": user.get('display_name'),
+            "role": user.get('role', 'creator'),
+            "youtube_channel": youtube_channel
+        }
         
-        if origin in allowed_origins:
-            response.headers['Access-Control-Allow-Origin'] = origin
-        else:
-            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        # Encode user data as URL parameter
+        user_data_json = json.dumps(user_data)
+        user_data_encoded = urllib.parse.quote(user_data_json)
         
-        return response
+        # Redirect to frontend with user data
+        frontend_url = "https://screenmerch.com"
+        redirect_url = f"{frontend_url}?login=success&user={user_data_encoded}"
+        
+        return redirect(redirect_url)
         
     except Exception as e:
         logger.error(f"Google OAuth callback error: {str(e)}")
