@@ -20,6 +20,23 @@ const Navbar = ({ setSidebar, resetCategory }) => {
 
     useEffect(() => {
         const fetchUser = async () => {
+            // Check for Google OAuth user in localStorage first
+            const isAuthenticated = localStorage.getItem('isAuthenticated');
+            const userData = localStorage.getItem('user');
+            
+            if (isAuthenticated === 'true' && userData) {
+                try {
+                    const googleUser = JSON.parse(userData);
+                    console.log('🔐 Found Google OAuth user:', googleUser);
+                    setUser(googleUser);
+                    setLoading(false);
+                    return;
+                } catch (error) {
+                    console.error('Error parsing Google OAuth user data:', error);
+                }
+            }
+            
+            // Fallback to Supabase auth
             const { data: { user } } = await supabase.auth.getUser();
             setUser(user);
             setLoading(false);
@@ -90,7 +107,17 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     };
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
+        // Check if user is logged in via Google OAuth
+        const isAuthenticated = localStorage.getItem('isAuthenticated');
+        if (isAuthenticated === 'true') {
+            // Clear Google OAuth data
+            localStorage.removeItem('isAuthenticated');
+            localStorage.removeItem('user');
+            console.log('🔓 Google OAuth user logged out');
+        } else {
+            // Fallback to Supabase logout
+            await supabase.auth.signOut();
+        }
         setUser(null);
         navigate('/');
     };
