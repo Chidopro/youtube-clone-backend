@@ -104,7 +104,7 @@ const Dashboard = ({ sidebar }) => {
     const fetchAnalyticsData = async () => {
         try {
             setAnalyticsLoading(true);
-            const response = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/analytics');
+            const response = await fetch('https://screenmerch.fly.dev/api/analytics');
             if (response.ok) {
                 const data = await response.json();
                 setAnalyticsData(data);

@@ -75,6 +75,13 @@ const Login = () => {
         // Store authentication state
         localStorage.setItem('user_authenticated', 'true');
         localStorage.setItem('user_email', email.trim());
+        // Set customer authentication keys
+        localStorage.setItem('customer_authenticated', 'true');
+        localStorage.setItem('customer_user', JSON.stringify({
+          display_name: email.trim(),
+          email: email.trim(),
+          user_type: 'customer'
+        }));
         
         // Set flag to indicate user just logged in (for subscription success page)
         if (returnTo.includes('/subscription-success')) {

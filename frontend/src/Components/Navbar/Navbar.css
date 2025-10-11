@@ -263,17 +263,19 @@ nav{
     padding: 12px 0;
     display: none;
     flex-direction: column;
-    z-index: 1000;
+    z-index: 10000;
     margin-top: 4px;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
 }
 
 .user-dropdown.open {
     display: flex;
-}
-
-.user-profile-container:hover .user-dropdown,
-.user-profile-container:focus-within .user-dropdown {
-    display: flex;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
 }
 
 .user-dropdown p {

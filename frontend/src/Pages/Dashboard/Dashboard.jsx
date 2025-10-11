@@ -29,6 +29,15 @@ const Dashboard = ({ sidebar }) => {
     const [isEditingAvatar, setIsEditingAvatar] = useState(false);
     const [activeTab, setActiveTab] = useState('videos');
     const [currentUser, setCurrentUser] = useState(null);
+    const [analyticsData, setAnalyticsData] = useState({
+        total_sales: 0,
+        total_revenue: 0,
+        products_sold_count: 0,
+        videos_with_sales_count: 0,
+        avg_order_value: 0,
+        products_sold: []
+    });
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
     
 
     const navigate = useNavigate();
@@ -37,10 +46,27 @@ const Dashboard = ({ sidebar }) => {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                // Get authenticated user from Supabase
-                const { data: { user }, error } = await supabase.auth.getUser();
+                // Check for Google OAuth user first
+                const isAuthenticated = localStorage.getItem('isAuthenticated');
+                const userData = localStorage.getItem('user');
+                
+                let user = null;
+                
+                if (isAuthenticated === 'true' && userData) {
+                    // Google OAuth user
+                    user = JSON.parse(userData);
+                    console.log('🔐 Dashboard: Found Google OAuth user:', user);
+                } else {
+                    // Fallback to Supabase auth
+                    const { data: { user: supabaseUser }, error } = await supabase.auth.getUser();
+                    if (supabaseUser) {
+                        user = supabaseUser;
+                        console.log('🔐 Dashboard: Found Supabase user:', user);
+                    }
+                }
                 
                 if (!user) {
+                    console.log('🔐 Dashboard: No authenticated user found, redirecting to home');
                     navigate('/');
                     return;
                 }
@@ -48,11 +74,15 @@ const Dashboard = ({ sidebar }) => {
                 setUser(user);
 
                 // Fetch user profile from users table
-                const { data: profile, error: profileError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('id', user.id)
-                    .single();
+                let profile = null;
+                if (user.id) {
+                    const { data: profileData, error: profileError } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', user.id)
+                        .single();
+                    profile = profileData;
+                }
 
                 if (profile) {
                     setUserProfile(profile);
@@ -62,21 +92,35 @@ const Dashboard = ({ sidebar }) => {
                         cover_image_url: profile.cover_image_url || '',
                         profile_image_url: profile.profile_image_url || ''
                     });
+                } else {
+                    // For Google OAuth users, use the data from localStorage
+                    setUserProfile(user);
+                    setEditForm({
+                        display_name: user.display_name || '',
+                        bio: user.bio || '',
+                        cover_image_url: user.cover_image_url || '',
+                        profile_image_url: user.picture || ''
+                    });
                 }
 
                 // Fetch user subscription
                 const userSubscription = await SubscriptionService.getCurrentUserSubscription();
                 setSubscription(userSubscription);
 
-                // Fetch user's videos from Supabase
-                const { data: userVideos, error: videosError } = await supabase
-                    .from('videos2')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false });
+                // Fetch user's videos from Supabase (only if user has an ID)
+                if (user.id) {
+                    const { data: userVideos, error: videosError } = await supabase
+                        .from('videos2')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false });
 
-                if (userVideos) {
-                    setVideos(userVideos);
+                    if (userVideos) {
+                        setVideos(userVideos);
+                    }
+                } else {
+                    // For Google OAuth users without database ID, show empty videos
+                    setVideos([]);
                 }
 
             } catch (error) {
@@ -91,16 +135,27 @@ const Dashboard = ({ sidebar }) => {
 
     useEffect(() => {
         const fetchCurrentUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data: profile } = await supabase
-                    .from('users')
-                    .select('role')
-                    .eq('id', user.id)
-                    .single();
-                setCurrentUser({ ...user, ...profile });
+            // Check for Google OAuth user first
+            const isAuthenticated = localStorage.getItem('isAuthenticated');
+            const userData = localStorage.getItem('user');
+            
+            if (isAuthenticated === 'true' && userData) {
+                // Google OAuth user
+                const googleUser = JSON.parse(userData);
+                setCurrentUser({ ...googleUser, role: 'creator' });
             } else {
-                setCurrentUser(null);
+                // Fallback to Supabase auth
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('role')
+                        .eq('id', user.id)
+                        .single();
+                    setCurrentUser({ ...user, ...profile });
+                } else {
+                    setCurrentUser(null);
+                }
             }
         };
         fetchCurrentUser();
@@ -477,8 +532,12 @@ const Dashboard = ({ sidebar }) => {
                 >
                     📹 Videos ({videos.length})
                 </button>
-
-
+                <button 
+                    className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('analytics')}
+                >
+                    📊 Analytics
+                </button>
             </div>
 
             {/* Tab Content */}
@@ -545,7 +604,7 @@ const Dashboard = ({ sidebar }) => {
                 )}
 
                 {/* Analytics Tab */}
-                {false && (
+                {activeTab === 'analytics' && (
                     <div className="analytics-tab">
                         {/* Sales Analytics Section */}
                         <div className="sales-analytics-section">

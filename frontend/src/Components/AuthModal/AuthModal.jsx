@@ -50,6 +50,13 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         // Store authentication state
         localStorage.setItem('user_authenticated', 'true');
         localStorage.setItem('user_email', email.trim());
+        // Set customer authentication keys
+        localStorage.setItem('customer_authenticated', 'true');
+        localStorage.setItem('customer_user', JSON.stringify({
+          display_name: email.trim(),
+          email: email.trim(),
+          user_type: 'customer'
+        }));
         
         console.log('🔐 Auth success - storing auth state');
         console.log('📱 Is Mobile:', window.innerWidth <= 768);

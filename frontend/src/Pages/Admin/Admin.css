@@ -4,6 +4,92 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+.admin-login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.admin-login-form {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+}
+
+.admin-login-form h2 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.admin-login-form p {
+  color: #6c757d;
+  margin-bottom: 1.5rem;
+}
+
+.admin-login-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-bottom: 1rem;
+}
+
+.admin-login-btn:hover {
+  background: #0056b3;
+}
+
+.admin-login-note {
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin: 0;
+}
+
+.admin-access-denied {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  text-align: center;
+}
+
+.admin-access-denied h2 {
+  color: #dc3545;
+  margin-bottom: 1rem;
+}
+
+.admin-access-denied p {
+  color: #6c757d;
+  margin-bottom: 1.5rem;
+}
+
+.admin-back-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.admin-back-btn:hover {
+  background: #545b62;
+}
+
 .admin-header {
   background: #fff;
   padding: 1rem 2rem;

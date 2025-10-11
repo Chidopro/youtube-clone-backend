@@ -16,7 +16,7 @@ const Home = ({ sidebar, category, selectedCategory, setSelectedCategory }) => {
       setLoading(true);
       setError('');
       try {
-        const response = await fetch('https://backend-hidden-firefly-7865.fly.dev/api/videos');
+        const response = await fetch('https://screenmerch.fly.dev/api/videos');
         if (!response.ok) throw new Error('Failed to fetch');
         const data = await response.json();
         setVideos(data || []);
