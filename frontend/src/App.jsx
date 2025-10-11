@@ -64,6 +64,14 @@ const App = () => {
         navigate('/', { replace: true });
       }
     }
+    
+    // Add a way to clear login for testing (remove this in production)
+    if (urlParams.get('clear') === 'true') {
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAuthenticated');
+      console.log('🧹 Cleared login data for testing');
+      navigate('/', { replace: true });
+    }
   }, [location.search, navigate]);
   
   // Check if current route is a profile page and fetch subscription data

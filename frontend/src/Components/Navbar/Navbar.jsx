@@ -199,12 +199,12 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         <div className="user-profile-container">
                             <img 
                                 className='user-profile' 
-                                src={user?.user_metadata?.picture || '/default-avatar.jpg'} 
-                                alt={user?.user_metadata?.name || 'User'} 
+                                src={user?.user_metadata?.picture || user?.youtube_channel?.thumbnail || '/default-avatar.jpg'} 
+                                alt={user?.user_metadata?.name || user?.display_name || 'User'} 
                                 onClick={() => setDropdownOpen(!dropdownOpen)}
                             />
                             <div className={`user-dropdown ${dropdownOpen ? 'open' : ''}`}>
-                                <p>Signed in as <strong>{user?.user_metadata?.name}</strong></p>
+                                <p>Signed in as <strong>{user?.user_metadata?.name || user?.display_name}</strong></p>
                                 <hr/>
                                 <Link to="/dashboard" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Dashboard</Link>
                                 <Link to="/admin" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Admin Portal</Link>
