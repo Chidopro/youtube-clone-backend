@@ -206,8 +206,42 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             <div className={`user-dropdown ${dropdownOpen ? 'open' : ''}`}>
                                 <p>Signed in as <strong>{user?.user_metadata?.name || user?.display_name}</strong></p>
                                 <hr/>
-                                <Link to="/dashboard" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Dashboard</Link>
-                                <Link to="/admin" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Admin Portal</Link>
+                                <button 
+                                    className="dropdown-item" 
+                                    onClick={() => {
+                                        console.log('🔗 Navigating to Dashboard');
+                                        setDropdownOpen(false);
+                                        navigate('/dashboard');
+                                    }}
+                                    style={{ 
+                                        background: 'none', 
+                                        border: 'none', 
+                                        width: '100%', 
+                                        textAlign: 'left', 
+                                        padding: '8px 16px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Dashboard
+                                </button>
+                                <button 
+                                    className="dropdown-item" 
+                                    onClick={() => {
+                                        console.log('🔗 Navigating to Admin Portal');
+                                        setDropdownOpen(false);
+                                        navigate('/admin');
+                                    }}
+                                    style={{ 
+                                        background: 'none', 
+                                        border: 'none', 
+                                        width: '100%', 
+                                        textAlign: 'left', 
+                                        padding: '8px 16px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Admin Portal
+                                </button>
                                 <button 
                                     onClick={(e) => {
                                         e.preventDefault();
