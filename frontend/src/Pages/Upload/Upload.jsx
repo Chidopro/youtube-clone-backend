@@ -21,8 +21,27 @@ const Upload = ({ sidebar }) => {
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                // Check for Google OAuth user first
+                const isAuthenticated = localStorage.getItem('isAuthenticated');
+                const userData = localStorage.getItem('user');
+                
+                let user = null;
+                
+                if (isAuthenticated === 'true' && userData) {
+                    // Google OAuth user
+                    user = JSON.parse(userData);
+                    console.log('🔐 Upload: Found Google OAuth user:', user);
+                } else {
+                    // Fallback to Supabase auth
+                    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+                    if (supabaseUser) {
+                        user = supabaseUser;
+                        console.log('🔐 Upload: Found Supabase user:', user);
+                    }
+                }
+                
                 if (!user) {
+                    console.log('🔐 Upload: No authenticated user found');
                     setMessage('❌ Please log in to upload videos');
                     setLoadingUser(false);
                     return;

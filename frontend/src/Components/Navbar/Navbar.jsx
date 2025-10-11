@@ -14,53 +14,157 @@ import { upsertUserProfile, deleteUserAccount } from '../../utils/userService'
 const Navbar = ({ setSidebar, resetCategory }) => {
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
     const [user, setUser] = useState(null);
+    const [customerUser, setCustomerUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [oauthProcessing, setOauthProcessing] = useState(false);
+    
+    // Debug user state changes
+    useEffect(() => {
+        console.log('🔄 User state changed:', user);
+    }, [user]);
     const navigate = useNavigate();
 
     useEffect(() => {
+        let isMounted = true;
+        
         const fetchUser = async () => {
-            // Check for Google OAuth user in localStorage first
-            const isAuthenticated = localStorage.getItem('isAuthenticated');
-            const userData = localStorage.getItem('user');
-            
-            if (isAuthenticated === 'true' && userData) {
-                try {
-                    const googleUser = JSON.parse(userData);
-                    console.log('🔐 Found Google OAuth user:', googleUser);
-                    setUser(googleUser);
+            try {
+                // Wait for OAuth processing to complete if it's in progress
+                let oauthPending = localStorage.getItem('oauth_confirmation_pending');
+                if (oauthPending === 'true') {
+                    console.log('🔐 OAuth confirmation pending, waiting...');
+                    setOauthProcessing(true);
+                    // Wait for OAuth processing to complete
+                    let attempts = 0;
+                    while (oauthPending === 'true' && attempts < 50) { // Max 5 seconds
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        oauthPending = localStorage.getItem('oauth_confirmation_pending');
+                        attempts++;
+                    }
+                    console.log('🔐 OAuth processing completed or timeout reached');
+                    setOauthProcessing(false);
+                }
+                
+                // Additional wait to ensure localStorage is fully updated
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                // Check for Google OAuth user (video creators) in localStorage first
+                const isAuthenticated = localStorage.getItem('isAuthenticated');
+                const userData = localStorage.getItem('user');
+                
+                if (isAuthenticated === 'true' && userData) {
+                    try {
+                        const googleUser = JSON.parse(userData);
+                        console.log('🔐 Found Google OAuth user (creator):', googleUser);
+                        console.log('🔐 Setting user state in Navbar...');
+                        if (isMounted) {
+                            setUser(googleUser);
+                            console.log('🔐 User state set in Navbar:', googleUser);
+                        }
+                    } catch (error) {
+                        console.error('Error parsing Google OAuth user data:', error);
+                    }
+                } else {
+                    console.log('🔐 No Google OAuth user found. isAuthenticated:', isAuthenticated, 'userData:', userData);
+                }
+                
+                // Check for customer authentication (merchandise buyers)
+                const customerAuthenticated = localStorage.getItem('customer_authenticated');
+                const customerData = localStorage.getItem('customer_user');
+                
+                if (customerAuthenticated === 'true' && customerData) {
+                    try {
+                        const customer = JSON.parse(customerData);
+                        console.log('🛒 Found customer user:', customer);
+                        if (isMounted) {
+                            setCustomerUser(customer);
+                        }
+                    } catch (error) {
+                        console.error('Error parsing customer user data:', error);
+                    }
+                }
+                
+                // Set loading to false after checking both auth types
+                if (isMounted) {
                     setLoading(false);
-                    return;
-                } catch (error) {
-                    console.error('Error parsing Google OAuth user data:', error);
+                }
+                
+                // Only check Supabase auth if we don't have a Google OAuth user
+                if (!isAuthenticated || !userData) {
+                    console.log('🔐 No Google OAuth user found, checking Supabase auth...');
+                    // Fallback to Supabase auth with timeout
+                    const authPromise = supabase.auth.getUser();
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Auth timeout')), 5000)
+                    );
+                    
+                    const { data: { user } } = await Promise.race([authPromise, timeoutPromise]);
+                    
+                    if (isMounted) {
+                        console.log('🔐 Supabase auth result:', user);
+                        setUser(user);
+                        setLoading(false);
+                        
+                        if (user) {
+                            // Upsert user profile in users table (non-blocking)
+                            const upsertPayload = {
+                                id: user.id,
+                                username: user.user_metadata?.name?.replace(/\s+/g, '').toLowerCase() || user.email,
+                                display_name: user.user_metadata?.name || user.email,
+                                email: user.email
+                            };
+                            console.log('Upserting user profile with:', upsertPayload);
+                            upsertUserProfile(upsertPayload).catch(error => 
+                                console.error('Upsert error:', error)
+                            );
+                        }
+                    }
+                } else {
+                    console.log('🔐 Google OAuth user found, skipping Supabase auth check');
+                }
+            } catch (error) {
+                console.error('Auth fetch error:', error);
+                if (isMounted) {
+                    setUser(null);
+                    setLoading(false);
                 }
             }
-            
-            // Fallback to Supabase auth
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-            setLoading(false);
-            if (user) {
-                // Upsert user profile in users table
-                const upsertPayload = {
-                    id: user.id,
-                    username: user.user_metadata?.name?.replace(/\s+/g, '').toLowerCase() || user.email,
-                    display_name: user.user_metadata?.name || user.email,
-                    email: user.email
-                };
-                console.log('Upserting user profile with:', upsertPayload);
-                const result = await upsertUserProfile(upsertPayload);
-                console.log('Upsert result:', result);
-            }
         };
+        
         fetchUser();
 
-        // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-            fetchUser();
+        // Listen for auth state changes with debouncing
+        let authChangeTimeout;
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (authChangeTimeout) {
+                clearTimeout(authChangeTimeout);
+            }
+            authChangeTimeout = setTimeout(() => {
+                if (isMounted) {
+                    // Only refetch if we don't have a Google OAuth user
+                    const isAuthenticated = localStorage.getItem('isAuthenticated');
+                    const userData = localStorage.getItem('user');
+                    
+                    console.log('🔄 Auth state change detected:', event, 'Google OAuth user exists:', !!(isAuthenticated && userData));
+                    
+                    if (!isAuthenticated || !userData) {
+                        console.log('🔄 No Google OAuth user, refetching from Supabase...');
+                        fetchUser();
+                    } else {
+                        console.log('🔄 Google OAuth user exists, skipping Supabase refetch');
+                    }
+                }
+            }, 100);
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            isMounted = false;
+            if (authChangeTimeout) {
+                clearTimeout(authChangeTimeout);
+            }
+            subscription.unsubscribe();
+        };
     }, []);
 
     // Close dropdown when clicking outside
@@ -71,8 +175,19 @@ const Navbar = ({ setSidebar, resetCategory }) => {
             }
         };
 
+        const handleEscapeKey = (event) => {
+            if (event.key === 'Escape' && dropdownOpen) {
+                setDropdownOpen(false);
+            }
+        };
+
         document.addEventListener('click', handleClickOutside);
-        return () => document.removeEventListener('click', handleClickOutside);
+        document.addEventListener('keydown', handleEscapeKey);
+        
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+            document.removeEventListener('keydown', handleEscapeKey);
+        };
     }, [dropdownOpen]);
 
     const handleLogin = async () => {
@@ -107,19 +222,26 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     };
 
     const handleLogout = async () => {
-        // Check if user is logged in via Google OAuth
-        const isAuthenticated = localStorage.getItem('isAuthenticated');
-        if (isAuthenticated === 'true') {
-            // Clear Google OAuth data
-            localStorage.removeItem('isAuthenticated');
+        try {
+            // Clear ALL authentication data
             localStorage.removeItem('user');
-            console.log('🔓 Google OAuth user logged out');
-        } else {
-            // Fallback to Supabase logout
+            localStorage.removeItem('isAuthenticated');
+            localStorage.removeItem('oauth_confirmation_pending');
+            localStorage.removeItem('customer_authenticated');
+            localStorage.removeItem('customer_user');
+            localStorage.removeItem('user_authenticated');
+            localStorage.removeItem('user_email');
+            
+            // Clear Supabase session
             await supabase.auth.signOut();
+            
+            setUser(null);
+            setCustomerUser(null);
+            console.log('✅ Logged out successfully - all auth data cleared');
+            navigate('/');
+        } catch (error) {
+            console.error('Logout error:', error);
         }
-        setUser(null);
-        navigate('/');
     };
 
     const handleDeleteAccount = async () => {
@@ -177,8 +299,13 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                 </div>
                 <div className="nav-right flex-div">
                     {user ? (
+                        console.log('🎥 Rendering upload link for user:', user?.display_name) ||
                         <Link to="/upload"><img src={upload_icon} alt="Upload" /></Link>
+                    ) : oauthProcessing ? (
+                        console.log('🎥 OAuth processing - hiding upload button') ||
+                        <div style={{ width: '24px', height: '24px' }}></div> // Placeholder to maintain layout
                     ) : (
+                        console.log('🎥 Rendering upload login button - no user') ||
                         <img 
                             src={upload_icon} 
                             alt="Upload" 
@@ -196,19 +323,43 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     {loading ? (
                         <div className="loading-spinner-navbar"></div>
                     ) : user ? (
+                        console.log('🎨 Rendering user profile for:', user?.display_name || user?.user_metadata?.name) ||
+                        console.log('🔍 Full user object:', user) ||
                         <div className="user-profile-container">
                             <img 
                                 className='user-profile' 
-                                src={user?.user_metadata?.picture || user?.youtube_channel?.thumbnail || '/default-avatar.jpg'} 
-                                alt={user?.user_metadata?.name || user?.display_name || 'User'} 
-                                onClick={() => setDropdownOpen(!dropdownOpen)}
+                                src={(() => {
+                                    const imageUrl = user?.picture || user?.youtube_channel?.thumbnail || user?.user_metadata?.picture || user?.avatar_url || '/default-avatar.svg';
+                                    console.log('🖼️ Profile image URL:', imageUrl);
+                                    console.log('🖼️ User picture:', user?.picture);
+                                    console.log('🖼️ YouTube channel thumbnail:', user?.youtube_channel?.thumbnail);
+                                    console.log('🖼️ User metadata picture:', user?.user_metadata?.picture);
+                                    console.log('🖼️ Avatar URL:', user?.avatar_url);
+                                    return imageUrl;
+                                })()} 
+                                alt={user?.user_metadata?.name || user?.display_name || user?.name || 'User'} 
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setDropdownOpen(!dropdownOpen);
+                                }}
+                                style={{ cursor: 'pointer' }}
+                                onError={(e) => {
+                                    console.log('🖼️ Image failed to load, using default avatar');
+                                    e.target.src = '/default-avatar.svg';
+                                }}
+                                onLoad={() => {
+                                    console.log('🖼️ Profile image loaded successfully');
+                                }}
                             />
                             <div className={`user-dropdown ${dropdownOpen ? 'open' : ''}`}>
                                 <p>Signed in as <strong>{user?.user_metadata?.name || user?.display_name}</strong></p>
                                 <hr/>
                                 <button 
                                     className="dropdown-item" 
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         console.log('🔗 Navigating to Dashboard');
                                         setDropdownOpen(false);
                                         navigate('/dashboard');
@@ -226,7 +377,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 </button>
                                 <button 
                                     className="dropdown-item" 
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         console.log('🔗 Navigating to Admin Portal');
                                         setDropdownOpen(false);
                                         navigate('/admin');
@@ -253,8 +406,29 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 >
                                     Delete Account
                                 </button>
-                                <button onClick={() => { setDropdownOpen(false); handleLogout(); }}>Logout</button>
+                                <button 
+                                    onClick={(e) => { 
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setDropdownOpen(false); 
+                                        handleLogout(); 
+                                    }}
+                                    style={{ 
+                                        background: 'none', 
+                                        border: 'none', 
+                                        width: '100%', 
+                                        textAlign: 'left', 
+                                        padding: '8px 16px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Logout
+                                </button>
                             </div>
+                        </div>
+                    ) : oauthProcessing ? (
+                        <div className="sign-in-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                            Processing...
                         </div>
                     ) : (
                         <button 

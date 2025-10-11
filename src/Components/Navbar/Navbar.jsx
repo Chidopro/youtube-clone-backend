@@ -19,31 +19,85 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     const navigate = useNavigate();
 
     useEffect(() => {
+        let isMounted = true;
+        
         const fetchUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-            setLoading(false);
-            if (user) {
-                // Upsert user profile in users table
-                const upsertPayload = {
-                    id: user.id,
-                    username: user.user_metadata?.name?.replace(/\s+/g, '').toLowerCase() || user.email,
-                    display_name: user.user_metadata?.name || user.email,
-                    email: user.email
-                };
-                console.log('Upserting user profile with:', upsertPayload);
-                const result = await upsertUserProfile(upsertPayload);
-                console.log('Upsert result:', result);
+            try {
+                // Check for Google OAuth user in localStorage first
+                const isAuthenticated = localStorage.getItem('isAuthenticated');
+                const userData = localStorage.getItem('user');
+                
+                if (isAuthenticated === 'true' && userData) {
+                    try {
+                        const googleUser = JSON.parse(userData);
+                        console.log('🔐 Found Google OAuth user:', googleUser);
+                        if (isMounted) {
+                            setUser(googleUser);
+                            setLoading(false);
+                        }
+                        return;
+                    } catch (error) {
+                        console.error('Error parsing Google OAuth user data:', error);
+                    }
+                }
+                
+                // Fallback to Supabase auth with timeout
+                const authPromise = supabase.auth.getUser();
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Auth timeout')), 5000)
+                );
+                
+                const { data: { user } } = await Promise.race([authPromise, timeoutPromise]);
+                
+                if (isMounted) {
+                    setUser(user);
+                    setLoading(false);
+                    
+                    if (user) {
+                        // Upsert user profile in users table (non-blocking)
+                        const upsertPayload = {
+                            id: user.id,
+                            username: user.user_metadata?.name?.replace(/\s+/g, '').toLowerCase() || user.email,
+                            display_name: user.user_metadata?.name || user.email,
+                            email: user.email
+                        };
+                        console.log('Upserting user profile with:', upsertPayload);
+                        upsertUserProfile(upsertPayload).catch(error => 
+                            console.error('Upsert error:', error)
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error('Auth fetch error:', error);
+                if (isMounted) {
+                    setUser(null);
+                    setLoading(false);
+                }
             }
         };
+        
         fetchUser();
 
-        // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-            fetchUser();
+        // Listen for auth state changes with debouncing
+        let authChangeTimeout;
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (authChangeTimeout) {
+                clearTimeout(authChangeTimeout);
+            }
+            authChangeTimeout = setTimeout(() => {
+                if (isMounted) {
+                    fetchUser();
+                }
+            }, 100);
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            isMounted = false;
+            if (authChangeTimeout) {
+                clearTimeout(authChangeTimeout);
+            }
+            subscription.unsubscribe();
+        };
     }, []);
 
     // Close dropdown when clicking outside
@@ -54,8 +108,19 @@ const Navbar = ({ setSidebar, resetCategory }) => {
             }
         };
 
+        const handleEscapeKey = (event) => {
+            if (event.key === 'Escape' && dropdownOpen) {
+                setDropdownOpen(false);
+            }
+        };
+
         document.addEventListener('click', handleClickOutside);
-        return () => document.removeEventListener('click', handleClickOutside);
+        document.addEventListener('keydown', handleEscapeKey);
+        
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+            document.removeEventListener('keydown', handleEscapeKey);
+        };
     }, [dropdownOpen]);
 
     const handleLogin = async () => {
@@ -90,7 +155,17 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     };
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
+        // Check if user is logged in via Google OAuth
+        const isAuthenticated = localStorage.getItem('isAuthenticated');
+        if (isAuthenticated === 'true') {
+            // Clear Google OAuth data
+            localStorage.removeItem('isAuthenticated');
+            localStorage.removeItem('user');
+            console.log('🔓 Google OAuth user logged out');
+        } else {
+            // Fallback to Supabase logout
+            await supabase.auth.signOut();
+        }
         setUser(null);
         navigate('/');
     };
@@ -172,15 +247,58 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         <div className="user-profile-container">
                             <img 
                                 className='user-profile' 
-                                src={user?.user_metadata?.picture || '/default-avatar.jpg'} 
-                                alt={user?.user_metadata?.name || 'User'} 
-                                onClick={() => setDropdownOpen(!dropdownOpen)}
+                                src={user?.user_metadata?.picture || user?.youtube_channel?.thumbnail || '/default-avatar.jpg'} 
+                                alt={user?.user_metadata?.name || user?.display_name || 'User'} 
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setDropdownOpen(!dropdownOpen);
+                                }}
+                                style={{ cursor: 'pointer' }}
                             />
                             <div className={`user-dropdown ${dropdownOpen ? 'open' : ''}`}>
-                                <p>Signed in as <strong>{user?.user_metadata?.name}</strong></p>
+                                <p>Signed in as <strong>{user?.user_metadata?.name || user?.display_name}</strong></p>
                                 <hr/>
-                                <Link to="/dashboard" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Dashboard</Link>
-                                <Link to="/admin" className="dropdown-item" onClick={() => setDropdownOpen(false)}>Admin Portal</Link>
+                                <button 
+                                    className="dropdown-item" 
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log('🔗 Navigating to Dashboard');
+                                        setDropdownOpen(false);
+                                        navigate('/dashboard');
+                                    }}
+                                    style={{ 
+                                        background: 'none', 
+                                        border: 'none', 
+                                        width: '100%', 
+                                        textAlign: 'left', 
+                                        padding: '8px 16px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Dashboard
+                                </button>
+                                <button 
+                                    className="dropdown-item" 
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log('🔗 Navigating to Admin Portal');
+                                        setDropdownOpen(false);
+                                        navigate('/admin');
+                                    }}
+                                    style={{ 
+                                        background: 'none', 
+                                        border: 'none', 
+                                        width: '100%', 
+                                        textAlign: 'left', 
+                                        padding: '8px 16px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Admin Portal
+                                </button>
                                 <button 
                                     onClick={(e) => {
                                         e.preventDefault();
@@ -192,7 +310,24 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 >
                                     Delete Account
                                 </button>
-                                <button onClick={() => { setDropdownOpen(false); handleLogout(); }}>Logout</button>
+                                <button 
+                                    onClick={(e) => { 
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setDropdownOpen(false); 
+                                        handleLogout(); 
+                                    }}
+                                    style={{ 
+                                        background: 'none', 
+                                        border: 'none', 
+                                        width: '100%', 
+                                        textAlign: 'left', 
+                                        padding: '8px 16px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Logout
+                                </button>
                             </div>
                         </div>
                     ) : (

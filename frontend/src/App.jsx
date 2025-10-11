@@ -49,17 +49,25 @@ const App = () => {
         const user = JSON.parse(decodeURIComponent(userData));
         console.log('🎉 Google OAuth successful! User:', user);
         
+        // Set a flag to indicate OAuth confirmation is pending
+        localStorage.setItem('oauth_confirmation_pending', 'true');
+        
+        // Auto-sign in without confirmation dialog for better UX
+        console.log('🔔 Auto-signing in user:', user.display_name);
+        
         // Store user data in localStorage
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('isAuthenticated', 'true');
-        
-        // Show success message
-        alert(`Welcome back, ${user.display_name}! You've been successfully logged in.`);
-        
+        console.log('✅ User auto-signed in via OAuth');
+
+        // Clear the pending flag
+        localStorage.removeItem('oauth_confirmation_pending');
+
         // Clean up URL parameters
         navigate('/', { replace: true });
       } catch (error) {
         console.error('Error parsing user data:', error);
+        localStorage.removeItem('oauth_confirmation_pending');
         alert('Login successful but there was an error processing your data. Please try again.');
         navigate('/', { replace: true });
       }
@@ -67,9 +75,21 @@ const App = () => {
     
     // Add a way to clear login for testing (remove this in production)
     if (urlParams.get('clear') === 'true') {
+      // Clear all authentication data
       localStorage.removeItem('user');
       localStorage.removeItem('isAuthenticated');
-      console.log('🧹 Cleared login data for testing');
+      localStorage.removeItem('oauth_confirmation_pending');
+      localStorage.removeItem('customer_authenticated');
+      localStorage.removeItem('customer_user');
+      localStorage.removeItem('user_authenticated');
+      localStorage.removeItem('user_email');
+      
+      // Clear any Supabase session
+      if (window.supabase) {
+        window.supabase.auth.signOut();
+      }
+      
+      console.log('🧹 Cleared all login data for testing');
       navigate('/', { replace: true });
     }
   }, [location.search, navigate]);

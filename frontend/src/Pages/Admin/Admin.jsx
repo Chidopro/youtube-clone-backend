@@ -23,8 +23,27 @@ const Admin = () => {
 
   const checkAdminStatus = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Check for Google OAuth user first
+      const isAuthenticated = localStorage.getItem('isAuthenticated');
+      const userData = localStorage.getItem('user');
+      
+      let user = null;
+      
+      if (isAuthenticated === 'true' && userData) {
+        // Google OAuth user
+        user = JSON.parse(userData);
+        console.log('🔐 Admin: Found Google OAuth user:', user);
+      } else {
+        // Fallback to Supabase auth
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+        if (supabaseUser) {
+          user = supabaseUser;
+          console.log('🔐 Admin: Found Supabase user:', user);
+        }
+      }
+      
       if (!user) {
+        console.log('🔐 Admin: No authenticated user found, redirecting to home');
         navigate('/');
         return;
       }
@@ -184,8 +203,39 @@ const Admin = () => {
     );
   }
 
+  if (!user) {
+    return (
+      <div className="admin-login-container">
+        <div className="admin-login-form">
+          <h2>Admin Portal Login</h2>
+          <p>Please sign in with your admin account to access the admin panel.</p>
+          <button 
+            onClick={() => {
+              // Redirect to Google OAuth login
+              window.location.href = 'https://screenmerch.fly.dev/api/auth/google/login';
+            }}
+            className="admin-login-btn"
+          >
+            Sign in with Google
+          </button>
+          <p className="admin-login-note">
+            Only users with admin privileges can access this panel.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAdmin) {
-    return null;
+    return (
+      <div className="admin-access-denied">
+        <h2>Access Denied</h2>
+        <p>You don't have admin privileges to access this panel.</p>
+        <button onClick={() => navigate('/')} className="admin-back-btn">
+          Back to Home
+        </button>
+      </div>
+    );
   }
 
   return (

@@ -4513,6 +4513,11 @@ def google_callback():
         google_email = user_info.get('email')
         google_name = user_info.get('name')
         google_id = user_info.get('id')
+        google_picture = user_info.get('picture')
+        
+        # Debug: Log the user_info to see what Google is returning
+        logger.info(f"🔍 Google user_info: {user_info}")
+        logger.info(f"🔍 Google picture URL: {google_picture}")
         
         # Check if user exists in database
         result = supabase.table('users').select('*').eq('email', google_email).execute()
@@ -4561,8 +4566,12 @@ def google_callback():
             "email": user.get('email'),
             "display_name": user.get('display_name'),
             "role": user.get('role', 'creator'),
+            "picture": google_picture,
             "youtube_channel": youtube_channel
         }
+        
+        # Debug: Log the user_data being sent to frontend
+        logger.info(f"🔍 User data being sent to frontend: {user_data}")
         
         # Encode user data as URL parameter
         user_data_json = json.dumps(user_data)
