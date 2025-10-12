@@ -305,14 +305,15 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         console.log('🎥 OAuth processing - hiding upload button') ||
                         <div style={{ width: '24px', height: '24px' }}></div> // Placeholder to maintain layout
                     ) : (
-                        console.log('🎥 Rendering upload login button - no user') ||
-                        <img 
-                            src={upload_icon} 
-                            alt="Upload" 
-                            style={{ cursor: 'pointer' }}
-                            onClick={handleLogin}
-                            title="Sign in to upload videos"
-                        />
+                        console.log('🎥 Rendering upload link - no user') ||
+                        <Link to="/upload">
+                            <img 
+                                src={upload_icon} 
+                                alt="Upload" 
+                                style={{ cursor: 'pointer' }}
+                                title="Upload videos"
+                            />
+                        </Link>
                     )}
                     <button 
                         className="subscribe-btn"
