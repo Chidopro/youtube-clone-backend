@@ -123,10 +123,52 @@ nav{
     .auth-section {
         display: none;
     }
+    .nav-right {
+        flex-direction: column;
+        gap: 8px;
+        align-items: center;
+        min-width: 120px;
+    }
     .nav-right .subscribe-btn, .sign-in-btn {
-        padding: 6px 12px;
-        font-size: 12px;
-        margin-right: 8px;
+        padding: 8px 12px;
+        font-size: 11px;
+        border-radius: 25px;
+        white-space: nowrap;
+        min-width: 80px;
+        text-align: center;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        margin: 0;
+        display: block;
+        width: 100%;
+        max-width: 120px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .nav-right .subscribe-btn {
+        padding: 10px 12px;
+    }
+    .sign-in-btn {
+        background: #065fd4;
+        color: white;
+        border: 1px solid #065fd4;
+        margin-top: 4px;
+    }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+    .nav-right .subscribe-btn, .sign-in-btn {
+        padding: 6px 10px;
+        font-size: 10px;
+        max-width: 110px;
+        min-width: 70px;
+    }
+    
+    .nav-right {
+        min-width: 110px;
     }
 }
 

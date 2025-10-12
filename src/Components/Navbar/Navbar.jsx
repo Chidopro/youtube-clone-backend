@@ -227,13 +227,14 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     {user ? (
                         <Link to="/upload"><img src={upload_icon} alt="Upload" /></Link>
                     ) : (
-                        <img 
-                            src={upload_icon} 
-                            alt="Upload" 
-                            style={{ cursor: 'pointer' }}
-                            onClick={handleLogin}
-                            title="Sign in to upload videos"
-                        />
+                        <Link to="/upload">
+                            <img 
+                                src={upload_icon} 
+                                alt="Upload" 
+                                style={{ cursor: 'pointer' }}
+                                title="Upload videos"
+                            />
+                        </Link>
                     )}
                     <button 
                         className="subscribe-btn"
