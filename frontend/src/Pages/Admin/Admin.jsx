@@ -123,13 +123,22 @@ const Admin = () => {
   };
 
   const handleUserAction = async (userId, action) => {
-    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+    console.log('🎯 handleUserAction called with:', { userId, action });
+    
+    if (!confirm(`Are you sure you want to ${action} this user?`)) {
+      console.log('❌ User cancelled the action');
+      return;
+    }
+
+    console.log('✅ User confirmed the action, proceeding...');
 
     try {
       let result;
       
       if (action === 'delete') {
+        console.log('🗑️ Calling AdminService.deleteUser...');
         result = await AdminService.deleteUser(userId);
+        console.log('🗑️ Delete result:', result);
       } else if (action === 'suspend') {
         console.log(`Suspending user ${userId}...`);
         result = await AdminService.updateUserStatus(userId, 'suspended');
@@ -211,8 +220,8 @@ const Admin = () => {
           <p>Please sign in with your admin account to access the admin panel.</p>
           <button 
             onClick={() => {
-              // Redirect to Google OAuth login
-              window.location.href = 'https://screenmerch.fly.dev/api/auth/google/login';
+              // Redirect to Google OAuth login with return URL
+              window.location.href = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}`;
             }}
             className="admin-login-btn"
           >
@@ -240,15 +249,15 @@ const Admin = () => {
 
   return (
     <div className="admin-container">
-      <div className="admin-header">
-        <h1>Admin Portal</h1>
-        <div className="admin-user-info">
-          <span>Welcome, {user?.user_metadata?.name || user?.email}</span>
-          <button onClick={() => navigate('/')} className="admin-logout-btn">
-            Back to Site
-          </button>
+        <div className="admin-header">
+          <h1>Admin Portal - UPDATED VERSION 2025</h1>
+          <div className="admin-user-info">
+            <span>Welcome, {user?.user_metadata?.name || user?.email}</span>
+            <button onClick={() => navigate('/')} className="admin-logout-btn">
+              Back to Site
+            </button>
+          </div>
         </div>
-      </div>
 
       <div className="admin-content">
         <div className="admin-sidebar">
@@ -349,26 +358,34 @@ const Admin = () => {
                 </select>
               </div>
 
-              <div className="users-table">
-                <table>
+        <div className="users-table" style={{ overflowX: 'auto', width: '100%' }}>
+          <table style={{ minWidth: '1200px', width: '100%' }}>
                   <thead>
                     <tr>
                       <th>User</th>
                       <th>Email</th>
                       <th>Joined</th>
                       <th>Status</th>
-                      <th>Actions</th>
+                      <th style={{ backgroundColor: '#ffeb3b', color: '#000', minWidth: '200px', position: 'sticky', right: '0' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
+                    {console.log('🔍 Rendering users table with', filteredUsers.length, 'users')}
                     {filteredUsers.map(user => (
                       <tr key={user.id}>
                         <td>
                           <div className="user-info">
-                            <img 
-                              src={user.profile_image_url || '/default-avatar.jpg'} 
+                            <img
+                              src={user.profile_image_url || user.user_metadata?.picture || user.picture || '/default-avatar.jpg'}
                               alt={user.display_name}
                               className="user-avatar"
+                              onError={(e) => {
+                                if (!e.target.dataset.fallbackUsed) {
+                                  console.log('🖼️ Admin user image failed to load, using default');
+                                  e.target.dataset.fallbackUsed = 'true';
+                                  e.target.src = '/default-avatar.jpg';
+                                }
+                              }}
                             />
                             <span>{user.display_name || 'No name'}</span>
                           </div>
@@ -380,28 +397,38 @@ const Admin = () => {
                             {user.status ? user.status.toUpperCase() : 'ACTIVE'}
                           </span>
                         </td>
-                        <td>
+                        <td style={{ minWidth: '200px', position: 'sticky', right: '0', backgroundColor: '#fff', zIndex: 10 }}>
                           <div className="action-buttons">
-                            <button 
+                            <button
                               onClick={() => handleUserAction(user.id, 'suspend')}
                               className="action-btn suspend"
                               disabled={user.status === 'suspended'}
                             >
                               Suspend
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleUserAction(user.id, 'activate')}
                               className="action-btn activate"
                               disabled={user.status === 'active'}
                             >
                               Activate
                             </button>
-                            <button 
-                              onClick={() => handleUserAction(user.id, 'delete')}
-                              className="action-btn delete"
-                            >
-                              Delete
-                            </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      alert('Delete button clicked!');
+                      console.log('🗑️ DELETE BUTTON CLICKED!');
+                      console.log('🗑️ User ID:', user.id);
+                      console.log('🗑️ User email:', user.email);
+                      console.log('🗑️ Event:', e);
+                      handleUserAction(user.id, 'delete');
+                    }}
+                    className="action-btn delete"
+                    style={{ backgroundColor: '#dc3545', color: 'white', padding: '8px 16px', fontSize: '14px', cursor: 'pointer' }}
+                  >
+                    Delete
+                  </button>
                           </div>
                         </td>
                       </tr>

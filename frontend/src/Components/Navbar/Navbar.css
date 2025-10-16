@@ -9,21 +9,34 @@ nav{
     pointer-events: auto;
 }
 
+/* Group the center and right elements together with proper spacing */
+.nav-center-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-right: 2%; /* Create right margin to align with hamburger menu */
+}
+
+/* Remove individual padding from nav-right since we're grouping */
+.nav-right {
+    padding-right: 0; /* Remove individual padding since we're grouping */
+}
+
 .auth-section {
     margin-right: 20px;
     gap: 10px;
 }
 
-/* Consistent button styling for navbar */
-.sign-in-btn, .nav-right .subscribe-btn {
-    border: none;
-    padding: 8px 16px;
-    border-radius: 25px;
+/* Sign In button styling */
+.sign-in-btn {
+    border: 1px solid #065fd4;
+    padding: 6px 12px; /* Reduced padding for better alignment */
+    border-radius: 4px; /* Rectangular shape */
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
     transition: all 0.2s ease;
-    margin-right: 10px;
+    margin-right: 8px; /* Reduced margin for better spacing */
     white-space: nowrap;
     text-decoration: none;
     display: inline-flex;
@@ -32,31 +45,42 @@ nav{
     /* Pillow shape styling */
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     pointer-events: auto;
-    z-index: 10000;
-}
-
-.sign-in-btn {
-    background-color: #065fd4;
-    color: white;
-    border: 1px solid #065fd4;
-    pointer-events: auto;
     z-index: 10001;
     position: relative;
+    background-color: #065fd4;
+    color: white;
 }
+
+/* Duplicate removed - styling now in main .sign-in-btn rule above */
 
 .sign-in-btn:hover {
     background-color: #0448a0;
     transform: translateY(-1px);
 }
 
-/* Subscribe button with YouTube-style red */
+/* Subscribe button with YouTube-style red - increased height to match Sign In */
 .nav-right .subscribe-btn {
+    /* Copy ALL Sign In button properties exactly */
+    border: 1px solid #cc0000; /* Match Sign In button border */
+    padding: 8px 12px; /* INCREASED vertical padding from 6px to 8px for height */
+    border-radius: 4px; /* Rectangular shape */
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    margin-right: 8px; /* Match Sign In button reduced margin */
+    white-space: nowrap;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    pointer-events: auto;
+    z-index: 10001; /* Match Sign In button z-index */
+    position: relative; /* Match Sign In button position */
+    /* Only difference from Sign In button - color */
     background: #cc0000;
     color: white;
-    border: 1px solid #cc0000;
-    pointer-events: auto;
-    z-index: 10001;
-    position: relative;
 }
 
 .nav-right .subscribe-btn:hover {
@@ -147,51 +171,114 @@ nav{
     .nav-middle .search-box input{
         width: 100px;
      }
-    .nav-right {
+    .nav-center-right {
         flex-direction: column;
         gap: 8px;
         align-items: center;
-        min-width: 120px;
+        margin-right: 0; /* Remove right margin to align with purple bar like hamburger menu */
     }
-         .nav-right .subscribe-btn, .sign-in-btn {
-         padding: 8px 12px;
+    
+    .nav-right {
+        flex-direction: row; /* Make buttons side by side on mobile */
+        gap: 8px;
+        align-items: center;
+        min-width: auto; /* Remove fixed width to allow side-by-side layout */
+    }
+    
+    /* Move search bar below buttons on mobile */
+    .nav-middle {
+        order: 2; /* Put search bar after buttons */
+    }
+    
+    .nav-right {
+        order: 1; /* Put buttons first */
+    }
+         /* Sign In button mobile styling */
+         .sign-in-btn {
+         padding: 6px 9px; /* Reduced horizontal padding by 3px for mobile */
          font-size: 11px;
-         border-radius: 25px;
+         border-radius: 4px; /* Rectangular shape */
          white-space: nowrap;
-         min-width: 80px;
+         min-width: 70px; /* Reduced min-width to fit side by side */
          text-align: center;
          font-weight: 500;
          transition: all 0.2s ease;
          margin: 0;
-         display: block;
-         width: 100%;
-         max-width: 120px;
+         display: inline-flex; /* Change to inline-flex for side-by-side layout */
+         width: auto; /* Remove fixed width */
+         max-width: none; /* Remove max-width constraint */
          /* Pillow shape styling */
-         border: none;
+         border: 1px solid #065fd4;
          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
          overflow: hidden;
          text-overflow: ellipsis;
+         z-index: 10001;
+         position: relative;
+         background-color: #065fd4;
+         color: white;
      }
      
-     /* Give Get Started Free button more vertical height to match Sign In button */
+     /* Start Free button mobile styling */
      .nav-right .subscribe-btn {
-         padding: 10px 12px; /* Increased vertical padding from 8px to 10px */
+         padding: 8px 9px; /* INCREASED vertical padding from 6px to 8px for height */
+         font-size: 11px;
+         border-radius: 4px; /* Rectangular shape */
+         white-space: nowrap;
+         min-width: 70px; /* Reduced min-width to fit side by side */
+         text-align: center;
+         font-weight: 500;
+         transition: all 0.2s ease;
+         margin: 0;
+         display: inline-flex; /* Change to inline-flex for side-by-side layout */
+         width: auto; /* Remove fixed width */
+         max-width: none; /* Remove max-width constraint */
+         /* Pillow shape styling */
+         border: 1px solid #cc0000;
+         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+         overflow: hidden;
+         text-overflow: ellipsis;
+         z-index: 10001;
+         position: relative;
+         background: #cc0000;
+         color: white;
      }
-    .sign-in-btn {
-        background: #065fd4;
-        color: white;
-        border: 1px solid #065fd4;
-        margin-top: 4px;
-    }
+     
+     /* Override removed - complete styling now in rule above */
+    /* Duplicate removed - styling now in main .sign-in-btn rule above */
 }
 
 /* Extra small mobile devices */
 @media (max-width: 480px) {
-    .nav-right .subscribe-btn, .sign-in-btn {
-        padding: 6px 10px;
+    /* Sign In button small mobile styling */
+    .sign-in-btn {
+        padding: 6px 7px; /* Further reduced padding for small screens */
         font-size: 10px;
-        max-width: 110px;
-        min-width: 70px;
+        max-width: none; /* Remove max-width for side-by-side layout */
+        min-width: 60px; /* Reduced min-width for small screens */
+        display: inline-flex; /* Ensure side-by-side layout on small screens */
+        border: 1px solid #065fd4;
+        background-color: #065fd4;
+        color: white;
+        z-index: 10001;
+        position: relative;
+    }
+    
+    /* Start Free button small mobile styling */
+    .nav-right .subscribe-btn {
+        padding: 8px 7px; /* INCREASED vertical padding from 6px to 8px for height */
+        font-size: 10px;
+        max-width: none; /* Remove max-width for side-by-side layout */
+        min-width: 60px; /* Reduced min-width for small screens */
+        display: inline-flex; /* Ensure side-by-side layout on small screens */
+        border: 1px solid #cc0000;
+        background: #cc0000;
+        color: white;
+        z-index: 10001;
+        position: relative;
+    }
+    
+    .nav-center-right {
+        margin-right: 0; /* Remove right margin to align with purple bar like hamburger menu */
     }
     
     .nav-right {
@@ -201,22 +288,54 @@ nav{
 
 /* Ensure desktop layout for screens larger than 768px */
 @media (min-width: 769px) {
+    .nav-center-right {
+        flex-direction: row;
+        gap: 20px;
+        align-items: center;
+        margin-right: 2%; /* Ensure desktop also has right margin */
+    }
+    
     .nav-right {
         flex-direction: row;
         gap: 10px;
         align-items: center;
         min-width: auto;
     }
-    .nav-right .subscribe-btn, .sign-in-btn {
-        padding: 8px 16px;
+    /* Sign In button desktop styling */
+    .sign-in-btn {
+        padding: 6px 12px; /* Use reduced padding for better alignment */
         font-size: 14px;
-        border-radius: 25px;
+        border-radius: 4px; /* Rectangular shape */
         white-space: nowrap;
-        margin-right: 10px;
+        margin-right: 8px; /* Reduced margin for better spacing */
         display: inline-flex;
         width: auto;
         max-width: none;
+        border: 1px solid #065fd4;
+        background-color: #065fd4;
+        color: white;
+        z-index: 10001;
+        position: relative;
     }
+    
+    /* Start Free button desktop styling */
+    .nav-right .subscribe-btn {
+        padding: 8px 12px; /* INCREASED vertical padding from 6px to 8px for height */
+        font-size: 14px;
+        border-radius: 4px; /* Rectangular shape */
+        white-space: nowrap;
+        margin-right: 8px; /* Reduced margin for better spacing */
+        display: inline-flex;
+        width: auto;
+        max-width: none;
+        border: 1px solid #cc0000;
+        background: #cc0000;
+        color: white;
+        z-index: 10001;
+        position: relative;
+    }
+    
+    /* Override removed - complete styling now in rule above */
 }
 
 .loading-spinner-navbar {

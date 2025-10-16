@@ -63,8 +63,13 @@ const App = () => {
         // Clear the pending flag
         localStorage.removeItem('oauth_confirmation_pending');
 
-        // Clean up URL parameters
-        navigate('/', { replace: true });
+        // Dispatch custom event to notify Navbar of OAuth success
+        window.dispatchEvent(new CustomEvent('oauthSuccess', { detail: user }));
+        console.log('📡 Dispatched oauthSuccess event to Navbar');
+
+        // Clean up URL parameters but stay on current page
+        const currentPath = location.pathname;
+        navigate(currentPath, { replace: true });
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('oauth_confirmation_pending');

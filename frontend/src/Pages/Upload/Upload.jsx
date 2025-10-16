@@ -321,33 +321,12 @@ const Upload = ({ sidebar }) => {
                 <p>You must sign in with Google to upload videos.</p>
                 <button 
                     className="sign-in-btn" 
-                    onClick={async () => {
-                        try {
-                            // Get the Google OAuth URL from our Flask backend
-                            const response = await fetch('https://screenmerch.fly.dev/api/auth/google/login', {
-                                method: 'GET',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                credentials: 'include'
-                            });
-                            
-                            if (!response.ok) {
-                                throw new Error('Failed to initiate Google login');
-                            }
-                            
-                            const data = await response.json();
-                            
-                            if (data.success && data.auth_url) {
-                                // Redirect to Google OAuth URL
-                                window.location.href = data.auth_url;
-                            } else {
-                                throw new Error(data.error || 'Failed to get Google login URL');
-                            }
-                        } catch (error) {
-                            console.error('Google login error:', error);
-                            alert('Login failed: ' + error.message);
-                        }
+                    onClick={() => {
+                        // Direct redirect - no more CORS issues
+                        alert('Upload page Google button clicked!');
+                        const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}`;
+                        console.log('Upload page redirecting to:', authUrl);
+                        window.location.href = authUrl;
                     }}
                 >
                     Sign In with Google

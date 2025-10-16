@@ -430,10 +430,18 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
     // Make Merch handler
     const handleMakeMerch = async () => {
-        // Check if user is authenticated
+        // Check if user is authenticated (check both auth types)
         const isAuthenticated = localStorage.getItem('user_authenticated');
+        const googleAuthenticated = localStorage.getItem('isAuthenticated');
+        const isLoggedIn = (isAuthenticated === 'true') || (googleAuthenticated === 'true');
         
-        if (!isAuthenticated || isAuthenticated === 'false' || isAuthenticated === 'null') {
+        console.log('🛍️ Make Merch - Auth check:', {
+            user_authenticated: isAuthenticated,
+            isAuthenticated: googleAuthenticated,
+            isLoggedIn: isLoggedIn
+        });
+        
+        if (!isLoggedIn) {
             // Store screenshot data for after login
             const merchData = {
                 thumbnail,
@@ -444,8 +452,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             };
             localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
             
-            // Show auth modal instead of redirecting
-            setShowAuthModal(true);
+            // Redirect to login page for mobile compatibility
+            window.location.href = '/login?returnTo=/';
             return;
         }
         

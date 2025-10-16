@@ -57,12 +57,37 @@ export class AdminService {
    */
   static async getDashboardStats() {
     try {
-      const { data, error } = await supabase
-        .from('admin_dashboard_stats')
-        .select('*')
-        .single();
-
-      if (error) throw error;
+      // Get current user ID
+      const isAuthenticated = localStorage.getItem('isAuthenticated');
+      const userData = localStorage.getItem('user');
+      
+      let user = null;
+      if (isAuthenticated === 'true' && userData) {
+        user = JSON.parse(userData);
+      } else {
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+        user = supabaseUser;
+      }
+      
+      if (!user) {
+        throw new Error('No authenticated user');
+      }
+      
+      // Call backend API
+      const response = await fetch(`https://screenmerch.fly.dev/api/admin/dashboard-stats?user_id=${user.id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('📊 Admin dashboard stats from backend:', data);
       return data;
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -91,6 +116,7 @@ export class AdminService {
    */
   static async getUsers(page = 0, limit = 20, search = '', status = 'all') {
     try {
+      console.log('👥 Fetching users from database...');
       let query = supabase
         .from('users')
         .select('*', { count: 'exact' });
@@ -107,7 +133,13 @@ export class AdminService {
         .order('created_at', { ascending: false })
         .range(page * limit, (page + 1) * limit - 1);
 
-      if (error) throw error;
+      if (error) {
+        console.error('👥 Error fetching users:', error);
+        throw error;
+      }
+
+      console.log('👥 Users fetched:', data?.length || 0, 'users');
+      console.log('👥 Total count:', count);
 
       return {
         users: data || [],
@@ -230,6 +262,9 @@ export class AdminService {
    */
   static async deleteUser(userId) {
     try {
+      console.log('🗑️ Deleting user:', userId);
+      console.log('🗑️ API URL:', `${API_CONFIG.SUBSCRIPTION_API_URL}/api/users/${userId}/delete-account`);
+      
       const response = await fetch(`${API_CONFIG.SUBSCRIPTION_API_URL}/api/users/${userId}/delete-account`, {
         method: 'DELETE',
         headers: {
@@ -237,10 +272,17 @@ export class AdminService {
         },
       });
 
+      console.log('🗑️ Delete response status:', response.status);
+      console.log('🗑️ Delete response ok:', response.ok);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('🗑️ Delete error response:', errorData);
         return { success: false, error: errorData.error || 'Failed to delete user' };
       }
+
+      const responseData = await response.json();
+      console.log('🗑️ Delete success response:', responseData);
 
       // Log admin action
       await this.logAdminAction('delete_user', 'user', userId, {

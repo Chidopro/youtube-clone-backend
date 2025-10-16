@@ -60,7 +60,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
             <div className="flow-step">
               <div className="step-number">3</div>
               <div className="step-content">
-                <h3>Make Merchandise</h3>
+                <h3>Make Merch</h3>
                 <p>Create custom products with your screenshot</p>
               </div>
             </div>

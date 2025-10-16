@@ -209,6 +209,39 @@ const Login = () => {
               ← Back to Home
             </button>
           </div>
+
+          {/* Google OAuth Button */}
+          <div className="google-oauth-section" style={{ marginTop: '20px', textAlign: 'center' }}>
+            <div style={{ margin: '10px 0', color: '#666' }}>Or</div>
+            <button 
+              onClick={() => {
+                // Direct redirect - no more CORS issues
+                alert('Login page Google button clicked!');
+                const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}`;
+                console.log('Login page redirecting to:', authUrl);
+                window.location.href = authUrl;
+              }}
+              className="google-signin-btn"
+              style={{
+                width: '100%',
+                padding: '12px',
+                backgroundColor: '#4285f4',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>🔍</span>
+              Sign in with Google
+            </button>
+          </div>
         </div>
       </div>
     </div>

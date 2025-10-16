@@ -14,6 +14,7 @@ import { upsertUserProfile, deleteUserAccount } from '../../utils/userService'
 const Navbar = ({ setSidebar, resetCategory }) => {
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
     const [user, setUser] = useState(null);
+    const [userProfile, setUserProfile] = useState(null);
     const [customerUser, setCustomerUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -27,6 +28,36 @@ const Navbar = ({ setSidebar, resetCategory }) => {
 
     useEffect(() => {
         let isMounted = true;
+
+        // Listen for OAuth success events
+        const handleOAuthSuccess = (event) => {
+            console.log('📡 Navbar received oauthSuccess event:', event.detail);
+            console.log('📡 OAuth user picture:', event.detail?.picture);
+            console.log('📡 OAuth user metadata picture:', event.detail?.user_metadata?.picture);
+            if (isMounted) {
+                setUser(event.detail);
+                setLoading(false);
+                setOauthProcessing(false);
+                console.log('🔄 Navbar state updated from OAuth event');
+                
+                // Force multiple re-renders to ensure state updates
+                setTimeout(() => {
+                    if (isMounted) {
+                        console.log('🔄 Forcing Navbar re-render after OAuth (1st attempt)');
+                        setUser(prevUser => ({ ...prevUser, ...event.detail }));
+                    }
+                }, 50);
+                
+                setTimeout(() => {
+                    if (isMounted) {
+                        console.log('🔄 Forcing Navbar re-render after OAuth (2nd attempt)');
+                        setUser(event.detail);
+                    }
+                }, 200);
+            }
+        };
+
+        window.addEventListener('oauthSuccess', handleOAuthSuccess);
         
         const fetchUser = async () => {
             try {
@@ -57,10 +88,25 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     try {
                         const googleUser = JSON.parse(userData);
                         console.log('🔐 Found Google OAuth user (creator):', googleUser);
+                        console.log('🔐 User picture URL:', googleUser?.picture);
                         console.log('🔐 Setting user state in Navbar...');
                         if (isMounted) {
                             setUser(googleUser);
                             console.log('🔐 User state set in Navbar:', googleUser);
+                            
+                            // Fetch user profile from database like Upload page does
+                            const { data: profile, error: profileError } = await supabase
+                                .from('users')
+                                .select('*')
+                                .eq('id', googleUser.id)
+                                .single();
+                            
+                            if (profile) {
+                                console.log('🔐 Found user profile:', profile);
+                                setUserProfile(profile);
+                            } else {
+                                console.log('🔐 No user profile found:', profileError);
+                            }
                         }
                     } catch (error) {
                         console.error('Error parsing Google OAuth user data:', error);
@@ -160,6 +206,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
 
         return () => {
             isMounted = false;
+            window.removeEventListener('oauthSuccess', handleOAuthSuccess);
             if (authChangeTimeout) {
                 clearTimeout(authChangeTimeout);
             }
@@ -190,35 +237,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         };
     }, [dropdownOpen]);
 
-    const handleLogin = async () => {
-        try {
-            console.log('🔐 Sign In button clicked - initiating Google OAuth');
-            
-            // Get the Google OAuth URL from our Flask backend
-            const response = await fetch('https://screenmerch.fly.dev/api/auth/google/login', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include'
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to initiate Google login');
-            }
-            
-            const data = await response.json();
-            
-            if (data.success && data.auth_url) {
-                // Redirect to Google OAuth URL
-                window.location.href = data.auth_url;
-            } else {
-                throw new Error(data.error || 'Failed to get Google login URL');
-            }
-        } catch (error) {
-            console.error('Google login error:', error);
-            alert('Login failed: ' + error.message);
-        }
+    const handleLogin = () => {
+        const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}`;
+        window.location.href = authUrl;
     };
 
     const handleLogout = async () => {
@@ -291,21 +312,22 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     <img src={menu_icon} alt="" className="menu-icon" onClick={() => setSidebar(prev => !prev)} />
                     <Link to="/" onClick={resetCategory}> <img src={logo} alt="" className="logo" /></Link>
                 </div>
-                <div className="nav-middle flex-div">
-                    <div className="search-box flex-div">
-                        <input type="text" placeholder="Search" />
-                        <img src={search_icon} alt="" />
+                <div className="nav-center-right flex-div">
+                    <div className="nav-middle flex-div">
+                        <div className="search-box flex-div">
+                            <input type="text" placeholder="Search" />
+                            <img src={search_icon} alt="" />
+                        </div>
                     </div>
-                </div>
-                <div className="nav-right flex-div">
+                    <div className="nav-right flex-div">
                     {user ? (
-                        console.log('🎥 Rendering upload link for user:', user?.display_name) ||
+                        console.log('🎥 Rendering upload link for user:', user?.display_name, 'User object:', user) ||
                         <Link to="/upload"><img src={upload_icon} alt="Upload" /></Link>
                     ) : oauthProcessing ? (
                         console.log('🎥 OAuth processing - hiding upload button') ||
                         <div style={{ width: '24px', height: '24px' }}></div> // Placeholder to maintain layout
                     ) : (
-                        console.log('🎥 Rendering upload link - no user') ||
+                        console.log('🎥 Rendering upload link - no user, user state:', user, 'loading:', loading) ||
                         <Link to="/upload">
                             <img 
                                 src={upload_icon} 
@@ -319,7 +341,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         className="subscribe-btn"
                         onClick={handleSubscribeClick}
                     >
-                        Subscribe
+                        Start Free
                     </button>
                     {loading ? (
                         <div className="loading-spinner-navbar"></div>
@@ -330,11 +352,12 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             <img 
                                 className='user-profile' 
                                 src={(() => {
-                                    const imageUrl = user?.picture || user?.youtube_channel?.thumbnail || user?.user_metadata?.picture || user?.avatar_url || '/default-avatar.svg';
+                                    // Use same logic as upload page for consistency
+                                    const imageUrl = userProfile?.profile_image_url || user?.user_metadata?.picture || '/default-avatar.svg';
                                     console.log('🖼️ Profile image URL:', imageUrl);
+                                    console.log('🖼️ User metadata picture:', user?.user_metadata?.picture);
                                     console.log('🖼️ User picture:', user?.picture);
                                     console.log('🖼️ YouTube channel thumbnail:', user?.youtube_channel?.thumbnail);
-                                    console.log('🖼️ User metadata picture:', user?.user_metadata?.picture);
                                     console.log('🖼️ Avatar URL:', user?.avatar_url);
                                     return imageUrl;
                                 })()} 
@@ -346,11 +369,25 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 }}
                                 style={{ cursor: 'pointer' }}
                                 onError={(e) => {
-                                    console.log('🖼️ Image failed to load, using default avatar');
-                                    e.target.src = '/default-avatar.svg';
+                                    if (!e.target.dataset.fallbackUsed) {
+                                        console.log('🖼️ Image failed to load!');
+                                        console.log('🖼️ Failed URL:', e.target.src);
+                                        
+                                        // Try YouTube thumbnail first, then default
+                                        if (e.target.src !== user?.youtube_channel?.thumbnail) {
+                                            console.log('🖼️ Trying YouTube thumbnail...');
+                                            e.target.dataset.fallbackUsed = 'true';
+                                            e.target.src = user?.youtube_channel?.thumbnail || '/default-avatar.svg';
+                                        } else {
+                                            console.log('🖼️ Using default avatar');
+                                            e.target.dataset.fallbackUsed = 'true';
+                                            e.target.src = '/default-avatar.svg';
+                                        }
+                                    }
                                 }}
-                                onLoad={() => {
+                                onLoad={(e) => {
                                     console.log('🖼️ Profile image loaded successfully');
+                                    console.log('🖼️ Loaded image src:', e.target.src);
                                 }}
                             />
                             <div className={`user-dropdown ${dropdownOpen ? 'open' : ''}`}>
@@ -432,14 +469,17 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             Processing...
                         </div>
                     ) : (
-                        <button 
-                            className="sign-in-btn" 
-                            onClick={handleLogin}
-                            title="Sign in with Google"
-                        >
-                            Sign In
-                        </button>
+                        <>
+                            <button 
+                                className="sign-in-btn" 
+                                onClick={handleLogin}
+                                title="Sign in with Google"
+                            >
+                                Sign In
+                            </button>
+                        </>
                     )}
+                    </div>
                 </div>
             </nav>
             

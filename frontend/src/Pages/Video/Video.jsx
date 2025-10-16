@@ -192,8 +192,16 @@ const Video = ({ sidebar }) => {
 
   // Make Merch handler
   const handleMakeMerch = async () => {
-    // Check if user is authenticated
+    // Check if user is authenticated (check both auth types)
     const isAuthenticated = localStorage.getItem('user_authenticated');
+    const googleAuthenticated = localStorage.getItem('isAuthenticated');
+    const isLoggedIn = (isAuthenticated === 'true') || (googleAuthenticated === 'true');
+    
+    console.log('🛍️ Make Merch - Auth check:', {
+      user_authenticated: isAuthenticated,
+      isAuthenticated: googleAuthenticated,
+      isLoggedIn: isLoggedIn
+    });
     
     // Always persist the current merch data so the product page can render
     try {
@@ -210,7 +218,7 @@ const Video = ({ sidebar }) => {
       console.warn('Failed saving pending_merch_data:', e);
     }
 
-    if (!isAuthenticated) {
+    if (!isLoggedIn) {
       // Show auth modal instead of redirecting
       setShowAuthModal(true);
       return;
