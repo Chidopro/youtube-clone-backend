@@ -238,7 +238,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     }, [dropdownOpen]);
 
     const handleLogin = () => {
+        // Simple direct redirect - this should work on all devices
         const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}`;
+        console.log('Redirecting to:', authUrl);
         window.location.href = authUrl;
     };
 

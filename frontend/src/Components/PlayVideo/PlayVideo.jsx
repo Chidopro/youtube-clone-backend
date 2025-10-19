@@ -49,6 +49,26 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
     
+    // Check authentication state on component mount
+    useEffect(() => {
+        const isAuthenticated = localStorage.getItem('user_authenticated');
+        const googleAuthenticated = localStorage.getItem('isAuthenticated');
+        const isLoggedIn = (isAuthenticated === 'true') || (googleAuthenticated === 'true');
+        
+        console.log('🔄 PlayVideo mounted - Auth check:', {
+            user_authenticated: isAuthenticated,
+            isAuthenticated: googleAuthenticated,
+            isLoggedIn: isLoggedIn,
+            allLocalStorage: Object.keys(localStorage).filter(key => key.includes('auth') || key.includes('user'))
+        });
+        
+        // If user is authenticated, close any open auth modal
+        if (isLoggedIn && showAuthModal) {
+            console.log('✅ User is authenticated, closing auth modal');
+            setShowAuthModal(false);
+        }
+    }, [showAuthModal]);
+    
     // Ref to track if screenshot function has been passed to prevent loops
     const screenshotFunctionPassedRef = useRef(false);
     
@@ -435,6 +455,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         const googleAuthenticated = localStorage.getItem('isAuthenticated');
         const isLoggedIn = (isAuthenticated === 'true') || (googleAuthenticated === 'true');
         
+        console.log('🛍️ Make Merch - Auth check after login:', {
+            user_authenticated: isAuthenticated,
+            isAuthenticated: googleAuthenticated,
+            isLoggedIn: isLoggedIn,
+            allLocalStorage: Object.keys(localStorage).filter(key => key.includes('auth') || key.includes('user'))
+        });
+        
         console.log('🛍️ Make Merch - Auth check:', {
             user_authenticated: isAuthenticated,
             isAuthenticated: googleAuthenticated,
@@ -452,8 +479,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             };
             localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
             
-            // Redirect to login page for mobile compatibility
-            window.location.href = '/login?returnTo=/';
+            // Show simple auth modal instead of redirecting to complex login page
+            setShowAuthModal(true);
             return;
         }
         

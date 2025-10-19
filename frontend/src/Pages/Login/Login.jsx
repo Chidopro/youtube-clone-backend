@@ -110,10 +110,18 @@ const Login = () => {
             }, 1500);
           }
         } else {
-          // For logins, redirect to specified page
-          setTimeout(() => {
-            navigate(returnTo);
-          }, 1500);
+          // For logins, check if it's merch creation flow
+          if (returnTo === 'merch') {
+            // Redirect to category selection page for merch creation
+            setTimeout(() => {
+              navigate('/category-selection');
+            }, 1500);
+          } else {
+            // For other logins, redirect to specified page
+            setTimeout(() => {
+              navigate(returnTo);
+            }, 1500);
+          }
         }
       } else {
         setMessage({ type: 'error', text: data.error || 'Authentication failed' });

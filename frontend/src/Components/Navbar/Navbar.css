@@ -168,6 +168,10 @@ nav{
     .nav-middle .mic-icon{
         display: none;
     }
+    /* Hide search bar completely on mobile */
+    .nav-middle .search-box{
+        display: none !important;
+    }
     .nav-middle .search-box input{
         width: 100px;
      }
