@@ -33,7 +33,7 @@ nav{
     padding: 8px 12px; /* Match Start Free button padding */
     border-radius: 4px; /* Rectangular shape */
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     line-height: 1;
     height: 32px;
@@ -343,6 +343,9 @@ nav{
     .sign-in-btn {
         padding: 8px 12px; /* Match Start Free button padding */
         font-size: 14px;
+        font-weight: 500;
+        line-height: 1;
+        height: 32px;
         border-radius: 4px; /* Rectangular shape */
         white-space: nowrap;
         margin-right: 8px; /* Reduced margin for better spacing */
@@ -360,6 +363,9 @@ nav{
     .nav-right .subscribe-btn {
         padding: 8px 12px; /* INCREASED vertical padding from 6px to 8px for height */
         font-size: 14px;
+        font-weight: 500;
+        line-height: 1;
+        height: 32px;
         border-radius: 4px; /* Rectangular shape */
         white-space: nowrap;
         margin-right: 8px; /* Reduced margin for better spacing */
