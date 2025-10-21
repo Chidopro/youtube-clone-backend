@@ -189,7 +189,6 @@ const Channel = () => {
             {/* Channel Details */}
             <div className="channel-details">
               <h1 className="channel-name">{channelInfo.channelTitle}</h1>
-              <p className="channel-username">@{channelInfo.username}</p>
               {channelInfo.bio && (
                 <p className="channel-bio">{channelInfo.bio}</p>
               )}
