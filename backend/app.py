@@ -138,6 +138,16 @@ app = Flask(__name__,
 # Configure session secret key
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-secret-key-change-in-production")
 
+# Session / cookie settings for cross-site auth (Netlify -> Fly.io)
+from datetime import timedelta
+app.config.update(
+    SESSION_COOKIE_NAME="sm_session",
+    SESSION_COOKIE_SAMESITE="None",   # <- allow third-party
+    SESSION_COOKIE_SECURE=True,       # <- required when SameSite=None
+    SESSION_COOKIE_HTTPONLY=True,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=7)
+)
+
 # Template filter for formatting timestamps
 @app.template_filter('format_timestamp')
 def format_timestamp(timestamp):
