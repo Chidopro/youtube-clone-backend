@@ -2823,7 +2823,7 @@ def get_videos():
 @cross_origin(origins=[], supports_credentials=True)
 def search_creators():
     """Search for creators by username or display name - Updated"""
-    logger.info("Search creators endpoint called")
+    logger.info("Search creators endpoint called - v2")
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
