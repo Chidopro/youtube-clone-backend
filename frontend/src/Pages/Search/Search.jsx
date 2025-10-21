@@ -51,8 +51,9 @@ const Search = () => {
         }
     };
 
-    const handleCreatorClick = (creatorId) => {
-        navigate(`/creator/${creatorId}`);
+    const handleCreatorClick = (creator) => {
+        // Navigate to profile using username
+        navigate(`/profile/${creator.username}`);
     };
 
     const formatDate = (dateString) => {
@@ -117,7 +118,7 @@ const Search = () => {
                                 <div 
                                     key={creator.id} 
                                     className="creator-card"
-                                    onClick={() => handleCreatorClick(creator.id)}
+                                    onClick={() => handleCreatorClick(creator)}
                                 >
                                     <div className="creator-avatar">
                                         {creator.profile_image_url ? (

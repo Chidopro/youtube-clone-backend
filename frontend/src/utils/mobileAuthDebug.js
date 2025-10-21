@@ -23,18 +23,7 @@ export const mobileAuthDebug = {
     const pendingMerchData = localStorage.getItem('pending_merch_data');
     const isLoggedIn = (userAuthenticated === 'true') || (googleAuthenticated === 'true');
     
-    console.log('🔍 Mobile Auth Debug Info:');
-    console.log('  - Is Mobile:', mobileAuthDebug.isMobile());
-    console.log('  - Is iOS:', mobileAuthDebug.isIOS());
-    console.log('  - Is Android:', mobileAuthDebug.isAndroid());
-    console.log('  - User Authenticated (email/password):', userAuthenticated);
-    console.log('  - Google Authenticated (OAuth):', googleAuthenticated);
-    console.log('  - Is Logged In (combined):', isLoggedIn);
-    console.log('  - User Email:', userEmail);
-    console.log('  - Pending Merch Data:', pendingMerchData ? 'Yes' : 'No');
-    console.log('  - User Agent:', navigator.userAgent);
-    console.log('  - Screen Size:', `${window.innerWidth}x${window.innerHeight}`);
-    console.log('  - Viewport:', `${window.visualViewport?.width || 'N/A'}x${window.visualViewport?.height || 'N/A'}`);
+    // Debug logs removed for production
   },
 
   // Clear authentication state (for testing)

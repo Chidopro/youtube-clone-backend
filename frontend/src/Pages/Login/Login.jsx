@@ -30,9 +30,7 @@ const Login = () => {
       const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
       const url = `${API_CONFIG.BASE_URL}${endpoint}`;
       
-      console.log('Attempting auth request to:', url);
-      console.log('Mode:', isLoginMode ? 'login' : 'signup');
-      console.log('Email:', email.trim());
+      // Debug logs removed for production
       
       const response = await fetch(url, {
         method: 'POST',
@@ -46,8 +44,7 @@ const Login = () => {
         })
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      // Debug logs removed for production
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -69,7 +66,7 @@ const Login = () => {
       }
 
       const data = await response.json();
-      console.log('Response data:', data);
+      // Debug logs removed for production
 
       if (data.success) {
         // Store authentication state

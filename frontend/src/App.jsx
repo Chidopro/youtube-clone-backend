@@ -137,6 +137,23 @@ const App = () => {
         {shouldShowSidebar && (
         <Sidebar sidebar={sidebar} category={category} setCategory={setCategory} />
         )}
+        {/* Mobile backdrop for sidebar */}
+        {sidebar && window.innerWidth <= 900 && (
+          <div 
+            className="mobile-sidebar-backdrop"
+            onClick={() => setSidebar(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 999,
+              display: 'block'
+            }}
+          />
+        )}
         <div className="main-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1 }}>
             <Routes>
