@@ -35,6 +35,8 @@ nav{
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
+    line-height: 1;
+    height: 32px;
     transition: all 0.2s ease;
     margin-right: 8px; /* Reduced margin for better spacing */
     white-space: nowrap;
@@ -67,6 +69,8 @@ nav{
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
+    line-height: 1;
+    height: 32px;
     transition: all 0.2s ease;
     margin-right: 8px; /* Match Sign In button reduced margin */
     white-space: nowrap;
