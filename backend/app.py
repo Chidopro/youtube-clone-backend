@@ -2822,7 +2822,7 @@ def get_videos():
 @app.route("/api/search/creators", methods=["GET", "OPTIONS"])
 @cross_origin(origins=[], supports_credentials=True)
 def search_creators():
-    """Search for creators by username or display name"""
+    """Search for creators by username or display name - Updated"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
