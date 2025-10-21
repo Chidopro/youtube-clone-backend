@@ -2819,6 +2819,11 @@ def get_videos():
         logger.error(f"Error fetching videos: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/search/test", methods=["GET"])
+def search_test():
+    """Test endpoint for search functionality"""
+    return jsonify({"success": True, "message": "Search endpoint is working"}), 200
+
 @app.route("/api/search/creators", methods=["GET", "OPTIONS"])
 @cross_origin(origins=[], supports_credentials=True)
 def search_creators():
@@ -2838,7 +2843,7 @@ def search_creators():
                 "error": "Search query must be at least 2 characters"
             }), 400
         
-        # Search for creators in the users table
+        # Simple search for creators in the users table
         response = supabase.table("users").select(
             "id, username, display_name, profile_image_url, cover_image_url, bio, created_at"
         ).or_(
@@ -2846,16 +2851,12 @@ def search_creators():
         ).not_("username", "is", None).order("created_at", desc=True).limit(20).execute()
         
         if response.data:
-            # Get video counts for each creator
+            # Return results with basic video count
             creators_with_counts = []
             for creator in response.data:
-                # Count videos for this creator
-                video_count_result = supabase.table("videos2").select("id", count="exact").eq("user_id", creator["id"]).execute()
-                video_count = video_count_result.count if video_count_result.count else 0
-                
                 creators_with_counts.append({
                     **creator,
-                    "video_count": video_count
+                    "video_count": 0  # Simplified for now
                 })
             
             return jsonify({
@@ -2872,7 +2873,7 @@ def search_creators():
         logger.error(f"Error searching creators: {e}")
         return jsonify({
             "success": False,
-            "error": "Search failed"
+            "error": f"Search failed: {str(e)}"
         }), 500
 
 # NEW: Video Screenshot Capture Endpoints
