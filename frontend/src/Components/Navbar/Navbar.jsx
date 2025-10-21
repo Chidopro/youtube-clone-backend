@@ -332,7 +332,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         }}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                     />
-                    <Link to="/" onClick={resetCategory}> <img src={logo} alt="" className="logo" /></Link>
+                    <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}> <img src={logo} alt="" className="logo" /></Link>
                 </div>
                 <div className="nav-center-right flex-div">
                     <div className="nav-middle flex-div">
