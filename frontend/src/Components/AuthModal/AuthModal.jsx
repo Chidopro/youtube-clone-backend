@@ -18,35 +18,10 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
       const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
       const url = `${API_CONFIG.BASE_URL}${endpoint}`;
       
-      // Only log detailed debugging for mobile devices
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        console.log('🔍 MOBILE AUTH - Starting mobile authentication');
-        console.log('🔍 MOBILE AUTH - URL:', url);
-        console.log('🔍 MOBILE AUTH - Email:', email.trim());
-        console.log('🔍 MOBILE AUTH - Mode:', isLoginMode ? 'login' : 'signup');
-        console.log('🔍 MOBILE AUTH - User Agent:', navigator.userAgent);
-        console.log('🔍 MOBILE AUTH - Screen size:', `${window.screen.width}x${window.screen.height}`);
-        console.log('🔍 MOBILE AUTH - Viewport size:', `${window.innerWidth}x${window.innerHeight}`);
-        console.log('🔍 MOBILE AUTH - Connection type:', navigator.connection?.effectiveType || 'unknown');
-        console.log('🔍 MOBILE AUTH - Online status:', navigator.onLine);
-        console.log('🔍 MOBILE AUTH - Timestamp:', new Date().toISOString());
-      }
-      
       const requestBody = {
         email: email.trim(),
         password: password
       };
-      
-      if (isMobile) {
-        console.log('🔍 MOBILE AUTH - Request body:', JSON.stringify(requestBody, null, 2));
-        console.log('🔍 MOBILE AUTH - Request headers:', {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': navigator.userAgent
-        });
-      }
       
       const response = await fetch(url, {
         method: 'POST',
@@ -59,26 +34,12 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         credentials: 'include',
         mode: 'cors'
       });
-      
-      if (isMobile) {
-        console.log('🔍 MOBILE AUTH - Response status:', response.status);
-        console.log('🔍 MOBILE AUTH - Response ok:', response.ok);
-        console.log('🔍 MOBILE AUTH - Response headers:', Object.fromEntries(response.headers.entries()));
-      }
 
       if (!response.ok) {
         const errorText = await response.text();
         
-        if (isMobile) {
-          console.log('🔍 MOBILE AUTH - Error response:', errorText);
-          console.log('🔍 MOBILE AUTH - Error status:', response.status);
-        }
-        
         try {
           const errorData = JSON.parse(errorText);
-          if (isMobile) {
-            console.log('🔍 MOBILE AUTH - Parsed error data:', errorData);
-          }
           
           if (response.status === 409 && errorData.error?.includes('already exists')) {
             throw new Error('This email is already registered. Please sign in instead.');
@@ -88,9 +49,6 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
             throw new Error(`Server error: ${response.status} - ${errorText}`);
           }
         } catch (parseError) {
-          if (isMobile) {
-            console.log('🔍 MOBILE AUTH - Parse error:', parseError);
-          }
           throw new Error(`Server error: ${response.status} - ${errorText}`);
         }
       }
@@ -119,54 +77,23 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         setMessage({ type: 'error', text: data.error || 'Authentication failed' });
       }
     } catch (error) {
-      // Only log detailed debugging for mobile devices
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        console.error('🔍 MOBILE AUTH - Auth error:', error);
-        console.error('🔍 MOBILE AUTH - Error name:', error.name);
-        console.error('🔍 MOBILE AUTH - Error message:', error.message);
-        console.error('🔍 MOBILE AUTH - Error stack:', error.stack);
-        console.error('🔍 MOBILE AUTH - Error cause:', error.cause);
-        console.error('🔍 MOBILE AUTH - Is TypeError:', error instanceof TypeError);
-        console.error('🔍 MOBILE AUTH - Is NetworkError:', error.name === 'NetworkError');
-        console.error('🔍 MOBILE AUTH - Error toString:', error.toString());
-      }
-      
-      // Check for specific mobile-related errors
+      // Check for specific error types
       if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        if (isMobile) {
-          console.log('🔍 MOBILE AUTH - Network error detected');
-          console.log('🔍 MOBILE AUTH - Checking network status...');
-          console.log('🔍 MOBILE AUTH - Navigator online:', navigator.onLine);
-          console.log('🔍 MOBILE AUTH - Connection type:', navigator.connection?.effectiveType);
-          console.log('🔍 MOBILE AUTH - Connection downlink:', navigator.connection?.downlink);
-        }
-        
         setMessage({ 
           type: 'error', 
           text: 'Network error. Please check your internet connection and try again.' 
         });
       } else if (error.message.includes('CORS') || error.message.includes('cross-origin')) {
-        if (isMobile) {
-          console.log('🔍 MOBILE AUTH - CORS error detected');
-        }
         setMessage({ 
           type: 'error', 
           text: 'CORS error. Please try refreshing the page and logging in again.' 
         });
       } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
-        if (isMobile) {
-          console.log('🔍 MOBILE AUTH - Timeout error detected');
-        }
         setMessage({ 
           type: 'error', 
           text: 'Request timeout. Please check your connection and try again.' 
         });
       } else {
-        if (isMobile) {
-          console.log('🔍 MOBILE AUTH - Other error detected:', error.message);
-        }
         setMessage({ 
           type: 'error', 
           text: `Authentication error: ${error.message}` 
@@ -180,28 +107,6 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const toggleMode = () => {
     setIsLoginMode(!isLoginMode);
     setMessage('');
-  };
-
-  // Mobile-specific debugging function
-  const testMobileConnection = async () => {
-    console.log('🔍 AuthModal - Testing mobile connection...');
-    try {
-      // Test basic connectivity
-      const testResponse = await fetch(`${API_CONFIG.BASE_URL}/api/test-connection`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': navigator.userAgent
-        },
-        credentials: 'include',
-        mode: 'cors'
-      });
-      console.log('🔍 AuthModal - Test connection response:', testResponse.status);
-      return testResponse.ok;
-    } catch (error) {
-      console.error('🔍 AuthModal - Test connection failed:', error);
-      return false;
-    }
   };
 
   if (!isOpen) return null;

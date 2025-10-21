@@ -19,11 +19,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     const [loading, setLoading] = useState(true);
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [oauthProcessing, setOauthProcessing] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
     
-    // Debug user state changes
-    useEffect(() => {
-        console.log('🔄 User state changed:', user);
-    }, [user]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -307,18 +304,47 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         navigate('/join-channel');
     };
 
+    const handleSearch = () => {
+        if (searchQuery.trim()) {
+            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        }
+    };
+
+    const handleSearchKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    };
+
     return (
         <>
             <nav className='flex-div'>
                 <div className="nav-left flex-div">
-                    <img src={menu_icon} alt="" className="menu-icon" onClick={() => setSidebar(prev => !prev)} />
+                    <img 
+                        src={menu_icon} 
+                        alt="Menu" 
+                        className="menu-icon" 
+                        onClick={() => setSidebar(prev => !prev)}
+                        onTouchStart={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSidebar(prev => !prev);
+                        }}
+                        style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    />
                     <Link to="/" onClick={resetCategory}> <img src={logo} alt="" className="logo" /></Link>
                 </div>
                 <div className="nav-center-right flex-div">
                     <div className="nav-middle flex-div">
                         <div className="search-box flex-div">
-                            <input type="text" placeholder="Search" />
-                            <img src={search_icon} alt="" />
+                            <input 
+                                type="text" 
+                                placeholder="Search channels" 
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyPress={handleSearchKeyPress}
+                            />
+                            <img src={search_icon} alt="" onClick={handleSearch} style={{ cursor: 'pointer' }} />
                         </div>
                     </div>
                     <div className="nav-right flex-div">
@@ -339,17 +365,18 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             />
                         </Link>
                     )}
-                    <button 
-                        className="subscribe-btn"
-                        onClick={handleSubscribeClick}
-                    >
-                        Start Free
-                    </button>
                     {loading ? (
                         <div className="loading-spinner-navbar"></div>
                     ) : user ? (
-                        console.log('🎨 Rendering user profile for:', user?.display_name || user?.user_metadata?.name) ||
-                        console.log('🔍 Full user object:', user) ||
+                        <>
+                        {console.log('🎨 Rendering user profile for:', user?.display_name || user?.user_metadata?.name)}
+                        {console.log('🔍 Full user object:', user)}
+                        <button 
+                            className="subscribe-btn"
+                            onClick={handleSubscribeClick}
+                        >
+                            Start Free
+                        </button>
                         <div className="user-profile-container">
                             <img 
                                 className='user-profile' 
@@ -466,6 +493,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 </button>
                             </div>
                         </div>
+                        </>
                     ) : oauthProcessing ? (
                         <div className="sign-in-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
                             Processing...
@@ -478,6 +506,12 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 title="Sign in with Google"
                             >
                                 Sign In
+                            </button>
+                            <button 
+                                className="subscribe-btn"
+                                onClick={handleSubscribeClick}
+                            >
+                                Start Free
                             </button>
                         </>
                     )}
