@@ -141,9 +141,14 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-secret-key-change-in-produc
 # Session / cookie settings for cross-device friendly auth
 from datetime import timedelta
 
-def _cookie_domain():
-    # first-party on your public site
-    return "screenmerch.com"
+def get_cookie_domain():
+    host = request.host.lower()
+    if "screenmerch.com" in host:
+        return ".screenmerch.com"
+    elif "localhost" in host:
+        return None
+    else:
+        return ".screenmerch.fly.dev"
 
 def _allow_origin(resp):
     origin = request.headers.get('Origin')
@@ -161,9 +166,9 @@ def _allow_origin(resp):
 
 app.config.update(
     SESSION_COOKIE_NAME="sm_session",
-    SESSION_COOKIE_DOMAIN=_cookie_domain(),   # <<< force first-party
-    SESSION_COOKIE_SAMESITE="None",           # <<< allow in all contexts
-    SESSION_COOKIE_SECURE=True,               # <<< required with SameSite=None
+    SESSION_COOKIE_DOMAIN=None,     # overridden dynamically if needed
+    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
     PERMANENT_SESSION_LIFETIME=timedelta(days=7),
 )
@@ -3743,9 +3748,15 @@ def auth_login():
         return response
     """Handle user login with email and password validation"""
     try:
-        data = request.get_json()
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
+        # Handle both JSON (fetch) and form data (redirect)
+        if request.is_json:
+            data = request.get_json()
+            email = data.get('email', '').strip().lower()
+            password = data.get('password', '')
+        else:
+            # Handle form data from redirect
+            email = request.form.get('email', '').strip().lower()
+            password = request.form.get('password', '')
         
         if not email or not password:
             return jsonify({"success": False, "error": "Email and password are required"}), 400
@@ -3778,16 +3789,22 @@ def auth_login():
                         }
                     })
                     
-                    # Set cookie with proper domain and attributes
+                    # Set cookie with dynamic domain
+                    domain = get_cookie_domain()
                     response.set_cookie(
                         "sm_session", user.get('id'),
-                        domain=_cookie_domain(),
+                        domain=domain,
                         path="/",
                         secure=True,
                         httponly=True,
                         samesite="None",
                         max_age=7*24*3600
                     )
+                    
+                    # Handle redirect for form submissions
+                    if not request.is_json:
+                        return_url = request.args.get('return_url', '/')
+                        return redirect(return_url)
                     
                     return _allow_origin(response)
                 else:
@@ -3819,10 +3836,17 @@ def auth_signup():
         return response
     """Handle user signup with email and password validation"""
     try:
-        data = request.get_json()
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        redirect_url = data.get('redirect_url', '')
+        # Handle both JSON (fetch) and form data (redirect)
+        if request.is_json:
+            data = request.get_json()
+            email = data.get('email', '').strip().lower()
+            password = data.get('password', '')
+            redirect_url = data.get('redirect_url', '')
+        else:
+            # Handle form data from redirect
+            email = request.form.get('email', '').strip().lower()
+            password = request.form.get('password', '')
+            redirect_url = request.form.get('redirect_url', '')
         
         if not email or not password:
             return jsonify({"success": False, "error": "Email and password are required"}), 400
@@ -3869,16 +3893,22 @@ def auth_signup():
                     }
                 })
                 
-                # Set cookie with proper domain and attributes
+                # Set cookie with dynamic domain
+                domain = get_cookie_domain()
                 response.set_cookie(
                     "sm_session", result.data[0].get('id'),
-                    domain=_cookie_domain(),
+                    domain=domain,
                     path="/",
                     secure=True,
                     httponly=True,
                     samesite="None",
                     max_age=7*24*3600
                 )
+                
+                # Handle redirect for form submissions
+                if not request.is_json:
+                    return_url = request.args.get('return_url', '/')
+                    return redirect(return_url)
                 
                 return _allow_origin(response)
             else:
