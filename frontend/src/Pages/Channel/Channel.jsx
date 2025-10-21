@@ -92,12 +92,17 @@ const Channel = () => {
         const userId = channelVideos[0].user_id;
         let userProfile = null;
         
+        console.log('Channel videos user_id:', userId);
+        
         if (userId) {
           const { data: profileData, error: profileError } = await supabase
             .from('users')
             .select('display_name, username, profile_image_url, cover_image_url, bio')
             .eq('id', userId)
             .single();
+          
+          console.log('User profile data:', profileData);
+          console.log('Profile error:', profileError);
           
           if (!profileError && profileData) {
             userProfile = profileData;
@@ -113,6 +118,10 @@ const Channel = () => {
           coverImageUrl: userProfile?.cover_image_url || null,
           bio: userProfile?.bio || null
         };
+        
+        console.log('Channel data being set:', channelData);
+        console.log('Profile image URL:', channelData.profileImageUrl);
+        console.log('Cover image URL:', channelData.coverImageUrl);
         
         setChannelInfo(channelData);
 
