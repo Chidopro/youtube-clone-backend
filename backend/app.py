@@ -138,24 +138,34 @@ app = Flask(__name__,
 # Configure session secret key
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-secret-key-change-in-production")
 
-# Session / cookie settings for cross-site auth (Netlify -> Fly.io)
+# Session / cookie settings for cross-device friendly auth
 from datetime import timedelta
 
-def cookie_domain_for_request():
-    host = (request.host or "").lower()
-    if host.endswith("screenmerch.com"):
-        return "screenmerch.com"       # cookie will be sent to screenmerch.com
-    if host.endswith("screenmerch.fly.dev"):
-        return "screenmerch.fly.dev"   # direct hits (dev/tests)
-    return None                        # fallback: host-only cookie
+def _cookie_domain():
+    # first-party on your public site
+    return "screenmerch.com"
+
+def _allow_origin(resp):
+    origin = request.headers.get('Origin')
+    allowed = {
+        "https://screenmerch.com",
+        "https://www.screenmerch.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    }
+    if origin in allowed:
+        resp.headers['Access-Control-Allow-Origin'] = origin
+        resp.headers['Vary'] = 'Origin'
+        resp.headers['Access-Control-Allow-Credentials'] = 'true'
+    return resp
 
 app.config.update(
     SESSION_COOKIE_NAME="sm_session",
-    SESSION_COOKIE_DOMAIN=None,  # we'll override via response if needed
-    SESSION_COOKIE_SAMESITE="Lax",  # same-site via proxy
-    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_DOMAIN=_cookie_domain(),   # <<< force first-party
+    SESSION_COOKIE_SAMESITE="None",           # <<< allow in all contexts
+    SESSION_COOKIE_SECURE=True,               # <<< required with SameSite=None
     SESSION_COOKIE_HTTPONLY=True,
-    PERMANENT_SESSION_LIFETIME=timedelta(days=7)
+    PERMANENT_SESSION_LIFETIME=timedelta(days=7),
 )
 
 # Template filter for formatting timestamps
@@ -3768,27 +3778,24 @@ def auth_login():
                         }
                     })
                     
-                    # Set cookie with dynamic domain
-                    domain = cookie_domain_for_request()
+                    # Set cookie with proper domain and attributes
                     response.set_cookie(
-                        "sm_auth", user.get('id'),
-                        domain=domain,
+                        "sm_session", user.get('id'),
+                        domain=_cookie_domain(),
                         path="/",
                         secure=True,
                         httponly=True,
-                        samesite="Lax"
+                        samesite="None",
+                        max_age=7*24*3600
                     )
                     
-                    response.headers.add('Access-Control-Allow-Origin', '*')
-                    return response
+                    return _allow_origin(response)
                 else:
                     response = jsonify({"success": False, "error": "Invalid email or password"})
-                    response.headers.add('Access-Control-Allow-Origin', '*')
-                    return response, 401
+                    return _allow_origin(response), 401
             else:
                 response = jsonify({"success": False, "error": "Invalid email or password"})
-                response.headers.add('Access-Control-Allow-Origin', '*')
-                return response, 401
+                return _allow_origin(response), 401
                 
         except Exception as db_error:
             logger.error(f"Database error during login: {str(db_error)}")
@@ -3862,23 +3869,21 @@ def auth_signup():
                     }
                 })
                 
-                # Set cookie with dynamic domain
-                domain = cookie_domain_for_request()
+                # Set cookie with proper domain and attributes
                 response.set_cookie(
-                    "sm_auth", result.data[0].get('id'),
-                    domain=domain,
+                    "sm_session", result.data[0].get('id'),
+                    domain=_cookie_domain(),
                     path="/",
                     secure=True,
                     httponly=True,
-                    samesite="Lax"
+                    samesite="None",
+                    max_age=7*24*3600
                 )
                 
-                response.headers.add('Access-Control-Allow-Origin', '*')
-                return response
+                return _allow_origin(response)
             else:
                 response = jsonify({"success": False, "error": "Failed to create account"})
-                response.headers.add('Access-Control-Allow-Origin', '*')
-                return response, 500
+                return _allow_origin(response), 500
                 
         except Exception as db_error:
             logger.error(f"Database error during signup: {str(db_error)}")
