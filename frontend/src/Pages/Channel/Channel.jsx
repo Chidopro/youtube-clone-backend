@@ -97,7 +97,7 @@ const Channel = () => {
         if (userId) {
           const { data: profileData, error: profileError } = await supabase
             .from('users')
-            .select('display_name, username, profile_image_url, cover_image_url, bio')
+            .select('display_name, username, profile_image_url, cover_image_url')
             .eq('id', userId)
             .single();
           
@@ -115,8 +115,7 @@ const Channel = () => {
           videoCount: channelVideos.length,
           username: userProfile?.username || decodedChannelName,
           profileImageUrl: userProfile?.profile_image_url || null,
-          coverImageUrl: userProfile?.cover_image_url || null,
-          bio: userProfile?.bio || null
+          coverImageUrl: userProfile?.cover_image_url || null
         };
         
         console.log('Channel data being set:', channelData);
