@@ -4489,22 +4489,8 @@ def google_login():
         # Store state in session for security
         session['oauth_state'] = state
         
-        response = jsonify({
-            "success": True,
-            "auth_url": authorization_url
-        })
-        
-        # Add CORS headers
-        origin = request.headers.get('Origin')
-        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
-        
-        if origin in allowed_origins:
-            response.headers['Access-Control-Allow-Origin'] = origin
-        else:
-            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        
-        return response
+        # Redirect to Google OAuth instead of returning JSON
+        return redirect(authorization_url, code=302)
         
     except Exception as e:
         logger.error(f"Google OAuth login error: {str(e)}")
