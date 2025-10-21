@@ -2819,15 +2819,11 @@ def get_videos():
         logger.error(f"Error fetching videos: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/search/test", methods=["GET"])
-def search_test():
-    """Test endpoint for search functionality"""
-    return jsonify({"success": True, "message": "Search endpoint is working"}), 200
-
 @app.route("/api/search/creators", methods=["GET", "OPTIONS"])
 @cross_origin(origins=[], supports_credentials=True)
 def search_creators():
     """Search for creators by username or display name - Updated"""
+    logger.info("Search creators endpoint called")
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
