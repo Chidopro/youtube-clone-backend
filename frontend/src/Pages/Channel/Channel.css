@@ -157,7 +157,7 @@
   }
 
   .channel-info-overlay {
-    padding: 20px 15px;
+    padding: 10px 15px 20px 15px;
     flex-direction: row;
     align-items: flex-end;
     justify-content: flex-start;
