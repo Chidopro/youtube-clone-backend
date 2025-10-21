@@ -38,6 +38,7 @@ const Login = () => {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
+        credentials: 'include',  // <- REQUIRED for cookies
         body: JSON.stringify({
           email: email.trim(),
           password: password
