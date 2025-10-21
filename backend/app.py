@@ -2819,6 +2819,62 @@ def get_videos():
         logger.error(f"Error fetching videos: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/search/creators", methods=["GET", "OPTIONS"])
+@cross_origin(origins=[], supports_credentials=True)
+def search_creators():
+    """Search for creators by username or display name"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        query = request.args.get('q', '').strip()
+        if not query or len(query) < 2:
+            return jsonify({
+                "success": False,
+                "error": "Search query must be at least 2 characters"
+            }), 400
+        
+        # Search for creators in the users table
+        response = supabase.table("users").select(
+            "id, username, display_name, profile_image_url, cover_image_url, bio, created_at"
+        ).or_(
+            f"username.ilike.%{query}%,display_name.ilike.%{query}%"
+        ).not_("username", "is", None).order("created_at", desc=True).limit(20).execute()
+        
+        if response.data:
+            # Get video counts for each creator
+            creators_with_counts = []
+            for creator in response.data:
+                # Count videos for this creator
+                video_count_result = supabase.table("videos2").select("id", count="exact").eq("user_id", creator["id"]).execute()
+                video_count = video_count_result.count if video_count_result.count else 0
+                
+                creators_with_counts.append({
+                    **creator,
+                    "video_count": video_count
+                })
+            
+            return jsonify({
+                "success": True,
+                "results": creators_with_counts
+            }), 200
+        else:
+            return jsonify({
+                "success": True,
+                "results": []
+            }), 200
+            
+    except Exception as e:
+        logger.error(f"Error searching creators: {e}")
+        return jsonify({
+            "success": False,
+            "error": "Search failed"
+        }), 500
+
 # NEW: Video Screenshot Capture Endpoints
 @app.route("/api/capture-screenshot", methods=["POST", "OPTIONS"])
 def capture_screenshot():
