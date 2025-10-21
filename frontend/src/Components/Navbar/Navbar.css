@@ -151,35 +151,48 @@ nav{
 }
 
 @media (max-width: 768px){
+    /* Reduce navbar vertical padding on mobile */
+    nav {
+        padding: 4px 2% !important; /* Reduced top and bottom padding to 4px for slimmer navbar */
+    }
+    
+    .nav-left {
+        z-index: 10002 !important;
+        position: relative;
+        pointer-events: auto !important;
+        align-items: center; /* Vertically center items */
+    }
+    
     .menu-icon{
         display: block !important;
-        width: 22px;
-        margin-right: 25px;
-        pointer-events: auto;
+        width: 20px !important; /* Reduced from 22px */
+        margin-right: 20px !important; /* Reduced from 25px */
+        pointer-events: auto !important;
         cursor: pointer;
-        z-index: 10001;
+        z-index: 10005 !important; /* Much higher z-index for mobile clickability */
+        position: relative;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
     }
     .nav-right img{
         display: none;
     }
-    .logo{
-        width: 90px;
+    .nav-left .logo{
+        width: 70px !important; /* Reduced from 90px to make less overbearing on mobile */
     }
     .nav-middle .mic-icon{
         display: none;
-    }
-    /* Hide search bar completely on mobile */
-    .nav-middle .search-box{
-        display: none !important;
     }
     .nav-middle .search-box input{
         width: 100px;
      }
     .nav-center-right {
         flex-direction: column;
-        gap: 8px;
+        gap: 2px; /* Further reduced for slimmer navbar */
         align-items: center;
         margin-right: 0; /* Remove right margin to align with purple bar like hamburger menu */
+        z-index: 10000; /* Below hamburger menu icon */
+        position: relative;
     }
     
     .nav-right {
@@ -189,17 +202,22 @@ nav{
         min-width: auto; /* Remove fixed width to allow side-by-side layout */
     }
     
-    /* Move search bar below buttons on mobile */
+    /* Move search bar ABOVE buttons on mobile */
     .nav-middle {
-        order: 2; /* Put search bar after buttons */
+        order: 1; /* Put search bar first */
+        width: 100%; /* Full width container */
+        display: flex;
+        justify-content: flex-end; /* Align search box to the right */
+        padding-right: 0; /* Remove right padding */
+        margin-right: 0; /* Remove right margin */
     }
     
     .nav-right {
-        order: 1; /* Put buttons first */
+        order: 2; /* Put buttons second (below search bar) */
     }
-         /* Sign In button mobile styling */
+         /* Sign In button mobile styling - SAME SIZE AS Start Free */
          .sign-in-btn {
-         padding: 6px 9px; /* Reduced horizontal padding by 3px for mobile */
+         padding: 6px 9px; /* SAME padding for both buttons */
          font-size: 11px;
          border-radius: 4px; /* Rectangular shape */
          white-space: nowrap;
@@ -222,9 +240,9 @@ nav{
          color: white;
      }
      
-     /* Start Free button mobile styling */
+     /* Start Free button mobile styling - SAME SIZE AS Sign In */
      .nav-right .subscribe-btn {
-         padding: 8px 9px; /* INCREASED vertical padding from 6px to 8px for height */
+         padding: 6px 9px; /* SAME padding as Sign In button */
          font-size: 11px;
          border-radius: 4px; /* Rectangular shape */
          white-space: nowrap;
@@ -253,9 +271,9 @@ nav{
 
 /* Extra small mobile devices */
 @media (max-width: 480px) {
-    /* Sign In button small mobile styling */
+    /* Sign In button small mobile styling - SAME SIZE AS Start Free */
     .sign-in-btn {
-        padding: 6px 7px; /* Further reduced padding for small screens */
+        padding: 6px 7px; /* SAME padding for both buttons */
         font-size: 10px;
         max-width: none; /* Remove max-width for side-by-side layout */
         min-width: 60px; /* Reduced min-width for small screens */
@@ -267,9 +285,9 @@ nav{
         position: relative;
     }
     
-    /* Start Free button small mobile styling */
+    /* Start Free button small mobile styling - SAME SIZE AS Sign In */
     .nav-right .subscribe-btn {
-        padding: 8px 7px; /* INCREASED vertical padding from 6px to 8px for height */
+        padding: 6px 7px; /* SAME padding as Sign In button */
         font-size: 10px;
         max-width: none; /* Remove max-width for side-by-side layout */
         min-width: 60px; /* Reduced min-width for small screens */
