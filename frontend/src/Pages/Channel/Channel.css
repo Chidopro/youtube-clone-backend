@@ -158,9 +158,10 @@
 
   .channel-info-overlay {
     padding: 20px 15px;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: flex-start;
+    text-align: left;
   }
 
   .channel-avatar,
@@ -168,6 +169,8 @@
     width: 80px;
     height: 80px;
     font-size: 28px;
+    margin-right: 15px;
+    flex-shrink: 0;
   }
 
   .channel-name {
