@@ -20,13 +20,58 @@ const Channel = () => {
       try {
         // Decode the channel name from URL
         const decodedChannelName = decodeURIComponent(channelName);
+        console.log('Looking for channel:', decodedChannelName);
 
-        // Fetch videos for this channel (all verification statuses)
-        const { data: channelVideos, error: videoError } = await supabase
+        // First, let's see what channels exist in the database
+        const { data: allVideos, error: allVideosError } = await supabase
+          .from('videos2')
+          .select('channelTitle')
+          .limit(10);
+        
+        if (allVideos) {
+          console.log('Available channels in database:', allVideos.map(v => v.channelTitle));
+        }
+
+        // Fetch videos for this channel - try multiple search fields
+        let channelVideos = null;
+        let videoError = null;
+        
+        // First try searching by channelTitle
+        let { data, error } = await supabase
           .from('videos2')
           .select('*')
           .eq('channelTitle', decodedChannelName)
           .order('created_at', { ascending: false });
+        
+        if (data && data.length > 0) {
+          channelVideos = data;
+        } else {
+          // Try searching by username or display name
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('id, username, display_name')
+            .or(`username.ilike.%${decodedChannelName}%,display_name.ilike.%${decodedChannelName}%`)
+            .limit(1);
+          
+          if (userData && userData.length > 0) {
+            const user = userData[0];
+            console.log('Found user:', user);
+            
+            // Search videos by user_id
+            const { data: userVideos, error: userVideoError } = await supabase
+              .from('videos2')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false });
+            
+            if (userVideos) {
+              channelVideos = userVideos;
+            }
+            videoError = userVideoError;
+          } else {
+            videoError = userError;
+          }
+        }
 
         if (videoError) {
           console.error('Error fetching channel videos:', videoError);
