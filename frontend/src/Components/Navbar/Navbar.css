@@ -154,6 +154,13 @@ nav{
     cursor: pointer;
 }
 
+/* Hide search icon on mobile */
+@media (max-width: 768px) {
+    .nav-middle .search-box img {
+        display: none;
+    }
+}
+
 @media (max-width: 768px){
     /* Reduce navbar vertical padding on mobile */
     nav {
