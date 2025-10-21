@@ -19,6 +19,7 @@ import Login from "./Pages/Login/Login";
 import PrivacyPolicy from "./Pages/PrivacyPolicy/PrivacyPolicy";
 import TermsOfService from "./Pages/TermsOfService/TermsOfService";
 import Search from "./Pages/Search/Search";
+import Channel from "./Pages/Channel/Channel";
 import MerchandiseCategories from "./Pages/MerchandiseCategories/MerchandiseCategories";
 import ProductPage from "./Pages/ProductPage/ProductPage";
 // import ScreenshotSelection from "./Pages/ScreenshotSelection/ScreenshotSelection";
@@ -187,6 +188,7 @@ const App = () => {
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="/search" element={<Search />} />
+              <Route path="/channel/:channelName" element={<Channel />} />
               <Route path="/merchandise" element={<MerchandiseCategories sidebar={sidebar} />} />
               <Route path="/product/:productId" element={<ProductPage sidebar={sidebar} />} />
               <Route path="/test-crop-tool" element={<TestCropTool />} />

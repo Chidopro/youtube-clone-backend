@@ -30,28 +30,13 @@ const Search = () => {
         setResults([]);
 
         try {
-            console.log('Searching for:', searchQuery.trim());
-            console.log('API URL:', `${API_CONFIG.BASE_URL}/api/search/creators?q=${encodeURIComponent(searchQuery.trim())}`);
+            // Try to navigate directly to channel page instead of using search API
+            const channelName = searchQuery.trim();
+            console.log('Searching for channel:', channelName);
             
-            const response = await fetch(`${API_CONFIG.BASE_URL}/api/search/creators?q=${encodeURIComponent(searchQuery.trim())}`);
+            // Navigate directly to the channel page
+            navigate(`/channel/${encodeURIComponent(channelName)}`);
             
-            console.log('Response status:', response.status);
-            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Error response:', errorText);
-                throw new Error(`Search failed: ${response.status} - ${errorText}`);
-            }
-
-            const data = await response.json();
-            console.log('Search response data:', data);
-            
-            if (data.success) {
-                setResults(data.results || []);
-            } else {
-                setError(data.error || 'Search failed');
-            }
         } catch (err) {
             console.error('Search error:', err);
             setError(`Search error: ${err.message}`);
