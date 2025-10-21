@@ -192,88 +192,82 @@ nav{
         width: 100%; /* Full width input */
      }
     .nav-center-right {
-        flex-direction: column;
-        gap: 2px; /* Minimal gap */
-        align-items: stretch; /* Stretch items to same width */
+        flex-direction: row; /* Keep horizontal layout */
+        gap: 8px; /* Minimal gap */
+        align-items: center;
         margin-right: 0;
         z-index: 10000;
         position: relative;
-        width: 100%; /* Full width */
+        flex: 1; /* Take remaining space */
+        max-width: 400px; /* Limit maximum width */
     }
     
     .nav-right {
         flex-direction: row; /* Make buttons side by side on mobile */
-        gap: 8px;
+        gap: 6px;
         align-items: center;
-        justify-content: space-between; /* Distribute buttons evenly */
-        width: 100%; /* Full width */
+        justify-content: flex-end; /* Align to right */
+        flex-shrink: 0; /* Don't shrink buttons */
     }
     
-    /* Move search bar ABOVE buttons on mobile */
+    /* Search bar styling */
     .nav-middle {
-        order: 1; /* Put search bar first */
-        width: 100%; /* Full width container */
-        display: flex;
-        justify-content: flex-end; /* Align search box to the right */
-        padding-right: 0;
-        margin-right: 0;
+        flex: 1; /* Take available space */
+        max-width: 200px; /* Limit search bar width */
+        margin-right: 8px;
     }
-    
-    .nav-right {
-        order: 2; /* Put buttons second (below search bar) */
-    }
-         /* Sign In button mobile styling - EXACT SAME SIZE AS Start Free */
+         /* Sign In button mobile styling - COMPACT SIZE */
          .sign-in-btn {
-         padding: 6px 12px !important; /* EXACT SAME padding for both buttons */
-         font-size: 11px !important;
+         padding: 4px 8px !important; /* Smaller padding */
+         font-size: 10px !important; /* Smaller font */
          border-radius: 4px; /* Rectangular shape */
          white-space: nowrap;
-         min-width: 70px; /* Same min-width */
+         min-width: 50px; /* Smaller min-width */
          text-align: center;
          font-weight: 500;
          transition: all 0.2s ease;
          margin: 0 !important;
          display: inline-flex !important;
-         flex: 1; /* Equal flex for same width */
+         flex-shrink: 0; /* Don't shrink */
          justify-content: center;
          align-items: center;
          /* Pillow shape styling */
          border: 1px solid #065fd4 !important;
-         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+         box-shadow: 0 1px 4px rgba(0,0,0,0.1);
          overflow: hidden;
          text-overflow: ellipsis;
          z-index: 10001;
          position: relative;
          background-color: #065fd4 !important;
          color: white !important;
-         height: 32px; /* Fixed height for consistency */
+         height: 28px; /* Smaller height */
      }
      
-     /* Start Free button mobile styling - EXACT SAME SIZE AS Sign In */
+     /* Start Free button mobile styling - COMPACT SIZE */
      .nav-right .subscribe-btn {
-         padding: 6px 12px !important; /* EXACT SAME padding as Sign In button */
-         font-size: 11px !important;
+         padding: 4px 8px !important; /* Smaller padding */
+         font-size: 10px !important; /* Smaller font */
          border-radius: 4px; /* Rectangular shape */
          white-space: nowrap;
-         min-width: 70px; /* Same min-width */
+         min-width: 50px; /* Smaller min-width */
          text-align: center;
          font-weight: 500;
          transition: all 0.2s ease;
          margin: 0 !important;
          display: inline-flex !important;
-         flex: 1; /* Equal flex for same width */
+         flex-shrink: 0; /* Don't shrink */
          justify-content: center;
          align-items: center;
          /* Pillow shape styling */
          border: 1px solid #cc0000 !important;
-         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+         box-shadow: 0 1px 4px rgba(0,0,0,0.1);
          overflow: hidden;
          text-overflow: ellipsis;
          z-index: 10001;
          position: relative;
          background: #cc0000 !important;
          color: white !important;
-         height: 32px; /* Fixed height for consistency */
+         height: 28px; /* Smaller height */
      }
      
      /* Override removed - complete styling now in rule above */
@@ -282,40 +276,47 @@ nav{
 
 /* Extra small mobile devices */
 @media (max-width: 480px) {
-    /* Sign In button small mobile styling - SAME SIZE AS Start Free */
+    /* Sign In button small mobile styling - COMPACT SIZE */
     .sign-in-btn {
-        padding: 6px 7px; /* SAME padding for both buttons */
-        font-size: 10px;
+        padding: 3px 6px; /* Even smaller padding */
+        font-size: 9px; /* Smaller font */
         max-width: none; /* Remove max-width for side-by-side layout */
-        min-width: 60px; /* Reduced min-width for small screens */
+        min-width: 45px; /* Smaller min-width for small screens */
         display: inline-flex; /* Ensure side-by-side layout on small screens */
         border: 1px solid #065fd4;
         background-color: #065fd4;
         color: white;
         z-index: 10001;
         position: relative;
+        height: 24px; /* Smaller height */
     }
     
-    /* Start Free button small mobile styling - SAME SIZE AS Sign In */
+    /* Start Free button small mobile styling - COMPACT SIZE */
     .nav-right .subscribe-btn {
-        padding: 6px 7px; /* SAME padding as Sign In button */
-        font-size: 10px;
+        padding: 3px 6px; /* Even smaller padding */
+        font-size: 9px; /* Smaller font */
         max-width: none; /* Remove max-width for side-by-side layout */
-        min-width: 60px; /* Reduced min-width for small screens */
+        min-width: 45px; /* Smaller min-width for small screens */
         display: inline-flex; /* Ensure side-by-side layout on small screens */
         border: 1px solid #cc0000;
         background: #cc0000;
         color: white;
         z-index: 10001;
         position: relative;
+        height: 24px; /* Smaller height */
     }
     
     .nav-center-right {
         margin-right: 0; /* Remove right margin to align with purple bar like hamburger menu */
+        max-width: 300px; /* Further limit width on small screens */
     }
     
     .nav-right {
-        min-width: 110px;
+        min-width: 90px; /* Smaller min-width */
+    }
+    
+    .nav-middle {
+        max-width: 150px; /* Smaller search bar on small screens */
     }
 }
 

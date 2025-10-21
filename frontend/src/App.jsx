@@ -34,10 +34,23 @@ const App = () => {
   const [category, setCategory] = useState(0);
   const [currentProfileTier, setCurrentProfileTier] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [isMobile, setIsMobile] = useState(false);
   const resetCategory = () => setSelectedCategory('All');
   const location = useLocation();
   const navigate = useNavigate();
   
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 900);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Handle Google OAuth redirect
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -138,7 +151,7 @@ const App = () => {
         <Sidebar sidebar={sidebar} category={category} setCategory={setCategory} />
         )}
         {/* Mobile backdrop for sidebar */}
-        {sidebar && window.innerWidth <= 900 && (
+        {sidebar && isMobile && (
           <div 
             className="mobile-sidebar-backdrop"
             onClick={() => setSidebar(false)}

@@ -30,7 +30,7 @@ const Search = () => {
         setResults([]);
 
         try {
-            const response = await fetch(`${API_CONFIG.ENDPOINTS.BASE_URL}/api/search/creators?q=${encodeURIComponent(searchQuery.trim())}`);
+            const response = await fetch(`${API_CONFIG.BASE_URL}/api/search/creators?q=${encodeURIComponent(searchQuery.trim())}`);
             
             if (!response.ok) {
                 throw new Error(`Search failed: ${response.status}`);
