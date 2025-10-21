@@ -175,18 +175,24 @@
 
   .channel-name {
     font-size: 24px;
+    line-height: 1.1;
+    margin-bottom: 2px;
   }
 
   .channel-username {
     font-size: 14px;
+    line-height: 1.1;
+    margin-bottom: 2px;
   }
 
   .channel-bio {
     font-size: 13px;
+    line-height: 1.1;
   }
 
   .channel-stats {
     font-size: 13px;
+    line-height: 1.1;
   }
 
   .channel-details {
