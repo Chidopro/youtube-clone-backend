@@ -153,7 +153,7 @@ nav{
 @media (max-width: 768px){
     /* Reduce navbar vertical padding on mobile */
     nav {
-        padding: 4px 2% !important; /* Reduced top and bottom padding to 4px for slimmer navbar */
+        padding: 2px 2% !important; /* Further reduced to 2px for even slimmer navbar */
     }
     
     .nav-left {
@@ -183,23 +183,30 @@ nav{
     .nav-middle .mic-icon{
         display: none;
     }
+    .nav-middle .search-box {
+        width: 100%; /* Make search box full width of container */
+        margin-right: 0 !important;
+        padding: 6px 10px !important; /* Match button height */
+    }
     .nav-middle .search-box input{
-        width: 100px;
+        width: 100%; /* Full width input */
      }
     .nav-center-right {
         flex-direction: column;
-        gap: 2px; /* Further reduced for slimmer navbar */
-        align-items: center;
-        margin-right: 0; /* Remove right margin to align with purple bar like hamburger menu */
-        z-index: 10000; /* Below hamburger menu icon */
+        gap: 2px; /* Minimal gap */
+        align-items: stretch; /* Stretch items to same width */
+        margin-right: 0;
+        z-index: 10000;
         position: relative;
+        width: 100%; /* Full width */
     }
     
     .nav-right {
         flex-direction: row; /* Make buttons side by side on mobile */
         gap: 8px;
         align-items: center;
-        min-width: auto; /* Remove fixed width to allow side-by-side layout */
+        justify-content: space-between; /* Distribute buttons evenly */
+        width: 100%; /* Full width */
     }
     
     /* Move search bar ABOVE buttons on mobile */
@@ -208,61 +215,65 @@ nav{
         width: 100%; /* Full width container */
         display: flex;
         justify-content: flex-end; /* Align search box to the right */
-        padding-right: 0; /* Remove right padding */
-        margin-right: 0; /* Remove right margin */
+        padding-right: 0;
+        margin-right: 0;
     }
     
     .nav-right {
         order: 2; /* Put buttons second (below search bar) */
     }
-         /* Sign In button mobile styling - SAME SIZE AS Start Free */
+         /* Sign In button mobile styling - EXACT SAME SIZE AS Start Free */
          .sign-in-btn {
-         padding: 6px 9px; /* SAME padding for both buttons */
-         font-size: 11px;
+         padding: 6px 12px !important; /* EXACT SAME padding for both buttons */
+         font-size: 11px !important;
          border-radius: 4px; /* Rectangular shape */
          white-space: nowrap;
-         min-width: 70px; /* Reduced min-width to fit side by side */
+         min-width: 70px; /* Same min-width */
          text-align: center;
          font-weight: 500;
          transition: all 0.2s ease;
-         margin: 0;
-         display: inline-flex; /* Change to inline-flex for side-by-side layout */
-         width: auto; /* Remove fixed width */
-         max-width: none; /* Remove max-width constraint */
+         margin: 0 !important;
+         display: inline-flex !important;
+         flex: 1; /* Equal flex for same width */
+         justify-content: center;
+         align-items: center;
          /* Pillow shape styling */
-         border: 1px solid #065fd4;
+         border: 1px solid #065fd4 !important;
          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
          overflow: hidden;
          text-overflow: ellipsis;
          z-index: 10001;
          position: relative;
-         background-color: #065fd4;
-         color: white;
+         background-color: #065fd4 !important;
+         color: white !important;
+         height: 32px; /* Fixed height for consistency */
      }
      
-     /* Start Free button mobile styling - SAME SIZE AS Sign In */
+     /* Start Free button mobile styling - EXACT SAME SIZE AS Sign In */
      .nav-right .subscribe-btn {
-         padding: 6px 9px; /* SAME padding as Sign In button */
-         font-size: 11px;
+         padding: 6px 12px !important; /* EXACT SAME padding as Sign In button */
+         font-size: 11px !important;
          border-radius: 4px; /* Rectangular shape */
          white-space: nowrap;
-         min-width: 70px; /* Reduced min-width to fit side by side */
+         min-width: 70px; /* Same min-width */
          text-align: center;
          font-weight: 500;
          transition: all 0.2s ease;
-         margin: 0;
-         display: inline-flex; /* Change to inline-flex for side-by-side layout */
-         width: auto; /* Remove fixed width */
-         max-width: none; /* Remove max-width constraint */
+         margin: 0 !important;
+         display: inline-flex !important;
+         flex: 1; /* Equal flex for same width */
+         justify-content: center;
+         align-items: center;
          /* Pillow shape styling */
-         border: 1px solid #cc0000;
+         border: 1px solid #cc0000 !important;
          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
          overflow: hidden;
          text-overflow: ellipsis;
          z-index: 10001;
          position: relative;
-         background: #cc0000;
-         color: white;
+         background: #cc0000 !important;
+         color: white !important;
+         height: 32px; /* Fixed height for consistency */
      }
      
      /* Override removed - complete styling now in rule above */
