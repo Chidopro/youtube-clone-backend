@@ -190,8 +190,11 @@
   }
 
   .channel-details {
-    align-self: flex-end;
-    margin-bottom: 0;
+    align-self: flex-end !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    position: relative;
+    top: 0;
   }
 }
 
