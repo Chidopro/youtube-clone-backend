@@ -140,10 +140,20 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-secret-key-change-in-produc
 
 # Session / cookie settings for cross-site auth (Netlify -> Fly.io)
 from datetime import timedelta
+
+def cookie_domain_for_request():
+    host = (request.host or "").lower()
+    if host.endswith("screenmerch.com"):
+        return "screenmerch.com"       # cookie will be sent to screenmerch.com
+    if host.endswith("screenmerch.fly.dev"):
+        return "screenmerch.fly.dev"   # direct hits (dev/tests)
+    return None                        # fallback: host-only cookie
+
 app.config.update(
     SESSION_COOKIE_NAME="sm_session",
-    SESSION_COOKIE_SAMESITE="None",   # <- allow third-party
-    SESSION_COOKIE_SECURE=True,       # <- required when SameSite=None
+    SESSION_COOKIE_DOMAIN=None,  # we'll override via response if needed
+    SESSION_COOKIE_SAMESITE="Lax",  # same-site via proxy
+    SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
     PERMANENT_SESSION_LIFETIME=timedelta(days=7)
 )
@@ -3757,6 +3767,18 @@ def auth_login():
                             "role": user.get('role', 'customer')
                         }
                     })
+                    
+                    # Set cookie with dynamic domain
+                    domain = cookie_domain_for_request()
+                    response.set_cookie(
+                        "sm_auth", user.get('id'),
+                        domain=domain,
+                        path="/",
+                        secure=True,
+                        httponly=True,
+                        samesite="Lax"
+                    )
+                    
                     response.headers.add('Access-Control-Allow-Origin', '*')
                     return response
                 else:
@@ -3829,7 +3851,7 @@ def auth_signup():
             
             if result.data:
                 logger.info(f"New user {email} created successfully")
-                return jsonify({
+                response = jsonify({
                     "success": True, 
                     "message": "Account created successfully!",
                     "user": {
@@ -3839,6 +3861,18 @@ def auth_signup():
                         "role": result.data[0].get('role', 'customer')
                     }
                 })
+                
+                # Set cookie with dynamic domain
+                domain = cookie_domain_for_request()
+                response.set_cookie(
+                    "sm_auth", result.data[0].get('id'),
+                    domain=domain,
+                    path="/",
+                    secure=True,
+                    httponly=True,
+                    samesite="Lax"
+                )
+                
                 response.headers.add('Access-Control-Allow-Origin', '*')
                 return response
             else:
