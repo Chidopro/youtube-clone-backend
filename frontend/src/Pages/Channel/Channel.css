@@ -188,5 +188,10 @@
   .channel-stats {
     font-size: 13px;
   }
+
+  .channel-details {
+    align-self: flex-end;
+    margin-bottom: 0;
+  }
 }
 
