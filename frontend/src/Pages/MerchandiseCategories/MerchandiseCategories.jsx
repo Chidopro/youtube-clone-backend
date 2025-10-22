@@ -1,27 +1,33 @@
-import React, { useState } from 'react';
+// frontend/src/Pages/Products/MerchandiseCategories.jsx
+import React, { useRef, useState } from 'react';
 import './MerchandiseCategories.css';
 import '../Home/Home.css';
 import { API_CONFIG } from '../../config/apiConfig';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 
 const MerchandiseCategories = ({ sidebar }) => {
-  console.log('🎯 MerchandiseCategories component rendering - sidebar prop:', sidebar);
+  // Enable debug logs via ?debug=1
+  if (new URLSearchParams(location.search).has('debug')) {
+    window.__DEBUG__ = true;
+  }
+
   const [isCreating, setIsCreating] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  
-  // Get data from localStorage with validation
+  const creatingRef = useRef(false); // prevents double taps
+
+  // Read pending merch data from localStorage (safely)
   const pendingMerchData = (() => {
     try {
-      const data = localStorage.getItem('pending_merch_data');
-      return data ? JSON.parse(data) : {};
+      const raw = localStorage.getItem('pending_merch_data');
+      return raw ? JSON.parse(raw) : {};
     } catch (e) {
-      console.warn('Invalid merch data in localStorage, clearing...');
+      console.warn('Invalid pending_merch_data. Clearing…');
       localStorage.removeItem('pending_merch_data');
       return {};
     }
   })();
-  
+
   const screenshots = pendingMerchData.screenshots || [];
   const thumbnail = pendingMerchData.thumbnail || '';
   const videoData = {
@@ -29,11 +35,14 @@ const MerchandiseCategories = ({ sidebar }) => {
     channelTitle: pendingMerchData.creatorName || 'Unknown Creator',
     url: pendingMerchData.videoUrl || ''
   };
-  
-  console.log('📸 Loaded from localStorage - Screenshots count:', screenshots.length);
-  console.log('📸 Thumbnail present:', !!thumbnail);
 
-  // Categories with Stickers name update - FORCE REBUILD 2025-10-07
+  if (window.__DEBUG__) {
+    console.log('🎯 MerchandiseCategories render - sidebar:', !!sidebar);
+    console.log('📸 screenshots:', screenshots.length, 'thumbnail?', !!thumbnail);
+    console.log('🔧 API_CONFIG.BASE_URL:', API_CONFIG?.BASE_URL);
+  }
+
+  // Category definitions (same UI labels/emojis)
   const categories = [
     { name: "Women's", emoji: "👩", category: "womens" },
     { name: "Men's", emoji: "👨", category: "mens" },
@@ -48,163 +57,152 @@ const MerchandiseCategories = ({ sidebar }) => {
   ];
 
   const handleCategoryClick = async (category) => {
-    console.log('🎯 Category selected:', category);
-    
-    // Check authentication first
+    if (window.__DEBUG__) console.log('🖱️ Category selected:', category);
+
+    if (creatingRef.current || isCreating) {
+      if (window.__DEBUG__) console.log('⛔ Ignored: already creating');
+      return;
+    }
+
     const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
-    
     if (!isAuthenticated) {
-      // Store the selected category and show auth modal
       setSelectedCategory(category);
       setShowAuthModal(true);
       return;
     }
-    
-    // User is authenticated, proceed with product creation
+
     await createProduct(category);
   };
 
   const createProduct = async (category) => {
     setIsCreating(true);
-    
+    creatingRef.current = true;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000); // 20s safety
+
     try {
-      // Get authentication state from localStorage
-      const isAuthenticated = localStorage.getItem('user_authenticated');
-      const userEmail = localStorage.getItem('user_email');
-      
-      // Get video information
+      const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+      const userEmail = localStorage.getItem('user_email') || '';
       const videoUrl = document.referrer || window.location.origin;
       const videoTitle = videoData?.title || 'Unknown Video';
       const creatorName = videoData?.channelTitle || 'Unknown Creator';
-      
-      console.log('🔍 Creating product with category:', category);
-      console.log('🔍 Video data:', { videoTitle, creatorName, videoUrl });
-      
-      const requestData = {
+
+      const payload = {
         thumbnail,
-        videoUrl: videoUrl,
-        videoTitle: videoTitle,
-        creatorName: creatorName,
+        videoUrl,
+        videoTitle,
+        creatorName,
         screenshots: screenshots.slice(0, 6),
-        isAuthenticated: isAuthenticated === 'true',
-        userEmail: userEmail || '',
-        category: category // Add the selected category
+        isAuthenticated,
+        userEmail,
+        category
       };
-      
-      console.log('Request data:', requestData);
-      
-      console.log('🔍 Making API call to:', `${API_CONFIG.BASE_URL}/api/create-product`);
-      console.log('🔍 Request data:', requestData);
-      
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/create-product`, {
+
+      const endpoint = `${API_CONFIG.BASE_URL}/api/create-product`;
+      if (window.__DEBUG__) {
+        console.log('🚀 POST', endpoint);
+        console.log('📦 payload:', payload);
+      }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData)
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify(payload)
       });
 
-      console.log('🔍 Response status:', response.status);
-      console.log('🔍 Response ok:', response.ok);
-      console.log('🔍 Response headers:', response.headers);
+      if (window.__DEBUG__) console.log('🔍 status:', res.status, 'ok:', res.ok);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Response not ok:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}, text: ${errorText}`);
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '(no body)');
+        throw new Error(`HTTP ${res.status}: ${txt}`);
       }
 
-      const result = await response.json();
-      console.log('✅ Product creation result:', result);
+      const result = await res.json();
+      if (window.__DEBUG__) console.log('✅ result:', result);
 
-      if (result.success) {
-        // Redirect to the product page
-        window.location.href = result.product_url;
+      if (result?.success && result?.product_url) {
+        // Hard redirect (SPA hydrates on product page)
+        window.location.assign(result.product_url);
       } else {
-        console.error('❌ Product creation failed:', result.error);
-        alert('Failed to create product. Please try again.');
+        throw new Error(result?.error || 'Unknown create-product failure');
       }
-    } catch (error) {
-      console.error('❌ Error creating product:', error);
+    } catch (err) {
+      console.error('❌ createProduct error:', err);
       alert('Error creating product. Please try again.');
     } finally {
+      clearTimeout(timeout);
       setIsCreating(false);
+      creatingRef.current = false;
     }
   };
 
-  // Handle successful authentication
   const handleAuthSuccess = async () => {
+    if (window.__DEBUG__) console.log('🔓 Auth success');
     if (selectedCategory) {
-      // User authenticated, proceed with creating product for selected category
       await createProduct(selectedCategory);
       setSelectedCategory(null);
     }
   };
 
   return (
-    <>
-      <div className={`container ${sidebar ? "" : " large-container"}`}>
-        {/* User Flow Section - Step 3 Only */}
-        <div className="user-flow-section">
-          <div className="flow-steps">
-            <div className="flow-step">
-              <div className="step-number">3</div>
-              <div className="step-content">
-                <h3>Make Merchandise</h3>
-                <p>Create custom products with your screenshot</p>
-              </div>
+    <div className={`container ${sidebar ? "" : " large-container"}`}>
+      <div className="user-flow-section">
+        <div className="flow-steps">
+          <div className="flow-step">
+            <div className="step-number">3</div>
+            <div className="step-content">
+              <h3>Make Merchandise</h3>
+              <p>Create custom products with your screenshot</p>
             </div>
           </div>
         </div>
-
-        <div className="merchandise-categories">
-        <div className="categories-container">
-          <h1 className="categories-title">Choose a Product Category</h1>
-          <p className="categories-subtitle">Select a category to browse products for your custom merchandise</p>
-      
-        <div className="categories-grid">
-          {categories.map((cat, index) => (
-            <div
-              key={index}
-              className={`category-box ${isCreating ? 'disabled' : ''}`}
-              onClick={(e) => {
-                console.log('🖱️ Category clicked:', cat.name, cat.category);
-                console.log('🖱️ Event:', e);
-                console.log('🖱️ isCreating:', isCreating);
-                if (!isCreating) {
-                  console.log('🖱️ Calling handleCategoryClick');
-                  handleCategoryClick(cat.category);
-                } else {
-                  console.log('🖱️ Click ignored - isCreating is true');
-                }
-              }}
-              onMouseDown={() => console.log('🖱️ MOUSE DOWN on:', cat.name)}
-              onMouseUp={() => console.log('🖱️ MOUSE UP on:', cat.name)}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="category-emoji">{cat.emoji}</div>
-              <div className="category-name">{cat.name}</div>
-              {isCreating && (
-                <div className="loading-overlay">
-                  Creating...
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        
-        <div className="back-button-container">
-          <button 
-            className="back-button"
-            onClick={() => window.history.back()}
-          >
-            ← Back to Video
-          </button>
-        </div>
       </div>
 
-        {/* Authentication Modal */}
-        <AuthModal 
+      <div className="merchandise-categories">
+        <div className="categories-container">
+          <h1 className="categories-title">Choose a Product Category</h1>
+          <p className="categories-subtitle">
+            Select a category to browse products for your custom merchandise
+          </p>
+
+          <div className="categories-grid">
+            {categories.map((cat, i) => (
+              <button
+                type="button"
+                key={cat.category || i}
+                className={`category-box ${isCreating ? 'disabled' : ''}`}
+                aria-label={`Open ${cat.name}`}
+                onClick={() => handleCategoryClick(cat.category)}
+                onTouchStart={() =>
+                  window.__DEBUG__ && console.log('👆 touchstart:', cat.category)
+                }
+                disabled={isCreating}
+              >
+                <div className="category-emoji" aria-hidden="true">{cat.emoji}</div>
+                <div className="category-name">{cat.name}</div>
+                {isCreating && (
+                  <div className="loading-overlay" aria-hidden="true">
+                    Creating...
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="back-button-container">
+            <button
+              type="button"
+              className="back-button"
+              onClick={() => window.history.back()}
+            >
+              ← Back to Video
+            </button>
+          </div>
+        </div>
+
+        <AuthModal
           isOpen={showAuthModal}
           onClose={() => {
             setShowAuthModal(false);
@@ -212,9 +210,8 @@ const MerchandiseCategories = ({ sidebar }) => {
           }}
           onSuccess={handleAuthSuccess}
         />
-        </div>
       </div>
-    </>
+    </div>
   );
 };
 

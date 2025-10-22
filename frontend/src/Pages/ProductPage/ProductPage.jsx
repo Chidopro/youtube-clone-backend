@@ -51,7 +51,19 @@ const ProductPage = ({ sidebar }) => {
     // Update URL with new category
     const newUrl = `/product/${productId}?category=${newCategory}&authenticated=${authenticated}&email=${email}`;
     console.log('🔄 Navigating to:', newUrl);
-    navigate(newUrl);
+    
+    // Add alert for mobile debugging
+    alert(`Category clicked: ${newCategory}\nNavigating to: ${newUrl}`);
+    
+    // Try different navigation methods
+    try {
+      navigate(newUrl);
+      console.log('✅ Navigate called successfully');
+    } catch (error) {
+      console.error('❌ Navigate failed:', error);
+      // Fallback to window.location
+      window.location.href = newUrl;
+    }
   };
 
   const getSelectedScreenshotUrl = () => {

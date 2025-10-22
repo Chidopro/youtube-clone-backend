@@ -1521,14 +1521,15 @@ def create_product():
         category = data.get("category", "all")
         
         # Build product URL with authentication parameters and category - redirect to frontend
-        product_url = f"https://screenmerch.com/product/{product_id}?category={category}"
+        # Return merchandise categories page instead of specific product page
+        merchandise_url = f"https://screenmerch.com/merchandise"
         if is_authenticated and user_email:
-            product_url += f"&authenticated=true&email={user_email}"
+            merchandise_url += f"?authenticated=true&email={user_email}"
         
         return jsonify({
             "success": True,
             "product_id": product_id,
-            "product_url": product_url
+            "product_url": merchandise_url
         })
     except Exception as e:
         logger.error(f"❌ Error in create-product: {str(e)}")

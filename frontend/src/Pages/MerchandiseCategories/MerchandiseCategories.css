@@ -140,7 +140,10 @@
   margin-bottom: 3rem;
 }
 
+/* Button reset + mobile tap hardening (keeps same visuals) */
 .category-box {
+  appearance: none;
+  -webkit-appearance: none;
   background: white;
   border: 1px solid #e0e0e0;
   border-radius: 12px;
@@ -156,6 +159,16 @@
   justify-content: center;
   align-items: center;
   text-align: center;
+
+  /* mobile tap niceties */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  outline: none;
+}
+
+.category-box:focus-visible {
+  outline: 2px solid rgba(102, 126, 234, 0.6);
+  outline-offset: 2px;
 }
 
 .category-box.disabled {
@@ -176,7 +189,7 @@
     transform: none;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   }
-  
+
   .category-box:active {
     transform: scale(0.98);
     box-shadow: 0 4px 16px rgba(147, 51, 234, 0.4);
@@ -214,6 +227,9 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  outline: none;
 }
 
 .back-button:hover {
@@ -224,10 +240,7 @@
 
 .loading-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0; /* shorthand for top/right/bottom/left:0 */
   background: rgba(147, 51, 234, 0.8);
   backdrop-filter: blur(5px);
   display: flex;
@@ -238,6 +251,17 @@
   font-size: 1.1rem;
   z-index: 10;
   border-radius: 24px;
+
+  /* let tap/click events still resolve state transitions */
+  pointer-events: none;
+}
+
+/* If any backdrop/modal exists elsewhere, make sure hidden states never capture taps */
+.backdrop--hidden,
+.modal-backdrop--hidden,
+.sidebar-backdrop--hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Responsive adjustments */
@@ -249,7 +273,7 @@
     max-width: 100% !important;
     box-sizing: border-box !important;
   }
-  
+
   /* Mobile user flow section */
   .user-flow-section {
     padding: 10px 12px;
@@ -262,7 +286,7 @@
     overflow-x: hidden !important;
     box-sizing: border-box !important;
   }
-  
+
   .user-flow-section .flow-steps {
     flex-direction: row !important;
     gap: 8px;
@@ -273,11 +297,11 @@
     overflow-x: hidden !important;
     box-sizing: border-box !important;
   }
-  
+
   .user-flow-section .flow-arrow {
     display: none !important;
   }
-  
+
   .user-flow-section .flow-step {
     min-width: auto;
     flex-direction: column;
@@ -286,25 +310,25 @@
     max-width: none;
     align-items: center;
   }
-  
+
   .user-flow-section .step-number {
     width: 32px !important;
     height: 32px !important;
     font-size: 1rem !important;
     margin-bottom: 4px !important;
   }
-  
+
   .user-flow-section .step-content h3 {
     font-size: 0.8rem !important;
     margin: 0 !important;
     line-height: 1.2;
     text-align: center;
   }
-  
+
   .user-flow-section .step-content p {
     display: none !important;
   }
-  
+
   .merchandise-categories {
     padding: 1rem;
     overflow-x: hidden !important;
@@ -331,22 +355,22 @@
   .screenshot-grid {
     gap: 8px;
   }
-  
+
   .categories-container {
     overflow-x: hidden !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
   }
-  
+
   .categories-title {
     font-size: 2rem;
   }
-  
+
   .categories-subtitle {
     font-size: 1rem;
   }
-  
+
   .categories-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 0.75rem !important;
@@ -356,7 +380,7 @@
     box-sizing: border-box !important;
     display: grid !important;
   }
-  
+
   .category-box {
     padding: 1rem 0.75rem;
     min-height: 100px;
@@ -364,23 +388,23 @@
     box-sizing: border-box !important;
     overflow-x: hidden !important;
   }
-  
+
   .category-emoji {
     font-size: 1.5rem;
     margin-bottom: 0.25rem;
   }
-  
+
   .category-name {
     font-size: 0.8rem;
   }
-  
+
   .back-button {
     padding: 10px 20px;
     font-size: 0.9rem;
     border-radius: 8px;
     width: auto;
   }
-  
+
   .loading-overlay {
     font-size: 0.9rem;
     border-radius: 12px;
@@ -392,31 +416,31 @@
   .merchandise-categories {
     padding: 0.5rem;
   }
-  
+
   .categories-title {
     font-size: 1.5rem;
   }
-  
+
   .categories-subtitle {
     font-size: 0.9rem;
   }
-  
+
   .categories-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 0.5rem !important;
     display: grid !important;
   }
-  
+
   .category-box {
     padding: 1rem 0.75rem;
     min-height: 100px;
   }
-  
+
   .category-emoji {
     font-size: 1.5rem;
     margin-bottom: 0.25rem;
   }
-  
+
   .category-name {
     font-size: 0.8rem;
   }
