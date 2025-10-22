@@ -3,6 +3,11 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
 import './Login.css';
 
+const BACKEND_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
+  (typeof process !== 'undefined' && process.env && process.env.REACT_APP_BACKEND_URL) ||
+  "https://screenmerch.fly.dev"; // final fallback
+
 const Login = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -14,14 +19,14 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState(null); // {type: 'error'|'success', text: string}
 
-  // Auto-switch to signup mode if accessed via /signup route
+  // Force signup view if routed to /signup
   useEffect(() => {
     if (location.pathname === '/signup') {
       setIsLoginMode(false);
     }
   }, [location.pathname]);
 
-  // Optional: show a message if redirected here after a protected route
+  // Optional notice if a protected route bounced the user here
   useEffect(() => {
     const status = searchParams.get('status');
     if (status === 'session_expired') {
@@ -29,51 +34,13 @@ const Login = () => {
     }
   }, [searchParams]);
 
-  // Decide API URL:
-  // - On localhost/dev → use API_CONFIG.BASE_URL (your Fly/localhost backend)
-  // - Everywhere else (Netlify prod or preview) → use RELATIVE path so Netlify proxy handles it (no CORS).
-  const getApiUrl = (endpoint) => {
-    const host =
-      (typeof window !== 'undefined' && window.location && window.location.hostname) || '';
-
-    const isLocalHost =
-      host === 'localhost' ||
-      host === '127.0.0.1' ||
-      host.endsWith('.local') ||
-      // common LAN dev IPs:
-      host.startsWith('10.') ||
-      host.startsWith('192.168.') ||
-      host.startsWith('172.16.') ||
-      host.startsWith('172.17.') ||
-      host.startsWith('172.18.') ||
-      host.startsWith('172.19.') ||
-      host.startsWith('172.20.') ||
-      host.startsWith('172.21.') ||
-      host.startsWith('172.22.') ||
-      host.startsWith('172.23.') ||
-      host.startsWith('172.24.') ||
-      host.startsWith('172.25.') ||
-      host.startsWith('172.26.') ||
-      host.startsWith('172.27.') ||
-      host.startsWith('172.28.') ||
-      host.startsWith('172.29.') ||
-      host.startsWith('172.30.') ||
-      host.startsWith('172.31.');
-
-    // If we are on localhost/dev, use absolute BASE_URL.
-    if (isLocalHost) {
-      return `${API_CONFIG.BASE_URL}${endpoint}`;
-    }
-
-    // Otherwise (Netlify prod or preview), ALWAYS use relative to trigger Netlify proxy.
-    return endpoint; // e.g. "/api/auth/login"
-  };
+  // Always return absolute API URL (no more relative proxy assumption)
+  const apiUrl = (endpoint) => `${BACKEND_URL}${endpoint}`;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
 
-    // Very basic validation
     if (!email.trim()) {
       setMessage({ type: 'error', text: 'Please enter your email.' });
       return;
@@ -84,7 +51,7 @@ const Login = () => {
     }
 
     const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
-    const url = getApiUrl(endpoint);
+    const url = apiUrl(endpoint);
 
     try {
       setIsLoading(true);
@@ -92,75 +59,76 @@ const Login = () => {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        // If you later switch to cookie sessions, add:
-        // credentials: 'include'
+        // If you move to cookie sessions, also add: credentials: 'include'
         body: JSON.stringify({
           email: email.trim(),
           password: password
         })
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      // If backend ever sends HTML (like a 404 page), catch it early
+      const contentType = response.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server error response:', errorText);
-
-        try {
-          const errorData = JSON.parse(errorText);
-          if (response.status === 409 && errorData.error?.includes('already exists')) {
-            throw new Error('This email is already registered. Please sign in instead.');
-          } else if (errorData.error) {
-            throw new Error(errorData.error);
-          } else {
-            throw new Error(`Server error: ${response.status} - ${errorText}`);
+        const raw = await response.text();
+        if (isJson) {
+          let data;
+          try {
+            data = JSON.parse(raw);
+          } catch (_) {
+            throw new Error(`Server error ${response.status}`);
           }
-        } catch {
-          throw new Error(`Server error: ${response.status} - ${errorText}`);
+          const msg =
+            (response.status === 409 && data?.error?.includes('already exists'))
+              ? 'This email is already registered. Please sign in instead.'
+              : (data?.error || `Server error: ${response.status}`);
+          throw new Error(msg);
+        } else {
+          // Most likely the 404 HTML page from the frontend host
+          throw new Error(`Could not reach auth API (HTTP ${response.status}). Check BACKEND_URL.`);
         }
       }
 
-      const data = await response.json();
-      console.log('Auth success payload:', data);
+      // OK path
+      if (!isJson) {
+        // Succeeds but not JSON? Still treat as an error to avoid dumping HTML.
+        throw new Error('Unexpected response from server (not JSON).');
+      }
 
-      if (data?.token) {
-        localStorage.setItem('auth_token', data.token);
-      }
-      if (data?.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      }
+      const data = await response.json();
+
+      if (data?.token) localStorage.setItem('auth_token', data.token);
+      if (data?.user) localStorage.setItem('user', JSON.stringify(data.user));
 
       const returnTo = searchParams.get('returnTo');
       if (returnTo === 'subscription-success') {
         localStorage.setItem('justLoggedIn', 'true');
-        console.log('🏷️ Set justLoggedIn flag for subscription success page');
       }
 
-      setMessage({ type: 'success', text: data.message || 'Login successful! Redirecting...' });
+      setMessage({ type: 'success', text: data.message || 'Login successful! Redirecting…' });
 
       if (!isLoginMode) {
         const pendingPaypalEmail = localStorage.getItem('pending_paypal_email');
         const pendingTaxId = localStorage.getItem('pending_tax_id');
-
-        if (pendingPaypalEmail || pendingTaxId) {
-          setTimeout(() => navigate('/subscription-success'), 1200);
-        } else {
-          setTimeout(() => navigate('/payment-setup?ref=new_user'), 1200);
-        }
+        setTimeout(() => {
+          if (pendingPaypalEmail || pendingTaxId) {
+            navigate('/subscription-success');
+          } else {
+            navigate('/payment-setup?ref=new_user');
+          }
+        }, 1000);
       } else {
-        if (returnTo === 'merch') {
-          setTimeout(() => navigate('/category-selection'), 1000);
-        } else if (returnTo === 'subscription-success') {
-          setTimeout(() => navigate('/subscription-success'), 1000);
-        } else {
-          setTimeout(() => navigate('/dashboard'), 800);
-        }
+        setTimeout(() => {
+          if (returnTo === 'merch') navigate('/category-selection');
+          else if (returnTo === 'subscription-success') navigate('/subscription-success');
+          else navigate('/dashboard');
+        }, 700);
       }
     } catch (err) {
-      console.error('Authentication error:', err);
       setMessage({ type: 'error', text: err?.message || 'Authentication error: Load failed' });
     } finally {
       setIsLoading(false);
@@ -173,10 +141,8 @@ const Login = () => {
   };
 
   const handleGoogleSignIn = () => {
-    // Always use relative path here too, so Netlify proxies it.
-    const endpoint = '/api/auth/google/login';
-    const url = getApiUrl(endpoint);
-    window.location.href = url;
+    // Open provider auth on API server (absolute URL)
+    window.location.href = `${BACKEND_URL}/api/auth/google/login`;
   };
 
   return (
@@ -258,12 +224,7 @@ const Login = () => {
             className="google-btn"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
             <span role="img" aria-label="google">🔍</span>
             Sign in with Google
