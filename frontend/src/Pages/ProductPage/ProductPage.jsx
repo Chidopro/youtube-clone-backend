@@ -42,8 +42,15 @@ const ProductPage = ({ sidebar }) => {
   ];
 
   const handleCategoryClick = (newCategory) => {
+    console.log('🔄 Category clicked:', newCategory);
+    console.log('🔄 Current category:', category);
+    console.log('🔄 Product ID:', productId);
+    console.log('🔄 Authenticated:', authenticated);
+    console.log('🔄 Email:', email);
+    
     // Update URL with new category
     const newUrl = `/product/${productId}?category=${newCategory}&authenticated=${authenticated}&email=${email}`;
+    console.log('🔄 Navigating to:', newUrl);
     navigate(newUrl);
   };
 
@@ -101,6 +108,8 @@ const ProductPage = ({ sidebar }) => {
   }, [productId]);
 
   useEffect(() => {
+    console.log('🔄 useEffect triggered with:', { productId, category, authenticated, email });
+    
     const fetchProductData = async () => {
       try {
         setLoading(true);
