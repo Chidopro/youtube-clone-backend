@@ -1640,7 +1640,7 @@ def show_product_page_new(product_id):
                 creator_name=product_data.get('creator_name', 'Unknown Creator'),
                 video_url=product_data.get('video_url', 'Not provided'),
                 current_category=category,
-                show_category_selection=show_category_selection,
+                show_category_selection=True,
                 timestamp=int(time.time()),
                 cache_buster=uuid.uuid4().hex[:8]
             )
