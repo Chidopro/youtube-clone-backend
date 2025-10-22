@@ -164,6 +164,7 @@ def _allow_origin(resp):
         resp.headers['Access-Control-Allow-Credentials'] = 'true'
     return resp
 
+
 app.config.update(
     SESSION_COOKIE_NAME="sm_session",
     SESSION_COOKIE_DOMAIN=None,     # overridden dynamically if needed
@@ -172,6 +173,25 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     PERMANENT_SESSION_LIFETIME=timedelta(days=7),
 )
+
+# Accept routes with or without trailing slashes
+app.url_map.strict_slashes = False
+
+def _data_from_request():
+    if request.is_json:
+        return request.get_json(silent=True) or {}
+    return request.form or {}
+
+def _return_url():
+    return request.values.get("return_url") or "https://screenmerch.com/"
+
+def _cookie_domain():
+    host = (request.host or "").lower()
+    if host.endswith("screenmerch.com"):
+        return "screenmerch.com"
+    if host.endswith("screenmerch.fly.dev"):
+        return "screenmerch.fly.dev"
+    return None
 
 # Template filter for formatting timestamps
 @app.template_filter('format_timestamp')
@@ -3731,6 +3751,7 @@ def test_email_config():
 
 # Authentication endpoints
 @app.route("/api/auth/login", methods=["POST", "OPTIONS"])
+@app.route("/api/auth/login/", methods=["POST", "OPTIONS"])
 def auth_login():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
@@ -3749,14 +3770,9 @@ def auth_login():
     """Handle user login with email and password validation"""
     try:
         # Handle both JSON (fetch) and form data (redirect)
-        if request.is_json:
-            data = request.get_json()
-            email = data.get('email', '').strip().lower()
-            password = data.get('password', '')
-        else:
-            # Handle form data from redirect
-            email = request.form.get('email', '').strip().lower()
-            password = request.form.get('password', '')
+        data = _data_from_request()
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password") or ""
         
         if not email or not password:
             return jsonify({"success": False, "error": "Email and password are required"}), 400
@@ -3789,24 +3805,29 @@ def auth_login():
                         }
                     })
                     
-                    # Set cookie with dynamic domain
-                    domain = get_cookie_domain()
-                    response.set_cookie(
-                        "sm_session", user.get('id'),
-                        domain=domain,
-                        path="/",
-                        secure=True,
-                        httponly=True,
-                        samesite="None",
-                        max_age=7*24*3600
+                    # Generate token
+                    import uuid
+                    token = str(uuid.uuid4())
+                    
+                    is_form = not request.is_json
+                    domain = _cookie_domain()
+                    
+                    if is_form:
+                        resp = redirect(_return_url(), code=303)  # 303 so browser switches to GET cleanly
+                    else:
+                        resp = make_response(jsonify(
+                            success=True,
+                            message="Login successful",
+                            user={"email": email, "role": "customer"},
+                            token=token
+                        ), 200)
+                    
+                    resp.set_cookie(
+                        "sm_session", token,
+                        domain=domain, path="/",
+                        secure=True, httponly=True, samesite="None", max_age=7*24*3600
                     )
-                    
-                    # Handle redirect for form submissions
-                    if not request.is_json:
-                        return_url = request.args.get('return_url', '/')
-                        return redirect(return_url)
-                    
-                    return _allow_origin(response)
+                    return resp
                 else:
                     response = jsonify({"success": False, "error": "Invalid email or password"})
                     return _allow_origin(response), 401
@@ -3827,6 +3848,7 @@ def auth_login():
         return response, 500
 
 @app.route("/api/auth/signup", methods=["POST", "OPTIONS"])
+@app.route("/api/auth/signup/", methods=["POST", "OPTIONS"])
 def auth_signup():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
@@ -3837,16 +3859,9 @@ def auth_signup():
     """Handle user signup with email and password validation"""
     try:
         # Handle both JSON (fetch) and form data (redirect)
-        if request.is_json:
-            data = request.get_json()
-            email = data.get('email', '').strip().lower()
-            password = data.get('password', '')
-            redirect_url = data.get('redirect_url', '')
-        else:
-            # Handle form data from redirect
-            email = request.form.get('email', '').strip().lower()
-            password = request.form.get('password', '')
-            redirect_url = request.form.get('redirect_url', '')
+        data = _data_from_request()
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password") or ""
         
         if not email or not password:
             return jsonify({"success": False, "error": "Email and password are required"}), 400
@@ -3893,24 +3908,29 @@ def auth_signup():
                     }
                 })
                 
-                # Set cookie with dynamic domain
-                domain = get_cookie_domain()
-                response.set_cookie(
-                    "sm_session", result.data[0].get('id'),
-                    domain=domain,
-                    path="/",
-                    secure=True,
-                    httponly=True,
-                    samesite="None",
-                    max_age=7*24*3600
+                # Generate token
+                import uuid
+                token = str(uuid.uuid4())
+                
+                is_form = not request.is_json
+                domain = _cookie_domain()
+                
+                if is_form:
+                    resp = redirect(_return_url(), code=303)  # 303 so browser switches to GET cleanly
+                else:
+                    resp = make_response(jsonify(
+                        success=True,
+                        message="Account created successfully!",
+                        user={"email": email, "role": "customer"},
+                        token=token
+                    ), 200)
+                
+                resp.set_cookie(
+                    "sm_session", token,
+                    domain=domain, path="/",
+                    secure=True, httponly=True, samesite="None", max_age=7*24*3600
                 )
-                
-                # Handle redirect for form submissions
-                if not request.is_json:
-                    return_url = request.args.get('return_url', '/')
-                    return redirect(return_url)
-                
-                return _allow_origin(response)
+                return resp
             else:
                 response = jsonify({"success": False, "error": "Failed to create account"})
                 return _allow_origin(response), 500

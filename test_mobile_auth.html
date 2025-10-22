@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Auth Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Mobile-Only Authentication Debug Tool</h1>
+    <p><strong>Note:</strong> This tool only logs detailed debugging for mobile devices. Desktop users will see minimal logging.</p>
+    
+    <div class="test-section">
+        <h2>Device Information</h2>
+        <div id="device-info"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Connection Test</h2>
+        <button onclick="testConnection()">Test Backend Connection</button>
+        <div id="connection-result" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Authentication Test</h2>
+        <input type="email" id="test-email" placeholder="Enter test email" value="test@example.com">
+        <input type="password" id="test-password" placeholder="Enter test password" value="testpass">
+        <button onclick="testAuth()">Test Authentication</button>
+        <div id="auth-result" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Debug Logs</h2>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <div id="debug-logs" class="log"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://screenmerch.fly.dev';
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logElement = document.getElementById('debug-logs');
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            // Only show detailed logs for mobile devices
+            if (isMobile) {
+                logElement.textContent += `[${timestamp}] ${message}\n`;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            console.log(message);
+        }
+        
+        function clearLogs() {
+            document.getElementById('debug-logs').textContent = '';
+        }
+        
+        function updateDeviceInfo() {
+            const deviceInfo = {
+                userAgent: navigator.userAgent,
+                isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+                screenSize: `${window.screen.width}x${window.screen.height}`,
+                viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+                connectionType: navigator.connection?.effectiveType || 'unknown',
+                online: navigator.onLine,
+                platform: navigator.platform,
+                language: navigator.language
+            };
+            
+            document.getElementById('device-info').innerHTML = `
+                <p><strong>User Agent:</strong> ${deviceInfo.userAgent}</p>
+                <p><strong>Is Mobile:</strong> ${deviceInfo.isMobile}</p>
+                <p><strong>Screen Size:</strong> ${deviceInfo.screenSize}</p>
+                <p><strong>Viewport Size:</strong> ${deviceInfo.viewportSize}</p>
+                <p><strong>Connection Type:</strong> ${deviceInfo.connectionType}</p>
+                <p><strong>Online:</strong> ${deviceInfo.online}</p>
+                <p><strong>Platform:</strong> ${deviceInfo.platform}</p>
+                <p><strong>Language:</strong> ${deviceInfo.language}</p>
+            `;
+        }
+        
+        async function testConnection() {
+            log('🔍 Testing backend connection...');
+            const resultElement = document.getElementById('connection-result');
+            resultElement.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/test-connection`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'User-Agent': navigator.userAgent
+                    },
+                    credentials: 'include',
+                    mode: 'cors'
+                });
+                
+                const data = await response.json();
+                log(`✅ Connection test successful: ${response.status}`);
+                log(`📊 Response data: ${JSON.stringify(data, null, 2)}`);
+                
+                resultElement.textContent = `Status: ${response.status}\nResponse: ${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                log(`❌ Connection test failed: ${error.message}`);
+                log(`🔍 Error details: ${error.name} - ${error.toString()}`);
+                resultElement.textContent = `Error: ${error.message}`;
+            }
+        }
+        
+        async function testAuth() {
+            const email = document.getElementById('test-email').value;
+            const password = document.getElementById('test-password').value;
+            
+            log(`🔍 Testing authentication for: ${email}`);
+            const resultElement = document.getElementById('auth-result');
+            resultElement.textContent = 'Testing authentication...';
+            
+            try {
+                const requestBody = { email: email.trim(), password: password };
+                log(`📤 Request body: ${JSON.stringify(requestBody, null, 2)}`);
+                
+                const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'User-Agent': navigator.userAgent
+                    },
+                    body: JSON.stringify(requestBody),
+                    credentials: 'include',
+                    mode: 'cors'
+                });
+                
+                log(`📊 Response status: ${response.status}`);
+                log(`📊 Response ok: ${response.ok}`);
+                log(`📊 Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`);
+                
+                const data = await response.json();
+                log(`📊 Response data: ${JSON.stringify(data, null, 2)}`);
+                
+                if (response.ok) {
+                    log(`✅ Authentication successful!`);
+                    resultElement.textContent = `Success: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    log(`❌ Authentication failed: ${data.error || 'Unknown error'}`);
+                    resultElement.textContent = `Error: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                log(`❌ Authentication request failed: ${error.message}`);
+                log(`🔍 Error details: ${error.name} - ${error.toString()}`);
+                log(`🔍 Error stack: ${error.stack}`);
+                resultElement.textContent = `Request Error: ${error.message}`;
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            updateDeviceInfo();
+            log('🔍 Mobile Auth Debug Tool initialized');
+            log(`🌐 API Base URL: ${API_BASE_URL}`);
+        });
+    </script>
+</body>
+</html>
