@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import './ProductPage.css';
 
@@ -23,9 +23,26 @@ const ProductPage = ({ sidebar }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [fallbackImages, setFallbackImages] = useState({ screenshots: [], thumbnail: '' });
 
-  const category = searchParams.get('category') || 'all';
+  // Read from query first
+  const qsCategory = searchParams.get('category');
+  
+  // Fallback to localStorage if query missing (mobile stale reloads)
+  const category = useMemo(() => {
+    const c = (qsCategory || localStorage.getItem('last_selected_category') || '').trim();
+    return c || 'mens'; // final default if truly absent
+  }, [qsCategory]);
+  
   const authenticated = searchParams.get('authenticated') === 'true';
   const email = searchParams.get('email') || '';
+
+  useEffect(() => {
+    if (window.__DEBUG__) {
+      console.log('🔎 browse: qsCategory=', qsCategory, 'resolved category=', category);
+      console.log('🔗 full url:', window.location.href);
+    }
+    // keep the last used category current
+    if (category) localStorage.setItem('last_selected_category', category);
+  }, [qsCategory, category]);
 
   // Categories for selection
   const categories = [

@@ -190,6 +190,7 @@ const App = () => {
               <Route path="/search" element={<Search />} />
               <Route path="/channel/:channelName" element={<Channel />} />
               <Route path="/merchandise" element={<MerchandiseCategories sidebar={sidebar} />} />
+              <Route path="/product/browse" element={<ProductPage sidebar={sidebar} />} />
               <Route path="/product/:productId" element={<ProductPage sidebar={sidebar} />} />
               <Route path="/test-crop-tool" element={<TestCropTool />} />
               <Route path="/payment-portal" element={<PaymentPortal />} />

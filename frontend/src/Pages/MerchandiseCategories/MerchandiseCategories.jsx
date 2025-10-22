@@ -1,5 +1,6 @@
 // frontend/src/Pages/Products/MerchandiseCategories.jsx
 import React, { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './MerchandiseCategories.css';
 import '../Home/Home.css';
 import { API_CONFIG } from '../../config/apiConfig';
@@ -11,6 +12,7 @@ const MerchandiseCategories = ({ sidebar }) => {
     window.__DEBUG__ = true;
   }
 
+  const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -68,10 +70,16 @@ const MerchandiseCategories = ({ sidebar }) => {
       return;
     }
 
-    // Navigate to browse products in this category
-    const browseUrl = `/product/browse?category=${category}&authenticated=${isAuthenticated}&email=${userEmail}`;
-    console.log('🛍️ Navigating to browse products:', browseUrl);
-    window.location.href = browseUrl;
+    // Save a copy as a fallback for mobile
+    localStorage.setItem('last_selected_category', category);
+
+    const browseUrl = `/product/browse?category=${encodeURIComponent(category)}&authenticated=${isAuthenticated}&email=${encodeURIComponent(userEmail)}`;
+    if (window.__DEBUG__) console.log('🛍️ Navigating to browse products:', browseUrl);
+
+    // Prefer client-side navigation (avoids full reload quirks on mobile)
+    navigate(browseUrl, { replace: false });
+    // If you still want a belt-and-suspenders fallback in weird browsers:
+    // setTimeout(() => { if (location.pathname !== '/product/browse') window.location.assign(browseUrl); }, 50);
   };
 
   const createProduct = async (category) => {
