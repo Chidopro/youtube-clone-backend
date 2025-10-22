@@ -136,6 +136,9 @@ const ProductPage = ({ sidebar }) => {
         console.log('📸 Thumbnail URL:', data.product?.thumbnail_url);
         console.log('📸 Screenshots:', data.product?.screenshots);
         console.log('📸 Screenshots Length:', data.product?.screenshots?.length || 0);
+        console.log('📦 Products Count:', data.products?.length || 0);
+        console.log('📦 Category:', data.category);
+        console.log('📦 Success:', data.success);
         
         // Cache the products data for offline use
         try {
@@ -190,6 +193,8 @@ const ProductPage = ({ sidebar }) => {
         };
         
         console.log('🔄 Using fallback data structure');
+        console.log('🔄 Fallback category:', category);
+        console.log('🔄 Fallback products count:', fallbackProducts.length);
         
         // Try to load products from localStorage as additional fallback
         try {
