@@ -157,10 +157,7 @@ const ProductPage = ({ sidebar }) => {
           cache: 'no-store',
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-            'Pragma': 'no-cache',
-            'Expires': '0'
+            'Content-Type': 'application/json'
           },
           // Add timeout for mobile networks
           signal: AbortSignal.timeout(30000) // 30 second timeout
