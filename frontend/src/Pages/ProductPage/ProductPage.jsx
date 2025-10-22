@@ -290,9 +290,8 @@ const ProductPage = ({ sidebar }) => {
       }
     };
 
-    if (productId) {
-      fetchProductData();
-    }
+    // Call fetchProductData for both specific products and browse mode
+    fetchProductData();
   }, [productId, category, authenticated, email]);
 
   if (loading) {
