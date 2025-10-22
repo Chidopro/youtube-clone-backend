@@ -896,14 +896,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             const data = await response.json();
             // console.log('Response data:', data);
             
-            if (data.success && data.product_url) {
+            if (data.success) {
                 if (isMobile) {
-                    // For mobile, try to open in the same window since popup blockers often prevent window.open
+                    // For mobile, redirect to merchandise categories page instead of specific product
                     setTimeout(() => {
-                        window.location.href = data.product_url;
+                        window.location.href = '/merchandise';
                     }, 1000);
                 } else {
-                    window.open(data.product_url, '_blank');
+                    // For desktop, also redirect to merchandise categories page
+                    window.location.href = '/merchandise';
                 }
             } else {
                 console.error('Failed to create product:', data);
