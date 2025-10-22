@@ -156,27 +156,74 @@ const ProductPage = ({ sidebar }) => {
         console.error('❌ Error stack:', err.stack);
         
         // Create fallback data structure to allow category selection
-        // Include a basic products list for fallback
-        const fallbackProducts = [
-          {
-            "name": "Unisex T-Shirt",
-            "price": 21.69,
-            "filename": "guidontee.png",
-            "main_image": "guidontee.png",
-            "preview_image": "guidonteepreview.png",
-            "options": {"color": ["Black", "White", "Dark Grey Heather", "Navy", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
-            "size_pricing": {"XS": 0, "S": 0, "M": 0, "L": 0, "XL": 0, "XXL": 2, "XXXL": 4, "XXXXL": 6, "XXXXXL": 8}
-          },
-          {
-            "name": "Unisex Hoodie",
-            "price": 36.95,
-            "filename": "tested.png",
-            "main_image": "tested.png",
-            "preview_image": "testedpreview.png",
-            "options": {"color": ["Black", "Navy Blazer", "Carbon Grey", "White", "Maroon", "Charcoal Heather", "Vintage Black", "Forest Green", "Military Green", "Team Red", "Dusty Rose", "Sky Blue", "Purple", "Team Royal"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
-            "size_pricing": {"S": 0, "M": 0, "L": 0, "XL": 0, "XXL": 2, "XXXL": 4}
+        // First try to get cached products, then use basic fallback
+        let fallbackProducts = [];
+        
+        // Try to load products from localStorage first
+        try {
+          const storedProducts = localStorage.getItem('cached_products');
+          if (storedProducts) {
+            const parsedProducts = JSON.parse(storedProducts);
+            console.log('📦 Using cached products for fallback:', parsedProducts.length, 'products');
+            
+            // If we have cached products, try to filter them by category
+            if (category !== 'all' && parsedProducts.length > 0) {
+              // Apply the same category filtering logic as the backend
+              const categoryMappings = {
+                'mens': ["Unisex Hoodie", "Men's Tank Top", "Mens Fitted T-Shirt", "Men's Fitted Long Sleeve", "Unisex T-Shirt", "Unisex Oversized T-Shirt", "Men's Long Sleeve Shirt", "Unisex Champion Hoodie"],
+                'womens': ["Cropped Hoodie", "Women's Fitted Racerback Tank", "Women's Micro-Rib Tank Top", "Women's Ribbed Neck", "Women's Shirt", "Unisex Heavyweight T-Shirt", "Unisex Pullover Hoodie", "Pajama Shorts"],
+                'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve", "Toddler Short Sleeve T-Shirt", "Toddler Jersey Shirt", "Kids Sweatshirt", "Youth All Over Print Swimsuit", "Girls Leggings"],
+                'bags': ["Laptop Sleeve", "All-Over Print Drawstring Bag", "All Over Print Tote Pocket", "All-Over Print Crossbody Bag"],
+                'hats': ["Distressed Dad Hat", "Snapback Hat", "Five Panel Trucker Hat", "5 Panel Baseball Cap"],
+                'mugs': ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"],
+                'pets': ["Pet Bowl All-Over Print", "Pet Bandana Collar", "All Over Print Leash", "All Over Print Collar"],
+                'misc': ["Greeting Card", "Hardcover Bound Notebook", "Coasters", "Apron", "Bandana"]
+              };
+              
+              const categoryProducts = categoryMappings[category] || [];
+              const filteredProducts = parsedProducts.filter(product => 
+                categoryProducts.includes(product.name)
+              );
+              
+              if (filteredProducts.length > 0) {
+                fallbackProducts = filteredProducts;
+                console.log('📦 Filtered cached products by category:', category, '->', filteredProducts.length, 'products');
+              } else {
+                fallbackProducts = parsedProducts;
+                console.log('📦 No category-specific products found, using all cached products');
+              }
+            } else {
+              fallbackProducts = parsedProducts;
+            }
           }
-        ];
+        } catch (e) {
+          console.warn('Could not load cached products from localStorage');
+        }
+        
+        // If no cached products, use basic fallback
+        if (fallbackProducts.length === 0) {
+          console.log('📦 No cached products, using basic fallback');
+          fallbackProducts = [
+            {
+              "name": "Unisex T-Shirt",
+              "price": 21.69,
+              "filename": "guidontee.png",
+              "main_image": "guidontee.png",
+              "preview_image": "guidonteepreview.png",
+              "options": {"color": ["Black", "White", "Dark Grey Heather", "Navy", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+              "size_pricing": {"XS": 0, "S": 0, "M": 0, "L": 0, "XL": 0, "XXL": 2, "XXXL": 4, "XXXXL": 6, "XXXXXL": 8}
+            },
+            {
+              "name": "Unisex Hoodie",
+              "price": 36.95,
+              "filename": "tested.png",
+              "main_image": "tested.png",
+              "preview_image": "testedpreview.png",
+              "options": {"color": ["Black", "Navy Blazer", "Carbon Grey", "White", "Maroon", "Charcoal Heather", "Vintage Black", "Forest Green", "Military Green", "Team Red", "Dusty Rose", "Sky Blue", "Purple", "Team Royal"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
+              "size_pricing": {"S": 0, "M": 0, "L": 0, "XL": 0, "XXL": 2, "XXXL": 4}
+            }
+          ];
+        }
         
         const fallbackData = {
           success: true,
@@ -195,18 +242,6 @@ const ProductPage = ({ sidebar }) => {
         console.log('🔄 Using fallback data structure');
         console.log('🔄 Fallback category:', category);
         console.log('🔄 Fallback products count:', fallbackProducts.length);
-        
-        // Try to load products from localStorage as additional fallback
-        try {
-          const storedProducts = localStorage.getItem('cached_products');
-          if (storedProducts) {
-            const parsedProducts = JSON.parse(storedProducts);
-            fallbackData.products = parsedProducts;
-            console.log('📦 Loaded cached products from localStorage');
-          }
-        } catch (e) {
-          console.warn('Could not load cached products from localStorage');
-        }
         
         setProductData(fallbackData);
         // Don't set error state, let the component render with fallback data
