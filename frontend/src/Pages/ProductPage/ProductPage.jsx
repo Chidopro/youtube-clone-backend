@@ -144,7 +144,9 @@ const ProductPage = ({ sidebar }) => {
         setLoading(true);
         setError(null); // Clear any previous errors
         
-        const url = `https://screenmerch.fly.dev/api/product/${productId}?category=${category}&authenticated=${authenticated}&email=${email}`;
+        // Handle browse mode - use 'browse' when productId is undefined
+        const actualProductId = productId || 'browse';
+        const url = `https://screenmerch.fly.dev/api/product/${actualProductId}?category=${category}&authenticated=${authenticated}&email=${email}`;
         console.log('🌐 Fetching product data from:', url);
         console.log('📱 User Agent:', navigator.userAgent);
         console.log('📱 Is Mobile:', /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
@@ -316,7 +318,9 @@ const ProductPage = ({ sidebar }) => {
             // Retry the fetch
             const fetchProductData = async () => {
               try {
-                const url = `https://screenmerch.fly.dev/api/product/${productId}?category=${category}&authenticated=${authenticated}&email=${email}`;
+                // Handle browse mode - use 'browse' when productId is undefined
+                const actualProductId = productId || 'browse';
+                const url = `https://screenmerch.fly.dev/api/product/${actualProductId}?category=${category}&authenticated=${authenticated}&email=${email}`;
                 const response = await fetch(url, {
                   method: 'GET',
                   headers: {
