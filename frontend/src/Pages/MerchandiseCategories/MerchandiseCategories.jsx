@@ -56,22 +56,22 @@ const MerchandiseCategories = ({ sidebar }) => {
     { name: "Thumbnails", emoji: "🖼️", category: "thumbnails" }
   ];
 
-  const handleCategoryClick = async (category) => {
+  const handleCategoryClick = (category) => {
     if (window.__DEBUG__) console.log('🖱️ Category selected:', category);
 
-    if (creatingRef.current || isCreating) {
-      if (window.__DEBUG__) console.log('⛔ Ignored: already creating');
-      return;
-    }
-
     const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+    const userEmail = localStorage.getItem('user_email') || '';
+    
     if (!isAuthenticated) {
       setSelectedCategory(category);
       setShowAuthModal(true);
       return;
     }
 
-    await createProduct(category);
+    // Navigate to browse products in this category
+    const browseUrl = `/product/browse?category=${category}&authenticated=${isAuthenticated}&email=${userEmail}`;
+    console.log('🛍️ Navigating to browse products:', browseUrl);
+    window.location.href = browseUrl;
   };
 
   const createProduct = async (category) => {
