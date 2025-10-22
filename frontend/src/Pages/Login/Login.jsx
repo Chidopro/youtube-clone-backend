@@ -103,6 +103,7 @@ const Login = () => {
 
       if (data?.token) localStorage.setItem('auth_token', data.token);
       if (data?.user) localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('isAuthenticated', 'true');
 
       const returnTo = searchParams.get('returnTo');
       if (returnTo === 'subscription-success') {
