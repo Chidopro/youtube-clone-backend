@@ -20,13 +20,13 @@ const config = {
 
 const currentConfig = isDevelopment ? config.development : config.production;
 
-// Force override for production to ensure correct backend URL
+// Use relative paths in production to maintain same-origin cookies
 if (!isDevelopment) {
-  currentConfig.API_BASE_URL = 'https://screenmerch.fly.dev';
-  currentConfig.EMAIL_API_URL = 'https://screenmerch.fly.dev';
-  currentConfig.SUBSCRIPTION_API_URL = 'https://screenmerch.fly.dev';
-  console.log('🔧 FORCING PRODUCTION API CONFIG OVERRIDE');
-  console.log('🔧 Forced API_BASE_URL:', currentConfig.API_BASE_URL);
+  currentConfig.API_BASE_URL = '';
+  currentConfig.EMAIL_API_URL = '';
+  currentConfig.SUBSCRIPTION_API_URL = '';
+  console.log('🔧 USING RELATIVE PATHS FOR PRODUCTION');
+  console.log('🔧 API_BASE_URL:', currentConfig.API_BASE_URL);
 }
 
 export const API_CONFIG = {
