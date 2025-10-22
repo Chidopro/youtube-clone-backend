@@ -146,7 +146,7 @@ const ProductPage = ({ sidebar }) => {
         
         // Handle browse mode - use 'browse' when productId is undefined
         const actualProductId = productId || 'browse';
-        const url = `https://screenmerch.fly.dev/api/product/${actualProductId}?category=${category}&authenticated=${authenticated}&email=${email}`;
+        const url = `https://screenmerch.fly.dev/api/product/${actualProductId}?category=${category}&authenticated=${authenticated}&email=${email}&v=${Date.now()}`;
         console.log('🌐 Fetching product data from:', url);
         console.log('📱 User Agent:', navigator.userAgent);
         console.log('📱 Is Mobile:', /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
@@ -154,9 +154,13 @@ const ProductPage = ({ sidebar }) => {
         // Fetch product data from backend API
         const response = await fetch(url, {
           method: 'GET',
+          cache: 'no-store',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           },
           // Add timeout for mobile networks
           signal: AbortSignal.timeout(30000) // 30 second timeout
