@@ -123,7 +123,7 @@ const Login = () => {
         }, 1000);
       } else {
         setTimeout(() => {
-          if (returnTo === 'merch') navigate('/category-selection');
+          if (returnTo === 'merch') navigate('/merchandise');
           else if (returnTo === 'subscription-success') navigate('/subscription-success');
           else navigate('/dashboard');
         }, 700);
