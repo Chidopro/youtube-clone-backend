@@ -104,11 +104,31 @@ const ProductPage = ({ sidebar }) => {
     const fetchProductData = async () => {
       try {
         setLoading(true);
+        setError(null); // Clear any previous errors
+        
+        const url = `https://screenmerch.fly.dev/api/product/${productId}?category=${category}&authenticated=${authenticated}&email=${email}`;
+        console.log('🌐 Fetching product data from:', url);
+        console.log('📱 User Agent:', navigator.userAgent);
+        console.log('📱 Is Mobile:', /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+        
         // Fetch product data from backend API
-        const response = await fetch(`https://screenmerch.fly.dev/api/product/${productId}?category=${category}&authenticated=${authenticated}&email=${email}`);
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          // Add timeout for mobile networks
+          signal: AbortSignal.timeout(30000) // 30 second timeout
+        });
+        
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch product data: ${response.status}`);
+          const errorText = await response.text();
+          console.error('❌ API Error Response:', errorText);
+          throw new Error(`Failed to fetch product data: ${response.status} - ${errorText}`);
         }
         
         const data = await response.json();
@@ -116,10 +136,75 @@ const ProductPage = ({ sidebar }) => {
         console.log('📸 Thumbnail URL:', data.product?.thumbnail_url);
         console.log('📸 Screenshots:', data.product?.screenshots);
         console.log('📸 Screenshots Length:', data.product?.screenshots?.length || 0);
+        
+        // Cache the products data for offline use
+        try {
+          localStorage.setItem('cached_products', JSON.stringify(data.products));
+          console.log('💾 Cached products data for offline use');
+        } catch (e) {
+          console.warn('Could not cache products data');
+        }
+        
         setProductData(data);
       } catch (err) {
-        console.error('Error fetching product data:', err);
-        setError(err.message);
+        console.error('❌ Error fetching product data:', err);
+        console.error('❌ Error type:', err.name);
+        console.error('❌ Error message:', err.message);
+        console.error('❌ Error stack:', err.stack);
+        
+        // Create fallback data structure to allow category selection
+        // Include a basic products list for fallback
+        const fallbackProducts = [
+          {
+            "name": "Unisex T-Shirt",
+            "price": 21.69,
+            "filename": "guidontee.png",
+            "main_image": "guidontee.png",
+            "preview_image": "guidonteepreview.png",
+            "options": {"color": ["Black", "White", "Dark Grey Heather", "Navy", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+            "size_pricing": {"XS": 0, "S": 0, "M": 0, "L": 0, "XL": 0, "XXL": 2, "XXXL": 4, "XXXXL": 6, "XXXXXL": 8}
+          },
+          {
+            "name": "Unisex Hoodie",
+            "price": 36.95,
+            "filename": "tested.png",
+            "main_image": "tested.png",
+            "preview_image": "testedpreview.png",
+            "options": {"color": ["Black", "Navy Blazer", "Carbon Grey", "White", "Maroon", "Charcoal Heather", "Vintage Black", "Forest Green", "Military Green", "Team Red", "Dusty Rose", "Sky Blue", "Purple", "Team Royal"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
+            "size_pricing": {"S": 0, "M": 0, "L": 0, "XL": 0, "XXL": 2, "XXXL": 4}
+          }
+        ];
+        
+        const fallbackData = {
+          success: true,
+          product: {
+            product_id: productId,
+            thumbnail_url: '',
+            video_title: 'Unknown Video',
+            creator_name: 'Unknown Creator',
+            video_url: 'Not provided',
+            screenshots: []
+          },
+          products: fallbackProducts,
+          category: category
+        };
+        
+        console.log('🔄 Using fallback data structure');
+        
+        // Try to load products from localStorage as additional fallback
+        try {
+          const storedProducts = localStorage.getItem('cached_products');
+          if (storedProducts) {
+            const parsedProducts = JSON.parse(storedProducts);
+            fallbackData.products = parsedProducts;
+            console.log('📦 Loaded cached products from localStorage');
+          }
+        } catch (e) {
+          console.warn('Could not load cached products from localStorage');
+        }
+        
+        setProductData(fallbackData);
+        // Don't set error state, let the component render with fallback data
       } finally {
         setLoading(false);
       }
@@ -147,7 +232,53 @@ const ProductPage = ({ sidebar }) => {
         <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>
           <h2>Error Loading Product</h2>
           <p>{error}</p>
-          <button onClick={() => window.location.reload()}>Retry</button>
+          <button onClick={() => {
+            setError(null);
+            setLoading(true);
+            // Retry the fetch
+            const fetchProductData = async () => {
+              try {
+                const url = `https://screenmerch.fly.dev/api/product/${productId}?category=${category}&authenticated=${authenticated}&email=${email}`;
+                const response = await fetch(url, {
+                  method: 'GET',
+                  headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                  },
+                  signal: AbortSignal.timeout(30000)
+                });
+                
+                if (!response.ok) {
+                  throw new Error(`Failed to fetch product data: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                setProductData(data);
+              } catch (err) {
+                console.error('Retry failed:', err);
+                setError(err.message);
+              } finally {
+                setLoading(false);
+              }
+            };
+            fetchProductData();
+          }}>Retry</button>
+          <div style={{ marginTop: '1rem' }}>
+            <p>If the error persists, you can still browse products by category:</p>
+            <div className="categories-grid" style={{ marginTop: '1rem' }}>
+              {categories.map((cat, index) => (
+                <div
+                  key={index}
+                  className={`category-box ${cat.category === category ? 'active' : ''}`}
+                  onClick={() => handleCategoryClick(cat.category)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="category-emoji">{cat.emoji}</div>
+                  <div className="category-name">{cat.name}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
