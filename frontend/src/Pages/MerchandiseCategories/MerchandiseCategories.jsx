@@ -76,10 +76,8 @@ const MerchandiseCategories = ({ sidebar }) => {
     const browseUrl = `/product/browse?category=${encodeURIComponent(category)}&authenticated=${isAuthenticated}&email=${encodeURIComponent(userEmail)}`;
     if (window.__DEBUG__) console.log('🛍️ Navigating to browse products:', browseUrl);
 
-    // Prefer client-side navigation (avoids full reload quirks on mobile)
-    navigate(browseUrl, { replace: false });
-    // If you still want a belt-and-suspenders fallback in weird browsers:
-    // setTimeout(() => { if (location.pathname !== '/product/browse') window.location.assign(browseUrl); }, 50);
+    // Use window.location for reliable navigation on mobile
+    window.location.href = browseUrl;
   };
 
   const createProduct = async (category) => {
