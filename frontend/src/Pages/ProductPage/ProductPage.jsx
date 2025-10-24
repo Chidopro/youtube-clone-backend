@@ -642,14 +642,16 @@ const ProductPage = ({ sidebar }) => {
               {productData.products && productData.products.map((product, index) => (
                 <div key={index} className="product-card">
                   {/* Product Image */}
-                  {product.preview_image && (
+                  {(product.preview_image || product.main_image) && (
                     <div className="product-image">
                       <img 
-                        src={`https://screenmerch.fly.dev/static/images/${product.preview_image}`}
+                        src={product.preview_image ? `https://screenmerch.fly.dev/static/images/${product.preview_image}` : `https://screenmerch.fly.dev/static/images/${product.main_image}`}
                         alt={product.name}
                         onError={(e) => {
                           // Fallback to main_image if preview fails
-                          e.target.src = `https://screenmerch.fly.dev/static/images/${product.main_image}`;
+                          if (product.main_image && e.target.src !== `https://screenmerch.fly.dev/static/images/${product.main_image}`) {
+                            e.target.src = `https://screenmerch.fly.dev/static/images/${product.main_image}`;
+                          }
                         }}
                       />
                     </div>
