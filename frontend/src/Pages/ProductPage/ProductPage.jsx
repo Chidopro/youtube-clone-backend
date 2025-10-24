@@ -324,6 +324,8 @@ const ProductPage = ({ sidebar }) => {
         try {
           if (window.__DEBUG__ || isMobile) {
             console.log('🚀 Starting fetch request...');
+            console.log('📱 Mobile detection:', isMobile);
+            console.log('📱 URL:', url);
           }
           
           response = await fetch(url, {
@@ -351,6 +353,7 @@ const ProductPage = ({ sidebar }) => {
           if (isMobile) {
             console.log('📱 API call failed, using mobile fallback with static data');
             console.log('📱 This should NOT happen if API call succeeded');
+            console.log('📱 Error details:', fetchError.message);
             const staticProducts = getStaticProductsForCategory(category);
             console.log('📱 Static products:', staticProducts);
             
