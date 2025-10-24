@@ -313,15 +313,9 @@ const ProductPage = ({ sidebar }) => {
           console.log('🔧 Category:', category);
           console.log('🔧 IsBrowseMode:', isBrowseMode);
           
-          // Mobile debugging with alerts
+          // Mobile debugging (console only, no alerts)
           if (isMobile) {
-            alert(`Mobile Debug:\nProductId: ${productId}\nCategory: ${category}\nIsBrowseMode: ${isBrowseMode}\nURL: ${url}`);
-            
-            // Test basic connectivity first
-            fetch('https://screenmerch.fly.dev/api/ping')
-              .then(res => res.json())
-              .then(data => alert(`Ping Test: SUCCESS\nResponse: ${JSON.stringify(data)}`))
-              .catch(err => alert(`Ping Test: FAILED\nError: ${err.message}`));
+            console.log(`Mobile Debug:\nProductId: ${productId}\nCategory: ${category}\nIsBrowseMode: ${isBrowseMode}\nURL: ${url}`);
           }
         }
 
@@ -342,25 +336,20 @@ const ProductPage = ({ sidebar }) => {
           if (window.__DEBUG__ || isMobile) {
             console.log('✅ Fetch completed, status:', response.status);
             console.log('✅ Response headers:', Object.fromEntries(response.headers.entries()));
-            
-            // Mobile debugging with alerts
-            if (isMobile) {
-              alert(`Fetch Success!\nStatus: ${response.status}\nURL: ${url}`);
-            }
           }
         } catch (fetchError) {
           console.error('❌ Fetch failed:', fetchError);
           console.error('❌ Error name:', fetchError.name);
           console.error('❌ Error message:', fetchError.message);
           
-          // Mobile debugging with alerts
+          // Mobile debugging (console only)
           if (isMobile) {
-            alert(`Fetch Failed!\nError: ${fetchError.message}\nURL: ${url}`);
+            console.log(`Fetch Failed!\nError: ${fetchError.message}\nURL: ${url}`);
           }
           
-          // Mobile fallback: Use static data instead of backend
+          // Only use mobile fallback if the API call actually failed
           if (isMobile) {
-            console.log('📱 Using mobile fallback with static data');
+            console.log('📱 API call failed, using mobile fallback with static data');
             const staticProducts = getStaticProductsForCategory(category);
             console.log('📱 Static products:', staticProducts);
             
@@ -376,16 +365,16 @@ const ProductPage = ({ sidebar }) => {
             
             console.log('📱 Setting static data:', staticData);
             setProductData(staticData);
-            setLoading(false); // Make sure loading is set to false
-            setError(null); // Clear any errors
+            setLoading(false);
+            setError(null);
             
-            // Mobile debugging alert
-            alert(`Mobile Fallback Active!\nProducts: ${staticProducts.length}\nCategory: ${category}`);
+            // Mobile debugging (console only)
+            console.log(`Mobile Fallback Active!\nProducts: ${staticProducts.length}\nCategory: ${category}`);
             return; // Skip the rest of the error handling
           }
           
-          // Try a simpler fetch as fallback
-          if (window.__DEBUG__ || isMobile) {
+          // For non-mobile, try a simpler fetch as fallback
+          if (window.__DEBUG__) {
             console.log('🔄 Trying fallback fetch...');
           }
           
@@ -394,7 +383,7 @@ const ProductPage = ({ sidebar }) => {
               method: 'GET',
               cache: 'no-cache'
             });
-            if (window.__DEBUG__ || isMobile) {
+            if (window.__DEBUG__) {
               console.log('✅ Fallback fetch succeeded, status:', response.status);
             }
           } catch (fallbackError) {
@@ -440,6 +429,12 @@ const ProductPage = ({ sidebar }) => {
           if (window.__DEBUG__) console.log('💾 Cached products data for offline use');
         } catch (e) {
           console.warn('Could not cache products data');
+        }
+        
+        // Use real backend data when API call succeeds
+        if (window.__DEBUG__ || isMobile) {
+          console.log('✅ Using real backend data - API call succeeded');
+          console.log('✅ Products from backend:', data.products?.length || 0);
         }
         
         setProductData(data);
