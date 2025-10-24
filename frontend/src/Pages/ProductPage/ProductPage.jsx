@@ -438,6 +438,7 @@ const ProductPage = ({ sidebar }) => {
           console.log('✅ Products from backend:', data.products?.length || 0);
           console.log('✅ First product image:', data.products?.[0]?.main_image);
           console.log('✅ First product preview:', data.products?.[0]?.preview_image);
+          console.log('✅ Mobile fallback should NOT be used - API succeeded');
         }
         
         setProductData(data);

@@ -329,7 +329,7 @@ def api_preflight(any_path):
     else:
         response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
     
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response
@@ -365,7 +365,7 @@ def add_cors_headers(response):
             response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
         
         response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     
     return response
@@ -403,7 +403,7 @@ def add_security_headers(response):
         response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
     
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma, Expires'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     
     return response
@@ -435,13 +435,88 @@ PRINTFUL_API_KEY = os.getenv("PRINTFUL_API_KEY") or "dummy_key"
 def ping():
     return {"message": "pong"}
 
+@app.route("/api/product/browse", methods=["GET", "OPTIONS"])
+def get_browse_api():
+    """API endpoint to get browse data for frontend"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        # Get category parameter
+        category = request.args.get('category', 'all')
+        user_agent = request.headers.get('User-Agent', '')
+        is_mobile = 'Mobile' in user_agent or 'Android' in user_agent or 'iPhone' in user_agent
+        
+        logger.info(f"📂 API Browse request - Category: {category}")
+        logger.info(f"📱 Mobile detection: {is_mobile}")
+        logger.info(f"📱 User-Agent: {user_agent}")
+        
+        # Filter products by category
+        filtered_products = filter_products_by_category(category)
+        
+        # Log product details for mobile debugging
+        if is_mobile:
+            logger.info(f"📱 Mobile request - Found {len(filtered_products)} products for category '{category}'")
+            if filtered_products:
+                first_product = filtered_products[0]
+                logger.info(f"📱 First product: {first_product.get('name', 'Unknown')}")
+                logger.info(f"📱 First product main_image: {first_product.get('main_image', 'None')}")
+                logger.info(f"📱 First product preview_image: {first_product.get('preview_image', 'None')}")
+        
+        # Get screenshots from localStorage data (if available)
+        # For browse mode, we'll use fallback screenshots
+        screenshots = []
+        thumbnail_url = ""
+        
+        # Try to get screenshots from the request or use fallback
+        try:
+            # This would come from the frontend's localStorage data
+            # For now, we'll return empty arrays as the frontend will use fallback
+            screenshots = []
+            thumbnail_url = ""
+        except:
+            screenshots = []
+            thumbnail_url = ""
+        
+        # Return browse data with both product info and products list
+        response_data = {
+            "success": True,
+            "product": {
+                "thumbnail_url": thumbnail_url,
+                "screenshots": screenshots
+            },
+            "products": filtered_products,
+            "category": category,
+            "timestamp": int(time.time())
+        }
+        
+        # Log response for mobile debugging
+        if is_mobile:
+            logger.info(f"📱 Sending response to mobile - {len(filtered_products)} products")
+            logger.info(f"📱 Response success: {response_data['success']}")
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        logger.error(f"❌ Browse API error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "products": [],
+            "category": category or "all"
+        }), 500
+
 @app.route("/api/product/<product_id>", methods=["GET", "OPTIONS"])
 def get_product_api(product_id):
     """API endpoint to get product data for frontend"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
@@ -520,6 +595,9 @@ def get_product_api(product_id):
             }
             response = jsonify(response_data)
             response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            response.headers.add('Pragma', 'no-cache')
+            response.headers.add('Expires', '0')
             return response
             
     except Exception as e:
@@ -1387,7 +1465,7 @@ def serve_static_image(filename):
     
     # Add CORS headers for images
     response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     
     return response
@@ -1670,6 +1748,30 @@ def show_product_page_new(product_id):
         timestamp=int(time.time()),
         cache_buster=uuid.uuid4().hex[:8]
     )
+
+@app.route("/product/browse")
+def show_browse_page():
+    logger.info("🔍 Handling /product/browse redirect")
+
+    category = request.args.get("category", "all")
+    authenticated = request.args.get("authenticated", "false")
+    email = request.args.get("email", "")
+
+    frontend_url = "https://screenmerch.com"
+    redirect_url = (
+        f"{frontend_url}/product/browse"
+        f"?category={category}&authenticated={authenticated}&email={email}"
+    )
+
+    logger.info(f"🔄 Redirecting to frontend: {redirect_url}")
+
+    response = redirect(redirect_url, code=302)
+    response.headers.update({
+        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    })
+    return response
 
 @app.route("/product/<product_id>")
 def show_product_page(product_id):
@@ -1958,7 +2060,7 @@ def place_order():
         origin = request.headers.get('Origin', '*')
         response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
@@ -2196,7 +2298,7 @@ def create_checkout_session():
         origin = request.headers.get('Origin', '*')
         response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
@@ -2811,7 +2913,7 @@ def search_creators():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
@@ -2862,7 +2964,7 @@ def capture_screenshot():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
@@ -2905,7 +3007,7 @@ def capture_multiple_screenshots():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     """Capture multiple screenshots from a video at different timestamps"""
@@ -2938,7 +3040,7 @@ def get_video_info():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     """Get video information including duration and dimensions"""
@@ -2970,7 +3072,7 @@ def capture_print_quality():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
@@ -3018,7 +3120,7 @@ def process_shirt_image():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
@@ -3056,7 +3158,7 @@ def process_corner_radius():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
@@ -3087,7 +3189,7 @@ def apply_feather_to_print_quality():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
@@ -3122,7 +3224,7 @@ def apply_feather_only():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
@@ -3163,7 +3265,7 @@ def process_thumbnail_print_quality():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
@@ -3491,7 +3593,7 @@ def calculate_shipping():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
@@ -3692,7 +3794,7 @@ def auth_login():
         else:
             response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
         
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
@@ -3782,7 +3884,7 @@ def auth_signup():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     """Handle user signup with email and password validation"""
