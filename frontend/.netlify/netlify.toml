@@ -1,82 +1,89 @@
-###############################################
-# Netlify Configuration for ScreenMerch / FrameSnag
-# Compatible with React + Vite frontend
-# Supports Stripe, Supabase, Printful, Fly.io backend
-###############################################
+headersOrigin = "config"
+redirectsOrigin = "config"
+plugins = []
+
+[functions]
+
+[functions."*"]
 
 [build]
-  # Base directory (your React frontend folder)
-  base = "frontend"
-  # Where Netlify will publish the built files
-  publish = "frontend/dist"
-  # Build command
-  command = "npm ci && npm run build"
+publish = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone - Copy (5)\\frontend\\dist"
+publishOrigin = "config"
+commandOrigin = "config"
+base = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone - Copy (5)\\frontend"
+command = "npm ci && npm run build"
 
-  [build.environment]
-    NODE_VERSION = "18"
-    NETLIFY_USE_YARN = "false"
+[build.environment]
+NODE_VERSION = "18"
+NETLIFY_USE_YARN = "false"
 
-###############################################
-# Redirects (SPA support)
-###############################################
+[build.processing]
 
-# Ensures React Router paths (like /product/123) load index.html
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' https: data: https://sojxbydpcdcdzfdtbypd.supabase.co; connect-src 'self' https://api.printful.com https://api.resend.com https://api.stripe.com https://sojxbydpcdcdzfdtbypd.supabase.co https://screenmerch.fly.dev https://accounts.google.com; frame-src 'self' https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+
+[[headers]]
+for = "/index.html"
+
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate, max-age=0"
+Pragma = "no-cache"
+Expires = "0"
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+Content-Security-Policy = "default-src 'self';\r\n      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com;\r\n      style-src 'self' 'unsafe-inline';\r\n      img-src 'self' https: data: blob:;\r\n      font-src 'self' data:;\r\n      media-src 'self' https: data: blob:;\r\n      connect-src 'self'\r\n        https://api.stripe.com\r\n        https://js.stripe.com\r\n        https://checkout.stripe.com\r\n        https://api.printful.com\r\n        https://sojxbydpcdcdzfdtbypd.supabase.co\r\n        wss://sojxbydpcdcdzfdtbypd.supabase.co\r\n        https://screenmerch.fly.dev;\r\n      frame-src 'self' https://js.stripe.com https://checkout.stripe.com;\r\n      object-src 'none';\r\n      base-uri 'self';\r\n      form-action 'self';"
+
+[[headers]]
+for = "/assets/*"
+
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/*"
+
+[headers.values]
+Referrer-Policy = "strict-origin-when-cross-origin"
+X-Content-Type-Options = "nosniff"
+X-Frame-Options = "DENY"
+X-XSS-Protection = "1; mode=block"
+
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+from = "/api/*"
+to = "https://screenmerch.fly.dev/api/:splat"
+status = 200.0
+force = true
 
-###############################################
-# Headers & Security
-###############################################
+[redirects.query]
 
-# Keep index.html always fresh
-[[headers]]
-  for = "/index.html"
-  [headers.values]
-    Cache-Control = "no-cache, no-store, must-revalidate, max-age=0"
-    Pragma = "no-cache"
-    Expires = "0"
+[redirects.conditions]
 
-# Strong Content Security Policy
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Content-Security-Policy = """
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com;
-      style-src 'self' 'unsafe-inline';
-      img-src 'self' https: data: blob:;
-      font-src 'self' data:;
-      media-src 'self' https: data: blob:;
-      connect-src 'self'
-        https://api.stripe.com
-        https://js.stripe.com
-        https://checkout.stripe.com
-        https://api.printful.com
-        https://sojxbydpcdcdzfdtbypd.supabase.co
-        wss://sojxbydpcdcdzfdtbypd.supabase.co
-        https://screenmerch.fly.dev;
-      frame-src 'self' https://js.stripe.com https://checkout.stripe.com;
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-    """
+[redirects.headers]
 
-# (Optional) Long-term caching for static hashed assets
-[[headers]]
-  for = "/assets/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200.0
+force = false
 
-###############################################
-# Additional Best-Practice Security Headers
-###############################################
+[redirects.query]
 
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Referrer-Policy = "strict-origin-when-cross-origin"
-    X-Content-Type-Options = "nosniff"
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
+[redirects.conditions]
+
+[redirects.headers]

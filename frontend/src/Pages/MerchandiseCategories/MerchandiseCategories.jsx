@@ -64,7 +64,13 @@ const MerchandiseCategories = ({ sidebar }) => {
     const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
     const userEmail = localStorage.getItem('user_email') || '';
     
+    if (window.__DEBUG__) {
+      console.log('🔐 Auth check:', { isAuthenticated, userEmail });
+      console.log('📱 User Agent:', navigator.userAgent);
+    }
+    
     if (!isAuthenticated) {
+      if (window.__DEBUG__) console.log('🔒 Not authenticated, showing auth modal');
       setSelectedCategory(category);
       setShowAuthModal(true);
       return;
@@ -73,11 +79,16 @@ const MerchandiseCategories = ({ sidebar }) => {
     // Save a copy as a fallback for mobile
     localStorage.setItem('last_selected_category', category);
 
-    const browseUrl = `/product/browse?category=${encodeURIComponent(category)}&authenticated=${isAuthenticated}&email=${encodeURIComponent(userEmail)}`;
-    if (window.__DEBUG__) console.log('🛍️ Navigating to browse products:', browseUrl);
+    // Navigate directly to a product page with the selected category
+    const productUrl = `/product/browse?category=${encodeURIComponent(category)}&authenticated=${isAuthenticated}&email=${encodeURIComponent(userEmail)}`;
+    if (window.__DEBUG__) console.log('🛍️ Navigating to product page:', productUrl);
 
+    // Use full URL for mobile reliability
+    const fullUrl = window.location.origin + productUrl;
+    if (window.__DEBUG__) console.log('🌐 Full URL:', fullUrl);
+    
     // Use window.location for reliable navigation on mobile
-    window.location.href = browseUrl;
+    window.location.href = fullUrl;
   };
 
   const createProduct = async (category) => {

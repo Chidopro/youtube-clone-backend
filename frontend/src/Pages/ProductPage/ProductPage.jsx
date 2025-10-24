@@ -59,28 +59,122 @@ const ProductPage = ({ sidebar }) => {
   ];
 
   const handleCategoryClick = (newCategory) => {
+    if (window.__DEBUG__) {
     console.log('🔄 Category clicked:', newCategory);
     console.log('🔄 Current category:', category);
     console.log('🔄 Product ID:', productId);
     console.log('🔄 Authenticated:', authenticated);
     console.log('🔄 Email:', email);
-    
-    // Update URL with new category
-    const newUrl = `/product/${productId}?category=${newCategory}&authenticated=${authenticated}&email=${email}`;
-    console.log('🔄 Navigating to:', newUrl);
-    
-    // Add alert for mobile debugging
-    alert(`Category clicked: ${newCategory}\nNavigating to: ${newUrl}`);
-    
-    // Try different navigation methods
+    }
+
+    const needsBrowse =
+      !productId ||
+      productId === 'browse' ||
+      productId === 'undefined' ||
+      productId === 'null';
+
+    const base = needsBrowse ? '/product/browse' : `/product/${productId}`;
+
+    const newUrl =
+      `${base}?category=${encodeURIComponent(newCategory)}` +
+      `&authenticated=${authenticated}` +
+      `&email=${encodeURIComponent(email || '')}`;
+
+    // Persist for mobile reloads
+    try { localStorage.setItem('last_selected_category', newCategory); } catch {}
+
+    // Navigate (iOS-safe fallback)
     try {
       navigate(newUrl);
-      console.log('✅ Navigate called successfully');
+      if (window.__DEBUG__) console.log('✅ Navigate called successfully to', newUrl);
     } catch (error) {
-      console.error('❌ Navigate failed:', error);
-      // Fallback to window.location
-      window.location.href = newUrl;
+      console.error('❌ Navigate failed, falling back:', error);
+      window.location.assign(newUrl);
     }
+  };
+
+  const getStaticProductsForCategory = (category) => {
+    // Use same category_mappings logic as backend
+    const category_mappings = {
+      'mens': [
+        "Unisex Hoodie",
+        "Men's Tank Top", 
+        "Mens Fitted T-Shirt",
+        "Men's Fitted Long Sleeve",
+        "Unisex T-Shirt",
+        "Unisex Oversized T-Shirt",
+        "Men's Long Sleeve Shirt",
+        "Unisex Champion Hoodie"
+      ],
+      'womens': [
+        "Cropped Hoodie",
+        "Women's Fitted Racerback Tank",
+        "Women's Micro-Rib Tank Top", 
+        "Women's Ribbed Neck",
+        "Women's Shirt",
+        "Unisex Heavyweight T-Shirt",
+        "Unisex Pullover Hoodie",
+        "Pajama Shorts"
+      ],
+      'kids': [
+        "Youth Heavy Blend Hoodie",
+        "Kids Shirt",
+        "Kids Long Sleeve",
+        "Toddler Short Sleeve T-Shirt",
+        "Toddler Jersey Shirt",
+        "Kids Sweatshirt",
+        "Youth All Over Print Swimsuit",
+        "Girls Leggings"
+      ],
+      'bags': [
+        "Laptop Sleeve",
+        "All-Over Print Drawstring Bag", 
+        "All Over Print Tote Pocket",
+        "All-Over Print Crossbody Bag"
+      ],
+      'hats': [
+        "Distressed Dad Hat",
+        "Snapback Hat",
+        "Five Panel Trucker Hat",
+        "5 Panel Baseball Cap"
+      ],
+      'mugs': [
+        "White Glossy Mug",
+        "Travel Mug",
+        "Enamel Mug",
+        "Colored Mug"
+      ],
+      'pets': [
+        "Pet Bowl All-Over Print",
+        "Pet Bandana Collar",
+        "All Over Print Leash",
+        "All Over Print Collar"
+      ],
+      'stickers': [
+        "Kiss-Cut Stickers",
+        "Die-Cut Magnets"
+      ],
+      'misc': [
+        "Greeting Card",
+        "Hardcover Bound Notebook", 
+        "Coasters",
+        "Apron",
+        "Bandana"
+      ],
+      'thumbnails': []  // Coming Soon - no products yet
+    };
+
+    // Get product names for the selected category
+    const category_products = category_mappings[category] || [];
+    
+    // Return placeholder products for mobile fallback (same count as backend)
+    return category_products.map(productName => ({
+      name: productName,
+      price: 25.00,
+      main_image: `https://via.placeholder.com/300x300/000000/FFFFFF?text=${encodeURIComponent(productName)}`,
+      preview_image: `https://via.placeholder.com/300x300/000000/FFFFFF?text=${encodeURIComponent(productName)}`,
+      options: { color: ["Black", "White"], size: ["S", "M", "L", "XL"] }
+    }));
   };
 
   const getSelectedScreenshotUrl = () => {
@@ -137,34 +231,128 @@ const ProductPage = ({ sidebar }) => {
   }, [productId]);
 
   useEffect(() => {
+    if (window.__DEBUG__) {
     console.log('🔄 useEffect triggered with:', { productId, category, authenticated, email });
+    }
     
     const fetchProductData = async () => {
       try {
         setLoading(true);
         setError(null); // Clear any previous errors
         
-        // Handle browse mode - use 'browse' when productId is undefined
+        // Handle browse mode - use 'browse' when productId is undefined or 'dynamic'
         const actualProductId = productId || 'browse';
-        const url = `https://screenmerch.fly.dev/api/product/${actualProductId}?category=${category}&authenticated=${authenticated}&email=${email}&v=${Date.now()}`;
+        const isBrowseMode = !productId || productId === 'browse' || productId === 'dynamic';
+        
+        const url = isBrowseMode
+          ? `https://screenmerch.fly.dev/api/product/browse?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}`
+          : `https://screenmerch.fly.dev/api/product/${actualProductId}?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}`;
+
+        // Enable debug for mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (window.__DEBUG__ || isMobile) {
         console.log('🌐 Fetching product data from:', url);
         console.log('📱 User Agent:', navigator.userAgent);
-        console.log('📱 Is Mobile:', /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
-        
-        // Fetch product data from backend API
-        const response = await fetch(url, {
+          console.log('📱 Is Mobile:', isMobile);
+          console.log('🔧 Debug mode enabled for mobile');
+          console.log('🔧 ProductId:', productId);
+          console.log('🔧 Category:', category);
+          console.log('🔧 IsBrowseMode:', isBrowseMode);
+          
+          // Mobile debugging with alerts
+          if (isMobile) {
+            alert(`Mobile Debug:\nProductId: ${productId}\nCategory: ${category}\nIsBrowseMode: ${isBrowseMode}\nURL: ${url}`);
+            
+            // Test basic connectivity first
+            fetch('https://screenmerch.fly.dev/api/ping')
+              .then(res => res.json())
+              .then(data => alert(`Ping Test: SUCCESS\nResponse: ${JSON.stringify(data)}`))
+              .catch(err => alert(`Ping Test: FAILED\nError: ${err.message}`));
+          }
+        }
+
+        // Fetch product data from backend API with mobile-friendly settings
+        let response;
+        try {
+          if (window.__DEBUG__ || isMobile) {
+            console.log('🚀 Starting fetch request...');
+          }
+          
+          response = await fetch(url, {
           method: 'GET',
-          cache: 'no-store',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          // Add timeout for mobile networks
+            cache: 'no-cache',
+            // Longer timeout for mobile networks
           signal: AbortSignal.timeout(30000) // 30 second timeout
         });
         
+          if (window.__DEBUG__ || isMobile) {
+            console.log('✅ Fetch completed, status:', response.status);
+            console.log('✅ Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            // Mobile debugging with alerts
+            if (isMobile) {
+              alert(`Fetch Success!\nStatus: ${response.status}\nURL: ${url}`);
+            }
+          }
+        } catch (fetchError) {
+          console.error('❌ Fetch failed:', fetchError);
+          console.error('❌ Error name:', fetchError.name);
+          console.error('❌ Error message:', fetchError.message);
+          
+          // Mobile debugging with alerts
+          if (isMobile) {
+            alert(`Fetch Failed!\nError: ${fetchError.message}\nURL: ${url}`);
+          }
+          
+          // Mobile fallback: Use static data instead of backend
+          if (isMobile) {
+            console.log('📱 Using mobile fallback with static data');
+            const staticProducts = getStaticProductsForCategory(category);
+            console.log('📱 Static products:', staticProducts);
+            
+            const staticData = {
+              success: true,
+              product: {
+                thumbnail_url: '',
+                screenshots: []
+              },
+              products: staticProducts,
+              category: category
+            };
+            
+            console.log('📱 Setting static data:', staticData);
+            setProductData(staticData);
+            setLoading(false); // Make sure loading is set to false
+            setError(null); // Clear any errors
+            
+            // Mobile debugging alert
+            alert(`Mobile Fallback Active!\nProducts: ${staticProducts.length}\nCategory: ${category}`);
+            return; // Skip the rest of the error handling
+          }
+          
+          // Try a simpler fetch as fallback
+          if (window.__DEBUG__ || isMobile) {
+            console.log('🔄 Trying fallback fetch...');
+          }
+          
+          try {
+            response = await fetch(url, {
+              method: 'GET',
+              cache: 'no-cache'
+            });
+            if (window.__DEBUG__ || isMobile) {
+              console.log('✅ Fallback fetch succeeded, status:', response.status);
+            }
+          } catch (fallbackError) {
+            console.error('❌ Fallback fetch also failed:', fallbackError);
+            throw new Error(`Network error: ${fetchError.message} | Fallback: ${fallbackError.message}`);
+          }
+        }
+
+        if (window.__DEBUG__) {
         console.log('📡 Response status:', response.status);
         console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+        }
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -173,6 +361,8 @@ const ProductPage = ({ sidebar }) => {
         }
         
         const data = await response.json();
+
+        if (window.__DEBUG__) {
         console.log('📦 Product Data Received:', data);
         console.log('📸 Thumbnail URL:', data.product?.thumbnail_url);
         console.log('📸 Screenshots:', data.product?.screenshots);
@@ -180,11 +370,20 @@ const ProductPage = ({ sidebar }) => {
         console.log('📦 Products Count:', data.products?.length || 0);
         console.log('📦 Category:', data.category);
         console.log('📦 Success:', data.success);
+        }
+
+        // Debug the data structure
+        if (window.__DEBUG__ || isMobile) {
+          console.log('📦 Raw API Response:', data);
+          console.log('📦 Products array:', data.products);
+          console.log('📦 Products length:', data.products?.length);
+          console.log('📦 Success flag:', data.success);
+        }
         
         // Cache the products data for offline use
         try {
           localStorage.setItem('cached_products', JSON.stringify(data.products));
-          console.log('💾 Cached products data for offline use');
+          if (window.__DEBUG__) console.log('💾 Cached products data for offline use');
         } catch (e) {
           console.warn('Could not cache products data');
         }
@@ -227,13 +426,14 @@ const ProductPage = ({ sidebar }) => {
               try {
                 // Handle browse mode - use 'browse' when productId is undefined
                 const actualProductId = productId || 'browse';
-                const url = `https://screenmerch.fly.dev/api/product/${actualProductId}?category=${category}&authenticated=${authenticated}&email=${email}`;
+                const url =
+                  `https://screenmerch.fly.dev/api/product/${actualProductId}` +
+                  `?category=${encodeURIComponent(category)}` +
+                  `&authenticated=${authenticated}` +
+                  `&email=${encodeURIComponent(email || '')}`;
+
                 const response = await fetch(url, {
                   method: 'GET',
-                  headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                  },
                   signal: AbortSignal.timeout(30000)
                 });
                 
@@ -274,11 +474,20 @@ const ProductPage = ({ sidebar }) => {
   }
 
   if (!productData) {
+    // Debug why productData is falsy
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (window.__DEBUG__ || isMobile) {
+      console.log('❌ ProductData is falsy:', productData);
+      console.log('❌ Loading state:', loading);
+      console.log('❌ Error state:', error);
+    }
+    
     return (
       <div className={`container ${sidebar ? "" : " large-container"}`}>
         <div style={{ padding: '2rem', textAlign: 'center' }}>
           <h2>Product Not Found</h2>
           <p>The requested product could not be found.</p>
+          <p>Debug: productData = {JSON.stringify(productData)}</p>
         </div>
       </div>
     );
@@ -299,28 +508,6 @@ const ProductPage = ({ sidebar }) => {
         </div>
       </div>
 
-      {/* Category Selection Section - Only show when category is "all" or no specific category */}
-      {(category === 'all' || !productData.products || productData.products.length === 0) && (
-        <div className="merchandise-categories">
-          <div className="categories-container">
-            <h1 className="categories-title">Choose a Product Category</h1>
-            
-            <div className="categories-grid">
-              {categories.map((cat, index) => (
-                <div
-                  key={index}
-                  className={`category-box ${cat.category === category ? 'active' : ''}`}
-                  onClick={() => handleCategoryClick(cat.category)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="category-emoji">{cat.emoji}</div>
-                  <div className="category-name">{cat.name}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Products Section - Only show when specific category is selected (not "all") and has products */}
       {category !== 'all' && productData.products && productData.products.length > 0 && (
