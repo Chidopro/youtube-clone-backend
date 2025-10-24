@@ -350,6 +350,7 @@ const ProductPage = ({ sidebar }) => {
           // Only use mobile fallback if the API call actually failed
           if (isMobile) {
             console.log('📱 API call failed, using mobile fallback with static data');
+            console.log('📱 This should NOT happen if API call succeeded');
             const staticProducts = getStaticProductsForCategory(category);
             console.log('📱 Static products:', staticProducts);
             
@@ -435,6 +436,8 @@ const ProductPage = ({ sidebar }) => {
         if (window.__DEBUG__ || isMobile) {
           console.log('✅ Using real backend data - API call succeeded');
           console.log('✅ Products from backend:', data.products?.length || 0);
+          console.log('✅ First product image:', data.products?.[0]?.main_image);
+          console.log('✅ First product preview:', data.products?.[0]?.preview_image);
         }
         
         setProductData(data);
