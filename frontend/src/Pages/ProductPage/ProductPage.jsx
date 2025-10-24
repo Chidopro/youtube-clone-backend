@@ -167,14 +167,68 @@ const ProductPage = ({ sidebar }) => {
     // Get product names for the selected category
     const category_products = category_mappings[category] || [];
     
-    // Return placeholder products for mobile fallback (same count as backend)
-    return category_products.map(productName => ({
-      name: productName,
-      price: 25.00,
-      main_image: `https://via.placeholder.com/300x300/000000/FFFFFF?text=${encodeURIComponent(productName)}`,
-      preview_image: `https://via.placeholder.com/300x300/000000/FFFFFF?text=${encodeURIComponent(productName)}`,
-      options: { color: ["Black", "White"], size: ["S", "M", "L", "XL"] }
-    }));
+    // Map product names to actual product data from backend
+    const productImageMap = {
+      "Unisex Hoodie": { filename: "tested.png", preview: "testedpreview.png", price: 36.95 },
+      "Men's Tank Top": { filename: "random.png", preview: "randompreview.png", price: 24.23 },
+      "Mens Fitted T-Shirt": { filename: "mensfittedtshirt.png", preview: "mensfittedtshirtpreview.png", price: 26.58 },
+      "Men's Fitted Long Sleeve": { filename: "mensfittedlongsleeve.png", preview: "mensfittedlongsleevepreview.png", price: 29.33 },
+      "Unisex T-Shirt": { filename: "guidontee.png", preview: "guidonteepreview.png", price: 21.69 },
+      "Unisex Oversized T-Shirt": { filename: "unisexoversizedtshirt.png", preview: "unisexoversizedtshirtpreview.png", price: 26.49 },
+      "Men's Long Sleeve Shirt": { filename: "menslongsleeve.png", preview: "menslongsleevepreview.png", price: 28.95 },
+      "Unisex Champion Hoodie": { filename: "hoodiechampion.png", preview: "hoodiechampionpreview.jpg", price: 45.00 },
+      "Cropped Hoodie": { filename: "croppedhoodie.png", preview: "croppedhoodiepreview.png", price: 43.15 },
+      "Women's Fitted Racerback Tank": { filename: "womensfittedracerbacktank.png", preview: "womensfittedracerbacktankpreview.png", price: 20.95 },
+      "Women's Micro-Rib Tank Top": { filename: "womensmicroribtanktop.png", preview: "womensmicroribtanktoppreview.png", price: 25.81 },
+      "Women's Ribbed Neck": { filename: "womensribbedneck.png", preview: "womensribbedneckpreview.png", price: 25.60 },
+      "Women's Shirt": { filename: "womensshirt.png", preview: "womensshirtpreview.png", price: 23.69 },
+      "Unisex Heavyweight T-Shirt": { filename: "womenshdshirt.png", preview: "womenshdshirtpreview.png", price: 25.29 },
+      "Unisex Pullover Hoodie": { filename: "unisexpulloverhoodie.png", preview: "unisexpulloverhoodiepreview.png", price: 41.06 },
+      "Pajama Shorts": { filename: "pajamashorts.png", preview: "pajamashortspreview.png", price: 32.56 },
+      "Youth Heavy Blend Hoodie": { filename: "kidhoodie.png", preview: "kidhoodiepreview.png", price: 29.33 },
+      "Kids Shirt": { filename: "kidshirt.png", preview: "kidshirtpreview.png", price: 23.49 },
+      "Kids Long Sleeve": { filename: "kidlongsleeve.png", preview: "kidlongsleevepreview.png", price: 26.49 },
+      "Toddler Short Sleeve T-Shirt": { filename: "toddlershortsleevet.png", preview: "toddlershortsleevetpreview.png", price: 22.75 },
+      "Toddler Jersey Shirt": { filename: "toddlerjerseytshirt.png", preview: "toddlerjerseytshirtpreview.png", price: 20.29 },
+      "Kids Sweatshirt": { filename: "kidssweatshirt.png", preview: "kidssweatshirtpreview.png", price: 27.29 },
+      "Youth All Over Print Swimsuit": { filename: "youthalloverprintswimsuit.png", preview: "youthalloverprintswimsuitpreview.png", price: 33.95 },
+      "Girls Leggings": { filename: "girlsleggings.png", preview: "girlsleggingspreview.png", price: 28.31 },
+      "Laptop Sleeve": { filename: "laptopsleeve.png", preview: "laptopsleevepreview.png", price: 31.16 },
+      "All-Over Print Drawstring Bag": { filename: "drawstringbag.png", preview: "drawstringbagpreview.png", price: 25.25 },
+      "All Over Print Tote Pocket": { filename: "largecanvasbag.png", preview: "largecanvasbagpreview.png", price: 33.41 },
+      "All-Over Print Crossbody Bag": { filename: "crossbodybag.png", preview: "crossbodybagpreview.png", price: 28.95 },
+      "Distressed Dad Hat": { filename: "distresseddadhat.png", preview: "distresseddadhatpreview.png", price: 24.95 },
+      "Snapback Hat": { filename: "snapbackhat.png", preview: "snapbackhatpreview.png", price: 24.95 },
+      "Five Panel Trucker Hat": { filename: "fivepaneltruckerhat.png", preview: "fivepaneltruckerhatpreview.png", price: 24.95 },
+      "5 Panel Baseball Cap": { filename: "5panelbaseballcap.png", preview: "5panelbaseballcappreview.png", price: 24.95 },
+      "White Glossy Mug": { filename: "whitemug.png", preview: "whitemugpreview.png", price: 15.95 },
+      "Travel Mug": { filename: "travelmug.png", preview: "travelmugpreview.png", price: 19.95 },
+      "Enamel Mug": { filename: "enamelmug.png", preview: "enamelmugpreview.png", price: 18.95 },
+      "Colored Mug": { filename: "coloredmug.png", preview: "coloredmugpreview.png", price: 17.95 },
+      "Pet Bowl All-Over Print": { filename: "petbowl.png", preview: "petbowlpreview.png", price: 31.49 },
+      "Pet Bandana Collar": { filename: "petbandanacollar.png", preview: "petbandanacollarpreview.png", price: 19.95 },
+      "All Over Print Leash": { filename: "leash.png", preview: "leashpreview.png", price: 24.95 },
+      "All Over Print Collar": { filename: "collar.png", preview: "collarpreview.png", price: 19.95 },
+      "Kiss-Cut Stickers": { filename: "stickers.png", preview: "stickerspreview.png", price: 4.29 },
+      "Die-Cut Magnets": { filename: "magnets.png", preview: "magnetspreview.png", price: 8.95 },
+      "Greeting Card": { filename: "greetingcard.png", preview: "greetingcardpreview.png", price: 5.00 },
+      "Hardcover Bound Notebook": { filename: "hardcovernotebook.png", preview: "hardcovernotebookpreview.png", price: 23.21 },
+      "Coasters": { filename: "coaster.png", preview: "coasterpreview.jpg", price: 33.99 },
+      "Apron": { filename: "apron.png", preview: "apronpreview.png", price: 19.99 },
+      "Bandana": { filename: "bandana.png", preview: "bandanapreview.png", price: 19.95 }
+    };
+
+    // Return products with actual image paths from backend
+    return category_products.map(productName => {
+      const productData = productImageMap[productName] || { filename: "placeholder.png", preview: "placeholder.png", price: 25.00 };
+      return {
+        name: productName,
+        price: productData.price,
+        main_image: `https://screenmerch.fly.dev/static/images/${productData.filename}`,
+        preview_image: `https://screenmerch.fly.dev/static/images/${productData.preview}`,
+        options: { color: ["Black", "White"], size: ["S", "M", "L", "XL"] }
+      };
+    });
   };
 
   const getSelectedScreenshotUrl = () => {
