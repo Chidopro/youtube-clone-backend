@@ -167,7 +167,7 @@ const ProductPage = ({ sidebar }) => {
     // Get product names for the selected category
     const category_products = category_mappings[category] || [];
     
-    // Map product names to actual product data from backend
+    // Map product names to actual product data from backend (using exact filenames from PRODUCTS list)
     const productImageMap = {
       "Unisex Hoodie": { filename: "tested.png", preview: "testedpreview.png", price: 36.95 },
       "Men's Tank Top": { filename: "random.png", preview: "randompreview.png", price: 24.23 },
@@ -175,7 +175,7 @@ const ProductPage = ({ sidebar }) => {
       "Men's Fitted Long Sleeve": { filename: "mensfittedlongsleeve.png", preview: "mensfittedlongsleevepreview.png", price: 29.33 },
       "Unisex T-Shirt": { filename: "guidontee.png", preview: "guidonteepreview.png", price: 21.69 },
       "Unisex Oversized T-Shirt": { filename: "unisexoversizedtshirt.png", preview: "unisexoversizedtshirtpreview.png", price: 26.49 },
-      "Men's Long Sleeve Shirt": { filename: "menslongsleeve.png", preview: "menslongsleevepreview.png", price: 28.95 },
+      "Men's Long Sleeve Shirt": { filename: "menslongsleeve.png", preview: "menslongsleevepreview.jpg", price: 24.79 },
       "Unisex Champion Hoodie": { filename: "hoodiechampion.png", preview: "hoodiechampionpreview.jpg", price: 45.00 },
       "Cropped Hoodie": { filename: "croppedhoodie.png", preview: "croppedhoodiepreview.png", price: 43.15 },
       "Women's Fitted Racerback Tank": { filename: "womensfittedracerbacktank.png", preview: "womensfittedracerbacktankpreview.png", price: 20.95 },
@@ -208,9 +208,9 @@ const ProductPage = ({ sidebar }) => {
       "Pet Bowl All-Over Print": { filename: "petbowl.png", preview: "petbowlpreview.png", price: 31.49 },
       "Pet Bandana Collar": { filename: "petbandanacollar.png", preview: "petbandanacollarpreview.png", price: 19.95 },
       "All Over Print Leash": { filename: "leash.png", preview: "leashpreview.png", price: 24.95 },
-      "All Over Print Collar": { filename: "collar.png", preview: "collarpreview.png", price: 19.95 },
+      "All Over Print Collar": { filename: "collar.png", preview: "collarpreview.png", price: 23.08 },
       "Kiss-Cut Stickers": { filename: "stickers.png", preview: "stickerspreview.png", price: 4.29 },
-      "Die-Cut Magnets": { filename: "magnets.png", preview: "magnetspreview.png", price: 8.95 },
+      "Die-Cut Magnets": { filename: "magnet.png", preview: "magnetpreview.png", price: 5.32 },
       "Greeting Card": { filename: "greetingcard.png", preview: "greetingcardpreview.png", price: 5.00 },
       "Hardcover Bound Notebook": { filename: "hardcovernotebook.png", preview: "hardcovernotebookpreview.png", price: 23.21 },
       "Coasters": { filename: "coaster.png", preview: "coasterpreview.jpg", price: 33.99 },
