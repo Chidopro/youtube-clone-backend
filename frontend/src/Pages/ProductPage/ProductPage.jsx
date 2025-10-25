@@ -256,6 +256,26 @@ const ProductPage = ({ sidebar }) => {
     const chosenSize = selectedSizes[index] || (product?.options?.size?.[0] || 'One Size');
     const screenshotUrl = getSelectedScreenshotUrl();
 
+    // Get video metadata from localStorage
+    let videoMetadata = {};
+    try {
+      const raw = localStorage.getItem('pending_merch_data');
+      console.log('🔍 Raw localStorage data:', raw);
+      if (raw) {
+        const merchData = JSON.parse(raw);
+        console.log('🔍 Parsed merch data:', merchData);
+        videoMetadata = {
+          video_url: merchData.videoUrl,
+          video_title: merchData.videoTitle,
+          creator_name: merchData.creatorName,
+          thumbnail: merchData.thumbnail
+        };
+        console.log('🔍 Video metadata extracted:', videoMetadata);
+      }
+    } catch (e) {
+      console.warn('Could not load video metadata from localStorage:', e);
+    }
+
     const item = {
       name: product?.name || 'Product',
       price: product?.price || 0,
@@ -265,7 +285,9 @@ const ProductPage = ({ sidebar }) => {
       color: chosenColor,
       size: chosenSize,
       screenshot: screenshotUrl,
-      qty: 1
+      qty: 1,
+      // Include video metadata in cart item
+      ...videoMetadata
     };
     const next = [...cartItems, item];
     persistCart(next);

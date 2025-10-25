@@ -180,6 +180,14 @@ const Checkout = () => {
                 button.disabled = true;
                 
                 try {
+                  console.log('🔍 Cart items before checkout:', items);
+                  console.log('🔍 First item video metadata:', {
+                    video_url: items[0]?.video_url,
+                    video_title: items[0]?.video_title,
+                    creator_name: items[0]?.creator_name,
+                    thumbnail: items[0]?.thumbnail
+                  });
+                  
                   const payload = {
                     cart: items.map(it => ({
                       product: it.product || it.name,
@@ -192,8 +200,11 @@ const Checkout = () => {
                     shipping_cost: shipping.cost || 0,
                     videoUrl: items[0]?.video_url,
                     videoTitle: items[0]?.video_title,
-                    creatorName: items[0]?.creator_name
+                    creatorName: items[0]?.creator_name,
+                    thumbnail: items[0]?.thumbnail
                   };
+                  
+                  console.log('🔍 Checkout payload:', payload);
                   const res = await fetch(API_CONFIG.ENDPOINTS.CREATE_CHECKOUT_SESSION, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
