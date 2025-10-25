@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import './ProductPage.css';
 
+const IMG_BASE = 'https://screenmerch.fly.dev/static/images';
+
 const ProductPage = ({ sidebar }) => {
   const { productId } = useParams();
   const [searchParams] = useSearchParams();
@@ -224,8 +226,8 @@ const ProductPage = ({ sidebar }) => {
       return {
         name: productName,
         price: productData.price,
-        main_image: `https://screenmerch.fly.dev/static/images/${productData.filename}`,
-        preview_image: `https://screenmerch.fly.dev/static/images/${productData.preview}`,
+        main_image: `${IMG_BASE}/${productData.filename}`,
+        preview_image: `${IMG_BASE}/${productData.preview}`,
         options: { color: ["Black", "White"], size: ["S", "M", "L", "XL"] }
       };
     });
@@ -257,7 +259,9 @@ const ProductPage = ({ sidebar }) => {
     const item = {
       name: product?.name || 'Product',
       price: product?.price || 0,
-      image: product?.preview_image ? `https://screenmerch.fly.dev/static/images/${product.preview_image}` : (product?.main_image ? `https://screenmerch.fly.dev/static/images/${product.main_image}` : ''),
+      image: product?.preview_image
+        ? `${IMG_BASE}/${product.preview_image}`
+        : (product?.main_image ? `${IMG_BASE}/${product.main_image}` : ''),
       color: chosenColor,
       size: chosenSize,
       screenshot: screenshotUrl,
@@ -644,13 +648,22 @@ const ProductPage = ({ sidebar }) => {
                   {/* Product Image */}
                   {(product.preview_image || product.main_image) && (
                     <div className="product-image">
-                      <img 
-                        src={product.preview_image ? `https://screenmerch.fly.dev/static/images/${product.preview_image}` : `https://screenmerch.fly.dev/static/images/${product.main_image}`}
+                      <img
+                        src={
+                          product.preview_image
+                            ? `${IMG_BASE}/${product.preview_image}`
+                            : `${IMG_BASE}/${product.main_image}`
+                        }
                         alt={product.name}
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
                         onError={(e) => {
                           // Fallback to main_image if preview fails
-                          if (product.main_image && e.target.src !== `https://screenmerch.fly.dev/static/images/${product.main_image}`) {
-                            e.target.src = `https://screenmerch.fly.dev/static/images/${product.main_image}`;
+                          const fallback = product.main_image
+                            ? `${IMG_BASE}/${product.main_image}`
+                            : '';
+                          if (fallback && e.currentTarget.src !== fallback) {
+                            e.currentTarget.src = fallback;
                           }
                         }}
                       />
