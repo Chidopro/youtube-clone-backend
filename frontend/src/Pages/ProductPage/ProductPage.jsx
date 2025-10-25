@@ -349,32 +349,11 @@ const ProductPage = ({ sidebar }) => {
             console.log(`Fetch Failed!\nError: ${fetchError.message}\nURL: ${url}`);
           }
           
-          // Only use mobile fallback if the API call actually failed
+          // TEMPORARILY DISABLE MOBILE FALLBACK TO FORCE REAL BACKEND DATA
           if (isMobile) {
-            console.log('📱 API call failed, using mobile fallback with static data');
-            console.log('📱 This should NOT happen if API call succeeded');
+            console.log('📱 API call failed, but mobile fallback is DISABLED');
             console.log('📱 Error details:', fetchError.message);
-            const staticProducts = getStaticProductsForCategory(category);
-            console.log('📱 Static products:', staticProducts);
-            
-            const staticData = {
-              success: true,
-              product: {
-                thumbnail_url: '',
-                screenshots: []
-              },
-              products: staticProducts,
-              category: category
-            };
-            
-            console.log('📱 Setting static data:', staticData);
-            setProductData(staticData);
-            setLoading(false);
-            setError(null);
-            
-            // Mobile debugging (console only)
-            console.log(`Mobile Fallback Active!\nProducts: ${staticProducts.length}\nCategory: ${category}`);
-            return; // Skip the rest of the error handling
+            console.log('📱 This will now use the fallback fetch instead of static data');
           }
           
           // For non-mobile, try a simpler fetch as fallback
