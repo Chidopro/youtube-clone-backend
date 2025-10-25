@@ -260,8 +260,8 @@ const ProductPage = ({ sidebar }) => {
       name: product?.name || 'Product',
       price: product?.price || 0,
       image: product?.preview_image
-        ? `${IMG_BASE}/${product.preview_image}`
-        : (product?.main_image ? `${IMG_BASE}/${product.main_image}` : ''),
+        ? (product.preview_image.startsWith('http') ? product.preview_image : `${IMG_BASE}/${product.preview_image}`)
+        : (product?.main_image ? (product.main_image.startsWith('http') ? product.main_image : `${IMG_BASE}/${product.main_image}`) : ''),
       color: chosenColor,
       size: chosenSize,
       screenshot: screenshotUrl,
@@ -651,8 +651,8 @@ const ProductPage = ({ sidebar }) => {
                       <img
                         src={
                           product.preview_image
-                            ? `${IMG_BASE}/${product.preview_image}`
-                            : `${IMG_BASE}/${product.main_image}`
+                            ? (product.preview_image.startsWith('http') ? product.preview_image : `${IMG_BASE}/${product.preview_image}`)
+                            : (product.main_image.startsWith('http') ? product.main_image : `${IMG_BASE}/${product.main_image}`)
                         }
                         alt={product.name}
                         loading="lazy"
@@ -660,7 +660,7 @@ const ProductPage = ({ sidebar }) => {
                         onError={(e) => {
                           // Fallback to main_image if preview fails
                           const fallback = product.main_image
-                            ? `${IMG_BASE}/${product.main_image}`
+                            ? (product.main_image.startsWith('http') ? product.main_image : `${IMG_BASE}/${product.main_image}`)
                             : '';
                           if (fallback && e.currentTarget.src !== fallback) {
                             e.currentTarget.src = fallback;
