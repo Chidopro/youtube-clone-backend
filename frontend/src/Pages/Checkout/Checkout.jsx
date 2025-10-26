@@ -185,14 +185,16 @@ const Checkout = () => {
                     video_url: items[0]?.video_url,
                     video_title: items[0]?.video_title,
                     creator_name: items[0]?.creator_name,
-                    thumbnail: items[0]?.thumbnail
+                    thumbnail: items[0]?.thumbnail,
+                    screenshot: items[0]?.screenshot,
+                    image: items[0]?.image
                   });
                   
                   const payload = {
                     cart: items.map(it => ({
                       product: it.product || it.name,
                       variants: { color: it.color, size: it.size },
-                      img: it.image,
+                      img: it.screenshot || it.image, // Use user-selected screenshot if available, fallback to product image
                       price: it.price
                     })),
                     product_id: items[0]?.product_id || items[0]?.id || '',
