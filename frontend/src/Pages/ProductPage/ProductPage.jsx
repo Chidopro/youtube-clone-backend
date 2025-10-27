@@ -246,6 +246,18 @@ const ProductPage = ({ sidebar }) => {
     return '';
   };
 
+  // Calculate price based on selected size
+  const calculatePrice = (product, productIndex) => {
+    const basePrice = product.price || 0;
+    const selectedSize = selectedSizes[productIndex] || product?.options?.size?.[0];
+    
+    if (product.size_pricing && product.size_pricing[selectedSize] !== undefined) {
+      return basePrice + product.size_pricing[selectedSize];
+    }
+    
+    return basePrice;
+  };
+
   const persistCart = (items) => {
     setCartItems(items);
     try { localStorage.setItem('cart_items', JSON.stringify(items)); } catch (e) {}
@@ -278,7 +290,7 @@ const ProductPage = ({ sidebar }) => {
 
     const item = {
       name: product?.name || 'Product',
-      price: product?.price || 0,
+      price: calculatePrice(product, index),
       image: product?.preview_image
         ? (product.preview_image.startsWith('http') ? product.preview_image : `${IMG_BASE}/${product.preview_image}`)
         : (product?.main_image ? (product.main_image.startsWith('http') ? product.main_image : `${IMG_BASE}/${product.main_image}`) : ''),
@@ -693,7 +705,7 @@ const ProductPage = ({ sidebar }) => {
                   )}
                   
                   <h3>{product.name}</h3>
-                  <p className="product-price">${product.price.toFixed(2)}</p>
+                  <p className="product-price">${calculatePrice(product, index).toFixed(2)}</p>
                   
                   <div className="product-options">
                     {/* Color Options */}
@@ -714,7 +726,15 @@ const ProductPage = ({ sidebar }) => {
                     {product.options && product.options.size && product.options.size.length > 0 && (
                       <div className="option-group">
                         <label>Size:</label>
-                        <select className="size-select">
+                        <select 
+                          className="size-select"
+                          value={selectedSizes[index] || product.options.size[0]}
+                          onChange={(e) => {
+                            const newSelectedSizes = { ...selectedSizes };
+                            newSelectedSizes[index] = e.target.value;
+                            setSelectedSizes(newSelectedSizes);
+                          }}
+                        >
                           {product.options.size.map((size, sizeIndex) => (
                             <option key={sizeIndex} value={size}>
                               {size}
@@ -747,9 +767,11 @@ const ProductPage = ({ sidebar }) => {
       {isCartOpen && (
         <div className="cart-modal" onClick={() => setIsCartOpen(false)}>
           <div className="cart-modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3>Your Cart</h3>
             {cartItems.length === 0 ? (
-              <p>Your cart is empty.</p>
+              <div className="empty-cart-message">
+                <div className="empty-cart-icon">🛒</div>
+                <p>Your cart is empty</p>
+              </div>
             ) : (
               <div className="cart-items">
                 {cartItems.map((ci, i) => (
@@ -761,6 +783,17 @@ const ProductPage = ({ sidebar }) => {
                       <div className="cart-item-price">${(ci.price || 0).toFixed(2)}</div>
                     </div>
                     {ci.screenshot && <img className="cart-item-shot" src={ci.screenshot} alt="screenshot" />}
+                    <button 
+                      className="cart-item-delete" 
+                      onClick={() => {
+                        const updatedItems = cartItems.filter((_, index) => index !== i);
+                        setCartItems(updatedItems);
+                        localStorage.setItem('cart_items', JSON.stringify(updatedItems));
+                      }}
+                      title="Remove item"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 ))}
                 <div className="cart-actions">
