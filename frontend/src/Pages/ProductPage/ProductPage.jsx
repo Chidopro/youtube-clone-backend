@@ -722,6 +722,20 @@ const ProductPage = ({ sidebar }) => {
                       </div>
                     )}
                     
+                    {/* Handle Color Options */}
+                    {product.options && product.options.handle_color && product.options.handle_color.length > 0 && (
+                      <div className="option-group">
+                        <label>Handle Color:</label>
+                        <select className="color-select">
+                          {product.options.handle_color.map((color, colorIndex) => (
+                            <option key={colorIndex} value={color}>
+                              {color}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    
                     {/* Size Options */}
                     {product.options && product.options.size && product.options.size.length > 0 && (
                       <div className="option-group">
