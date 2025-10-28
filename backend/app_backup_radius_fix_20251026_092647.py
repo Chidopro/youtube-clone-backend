@@ -787,9 +787,9 @@ PRODUCTS = [
     {
         "name": "Unisex Champion Hoodie",
         "price": 45.00,
-        "filename": "hoodiechampionpreview.png",
-        "main_image": "hoodiechampionpreview.png",
-        "preview_image": "hoodiechampionpreview.png",
+        "filename": "hoodiechampion.png",
+        "main_image": "hoodiechampion.png",
+        "preview_image": "hoodiechampionpreview.jpg",
         "options": {"color": ["Black", "Light Steel"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
             "S": 0,       # Base price $45
@@ -854,8 +854,8 @@ PRODUCTS = [
     {
         "name": "Kids Shirt",
         "price": 23.49,
-        "filename": "kidshirtpreview.png",
-        "main_image": "kidshirtpreview.png",
+        "filename": "kidshirt.png",
+        "main_image": "kidshirt.png",
         "preview_image": "kidshirtpreview.png",
         "options": {"color": ["Black", "Navy", "Maroon", "Forest", "Red", "Dark Grey Heather", "True Royal", "Berry", "Heather Forest", "Kelly", "Heather Columbia Blue", "Athletic Heather", "Mustard", "Pink", "Heather Dust", "Natural", "White"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
@@ -983,7 +983,7 @@ PRODUCTS = [
         }
     },
     {
-        "name": "All-Over Print Drawstring",
+        "name": "All-Over Print Drawstring Bag",
         "price": 25.25,
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
@@ -999,7 +999,7 @@ PRODUCTS = [
         "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
         "preview_image": "largecanvasbagpreview.png",
-        "options": {"handle_color": ["Black", "Red", "Yellow"], "size": ["16\"x20\""]},
+        "options": {"color": ["Black", "Red", "Yellow"], "size": ["16\"x20\""]},
         "size_pricing": {
             "16\"x20\"": 0
         }
@@ -1144,9 +1144,9 @@ PRODUCTS = [
     {
         "name": "Men's Long Sleeve Shirt",
         "price": 24.79,
-        "filename": "menslongsleevepreview.png",
-        "main_image": "menslongsleevepreview.png",
-        "preview_image": "menslongsleevepreview.png",
+        "filename": "menslongsleeve.png",
+        "main_image": "menslongsleeve.png",
+        "preview_image": "menslongsleevepreview.jpg",
         "options": {"color": ["Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Ash"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
             "S": 0,
@@ -1159,11 +1159,11 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Fitted Racerback Tank",
+        "name": "Women's Fitted Racerback Tank",
         "price": 20.95,
-        "filename": "womenstankpreview.png?v=20241028",
-        "main_image": "womenstankpreview.png?v=20241028",
-        "preview_image": "womenstankpreview.png?v=20241028",
+        "filename": "womenstank.png",
+        "main_image": "womenstank.png",
+        "preview_image": "womenstankpreview.jpg",
         "options": {"color": ["Black", "Hot Pink", "Light Orange", "Tahiti Blue", "Heather Gray", "Cancun", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
@@ -1193,11 +1193,11 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Micro-Rib Tank Top",
+        "name": "Women's Micro-Rib Tank Top",
         "price": 25.81,
-        "filename": "womensteepreview.png?v=20241028",
-        "main_image": "womensteepreview.png?v=20241028",
-        "preview_image": "womensteepreview.png?v=20241028",
+        "filename": "womenstee.png",
+        "main_image": "womenstee.png",
+        "preview_image": "womensteepreview.png",
         "options": {"color": ["Solid Black Blend", "Solid Navy Blend", "Athletic Heather", "Solid Baby Blue Blend", "Solid Pink Blend", "Solid White Blend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
@@ -1315,8 +1315,8 @@ PRODUCTS = [
         }
     },
     {
-        "name": "All-Over Print Utility Bag",
-        "price": 31.79,
+        "name": "All-Over Print Crossbody Bag",
+        "price": 30.35,
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
         "preview_image": "crossbodybagpreview.png",
@@ -1326,18 +1326,19 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Women's Crop Top",
-        "price": 28.55,
-        "filename": "womenscroptoppreview.png?v=20241028",
-        "main_image": "womenscroptoppreview.png?v=20241028",
-        "preview_image": "womenscroptoppreview.png?v=20241028",
-        "options": {"color": ["Black", "Hazy Pink", "Pale Pink", "Orchid", "Ecru", "White", "Bubblegum", "Bone", "Mineral", "Natural"], "size": ["XS", "S", "M", "L", "XL"]},
+        "name": "Pajama Shorts",
+        "price": 32.56,
+        "filename": "pajamashorts.png",
+        "main_image": "pajamashorts.png",
+        "preview_image": "pajamashortspreview.png",
+        "options": {"color": ["Black", "White", "Gray", "Navy", "Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
             "S": 0,
             "M": 0,
             "L": 0,
-            "XL": 0
+            "XL": 0,
+            "XXL": 2
         },
         "category": "womens"
     }
@@ -1378,13 +1379,13 @@ def filter_products_by_category(category):
         ],
         'womens': [
             "Cropped Hoodie",
-            "Fitted Racerback Tank",
-            "Micro-Rib Tank Top", 
+            "Women's Fitted Racerback Tank",
+            "Women's Micro-Rib Tank Top", 
             "Women's Ribbed Neck",
             "Women's Shirt",
             "Unisex Heavyweight T-Shirt",
             "Unisex Pullover Hoodie",
-            "Women's Crop Top"
+            "Pajama Shorts"
         ],
         'kids': [
             "Youth Heavy Blend Hoodie",
@@ -1398,9 +1399,9 @@ def filter_products_by_category(category):
         ],
         'bags': [
             "Laptop Sleeve",
-            "All-Over Print Drawstring", 
+            "All-Over Print Drawstring Bag", 
             "All Over Print Tote Pocket",
-            "All-Over Print Utility Bag"
+            "All-Over Print Crossbody Bag"
         ],
         'hats': [
             "Distressed Dad Hat",
@@ -1459,15 +1460,8 @@ def index():
 @app.route("/static/images/<filename>")
 def serve_static_image(filename):
     """Serve static images with proper headers"""
-    # Remove query parameters from filename for file lookup
-    clean_filename = filename.split('?')[0]
     static_dir = os.path.join(app.root_path, 'static', 'images')
-    response = send_from_directory(static_dir, clean_filename)
-    
-    # Add cache-busting headers for mobile compatibility
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
+    response = send_from_directory(static_dir, filename)
     
     # Add CORS headers for images
     response.headers.add('Access-Control-Allow-Origin', '*')
@@ -2076,6 +2070,10 @@ def place_order():
         cart = data.get("cart", [])
         shipping_cost = data.get("shipping_cost", data.get("shipping", {}).get("cost", 0)) or 0
         total_amount = data.get("total", 0) or sum(item.get('price', 0) for item in cart) + (shipping_cost or 0)
+        
+        # Debug: Log the received data
+        logger.info(f"🔍 Order data received: {data}")
+        logger.info(f"🔍 Video metadata: videoTitle={data.get('videoTitle')}, creatorName={data.get('creatorName')}, videoUrl={data.get('videoUrl')}")
 
         if not cart:
             return jsonify({"success": False, "error": "Cart is empty"}), 400
@@ -2124,6 +2122,7 @@ def place_order():
             "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
             "total_amount": total_amount,
             "shipping_cost": shipping_cost,
+            "thumbnail_data": data.get("selected_screenshot") or data.get("thumbnail"),
             "status": "pending",
         }
 
@@ -2145,6 +2144,7 @@ def place_order():
             "creator_name": order_data["creator_name"],
             "video_url": order_data["video_url"],
             "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
+            "thumbnail_data": data.get("thumbnail"),
             "status": "pending",
             "created_at": data.get("created_at", "Recent"),
         }
@@ -2178,6 +2178,12 @@ def place_order():
         html_body += f"<p><strong>Creator:</strong> {order_data['creator_name']}</p>"
         html_body += f"<p><strong>Video URL:</strong> {order_data['video_url']}</p>"
         html_body += f"<p><strong>Screenshot Timestamp:</strong> {order_store[order_id]['screenshot_timestamp']} seconds</p>"
+        
+        # Add thumbnail image if available
+        if order_data.get('thumbnail_data'):
+            html_body += "<hr>"
+            html_body += "<h2>🖼️ Product Image</h2>"
+            html_body += f"<img src='{order_data['thumbnail_data']}' alt='Product Thumbnail' style='max-width: 400px; border-radius: 8px; border: 2px solid #ddd;'>"
         html_body += "<br>"
         html_body += "<p><strong>📋 View Full Order Details:</strong></p>"
         html_body += f"<p><a href='https://screenmerch.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
@@ -2318,6 +2324,10 @@ def create_checkout_session():
         logger.info(f"🛒 Received checkout request - Cart: {cart}")
         logger.info(f"🛒 Product ID: {product_id}")
         logger.info(f"🛒 SMS Consent: {sms_consent}")
+        logger.info(f"🔍 Checkout data received: {data}")
+        logger.info(f"🔍 Video metadata: videoTitle={data.get('videoTitle')}, creatorName={data.get('creatorName')}, videoUrl={data.get('videoUrl')}")
+        logger.info(f"🔍 Screenshot data: thumbnail={data.get('thumbnail', 'None')[:100] if data.get('thumbnail') else 'None'}")
+        logger.info(f"🔍 Cart img data: {[item.get('img', 'None')[:50] if item.get('img') else 'None' for item in cart]}")
 
         if not cart:
             logger.error("❌ Cart is empty")
@@ -2344,6 +2354,35 @@ def create_checkout_session():
             })
             enriched_cart.append(enriched_item)
         
+        # Extract screenshot data from cart items for storage
+        thumbnail_data = None
+        user_selected_screenshot = None
+        
+        # First, try to get user-selected screenshot from checkout data
+        if data.get('thumbnail') and 'preview.png' not in str(data.get('thumbnail', '')):
+            user_selected_screenshot = data.get('thumbnail')
+            logger.info(f"🔍 Found user-selected screenshot in checkout data: {str(user_selected_screenshot)[:100]}...")
+        
+        # Then check cart items for base64 screenshots
+        for item in cart:
+            if item.get('img') and item['img'].startswith('data:image'):
+                thumbnail_data = item['img']
+                logger.info(f"🔍 Found base64 screenshot in cart item")
+                break
+            elif item.get('img') and 'preview.png' not in item['img']:
+                # This is a URL but not a product preview
+                thumbnail_data = item['img']
+                logger.info(f"🔍 Found user screenshot URL in cart item: {item['img'][:100]}...")
+                break
+        
+        # Prioritize user-selected screenshot over any other data
+        if user_selected_screenshot:
+            thumbnail_data = user_selected_screenshot
+            logger.info(f"🔍 Using user-selected screenshot as thumbnail_data")
+        elif not thumbnail_data and data.get('thumbnail'):
+            thumbnail_data = data.get('thumbnail')
+            logger.info(f"🔍 Fallback to thumbnail from checkout data")
+        
         # Store order in database instead of in-memory store
         order_data = {
             "order_id": order_id,
@@ -2355,6 +2394,7 @@ def create_checkout_session():
             "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
             "total_amount": total_amount,
             "shipping_cost": shipping_cost,
+            "thumbnail_data": thumbnail_data,
             "status": "pending"
         }
         
@@ -2373,6 +2413,8 @@ def create_checkout_session():
                 "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
                 "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
                 "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
+                "thumbnail_data": thumbnail_data,
+                "original_thumbnail": data.get("thumbnail"),
                 "status": "pending",
                 "created_at": data.get("created_at", "Recent")
             }
@@ -2388,6 +2430,8 @@ def create_checkout_session():
                 "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
                 "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
                 "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
+                "thumbnail_data": thumbnail_data,
+                "original_thumbnail": data.get("thumbnail"),
                 "status": "pending",
                 "created_at": data.get("created_at", "Recent")
             }
@@ -2640,6 +2684,16 @@ def stripe_webhook():
                     <p><strong>Screenshot Timestamp:</strong> {order_data.get('screenshot_timestamp', 'Not provided')} seconds</p>
                 </div>
             """
+            
+            # Add thumbnail image if available
+            if order_data.get('thumbnail_data'):
+                html_body += f"""
+                    <hr>
+                    <h2>🖼️ Product Image</h2>
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <img src='{order_data['thumbnail_data']}' alt='Product Thumbnail' style='max-width: 400px; border-radius: 8px; border: 2px solid #ddd;'>
+                    </div>
+                """
             
             # Add action buttons section with better email client compatibility
             html_body += f"""
@@ -3335,27 +3389,58 @@ def get_order_screenshot(order_id):
             order_data = result.data[0]
             logger.info(f"✅ Retrieved order {order_id} from database")
         
+        # Debug: Log what data we have
+        logger.info(f"🔍 Order data keys: {list(order_data.keys())}")
+        logger.info(f"🔍 Order has thumbnail_data: {bool(order_data.get('thumbnail_data'))}")
+        logger.info(f"🔍 Order has image_url: {bool(order_data.get('image_url'))}")
+        logger.info(f"🔍 Order has screenshot_data: {bool(order_data.get('screenshot_data'))}")
+        
         # Extract screenshot data from cart items
         screenshot_data = None
         cart = order_data.get('cart', [])
+        logger.info(f"🔍 Cart items: {len(cart)}")
         
-        # Look for screenshot in cart items
-        for item in cart:
+        # Look for screenshot in cart items - prioritize user-selected screenshots over product previews
+        for i, item in enumerate(cart):
+            logger.info(f"🔍 Cart item {i}: {list(item.keys())}")
+            
+            # Skip product preview images (these are generic product images, not user screenshots)
+            if item.get('img') and 'preview.png' in item['img']:
+                logger.info(f"🔍 Skipping product preview image in cart item {i}: {item['img']}")
+                continue
+                
             if item.get('img') and item['img'].startswith('data:image'):
                 screenshot_data = item['img']
+                logger.info(f"🔍 Found user screenshot (base64) in cart item {i} img field")
                 break
             elif item.get('screenshot') and item['screenshot'].startswith('data:image'):
                 screenshot_data = item['screenshot']
+                logger.info(f"🔍 Found user screenshot (base64) in cart item {i} screenshot field")
+                break
+            elif item.get('img') and item['img'].startswith('http') and 'preview.png' not in item['img']:
+                # Handle case where img is a URL but not a product preview
+                screenshot_data = item['img']
+                logger.info(f"🔍 Found user screenshot URL in cart item {i} img field: {screenshot_data}")
                 break
         
-        # Fallback: check order-level fields
+        # Fallback: check order-level fields - prioritize user-selected screenshots
         if not screenshot_data:
-            if order_data.get('image_url'):
+            # First check for the original thumbnail (user-selected screenshot)
+            if order_id in order_store and order_store[order_id].get('original_thumbnail'):
+                screenshot_data = order_store[order_id].get('original_thumbnail')
+                logger.info(f"🔍 Found user screenshot in in-memory store original_thumbnail field")
+            elif order_data.get('thumbnail_data') and 'preview.png' not in str(order_data.get('thumbnail_data', '')):
+                screenshot_data = order_data.get('thumbnail_data')
+                logger.info(f"🔍 Found user screenshot in order thumbnail_data field")
+            elif order_id in order_store and order_store[order_id].get('thumbnail_data') and 'preview.png' not in str(order_store[order_id].get('thumbnail_data', '')):
+                screenshot_data = order_store[order_id].get('thumbnail_data')
+                logger.info(f"🔍 Found user screenshot in in-memory store thumbnail_data field")
+            elif order_data.get('image_url') and 'preview.png' not in str(order_data.get('image_url', '')):
                 screenshot_data = order_data.get('image_url')
+                logger.info(f"🔍 Found user screenshot in order image_url field")
             elif order_data.get('screenshot_data'):
                 screenshot_data = order_data.get('screenshot_data')
-            elif order_data.get('thumbnail_data'):
-                screenshot_data = order_data.get('thumbnail_data')
+                logger.info(f"🔍 Found screenshot in order screenshot_data field")
         
         if screenshot_data:
             return jsonify({
@@ -3366,6 +3451,7 @@ def get_order_screenshot(order_id):
                 "creator_name": order_data.get('creator_name', 'Unknown Creator')
             })
         else:
+            logger.info(f"🔍 No screenshot data found in any field")
             return jsonify({
                 "success": False,
                 "error": "No screenshot data found for this order"
