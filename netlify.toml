@@ -17,12 +17,14 @@
 # Redirects
 ###############################################
 
-# Proxy API calls to Fly.io backend
+# ✅ Critical: use a 200 rewrite so POST bodies are preserved when proxying to Fly
 [[redirects]]
   from = "/api/*"
   to = "https://screenmerch.fly.dev/api/:splat"
   status = 200
   force = true
+  [redirects.headers]
+    X-Forwarded-Host = "screenmerch.com"
 
 # SPA routing so /product/:id works (incl. mobile)
 [[redirects]]
