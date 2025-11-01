@@ -511,24 +511,23 @@ const Checkout = () => {
                     creatorName: items[0]?.creator_name || null,
                   };
                   
-                  // Add selected screenshot ONLY if it exists and is small enough (< 1MB base64)
-                  // Large images will be handled via print quality generator link in email
+                  // Add selected screenshot ONLY if it's a URL (never include base64 images in payload)
+                  // Base64 images are too large and cause payload size issues
+                  // Screenshot is already stored in database/cart, so we can retrieve it later
                   if (selectedScreenshot) {
                     const screenshotStr = String(selectedScreenshot);
-                    // Only include if it's a URL (not base64) or if base64 is reasonably small (< 1MB)
+                    // Only include if it's a URL (not base64)
                     if (screenshotStr.startsWith('http') || screenshotStr.startsWith('https')) {
                       // URL - always safe to include
                       payload.selected_screenshot = selectedScreenshot;
                       console.log('📸 Added screenshot URL to payload');
                     } else if (screenshotStr.startsWith('data:image')) {
-                      // Base64 - check size (rough estimate: ~75% of string length)
-                      const estimatedSize = screenshotStr.length * 0.75;
-                      if (estimatedSize < 1000000) { // < 1MB
-                        payload.selected_screenshot = selectedScreenshot;
-                        console.log(`📸 Added screenshot to payload (estimated ${Math.round(estimatedSize/1024)}KB)`);
-                      } else {
-                        console.warn(`⚠️ Screenshot too large (${Math.round(estimatedSize/1024)}KB), skipping payload but will use print quality link`);
-                      }
+                      // Base64 image - DO NOT include in payload (too large, causes issues)
+                      // Screenshot is already stored in database/cart, can be retrieved later
+                      console.warn(`⚠️ Screenshot is base64 (${Math.round(screenshotStr.length/1024)}KB), excluding from payload. Will be retrieved from database/cart for email.`);
+                      // Don't add to payload - will be retrieved from order data later
+                    } else {
+                      console.warn(`⚠️ Screenshot format unknown, excluding from payload: ${screenshotStr.substring(0, 50)}...`);
                     }
                   }
                   
