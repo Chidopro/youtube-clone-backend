@@ -7,6 +7,40 @@ const OrderSuccess = () => {
   const [orderData, setOrderData] = useState(null);
 
   useEffect(() => {
+    // Clear cart immediately and comprehensively - run first!
+    (function clearCartCompletely() {
+      try {
+        // Clear all cart-related storage
+        localStorage.removeItem('cart');
+        localStorage.removeItem('cart_items');
+        localStorage.removeItem('cartData');
+        localStorage.removeItem('persistent_cart');
+        localStorage.removeItem('screenshots');
+        localStorage.removeItem('screenshot_timestamps');
+        localStorage.removeItem('pending_merch_data');
+        
+        // Clear session storage
+        sessionStorage.removeItem('cartData');
+        sessionStorage.removeItem('cart');
+        
+        // Also clear any variations/case-insensitive matches
+        Object.keys(localStorage).forEach(key => {
+          if (key.toLowerCase().includes('cart')) {
+            localStorage.removeItem(key);
+          }
+        });
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.toLowerCase().includes('cart')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+        
+        console.log('🛒 Cart cleared after successful purchase');
+      } catch (error) {
+        console.error('Error clearing cart:', error);
+      }
+    })();
+
     // Get order data from localStorage if available
     const trackingData = localStorage.getItem('order_tracking');
     if (trackingData) {
@@ -19,15 +53,6 @@ const OrderSuccess = () => {
         console.error('Error parsing tracking data:', error);
       }
     }
-
-    // Clear cart after successful order
-    localStorage.removeItem('cart');
-    localStorage.removeItem('cart_items');
-    localStorage.removeItem('screenshots');
-    localStorage.removeItem('screenshot_timestamps');
-    
-    // Clear any pending merch data
-    localStorage.removeItem('pending_merch_data');
 
     // Add animation
     const container = document.querySelector('.order-success-container');

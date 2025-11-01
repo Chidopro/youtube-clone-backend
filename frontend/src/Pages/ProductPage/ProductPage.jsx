@@ -4,6 +4,9 @@ import './ProductPage.css';
 
 const IMG_BASE = 'https://screenmerch.fly.dev/static/images';
 
+// Generate a unique cache-busting parameter
+const getCacheBuster = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
 const ProductPage = ({ sidebar }) => {
   const { productId } = useParams();
   const [searchParams] = useSearchParams();
@@ -116,7 +119,7 @@ const ProductPage = ({ sidebar }) => {
         "Women's Shirt",
         "Unisex Heavyweight T-Shirt",
         "Unisex Pullover Hoodie",
-        "Pajama Shorts"
+        "Women's Crop Top"
       ],
       'kids': [
         "Youth Heavy Blend Hoodie",
@@ -177,16 +180,16 @@ const ProductPage = ({ sidebar }) => {
       "Men's Fitted Long Sleeve": { filename: "mensfittedlongsleeve.png", preview: "mensfittedlongsleevepreview.png", price: 29.33 },
       "Unisex T-Shirt": { filename: "guidontee.png", preview: "guidonteepreview.png", price: 21.69 },
       "Unisex Oversized T-Shirt": { filename: "unisexoversizedtshirt.png", preview: "unisexoversizedtshirtpreview.png", price: 26.49 },
-      "Men's Long Sleeve Shirt": { filename: "menslongsleeve.png", preview: "menslongsleevepreview.jpg", price: 24.79 },
-      "Unisex Champion Hoodie": { filename: "hoodiechampion.png", preview: "hoodiechampionpreview.jpg", price: 45.00 },
+      "Men's Long Sleeve Shirt": { filename: "menslongsleeve.png", preview: "menslongsleevepreview.png", price: 24.79 },
+      "Unisex Champion Hoodie": { filename: "hoodiechampion.png", preview: "hoodiechampionpreview.png", price: 45.00 },
       "Cropped Hoodie": { filename: "croppedhoodie.png", preview: "croppedhoodiepreview.png", price: 43.15 },
-      "Women's Fitted Racerback Tank": { filename: "womensfittedracerbacktank.png", preview: "womensfittedracerbacktankpreview.png", price: 20.95 },
-      "Women's Micro-Rib Tank Top": { filename: "womensmicroribtanktop.png", preview: "womensmicroribtanktoppreview.png", price: 25.81 },
+      "Women's Fitted Racerback Tank": { filename: "womenstank.png", preview: "womenstankpreview.png", price: 20.95 },
+      "Women's Micro-Rib Tank Top": { filename: "womenstee.png", preview: "womensteepreview.png", price: 25.81 },
       "Women's Ribbed Neck": { filename: "womensribbedneck.png", preview: "womensribbedneckpreview.png", price: 25.60 },
       "Women's Shirt": { filename: "womensshirt.png", preview: "womensshirtpreview.png", price: 23.69 },
       "Unisex Heavyweight T-Shirt": { filename: "womenshdshirt.png", preview: "womenshdshirtpreview.png", price: 25.29 },
       "Unisex Pullover Hoodie": { filename: "unisexpulloverhoodie.png", preview: "unisexpulloverhoodiepreview.png", price: 41.06 },
-      "Pajama Shorts": { filename: "pajamashorts.png", preview: "pajamashortspreview.png", price: 32.56 },
+      "Women's Crop Top": { filename: "womens-crop-top.png", preview: "womenscroptoppreview.png", price: 28.55 },
       "Youth Heavy Blend Hoodie": { filename: "kidhoodie.png", preview: "kidhoodiepreview.png", price: 29.33 },
       "Kids Shirt": { filename: "kidshirt.png", preview: "kidshirtpreview.png", price: 23.49 },
       "Kids Long Sleeve": { filename: "kidlongsleeve.png", preview: "kidlongsleevepreview.png", price: 26.49 },
@@ -202,13 +205,13 @@ const ProductPage = ({ sidebar }) => {
       "Distressed Dad Hat": { filename: "distresseddadhat.png", preview: "distresseddadhatpreview.png", price: 24.95 },
       "Snapback Hat": { filename: "snapbackhat.png", preview: "snapbackhatpreview.png", price: 24.95 },
       "Five Panel Trucker Hat": { filename: "fivepaneltruckerhat.png", preview: "fivepaneltruckerhatpreview.png", price: 24.95 },
-      "5 Panel Baseball Cap": { filename: "5panelbaseballcap.png", preview: "5panelbaseballcappreview.png", price: 24.95 },
-      "White Glossy Mug": { filename: "whitemug.png", preview: "whitemugpreview.png", price: 15.95 },
+      "5 Panel Baseball Cap": { filename: "youthbaseballcap.png", preview: "youthbaseballcappreview.png", price: 24.95 },
+      "White Glossy Mug": { filename: "mug1.png", preview: "mug1preview.png", price: 15.95 },
       "Travel Mug": { filename: "travelmug.png", preview: "travelmugpreview.png", price: 19.95 },
-      "Enamel Mug": { filename: "enamelmug.png", preview: "enamelmugpreview.png", price: 18.95 },
+      "Enamel Mug": { filename: "enamalmug.png", preview: "enamalmugpreview.png", price: 18.95 },
       "Colored Mug": { filename: "coloredmug.png", preview: "coloredmugpreview.png", price: 17.95 },
-      "Pet Bowl All-Over Print": { filename: "petbowl.png", preview: "petbowlpreview.png", price: 31.49 },
-      "Pet Bandana Collar": { filename: "petbandanacollar.png", preview: "petbandanacollarpreview.png", price: 19.95 },
+      "Pet Bowl All-Over Print": { filename: "dogbowl.png", preview: "dogbowlpreview.png", price: 31.49 },
+      "Pet Bandana Collar": { filename: "scarfcollar.png", preview: "scarfcollarpreview.png", price: 19.95 },
       "All Over Print Leash": { filename: "leash.png", preview: "leashpreview.png", price: 24.95 },
       "All Over Print Collar": { filename: "collar.png", preview: "collarpreview.png", price: 23.08 },
       "Kiss-Cut Stickers": { filename: "stickers.png", preview: "stickerspreview.png", price: 4.29 },
@@ -228,7 +231,7 @@ const ProductPage = ({ sidebar }) => {
         price: productData.price,
         main_image: `${IMG_BASE}/${productData.filename}`,
         preview_image: `${IMG_BASE}/${productData.preview}`,
-        options: { color: ["Black", "White"], size: ["S", "M", "L", "XL"] }
+        options: { color: ["Black", "White", "Hazy Pink", "Pale Pink", "Orchid", "Ecru", "White", "Bubblegum", "Bone", "Mineral", "Natural"], size: ["XS", "S", "M", "L", "XL"] }
       };
     });
   };
@@ -337,8 +340,8 @@ const ProductPage = ({ sidebar }) => {
         const isBrowseMode = !productId || productId === 'browse' || productId === 'dynamic';
         
         const url = isBrowseMode
-          ? `https://screenmerch.fly.dev/api/product/browse?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}&mobile=${Date.now()}`
-          : `https://screenmerch.fly.dev/api/product/${actualProductId}?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}&mobile=${Date.now()}`;
+          ? `https://screenmerch.fly.dev/api/product/browse?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}&mobile=${Date.now()}&cache=${Math.random()}`
+          : `https://screenmerch.fly.dev/api/product/${actualProductId}?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}&mobile=${Date.now()}&cache=${Math.random()}`;
 
         // Enable debug for mobile
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -643,20 +646,24 @@ const ProductPage = ({ sidebar }) => {
                     : fallbackImages.screenshots;
                   // Ensure we don't duplicate the thumbnail in the screenshots grid
                   const shots = (baseShots || []).filter((s) => s && s !== thumbnailUrl);
-                  return shots && shots.length > 0 ? shots.map((screenshot, index) => (
-                    <div 
-                      key={index}
-                      className={`screenshot-item ${selectedScreenshot === index ? 'selected' : ''}`}
-                      onClick={() => setSelectedScreenshot(index)}
-                    >
-                      <img 
-                        src={screenshot} 
-                        alt={`Screenshot ${index + 1}`} 
-                        className="screenshot-image"
-                      />
-                      <div className="screenshot-label">Screenshot {index + 1}</div>
-                    </div>
-                  )) : null;
+                  return shots && shots.length > 0 ? shots.map((screenshot, index) => {
+                    // Find the original index in the unfiltered array to match it correctly
+                    const originalIndex = baseShots.findIndex(s => s === screenshot);
+                    return (
+                      <div 
+                        key={index}
+                        className={`screenshot-item ${selectedScreenshot === originalIndex ? 'selected' : ''}`}
+                        onClick={() => setSelectedScreenshot(originalIndex)}
+                      >
+                        <img 
+                          src={screenshot} 
+                          alt={`Screenshot ${index + 1}`} 
+                          className="screenshot-image"
+                        />
+                        <div className="screenshot-label">Screenshot {index + 1}</div>
+                      </div>
+                    );
+                  }) : null;
                 })()}
               </div>
             </div>
@@ -667,7 +674,7 @@ const ProductPage = ({ sidebar }) => {
           <div className="product-image-section">
             {productData.img_url && (
               <img 
-                src={productData.img_url} 
+                src={productData.img_url.includes('?') ? `${productData.img_url}&v=${getCacheBuster()}` : `${productData.img_url}?v=${getCacheBuster()}`} 
                 alt="Product Preview" 
                 className="product-preview-image"
               />
@@ -690,8 +697,12 @@ const ProductPage = ({ sidebar }) => {
                       <img
                         src={
                           product.preview_image
-                            ? (product.preview_image.startsWith('http') ? product.preview_image : `${IMG_BASE}/${product.preview_image}`)
-                            : (product.main_image.startsWith('http') ? product.main_image : `${IMG_BASE}/${product.main_image}`)
+                            ? (product.preview_image.startsWith('http') 
+                                ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
+                                : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
+                            : (product.main_image.startsWith('http') 
+                                ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
+                                : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
                         }
                         alt={product.name}
                         loading="lazy"
@@ -699,7 +710,9 @@ const ProductPage = ({ sidebar }) => {
                         onError={(e) => {
                           // Fallback to main_image if preview fails
                           const fallback = product.main_image
-                            ? (product.main_image.startsWith('http') ? product.main_image : `${IMG_BASE}/${product.main_image}`)
+                            ? (product.main_image.startsWith('http') 
+                                ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
+                                : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
                             : '';
                           if (fallback && e.currentTarget.src !== fallback) {
                             e.currentTarget.src = fallback;
@@ -717,7 +730,15 @@ const ProductPage = ({ sidebar }) => {
                     {product.options && product.options.color && product.options.color.length > 0 && (
                       <div className="option-group">
                         <label>Color:</label>
-                        <select className="color-select">
+                        <select 
+                          className="color-select"
+                          value={selectedColors[index] || product.options.color[0]}
+                          onChange={(e) => {
+                            const newSelectedColors = { ...selectedColors };
+                            newSelectedColors[index] = e.target.value;
+                            setSelectedColors(newSelectedColors);
+                          }}
+                        >
                           {product.options.color.map((color, colorIndex) => (
                             <option key={colorIndex} value={color}>
                               {color}
@@ -731,7 +752,15 @@ const ProductPage = ({ sidebar }) => {
                     {product.options && product.options.handle_color && product.options.handle_color.length > 0 && (
                       <div className="option-group">
                         <label>Handle Color:</label>
-                        <select className="color-select">
+                        <select 
+                          className="color-select"
+                          value={selectedColors[index] || product.options.handle_color[0]}
+                          onChange={(e) => {
+                            const newSelectedColors = { ...selectedColors };
+                            newSelectedColors[index] = e.target.value;
+                            setSelectedColors(newSelectedColors);
+                          }}
+                        >
                           {product.options.handle_color.map((color, colorIndex) => (
                             <option key={colorIndex} value={color}>
                               {color}
@@ -795,7 +824,7 @@ const ProductPage = ({ sidebar }) => {
               <div className="cart-items">
                 {cartItems.map((ci, i) => (
                   <div key={i} className="cart-item">
-                    {ci.image && <img src={ci.image} alt={ci.name} />}
+                    {ci.image && <img src={ci.image.includes('?') ? `${ci.image}&v=${getCacheBuster()}` : `${ci.image}?v=${getCacheBuster()}`} alt={ci.name} />}
                     <div className="cart-item-info">
                       <div className="cart-item-name">{ci.name}</div>
                       <div className="cart-item-meta">{ci.color} • {ci.size}</div>

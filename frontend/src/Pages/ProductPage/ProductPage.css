@@ -644,16 +644,19 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding-top: 80px; /* Add padding to prevent hiding under header */
 }
 
 .cart-modal-content {
   background: #fff;
   width: min(800px, 94vw);
-  max-height: 80vh;
+  max-height: calc(80vh - 80px); /* Adjust for padding */
   overflow: auto;
   border-radius: 12px;
-  padding: 20px;
+  padding: 24px;
+  padding-top: 32px; /* Extra top padding inside modal */
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  margin-top: 20px; /* Additional spacing from top */
 }
 
 .cart-items {

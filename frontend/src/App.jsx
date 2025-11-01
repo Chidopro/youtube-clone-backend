@@ -57,6 +57,7 @@ const App = () => {
     const urlParams = new URLSearchParams(location.search);
     const loginStatus = urlParams.get('login');
     const userData = urlParams.get('user');
+    const errorMessage = urlParams.get('message');
     
     if (loginStatus === 'success' && userData) {
       try {
@@ -90,6 +91,12 @@ const App = () => {
         alert('Login successful but there was an error processing your data. Please try again.');
         navigate('/', { replace: true });
       }
+    } else if (loginStatus === 'error') {
+      // Handle OAuth error - show user-friendly message
+      console.error('❌ Google OAuth error:', errorMessage);
+      localStorage.removeItem('oauth_confirmation_pending');
+      alert(`Login failed: ${errorMessage || 'An unknown error occurred. Please try again.'}`);
+      navigate('/', { replace: true });
     }
     
     // Add a way to clear login for testing (remove this in production)

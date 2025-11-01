@@ -455,7 +455,7 @@ const Checkout = () => {
                   };
                   
                   // Extract selected screenshot BEFORE cleaning cart
-                  // Get the first available screenshot from cart items (for email attachment)
+                  // Get the first available screenshot from cart items (for storage)
                   let selectedScreenshot = null;
                   for (const item of items) {
                     // Check multiple possible screenshot fields
@@ -485,19 +485,35 @@ const Checkout = () => {
                   
                   console.log('📸 Selected screenshot found:', selectedScreenshot ? 'Yes' : 'No');
                   
-                  // Create lean cart payload (no base64 images) - explicitly exclude img field
+                  // Create lean cart payload - preserve selected_screenshot but exclude other image fields
+                  // This allows backend to retrieve the screenshot without breaking email notifications
+                  // IMPORTANT: Always include screenshot in cart items (even base64) so backend can extract it
                   const stripeCart = items.map(it => {
+                    // Get screenshot from item first, then fallback to selectedScreenshot from loop above
+                    const itemScreenshot = it.screenshot || it.selected_screenshot || it.thumbnail || it.img;
+                    const finalScreenshot = itemScreenshot || selectedScreenshot || null;
+                    
                     const cleanItem = {
                       product: it.product || it.name,
                       variants: { 
                         color: it.color || 'Default', 
                         size: it.size || 'Default' 
                       },
-                      price: it.price || 0
+                      price: it.price || 0,
+                      // Preserve selected_screenshot so backend can store it in order
+                      // Backend will extract it from cart items before they're enriched
+                      // Include base64 screenshots here - backend will handle them properly
+                      selected_screenshot: finalScreenshot
                     };
-                    // Explicitly exclude img, thumbnail, image, screenshot fields
+                    // Explicitly exclude img, thumbnail, image fields (but keep selected_screenshot)
                     return cleanItem;
                   });
+                  
+                  console.log('📸 Cart items with screenshots:', stripeCart.map(item => ({
+                    product: item.product,
+                    has_screenshot: !!item.selected_screenshot,
+                    screenshot_type: item.selected_screenshot ? (item.selected_screenshot.startsWith('data:image') ? 'base64' : (item.selected_screenshot.startsWith('http') ? 'URL' : 'other')) : 'none'
+                  })));
                   
                   // Build payload with shipping_address FIRST to ensure it's included
                   const payload = {
@@ -512,8 +528,8 @@ const Checkout = () => {
                   };
                   
                   // Add selected screenshot ONLY if it's a URL (never include base64 images in payload)
-                  // Base64 images are too large and cause payload size issues
-                  // Screenshot is already stored in database/cart, so we can retrieve it later
+                  // Base64 images are too large and cause payload/email size issues
+                  // Screenshot is stored in cart items above, so backend can extract it from there
                   if (selectedScreenshot) {
                     const screenshotStr = String(selectedScreenshot);
                     // Only include if it's a URL (not base64)
@@ -523,9 +539,8 @@ const Checkout = () => {
                       console.log('📸 Added screenshot URL to payload');
                     } else if (screenshotStr.startsWith('data:image')) {
                       // Base64 image - DO NOT include in payload (too large, causes issues)
-                      // Screenshot is already stored in database/cart, can be retrieved later
-                      console.warn(`⚠️ Screenshot is base64 (${Math.round(screenshotStr.length/1024)}KB), excluding from payload. Will be retrieved from database/cart for email.`);
-                      // Don't add to payload - will be retrieved from order data later
+                      // Screenshot is stored in cart items (selected_screenshot field), backend will extract it from there
+                      console.warn(`⚠️ Screenshot is base64 (${Math.round(screenshotStr.length/1024)}KB), excluding from payload. Backend will extract from cart items.`);
                     } else {
                       console.warn(`⚠️ Screenshot format unknown, excluding from payload: ${screenshotStr.substring(0, 50)}...`);
                     }
