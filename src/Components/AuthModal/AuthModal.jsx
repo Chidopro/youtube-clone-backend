@@ -8,6 +8,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [debugInfo, setDebugInfo] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,9 +19,19 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
       const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
       const url = `${API_CONFIG.BASE_URL}${endpoint}`;
       
-      console.log('Attempting auth request to:', url);
-      console.log('Mode:', isLoginMode ? 'login' : 'signup');
-      console.log('Email:', email.trim());
+      // Debug logging and UI display
+      const debug = {
+        baseUrl: API_CONFIG.BASE_URL,
+        fullUrl: url,
+        endpoint: endpoint,
+        email: email.trim(),
+        mode: isLoginMode ? 'login' : 'signup'
+      };
+      console.log('🔍 AuthModal - API_CONFIG.BASE_URL:', API_CONFIG.BASE_URL);
+      console.log('🔍 AuthModal - Full URL:', url);
+      console.log('🔍 AuthModal - Email:', email.trim());
+      console.log('🔍 AuthModal - Mode:', isLoginMode ? 'login' : 'signup');
+      setDebugInfo(debug);
       
       const response = await fetch(url, {
         method: 'POST',
@@ -28,19 +39,43 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
+        credentials: 'include',  // <- REQUIRED for cookies
         body: JSON.stringify({
           email: email.trim(),
           password: password
         })
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      // Update debug info with response
+      setDebugInfo(prev => ({
+        ...prev,
+        responseStatus: response.status,
+        responseOk: response.ok
+      }));
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Server error response:', errorText);
-        throw new Error(`Server error: ${response.status} - ${errorText}`);
+        
+        // Update debug info with error
+        setDebugInfo(prev => ({
+          ...prev,
+          errorText: errorText
+        }));
+        
+        // Parse the error response to get better error messages
+        try {
+          const errorData = JSON.parse(errorText);
+          if (response.status === 409 && errorData.error?.includes('already exists')) {
+            throw new Error('This email is already registered. Please sign in instead.');
+          } else if (errorData.error) {
+            throw new Error(errorData.error);
+          } else {
+            throw new Error(`Server error: ${response.status} - ${errorText}`);
+          }
+        } catch (parseError) {
+          throw new Error(`Server error: ${response.status} - ${errorText}`);
+        }
       }
 
       const data = await response.json();
@@ -50,16 +85,21 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         // Store authentication state
         localStorage.setItem('user_authenticated', 'true');
         localStorage.setItem('user_email', email.trim());
+        // Set customer authentication keys
+        localStorage.setItem('customer_authenticated', 'true');
+        localStorage.setItem('customer_user', JSON.stringify({
+          display_name: email.trim(),
+          email: email.trim(),
+          user_type: 'customer'
+        }));
         
         console.log('🔐 Auth success - storing auth state');
-        console.log('📱 Is Mobile:', window.innerWidth <= 768);
         
-        setMessage({ type: 'success', text: data.message });
+        setMessage({ type: 'success', text: data.message || 'Login successful! Redirecting...' });
         
-        // Close modal and call success callback after a short delay
+        // Close modal and trigger success callback
         setTimeout(() => {
-          console.log('🚀 Calling onSuccess callback');
-          onSuccess();
+          onSuccess && onSuccess();
           onClose();
         }, 1500);
       } else {
@@ -67,10 +107,27 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
       }
     } catch (error) {
       console.error('Auth error:', error);
+      
+      // Get the actual error message
+      const errorMsg = error.message || error.toString() || 'Unknown error';
+      
+      // Build debug info for display
+      const baseUrl = debugInfo?.baseUrl || API_CONFIG.BASE_URL;
+      const fullUrl = debugInfo?.fullUrl || `${baseUrl}${isLoginMode ? '/api/auth/login' : '/api/auth/signup'}`;
+      
+      // Set message with error - matching Login.jsx format
       setMessage({ 
         type: 'error', 
-        text: `Network error: ${error.message}. Please check the console for details.` 
+        text: `Authentication error: ${errorMsg}` 
       });
+      
+      // Always show debug info in error cases
+      setDebugInfo(prev => ({
+        ...prev,
+        errorMessage: errorMsg,
+        baseUrl: baseUrl,
+        fullUrl: fullUrl
+      }));
     } finally {
       setIsLoading(false);
     }
@@ -79,6 +136,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const toggleMode = () => {
     setIsLoginMode(!isLoginMode);
     setMessage('');
+    setDebugInfo(null);
   };
 
   if (!isOpen) return null;
@@ -144,6 +202,26 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         {message && (
           <div className={`auth-message-display ${message.type}`}>
             {message.text}
+            {debugInfo && message.type === 'error' && (
+              <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(0,0,0,0.1)', borderRadius: '4px', fontSize: '12px', wordBreak: 'break-all', color: '#333' }}>
+                <strong>Debug Info:</strong><br />
+                Base URL: {debugInfo.baseUrl || 'N/A'}<br />
+                Full URL: {debugInfo.fullUrl || 'N/A'}<br />
+                {debugInfo.responseStatus && `Response Status: ${debugInfo.responseStatus}`}
+                {debugInfo.responseStatus && <br />}
+                {debugInfo.errorText && (
+                  <div style={{ marginTop: '5px' }}>
+                    <strong>Error Response:</strong><br />
+                    {debugInfo.errorText.substring(0, 300)}
+                  </div>
+                )}
+                {debugInfo.errorMessage && !debugInfo.errorText && (
+                  <div style={{ marginTop: '5px' }}>
+                    <strong>Error:</strong> {debugInfo.errorMessage}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

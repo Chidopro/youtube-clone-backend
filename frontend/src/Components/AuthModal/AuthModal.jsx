@@ -8,6 +8,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [debugInfo, setDebugInfo] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,6 +18,20 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
       const url = `${API_CONFIG.BASE_URL}${endpoint}`;
+      
+      // Debug logging and UI display
+      const debug = {
+        baseUrl: API_CONFIG.BASE_URL,
+        fullUrl: url,
+        endpoint: endpoint,
+        email: email.trim(),
+        mode: isLoginMode ? 'login' : 'signup'
+      };
+      console.log('🔍 AuthModal - API_CONFIG.BASE_URL:', API_CONFIG.BASE_URL);
+      console.log('🔍 AuthModal - Full URL:', url);
+      console.log('🔍 AuthModal - Email:', email.trim());
+      console.log('🔍 AuthModal - Mode:', isLoginMode ? 'login' : 'signup');
+      setDebugInfo(debug);
       
       const requestBody = {
         email: email.trim(),
@@ -35,12 +50,33 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         mode: 'cors'
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
+      // Update debug info with response
+      setDebugInfo(prev => ({
+        ...prev,
+        responseStatus: response.status,
+        responseOk: response.ok
+      }));
+      
+      // Check content type before processing
+      const contentType = response.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('Server error response:', errorText);
         
+        // Update debug info with error
+        setDebugInfo(prev => ({
+          ...prev,
+          errorText: errorText
+        }));
+        
+        // Parse the error response to get better error messages
         try {
           const errorData = JSON.parse(errorText);
-          
           if (response.status === 409 && errorData.error?.includes('already exists')) {
             throw new Error('This email is already registered. Please sign in instead.');
           } else if (errorData.error) {
@@ -77,28 +113,30 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         setMessage({ type: 'error', text: data.error || 'Authentication failed' });
       }
     } catch (error) {
-      // Check for specific error types
-      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        setMessage({ 
-          type: 'error', 
-          text: 'Network error. Please check your internet connection and try again.' 
-        });
-      } else if (error.message.includes('CORS') || error.message.includes('cross-origin')) {
-        setMessage({ 
-          type: 'error', 
-          text: 'CORS error. Please try refreshing the page and logging in again.' 
-        });
-      } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
-        setMessage({ 
-          type: 'error', 
-          text: 'Request timeout. Please check your connection and try again.' 
-        });
-      } else {
-        setMessage({ 
-          type: 'error', 
-          text: `Authentication error: ${error.message}` 
-        });
-      }
+      console.error('Auth error caught:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // Get the actual error message
+      const errorMsg = error.message || error.toString() || 'Unknown error';
+      
+      // Build debug info for display
+      const baseUrl = debugInfo?.baseUrl || API_CONFIG.BASE_URL;
+      const fullUrl = debugInfo?.fullUrl || `${baseUrl}${isLoginMode ? '/api/auth/login' : '/api/auth/signup'}`;
+      
+      // Set message with error - matching Login.jsx format
+      setMessage({ 
+        type: 'error', 
+        text: `Authentication error: ${errorMsg}` 
+      });
+      
+      // Always show debug info in error cases
+      setDebugInfo(prev => ({
+        ...prev,
+        errorMessage: errorMsg,
+        baseUrl: baseUrl,
+        fullUrl: fullUrl
+      }));
     } finally {
       setIsLoading(false);
     }
@@ -107,6 +145,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const toggleMode = () => {
     setIsLoginMode(!isLoginMode);
     setMessage('');
+    setDebugInfo(null);
   };
 
   if (!isOpen) return null;
@@ -172,6 +211,26 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         {message && (
           <div className={`auth-message-display ${message.type}`}>
             {message.text}
+            {debugInfo && message.type === 'error' && (
+              <div style={{ marginTop: '10px', padding: '10px', background: 'rgba(0,0,0,0.1)', borderRadius: '4px', fontSize: '12px', wordBreak: 'break-all', color: '#333' }}>
+                <strong>Debug Info:</strong><br />
+                Base URL: {debugInfo.baseUrl || 'N/A'}<br />
+                Full URL: {debugInfo.fullUrl || 'N/A'}<br />
+                {debugInfo.responseStatus && `Response Status: ${debugInfo.responseStatus}`}
+                {debugInfo.responseStatus && <br />}
+                {debugInfo.errorText && (
+                  <div style={{ marginTop: '5px' }}>
+                    <strong>Error Response:</strong><br />
+                    {debugInfo.errorText.substring(0, 300)}
+                  </div>
+                )}
+                {debugInfo.errorMessage && !debugInfo.errorText && (
+                  <div style={{ marginTop: '5px' }}>
+                    <strong>Error:</strong> {debugInfo.errorMessage}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

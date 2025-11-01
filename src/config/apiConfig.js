@@ -12,7 +12,7 @@ const config = {
     SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
   },
   production: {
-    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://api.screenmerch.com',
+    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://screenmerch.fly.dev',
     EMAIL_API_URL: import.meta.env.VITE_EMAIL_API_URL || 'https://screenmerch.fly.dev',
     SUBSCRIPTION_API_URL: import.meta.env.VITE_SUBSCRIPTION_API_URL || 'https://screenmerch.fly.dev',
     SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
