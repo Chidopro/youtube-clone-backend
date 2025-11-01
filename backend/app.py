@@ -29,6 +29,9 @@ from printful_integration import ScreenMerchPrintfulIntegration
 # NEW: Import video screenshot capture
 from video_screenshot import screenshot_capture
 
+# Import screenshot_capture module for standalone functions
+import screenshot_capture as sc_module
+
 # NEW: Import security manager
 from security_config import security_manager, SECURITY_HEADERS, validate_file_upload
 
@@ -193,6 +196,69 @@ def _cookie_domain():
         return "screenmerch.fly.dev"
     return None
 
+def read_json():
+    """Robust JSON reader with detailed diagnostics for proxied requests."""
+    ct = (request.headers.get("Content-Type") or "").lower()
+    raw = request.get_data(cache=False, as_text=True) or ""
+    
+    # Short raw log
+    logger.info(f"[REQ] {request.path} CT={ct} len={len(raw)} raw[0:200]={raw[:200]!r}")
+
+    data = None
+    # 1) Normal case - application/json
+    if "application/json" in ct:
+        data = request.get_json(silent=True)
+    # 2) Some proxies send text/plain or missing CT
+    if data is None and raw:
+        try:
+            data = json.loads(raw)
+        except Exception as e:
+            logger.warning(f"[PARSE] JSON.loads failed: {str(e)}")
+            data = None
+    # 3) Fallback: form-encoded (unlikely but safe)
+    if data is None and request.form:
+        try:
+            data = {k: json.loads(v) if v and v.strip().startswith(("{", "[")) else v
+                    for k, v in request.form.items()}
+        except Exception:
+            data = dict(request.form)
+
+    if not isinstance(data, dict):
+        data = {}
+
+    # Detailed keys snapshot
+    logger.info(f"[PARSED] keys={list(data.keys())} shipping_address={data.get('shipping_address')}")
+    return data
+
+def require_shipping_address(payload):
+    """Validate and extract shipping address from payload."""
+    addr = payload.get("shipping_address") or {}
+    zip_code = (addr.get("zip") or addr.get("postal_code") or "").strip()
+    country = (addr.get("country_code") or addr.get("country") or "US").strip()
+    if not zip_code:
+        return False, "ZIP / Postal Code is required."
+    if not country:
+        country = "US"  # Default to US
+    return True, {"zip": zip_code, "country_code": country}
+
+# Helper function to parse ZIP code from shipping_address dict
+def _parse_zip(shipping_address: dict) -> str:
+    """Parse ZIP code from shipping_address dict, handling multiple field names and types."""
+    if not shipping_address:
+        return ""
+    raw = (
+        shipping_address.get("zip") or
+        shipping_address.get("postal_code") or
+        shipping_address.get("postcode") or
+        shipping_address.get("postalCode") or
+        shipping_address.get("ZIP") or
+        ""
+    )
+    try:
+        return str(raw).strip()
+    except Exception:
+        return ""
+
 # Template filter for formatting timestamps
 @app.template_filter('format_timestamp')
 def format_timestamp(timestamp):
@@ -291,6 +357,7 @@ def get_product_price_range(product_name):
 CORS(app, resources={r"/api/*": {"origins": [
     "https://screenmerch.com", 
     "https://www.screenmerch.com", 
+    "https://screenmerch.fly.dev",
     "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
     "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",  # Previous preview URL
     "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",  # Current preview URL
@@ -308,6 +375,7 @@ def api_preflight(any_path):
     allowed_origins = [
         "https://screenmerch.com", 
         "https://www.screenmerch.com", 
+        "https://screenmerch.fly.dev",
         "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
         "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",  # Previous preview URL
     "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",  # Current preview URL
@@ -339,10 +407,26 @@ def api_preflight(any_path):
 def add_cors_headers(response):
     """Add CORS headers to all API responses"""
     if request.path.startswith('/api/'):
+        # Skip middleware override for image tool endpoints (they set their own CORS)
+        image_tool_paths = ['/api/process-thumbnail-print-quality']
+        if request.path in image_tool_paths or request.path.startswith('/api/get-order-screenshot/'):
+            existing_origin = response.headers.get('Access-Control-Allow-Origin')
+            if existing_origin:
+                logger.info(f"🔍 [MIDDLEWARE] Skipping override for {request.path} - endpoint already set CORS: {existing_origin}")
+                return response
+        
+        # Check if CORS headers were already set (by flask-cors or endpoint)
+        existing_cors = response.headers.get('Access-Control-Allow-Origin')
+        if existing_cors:
+            # Headers already set, don't add duplicates
+            logger.info(f"🔍 [MIDDLEWARE] {request.path} - CORS already set: {existing_cors}, skipping")
+            return response
+        
         origin = request.headers.get('Origin')
         allowed_origins = [
             "https://screenmerch.com", 
             "https://www.screenmerch.com", 
+            "https://screenmerch.fly.dev",
             "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
             "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",  # Previous preview URL
     "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",  # Current preview URL
@@ -359,14 +443,17 @@ def add_cors_headers(response):
                 origin_allowed = True
                 break
         
+        # Use assignment instead of .add() to avoid duplicates
         if origin_allowed:
-            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers['Access-Control-Allow-Origin'] = origin
+            logger.info(f"🔍 [MIDDLEWARE] {request.path} - Set CORS origin to: {origin}")
         else:
-            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
+            logger.info(f"🔍 [MIDDLEWARE] {request.path} - Origin {origin} not allowed, defaulting to: https://screenmerch.com")
         
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Cache-Control,Pragma,Expires'
+        response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
     
     return response
 
@@ -393,18 +480,8 @@ def add_security_headers(response):
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
     
-    # Ensure CORS headers are properly set for all responses
-    origin = request.headers.get('Origin')
-    allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
-    
-    if origin in allowed_origins:
-        response.headers['Access-Control-Allow-Origin'] = origin
-    else:
-        response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
-    
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma, Expires'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    # Don't set CORS headers here - let add_cors_headers handle it to avoid duplicates
+    # CORS headers are handled by add_cors_headers middleware which runs first
     
     return response
 
@@ -439,11 +516,8 @@ def ping():
 def get_browse_api():
     """API endpoint to get browse data for frontend"""
     if request.method == "OPTIONS":
-        response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        return response
+        # Let the global preflight handler handle OPTIONS to avoid duplicate CORS headers
+        return api_preflight('product/browse')
     
     try:
         # Get category parameter
@@ -787,8 +861,8 @@ PRODUCTS = [
     {
         "name": "Unisex Champion Hoodie",
         "price": 45.00,
-        "filename": "hoodiechampionpreview.png",
-        "main_image": "hoodiechampionpreview.png",
+        "filename": "hoodiechampion.png",
+        "main_image": "hoodiechampion.png",
         "preview_image": "hoodiechampionpreview.png",
         "options": {"color": ["Black", "Light Steel"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
@@ -1144,8 +1218,8 @@ PRODUCTS = [
     {
         "name": "Men's Long Sleeve Shirt",
         "price": 24.79,
-        "filename": "menslongsleevepreview.png",
-        "main_image": "menslongsleevepreview.png",
+        "filename": "menslongsleeve.png",
+        "main_image": "menslongsleeve.png",
         "preview_image": "menslongsleevepreview.png",
         "options": {"color": ["Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Ash"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
@@ -1161,9 +1235,9 @@ PRODUCTS = [
     {
         "name": "Fitted Racerback Tank",
         "price": 20.95,
-        "filename": "womenstankpreview.png?v=20241028",
-        "main_image": "womenstankpreview.png?v=20241028",
-        "preview_image": "womenstankpreview.png?v=20241028",
+        "filename": "womenstank.png",
+        "main_image": "womenstank.png",
+        "preview_image": "womenstankpreview.png",
         "options": {"color": ["Black", "Hot Pink", "Light Orange", "Tahiti Blue", "Heather Gray", "Cancun", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
@@ -1195,9 +1269,9 @@ PRODUCTS = [
     {
         "name": "Micro-Rib Tank Top",
         "price": 25.81,
-        "filename": "womensteepreview.png?v=20241028",
-        "main_image": "womensteepreview.png?v=20241028",
-        "preview_image": "womensteepreview.png?v=20241028",
+        "filename": "womenstee.png",
+        "main_image": "womenstee.png",
+        "preview_image": "womensteepreview.png",
         "options": {"color": ["Solid Black Blend", "Solid Navy Blend", "Athletic Heather", "Solid Baby Blue Blend", "Solid Pink Blend", "Solid White Blend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
@@ -1211,9 +1285,9 @@ PRODUCTS = [
     {
         "name": "Distressed Dad Hat",
         "price": 23.99,
-        "filename": "distresseddadhat.jpg",
-        "main_image": "distresseddadhat.jpg",
-        "preview_image": "distresseddadhatpreview.jpg",
+        "filename": "distresseddadhat.png",
+        "main_image": "distresseddadhat.png",
+        "preview_image": "distresseddadhatpreview.png",
         "options": {"color": ["Black", "Navy", "Charcoal Gray", "Khaki"], "size": ["One Size"]},
         "size_pricing": {
             "One Size": 0
@@ -1235,7 +1309,7 @@ PRODUCTS = [
         "price": 24.79,
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
-        "preview_image": "fivepaneltruckerhatpreview.jpg",
+        "preview_image": "fivepaneltruckerhatpreview.png",
         "options": {"color": [
             "Black/ White",
             "Black",
@@ -1269,9 +1343,9 @@ PRODUCTS = [
     {
         "name": "White Glossy Mug",
         "price": 15.95,
-        "filename": "mug1.jpg",
-        "main_image": "mug1.jpg",
-        "preview_image": "mug1preview.jpg",
+        "filename": "mug1.png",
+        "main_image": "mug1.png",
+        "preview_image": "mug1preview.png",
         "options": {"color": ["White"], "size": ["11 oz", "15 oz", "20 oz"]},
         "size_pricing": {
             "11 oz": 0,
@@ -1294,9 +1368,9 @@ PRODUCTS = [
     {
         "name": "Enamel Mug",
         "price": 22.42,
-        "filename": "mug1.jpg",
-        "main_image": "mug1.jpg",
-        "preview_image": "mug1preview.jpg",
+        "filename": "enamalmug.png",
+        "main_image": "enamalmug.png",
+        "preview_image": "enamalmugpreview.png",
         "options": {"color": ["White", "Black", "Navy", "Red"], "size": ["12 oz"]},
         "size_pricing": {
             "12 oz": 0
@@ -1328,9 +1402,25 @@ PRODUCTS = [
     {
         "name": "Women's Crop Top",
         "price": 28.55,
-        "filename": "womenscroptoppreview.png?v=20241028",
-        "main_image": "womenscroptoppreview.png?v=20241028",
-        "preview_image": "womenscroptoppreview.png?v=20241028",
+        "filename": "womens-crop-top.png",
+        "main_image": "womens-crop-top.png",
+        "preview_image": "womenscroptoppreview.png",
+        "options": {"color": ["Black", "Hazy Pink", "Pale Pink", "Orchid", "Ecru", "White", "Bubblegum", "Bone", "Mineral", "Natural"], "size": ["XS", "S", "M", "L", "XL"]},
+        "size_pricing": {
+            "XS": 0,
+            "S": 0,
+            "M": 0,
+            "L": 0,
+            "XL": 0
+        },
+        "category": "womens"
+    },
+    {
+        "name": "Pajama Shorts",
+        "price": 32.56,
+        "filename": "womens-crop-top.png",
+        "main_image": "womens-crop-top.png",
+        "preview_image": "womenscroptoppreview.png",
         "options": {"color": ["Black", "Hazy Pink", "Pale Pink", "Orchid", "Ecru", "White", "Bubblegum", "Bone", "Mineral", "Natural"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
             "XS": 0,
@@ -2055,7 +2145,9 @@ def send_order():
 
 @app.route("/api/place-order", methods=["POST", "OPTIONS"])
 def place_order():
-    """Simple place-order endpoint for frontend.
+    """Place an order - validates ZIP code requirement
+    
+    Simple place-order endpoint for frontend.
     - Accepts cart items, totals, shipping info, and selected screenshot/thumbnail
     - Persists to Supabase `orders` when available; falls back to in-memory `order_store`
     - Sends email including a link to the print-quality page
@@ -2072,19 +2164,31 @@ def place_order():
         return response
 
     try:
-        data = request.get_json() or {}
+        # Use robust JSON reader
+        data = read_json()
+        
         cart = data.get("cart", [])
         shipping_cost = data.get("shipping_cost", data.get("shipping", {}).get("cost", 0)) or 0
         total_amount = data.get("total", 0) or sum(item.get('price', 0) for item in cart) + (shipping_cost or 0)
 
         if not cart:
             return jsonify({"success": False, "error": "Cart is empty"}), 400
+        
+        # Validate shipping address using robust function
+        ok, addr_result = require_shipping_address(data)
+        if not ok:
+            logger.error(f"❌ Shipping address validation failed: {addr_result}")
+            return jsonify({"success": False, "error": addr_result}), 400
+        
+        shipping_address = addr_result
+        logger.info(f"✅ Shipping address validated: {shipping_address}")
 
         # Generate order identifiers
         order_id = str(uuid.uuid4())
         order_number = order_id[-8:].upper()
 
         # Normalize items to expected structure
+        # CRITICAL: Strip base64 images from cart items to reduce payload size
         normalized_cart = []
         for item in cart:
             # Support both existing structure and simplified frontend items
@@ -2093,14 +2197,25 @@ def place_order():
                 'color': item.get('color'),
                 'size': item.get('size')
             }
+            # Create clean item WITHOUT base64 images
             normalized_item = {
-                **item,
                 'product': product_name,
                 'variants': variants,
-                'img': item.get('img') or item.get('image')
+                'price': item.get('price', 0),
+                'note': item.get('note', '')
             }
+            # Only include non-image fields
+            for key, value in item.items():
+                if key not in ['img', 'image', 'screenshot', 'selected_screenshot', 'thumbnail']:
+                    if key not in normalized_item:  # Don't overwrite already set fields
+                        normalized_item[key] = value
             normalized_cart.append(normalized_item)
+            logger.info(f"✅ Cleaned cart item: removed base64 images, kept only essential fields")
 
+        # Get screenshot from top-level payload BEFORE enriching cart
+        # This is the selected screenshot for the product that should be stored
+        top_level_screenshot = data.get("selected_screenshot") or data.get("thumbnail") or data.get("screenshot")
+        
         # Enrich cart items with video metadata when provided
         enriched_cart = []
         for item in normalized_cart:
@@ -2109,9 +2224,12 @@ def place_order():
                 "videoName": data.get("videoTitle", data.get("video_title", "Unknown Video")),
                 "creatorName": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
                 "timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
-                "selected_screenshot": data.get("selected_screenshot") or data.get("thumbnail")
+                # Store screenshot at cart item level so it can be retrieved later
+                "selected_screenshot": top_level_screenshot or data.get("selected_screenshot") or data.get("thumbnail")
             })
             enriched_cart.append(enriched_item)
+            
+        logger.info(f"✅ Stored screenshot in enriched_cart items: {bool(top_level_screenshot)}")
 
         # Prepare DB payload restricted to known columns
         order_data = {
@@ -2124,6 +2242,7 @@ def place_order():
             "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
             "total_amount": total_amount,
             "shipping_cost": shipping_cost,
+            "shipping_address": shipping_address,  # Store shipping address for future reference
             "status": "pending",
         }
 
@@ -2156,19 +2275,107 @@ def place_order():
         html_body += f"<p><strong>Total Value:</strong> ${total_amount:.2f}</p>"
         html_body += "<br>"
 
-        for item in enriched_cart:
+        # Collect images for email attachments (CID embedding)
+        email_attachments = []
+        attachment_cids = {}
+        
+        # Get screenshot from top-level payload (not from cart items, which are cleaned)
+        # This is the selected screenshot for the product
+        top_level_screenshot = data.get("selected_screenshot") or data.get("thumbnail") or data.get("screenshot")
+        
+        # Also check enriched_cart items for screenshot (might be stored there)
+        if not top_level_screenshot and enriched_cart:
+            for item in enriched_cart:
+                if item.get("selected_screenshot"):
+                    top_level_screenshot = item.get("selected_screenshot")
+                    logger.info(f"📸 Found screenshot in enriched_cart item")
+                    break
+        
+        # Log what we found
+        if top_level_screenshot:
+            screenshot_len = len(str(top_level_screenshot))
+            logger.info(f"📸 Found screenshot (length: {screenshot_len} chars)")
+            if isinstance(top_level_screenshot, str) and top_level_screenshot.startswith('data:image'):
+                logger.info(f"📸 Screenshot is base64 data URL")
+                # Log first 100 chars to verify format
+                logger.info(f"📸 Screenshot preview: {top_level_screenshot[:100]}...")
+            elif isinstance(top_level_screenshot, str) and (top_level_screenshot.startswith('http') or top_level_screenshot.startswith('https')):
+                logger.info(f"📸 Screenshot is URL: {top_level_screenshot[:100] if screenshot_len > 100 else top_level_screenshot}")
+            else:
+                logger.info(f"📸 Screenshot type: {type(top_level_screenshot)}, preview: {str(top_level_screenshot)[:100]}")
+        else:
+            logger.warning(f"⚠️ No top-level screenshot found in payload")
+            logger.warning(f"⚠️ Payload keys: {list(data.keys())}")
+            logger.warning(f"⚠️ First cart item keys: {list(enriched_cart[0].keys()) if enriched_cart else 'No cart items'}")
+        
+        for idx, item in enumerate(enriched_cart):
             product_name = item.get('product', 'N/A')
             color = (item.get('variants') or {}).get('color', 'N/A')
             size = (item.get('variants') or {}).get('size', 'N/A')
             note = item.get('note', 'None')
-            image_url = item.get('img', '')
+            
+            # Use top-level screenshot for all items (same product, same screenshot)
+            # Only check cart item fields as fallback if top-level is missing
+            image_url = top_level_screenshot or item.get('screenshot') or item.get('selected_screenshot') or item.get('thumbnail') or item.get('img', '')
+            
+            # Handle data URLs (base64 images) - convert to attachments
+            image_tag = ""
+            if image_url:
+                if image_url.startswith('data:image'):
+                    # Data URL - convert to attachment for email
+                    try:
+                        # Parse data URL: data:image/png;base64,<data>
+                        header, data = image_url.split(',', 1)
+                        image_format = header.split('/')[1].split(';')[0]  # png, jpeg, etc.
+                        image_data = data
+                        
+                        # Generate CID for embedding
+                        cid = f"screenshot_{order_id}_{idx}"
+                        attachment_cids[idx] = cid
+                        
+                        # Add as attachment (Resend format: content should be base64 string)
+                        # image_data is already the base64 part from data URL
+                        # Only add once per unique screenshot (don't duplicate)
+                        if cid not in [att.get('cid') for att in email_attachments]:
+                            email_attachments.append({
+                                "filename": f"screenshot_{idx}.{image_format}",
+                                "content": image_data,  # Already base64 encoded from data URL
+                                "cid": cid
+                            })
+                        else:
+                            # Reuse existing CID if screenshot already attached
+                            existing_cid = next(att.get('cid') for att in email_attachments if att.get('cid') == cid)
+                            cid = existing_cid
+                        
+                        # Use BOTH methods for maximum compatibility:
+                        # 1. CID attachment (works in most modern email clients)
+                        # 2. Direct base64 embedding (works as fallback)
+                        # Many email clients support base64 data URLs directly, so embed it inline
+                        direct_base64_img = f"<img src='{image_url}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
+                        
+                        # Also include CID reference for email clients that prefer attachments
+                        cid_img_tag = f"<img src='cid:{cid}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
+                        
+                        # Use direct base64 embedding as primary (most compatible), CID as fallback
+                        # Most email clients (Gmail, Outlook, Proton Mail) support inline base64 images
+                        image_tag = f"{direct_base64_img}"
+                        logger.info(f"✅ Converted data URL to attachment CID: {cid}, filename: screenshot_{idx}.{image_format}")
+                        logger.info(f"✅ Also embedded directly as base64 (length: {len(image_url)} chars)")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Failed to convert data URL to attachment: {str(e)}")
+                        # Fallback: just provide a note
+                        image_tag = "<p><em>Screenshot available in order details</em></p>"
+                else:
+                    # Regular URL - use directly
+                    image_tag = f"<img src='{image_url}' alt='Product Image' style='max-width: 300px; border-radius: 6px;'>"
+            
             html_body += f"""
                 <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
                     <h2>{product_name}</h2>
                     <p><strong>Color:</strong> {color}</p>
                     <p><strong>Size:</strong> {size}</p>
                     <p><strong>Note:</strong> {note}</p>
-                    {f"<img src='{image_url}' alt='Product Image' style='max-width: 300px; border-radius: 6px;'>" if image_url else ""}
+                    {image_tag}
                 </div>
             """
 
@@ -2200,6 +2407,28 @@ def place_order():
                 "subject": f"🛍️ New ScreenMerch Order #{order_number}",
                 "html": html_body,
             }
+            
+            # Add attachments if any (for base64 screenshots)
+            # Resend format: attachments array with filename, content (base64 string), and optional path/contentId
+            if email_attachments:
+                # Convert to Resend format: need to ensure contentId matches CID
+                resend_attachments = []
+                for att in email_attachments:
+                    resend_att = {
+                        "filename": att.get("filename", "screenshot.png"),
+                        "content": att.get("content", ""),
+                    }
+                    # Add contentId if CID exists (for inline images)
+                    if att.get("cid"):
+                        resend_att["contentId"] = att.get("cid")
+                    resend_attachments.append(resend_att)
+                
+                email_data["attachments"] = resend_attachments
+                logger.info(f"📎 Adding {len(resend_attachments)} image attachments to email")
+                logger.info(f"📎 Attachment CIDs: {[att.get('contentId') for att in resend_attachments]}")
+            else:
+                logger.warning(f"⚠️ No email attachments created - screenshot might be missing")
+            
             try:
                 resp = requests.post(
                     "https://api.resend.com/emails",
@@ -2210,9 +2439,15 @@ def place_order():
                     json=email_data,
                 )
                 if resp.status_code != 200:
-                    logger.error(f"Resend API error: {resp.text}")
+                    logger.error(f"❌ Resend API error ({resp.status_code}): {resp.text}")
+                else:
+                    logger.info(f"✅ Email sent successfully with {len(email_attachments) if email_attachments else 0} attachments")
+                    resp_data = resp.json()
+                    logger.info(f"📧 Email ID: {resp_data.get('id', 'unknown')}")
             except Exception as e:
-                logger.error(f"Error sending email via Resend: {str(e)}")
+                logger.error(f"❌ Error sending email via Resend: {str(e)}")
+                import traceback
+                logger.error(f"Full traceback: {traceback.format_exc()}")
         else:
             logger.warning("Email service not configured; order email not sent")
 
@@ -2309,19 +2544,43 @@ def create_checkout_session():
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     try:
-        data = request.get_json()
+        # Use robust JSON reader
+        data = read_json()
+        
         cart = data.get("cart", [])
         product_id = data.get("product_id")
         sms_consent = data.get("sms_consent", False)
-        shipping_cost = data.get("shipping_cost", 5.99)  # Default to $5.99 if not provided
+        
+        # Validate shipping address using robust function
+        ok, addr_result = require_shipping_address(data)
+        if not ok:
+            logger.error(f"❌ Shipping address validation failed: {addr_result}")
+            return jsonify({"error": addr_result}), 400
+        
+        shipping_address = addr_result
+        logger.info(f"✅ Shipping address validated: {shipping_address}")
+        
+        # Ensure shipping_cost is a valid number
+        shipping_cost_raw = data.get("shipping_cost", 5.99)
+        try:
+            shipping_cost = float(shipping_cost_raw) if shipping_cost_raw is not None else 5.99
+            if shipping_cost < 0:
+                shipping_cost = 5.99
+        except (ValueError, TypeError):
+            shipping_cost = 5.99  # Default to $5.99 if invalid
 
         logger.info(f"🛒 Received checkout request - Cart: {cart}")
+        logger.info(f"🛒 Cart type: {type(cart)}, Cart length: {len(cart) if isinstance(cart, list) else 'N/A'}")
         logger.info(f"🛒 Product ID: {product_id}")
         logger.info(f"🛒 SMS Consent: {sms_consent}")
 
         if not cart:
             logger.error("❌ Cart is empty")
             return jsonify({"error": "Cart is empty"}), 400
+        
+        if not isinstance(cart, list):
+            logger.error(f"❌ Cart is not a list: {type(cart)}")
+            return jsonify({"error": "Cart must be an array"}), 400
 
         # Email notifications - SMS consent not required
         # sms_consent is kept for backward compatibility but not enforced
@@ -2355,6 +2614,7 @@ def create_checkout_session():
             "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
             "total_amount": total_amount,
             "shipping_cost": shipping_cost,
+            "shipping_address": shipping_address,  # Store shipping address for future reference
             "status": "pending"
         }
         
@@ -2473,8 +2733,18 @@ def create_checkout_session():
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     except Exception as e:
-        logger.error(f"Stripe API Error: {str(e)}")
-        response = jsonify({"error": "Failed to create Stripe checkout session"})
+        logger.error(f"❌ Error creating checkout session: {str(e)}")
+        logger.error(f"❌ Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"❌ Traceback: {traceback.format_exc()}")
+        
+        error_message = "Failed to create checkout session"
+        if "ZIP" in str(e) or "zip" in str(e).lower():
+            error_message = "ZIP / Postal Code is required"
+        elif "cart" in str(e).lower() or "empty" in str(e).lower():
+            error_message = "Cart is empty or invalid"
+            
+        response = jsonify({"error": error_message, "details": str(e)})
         origin = request.headers.get('Origin', '*')
         response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
@@ -2612,8 +2882,8 @@ def stripe_webhook():
                 else:
                     timestamp_str = 'N/A'
                 
-                # Get print quality info
-                print_info = print_quality_images[i] if i < len(print_quality_images) else {'preview': item.get('img', ''), 'note': 'Preview only'}
+                # Get print quality info (prefer user-selected screenshot when no print image yet)
+                print_info = print_quality_images[i] if i < len(print_quality_images) else {'preview': (item.get('screenshot') or item.get('img', '')), 'note': 'Preview only'}
                 
                 html_body += f"""
                     <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
@@ -3178,16 +3448,23 @@ def process_corner_radius():
         
         logger.info(f"Processing corner radius with radius={corner_radius}")
         
-        # For now, just return the original image to avoid errors
-        # The corner radius effect needs to be implemented properly
-        return jsonify({
-            "success": True,
-            "processed_image": image_data
-        })
+        # Apply corner radius effect using the dedicated function
+        result = sc_module.apply_corner_radius_only(image_data, corner_radius)
+        
+        if result and result.get('success'):
+            response = jsonify({
+                "success": True,
+                "processed_image": result.get('processed_image')
+            })
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            return response
+        else:
+            error_msg = result.get('error', 'Failed to apply corner radius') if result else 'Failed to apply corner radius'
+            return jsonify({"success": False, "error": error_msg}), 500
             
     except Exception as e:
         logger.error(f"Error processing corner radius: {str(e)}")
-        return jsonify({"success": False, "error": "Internal server error"}), 500
+        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
 
 @app.route("/api/apply-feather-to-print-quality", methods=["POST", "OPTIONS"])
 def apply_feather_to_print_quality():
@@ -3210,7 +3487,7 @@ def apply_feather_to_print_quality():
         logger.info(f"Applying feather effect to print quality image with radius={feather_radius}")
         
         # Apply feather effect to the print quality image
-        processed_image = screenshot_capture.apply_feather_to_print_quality(image_data, feather_radius)
+        processed_image = sc_module.apply_feather_to_print_quality(image_data, feather_radius)
         
         if processed_image:
             return jsonify({
@@ -3248,7 +3525,7 @@ def apply_feather_only():
             logger.info(f"Crop area provided: {crop_area}")
         
         # Apply feather effect to the image
-        processed_image = screenshot_capture.apply_feather_effect(
+        processed_image = sc_module.apply_feather_effect(
             thumbnail_data, 
             feather_radius=feather_radius,
             crop_area=crop_area
@@ -3270,9 +3547,20 @@ def process_thumbnail_print_quality():
     """Process a thumbnail image for print quality output"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
+        # Handle CORS preflight with correct origin for image tool
+        origin = request.headers.get('Origin')
+        logger.info(f"🔍 [IMAGE_TOOL] OPTIONS preflight - Origin: {origin}")
+        logger.info(f"🔍 [IMAGE_TOOL] Request headers: {dict(request.headers)}")
+        if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            logger.info(f"✅ [IMAGE_TOOL] Set CORS origin to: {origin}")
+        else:
+            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
+            logger.info(f"⚠️ [IMAGE_TOOL] Origin not in allowed list, defaulting to: https://screenmerch.fly.dev")
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        logger.info(f"🔍 [IMAGE_TOOL] Response headers set: Access-Control-Allow-Origin={response.headers.get('Access-Control-Allow-Origin')}")
         return response
     
     try:
@@ -3284,7 +3572,15 @@ def process_thumbnail_print_quality():
         crop_area = data.get("crop_area")
         
         if not thumbnail_data:
-            return jsonify({"success": False, "error": "thumbnail_data is required"}), 400
+            response = jsonify({"success": False, "error": "thumbnail_data is required"})
+            # Add CORS headers for image tool
+            origin = request.headers.get('Origin')
+            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+            else:
+                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response, 400
         
         logger.info(f"Processing thumbnail for print quality: DPI={print_dpi}, soft_corners={soft_corners}, edge_feather={edge_feather}")
         if crop_area:
@@ -3302,17 +3598,41 @@ def process_thumbnail_print_quality():
         if result['success']:
             logger.info(f"Thumbnail processed for print: {result.get('dimensions', {}).get('width', 'unknown')}x{result.get('dimensions', {}).get('height', 'unknown')}")
             response = jsonify(result)
-            response.headers.add('Access-Control-Allow-Origin', '*')
+            # Add CORS headers for image tool
+            origin = request.headers.get('Origin')
+            logger.info(f"🔍 [IMAGE_TOOL] POST success - Origin: {origin}")
+            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+                logger.info(f"✅ [IMAGE_TOOL] Set CORS origin to: {origin}")
+            else:
+                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
+                logger.info(f"⚠️ [IMAGE_TOOL] Origin not in allowed list, defaulting to: https://screenmerch.fly.dev")
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            logger.info(f"🔍 [IMAGE_TOOL] Response headers before return: Access-Control-Allow-Origin={response.headers.get('Access-Control-Allow-Origin')}")
             return response
         else:
             logger.error(f"Thumbnail processing failed: {result['error']}")
             response = jsonify(result)
-            response.headers.add('Access-Control-Allow-Origin', '*')
+            # Add CORS headers for image tool
+            origin = request.headers.get('Origin')
+            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+            else:
+                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 500
             
     except Exception as e:
         logger.error(f"Error processing thumbnail for print quality: {str(e)}")
-        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+        response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
+        # Add CORS headers for image tool
+        origin = request.headers.get('Origin')
+        if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
 
 @app.route("/api/get-order-screenshot/<order_id>")
 def get_order_screenshot(order_id):
@@ -3321,62 +3641,150 @@ def get_order_screenshot(order_id):
         # First try to get order from database using order_id field
         result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
         
+        # If not found, try common alternative keys
+        if not result.data:
+            alt_result = supabase.table('orders').select('*').eq('id', order_id).execute()
+            if alt_result.data:
+                result = alt_result
+            else:
+                alt2_result = supabase.table('orders').select('*').eq('order_number', order_id).execute()
+                if alt2_result.data:
+                    result = alt2_result
+        
         if not result.data:
             # Fallback: try to get from in-memory order_store
             if order_id in order_store:
                 order_data = order_store[order_id]
                 logger.info(f"✅ Retrieved order {order_id} from in-memory store")
             else:
-                return jsonify({
+                response = jsonify({
                     "success": False,
                     "error": "Order not found"
-                }), 404
+                })
+                # Add CORS headers for image tool
+                origin = request.headers.get('Origin')
+                if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                    response.headers.add('Access-Control-Allow-Origin', origin)
+                else:
+                    response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+                response.headers.add('Access-Control-Allow-Credentials', 'true')
+                return response, 404
         else:
             order_data = result.data[0]
             logger.info(f"✅ Retrieved order {order_id} from database")
         
-        # Extract screenshot data from cart items
+        # Extract screenshot data from cart items - check all possible fields
         screenshot_data = None
         cart = order_data.get('cart', [])
         
-        # Look for screenshot in cart items
-        for item in cart:
-            if item.get('img') and item['img'].startswith('data:image'):
-                screenshot_data = item['img']
-                break
-            elif item.get('screenshot') and item['screenshot'].startswith('data:image'):
-                screenshot_data = item['screenshot']
-                break
+        logger.info(f"🔍 [GET-SCREENSHOT] Looking for screenshot in order {order_id}")
+        logger.info(f"🔍 [GET-SCREENSHOT] Order data keys: {list(order_data.keys())}")
+        logger.info(f"🔍 [GET-SCREENSHOT] Cart has {len(cart)} items")
         
-        # Fallback: check order-level fields
+        # First check order-level fields (might be stored here)
+        if order_data.get('selected_screenshot'):
+            screenshot_data = order_data.get('selected_screenshot')
+            logger.info(f"✅ Found screenshot in order-level selected_screenshot")
+        elif order_data.get('thumbnail'):
+            screenshot_data = order_data.get('thumbnail')
+            logger.info(f"✅ Found screenshot in order-level thumbnail")
+        elif order_data.get('screenshot'):
+            screenshot_data = order_data.get('screenshot')
+            logger.info(f"✅ Found screenshot in order-level screenshot")
+        elif order_data.get('image_url'):
+            screenshot_data = order_data.get('image_url')
+            logger.info(f"✅ Found screenshot in order-level image_url")
+        elif order_data.get('screenshot_data'):
+            screenshot_data = order_data.get('screenshot_data')
+            logger.info(f"✅ Found screenshot in order-level screenshot_data")
+        elif order_data.get('thumbnail_data'):
+            screenshot_data = order_data.get('thumbnail_data')
+            logger.info(f"✅ Found screenshot in order-level thumbnail_data")
+        
+        # Then check cart items - check all possible fields
         if not screenshot_data:
-            if order_data.get('image_url'):
-                screenshot_data = order_data.get('image_url')
-            elif order_data.get('screenshot_data'):
-                screenshot_data = order_data.get('screenshot_data')
-            elif order_data.get('thumbnail_data'):
-                screenshot_data = order_data.get('thumbnail_data')
+            logger.info(f"🔍 Checking cart items for screenshot...")
+            for idx, item in enumerate(cart):
+                logger.info(f"🔍 Cart item {idx} keys: {list(item.keys())}")
+                
+                # Check selected_screenshot field first (this is where we store it now)
+                if item.get('selected_screenshot'):
+                    screenshot_data = item.get('selected_screenshot')
+                    logger.info(f"✅ Found screenshot in cart item {idx} selected_screenshot")
+                    break
+                # Check img field (base64 or URL)
+                elif item.get('img'):
+                    screenshot_data = item.get('img')
+                    logger.info(f"✅ Found screenshot in cart item {idx} img")
+                    break
+                # Check screenshot field (base64)
+                elif item.get('screenshot'):
+                    screenshot_data = item.get('screenshot')
+                    logger.info(f"✅ Found screenshot in cart item {idx} screenshot")
+                    break
+                # Check thumbnail field (base64 or URL)
+                elif item.get('thumbnail'):
+                    screenshot_data = item.get('thumbnail')
+                    logger.info(f"✅ Found screenshot in cart item {idx} thumbnail")
+                    break
         
         if screenshot_data:
-            return jsonify({
+            # Log screenshot info (first 100 chars to verify format)
+            screenshot_preview = str(screenshot_data)[:100] if screenshot_data else "None"
+            screenshot_type = "base64" if isinstance(screenshot_data, str) and screenshot_data.startswith('data:image') else "URL"
+            logger.info(f"✅ [GET-SCREENSHOT] Found screenshot (type: {screenshot_type}, preview: {screenshot_preview}...)")
+            
+            response = jsonify({
                 "success": True,
                 "screenshot": screenshot_data,
                 "order_id": order_id,
                 "video_title": order_data.get('video_title', 'Unknown Video'),
                 "creator_name": order_data.get('creator_name', 'Unknown Creator')
             })
+            # Add CORS headers for image tool
+            origin = request.headers.get('Origin')
+            logger.info(f"🔍 [IMAGE_TOOL] get-order-screenshot success - Origin: {origin}")
+            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+                logger.info(f"✅ [IMAGE_TOOL] Set CORS origin to: {origin}")
+            else:
+                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+                logger.info(f"⚠️ [IMAGE_TOOL] Origin not in allowed list, defaulting to: https://screenmerch.com")
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            logger.info(f"🔍 [IMAGE_TOOL] Response headers before return: Access-Control-Allow-Origin={response.headers.get('Access-Control-Allow-Origin')}")
+            return response
         else:
-            return jsonify({
+            logger.warning(f"⚠️ [GET-SCREENSHOT] No screenshot found for order {order_id}")
+            logger.warning(f"⚠️ [GET-SCREENSHOT] Order keys: {list(order_data.keys())}")
+            logger.warning(f"⚠️ [GET-SCREENSHOT] First cart item (if exists): {cart[0] if cart else 'No cart items'}")
+            
+            response = jsonify({
                 "success": False,
                 "error": "No screenshot data found for this order"
-            }), 404
+            })
+            # Add CORS headers for image tool
+            origin = request.headers.get('Origin')
+            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+            else:
+                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response, 404
             
     except Exception as e:
         logger.error(f"Error getting order screenshot: {str(e)}")
-        return jsonify({
+        response = jsonify({
             "success": False,
             "error": f"Internal server error: {str(e)}"
-        }), 500
+        })
+        # Add CORS headers for image tool
+        origin = request.headers.get('Origin')
+        if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
 
 @app.route("/print-quality")
 def print_quality_page():
@@ -3596,7 +4004,13 @@ def test_stripe():
 @app.route("/api/calculate-shipping", methods=["POST", "OPTIONS"])
 def calculate_shipping():
     """Calculate shipping cost for an order using Printify API"""
+    logger.info("📦 /api/calculate-shipping endpoint called")
+    logger.info(f"📦 Request method: {request.method}")
+    logger.info(f"📦 Request URL: {request.url}")
+    logger.info(f"📦 Request headers: {dict(request.headers)}")
+    
     if request.method == "OPTIONS":
+        logger.info("📦 Handling OPTIONS preflight request")
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
@@ -3604,12 +4018,13 @@ def calculate_shipping():
         return response
     
     try:
+        logger.info("📦 Processing POST request for shipping calculation")
         data = request.get_json()
+        logger.info(f"📦 Received data: {data}")
         
         # Get shipping address from frontend
         shipping_address = data.get('shipping_address', {})
         country = shipping_address.get('country_code', 'US')
-        postal_code = shipping_address.get('zip', '')
         
         # Get cart items from frontend
         cart = data.get('cart', [])
@@ -3620,94 +4035,173 @@ def calculate_shipping():
                 "error": "No cart items provided"
             }), 400
         
-        # Printify API configuration (read from environment)
-        printify_api_key = os.getenv("PRINTIFY_API_KEY") or os.getenv("PRINTFUL_API_KEY")
-        printify_base_url = "https://api.printify.com/v1"
-
-        if not printify_api_key:
-            logger.error("PRINTIFY_API_KEY/PRINTFUL_API_KEY is not configured")
-            # Fallback to default shipping without attempting external call
+        # Check for API key
+        printful_api_key = os.getenv("PRINTFUL_API_KEY")
+        printify_api_key = os.getenv("PRINTIFY_API_KEY")
+        
+        # Parse ZIP code using robust helper
+        postal_code = _parse_zip(shipping_address)
+        if not postal_code:
             return jsonify({
-                "success": True,
-                "shipping_cost": 5.99,
-                "currency": "USD",
-                "delivery_days": "5-7",
-                "shipping_method": "Standard Shipping",
-                "fallback": True
-            })
+                "success": False,
+                "error": "ZIP / Postal Code is required for shipping calculation"
+            }), 400
         
-        # Calculate shipping using Printify API
-        shipping_data = {
-            "line_items": [],
-            "shipping_address": {
-                "country": country,
-                "postal_code": postal_code
-            }
-        }
+        logger.info(f"📦 Calculating shipping for ZIP: {postal_code}, Country: {country}, Cart items: {len(cart)}")
         
-        # Convert cart items to Printify format
-        for item in cart:
-            shipping_data["line_items"].append({
-                "variant_id": item.get('variant_id', 1),
-                "quantity": item.get('quantity', 1)
-            })
+        # Try using Printful integration first (preferred method)
+        if printful_api_key and hasattr(printful_integration, 'calculate_shipping_rates'):
+            try:
+                logger.info("📦 Using Printful integration for shipping calculation")
+                recipient_data = {
+                    'country_code': country,
+                    'zip': postal_code,
+                    'state_code': shipping_address.get('state_code', ''),
+                    'city': shipping_address.get('city', '')
+                }
+                result = printful_integration.calculate_shipping_rates(recipient_data, cart)
+                logger.info(f"📦 Printful shipping result: {result}")
+                
+                if result and result.get('success'):
+                    return jsonify({
+                        "success": True,
+                        "shipping_cost": result.get('shipping_cost', 0),
+                        "currency": result.get('currency', 'USD'),
+                        "delivery_days": str(result.get('delivery_days', '5-7')),
+                        "shipping_method": result.get('shipping_method', 'Standard Shipping')
+                    })
+            except Exception as e:
+                logger.error(f"📦 Printful integration failed: {str(e)}")
+                # Fall through to direct API call
         
-        # Make request to Printify shipping API
-        headers = {
-            'Authorization': f'Bearer {printify_api_key}',
-            'Content-Type': 'application/json'
-        }
-        
-        response = requests.post(
-            f"{printify_base_url}/shipping/rates",
-            json=shipping_data,
-            headers=headers,
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            shipping_rates = response.json()
+        # Fallback: Direct Printful API call
+        if printful_api_key:
+            logger.info("📦 Using direct Printful API for shipping calculation")
+            printful_base_url = "https://api.printful.com"
             
-            # Get the first available shipping rate
-            if shipping_rates and len(shipping_rates) > 0:
-                rate = shipping_rates[0]
-                return jsonify({
-                    "success": True,
-                    "shipping_cost": rate.get('cost', 5.99),
-                    "currency": "USD",
-                    "delivery_days": rate.get('estimated_days', '5-7'),
-                    "shipping_method": rate.get('name', 'Standard Shipping')
+            # Format items for Printful
+            shipping_items = []
+            for item in cart:
+                shipping_items.append({
+                    "variant_id": item.get('variant_id', item.get('printful_variant_id', 71)),
+                    "quantity": item.get('quantity', 1)
                 })
+            
+            shipping_payload = {
+                "recipient": {
+                    "country_code": country,
+                    "zip": postal_code,
+                    "state_code": shipping_address.get('state_code', ''),
+                    "city": shipping_address.get('city', '')
+                },
+                "items": shipping_items,
+                "currency": "USD"
+            }
+            
+            headers = {
+                'Authorization': f'Bearer {printful_api_key}',
+                'Content-Type': 'application/json'
+            }
+            
+            logger.info(f"📦 Calling Printful API: {printful_base_url}/shipping/rates")
+            logger.info(f"📦 Request payload: {shipping_payload}")
+            
+            response = requests.post(
+                f"{printful_base_url}/shipping/rates",
+                json=shipping_payload,
+                headers=headers,
+                timeout=10
+            )
+            
+            logger.info(f"📦 Printful API response status: {response.status_code}")
+            logger.info(f"📦 Printful API response text: {response.text[:500]}")
+            
+            if response.status_code == 200:
+                try:
+                    shipping_response = response.json()
+                    logger.info(f"📦 Parsed Printful response: {shipping_response}")
+                    
+                    # Printful API wraps results in a 'result' key
+                    if 'result' in shipping_response:
+                        rates_list = shipping_response['result']
+                        logger.info(f"📦 Extracted rates list: {rates_list}")
+                        logger.info(f"📦 Number of rates: {len(rates_list)}")
+                        
+                        if rates_list and len(rates_list) > 0:
+                            # Find standard shipping or use first available
+                            standard_rate = None
+                            for rate in rates_list:
+                                if rate.get('id') == 'STANDARD' or 'standard' in rate.get('name', '').lower():
+                                    standard_rate = rate
+                                    break
+                            
+                            rate = standard_rate or rates_list[0]
+                            logger.info(f"📦 Selected rate: {rate}")
+                            
+                            # Printful uses 'rate' field for cost
+                            cost = rate.get('rate') or rate.get('cost') or rate.get('price')
+                            
+                            if cost is None or cost == 0:
+                                logger.error(f"📦 No valid cost found in rate: {rate}")
+                                return jsonify({
+                                    "success": False,
+                                    "error": "Unable to calculate shipping cost. Please verify your ZIP code and try again."
+                                }), 400
+                            
+                            logger.info(f"📦 Shipping cost calculated: {cost}")
+                            return jsonify({
+                                "success": True,
+                                "shipping_cost": float(cost),
+                                "currency": "USD",
+                                "delivery_days": str(rate.get('minDeliveryDays', rate.get('estimated_days', '5-7'))),
+                                "shipping_method": rate.get('name', 'Standard Shipping')
+                            })
+                        else:
+                            logger.error(f"📦 No shipping rates found in Printful response")
+                            return jsonify({
+                                "success": False,
+                                "error": "No shipping rates available for this location. Please verify your ZIP code or contact support."
+                            }), 400
+                    else:
+                        logger.error(f"📦 Printful response missing 'result' key: {shipping_response}")
+                        return jsonify({
+                            "success": False,
+                            "error": "Invalid response from shipping API. Please try again."
+                        }), 500
+                except Exception as parse_error:
+                    logger.error(f"📦 Error parsing Printful response: {str(parse_error)}")
+                    logger.error(f"📦 Raw response: {response.text}")
+                    return jsonify({
+                        "success": False,
+                        "error": f"Error parsing shipping rates response: {str(parse_error)}"
+                    }), 500
             else:
-                # Fallback if no rates available
+                logger.error(f"Printful API error: {response.status_code} - {response.text}")
+                error_detail = "Unknown error"
+                try:
+                    error_data = response.json()
+                    error_detail = error_data.get('message', error_data.get('error', error_data.get('description', 'Unknown error')))
+                    logger.error(f"📦 Printful error details: {error_data}")
+                except:
+                    error_detail = response.text[:200] if response.text else "Unknown error"
                 return jsonify({
-                    "success": True,
-                    "shipping_cost": 5.99,
-                    "currency": "USD",
-                    "delivery_days": "5-7",
-                    "shipping_method": "Standard Shipping"
-                })
-        else:
-            logger.error(f"Printify API error: {response.status_code} - {response.text}")
-            # Fallback to default shipping
-            return jsonify({
-                "success": True,
-                "shipping_cost": 5.99,
-                "currency": "USD",
-                "delivery_days": "5-7",
-                "shipping_method": "Standard Shipping"
-            })
+                    "success": False,
+                    "error": f"Unable to calculate shipping: {error_detail}. Please verify your ZIP code and try again."
+                }), response.status_code if response.status_code < 600 else 500
+        
+        # No API keys configured
+        logger.error("📦 Neither PRINTFUL_API_KEY nor PRINTIFY_API_KEY is configured")
+        return jsonify({
+            "success": False,
+            "error": "Shipping calculation service is not configured. Please contact support."
+        }), 500
         
     except Exception as e:
         logger.error(f"Error calculating shipping: {str(e)}")
-        # Fallback to default shipping
         return jsonify({
-            "success": True,
-            "shipping_cost": 5.99,
-            "currency": "USD",
-            "delivery_days": "5-7",
-            "shipping_method": "Standard Shipping"
-        })
+            "success": False,
+            "error": f"Shipping calculation failed: {str(e)}. Please verify your ZIP code and try again."
+        }), 500
 
 @app.route("/api/test-email-config", methods=["GET"])
 def test_email_config():
@@ -3793,7 +4287,7 @@ def auth_login():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         origin = request.headers.get('Origin')
-        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
         
         if origin in allowed_origins:
             response.headers.add('Access-Control-Allow-Origin', origin)
@@ -4573,7 +5067,7 @@ def google_login():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         origin = request.headers.get('Origin')
-        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
         
         if origin in allowed_origins:
             response.headers['Access-Control-Allow-Origin'] = origin
@@ -4756,11 +5250,21 @@ def google_callback():
         frontend_url = "https://screenmerch.com"
         redirect_url = f"{frontend_url}?login=success&user={user_data_encoded}"
         
+        logger.info(f"✅ Redirecting to frontend: {redirect_url[:100]}...")
         return redirect(redirect_url)
         
     except Exception as e:
-        logger.error(f"Google OAuth callback error: {str(e)}")
-        return jsonify({"success": False, "error": "Google authentication failed"}), 500
+        logger.error(f"❌ Google OAuth callback error: {str(e)}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        
+        # Always redirect, even on error - never return JSON in OAuth callback
+        frontend_url = "https://screenmerch.com"
+        error_message = str(e)[:100]  # Limit error message length
+        redirect_url = f"{frontend_url}?login=error&message={urllib.parse.quote(error_message)}"
+        
+        logger.info(f"⚠️ Redirecting to error page: {redirect_url}")
+        return redirect(redirect_url)
 
 if __name__ == "__main__":
     import os

@@ -209,20 +209,25 @@ const Checkout = () => {
             <div className="order-section">
               <h2>Order Items</h2>
               <div className="items-list">
-                {items.map((ci, i) => (
-                  <div key={i} className="item-card">
-                    {ci.image && (
-                      <div className="item-image">
-                        <img src={ci.image} alt={ci.name} />
+                {items.map((ci, i) => {
+                  // Get the screenshot/image - check multiple fields
+                  const productImage = ci.screenshot || ci.selected_screenshot || ci.thumbnail || ci.image || ci.img;
+                  
+                  return (
+                    <div key={i} className="item-card">
+                      {productImage && (
+                        <div className="item-image">
+                          <img src={productImage} alt={ci.name || ci.product} />
+                        </div>
+                      )}
+                      <div className="item-details">
+                        <h3 className="item-name">{ci.name || ci.product}</h3>
+                        <div className="item-variants">{ci.color} • {ci.size}</div>
                       </div>
-                    )}
-                    <div className="item-details">
-                      <h3 className="item-name">{ci.name}</h3>
-                      <div className="item-variants">{ci.color} • {ci.size}</div>
+                      <div className="item-price">${(ci.price || 0).toFixed(2)}</div>
                     </div>
-                    <div className="item-price">${(ci.price || 0).toFixed(2)}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -449,6 +454,37 @@ const Checkout = () => {
                     country_code: String(countryValue || 'US').trim()
                   };
                   
+                  // Extract selected screenshot BEFORE cleaning cart
+                  // Get the first available screenshot from cart items (for email attachment)
+                  let selectedScreenshot = null;
+                  for (const item of items) {
+                    // Check multiple possible screenshot fields
+                    selectedScreenshot = item.screenshot || item.selected_screenshot || item.thumbnail || item.img;
+                    if (selectedScreenshot && selectedScreenshot.trim()) {
+                      break; // Found one, use it
+                    }
+                  }
+                  
+                  // Also check localStorage for screenshot data
+                  if (!selectedScreenshot) {
+                    try {
+                      const merchData = localStorage.getItem('pending_merch_data');
+                      if (merchData) {
+                        const parsed = JSON.parse(merchData);
+                        // Check screenshots array - use first one if available
+                        if (parsed.screenshots && Array.isArray(parsed.screenshots) && parsed.screenshots.length > 0) {
+                          selectedScreenshot = parsed.screenshots[0];
+                        } else if (parsed.thumbnail) {
+                          selectedScreenshot = parsed.thumbnail;
+                        }
+                      }
+                    } catch (e) {
+                      console.warn('Could not load screenshot from localStorage:', e);
+                    }
+                  }
+                  
+                  console.log('📸 Selected screenshot found:', selectedScreenshot ? 'Yes' : 'No');
+                  
                   // Create lean cart payload (no base64 images) - explicitly exclude img field
                   const stripeCart = items.map(it => {
                     const cleanItem = {
@@ -459,7 +495,7 @@ const Checkout = () => {
                       },
                       price: it.price || 0
                     };
-                    // Explicitly exclude img, thumbnail, image fields
+                    // Explicitly exclude img, thumbnail, image, screenshot fields
                     return cleanItem;
                   });
                   
@@ -473,9 +509,28 @@ const Checkout = () => {
                     videoUrl: items[0]?.video_url || null,
                     videoTitle: items[0]?.video_title || null,
                     creatorName: items[0]?.creator_name || null,
-                    // Remove thumbnail to reduce payload size - backend doesn't need it for checkout
-                    // thumbnail: items[0]?.thumbnail  // Removed - too large
                   };
+                  
+                  // Add selected screenshot ONLY if it exists and is small enough (< 1MB base64)
+                  // Large images will be handled via print quality generator link in email
+                  if (selectedScreenshot) {
+                    const screenshotStr = String(selectedScreenshot);
+                    // Only include if it's a URL (not base64) or if base64 is reasonably small (< 1MB)
+                    if (screenshotStr.startsWith('http') || screenshotStr.startsWith('https')) {
+                      // URL - always safe to include
+                      payload.selected_screenshot = selectedScreenshot;
+                      console.log('📸 Added screenshot URL to payload');
+                    } else if (screenshotStr.startsWith('data:image')) {
+                      // Base64 - check size (rough estimate: ~75% of string length)
+                      const estimatedSize = screenshotStr.length * 0.75;
+                      if (estimatedSize < 1000000) { // < 1MB
+                        payload.selected_screenshot = selectedScreenshot;
+                        console.log(`📸 Added screenshot to payload (estimated ${Math.round(estimatedSize/1024)}KB)`);
+                      } else {
+                        console.warn(`⚠️ Screenshot too large (${Math.round(estimatedSize/1024)}KB), skipping payload but will use print quality link`);
+                      }
+                    }
+                  }
                   
                   // Verify payload has shipping_address before sending
                   if (!payload.shipping_address || !payload.shipping_address.zip) {
