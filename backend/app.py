@@ -158,13 +158,28 @@ def _allow_origin(resp):
     allowed = {
         "https://screenmerch.com",
         "https://www.screenmerch.com",
+        "https://screenmerch.fly.dev",
         "http://localhost:5173",
         "http://localhost:3000",
     }
-    if origin in allowed:
+    
+    # Check exact match first
+    origin_allowed = origin in allowed
+    
+    # If not exact match, check if it's a Netlify subdomain
+    if not origin_allowed and origin:
+        if origin.endswith('.netlify.app') and origin.startswith('https://'):
+            origin_allowed = True
+    
+    if origin_allowed:
         resp.headers['Access-Control-Allow-Origin'] = origin
         resp.headers['Vary'] = 'Origin'
         resp.headers['Access-Control-Allow-Credentials'] = 'true'
+    else:
+        # Fallback to default
+        resp.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
+        resp.headers['Access-Control-Allow-Credentials'] = 'true'
+    
     return resp
 
 
@@ -2232,6 +2247,7 @@ def place_order():
         logger.info(f"✅ Stored screenshot in enriched_cart items: {bool(top_level_screenshot)}")
 
         # Prepare DB payload restricted to known columns
+        # Also store screenshot at order level for easy retrieval
         order_data = {
             "order_id": order_id,
             "cart": enriched_cart,
@@ -2245,6 +2261,11 @@ def place_order():
             "shipping_address": shipping_address,  # Store shipping address for future reference
             "status": "pending",
         }
+        
+        # Store screenshot at order level too (for get-order-screenshot endpoint)
+        if top_level_screenshot:
+            order_data["selected_screenshot"] = top_level_screenshot
+            logger.info(f"✅ Stored screenshot at order level for retrieval")
 
         # Try database first; fallback to in-memory store
         stored_in_db = False
@@ -2400,6 +2421,8 @@ def place_order():
         html_body += "<p><small>This is an automated notification from ScreenMerch</small></p>"
 
         # Send email with Resend if configured; fall back to logging
+        logger.info(f"📧 Email configuration check: RESEND_API_KEY={'SET' if RESEND_API_KEY else 'NOT SET'}, MAIL_TO={'SET' if MAIL_TO else 'NOT SET'}")
+        
         if RESEND_API_KEY and MAIL_TO:
             email_data = {
                 "from": RESEND_FROM,
@@ -2429,6 +2452,10 @@ def place_order():
             else:
                 logger.warning(f"⚠️ No email attachments created - screenshot might be missing")
             
+            logger.info(f"📧 Attempting to send email to {MAIL_TO} from {RESEND_FROM}")
+            logger.info(f"📧 Email subject: {email_data['subject']}")
+            logger.info(f"📧 Email HTML length: {len(html_body)} chars")
+            
             try:
                 resp = requests.post(
                     "https://api.resend.com/emails",
@@ -2437,18 +2464,38 @@ def place_order():
                         "Content-Type": "application/json",
                     },
                     json=email_data,
+                    timeout=30  # Add timeout
                 )
+                
+                logger.info(f"📧 Resend API response status: {resp.status_code}")
+                
                 if resp.status_code != 200:
-                    logger.error(f"❌ Resend API error ({resp.status_code}): {resp.text}")
+                    error_text = resp.text
+                    logger.error(f"❌ Resend API error ({resp.status_code}): {error_text}")
+                    # Log the full response for debugging
+                    try:
+                        error_json = resp.json()
+                        logger.error(f"❌ Resend error details: {error_json}")
+                    except:
+                        logger.error(f"❌ Resend error (non-JSON): {error_text}")
                 else:
                     logger.info(f"✅ Email sent successfully with {len(email_attachments) if email_attachments else 0} attachments")
-                    resp_data = resp.json()
-                    logger.info(f"📧 Email ID: {resp_data.get('id', 'unknown')}")
+                    try:
+                        resp_data = resp.json()
+                        logger.info(f"📧 Email ID: {resp_data.get('id', 'unknown')}")
+                    except:
+                        logger.warning(f"⚠️ Could not parse email response JSON")
+            except requests.exceptions.Timeout:
+                logger.error(f"❌ Timeout sending email via Resend (exceeded 30s)")
             except Exception as e:
                 logger.error(f"❌ Error sending email via Resend: {str(e)}")
                 import traceback
                 logger.error(f"Full traceback: {traceback.format_exc()}")
         else:
+            if not RESEND_API_KEY:
+                logger.error("❌ RESEND_API_KEY not configured; order email not sent")
+            if not MAIL_TO:
+                logger.error("❌ MAIL_TO not configured; order email not sent")
             logger.warning("Email service not configured; order email not sent")
 
         response = jsonify({"success": True, "order_id": order_id})
@@ -2492,37 +2539,162 @@ def success():
             # Generate a simple order number (last 8 characters of order_id)
             order_number = order_id[-8:].upper()
             
-            logger.info(f"📧 Preparing email for {len(cart)} items")
+            # Check order status - if "paid", webhook already fired and email was sent
+            # If "pending", webhook didn't fire yet, so send email as fallback
+            order_status = order_data.get('status', 'pending')
             
-            # Format and send the order email - simplified version
-            html_body = f"<h1>New Paid ScreenMerch Order #{order_number}</h1>"
-            html_body += f"<p><strong>Order ID:</strong> {order_id}</p>"
-            html_body += f"<p><strong>Items:</strong> {len(cart)}</p>"
-            
-            # Calculate total value
-            total_value = 0
-            for item in cart:
-                product_name = item.get('product', '')
-                product_info = next((p for p in PRODUCTS if p["name"] == product_name), None)
-                if product_info:
-                    total_value += product_info["price"]
-            
-            html_body += f"<p><strong>Total Value:</strong> ${total_value:.2f}</p>"
-            html_body += f"<br>"
-            html_body += f"<p><strong>📋 View Full Order Details:</strong></p>"
-            html_body += f"<p><a href='https://screenmerch.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
-            html_body += f"<br>"
-            html_body += f"<p><strong>📊 All Orders Dashboard:</strong></p>"
-            html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
-            html_body += f"<br>"
-            html_body += f"<p><small>This is an automated notification from ScreenMerch</small></p>"
+            logger.info(f"📧 [SUCCESS] Order status: {order_status}")
             
             # Record each sale
             for item in cart:
                 record_sale(item)
             
-            # Email is already sent from webhook, no need to send duplicate
-            logger.info(f"✅ Order {order_number} processed - email already sent from webhook")
+            # Only send email if order is still "pending" (webhook didn't fire)
+            if order_status != 'paid':
+                logger.info(f"📧 [SUCCESS] Order status is {order_status}, sending email as fallback (webhook may not have fired)")
+                
+                # Get screenshot from order data (stored at order level or in cart items)
+                top_level_screenshot = order_data.get('selected_screenshot') or order_data.get('thumbnail') or order_data.get('screenshot')
+                
+                # Also check cart items for screenshot
+                if not top_level_screenshot:
+                    for item in cart:
+                        if item.get('selected_screenshot') or item.get('screenshot') or item.get('thumbnail') or item.get('img'):
+                            top_level_screenshot = item.get('selected_screenshot') or item.get('screenshot') or item.get('thumbnail') or item.get('img')
+                            logger.info(f"📸 [SUCCESS] Found screenshot in cart item")
+                            break
+                
+                if top_level_screenshot:
+                    logger.info(f"📸 [SUCCESS] Found screenshot (length: {len(str(top_level_screenshot))} chars)")
+                else:
+                    logger.warning(f"⚠️ [SUCCESS] No screenshot found for order {order_id}")
+                
+                # Format comprehensive email with products and screenshots
+                html_body = f"<h1>🛍️ New ScreenMerch Order #{order_number}</h1>"
+                html_body += f"<p><strong>Order ID:</strong> {order_id}</p>"
+                html_body += f"<p><strong>Items:</strong> {len(cart)}</p>"
+                
+                # Calculate total value
+                total_value = 0
+                for item in cart:
+                    product_name = item.get('product', '')
+                    product_info = next((p for p in PRODUCTS if p["name"] == product_name), None)
+                    if product_info:
+                        total_value += product_info["price"]
+                
+                html_body += f"<p><strong>Total Value:</strong> ${total_value:.2f}</p>"
+                html_body += "<hr>"
+                html_body += "<h2>🛍️ Products</h2>"
+                
+                # Collect images for email attachments
+                email_attachments = []
+                
+                for idx, item in enumerate(cart):
+                    product_name = item.get('product', 'N/A')
+                    color = (item.get('variants') or {}).get('color', 'N/A')
+                    size = (item.get('variants') or {}).get('size', 'N/A')
+                    note = item.get('note', 'None')
+                    
+                    # Use top-level screenshot for all items (same product, same screenshot)
+                    image_url = top_level_screenshot or item.get('screenshot') or item.get('selected_screenshot') or item.get('thumbnail') or item.get('img', '')
+                    
+                    image_tag = ""
+                    if image_url:
+                        if image_url.startswith('data:image'):
+                            # Data URL - embed directly as base64 (most compatible)
+                            image_tag = f"<img src='{image_url}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
+                            logger.info(f"📸 [SUCCESS] Embedded base64 screenshot for item {idx}")
+                        else:
+                            # Regular URL - use directly
+                            image_tag = f"<img src='{image_url}' alt='Product Image' style='max-width: 300px; border-radius: 6px;'>"
+                    
+                    html_body += f"""
+                        <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
+                            <h3>{product_name}</h3>
+                            <p><strong>Color:</strong> {color}</p>
+                            <p><strong>Size:</strong> {size}</p>
+                            <p><strong>Note:</strong> {note}</p>
+                            {image_tag}
+                        </div>
+                    """
+                
+                # Add video information
+                html_body += "<hr>"
+                html_body += "<h2>📹 Video Information</h2>"
+                html_body += f"<p><strong>Video Title:</strong> {order_data.get('video_title', 'Unknown Video')}</p>"
+                html_body += f"<p><strong>Creator:</strong> {order_data.get('creator_name', 'Unknown Creator')}</p>"
+                html_body += f"<p><strong>Video URL:</strong> {order_data.get('video_url', 'Not provided')}</p>"
+                html_body += "<br>"
+                html_body += "<p><strong>📋 View Full Order Details:</strong></p>"
+                html_body += f"<p><a href='https://screenmerch.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
+                html_body += "<br>"
+                html_body += "<p><strong>📊 All Orders Dashboard:</strong></p>"
+                html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
+                html_body += "<br>"
+                html_body += "<hr>"
+                html_body += "<h2>🖨️ Print Quality Images</h2>"
+                html_body += f"<p><strong>Web Interface:</strong> <a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}'>https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>"
+                html_body += "<br>"
+                html_body += "<p><small>This is an automated notification from ScreenMerch</small></p>"
+                
+                # Send email with Resend if configured
+                logger.info(f"📧 [SUCCESS] Email configuration check: RESEND_API_KEY={'SET' if RESEND_API_KEY else 'NOT SET'}, MAIL_TO={'SET' if MAIL_TO else 'NOT SET'}")
+                
+                if RESEND_API_KEY and MAIL_TO:
+                    email_data = {
+                        "from": RESEND_FROM,
+                        "to": [MAIL_TO],
+                        "subject": f"🛍️ New ScreenMerch Order #{order_number}",
+                        "html": html_body,
+                    }
+                    
+                    logger.info(f"📧 [SUCCESS] Attempting to send email to {MAIL_TO} from {RESEND_FROM}")
+                    logger.info(f"📧 [SUCCESS] Email subject: {email_data['subject']}")
+                    logger.info(f"📧 [SUCCESS] Email HTML length: {len(html_body)} chars")
+                    
+                    try:
+                        resp = requests.post(
+                            "https://api.resend.com/emails",
+                            headers={
+                                "Authorization": f"Bearer {RESEND_API_KEY}",
+                                "Content-Type": "application/json",
+                            },
+                            json=email_data,
+                            timeout=30
+                        )
+                        
+                        logger.info(f"📧 [SUCCESS] Resend API response status: {resp.status_code}")
+                        
+                        if resp.status_code != 200:
+                            error_text = resp.text
+                            logger.error(f"❌ [SUCCESS] Resend API error ({resp.status_code}): {error_text}")
+                            try:
+                                error_json = resp.json()
+                                logger.error(f"❌ [SUCCESS] Resend error details: {error_json}")
+                            except:
+                                logger.error(f"❌ [SUCCESS] Resend error (non-JSON): {error_text}")
+                        else:
+                            logger.info(f"✅ [SUCCESS] Email sent successfully as fallback")
+                            try:
+                                resp_data = resp.json()
+                                logger.info(f"📧 [SUCCESS] Email ID: {resp_data.get('id', 'unknown')}")
+                            except:
+                                logger.warning(f"⚠️ [SUCCESS] Could not parse email response JSON")
+                    except requests.exceptions.Timeout:
+                        logger.error(f"❌ [SUCCESS] Timeout sending email via Resend (exceeded 30s)")
+                    except Exception as e:
+                        logger.error(f"❌ [SUCCESS] Error sending email via Resend: {str(e)}")
+                        import traceback
+                        logger.error(f"❌ [SUCCESS] Full traceback: {traceback.format_exc()}")
+                else:
+                    if not RESEND_API_KEY:
+                        logger.error("❌ [SUCCESS] RESEND_API_KEY not configured; order email not sent")
+                    if not MAIL_TO:
+                        logger.error("❌ [SUCCESS] MAIL_TO not configured; order email not sent")
+                    logger.warning("❌ [SUCCESS] Email service not configured; order email not sent")
+            else:
+                # Order is already "paid" - webhook fired and email was sent
+                logger.info(f"✅ [SUCCESS] Order {order_number} status is 'paid' - email already sent from webhook")
                 
         except Exception as e:
             logger.error(f"❌ Error processing order {order_id}: {str(e)}")
@@ -2591,22 +2763,102 @@ def create_checkout_session():
         # Calculate total amount
         total_amount = sum(item.get('price', 0) for item in cart) + shipping_cost
         
+        # Get screenshot from cart items first - check ALL possible screenshot fields
+        # This handles both cases: with frontend deployment (selected_screenshot) and without (screenshot/img/thumbnail)
+        checkout_screenshot = None
+        logger.info(f"📸 [CHECKOUT] Checking cart items for screenshot (cart has {len(cart)} items)")
+        for idx, item in enumerate(cart):
+            # Check ALL possible screenshot fields in order of preference
+            # Only use non-empty strings (filter out None, empty strings, etc.)
+            screenshot = item.get("selected_screenshot") or item.get("screenshot") or item.get("img") or item.get("thumbnail")
+            if screenshot and isinstance(screenshot, str) and screenshot.strip():
+                checkout_screenshot = screenshot
+                field_name = "selected_screenshot" if item.get("selected_screenshot") else ("screenshot" if item.get("screenshot") else ("img" if item.get("img") else "thumbnail"))
+                logger.info(f"✅ [CHECKOUT] Found screenshot in cart item {idx} field '{field_name}': {str(screenshot)[:50]}...")
+                break
+        
+        # Fallback to top-level payload if not found in cart items
+        if not checkout_screenshot:
+            screenshot_candidates = [data.get("selected_screenshot"), data.get("thumbnail"), data.get("screenshot")]
+            for candidate in screenshot_candidates:
+                if candidate and isinstance(candidate, str) and candidate.strip():
+                    checkout_screenshot = candidate
+                    break
+            
+            if checkout_screenshot:
+                screenshot_type = "base64" if 'data:image' in checkout_screenshot else "URL"
+                logger.info(f"✅ [CHECKOUT] Found screenshot in top-level payload (type: {screenshot_type}, length: {len(str(checkout_screenshot))} chars)")
+                logger.info(f"✅ [CHECKOUT] Screenshot preview (first 200 chars): {str(checkout_screenshot)[:200]}...")
+                logger.info(f"✅ [CHECKOUT] Screenshot is valid: {bool(checkout_screenshot and isinstance(checkout_screenshot, str) and checkout_screenshot.strip())}")
+            else:
+                logger.warning(f"⚠️ [CHECKOUT] No screenshot in top-level payload - checking keys: {[k for k in data.keys() if 'screen' in k.lower() or 'img' in k.lower() or 'thumb' in k.lower()]}")
+                logger.warning(f"⚠️ [CHECKOUT] No screenshot found in cart items or top-level payload")
+                logger.warning(f"⚠️ [CHECKOUT] Cart item keys (first item): {list(cart[0].keys()) if cart else 'No cart'}")
+                logger.warning(f"⚠️ [CHECKOUT] Top-level payload keys with 'screen': {[k for k in data.keys() if 'screen' in k.lower() or 'img' in k.lower() or 'thumbnail' in k.lower()]}")
+                # Also log the actual values to see what's there
+                if cart:
+                    logger.warning(f"⚠️ [CHECKOUT] First cart item values: selected_screenshot={cart[0].get('selected_screenshot')}, screenshot={cart[0].get('screenshot')}, img={cart[0].get('img')}, thumbnail={cart[0].get('thumbnail')}")
+                logger.warning(f"⚠️ [CHECKOUT] Top-level values: selected_screenshot={data.get('selected_screenshot')}, thumbnail={data.get('thumbnail')}, screenshot={data.get('screenshot')}")
+        
         # Enrich cart items with video metadata
         enriched_cart = []
-        for item in cart:
+        for idx, item in enumerate(cart):
             enriched_item = item.copy()
             # Add video metadata to each cart item
+            # Use screenshot from cart item if available, otherwise use the extracted one
+            # Check ALL fields in cart item first, then fallback to extracted screenshot
+            # Only use non-empty strings (filter out None, empty strings, etc.)
+            # IMPORTANT: Always use checkout_screenshot as final fallback - it was extracted earlier
+            item_screenshot = None
+            screenshot_candidates = [item.get("selected_screenshot"), item.get("screenshot"), item.get("img"), item.get("thumbnail")]
+            
+            # Log all candidates for debugging
+            logger.info(f"📸 [CHECKOUT] Item {idx} screenshot candidates:")
+            for i, candidate in enumerate(["item.selected_screenshot", "item.screenshot", "item.img", "item.thumbnail"]):
+                val = screenshot_candidates[i] if i < len(screenshot_candidates) else None
+                logger.info(f"   - {candidate}: {bool(val)} (value: {str(val)[:50] if val else 'None'}...)")
+            logger.info(f"   - checkout_screenshot: {bool(checkout_screenshot)} (value: {str(checkout_screenshot)[:50] if checkout_screenshot else 'None'}...)")
+            
+            # Check candidates first, then fallback to checkout_screenshot
+            for candidate in screenshot_candidates:
+                if candidate and isinstance(candidate, str) and candidate.strip():
+                    item_screenshot = candidate
+                    logger.info(f"✅ [CHECKOUT] Item {idx} using screenshot from cart item: {str(candidate)[:50]}...")
+                    break
+            
+            # If no screenshot found in cart item, use checkout_screenshot (extracted from top-level payload)
+            if not item_screenshot and checkout_screenshot and isinstance(checkout_screenshot, str) and checkout_screenshot.strip():
+                item_screenshot = checkout_screenshot
+                logger.info(f"✅ [CHECKOUT] Item {idx} using checkout_screenshot (from top-level payload): {str(checkout_screenshot)[:50]}...")
+            
             enriched_item.update({
                 "videoName": data.get("videoTitle", data.get("video_title", "Unknown Video")),
                 "creatorName": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
-                "timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided"))
+                "timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
+                # Store screenshot at cart item level so it can be retrieved later
+                # Always store in selected_screenshot for consistent retrieval
+                # Use item_screenshot which was validated above
+                "selected_screenshot": item_screenshot
             })
             enriched_cart.append(enriched_item)
+            if item_screenshot:
+                screenshot_type = "base64" if 'data:image' in item_screenshot else ("URL" if (item_screenshot.startswith('http') or item_screenshot.startswith('https')) else "other")
+                logger.info(f"✅ [CHECKOUT] Stored screenshot in enriched_cart item {idx} (type: {screenshot_type}, length: {len(str(item_screenshot))} chars): {str(item_screenshot)[:100]}...")
+            else:
+                logger.warning(f"⚠️ [CHECKOUT] No screenshot in enriched_cart item {idx} - item_screenshot is None or empty")
+                logger.warning(f"⚠️ [CHECKOUT] Cart item values: selected_screenshot={item.get('selected_screenshot')}, screenshot={item.get('screenshot')}, img={item.get('img')}, thumbnail={item.get('thumbnail')}")
+                logger.warning(f"⚠️ [CHECKOUT] checkout_screenshot={checkout_screenshot}")
+        
+        if checkout_screenshot:
+            logger.info(f"✅ [CHECKOUT] Screenshot will be stored in enriched_cart items and order level: {bool(checkout_screenshot)}")
+        else:
+            logger.warning(f"⚠️ [CHECKOUT] WARNING: No screenshot found to store in order!")
         
         # Store order in database instead of in-memory store
+        # NOTE: selected_screenshot column doesn't exist in database, so we store it only in cart items
         order_data = {
             "order_id": order_id,
-            "cart": enriched_cart,
+            "cart": enriched_cart,  # Screenshot is stored in cart items (selected_screenshot field)
             "sms_consent": sms_consent,
             "customer_email": data.get("user_email", ""),
             "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
@@ -2618,7 +2870,22 @@ def create_checkout_session():
             "status": "pending"
         }
         
+        # Screenshot is stored in enriched_cart items (selected_screenshot field in each cart item)
+        # We don't store it at order level because the database column doesn't exist
+        if checkout_screenshot:
+            logger.info(f"✅ Screenshot stored in enriched_cart items (selected_screenshot field): {bool(checkout_screenshot)}")
+            logger.info(f"✅ Screenshot will be retrievable from cart items for email: {bool(checkout_screenshot)}")
+        
         try:
+            # Verify screenshot is actually in enriched_cart before storing
+            logger.info(f"📸 [CHECKOUT] Verifying screenshots in enriched_cart before database insert:")
+            for idx, item in enumerate(enriched_cart):
+                screenshot_val = item.get('selected_screenshot')
+                if screenshot_val:
+                    logger.info(f"   ✅ Item {idx} has screenshot (type: {type(screenshot_val).__name__}, length: {len(str(screenshot_val))} chars): {str(screenshot_val)[:50]}...")
+                else:
+                    logger.warning(f"   ⚠️ Item {idx} has NO screenshot - selected_screenshot={screenshot_val}")
+            
             # Store in database
             supabase.table('orders').insert(order_data).execute()
             logger.info(f"✅ Order {order_id} stored in database")
@@ -2636,6 +2903,7 @@ def create_checkout_session():
                 "status": "pending",
                 "created_at": data.get("created_at", "Recent")
             }
+            logger.info(f"✅ Order {order_id} also stored in in-memory store")
         except Exception as db_error:
             logger.error(f"❌ Failed to store order in database: {str(db_error)}")
             # Fallback to in-memory storage
@@ -2779,6 +3047,13 @@ def stripe_webhook():
                     cart = order_data.get("cart", [])
                     sms_consent = order_data.get("sms_consent", False)
                     logger.info(f"✅ Retrieved order {order_id} from database")
+                    # Log order data to debug screenshot retrieval
+                    logger.info(f"📸 [WEBHOOK] Order data keys: {list(order_data.keys())}")
+                    logger.info(f"📸 [WEBHOOK] Order-level screenshot fields: selected_screenshot={bool(order_data.get('selected_screenshot'))}, thumbnail={bool(order_data.get('thumbnail'))}, screenshot={bool(order_data.get('screenshot'))}")
+                    logger.info(f"📸 [WEBHOOK] Cart has {len(cart)} items")
+                    if cart:
+                        logger.info(f"📸 [WEBHOOK] First cart item keys: {list(cart[0].keys()) if cart else 'No cart'}")
+                        logger.info(f"📸 [WEBHOOK] First cart item screenshot fields: selected_screenshot={bool(cart[0].get('selected_screenshot'))}, screenshot={bool(cart[0].get('screenshot'))}, img={bool(cart[0].get('img'))}, thumbnail={bool(cart[0].get('thumbnail'))}")
                 else:
                     # Fallback to in-memory store
                     order_data = order_store[order_id]
@@ -2831,25 +3106,104 @@ def stripe_webhook():
             # Products with Images
             html_body += f"<h2>🛍️ Products</h2>"
             
+            # Collect email attachments for base64 screenshots
+            email_attachments = []
+            attachment_cids = {}
+            
+            # First check order-level screenshot as fallback
+            order_level_screenshot = order_data.get('selected_screenshot') or order_data.get('thumbnail') or order_data.get('screenshot')
+            logger.info(f"📸 [WEBHOOK] Order-level screenshot check: selected_screenshot={bool(order_data.get('selected_screenshot'))}, thumbnail={bool(order_data.get('thumbnail'))}, screenshot={bool(order_data.get('screenshot'))}, found={bool(order_level_screenshot)}")
+            if order_level_screenshot:
+                screenshot_type = "base64" if isinstance(order_level_screenshot, str) and 'data:image' in order_level_screenshot else "URL"
+                logger.info(f"📸 [WEBHOOK] Found order-level screenshot (type: {screenshot_type}, length: {len(str(order_level_screenshot))} chars): {str(order_level_screenshot)[:100]}...")
+            
             # Generate print-quality images for each product
             print_quality_images = []
             for i, item in enumerate(cart):
                 try:
-                    # Extract video URL and timestamp from the screenshot
-                    screenshot_url = item.get('img', '')
-                    if screenshot_url and 'data:image' in screenshot_url:
-                        # This is a base64 screenshot, we need to get the original video info
-                        # For now, we'll include both preview and note about print quality
-                        print_quality_images.append({
-                            'index': i,
-                            'preview': screenshot_url,
-                            'note': 'Print quality version available via API'
-                        })
+                    # Get screenshot from cart item - check selected_screenshot first (this is where we store it)
+                    # Fallback to order-level screenshot if not in cart item
+                    screenshot_url = item.get('selected_screenshot') or item.get('screenshot') or item.get('img') or item.get('thumbnail') or order_level_screenshot or ''
+                    logger.info(f"📸 [WEBHOOK] Item {i} screenshot check: selected_screenshot={bool(item.get('selected_screenshot'))}, screenshot={bool(item.get('screenshot'))}, img={bool(item.get('img'))}, thumbnail={bool(item.get('thumbnail'))}, found={bool(screenshot_url)}")
+                    if screenshot_url:
+                        if isinstance(screenshot_url, str) and 'data:image' in screenshot_url:
+                            # This is a base64 screenshot - convert to email attachment
+                            try:
+                                # Parse data URL: data:image/png;base64,<data>
+                                header, data = screenshot_url.split(',', 1)
+                                image_format = header.split('/')[1].split(';')[0]  # png, jpeg, etc.
+                                image_data = data  # Already base64 encoded from data URL
+                                
+                                # Generate CID for embedding
+                                cid = f"screenshot_{order_id}_{i}"
+                                attachment_cids[i] = cid
+                                
+                                # Add as attachment (Resend format: content should be base64 string)
+                                if cid not in [att.get('cid') for att in email_attachments]:
+                                    email_attachments.append({
+                                        "filename": f"screenshot_{i}.{image_format}",
+                                        "content": image_data,  # Already base64 encoded
+                                        "cid": cid
+                                    })
+                                    logger.info(f"📎 [WEBHOOK] Added screenshot attachment {i} with CID: {cid}")
+                                
+                                # Use BOTH CID and base64 - different email clients support different methods
+                                # Many email clients support base64 directly, so prioritize that
+                                # CID is for clients that prefer attachments
+                                print_quality_images.append({
+                                    'index': i,
+                                    'preview': screenshot_url,  # Use base64 directly (works in more email clients)
+                                    'cid': f"cid:{cid}",  # Also provide CID for clients that prefer attachments
+                                    'fallback_base64': screenshot_url,  # Same as preview
+                                    'note': 'User-selected screenshot (base64)'
+                                })
+                            except Exception as e:
+                                logger.error(f"⚠️ [WEBHOOK] Failed to convert base64 to attachment for item {i}: {str(e)}")
+                                # Fallback: try direct base64 embedding
+                                print_quality_images.append({
+                                    'index': i,
+                                    'preview': screenshot_url,
+                                    'note': 'User-selected screenshot (base64)'
+                                })
+                        elif isinstance(screenshot_url, str) and (screenshot_url.startswith('http') or screenshot_url.startswith('https')):
+                            # This is a URL - use it directly
+                            print_quality_images.append({
+                                'index': i,
+                                'preview': screenshot_url,
+                                'note': 'User-selected screenshot (URL)'
+                            })
+                        else:
+                            # Unknown format - try to use it anyway
+                            print_quality_images.append({
+                                'index': i,
+                                'preview': str(screenshot_url),
+                                'note': 'User-selected screenshot'
+                            })
+                    else:
+                        # No screenshot found - log detailed info
+                        logger.warning(f"⚠️ [WEBHOOK] No screenshot found for item {i}")
+                        logger.warning(f"⚠️ [WEBHOOK] Cart item keys: {list(item.keys())}")
+                        logger.warning(f"⚠️ [WEBHOOK] Cart item values: {str(item)[:200]}...")
+                        logger.warning(f"⚠️ [WEBHOOK] Order-level screenshot available: {bool(order_level_screenshot)}")
+                        # Use order-level screenshot as fallback
+                        if order_level_screenshot:
+                            print_quality_images.append({
+                                'index': i,
+                                'preview': order_level_screenshot if isinstance(order_level_screenshot, str) and not order_level_screenshot.startswith('data:image') else '',
+                                'fallback_base64': order_level_screenshot if isinstance(order_level_screenshot, str) and 'data:image' in order_level_screenshot else '',
+                                'note': 'Screenshot from order level'
+                            })
+                        else:
+                            print_quality_images.append({
+                                'index': i,
+                                'preview': '',
+                                'note': 'No screenshot available'
+                            })
                 except Exception as e:
                     logger.error(f"Error processing print quality for item {i}: {str(e)}")
                     print_quality_images.append({
                         'index': i,
-                        'preview': item.get('img', ''),
+                        'preview': item.get('selected_screenshot') or item.get('screenshot') or item.get('img', ''),
                         'note': 'Preview only'
                     })
             
@@ -2883,7 +3237,27 @@ def stripe_webhook():
                     timestamp_str = 'N/A'
                 
                 # Get print quality info (prefer user-selected screenshot when no print image yet)
-                print_info = print_quality_images[i] if i < len(print_quality_images) else {'preview': (item.get('screenshot') or item.get('img', '')), 'note': 'Preview only'}
+                # Check for screenshot in cart item - selected_screenshot is where we store it
+                fallback_screenshot = item.get('selected_screenshot') or item.get('screenshot') or item.get('img') or item.get('thumbnail', '')
+                print_info = print_quality_images[i] if i < len(print_quality_images) else {'preview': fallback_screenshot, 'note': 'User-selected screenshot'}
+                
+                # Log what we're using for this item
+                logger.info(f"📸 [WEBHOOK] Item {i} print_info: preview={bool(print_info.get('preview'))}, fallback={bool(print_info.get('fallback_base64'))}, note={print_info.get('note')}")
+                
+                # Generate image tag - prioritize preview, use fallback_base64 if preview is empty
+                image_tag = ''
+                if print_info.get('preview'):
+                    # Use the preview (could be base64, URL, or CID)
+                    image_tag = f'<img src="{print_info["preview"]}" alt="Product Screenshot" style="max-width: 400px; border-radius: 6px; border: 2px solid #007bff; display: block; margin: 10px 0;">'
+                    logger.info(f"📸 [WEBHOOK] Item {i} using preview for image tag (preview length: {len(str(print_info['preview']))} chars)")
+                elif print_info.get('fallback_base64'):
+                    # Use fallback base64
+                    image_tag = f'<img src="{print_info["fallback_base64"]}" alt="Product Screenshot (Fallback)" style="max-width: 400px; border-radius: 6px; border: 2px solid #007bff; display: block; margin: 10px 0;">'
+                    logger.info(f"📸 [WEBHOOK] Item {i} using fallback_base64 for image tag")
+                else:
+                    # No screenshot available
+                    image_tag = '<p style="color: #dc3545; padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;"><strong>⚠️ Screenshot not available</strong></p>'
+                    logger.warning(f"⚠️ [WEBHOOK] Item {i} has NO screenshot - preview and fallback both empty")
                 
                 html_body += f"""
                     <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
@@ -2894,8 +3268,8 @@ def stripe_webhook():
                         <p><strong>Note:</strong> {item.get('note', 'None')}</p>
                         <p><strong>📅 Order Time:</strong> {timestamp_str}</p>
                         <p><strong>📸 Screenshot Selected (Preview):</strong></p>
-                        <img src="{print_info['preview']}" alt='Product Screenshot' style='max-width: 400px; border-radius: 6px; border: 2px solid #007bff;'>
-                        <p><strong>🖨️ Print Quality:</strong> {print_info['note']}</p>
+                        {image_tag}
+                        <p><strong>🖨️ Print Quality:</strong> {print_info.get('note', 'Preview only')}</p>
                     </div>
                 """
             
@@ -2956,38 +3330,94 @@ def stripe_webhook():
             # Email notifications only - no SMS
             logger.info("📧 Order notifications will be sent via email")
             
-            # Send confirmation email to chidopro@proton.me (verified email for Resend)
-            email_data = {
-                "from": RESEND_FROM,
-                "to": ["chidopro@proton.me"],
-                "subject": f"🛍️ New ScreenMerch Order - {len(cart)} Item(s) - ${total_amount:.2f} - {customer_name}",
-                "html": html_body
-            }
+            # Send confirmation email using MAIL_TO environment variable
+            logger.info(f"📧 [WEBHOOK] Email configuration check: RESEND_API_KEY={'SET' if RESEND_API_KEY else 'NOT SET'}, MAIL_TO={'SET' if MAIL_TO else 'NOT SET'}")
             
-            response = requests.post(
-                "https://api.resend.com/emails",
-                headers={
-                    "Authorization": f"Bearer {RESEND_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json=email_data
-            )
-            if response.status_code != 200:
-                logger.error(f"Resend API error: {response.text}")
-            else:
-                logger.info(f"Order email sent successfully via Resend")
+            if RESEND_API_KEY and MAIL_TO:
+                email_data = {
+                    "from": RESEND_FROM,
+                    "to": [MAIL_TO],
+                    "subject": f"🛍️ New ScreenMerch Order - {len(cart)} Item(s) - ${total_amount:.2f} - {customer_name}",
+                    "html": html_body
+                }
                 
-                # Update order status in database to 'paid'
+                # Add attachments if any (for base64 screenshots)
+                if email_attachments:
+                    # Convert to Resend format
+                    resend_attachments = []
+                    for att in email_attachments:
+                        resend_att = {
+                            "filename": att.get("filename", "screenshot.png"),
+                            "content": att.get("content", ""),
+                        }
+                        # Add contentId if CID exists (for inline images)
+                        if att.get("cid"):
+                            resend_att["contentId"] = att.get("cid")
+                        resend_attachments.append(resend_att)
+                    
+                    email_data["attachments"] = resend_attachments
+                    logger.info(f"📎 [WEBHOOK] Adding {len(resend_attachments)} image attachments to email")
+                    logger.info(f"📎 [WEBHOOK] Attachment CIDs: {[att.get('contentId') for att in resend_attachments]}")
+                else:
+                    logger.warning(f"⚠️ [WEBHOOK] No email attachments created - screenshots might be missing")
+                
+                logger.info(f"📧 [WEBHOOK] Attempting to send email to {MAIL_TO} from {RESEND_FROM}")
+                logger.info(f"📧 [WEBHOOK] Email subject: {email_data['subject']}")
+                logger.info(f"📧 [WEBHOOK] Email HTML length: {len(html_body)} chars")
+                
                 try:
-                    supabase.table('orders').update({
-                        'status': 'paid',
-                        'customer_phone': customer_phone,
-                        'stripe_session_id': session.get('id'),
-                        'payment_intent_id': session.get('payment_intent')
-                    }).eq('order_id', order_id).execute()
-                    logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
-                except Exception as db_error:
-                    logger.error(f"❌ Failed to update order status in database: {str(db_error)}")
+                    response = requests.post(
+                        "https://api.resend.com/emails",
+                        headers={
+                            "Authorization": f"Bearer {RESEND_API_KEY}",
+                            "Content-Type": "application/json"
+                        },
+                        json=email_data,
+                        timeout=30  # Add timeout
+                    )
+                    
+                    logger.info(f"📧 [WEBHOOK] Resend API response status: {response.status_code}")
+                    
+                    if response.status_code != 200:
+                        error_text = response.text
+                        logger.error(f"❌ [WEBHOOK] Resend API error ({response.status_code}): {error_text}")
+                        # Log the full response for debugging
+                        try:
+                            error_json = response.json()
+                            logger.error(f"❌ [WEBHOOK] Resend error details: {error_json}")
+                        except:
+                            logger.error(f"❌ [WEBHOOK] Resend error (non-JSON): {error_text}")
+                    else:
+                        logger.info(f"✅ [WEBHOOK] Email sent successfully via Resend")
+                        try:
+                            resp_data = response.json()
+                            logger.info(f"📧 [WEBHOOK] Email ID: {resp_data.get('id', 'unknown')}")
+                        except:
+                            logger.warning(f"⚠️ [WEBHOOK] Could not parse email response JSON")
+                except requests.exceptions.Timeout:
+                    logger.error(f"❌ [WEBHOOK] Timeout sending email via Resend (exceeded 30s)")
+                except Exception as e:
+                    logger.error(f"❌ [WEBHOOK] Error sending email via Resend: {str(e)}")
+                    import traceback
+                    logger.error(f"❌ [WEBHOOK] Full traceback: {traceback.format_exc()}")
+            else:
+                if not RESEND_API_KEY:
+                    logger.error("❌ [WEBHOOK] RESEND_API_KEY not configured; order email not sent")
+                if not MAIL_TO:
+                    logger.error("❌ [WEBHOOK] MAIL_TO not configured; order email not sent")
+                logger.warning("❌ [WEBHOOK] Email service not configured; order email not sent")
+            
+            # Update order status in database to 'paid' (regardless of email status)
+            try:
+                supabase.table('orders').update({
+                    'status': 'paid',
+                    'customer_phone': customer_phone,
+                    'stripe_session_id': session.get('id'),
+                    'payment_intent_id': session.get('payment_intent')
+                }).eq('order_id', order_id).execute()
+                logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
+            except Exception as db_error:
+                logger.error(f"❌ Failed to update order status in database: {str(db_error)}")
         
         # Handle subscription events
         elif session.get("mode") == "subscription":
@@ -4287,9 +4717,17 @@ def auth_login():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         origin = request.headers.get('Origin')
-        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "http://localhost:3000", "http://localhost:5173"]
         
-        if origin in allowed_origins:
+        # Check exact match first
+        origin_allowed = origin in allowed_origins
+        
+        # If not exact match, check if it's a Netlify subdomain
+        if not origin_allowed and origin:
+            if origin.endswith('.netlify.app') and origin.startswith('https://'):
+                origin_allowed = True
+        
+        if origin_allowed:
             response.headers.add('Access-Control-Allow-Origin', origin)
         else:
             response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
@@ -4352,6 +4790,9 @@ def auth_login():
                             user={"email": email, "role": "customer"},
                             token=token
                         ), 200)
+                    
+                    # Add CORS headers for successful response
+                    resp = _allow_origin(resp)
                     
                     resp.set_cookie(
                         "sm_session", token,
