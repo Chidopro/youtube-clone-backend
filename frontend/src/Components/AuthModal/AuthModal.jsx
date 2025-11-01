@@ -38,17 +38,23 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
         password: password
       };
       
+      // Add timeout to prevent hanging requests on mobile
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': navigator.userAgent
+          'Accept': 'application/json'
         },
         body: JSON.stringify(requestBody),
         credentials: 'include',
-        mode: 'cors'
+        mode: 'cors',
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
 
       console.log('Response status:', response.status);
       console.log('Response ok:', response.ok);
@@ -116,26 +122,42 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
       console.error('Auth error caught:', error);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
+      console.error('Error name:', error.name);
       
       // Get the actual error message
-      const errorMsg = error.message || error.toString() || 'Unknown error';
+      let errorMsg = error.message || error.toString() || 'Unknown error';
+      let userFriendlyMsg = 'Authentication error';
+      
+      // Handle specific error types
+      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+        userFriendlyMsg = 'Request timed out. Please check your connection and try again.';
+        errorMsg = 'Request timeout - network may be slow or unstable';
+      } else if (error.message?.includes('Failed to fetch') || error.message?.includes('Load failed') || error.message?.includes('NetworkError')) {
+        userFriendlyMsg = 'Network error. Please check your internet connection and try again.';
+        errorMsg = 'Network connection failed - unable to reach server';
+      } else if (error.message?.includes('CORS')) {
+        userFriendlyMsg = 'CORS error. Please try refreshing the page.';
+        errorMsg = 'CORS policy blocked the request';
+      }
       
       // Build debug info for display
       const baseUrl = debugInfo?.baseUrl || API_CONFIG.BASE_URL;
       const fullUrl = debugInfo?.fullUrl || `${baseUrl}${isLoginMode ? '/api/auth/login' : '/api/auth/signup'}`;
       
-      // Set message with error - matching Login.jsx format
+      // Set message with error
       setMessage({ 
         type: 'error', 
-        text: `Authentication error: ${errorMsg}` 
+        text: `${userFriendlyMsg}: ${errorMsg}` 
       });
       
       // Always show debug info in error cases
       setDebugInfo(prev => ({
         ...prev,
         errorMessage: errorMsg,
+        errorName: error.name,
         baseUrl: baseUrl,
-        fullUrl: fullUrl
+        fullUrl: fullUrl,
+        networkError: true
       }));
     } finally {
       setIsLoading(false);
