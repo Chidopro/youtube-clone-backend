@@ -694,31 +694,46 @@ const ProductPage = ({ sidebar }) => {
                   {/* Product Image */}
                   {(product.preview_image || product.main_image) && (
                     <div className="product-image">
-                      <img
-                        src={
-                          product.preview_image
-                            ? (product.preview_image.startsWith('http') 
-                                ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
-                                : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
-                            : (product.main_image.startsWith('http') 
-                                ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
-                                : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
-                        }
-                        alt={product.name}
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        onError={(e) => {
-                          // Fallback to main_image if preview fails
-                          const fallback = product.main_image
-                            ? (product.main_image.startsWith('http') 
-                                ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
-                                : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
-                            : '';
-                          if (fallback && e.currentTarget.src !== fallback) {
-                            e.currentTarget.src = fallback;
+                      <div className="product-image-wrapper">
+                        <img
+                          className="product-image-blurred"
+                          src={
+                            product.preview_image
+                              ? (product.preview_image.startsWith('http') 
+                                  ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
+                                  : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
+                              : (product.main_image.startsWith('http') 
+                                  ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
+                                  : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
                           }
-                        }}
-                      />
+                          alt={product.name}
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            // Fallback to main_image if preview fails
+                            const fallback = product.main_image
+                              ? (product.main_image.startsWith('http') 
+                                  ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
+                                  : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
+                              : '';
+                            if (fallback && e.currentTarget.src !== fallback) {
+                              e.currentTarget.src = fallback;
+                            }
+                          }}
+                        />
+                        <div 
+                          className="print-area-overlay"
+                          style={{
+                            '--print-width': product.print_area?.width || '12',
+                            '--print-height': product.print_area?.height || '16'
+                          }}
+                        >
+                          <div className="print-area-border"></div>
+                          <div className="print-area-dimensions">
+                            {`${product.print_area?.width || '12'}" × ${product.print_area?.height || '16'}"`}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                   
