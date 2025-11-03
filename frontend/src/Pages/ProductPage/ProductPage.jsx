@@ -723,17 +723,6 @@ const ProductPage = ({ sidebar }) => {
                               }
                             }}
                           />
-                          {isApparelCategory && (
-                            <div 
-                              className="print-area-overlay print-area-apparel"
-                              style={{
-                                '--print-width': product.print_area?.width || '12',
-                                '--print-height': product.print_area?.height || '16'
-                              }}
-                            >
-                              <div className="print-area-border"></div>
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
