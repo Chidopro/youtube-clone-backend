@@ -279,30 +279,28 @@ const Checkout = () => {
                       id="calc-shipping-btn" 
                       disabled={shipping.loading || !address.zip || !address.zip.trim()}
                       style={{
-                        background: 'linear-gradient(135deg, #FF6B35 0%, #F7931E 100%)',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         color: 'white',
-                        fontWeight: '800',
-                        textTransform: 'uppercase',
-                        letterSpacing: '1px',
-                        boxShadow: '0 6px 20px rgba(255, 107, 53, 0.5)',
+                        fontWeight: '700',
                         border: 'none',
-                        fontSize: '1.1rem',
-                        padding: '18px 28px',
+                        fontSize: '1rem',
+                        padding: '16px 20px',
                         borderRadius: '12px',
-                        transition: 'all 0.3s ease',
-                        animation: shipping.loading ? 'none' : 'pulse 2s infinite',
-                        transform: shipping.loading ? 'none' : 'scale(1.02)'
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
+                        cursor: (shipping.loading || !address.zip || !address.zip.trim()) ? 'not-allowed' : 'pointer',
+                        opacity: (shipping.loading || !address.zip || !address.zip.trim()) ? 0.6 : 1
                       }}
                       onMouseEnter={(e) => {
                         if (!shipping.loading && address.zip && address.zip.trim()) {
-                          e.target.style.transform = 'scale(1.05) translateY(-2px)';
-                          e.target.style.boxShadow = '0 8px 25px rgba(255, 107, 53, 0.7)';
+                          e.target.style.transform = 'translateY(-3px)';
+                          e.target.style.boxShadow = '0 12px 48px rgba(102, 126, 234, 0.4)';
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (!shipping.loading && address.zip && address.zip.trim()) {
-                          e.target.style.transform = 'scale(1.02)';
-                          e.target.style.boxShadow = '0 6px 20px rgba(255, 107, 53, 0.5)';
+                          e.target.style.transform = 'translateY(0)';
+                          e.target.style.boxShadow = '0 8px 32px rgba(102, 126, 234, 0.3)';
                         }
                       }}
                     >
@@ -313,7 +311,7 @@ const Checkout = () => {
                         </>
                       ) : (
                         <>
-                          <span style={{ fontSize: '1.3rem', marginRight: '8px' }}>🚚</span>
+                          <span style={{ fontSize: '1rem', marginRight: '6px' }}>🚚</span>
                           Calculate Shipping
                         </>
                       )}
