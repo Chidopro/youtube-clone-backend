@@ -724,38 +724,15 @@ const ProductPage = ({ sidebar }) => {
                             }}
                           />
                           {isApparelCategory && (
-                            <>
-                              <img
-                                className="print-area-blur print-area-blur-apparel"
-                                src={
-                                  product.preview_image
-                                    ? (product.preview_image.startsWith('http') 
-                                        ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
-                                        : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
-                                    : (product.main_image.startsWith('http') 
-                                        ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
-                                        : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
-                                }
-                                alt=""
-                                aria-hidden="true"
-                                style={{
-                                  '--print-width': product.print_area?.width || '12',
-                                  '--print-height': product.print_area?.height || '16'
-                                }}
-                              />
-                              <div 
-                                className="print-area-overlay print-area-apparel"
-                                style={{
-                                  '--print-width': product.print_area?.width || '12',
-                                  '--print-height': product.print_area?.height || '16'
-                                }}
-                              >
-                                <div className="print-area-border"></div>
-                                <div className="print-area-dimensions">
-                                  {`${product.print_area?.width || '12'}" × ${product.print_area?.height || '16'}"`}
-                                </div>
-                              </div>
-                            </>
+                            <div 
+                              className="print-area-overlay print-area-apparel"
+                              style={{
+                                '--print-width': product.print_area?.width || '12',
+                                '--print-height': product.print_area?.height || '16'
+                              }}
+                            >
+                              <div className="print-area-border"></div>
+                            </div>
                           )}
                         </div>
                       </div>
