@@ -692,50 +692,75 @@ const ProductPage = ({ sidebar }) => {
               {productData.products && productData.products.map((product, index) => (
                 <div key={index} className="product-card">
                   {/* Product Image */}
-                  {(product.preview_image || product.main_image) && (
-                    <div className="product-image">
-                      <div className="product-image-wrapper">
-                        <img
-                          className="product-image-blurred"
-                          src={
-                            product.preview_image
-                              ? (product.preview_image.startsWith('http') 
-                                  ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
-                                  : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
-                              : (product.main_image.startsWith('http') 
-                                  ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
-                                  : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
-                          }
-                          alt={product.name}
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            // Fallback to main_image if preview fails
-                            const fallback = product.main_image
-                              ? (product.main_image.startsWith('http') 
-                                  ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
-                                  : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
-                              : '';
-                            if (fallback && e.currentTarget.src !== fallback) {
-                              e.currentTarget.src = fallback;
+                  {(product.preview_image || product.main_image) && (() => {
+                    const isApparelCategory = category === 'womens' || category === 'mens' || category === 'kids';
+                    return (
+                      <div className="product-image">
+                        <div className="product-image-wrapper">
+                          <img
+                            className={isApparelCategory ? "product-image-clear" : "product-image-normal"}
+                            src={
+                              product.preview_image
+                                ? (product.preview_image.startsWith('http') 
+                                    ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
+                                    : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
+                                : (product.main_image.startsWith('http') 
+                                    ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
+                                    : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
                             }
-                          }}
-                        />
-                        <div 
-                          className="print-area-overlay"
-                          style={{
-                            '--print-width': product.print_area?.width || '12',
-                            '--print-height': product.print_area?.height || '16'
-                          }}
-                        >
-                          <div className="print-area-border"></div>
-                          <div className="print-area-dimensions">
-                            {`${product.print_area?.width || '12'}" × ${product.print_area?.height || '16'}"`}
-                          </div>
+                            alt={product.name}
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              // Fallback to main_image if preview fails
+                              const fallback = product.main_image
+                                ? (product.main_image.startsWith('http') 
+                                    ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
+                                    : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
+                                : '';
+                              if (fallback && e.currentTarget.src !== fallback) {
+                                e.currentTarget.src = fallback;
+                              }
+                            }}
+                          />
+                          {isApparelCategory && (
+                            <>
+                              <img
+                                className="print-area-blur print-area-blur-apparel"
+                                src={
+                                  product.preview_image
+                                    ? (product.preview_image.startsWith('http') 
+                                        ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
+                                        : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
+                                    : (product.main_image.startsWith('http') 
+                                        ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
+                                        : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
+                                }
+                                alt=""
+                                aria-hidden="true"
+                                style={{
+                                  '--print-width': product.print_area?.width || '12',
+                                  '--print-height': product.print_area?.height || '16'
+                                }}
+                              />
+                              <div 
+                                className="print-area-overlay print-area-apparel"
+                                style={{
+                                  '--print-width': product.print_area?.width || '12',
+                                  '--print-height': product.print_area?.height || '16'
+                                }}
+                              >
+                                <div className="print-area-border"></div>
+                                <div className="print-area-dimensions">
+                                  {`${product.print_area?.width || '12'}" × ${product.print_area?.height || '16'}"`}
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                   
                   <h3>{product.name}</h3>
                   <p className="product-price">${calculatePrice(product, index).toFixed(2)}</p>

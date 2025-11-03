@@ -542,13 +542,39 @@
   justify-content: center;
 }
 
-.product-image-blurred {
+.product-image-normal {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  filter: blur(4px);
   width: 100%;
   height: 100%;
+}
+
+.product-image-clear {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  width: 100%;
+  height: 100%;
+}
+
+.print-area-blur {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* Match the overlay dimensions exactly */
+  width: min(calc(var(--print-width, 12) * 6px), 70%);
+  height: min(calc(var(--print-height, 16) * 4.5px), 52%);
+  max-width: 140px;
+  max-height: 105px;
+  object-fit: contain;
+  object-position: center center;
+  filter: blur(4px);
+  z-index: 1;
+  pointer-events: none;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .print-area-overlay {
@@ -568,6 +594,28 @@
   justify-content: center;
   /* Maintain aspect ratio based on print dimensions */
   aspect-ratio: calc(var(--print-width, 12) / var(--print-height, 16));
+  z-index: 2;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+/* Apparel categories (womens, mens, kids) - more rectangular, reduced height */
+.print-area-apparel {
+  /* Reduce height to make more rectangular - about 30% shorter for more horizontal shape */
+  width: min(calc(var(--print-width, 12) * 6px), 70%);
+  height: min(calc(var(--print-height, 16) * 4.2px), 48%);
+  max-width: 140px;
+  max-height: 100px;
+  /* Adjust aspect ratio to be more rectangular (wider, shorter) */
+  aspect-ratio: calc(var(--print-width, 12) / calc(var(--print-height, 16) * 0.7));
+}
+
+/* Match blur to apparel overlay size */
+.print-area-blur-apparel {
+  width: min(calc(var(--print-width, 12) * 6px), 70%) !important;
+  height: min(calc(var(--print-height, 16) * 4.2px), 48%) !important;
+  max-width: 140px !important;
+  max-height: 100px !important;
 }
 
 .print-area-border {
@@ -579,6 +627,8 @@
   border: 2px dashed rgba(102, 126, 234, 0.8);
   border-radius: 4px;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3) inset;
+  z-index: 1;
+  overflow: hidden;
 }
 
 .print-area-dimensions {
@@ -878,6 +928,20 @@
     max-height: 100px;
     width: min(calc(var(--print-width, 12) * 5px), 65%);
     height: min(calc(var(--print-height, 16) * 5px), 65%);
+  }
+
+  .print-area-apparel {
+    width: min(calc(var(--print-width, 12) * 5px), 65%);
+    height: min(calc(var(--print-height, 16) * 3.5px), 45%);
+    max-width: 100px;
+    max-height: 75px;
+  }
+
+  .print-area-blur-apparel {
+    width: min(calc(var(--print-width, 12) * 5px), 65%) !important;
+    height: min(calc(var(--print-height, 16) * 3.5px), 45%) !important;
+    max-width: 100px !important;
+    max-height: 75px !important;
   }
 
   .print-area-dimensions {
