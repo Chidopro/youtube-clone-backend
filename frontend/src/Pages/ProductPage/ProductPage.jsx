@@ -821,8 +821,10 @@ const ProductPage = ({ sidebar }) => {
                 <p>Your cart is empty</p>
               </div>
             ) : (
-              <div className="cart-items">
-                {cartItems.map((ci, i) => (
+              <div className="cart-items-wrapper">
+                <h2 className="cart-section-title">Cart Items</h2>
+                <div className="cart-items">
+                  {cartItems.map((ci, i) => (
                   <div key={i} className="cart-item">
                     {ci.image && <img src={ci.image.includes('?') ? `${ci.image}&v=${getCacheBuster()}` : `${ci.image}?v=${getCacheBuster()}`} alt={ci.name} />}
                     <div className="cart-item-info">
@@ -843,7 +845,8 @@ const ProductPage = ({ sidebar }) => {
                       🗑️
                     </button>
                   </div>
-                ))}
+                  ))}
+                </div>
                 <div className="cart-actions">
                   <button className="view-cart-btn" onClick={() => setIsCartOpen(false)}>Continue Shopping</button>
                   <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
