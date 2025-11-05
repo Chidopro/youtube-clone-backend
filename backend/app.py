@@ -778,6 +778,7 @@ PRODUCTS = [
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "preview_image": "guidonteepreview.png",
+        "description": "The Unisex Staple T-Shirt feels soft and light with just the right amount of stretch. It's comfortable and flattering for all. We can't compliment this shirt enough–it's one of our crowd favorites, and it's sure to be your next favorite too! Solid colors are 100% Airlume combed and ring-spun cotton. Ash color is 99% combed and ring-spun cotton, 1% polyester. Heather colors are 52% combed and ring-spun cotton, 48% polyester. Athletic and Black Heather are 90% combed and ring-spun cotton, 10% polyester. Heather Prism colors are 99% combed and ring-spun cotton, 1% polyester. Fabric weight: 4.2 oz./yd.² (142 g/m²). Pre-shrunk fabric. 30 singles. Side-seamed construction. Tear-away label. Shoulder-to-shoulder taping. Blank product sourced from Nicaragua, Mexico, Honduras, or the US. Disclaimer: The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Dark Grey Heather", "Navy", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
         "size_pricing": {
             "XS": 0,      # No extra charge
@@ -797,6 +798,7 @@ PRODUCTS = [
         "filename": "mensfittedtshirt.png",
         "main_image": "mensfittedtshirt.png",
         "preview_image": "mensfittedtshirtpreview.png",
+        "description": "The Next Level 3600 Men's Fitted T-Shirt combines softness with a modern, tailored fit that holds its shape wash after wash. Its lightweight feel makes it a natural everyday favorite, while the tear-away tag offers room for custom branding. 100% ring-spun combed cotton. Heather Grey is 90% cotton, 10% polyester. Fabric weight: 4.3 oz/y² (145.8 g/m²). 32 singles. Pre-shrunk. Tear-away tag. Blank product sourced from Honduras, Nicaragua, Mexico, or Cambodia. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Heather Grey", "Royal Blue", "Midnight Navy", "Desert Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
             "XS": 0,      # No extra charge
@@ -815,6 +817,7 @@ PRODUCTS = [
         "filename": "unisexoversizedtshirt.png",
         "main_image": "unisexoversizedtshirt.png",
         "preview_image": "unisexoversizedtshirtpreview.png",
+        "description": "This oversized 100% cotton tee is made for streetwear drops and everyday fits. The heavyweight fabric gives it structure and a premium feel, while the relaxed, roomy cut makes it perfect for layering or wearing on its own. Add bold prints or clean embroidery—this tee is ready to carry your brand's style. 100% ring-spun cotton. Fabric weight: 6.5 oz./yd.² (220.4 g/m²). 18 singles yarn. Oversized fit. Tear-away label. Washed-color options for a trendy vintage look. Streetwear-inspired style. Blank product sourced from Nicaragua. This product is made on demand. No minimums.",
         "options": {"color": ["Washed Black", "Washed Maroon", "Washed Charcoal", "Khaki", "Light Washed Denim", "Vintage White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
             "XS": 0,      # No extra charge
@@ -832,6 +835,7 @@ PRODUCTS = [
         "filename": "random.png",
         "main_image": "random.png",
         "preview_image": "randompreview.png",
+        "description": "The Men's Staple Tank Top is made of high-quality durable materials. Wear it on a sunny day out or offer it to your customers on your online store. 100% combed and ring-spun cotton. Tri-blends are 50% polyester, 25% combed, 25% ring-spun cotton, and rayon. Athletic Heather is 90% airlume combed and ring-spun cotton, 10% polyester. All the other Heather colors are 52% airlume combed and ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/yd² (142.40 g/m²), triblends: 3.8 oz/yd² (90.07 g/m²). 30 singles. Regular fit. Side-seamed construction. Blank product sourced from Nicaragua, Honduras, or the US. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "True Royal", "Athletic Heather", "Red", "Oatmeal Triblend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,      # No extra charge
@@ -848,6 +852,7 @@ PRODUCTS = [
         "filename": "mensfittedlongsleeve.png",
         "main_image": "mensfittedlongsleeve.png",
         "preview_image": "mensfittedlongsleevepreview.png",
+        "description": "This super-soft long-sleeved crew shirt will be a classic piece in your wardrobe. There are multiple branding options for this 100% cotton shirt, so get your designs ready and customize it to your liking! 100% combed ring-spun cotton. Fabric weight: 4.3 oz/yd² (149.2 g/m²). 32 singles. Pre-shrunk fabric. Set-in 1 × 1 baby rib collar. Tear-away label. Blank product sourced from Nicaragua or Cambodia. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Heavy Metal", "White"], "size": ["S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "S": 0,       # No extra charge  
@@ -863,6 +868,7 @@ PRODUCTS = [
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "testedpreview.png",
+        "description": "Classic unisex hoodie with a front pouch pocket and matching flat drawstrings. The 100% cotton exterior makes this hoodie soft to the touch. What's more, if you go with custom prints, you can personalize the hoodie to your heart's content and maximize your branding thanks to the custom inside label. Use it to showcase your logo, strengthen customer loyalty, and boost your brand's visibility on the market. 65% ring-spun cotton, 35% polyester. Charcoal Heather is 60% ring-spun cotton, 40% polyester. Carbon Grey is 55% ring-spun cotton, 45% polyester. 100% cotton face. Fabric weight: 8.5 oz./yd.² (288.2 g/m²). Front pouch pocket. Self-fabric patch on the back. Matching flat drawstrings. 3-panel hood. Tear-away tag. Blank product sourced from Pakistan. Disclaimer: Please be aware that, for legal reasons, this product comes with a manufacturer's side tag attached. The tag is discreet and won't compromise your design's integrity. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy Blazer", "Carbon Grey", "White", "Maroon", "Charcoal Heather", "Vintage Black", "Forest Green", "Military Green", "Team Red", "Dusty Rose", "Sky Blue", "Purple", "Team Royal"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
             "S": 0,       # Base price $36.95
@@ -895,6 +901,7 @@ PRODUCTS = [
         "filename": "hoodiechampion.png",
         "main_image": "hoodiechampion.png",
         "preview_image": "hoodiechampionpreview.png",
+        "description": "A classic hoodie that combines Champion's signature quality with everyday comfort. The cotton-poly blend makes it soft and durable, while the two-ply hood and snug rib-knit cuffs lock in warmth. Champion's double Dry® technology keeps the wearer dry on the move, and the kangaroo pocket keeps essentials handy. Customize it with your design, order one for yourself, or sell it online. 50% cotton, 50% polyester. Light Steel color is 50% cotton, 40% polyester, and 10% black polyester. Fabric weight: 9 oz./yd.² (305 g/m²). Regular fit. Set-in sleeves. Two-ply hood. Dyed-to-match drawcord. Kangaroo pocket. Heavy rib-knit waistband and cuffs. Embroidered "C" logo on the left cuff. Blank product sourced from Honduras and Guatemala. Disclaimer: Size up for a looser fit.",
         "options": {"color": ["Black", "Light Steel"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
             "S": 0,       # Base price $45
@@ -1273,6 +1280,7 @@ PRODUCTS = [
         "filename": "menslongsleeve.png",
         "main_image": "menslongsleeve.png",
         "preview_image": "menslongsleevepreview.png",
+        "description": "With its classic and regular fit, this Men's Long Sleeve Shirt is a true wardrobe essential. It'll look great on its own or layered under a jacket and will be perfect for a relaxed and casual setting. 100% cotton. Sport Grey is 90% cotton, 10% polyester. Fabric weight: 6.0 oz./yd.² (203.43 g/m²). Classic fit with long sleeves and rib cuffs. Pre-shrunk jersey knit. Seamless double-needle ⅞ ″ (2.2 cm) collar. Double-needle bottom hem. Taped neck and shoulders. Quarter-turned to avoid crease down the middle. Blank product sourced from Honduras, Haiti, or Nicaragua. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Ash"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
             "S": 0,
