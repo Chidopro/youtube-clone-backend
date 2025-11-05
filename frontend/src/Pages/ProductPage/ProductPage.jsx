@@ -113,8 +113,8 @@ const ProductPage = ({ sidebar }) => {
       ],
       'womens': [
         "Cropped Hoodie",
-        "Women's Fitted Racerback Tank",
-        "Women's Micro-Rib Tank Top", 
+        "Fitted Racerback Tank",
+        "Micro-Rib Tank Top", 
         "Women's Ribbed Neck",
         "Women's Shirt",
         "Unisex Heavyweight T-Shirt",
@@ -126,16 +126,20 @@ const ProductPage = ({ sidebar }) => {
         "Kids Shirt",
         "Kids Long Sleeve",
         "Toddler Short Sleeve T-Shirt",
-        "Toddler Jersey Shirt",
+        "Toddler Jersey T-Shirt",
         "Kids Sweatshirt",
         "Youth All Over Print Swimsuit",
-        "Girls Leggings"
+        "Girls Leggings",
+        "Baby Staple Tee",
+        "Baby Jersey T-Shirt",
+        "Baby Body Suit"
       ],
       'bags': [
         "Laptop Sleeve",
-        "All-Over Print Drawstring Bag", 
+        "All-Over Print Drawstring", 
         "All Over Print Tote Pocket",
-        "All-Over Print Crossbody Bag"
+        "All-Over Print Crossbody Bag",
+        "All-Over Print Utility Bag"
       ],
       'hats': [
         "Distressed Dad Hat",
@@ -188,8 +192,8 @@ const ProductPage = ({ sidebar }) => {
       "Men's Long Sleeve Shirt": { filename: "menslongsleeve.png", preview: "menslongsleevepreview.png", price: 24.79 },
       "Unisex Champion Hoodie": { filename: "hoodiechampion.png", preview: "hoodiechampionpreview.png", price: 45.00 },
       "Cropped Hoodie": { filename: "croppedhoodie.png", preview: "croppedhoodiepreview.png", price: 43.15 },
-      "Women's Fitted Racerback Tank": { filename: "womenstank.png", preview: "womenstankpreview.png", price: 20.95 },
-      "Women's Micro-Rib Tank Top": { filename: "womenstee.png", preview: "womensteepreview.png", price: 25.81 },
+      "Fitted Racerback Tank": { filename: "womenstank.png", preview: "womenstankpreview.png", price: 20.95 },
+      "Micro-Rib Tank Top": { filename: "womenstee.png", preview: "womensteepreview.png", price: 25.81 },
       "Women's Ribbed Neck": { filename: "womensribbedneck.png", preview: "womensribbedneckpreview.png", price: 25.60 },
       "Women's Shirt": { filename: "womensshirt.png", preview: "womensshirtpreview.png", price: 23.69 },
       "Unisex Heavyweight T-Shirt": { filename: "womenshdshirt.png", preview: "womenshdshirtpreview.png", price: 25.29 },
@@ -199,12 +203,16 @@ const ProductPage = ({ sidebar }) => {
       "Kids Shirt": { filename: "kidshirt.png", preview: "kidshirtpreview.png", price: 23.49 },
       "Kids Long Sleeve": { filename: "kidlongsleeve.png", preview: "kidlongsleevepreview.png", price: 26.49 },
       "Toddler Short Sleeve T-Shirt": { filename: "toddlershortsleevet.png", preview: "toddlershortsleevetpreview.png", price: 22.75 },
-      "Toddler Jersey Shirt": { filename: "toddlerjerseytshirt.png", preview: "toddlerjerseytshirtpreview.png", price: 20.29 },
+      "Toddler Jersey T-Shirt": { filename: "toddlerjerseytshirt.png", preview: "toddlerjerseytshirtpreview.png", price: 20.29 },
+      "Baby Staple Tee": { filename: "babystapletshirt.png", preview: "babystapletshirtpreview.png", price: 22.19 },
+      "Baby Jersey T-Shirt": { filename: "toddlerjerseytshirt.png", preview: "toddlerjerseytshirtpreview.png", price: 20.29 },
+      "Baby Body Suit": { filename: "infantbodysuit.png", preview: "infantbodysuit.png", price: 20.90 },
       "Kids Sweatshirt": { filename: "kidssweatshirt.png", preview: "kidssweatshirtpreview.png", price: 27.29 },
       "Youth All Over Print Swimsuit": { filename: "youthalloverprintswimsuit.png", preview: "youthalloverprintswimsuitpreview.png", price: 33.95 },
       "Girls Leggings": { filename: "girlsleggings.png", preview: "girlsleggingspreview.png", price: 28.31 },
       "Laptop Sleeve": { filename: "laptopsleeve.png", preview: "laptopsleevepreview.png", price: 31.16 },
-      "All-Over Print Drawstring Bag": { filename: "drawstringbag.png", preview: "drawstringbagpreview.png", price: 25.25 },
+      "All-Over Print Drawstring": { filename: "drawstringbag.png", preview: "drawstringbagpreview.png", price: 25.25 },
+      "All-Over Print Utility Bag": { filename: "crossbodybag.png", preview: "crossbodybagpreview.png", price: 31.79 },
       "All Over Print Tote Pocket": { filename: "largecanvasbag.png", preview: "largecanvasbagpreview.png", price: 33.41 },
       "All-Over Print Crossbody Bag": { filename: "crossbodybag.png", preview: "crossbodybagpreview.png", price: 28.95 },
       "Distressed Dad Hat": { filename: "distresseddadhat.png", preview: "distresseddadhatpreview.png", price: 24.95 },
@@ -666,12 +674,12 @@ const ProductPage = ({ sidebar }) => {
 
             // Map product names to categories
             const productCategoryMap = {
-              'womens': ["Cropped Hoodie", "Women's Fitted Racerback Tank", "Women's Micro-Rib Tank Top", "Women's Ribbed Neck", "Women's Shirt", "Unisex Heavyweight T-Shirt", "Unisex Pullover Hoodie", "Women's Crop Top"],
+              'womens': ["Cropped Hoodie", "Fitted Racerback Tank", "Micro-Rib Tank Top", "Women's Ribbed Neck", "Women's Shirt", "Unisex Heavyweight T-Shirt", "Unisex Pullover Hoodie", "Women's Crop Top"],
               'mens': ["Unisex Hoodie", "Men's Tank Top", "Mens Fitted T-Shirt", "Men's Fitted Long Sleeve", "Unisex T-Shirt", "Unisex Oversized T-Shirt", "Men's Long Sleeve Shirt", "Unisex Champion Hoodie"],
-              'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve", "Toddler Short Sleeve T-Shirt", "Toddler Jersey Shirt", "Kids Sweatshirt", "Youth All Over Print Swimsuit", "Girls Leggings"],
+              'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve", "Toddler Short Sleeve T-Shirt", "Toddler Jersey T-Shirt", "Kids Sweatshirt", "Youth All Over Print Swimsuit", "Girls Leggings", "Baby Staple Tee", "Baby Jersey T-Shirt", "Baby Body Suit"],
               'mugs': ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"],
               'hats': ["Distressed Dad Hat", "Snapback Hat", "Five Panel Trucker Hat", "5 Panel Baseball Cap"],
-              'bags': ["Laptop Sleeve", "All-Over Print Drawstring Bag", "All Over Print Tote Pocket", "All-Over Print Crossbody Bag"],
+              'bags': ["Laptop Sleeve", "All-Over Print Drawstring", "All Over Print Tote Pocket", "All-Over Print Crossbody Bag", "All-Over Print Utility Bag"],
               'pets': ["Pet Bowl All-Over Print", "Pet Bandana Collar", "All Over Print Leash", "All Over Print Collar"],
               'misc': ["Bandana", "Hardcover Bound Notebook", "Coasters", "Apron", "Jigsaw Puzzle with Tin", "Greeting Card", "Kiss-Cut Stickers", "Die-Cut Magnets"]
             };

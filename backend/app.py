@@ -1016,9 +1016,10 @@ PRODUCTS = [
     {
         "name": "Baby Body Suit",
         "price": 20.90,
-        "filename": "youthalloverprintswimsuit.png",
-        "main_image": "youthalloverprintswimsuit.png",
-        "preview_image": "youthalloverprintswimsuitpreview.png",
+        "filename": "infantbodysuit.png",
+        "main_image": "infantbodysuit.png",
+        "preview_image": "infantbodysuit.png",
+        "description": "",
         "options": {"color": ["Black", "Heather", "Pink", "White"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
             "6m": 0,      # No extra charge
@@ -1030,9 +1031,10 @@ PRODUCTS = [
     {
         "name": "Toddler Jersey T-Shirt",
         "price": 20.29,
-        "filename": "girlsleggings.png",
-        "main_image": "girlsleggings.png",
-        "preview_image": "girlsleggingspreview.png",
+        "filename": "toddlerjerseytshirt.png",
+        "main_image": "toddlerjerseytshirt.png",
+        "preview_image": "toddlerjerseytshirtpreview.png",
+        "description": "",
         "options": {"color": ["Black", "Navy", "Hot Pink", "Heather", "Light Blue", "White"], "size": ["2", "3", "4", "5/6"]},
         "size_pricing": {
             "2": 0,       # No extra charge
@@ -1044,9 +1046,10 @@ PRODUCTS = [
     {
         "name": "Baby Staple Tee",
         "price": 22.19,
-        "filename": "toddlershortsleevet.png",
-        "main_image": "toddlershortsleevet.png",
-        "preview_image": "toddlershortsleevetpreview.png",
+        "filename": "babystapletshirt.png",
+        "main_image": "babystapletshirt.png",
+        "preview_image": "babystapletshirtpreview.png",
+        "description": "",
         "options": {"color": ["Black", "Pink", "White"], "size": ["6-12m", "12-18m", "18-24m"]},
         "size_pricing": {
             "6-12m": 0,      # No extra charge
@@ -1060,6 +1063,7 @@ PRODUCTS = [
         "filename": "toddlerjerseytshirt.png",
         "main_image": "toddlerjerseytshirt.png",
         "preview_image": "toddlerjerseytshirtpreview.png",
+        "description": "",
         "options": {"color": ["Black", "Royal", "Pink", "Light Blue", "White", "Charcoal"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
             "6m": 0,      # No extra charge
@@ -1086,6 +1090,7 @@ PRODUCTS = [
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
         "preview_image": "drawstringbagpreview.png",
+        "description": "",
         "options": {"color": ["White", "Black", "Blue"], "size": ["15\"x17\""]},
         "size_pricing": {
             "15\"x17\"": 0
@@ -1281,6 +1286,7 @@ PRODUCTS = [
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.png",
+        "description": "",
         "options": {"color": ["Black", "Hot Pink", "Light Orange", "Tahiti Blue", "Heather Gray", "Cancun", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
@@ -1315,6 +1321,7 @@ PRODUCTS = [
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
         "preview_image": "womensteepreview.png",
+        "description": "",
         "options": {"color": ["Solid Black Blend", "Solid Navy Blend", "Athletic Heather", "Solid Baby Blue Blend", "Solid Pink Blend", "Solid White Blend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
@@ -1437,6 +1444,7 @@ PRODUCTS = [
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
         "preview_image": "crossbodybagpreview.png",
+        "description": "",
         "options": {"color": ["White"], "size": ["5.7\"x7.7\"x2\""]},
         "size_pricing": {
             "5.7\"x7.7\"x2\"": 0
@@ -1523,16 +1531,20 @@ def filter_products_by_category(category):
             "Youth Heavy Blend Hoodie",
             "Kids Shirt",
             "Kids Long Sleeve",
+            "Toddler Short Sleeve T-Shirt",
+            "Toddler Jersey T-Shirt",
+            "Kids Sweatshirt",
+            "Youth All Over Print Swimsuit",
+            "Girls Leggings",
             "Baby Staple Tee",
             "Baby Jersey T-Shirt",
-            "Kids Sweatshirt",
-            "Baby Body Suit",
-            "Toddler Jersey T-Shirt"
+            "Baby Body Suit"
         ],
         'bags': [
             "Laptop Sleeve",
             "All-Over Print Drawstring", 
             "All Over Print Tote Pocket",
+            "All-Over Print Crossbody Bag",
             "All-Over Print Utility Bag"
         ],
         'hats': [
