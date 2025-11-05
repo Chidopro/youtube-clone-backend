@@ -1413,6 +1413,7 @@ PRODUCTS = [
         "filename": "mug1.png",
         "main_image": "mug1.png",
         "preview_image": "mug1preview.png",
+        "description": "This sturdy mug is perfect for your morning coffee, afternoon tea, or whatever hot beverage you enjoy. It's glossy white and yields vivid prints that retain their quality when dish-washed and microwaved. Add a graphic of your choice and add this best-seller to your store, so others can enjoy your magical designs too! Ceramic. 11 oz mug dimensions: 3.8″ (9.6 cm) in height, 3.2″ (8.2 cm) in diameter. 15 oz mug dimensions: 4.7″ (11.9 cm) in height, 3.3″ (8.5 cm) in diameter. 20 oz mug dimensions: 4.3″ (10.9 cm) in height, 3.7″ (9.3 cm) in diameter. Lead and BPA-free material. Dishwasher and microwave safe. Blank product sourced from China. Disclaimer: The White Glossy Mug may vary slightly in size by up to +/- 0.1″ (2 mm) due to the nature of the production process. These variations are normal and won't affect your mug's quality or functionality. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["11 oz", "15 oz", "20 oz"]},
         "size_pricing": {
             "11 oz": 0,
@@ -1426,6 +1427,7 @@ PRODUCTS = [
         "filename": "travelmug.png",
         "main_image": "travelmug.png",
         "preview_image": "travelmugpreview.png",
+        "description": "Enjoy your favorite beverage on the go with a premium-quality travel mug. It's made with stainless steel and keeps hot drinks hot for up to 6 h, and cold drinks cold for up to 8 h. It fits into most car cup holders and has a spill-proof plastic lid. Personalize it for yourself or add it to your online store and start selling modern drinkware. Made with stainless steel. Lead and BPA-free materials used. Hand-wash only. Blank product sourced from China. 25 oz (739 ml) size: Height: 7.9″ (20 cm), Upper diameter: 3.3″ (8.4 cm), Bottom diameter: 2.7″ (7 cm). Comes with a plastic press-in lid. 40 oz (1183 ml) size: Height: 10.4″ (26.5 cm), Upper diameter: 3.9″ (9.9 cm), Bottom diameter: 2.9″ (7.4 cm). Comes with a plastic straw and screw-on lid. Caution! To prevent steam pressure buildup, always open the lid before placing it on a hot drink. This product is made on demand. No minimums.",
         "options": {"color": ["White", "Black", "Navy", "Gray"], "size": ["25 oz", "40 oz"]},
         "size_pricing": {
             "25 oz": 0,
@@ -1438,6 +1440,7 @@ PRODUCTS = [
         "filename": "enamalmug.png",
         "main_image": "enamalmug.png",
         "preview_image": "enamalmugpreview.png",
+        "description": "Lightweight and durable, our Enamel Mug is a must-have for every devoted camper. Use it for your favorite beverage or a hot meal, and attach it to your bag for easy access on a hike. Order a personalized mug for your next camping trip or add your designs and start selling online. Material: Metal with an enamel layer and sublimation coating. Dimensions: height 3.14″ (8 cm), diameter 3.25″ (8.5 cm). Lead and BPA-free material. White coating with a silver rim. NOT dishwasher or microwave-safe. Hand-wash only. Blank product sourced from China. Attention! Don't heat liquids or food directly in the mug—it can damage the coating. Disclaimer: The Enamel Mug is susceptible to staining when used with certain beverages, including coffee, tea, and natural juices. That's a normal characteristic of enamel products and not specific to our mug alone. Due to the enamel's rough and porous surface texture, particles from these drinks may easily adhere to the mug, resulting in stains over time. Stains can be effectively removed by applying lemon juice or soda to the affected area and gently scrubbing with a hard sponge. This product is made on demand. No minimums.",
         "options": {"color": ["White", "Black", "Navy", "Red"], "size": ["12 oz"]},
         "size_pricing": {
             "12 oz": 0
@@ -1449,6 +1452,7 @@ PRODUCTS = [
         "filename": "coloredmug.png",
         "main_image": "coloredmug.png",
         "preview_image": "coloredmugpreview.png",
+        "description": "This sturdy White Ceramic Mug has a colorful inside and a white print area all around the mug. Choose between vibrant color options, create your own unique designs, and start selling the mug to your customers! Ceramic. 11 oz mug dimensions: 3.79″ (9.6 cm) in height, 3.25″ (8.3 cm) in diameter. 15 oz mug dimensions: 4.69″ (11.9 cm) in height, 3.35″ (8.5 cm) in diameter. Lead and BPA-free material. White print area. Colored rim, inside, and handle. Dishwasher and microwave safe. Blank product sourced from China. This product is made on demand. No minimums. Disclaimer: This product is not suitable for children under 18 months. Depending on the light setting, the handle color of the White Ceramic Mug in Black may appear blue.",
         "options": {"color": ["Black", "Red", "Blue", "Dark Green"], "size": ["11 oz", "15 oz"]},
         "size_pricing": {
             "11 oz": 0,
