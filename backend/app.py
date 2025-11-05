@@ -879,6 +879,7 @@ PRODUCTS = [
         "filename": "croppedhoodie.png",
         "main_image": "croppedhoodie.png",
         "preview_image": "croppedhoodiepreview.png",
+        "description": "Comfort and style rolled into one—that's the easiest way to describe this fashion-forward hoodie. It serves as a great statement piece in any wardrobe, and with its trendy raw hem and matching drawstrings, the hoodie is bound to become a true favorite on your online store. 52% airlume combed and ring-spun cotton, 48% poly fleece. Fabric weight: 6.5 oz/yd² (220.39 g/m²). Dyed-to-match drawstrings. Dropped shoulder cut. Cropped body with a raw hem. Blank product sourced from Mexico, Nicaragua or the United States. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Military Green", "Storm", "Peach"], "size": ["S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "S": 0,       # Base price $43.15
@@ -910,6 +911,7 @@ PRODUCTS = [
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
         "preview_image": "womensribbedneckpreview.png",
+        "description": "This classic women's t-shirt is designed to flatter every body shape. The 100% organic cotton is soft on the skin, and the ribbed collar adds a polished look. Add your design, order this tee for yourself, or sell it online. 100% organic combed ring-spun cotton. Fabric weight: 5.3 oz./yd.² (180 g/m²). Regular fit. Set-in sleeves. 1 × 1 rib at collar. Double-needle topstitch on the sleeves and bottom hems. Self-fabric neck tape on the inside of the back. The fabric of this product holds certifications for its organic cotton content under GOTS (Global Organic Textile Standard) and OCS (Organic Content Standard). Blank product sourced from Bangladesh. Disclaimer: Note that we show the US sizes for this product. The sizes correspond to a bigger size in the European market, so customers from that region should order a size down. To learn more about eco-friendly certificates, check out this FAQ article! This product is made on demand. No minimums.",
         "options": {"color": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
          "size_pricing": {
             "S": 0,       # Base price $25.60
@@ -928,6 +930,7 @@ PRODUCTS = [
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
         "preview_image": "womensshirtpreview.png",
+        "description": "The perfect women's t-shirt is hard to find, but this Bella + Canvas relaxed tee just might be it. Its soft and smooth fabric, as well as the relaxed fit will appeal to anyone looking for a comfy everyday t-shirt, or an addition to their business casual wardrobe. Add your design and turn this shirt into something truly special. 100% combed and ring-spun cotton. Heather Prism Lilac & Heather Prism Natural are 99% combed and ring-spun cotton, 1% polyester. Athletic Heather is 90% combed and ring-spun cotton, 10% polyester. Other Heather colors are 52% combed and ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/y² (142 g/m²). Relaxed fit. Pre-shrunk fabric. Side-seamed construction. Crew neck. Blank product sourced from Nicaragua, Honduras, or the US. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Dark Grey Heather", "Pink", "Navy", "Heather Mauve", "Heather Red", "Berry", "Leaf", "Heather Blue Lagoon", "Athletic Heather", "Heather Stone"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
             "S": 0,
@@ -944,6 +947,7 @@ PRODUCTS = [
         "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
         "preview_image": "womenshdshirtpreview.png",
+        "description": "The Comfort Colors 1717 Heavyweight T-Shirt combines a structured fit with garment-dyed softness that feels lived-in from day one. Made from 100% cotton, it's durable enough for repeat wear and comfortable enough to style for any occasion. Perfect for custom designs that call for a structured, yet relaxed look. 100% ring-spun cotton. Fabric weight: 6.1 oz/yd² (206.8 g/m²). Yarn diameter: 20 singles. Garment-dyed, pre-shrunk fabric. Relaxed fit. 7/8″ double-needle topstitched collar. Twill-taped neck and shoulders for extra durability. Double-needle armhole, sleeve, and bottom hems. Signature twill label. Blank product sourced from Honduras. Disclaimer: This t-shirt undergoes garment-dyeing and softening processes, which may cause slight color variations. This product is made on demand. No minimums.",
         "options": {"color": ["Berry", "Blue Jean", "Grey", "Violet", "White", "Black", "True Navy", "Brick", "Moss", "Lagoon Blue", "Blue Spruce", "Flo Blue", "Butter", "Pepper", "Bay", "Ivory", "Red", "Sage", "Midnight", "Grape"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
             "S": 0,
@@ -1286,7 +1290,7 @@ PRODUCTS = [
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.png",
-        "description": "",
+        "description": "A proven bestseller in women's activewear, this racerback tank blends style, comfort, and affordability. Designed to deliver a premium feel without the high price tag, it's a smart pick for fitness or athleisure-oriented stores. With matching self-binding seams, a flattering fitted cut, and a lightweight cotton-poly jersey blend, it's built to perform and easy to customize for yourself or to sell online. 60% combed ringspun cotton, 40% polyester. Fabric weight: 4 oz./yd.² (113.4 g/m²). Lightweight jersey. Fitted silhouette. Scoop neck and racerback. Self-binding seams in matching colors for a seamless look. Tear-away label. Blank product sourced from Honduras. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Hot Pink", "Light Orange", "Tahiti Blue", "Heather Gray", "Cancun", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
@@ -1303,6 +1307,7 @@ PRODUCTS = [
         "filename": "unisexpulloverhoodie.png",
         "main_image": "unisexpulloverhoodie.png",
         "preview_image": "unisexpulloverhoodiepreview.png",
+        "description": "This classic Unisex Pullover Hoodie should be a staple in every store and wardrobe. It's soft and warm with cuffed long sleeves. Add your designs and start selling! 52% airlume combed ring-spun cotton, 48% poly fleece. Heather colors are 60% airlume combed ring-spun cotton, 40% poly fleece. Fabric weight: 6.5 oz/yd² (220.4 g/m²). Regular fit. Side-seamed construction. Blank product sourced from Honduras, Nicaragua or the US. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Heather Forest", "Heather Navy"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
         "size_pricing": {
             "S": 0,
@@ -1321,7 +1326,7 @@ PRODUCTS = [
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
         "preview_image": "womensteepreview.png",
-        "description": "",
+        "description": "This women's tank top redefines the classic tank with its flattering 1 × 1 micro-rib texture, thick straps, and mid-length cut. The tank's soft, stretchy fabric ensures all-day comfort. It pairs well with high-waisted jeans or under a blazer for a polished look. Order one for yourself or add it to your online store. 52% Airlume combed and ring-spun cotton, 48% polyester. Athletic Heather colors are 90% Airlume combed and ring-spun cotton and 10% polyester. Fabric weight: 5.4 oz./yd.² (183 g/m²). Yarn diameter: 32 singles. 1 × 1 micro ribbing. Pre-shrunk. Stretch fit. Mid-length. Thick straps. Scoop neck. Side-seamed construction. Blank product sourced from Nicaragua. This product is made on demand. No minimums.",
         "options": {"color": ["Solid Black Blend", "Solid Navy Blend", "Athletic Heather", "Solid Baby Blue Blend", "Solid Pink Blend", "Solid White Blend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "XS": 0,
@@ -1456,6 +1461,7 @@ PRODUCTS = [
         "filename": "womens-crop-top.png",
         "main_image": "womens-crop-top.png",
         "preview_image": "womenscroptoppreview.png",
+        "description": "Simple and classic—that's the Women's Crop Top | AS Color 4062. It's made of 100% combed cotton, which makes the shirt extremely soft and more durable than regular cotton shirts. The relaxed fit and dropped shoulders ensure comfortable wear, while the cropped length makes it a popular choice for customers living in warmer climates. 100% combed cotton. Heather colors are 15% viscose and 85% cotton. Fabric weight: 5.3 oz/yd² (180 g/m²). Relaxed fit. Cropped length. Ribbed crew neck. Dropped shoulders. Side-seamed construction. Shoulder-to-shoulder taping. Double-needle hems. Preshrunk. Blank product sourced from Bangladesh. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Hazy Pink", "Pale Pink", "Orchid", "Ecru", "White", "Bubblegum", "Bone", "Mineral", "Natural"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
             "XS": 0,
