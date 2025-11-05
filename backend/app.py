@@ -557,6 +557,11 @@ def get_browse_api():
         # Filter products by category
         filtered_products = filter_products_by_category(category)
         
+        # Ensure all products have a description field (even if empty)
+        for product in filtered_products:
+            if 'description' not in product:
+                product['description'] = ""
+        
         # Log product details for mobile debugging
         if is_mobile:
             logger.info(f"📱 Mobile request - Found {len(filtered_products)} products for category '{category}'")
@@ -1103,6 +1108,7 @@ PRODUCTS = [
         "filename": "greetingcard.png",
         "main_image": "greetingcard.png",
         "preview_image": "greetingcardpreview.png",
+        "description": "Premium quality greeting card perfect for any occasion. High-quality printing with vibrant colors.",
         "options": {"color": ["White"], "size": ["4\"x6\""]},
         "size_pricing": {
             "4\"x6\"": 0
@@ -1114,6 +1120,7 @@ PRODUCTS = [
         "filename": "hardcovernotebook.png",
         "main_image": "hardcovernotebook.png",
         "preview_image": "hardcovernotebookpreview.png",
+        "description": "",
         "options": {"color": ["Black", "Navy", "Red", "Blue", "Turquoise", "Orange", "Silver", "Lime", "White"], "size": ["5.5\"x8.5\""]},
         "size_pricing": {
             "5.5\"x8.5\"": 0
@@ -1203,6 +1210,7 @@ PRODUCTS = [
         "filename": "jigsawpuzzle.png",
         "main_image": "jigsawpuzzle.png",
         "preview_image": "jigsawpuzzlepreview.png",
+        "description": "Make quality time more fun with a custom jigsaw puzzle that's both a challenge and a keepsake. Whether it's a cozy night in with family or a weekend brain-teaser with friends, this puzzle delivers an experience worth framing. With rich colors, a glossy finish, and your design, it's ideal for sellers looking to offer meaningful, personalized gifts. Features: Pre-die-cut chipboard with non-edge pieces, white metal tin box with the image on the lid, glossy finish, vibrant colors. Ideal for gifting or wall decor. Important: Choking hazard—small parts. Not suitable for children under 4 years. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)", "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)", "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)", "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)"]},
         "size_pricing": {
             "30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,
@@ -1471,9 +1479,9 @@ PRODUCTS = [
 def filter_products_by_category(category):
     """Filter products based on category selection"""
     print(f"🔍 FILTER DEBUG: Received category: '{category}'")
-    if not category or category == "all":
-        print(f"🔍 FILTER DEBUG: No category or 'all', returning all products")
-        return PRODUCTS  # Show all products when category is 'all'
+    if not category or category == "all" or category == "all-products":
+        print(f"🔍 FILTER DEBUG: No category or 'all'/'all-products', returning all products")
+        return PRODUCTS  # Show all products when category is 'all' or 'all-products'
     
     # Special handling for thumbnails category - Coming Soon
     if category == "thumbnails":

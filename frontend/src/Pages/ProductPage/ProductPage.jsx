@@ -51,7 +51,7 @@ const ProductPage = ({ sidebar }) => {
 
   // Categories for selection
   const categories = [
-    { name: "All Products", emoji: "🛍️", category: "all" },
+    { name: "All Products", emoji: "🛍️", category: "all-products" },
     { name: "Women's", emoji: "👩", category: "womens" },
     { name: "Men's", emoji: "👨", category: "mens" },
     { name: "Kids", emoji: "👶", category: "kids" },
@@ -171,6 +171,11 @@ const ProductPage = ({ sidebar }) => {
 
     // Get product names for the selected category
     const category_products = category_mappings[category] || [];
+    
+    // For "all" or "all-products", return empty array - backend will handle it
+    if (!category || category === "all" || category === "all-products") {
+      return [];
+    }
     
     // Map product names to actual product data from backend (using exact filenames from PRODUCTS list)
     const productImageMap = {
@@ -598,22 +603,148 @@ const ProductPage = ({ sidebar }) => {
 
   return (
     <div className={`container ${sidebar ? "" : " large-container"}`}>
-      {/* User Flow Section - Step 3 Only */}
-      <div className="user-flow-section">
-        <div className="flow-steps">
-          <div className="flow-step">
-            <div className="step-number">3</div>
-            <div className="step-content">
-              <h3>Make Merchandise</h3>
-              <p>Create custom products with your screenshot</p>
+      {/* User Flow Section - Step 3 Only - Hide for All Products */}
+      {(() => {
+        const categoryNormalized = (category || '').trim().toLowerCase();
+        return categoryNormalized !== 'all' && categoryNormalized !== 'all-products';
+      })() && (
+        <div className="user-flow-section">
+          <div className="flow-steps">
+            <div className="flow-step">
+              <div className="step-number">3</div>
+              <div className="step-content">
+                <h3>Make Merchandise</h3>
+                <p>Create custom products with your screenshot</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
+
+      {/* All Products - Informational Layout - MUST BE FIRST */}
+      {(() => {
+        const categoryNormalized = (category || '').trim().toLowerCase();
+        const isAllProducts = categoryNormalized === 'all' || categoryNormalized === 'all-products';
+        const hasProducts = productData?.products && productData.products.length > 0;
+        
+        // Always log for debugging
+        console.log('🔍 All Products Check:', { 
+          category, 
+          isAllProducts, 
+          hasProducts, 
+          productCount: productData?.products?.length,
+          productDataExists: !!productData
+        });
+        
+        if (isAllProducts && hasProducts) {
+          console.log('✅ Showing All Products informational layout');
+          return true;
+        } else {
+          console.log('❌ NOT showing All Products layout:', { 
+            reason: !isAllProducts ? 'category mismatch' : 'no products' 
+          });
+          return false;
+        }
+      })() && (
+        <div className="all-products-info-container">
+          {(() => {
+            if (window.__DEBUG__) {
+              console.log('✅ Rendering All Products informational layout');
+            }
+            // Group products by category
+            const categoryGroups = {
+              'womens': [],
+              'mens': [],
+              'kids': [],
+              'mugs': [],
+              'hats': [],
+              'bags': [],
+              'pets': [],
+              'misc': []
+            };
+
+            // Map product names to categories
+            const productCategoryMap = {
+              'womens': ["Cropped Hoodie", "Women's Fitted Racerback Tank", "Women's Micro-Rib Tank Top", "Women's Ribbed Neck", "Women's Shirt", "Unisex Heavyweight T-Shirt", "Unisex Pullover Hoodie", "Women's Crop Top"],
+              'mens': ["Unisex Hoodie", "Men's Tank Top", "Mens Fitted T-Shirt", "Men's Fitted Long Sleeve", "Unisex T-Shirt", "Unisex Oversized T-Shirt", "Men's Long Sleeve Shirt", "Unisex Champion Hoodie"],
+              'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve", "Toddler Short Sleeve T-Shirt", "Toddler Jersey Shirt", "Kids Sweatshirt", "Youth All Over Print Swimsuit", "Girls Leggings"],
+              'mugs': ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"],
+              'hats': ["Distressed Dad Hat", "Snapback Hat", "Five Panel Trucker Hat", "5 Panel Baseball Cap"],
+              'bags': ["Laptop Sleeve", "All-Over Print Drawstring Bag", "All Over Print Tote Pocket", "All-Over Print Crossbody Bag"],
+              'pets': ["Pet Bowl All-Over Print", "Pet Bandana Collar", "All Over Print Leash", "All Over Print Collar"],
+              'misc': ["Bandana", "Hardcover Bound Notebook", "Coasters", "Apron", "Jigsaw Puzzle with Tin", "Greeting Card", "Kiss-Cut Stickers", "Die-Cut Magnets"]
+            };
+
+            // Group products
+            productData.products.forEach(product => {
+              for (const [cat, products] of Object.entries(productCategoryMap)) {
+                if (products.includes(product.name)) {
+                  categoryGroups[cat].push(product);
+                  break;
+                }
+              }
+            });
+
+            const categoryTitles = {
+              'womens': "Women's",
+              'mens': "Men's",
+              'kids': "Kids",
+              'mugs': "Mugs",
+              'hats': "Hats",
+              'bags': "Bags",
+              'pets': "Pets",
+              'misc': "Miscellaneous"
+            };
+
+            return ['womens', 'mens', 'kids', 'mugs', 'hats', 'bags', 'pets', 'misc'].map(cat => {
+              if (categoryGroups[cat].length === 0) return null;
+              return (
+                <div key={cat} className="category-section">
+                  <h2 className="category-section-title">{categoryTitles[cat]}</h2>
+                  <div className="products-info-table">
+                    <div className="info-table-header">
+                      <div className="info-col-name">Name</div>
+                      <div className="info-col-image">Image</div>
+                      <div className="info-col-description">Description</div>
+                    </div>
+                    {categoryGroups[cat].map((product, index) => (
+                      <div key={index} className="info-table-row">
+                        <div className="info-col-name">{product.name}</div>
+                        <div className="info-col-image">
+                          <img 
+                            src={
+                              (product.preview_image || product.main_image)
+                                ? ((product.preview_image || product.main_image).startsWith('http') 
+                                    ? (product.preview_image || product.main_image)
+                                    : `${IMG_BASE}/${product.preview_image || product.main_image}`)
+                                : `${IMG_BASE}/placeholder.png`
+                            }
+                            alt={product.name}
+                            className="info-product-image"
+                            onError={(e) => {
+                              e.currentTarget.src = `${IMG_BASE}/placeholder.png`;
+                            }}
+                          />
+                        </div>
+                        <div className="info-col-description">
+                          {product.description || "No description available."}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      )}
 
       {/* Products Section - Only show when specific category is selected (not "all") and has products */}
-      {category !== 'all' && productData.products && productData.products.length > 0 && (
+      {(() => {
+        const categoryNormalized = (category || '').trim().toLowerCase();
+        return categoryNormalized !== 'all' && categoryNormalized !== 'all-products';
+      })() && productData.products && productData.products.length > 0 && (
         <>
           {/* Screenshot Selection Section */}
           <div className="screenshots-section">
@@ -730,6 +861,9 @@ const ProductPage = ({ sidebar }) => {
                   })()}
                   
                   <h3>{product.name}</h3>
+                  {product.description && (
+                    <p className="product-description">{product.description}</p>
+                  )}
                   <p className="product-price">${calculatePrice(product, index).toFixed(2)}</p>
                   
                   <div className="product-options">

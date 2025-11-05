@@ -614,6 +614,14 @@
   margin: 0;
 }
 
+.product-description {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.5;
+  margin: 0.5rem 0;
+  min-height: 2.5rem;
+}
+
 .product-price {
   font-size: 1.3rem;
   font-weight: bold;
@@ -871,6 +879,101 @@
   gap: 10px;
   margin-top: 16px;
 }
+/* All Products Informational Layout */
+.all-products-info-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.category-section {
+  margin-bottom: 3rem;
+}
+
+.category-section-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #667eea;
+}
+
+.products-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.info-table-header {
+  display: grid;
+  grid-template-columns: 200px 150px 1fr;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.info-table-row {
+  display: grid;
+  grid-template-columns: 200px 150px 1fr;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 1rem;
+  gap: 1rem;
+  align-items: start;
+}
+
+.info-table-row:last-child {
+  border-bottom: none;
+}
+
+.info-table-row:hover {
+  background: #f8f9fa;
+}
+
+.info-col-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.info-col-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.info-product-image {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #f8f9fa;
+  padding: 0.5rem;
+}
+
+.info-col-description {
+  color: #666;
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 1024px) {
+  .info-table-header,
+  .info-table-row {
+    grid-template-columns: 150px 120px 1fr;
+  }
+  
+  .info-product-image {
+    width: 100px;
+    height: 100px;
+  }
+}
+
 @media (max-width: 768px) {
   .products-grid {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -880,6 +983,38 @@
   .product-image {
     height: 150px;
     margin-bottom: 20px;
+  }
+  
+  .info-table-header,
+  .info-table-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .info-table-header {
+    display: none;
+  }
+  
+  .info-table-row {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+  }
+  
+  .info-col-name {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .info-col-image {
+    margin: 0.5rem 0;
+  }
+  
+  .info-col-description::before {
+    content: "Description: ";
+    font-weight: 600;
+    color: #333;
   }
 
   .print-area-overlay {
