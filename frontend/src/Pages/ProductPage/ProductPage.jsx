@@ -156,11 +156,12 @@ const ProductPage = ({ sidebar }) => {
         "All Over Print Collar"
       ],
       'misc': [
-        "Greeting Card",
+        "Bandana",
         "Hardcover Bound Notebook", 
         "Coasters",
         "Apron",
-        "Bandana",
+        "Jigsaw Puzzle with Tin",
+        "Greeting Card",
         "Kiss-Cut Stickers",
         "Die-Cut Magnets"
       ],
@@ -217,9 +218,10 @@ const ProductPage = ({ sidebar }) => {
       "Die-Cut Magnets": { filename: "magnet.png", preview: "magnetpreview.png", price: 5.32 },
       "Greeting Card": { filename: "greetingcard.png", preview: "greetingcardpreview.png", price: 5.00 },
       "Hardcover Bound Notebook": { filename: "hardcovernotebook.png", preview: "hardcovernotebookpreview.png", price: 23.21 },
-      "Coasters": { filename: "coaster.png", preview: "coasterpreview.jpg", price: 33.99 },
+      "Coasters": { filename: "coaster.png", preview: "coasterpreview.png", price: 33.99 },
       "Apron": { filename: "apron.png", preview: "apronpreview.png", price: 19.99 },
-      "Bandana": { filename: "bandana.png", preview: "bandanapreview.png", price: 19.95 }
+      "Bandana": { filename: "bandana.png", preview: "bandanapreview.png", price: 19.95 },
+      "Jigsaw Puzzle with Tin": { filename: "jigsawpuzzle.png", preview: "jigsawpuzzlepreview.png", price: 27.65 }
     };
 
     // Return products with actual image paths from backend

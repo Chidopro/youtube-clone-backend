@@ -1124,7 +1124,7 @@ PRODUCTS = [
         "price": 33.99,
         "filename": "coaster.png",
         "main_image": "coaster.png",
-        "preview_image": "coasterpreview.jpg",
+        "preview_image": "coasterpreview.png",
         "options": {"color": ["Wood", "Cork", "Black"], "size": ["4\"x4\""]},
         "size_pricing": {
             "4\"x4\"": 0
@@ -1195,6 +1195,22 @@ PRODUCTS = [
             "Small": 0,
             "Medium": 0,
             "Large": 0
+        }
+    },
+    {
+        "name": "Jigsaw Puzzle with Tin",
+        "price": 27.65,
+        "filename": "jigsawpuzzle.png",
+        "main_image": "jigsawpuzzle.png",
+        "preview_image": "jigsawpuzzlepreview.png",
+        "options": {"color": ["White"], "size": ["30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)", "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)", "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)", "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)"]},
+        "size_pricing": {
+            "30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,
+            "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,
+            "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)": 2.88,
+            "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)": 7.81,
+            "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)": 11.03,
+            "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)": 22.53
         }
     },
     {
@@ -1530,11 +1546,12 @@ def filter_products_by_category(category):
             "All Over Print Collar"
         ],
         'misc': [
-            "Greeting Card",
+            "Bandana",
             "Hardcover Bound Notebook", 
             "Coasters",
             "Apron",
-            "Bandana",
+            "Jigsaw Puzzle with Tin",
+            "Greeting Card",
             "Kiss-Cut Stickers",
             "Die-Cut Magnets"
         ],
