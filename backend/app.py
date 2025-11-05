@@ -1016,9 +1016,9 @@ PRODUCTS = [
     {
         "name": "Baby Body Suit",
         "price": 20.90,
-        "filename": "infantbodysuit.png",
-        "main_image": "infantbodysuit.png",
-        "preview_image": "infantbodysuit.png",
+        "filename": "youthalloverprintswimsuit.png",
+        "main_image": "youthalloverprintswimsuit.png",
+        "preview_image": "youthalloverprintswimsuitpreview.png",
         "description": "",
         "options": {"color": ["Black", "Heather", "Pink", "White"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
@@ -1060,9 +1060,9 @@ PRODUCTS = [
     {
         "name": "Baby Jersey T-Shirt",
         "price": 20.29,
-        "filename": "toddlerjerseytshirt.png",
-        "main_image": "toddlerjerseytshirt.png",
-        "preview_image": "toddlerjerseytshirtpreview.png",
+        "filename": "toddlershortsleevet.png",
+        "main_image": "toddlershortsleevet.png",
+        "preview_image": "toddlershortsleevetpreview.png",
         "description": "",
         "options": {"color": ["Black", "Royal", "Pink", "Light Blue", "White", "Charcoal"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
