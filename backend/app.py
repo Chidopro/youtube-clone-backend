@@ -972,6 +972,7 @@ PRODUCTS = [
         "filename": "kidshirtpreview.png",
         "main_image": "kidshirtpreview.png",
         "preview_image": "kidshirtpreview.png",
+        "description": "This Youth Staple Tee is light, comfy, and has just the right amount of stretch youngsters need for an active lifestyle. Both your print and embroidery designs will look great on this soft cotton tee. Add your artistry and make this crowd favorite into something special! 100% Airlume combed and ring-spun cotton. Heather colors are 52% combed and ring-spun cotton, 48% polyester. Athletic Heather is 90% combed and ring-spun cotton, 10% polyester. Fabric weight: 4.2 oz/yd² (142 g/m²). Pre-shrunk fabric. 32 singles. Relaxed unisex fit. Side-seamed construction. Blank product sourced from Nicaragua, the US, Guatemala, or Honduras. Disclaimer: The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions. Take a look at our Bella + Canvas 3001 unisex, toddler, and baby tees as well! This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Maroon", "Forest", "Red", "Dark Grey Heather", "True Royal", "Berry", "Heather Forest", "Kelly", "Heather Columbia Blue", "Athletic Heather", "Mustard", "Pink", "Heather Dust", "Natural", "White"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
             "XS": 0,
@@ -987,6 +988,7 @@ PRODUCTS = [
         "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
         "preview_image": "kidhoodiepreview.png",
+        "description": "The Youth Heavy Blend Hoodie is a timeless and versatile piece, combining resilience with comfort. The blend of breathable cotton and durable polyester ensures this hoodie can withstand daily wear and frequent washes, making it a suitable fit for children on-the-go. Comfortable fleece and air jet yarn guarantees minimal pilling, and the hoodie comes with a front pouch pocket and no drawcords. Design a hoodie for your child, or start selling today! 50% cotton, 50% polyester, 20 singles. Fabric weight: 8 oz./yd² (271.25 g/m²). 2-end midweight fleece fabric. Air jet yarn for a softer feel and reduced pilling. Double-lined hood. No drawcords for child safety. Front pouch pocket. Double-needle stitching detailing at shoulders, armholes, neck, waistband and cuffs. 1 x 1 rib with spandex at cuffs and hem for enhanced stretch and recovery. CPSIA Tracking Label Compliant. Tear away label. Blank product sourced from Honduras. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Royal", "White", "Dark Heather", "Carolina Blue"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
             "XS": 0,
@@ -1002,6 +1004,7 @@ PRODUCTS = [
         "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
         "preview_image": "kidlongsleevepreview.png",
+        "description": "When it comes to apparel classics, this is it! The Youth Long Sleeve Tee is a wardrobe staple that'll go great with casual, sporty, or loungewear looks. The shirt is made of airlume combed and ring-spun cotton and will feel soft and comfy to the always energetic youth. Create print or embroidery designs and start selling the shirt on your store! 100% airlume combed and ring-spun cotton. Athletic Heather is 90% airlume combed and ring-spun cotton, 10% polyester. Fabric weight: 4.2 oz/yd² (180 g/m²). Regular fit. Side-seamed construction. Ribbed cuff. Blank product sourced Honduras, Nicaragua, US. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Red", "Athletic Heather", "White"], "size": ["S", "M", "L"]},
         "size_pricing": {
             "S": 0,
@@ -1015,6 +1018,7 @@ PRODUCTS = [
         "filename": "kidssweatshirt.png",
         "main_image": "kidssweatshirt.png",
         "preview_image": "kidssweatshirtpreview.png",
+        "description": "Available in 8 classic colors, you're sure to fall in love with this sweatshirt's comfy fit and cozy feel. Made from air-jetted fleece fabric for a softer touch and reduced pilling, it'll stay looking great wash after wash. Customize it with your original designs and create a must-have wardrobe staple for a younger audience. Sell it online or order for yourself with no minimums. 50% cotton, 50% polyester. Fabric weight: 8 oz/yd² (271.25 g/m²). Air-jetted fleece fabric. Regular fit. Double-needle stitching on shoulders, armholes, neck, waistband, and cuffs. The fabric is OEKO-TEX Standard 100 certified. Blank product sourced from Honduras. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Maroon", "Red", "Dark Heather", "Royal", "Sport Grey", "White"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
             "XS": 0,      # No extra charge
@@ -1030,7 +1034,7 @@ PRODUCTS = [
         "filename": "youthalloverprintswimsuit.png",
         "main_image": "youthalloverprintswimsuit.png",
         "preview_image": "youthalloverprintswimsuitpreview.png",
-        "description": "",
+        "description": "Made from supremely soft cotton, this one-piece is ideal for delicate skin. The lap shoulder design and three-snap closure ensure quick, easy outfit changes, making it a practical choice for parents. Add your design, order this bodysuit for your little one, or start selling it online! 100% combed ring-spun cotton in a 1 × 1 rib. Heather color is 90% combed ring-spun cotton, 10% polyester. Fabric weight: 5 oz./yd.² (170 g/m²). Three-snap closure. Lap shoulders. Blank product sourced from India. Note that due to the ribbed fabric, the print can break when stretched. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Heather", "Pink", "White"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
             "6m": 0,      # No extra charge
@@ -1045,7 +1049,7 @@ PRODUCTS = [
         "filename": "toddlerjerseytshirt.png",
         "main_image": "toddlerjerseytshirt.png",
         "preview_image": "toddlerjerseytshirtpreview.png",
-        "description": "",
+        "description": "This soft jersey t-shirt is built to handle the energy of active toddlers. Its ribbed collar, self-fabric neck tape, and double-stitched sleeves add comfort and durability. Customize the shirt with print designs and add it to your store! 100% combed ring-spun cotton. Ash color is 99% combed ring-spun cotton and 1% polyester. Heather color is 90% combed ring-spun cotton and 10% polyester. Fabric weight: 4.5 oz./yd.² (153 g/m²). Side-seamed construction. Shoulder-to-shoulder taping. Double-needle stitching on the sleeves and bottom hem. Ribbed topstitch on the collar. EasyTear label. Blank product sourced from India. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Hot Pink", "Heather", "Light Blue", "White"], "size": ["2", "3", "4", "5/6"]},
         "size_pricing": {
             "2": 0,       # No extra charge
@@ -1060,7 +1064,7 @@ PRODUCTS = [
         "filename": "babystapletshirt.png",
         "main_image": "babystapletshirt.png",
         "preview_image": "babystapletshirtpreview.png",
-        "description": "",
+        "description": "This Bella + Canvas baby short sleeve tee is made from soft and light jersey cotton and ensures maximum comfort. Combined with your unique design, the casual crew neck tee will become a well-loved item in any baby's wardrobe! 100% Airlume combed ring-spun cotton. Heather colors are 52% combed ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/yd² (142 g/m²). Pre-shrunk fabric. 32 singles. Relaxed fit. Side-seamed construction. Blank product sourced from Nicaragua, the US, or Honduras. Looking for bigger sizes? Check out the same tee for toddlers and youth! This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Pink", "White"], "size": ["6-12m", "12-18m", "18-24m"]},
         "size_pricing": {
             "6-12m": 0,      # No extra charge
@@ -1074,7 +1078,7 @@ PRODUCTS = [
         "filename": "toddlershortsleevet.png",
         "main_image": "toddlershortsleevet.png",
         "preview_image": "toddlershortsleevetpreview.png",
-        "description": "",
+        "description": "Soft, cozy, and made for everyday wear—this baby jersey t-shirt is designed with gentle, breathable fabric that's perfect for delicate skin. The ribbed collar keeps the shirt snug and maintains its shape wash after wash. Whether it's playtime, naptime, or a family outing, it's a reliable choice. Customize this baby tee with your design, order it for your child, or start selling it online. 100% combed ring-spun cotton. Fabric weight: 4.5 oz./yd.² (153 g/m²). Regular fit. Side-seamed construction. Topstitched ribbed collar. Shoulder-to-shoulder self-fabric back neck tape. Double-needle topstitch on sleeves and bottom hem. EasyTear label. Blank product sourced from India. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Royal", "Pink", "Light Blue", "White", "Charcoal"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
             "6m": 0,      # No extra charge
