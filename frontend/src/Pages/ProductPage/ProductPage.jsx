@@ -155,17 +155,16 @@ const ProductPage = ({ sidebar }) => {
         "All Over Print Leash",
         "All Over Print Collar"
       ],
-      'stickers': [
-        "Kiss-Cut Stickers",
-        "Die-Cut Magnets"
-      ],
       'misc': [
         "Greeting Card",
         "Hardcover Bound Notebook", 
         "Coasters",
         "Apron",
-        "Bandana"
+        "Bandana",
+        "Kiss-Cut Stickers",
+        "Die-Cut Magnets"
       ],
+      'all-products': [],  // All Products category - will contain all products eventually
       'thumbnails': []  // Coming Soon - no products yet
     };
 

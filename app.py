@@ -237,6 +237,7 @@ def get_product_price_range(product_name):
 CORS(app, resources={r"/api/*": {"origins": [
     "https://screenmerch.com", 
     "https://www.screenmerch.com", 
+    "https://screenmerch.fly.dev",
     "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
     "https://*.netlify.app",  # All Netlify apps
     "http://localhost:3000", 
@@ -252,6 +253,7 @@ def api_preflight(any_path):
     allowed_origins = [
         "https://screenmerch.com", 
         "https://www.screenmerch.com", 
+        "https://screenmerch.fly.dev",
         "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
         "https://*.netlify.app",  # All Netlify apps
         "http://localhost:3000", 
@@ -281,10 +283,19 @@ def api_preflight(any_path):
 def add_cors_headers(response):
     """Add CORS headers to all API responses"""
     if request.path.startswith('/api/'):
+        # Skip middleware override for image tool endpoints (they set their own CORS)
+        image_tool_paths = ['/api/process-thumbnail-print-quality']
+        if request.path in image_tool_paths or request.path.startswith('/api/get-order-screenshot/'):
+            existing_origin = response.headers.get('Access-Control-Allow-Origin')
+            if existing_origin:
+                logger.info(f"🔍 [MIDDLEWARE] Skipping override for {request.path} - endpoint already set CORS: {existing_origin}")
+                return response
+        
         origin = request.headers.get('Origin')
         allowed_origins = [
             "https://screenmerch.com", 
             "https://www.screenmerch.com", 
+            "https://screenmerch.fly.dev",
             "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
             "https://*.netlify.app",  # All Netlify apps
             "http://localhost:3000", 
@@ -301,11 +312,13 @@ def add_cors_headers(response):
         
         if origin_allowed:
             response.headers.add('Access-Control-Allow-Origin', origin)
+            logger.info(f"🔍 [MIDDLEWARE] {request.path} - Set CORS origin to: {origin}")
         else:
             response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+            logger.info(f"🔍 [MIDDLEWARE] {request.path} - Origin {origin} not allowed, defaulting to: https://screenmerch.com")
         
         response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     
     return response
@@ -333,18 +346,27 @@ def add_security_headers(response):
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
     
-    # Ensure CORS headers are properly set for all responses
-    origin = request.headers.get('Origin')
-    allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "http://localhost:3000", "http://localhost:5173"]
+    # Skip CORS override for image tool endpoints - they set their own headers
+    image_tool_paths = ['/api/process-thumbnail-print-quality']
+    if request.path in image_tool_paths or request.path.startswith('/api/get-order-screenshot/'):
+        existing_origin = response.headers.get('Access-Control-Allow-Origin')
+        if existing_origin:
+            logger.info(f"🔍 [SECURITY_MIDDLEWARE] Skipping CORS override for {request.path} - endpoint already set: {existing_origin}")
+            return response
     
-    if origin in allowed_origins:
-        response.headers['Access-Control-Allow-Origin'] = origin
-    else:
-        response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
-    
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    # Ensure CORS headers are properly set for all other responses
+    if request.path.startswith('/api/'):
+        origin = request.headers.get('Origin')
+        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "http://localhost:3000", "http://localhost:5173"]
+        
+        if origin in allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        else:
+            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
+        
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma, Expires'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
     
     return response
 
@@ -1283,17 +1305,16 @@ def filter_products_by_category(category):
             "All Over Print Leash",
             "All Over Print Collar"
         ],
-        'stickers': [
-            "Kiss-Cut Stickers",
-            "Die-Cut Magnets"
-        ],
         'misc': [
             "Greeting Card",
             "Hardcover Bound Notebook", 
             "Coasters",
             "Apron",
-            "Bandana"
+            "Bandana",
+            "Kiss-Cut Stickers",
+            "Die-Cut Magnets"
         ],
+        'all-products': [],  # All Products category - will contain all products eventually
         'thumbnails': []  # Coming Soon - no products yet
     }
     
@@ -1870,8 +1891,15 @@ def send_order():
                     <hr>
                     <h2>🖨️ Print Quality Images</h2>
                     <p><strong>For Printify Upload:</strong></p>
-                    <p>Use the print quality generator to get 300 DPI images:</p>
-                    <p><strong>Web Interface:</strong> <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}">https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>
+                    <p><strong>Option 1 - Auto-load (with order ID):</strong> <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}">Generate Print Quality Images</a></p>
+                    <p><strong>Option 2 - Standalone Tool (Recommended - no CORS issues):</strong> <a href="https://screenmerch.fly.dev/image-enhancer" target="_blank">Open Standalone Image Enhancer</a></p>
+                    <p style="background: #e7f3ff; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                        <strong>💡 How to use Standalone Tool:</strong><br>
+                        1. Right-click the screenshot image above → "Copy Image"<br>
+                        2. Open the Standalone Image Enhancer link above<br>
+                        3. Paste the image (Ctrl+V or Cmd+V) in the upload area<br>
+                        4. Process through all 3 tools and download
+                    </p>
                     <p>This will generate professional print-ready images (2400x3000+ pixels, PNG format)</p>
                     <br>
                     <p><small>This is an automated notification from ScreenMerch</small></p>
@@ -2072,7 +2100,8 @@ def place_order():
             color = (item.get('variants') or {}).get('color', 'N/A')
             size = (item.get('variants') or {}).get('size', 'N/A')
             note = item.get('note', 'None')
-            image_url = item.get('img', '')
+            # Check multiple fields for screenshot/image (img, screenshot, selected_screenshot, thumbnail)
+            image_url = item.get('screenshot') or item.get('selected_screenshot') or item.get('thumbnail') or item.get('img', '')
             html_body += f"""
                 <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
                     <h2>{product_name}</h2>
@@ -2098,8 +2127,10 @@ def place_order():
         html_body += "<br>"
         html_body += "<hr>"
         html_body += "<h2>🖨️ Print Quality Images</h2>"
-        html_body += "<p>Use the print quality generator to get 300 DPI images:</p>"
-        html_body += f"<p><strong>Web Interface:</strong> <a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}'>https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>"
+        html_body += "<p><strong>Option 1 - Auto-load (with order ID):</strong> <a href='https://screenmerch.fly.dev/print-quality?order_id=" + order_id + "'>Generate Print Quality Images</a></p>"
+        html_body += "<p><strong>Option 2 - Standalone Tool (Recommended - no CORS issues):</strong> <a href='https://screenmerch.fly.dev/image-enhancer' target='_blank'>Open Standalone Image Enhancer</a></p>"
+        html_body += "<p style='background: #e7f3ff; padding: 15px; border-radius: 5px; margin: 15px 0;'><strong>💡 How to use Standalone Tool:</strong><br>1. Right-click the screenshot image above → 'Copy Image'<br>2. Open the Standalone Image Enhancer link above<br>3. Paste the image (Ctrl+V or Cmd+V) in the upload area<br>4. Process through all 3 tools and download</p>"
+        html_body += "<p>This will generate professional print-ready images (2400x3000+ pixels, PNG format)</p>"
         html_body += "<br>"
         html_body += "<p><small>This is an automated notification from ScreenMerch</small></p>"
 
@@ -2567,6 +2598,9 @@ def stripe_webhook():
                                     <td style="padding: 10px;">
                                         <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
                                     </td>
+                                    <td style="padding: 10px;">
+                                        <a href="https://screenmerch.fly.dev/image-enhancer" target="_blank" style="background: #6f42c1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖼️ Standalone Image Enhancer</a>
+                                    </td>
                                 </tr>
                             </table>
                         </td>
@@ -2576,9 +2610,16 @@ def stripe_webhook():
                     <h3>📝 Quick Instructions:</h3>
                     <ol>
                         <li><strong>View Order:</strong> Click "View Order Details" to see full order information</li>
-                        <li><strong>Print Quality:</strong> Click "Generate Print Quality Images" to create 300 DPI images for Printify</li>
-                        <li><strong>Video URL:</strong> Copy the video URL from order details and paste it into the print quality tool</li>
-                        <li><strong>Timestamp:</strong> Use the timestamp shown above in the print quality tool</li>
+                        <li><strong>Print Quality (Auto):</strong> Click "Generate Print Quality Images" to auto-load from order</li>
+                        <li><strong>Standalone Tool (Recommended):</strong> Click "Standalone Image Enhancer" for reliable processing:
+                            <ul style="margin-top: 10px; padding-left: 20px;">
+                                <li>Right-click the screenshot image above and select "Copy Image"</li>
+                                <li>In the standalone tool, click in the upload area and press Ctrl+V (or Cmd+V on Mac) to paste</li>
+                                <li>Or drag & drop the screenshot from your email</li>
+                                <li>Process through all 3 tools: 300 DPI → Edge Feather → Corner Radius</li>
+                                <li>Download your enhanced image</li>
+                            </ul>
+                        </li>
                     </ol>
                 </div>
             """
@@ -3128,9 +3169,20 @@ def process_thumbnail_print_quality():
     """Process a thumbnail image for print quality output"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        # Handle CORS preflight with correct origin for image tool
+        origin = request.headers.get('Origin')
+        logger.info(f"🔍 [IMAGE_TOOL] OPTIONS preflight - Origin: {origin}")
+        logger.info(f"🔍 [IMAGE_TOOL] Request headers: {dict(request.headers)}")
+        if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            logger.info(f"✅ [IMAGE_TOOL] Set CORS origin to: {origin}")
+        else:
+            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
+            logger.info(f"⚠️ [IMAGE_TOOL] Origin not in allowed list, defaulting to: https://screenmerch.fly.dev")
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        logger.info(f"🔍 [IMAGE_TOOL] Response headers set: Access-Control-Allow-Origin={response.headers.get('Access-Control-Allow-Origin')}")
         return response
     
     try:
@@ -3142,7 +3194,15 @@ def process_thumbnail_print_quality():
         crop_area = data.get("crop_area")
         
         if not thumbnail_data:
-            return jsonify({"success": False, "error": "thumbnail_data is required"}), 400
+            response = jsonify({"success": False, "error": "thumbnail_data is required"})
+            # Add CORS headers for image tool
+            origin = request.headers.get('Origin')
+            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+            else:
+                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response, 400
         
         logger.info(f"Processing thumbnail for print quality: DPI={print_dpi}, soft_corners={soft_corners}, edge_feather={edge_feather}")
         if crop_area:
@@ -3160,17 +3220,41 @@ def process_thumbnail_print_quality():
         if result['success']:
             logger.info(f"Thumbnail processed for print: {result.get('dimensions', {}).get('width', 'unknown')}x{result.get('dimensions', {}).get('height', 'unknown')}")
             response = jsonify(result)
-            response.headers.add('Access-Control-Allow-Origin', '*')
+            # Add CORS headers for image tool
+            origin = request.headers.get('Origin')
+            logger.info(f"🔍 [IMAGE_TOOL] POST success - Origin: {origin}")
+            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+                logger.info(f"✅ [IMAGE_TOOL] Set CORS origin to: {origin}")
+            else:
+                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
+                logger.info(f"⚠️ [IMAGE_TOOL] Origin not in allowed list, defaulting to: https://screenmerch.fly.dev")
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            logger.info(f"🔍 [IMAGE_TOOL] Response headers before return: Access-Control-Allow-Origin={response.headers.get('Access-Control-Allow-Origin')}")
             return response
         else:
             logger.error(f"Thumbnail processing failed: {result['error']}")
             response = jsonify(result)
-            response.headers.add('Access-Control-Allow-Origin', '*')
+            # Add CORS headers for image tool
+            origin = request.headers.get('Origin')
+            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+            else:
+                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 500
             
     except Exception as e:
         logger.error(f"Error processing thumbnail for print quality: {str(e)}")
-        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+        response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
+        # Add CORS headers for image tool
+        origin = request.headers.get('Origin')
+        if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
 
 @app.route("/api/get-order-screenshot/<order_id>")
 def get_order_screenshot(order_id):
@@ -3179,31 +3263,59 @@ def get_order_screenshot(order_id):
         # First try to get order from database using order_id field
         result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
         
+        # If not found, try common alternative keys
+        if not result.data:
+            alt_result = supabase.table('orders').select('*').eq('id', order_id).execute()
+            if alt_result.data:
+                result = alt_result
+            else:
+                alt2_result = supabase.table('orders').select('*').eq('order_number', order_id).execute()
+                if alt2_result.data:
+                    result = alt2_result
+        
         if not result.data:
             # Fallback: try to get from in-memory order_store
             if order_id in order_store:
                 order_data = order_store[order_id]
                 logger.info(f"✅ Retrieved order {order_id} from in-memory store")
             else:
-                return jsonify({
+                response = jsonify({
                     "success": False,
                     "error": "Order not found"
-                }), 404
+                })
+                # Add CORS headers for image tool
+                origin = request.headers.get('Origin')
+                if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                    response.headers.add('Access-Control-Allow-Origin', origin)
+                else:
+                    response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+                response.headers.add('Access-Control-Allow-Credentials', 'true')
+                return response, 404
         else:
             order_data = result.data[0]
             logger.info(f"✅ Retrieved order {order_id} from database")
         
-        # Extract screenshot data from cart items
+        # Extract screenshot data from cart items - check all possible fields
         screenshot_data = None
         cart = order_data.get('cart', [])
         
-        # Look for screenshot in cart items
+        # Look for screenshot in cart items - check thumbnail and selected_screenshot fields
         for item in cart:
+            # Check img field (base64)
             if item.get('img') and item['img'].startswith('data:image'):
                 screenshot_data = item['img']
                 break
+            # Check screenshot field (base64)
             elif item.get('screenshot') and item['screenshot'].startswith('data:image'):
                 screenshot_data = item['screenshot']
+                break
+            # Check thumbnail field (base64)
+            elif item.get('thumbnail') and isinstance(item.get('thumbnail'), str) and item['thumbnail'].startswith('data:image'):
+                screenshot_data = item['thumbnail']
+                break
+            # Check selected_screenshot field (base64)
+            elif item.get('selected_screenshot') and isinstance(item.get('selected_screenshot'), str) and item['selected_screenshot'].startswith('data:image'):
+                screenshot_data = item['selected_screenshot']
                 break
         
         # Fallback: check order-level fields
@@ -3216,31 +3328,64 @@ def get_order_screenshot(order_id):
                 screenshot_data = order_data.get('thumbnail_data')
         
         if screenshot_data:
-            return jsonify({
+            response = jsonify({
                 "success": True,
                 "screenshot": screenshot_data,
                 "order_id": order_id,
                 "video_title": order_data.get('video_title', 'Unknown Video'),
                 "creator_name": order_data.get('creator_name', 'Unknown Creator')
             })
+            # Add CORS headers for image tool
+            origin = request.headers.get('Origin')
+            logger.info(f"🔍 [IMAGE_TOOL] get-order-screenshot success - Origin: {origin}")
+            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+                logger.info(f"✅ [IMAGE_TOOL] Set CORS origin to: {origin}")
+            else:
+                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+                logger.info(f"⚠️ [IMAGE_TOOL] Origin not in allowed list, defaulting to: https://screenmerch.com")
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            logger.info(f"🔍 [IMAGE_TOOL] Response headers before return: Access-Control-Allow-Origin={response.headers.get('Access-Control-Allow-Origin')}")
+            return response
         else:
-            return jsonify({
+            response = jsonify({
                 "success": False,
                 "error": "No screenshot data found for this order"
-            }), 404
+            })
+            # Add CORS headers for image tool
+            origin = request.headers.get('Origin')
+            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+                response.headers.add('Access-Control-Allow-Origin', origin)
+            else:
+                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response, 404
             
     except Exception as e:
         logger.error(f"Error getting order screenshot: {str(e)}")
-        return jsonify({
+        response = jsonify({
             "success": False,
             "error": f"Internal server error: {str(e)}"
-        }), 500
+        })
+        # Add CORS headers for image tool
+        origin = request.headers.get('Origin')
+        if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
 
 @app.route("/print-quality")
 def print_quality_page():
     """Serve the print quality image generator page"""
     order_id = request.args.get('order_id')
     return render_template('print_quality.html', order_id=order_id)
+
+@app.route("/image-enhancer")
+def image_enhancer_page():
+    """Serve the standalone image enhancer tool page"""
+    return render_template('image_enhancer.html')
 
 @app.route("/api/users/ensure-exists", methods=["POST"])
 def ensure_user_exists():
@@ -3651,14 +3796,22 @@ def auth_login():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         origin = request.headers.get('Origin')
-        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "http://localhost:3000", "http://localhost:5173"]
+        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "http://localhost:3000", "http://localhost:5173"]
         
-        if origin in allowed_origins:
+        # Check exact match first
+        origin_allowed = origin in allowed_origins
+        
+        # If not exact match, check if it's a Netlify subdomain
+        if not origin_allowed and origin:
+            if origin.endswith('.netlify.app') and origin.startswith('https://'):
+                origin_allowed = True
+        
+        if origin_allowed:
             response.headers.add('Access-Control-Allow-Origin', origin)
         else:
             response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
         
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
@@ -3700,7 +3853,13 @@ def auth_login():
                     })
                     # Add CORS headers
                     origin = request.headers.get('Origin')
-                    if origin in ["https://screenmerch.com", "https://www.screenmerch.com"]:
+                    allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+                    
+                    origin_allowed = origin in allowed_origins
+                    if not origin_allowed and origin and origin.endswith('.netlify.app') and origin.startswith('https://'):
+                        origin_allowed = True
+                    
+                    if origin_allowed:
                         response.headers.add('Access-Control-Allow-Origin', origin)
                     else:
                         response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
@@ -3709,7 +3868,13 @@ def auth_login():
                 else:
                     response = jsonify({"success": False, "error": "Invalid email or password"})
                     origin = request.headers.get('Origin')
-                    if origin in ["https://screenmerch.com", "https://www.screenmerch.com"]:
+                    allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+                    
+                    origin_allowed = origin in allowed_origins
+                    if not origin_allowed and origin and origin.endswith('.netlify.app') and origin.startswith('https://'):
+                        origin_allowed = True
+                    
+                    if origin_allowed:
                         response.headers.add('Access-Control-Allow-Origin', origin)
                     else:
                         response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
@@ -3718,7 +3883,13 @@ def auth_login():
             else:
                 response = jsonify({"success": False, "error": "Invalid email or password"})
                 origin = request.headers.get('Origin')
-                if origin in ["https://screenmerch.com", "https://www.screenmerch.com"]:
+                allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+                
+                origin_allowed = origin in allowed_origins
+                if not origin_allowed and origin and origin.endswith('.netlify.app') and origin.startswith('https://'):
+                    origin_allowed = True
+                
+                if origin_allowed:
                     response.headers.add('Access-Control-Allow-Origin', origin)
                 else:
                     response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
@@ -3729,7 +3900,13 @@ def auth_login():
             logger.error(f"Database error during login: {str(db_error)}")
             response = jsonify({"success": False, "error": "Database connection error"})
             origin = request.headers.get('Origin')
-            if origin in ["https://screenmerch.com", "https://www.screenmerch.com"]:
+            allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+            
+            origin_allowed = origin in allowed_origins
+            if not origin_allowed and origin and origin.endswith('.netlify.app') and origin.startswith('https://'):
+                origin_allowed = True
+            
+            if origin_allowed:
                 response.headers.add('Access-Control-Allow-Origin', origin)
             else:
                 response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
@@ -3740,7 +3917,13 @@ def auth_login():
         logger.error(f"Login error: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
         origin = request.headers.get('Origin')
-        if origin in ["https://screenmerch.com", "https://www.screenmerch.com"]:
+        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "http://localhost:3000", "http://localhost:5173"]
+        
+        origin_allowed = origin in allowed_origins
+        if not origin_allowed and origin and origin.endswith('.netlify.app') and origin.startswith('https://'):
+            origin_allowed = True
+        
+        if origin_allowed:
             response.headers.add('Access-Control-Allow-Origin', origin)
         else:
             response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')

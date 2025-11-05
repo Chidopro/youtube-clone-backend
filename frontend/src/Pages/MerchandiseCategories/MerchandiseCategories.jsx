@@ -44,7 +44,7 @@ const MerchandiseCategories = ({ sidebar }) => {
     console.log('🔧 API_CONFIG.BASE_URL:', API_CONFIG?.BASE_URL);
   }
 
-  // Category definitions (same UI labels/emojis)
+  // Category definitions - Stickers removed, All Products added
   const categories = [
     { name: "Women's", emoji: "👩", category: "womens" },
     { name: "Men's", emoji: "👨", category: "mens" },
@@ -53,7 +53,7 @@ const MerchandiseCategories = ({ sidebar }) => {
     { name: "Hats", emoji: "🧢", category: "hats" },
     { name: "Bags", emoji: "👜", category: "bags" },
     { name: "Pets", emoji: "🐕", category: "pets" },
-    { name: "Stickers", emoji: "🌟", category: "stickers" },
+    { name: "All Products", emoji: "🛍️", category: "all-products" },
     { name: "Miscellaneous", emoji: "📦", category: "misc" },
     { name: "Thumbnails", emoji: "🖼️", category: "thumbnails" }
   ];

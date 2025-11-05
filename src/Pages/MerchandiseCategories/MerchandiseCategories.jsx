@@ -33,7 +33,7 @@ const MerchandiseCategories = ({ sidebar }) => {
   console.log('📸 Loaded from localStorage - Screenshots count:', screenshots.length);
   console.log('📸 Thumbnail present:', !!thumbnail);
 
-  // Categories with Stickers name update - FORCE REBUILD 2025-10-07
+  // Categories updated - Stickers removed, All Products added
   const categories = [
     { name: "Women's", emoji: "👩", category: "womens" },
     { name: "Men's", emoji: "👨", category: "mens" },
@@ -42,7 +42,7 @@ const MerchandiseCategories = ({ sidebar }) => {
     { name: "Hats", emoji: "🧢", category: "hats" },
     { name: "Bags", emoji: "👜", category: "bags" },
     { name: "Pets", emoji: "🐕", category: "pets" },
-    { name: "Stickers", emoji: "🌟", category: "stickers" },
+    { name: "All Products", emoji: "🛍️", category: "all-products" },
     { name: "Miscellaneous", emoji: "📦", category: "misc" },
     { name: "Thumbnails", emoji: "🖼️", category: "thumbnails" }
   ];

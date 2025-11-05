@@ -52,8 +52,10 @@ for env_path in env_paths:
 # Try VITE_ prefixed variables first, then fall back to non-prefixed
 supabase_url = os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("VITE_SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
+supabase_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 print("SUPABASE_URL:", "OK" if supabase_url else "MISSING")
 print("SUPABASE_ANON_KEY:", "OK" if supabase_key else "MISSING")
+print("SUPABASE_SERVICE_ROLE_KEY:", "OK" if supabase_service_key else "MISSING (some admin features won't work)")
 if not supabase_url or not supabase_key:
     print("ERROR: Missing Supabase environment variables. Check your .env file location and content.", file=sys.stderr)
     sys.exit(1)
@@ -502,6 +504,14 @@ def add_security_headers(response):
 
 # Initialize Supabase client for database operations
 supabase: Client = create_client(supabase_url, supabase_key)
+
+# Create service role client for admin operations (bypasses RLS)
+supabase_admin: Client = None
+if supabase_service_key:
+    supabase_admin = create_client(supabase_url, supabase_service_key)
+    print("✅ Service role client initialized")
+else:
+    print("⚠️ Service role key not found - some admin operations may not work")
 
 # NEW: Initialize Printful integration
 printful_integration = ScreenMerchPrintfulIntegration()
@@ -999,64 +1009,58 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Youth All Over Print Swimsuit",
-        "price": 33.95,
+        "name": "Baby Body Suit",
+        "price": 20.90,
         "filename": "youthalloverprintswimsuit.png",
         "main_image": "youthalloverprintswimsuit.png",
         "preview_image": "youthalloverprintswimsuitpreview.png",
-        "options": {"color": ["White", "Navy", "Black", "Pink", "Blue"], "size": ["8", "10", "12", "14", "16", "18", "20"]},
+        "options": {"color": ["Black", "Heather", "Pink", "White"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
-            "8": 0,       # No extra charge
-            "10": 0,      # No extra charge  
-            "12": 0,      # No extra charge
-            "14": 0,      # No extra charge
-            "16": 0,      # No extra charge
-            "18": 0,      # No extra charge
-            "20": 0       # No extra charge
+            "6m": 0,      # No extra charge
+            "12m": 0,     # No extra charge  
+            "18m": 0,     # No extra charge
+            "24m": 0      # No extra charge
         }
     },
     {
-        "name": "Girls Leggings",
-        "price": 28.31,
+        "name": "Toddler Jersey T-Shirt",
+        "price": 20.29,
         "filename": "girlsleggings.png",
         "main_image": "girlsleggings.png",
         "preview_image": "girlsleggingspreview.png",
-        "options": {"color": ["White", "Black", "Navy", "Pink", "Purple"], "size": ["2T", "3T", "4T", "5T", "6x", "7"]},
-        "size_pricing": {
-            "2T": 0,      # No extra charge
-            "3T": 0,      # No extra charge  
-            "4T": 0,      # No extra charge
-            "5T": 0,      # No extra charge
-            "6x": 0,      # No extra charge
-            "7": 0        # No extra charge
-        }
-    },
-    {
-        "name": "Toddler Short Sleeve T-Shirt",
-        "price": 22.75,
-        "filename": "toddlershortsleevet.png",
-        "main_image": "toddlershortsleevet.png",
-        "preview_image": "toddlershortsleevetpreview.png",
-        "options": {"color": ["Black", "Heather Columbia Blue", "Pink", "White"], "size": ["2T", "3T", "4T", "5T"]},
-        "size_pricing": {
-            "2T": 0,      # No extra charge
-            "3T": 0,      # No extra charge
-            "4T": 0,      # No extra charge
-            "5T": 0       # No extra charge
-        }
-    },
-    {
-        "name": "Toddler Jersey Shirt",
-        "price": 20.29,
-        "filename": "toddlerjerseytshirt.png",
-        "main_image": "toddlerjerseytshirt.png",
-        "preview_image": "toddlerjerseytshirtpreview.png",
         "options": {"color": ["Black", "Navy", "Hot Pink", "Heather", "Light Blue", "White"], "size": ["2", "3", "4", "5/6"]},
         "size_pricing": {
             "2": 0,       # No extra charge
             "3": 0,       # No extra charge
             "4": 0,       # No extra charge
             "5/6": 0      # No extra charge
+        }
+    },
+    {
+        "name": "Baby Staple Tee",
+        "price": 22.19,
+        "filename": "toddlershortsleevet.png",
+        "main_image": "toddlershortsleevet.png",
+        "preview_image": "toddlershortsleevetpreview.png",
+        "options": {"color": ["Black", "Pink", "White"], "size": ["6-12m", "12-18m", "18-24m"]},
+        "size_pricing": {
+            "6-12m": 0,      # No extra charge
+            "12-18m": 0,     # No extra charge
+            "18-24m": 0      # No extra charge
+        }
+    },
+    {
+        "name": "Baby Jersey T-Shirt",
+        "price": 20.29,
+        "filename": "toddlerjerseytshirt.png",
+        "main_image": "toddlerjerseytshirt.png",
+        "preview_image": "toddlerjerseytshirtpreview.png",
+        "options": {"color": ["Black", "Royal", "Pink", "Light Blue", "White", "Charcoal"], "size": ["6m", "12m", "18m", "24m"]},
+        "size_pricing": {
+            "6m": 0,      # No extra charge
+            "12m": 0,     # No extra charge
+            "18m": 0,     # No extra charge
+            "24m": 0      # No extra charge
         }
     },
     {
@@ -1495,11 +1499,11 @@ def filter_products_by_category(category):
             "Youth Heavy Blend Hoodie",
             "Kids Shirt",
             "Kids Long Sleeve",
-            "Toddler Short Sleeve T-Shirt",
-            "Toddler Jersey Shirt",
+            "Baby Staple Tee",
+            "Baby Jersey T-Shirt",
             "Kids Sweatshirt",
-            "Youth All Over Print Swimsuit",
-            "Girls Leggings"
+            "Baby Body Suit",
+            "Toddler Jersey T-Shirt"
         ],
         'bags': [
             "Laptop Sleeve",
@@ -1525,17 +1529,16 @@ def filter_products_by_category(category):
             "All Over Print Leash",
             "All Over Print Collar"
         ],
-        'stickers': [
-            "Kiss-Cut Stickers",
-            "Die-Cut Magnets"
-        ],
         'misc': [
             "Greeting Card",
             "Hardcover Bound Notebook", 
             "Coasters",
             "Apron",
-            "Bandana"
+            "Bandana",
+            "Kiss-Cut Stickers",
+            "Die-Cut Magnets"
         ],
+        'all-products': [],  # All Products category - will contain all products eventually
         'thumbnails': []  # Coming Soon - no products yet
     }
     
@@ -1946,14 +1949,34 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None):
         
         item_price = product_info["price"] if product_info else 0
     
+    # IMPORTANT: Look up creator's user_id if not provided but creator_name is available
+    # This ensures precise tracking for analytics
+    creator_user_id = user_id
+    creator_name = item.get('creator_name', '')
+    
+    if not creator_user_id and creator_name and creator_name != 'Unknown Creator':
+        try:
+            # Try to find creator by display_name or username (case-insensitive)
+            creator_result = supabase_admin.table('users').select('id').or_(
+                f"display_name.ilike.{creator_name},username.ilike.{creator_name}"
+            ).limit(1).execute()
+            
+            if creator_result.data and len(creator_result.data) > 0:
+                creator_user_id = creator_result.data[0]['id']
+                logger.info(f"✅ Found creator user_id for '{creator_name}': {creator_user_id}")
+            else:
+                logger.warning(f"⚠️ Could not find user_id for creator '{creator_name}' - sale will be recorded without user_id")
+        except Exception as lookup_error:
+            logger.error(f"Error looking up creator user_id for '{creator_name}': {lookup_error}")
+    
     sale_data = {
-        "user_id": user_id,
+        "user_id": creator_user_id,  # Use looked-up creator user_id for precise tracking
         "product_id": item.get('product_id', ''),
         "product_name": item.get('product', ''),
         "video_id": item.get('video_id', ''),
         "video_title": item.get('video_title', ''),
         "video_url": item.get('video_url', ''),
-        "creator_name": item.get('creator_name', ''),
+        "creator_name": creator_name,
         "screenshot_timestamp": item.get('screenshot_timestamp', ''),
         "image_url": item.get('img', ''),
         "amount": item_price,
@@ -1961,10 +1984,18 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None):
         "channel_id": channel_id
     }
     try:
-        supabase.table('sales').insert(sale_data).execute()
-        logger.info(f"Recorded sale: {sale_data}")
+        # Use service role client to bypass RLS for precise tracking
+        client_to_use = supabase_admin if supabase_admin else supabase
+        client_to_use.table('sales').insert(sale_data).execute()
+        logger.info(f"✅ Recorded sale with precise tracking: product={sale_data['product_name']}, creator_user_id={creator_user_id}, amount=${item_price}")
     except Exception as e:
-        logger.error(f"Error recording sale: {str(e)}")
+        logger.error(f"❌ Error recording sale: {str(e)}")
+        # Try fallback with regular client
+        try:
+            supabase.table('sales').insert(sale_data).execute()
+            logger.info(f"✅ Recorded sale (fallback): {sale_data}")
+        except Exception as e2:
+            logger.error(f"❌ Error recording sale (fallback): {str(e2)}")
 
 @app.route("/send-order", methods=["POST"])
 def send_order():
@@ -4285,68 +4316,226 @@ def ensure_user_exists():
         logger.error(f"Error ensuring user exists: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/users/<user_id>/delete-account", methods=["DELETE"])
-def delete_user_account(user_id):
-    """Delete user account and all associated data"""
+@app.route("/api/users/<user_id>/update-profile", methods=["PUT", "POST"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def update_user_profile(user_id):
+    """Update user profile (cover_image_url, profile_image_url, etc.) using service role to bypass RLS"""
     try:
-        logger.info(f"Attempting to delete user account: {user_id}")
+        data = request.get_json()
+        logger.info(f"Updating profile for user {user_id}: {data}")
+        
+        # Validate user_id
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        # Build update data (only include fields that are provided)
+        update_data = {}
+        if 'cover_image_url' in data:
+            update_data['cover_image_url'] = data['cover_image_url']
+        if 'profile_image_url' in data:
+            update_data['profile_image_url'] = data['profile_image_url']
+        if 'display_name' in data:
+            update_data['display_name'] = data['display_name']
+        if 'bio' in data:
+            update_data['bio'] = data['bio']
+        
+        update_data['updated_at'] = 'now()'
+        
+        if not update_data:
+            return jsonify({"error": "No fields to update"}), 400
+        
+        # Use service role client if available, otherwise fall back to regular client
+        client_to_use = supabase_admin if supabase_admin else supabase
+        
+        # Try update first
+        result = client_to_use.table('users').update(update_data).eq('id', user_id).execute()
+        
+        if result.data and len(result.data) > 0:
+            logger.info(f"Successfully updated profile for user {user_id}")
+            return jsonify({"success": True, "user": result.data[0]})
+        else:
+            # User doesn't exist, try to create/upsert
+            logger.info(f"User {user_id} doesn't exist, creating new profile")
+            
+            # Get email from request or use a default
+            email = data.get('email', f"{user_id}@temp.com")
+            
+            upsert_data = {
+                'id': user_id,
+                'email': email,
+                'username': email.split('@')[0] if email else 'user',
+                **update_data
+            }
+            
+            result = client_to_use.table('users').upsert(upsert_data, on_conflict='id').execute()
+            
+            if result.data and len(result.data) > 0:
+                logger.info(f"Successfully created/updated profile for user {user_id}")
+                return jsonify({"success": True, "user": result.data[0]})
+            else:
+                return jsonify({"error": "Failed to update or create user profile"}), 500
+            
+    except Exception as e:
+        logger.error(f"Error updating user profile: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/admin/dashboard-stats", methods=["GET"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_dashboard_stats():
+    """Get admin dashboard statistics"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+        
+        # Use service role client if available to bypass RLS
+        client_to_use = supabase_admin if supabase_admin else supabase
+        
+        # Try to use the view first if it exists
+        try:
+            result = client_to_use.table('admin_dashboard_stats').select('*').execute()
+            if result.data and len(result.data) > 0:
+                return jsonify(result.data[0])
+        except Exception as view_error:
+            logger.warning(f"Could not use admin_dashboard_stats view: {view_error}, calculating manually")
+        
+        # Fallback: Calculate stats manually
+        try:
+            # Get total users (fetch all and count)
+            users_result = client_to_use.table('users').select('id').execute()
+            total_users = len(users_result.data) if users_result.data else 0
+            
+            # Get active users
+            active_users_result = client_to_use.table('users').select('id').eq('status', 'active').execute()
+            active_users = len(active_users_result.data) if active_users_result.data else 0
+            
+            # Get suspended users  
+            suspended_users_result = client_to_use.table('users').select('id').eq('status', 'suspended').execute()
+            suspended_users = len(suspended_users_result.data) if suspended_users_result.data else 0
+            
+            # Get total videos
+            videos_result = client_to_use.table('videos2').select('id').execute()
+            total_videos = len(videos_result.data) if videos_result.data else 0
+            
+            # Get pending videos
+            pending_videos_result = client_to_use.table('videos2').select('id').eq('verification_status', 'pending').execute()
+            pending_videos = len(pending_videos_result.data) if pending_videos_result.data else 0
+            
+            # Get approved videos
+            approved_videos_result = client_to_use.table('videos2').select('id').eq('verification_status', 'approved').execute()
+            approved_videos = len(approved_videos_result.data) if approved_videos_result.data else 0
+            
+            # Get total subscriptions
+            subscriptions_result = client_to_use.table('user_subscriptions').select('id').execute()
+            total_subscriptions = len(subscriptions_result.data) if subscriptions_result.data else 0
+            
+            # Get active subscriptions
+            active_subscriptions_result = client_to_use.table('user_subscriptions').select('id').eq('status', 'active').execute()
+            active_subscriptions = len(active_subscriptions_result.data) if active_subscriptions_result.data else 0
+            
+            # Get premium subscriptions
+            premium_subscriptions_result = client_to_use.table('user_subscriptions').select('id').eq('tier', 'premium').execute()
+            premium_subscriptions = len(premium_subscriptions_result.data) if premium_subscriptions_result.data else 0
+            
+            # Get creator network subscriptions
+            creator_network_subscriptions_result = client_to_use.table('user_subscriptions').select('id').eq('tier', 'creator_network').execute()
+            creator_network_subscriptions = len(creator_network_subscriptions_result.data) if creator_network_subscriptions_result.data else 0
+            
+            stats = {
+                "total_users": total_users,
+                "active_users": active_users,
+                "suspended_users": suspended_users,
+                "total_videos": total_videos,
+                "pending_videos": pending_videos,
+                "approved_videos": approved_videos,
+                "total_subscriptions": total_subscriptions,
+                "active_subscriptions": active_subscriptions,
+                "premium_subscriptions": premium_subscriptions,
+                "creator_network_subscriptions": creator_network_subscriptions
+            }
+            
+            logger.info(f"Admin dashboard stats calculated: {stats}")
+            return jsonify(stats)
+            
+        except Exception as calc_error:
+            logger.error(f"Error calculating dashboard stats: {calc_error}")
+            return jsonify({"error": str(calc_error)}), 500
+            
+    except Exception as e:
+        logger.error(f"Error in admin dashboard stats endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/users/<user_id>/delete-account", methods=["DELETE"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def delete_user_account(user_id):
+    """Delete user account and all associated data - uses admin client to bypass RLS"""
+    try:
+        logger.info(f"🗑️ Attempting to delete user account: {user_id}")
+        
+        # Use admin client to bypass RLS (same pattern as other admin endpoints)
+        # This allows admin to delete users even when RLS would normally block it
+        client_to_use = supabase_admin if supabase_admin else supabase
+        
+        if not supabase_admin:
+            logger.warning("⚠️ Admin client not available - deletions may fail due to RLS")
         
         # Delete user's videos
         try:
-            supabase.table('videos2').delete().eq('user_id', user_id).execute()
-            logger.info(f"Deleted videos for user {user_id}")
+            client_to_use.table('videos2').delete().eq('user_id', user_id).execute()
+            logger.info(f"✅ Deleted videos for user {user_id}")
         except Exception as e:
-            logger.error(f"Error deleting videos: {str(e)}")
+            logger.error(f"❌ Error deleting videos: {str(e)}")
         
         # Delete user's subscriptions (where they are the subscriber)
         try:
-            supabase.table('subscriptions').delete().eq('subscriber_id', user_id).execute()
-            logger.info(f"Deleted subscriptions for user {user_id}")
+            client_to_use.table('subscriptions').delete().eq('subscriber_id', user_id).execute()
+            logger.info(f"✅ Deleted subscriptions for user {user_id}")
         except Exception as e:
-            logger.error(f"Error deleting subscriptions: {str(e)}")
+            logger.error(f"❌ Error deleting subscriptions: {str(e)}")
         
         # Delete user's channel subscriptions (where they are the channel)
         try:
-            supabase.table('subscriptions').delete().eq('channel_id', user_id).execute()
-            logger.info(f"Deleted channel subscriptions for user {user_id}")
+            client_to_use.table('subscriptions').delete().eq('channel_id', user_id).execute()
+            logger.info(f"✅ Deleted channel subscriptions for user {user_id}")
         except Exception as e:
-            logger.error(f"Error deleting channel subscriptions: {str(e)}")
+            logger.error(f"❌ Error deleting channel subscriptions: {str(e)}")
         
         # Delete user's subscription tier
         try:
-            supabase.table('user_subscriptions').delete().eq('user_id', user_id).execute()
-            logger.info(f"Deleted user subscription for user {user_id}")
+            client_to_use.table('user_subscriptions').delete().eq('user_id', user_id).execute()
+            logger.info(f"✅ Deleted user subscription for user {user_id}")
         except Exception as e:
-            logger.error(f"Error deleting user subscription: {str(e)}")
+            logger.error(f"❌ Error deleting user subscription: {str(e)}")
         
         # Friend functionality removed - no friend requests to delete
         
         # Delete user's products
         try:
-            supabase.table('products').delete().eq('user_id', user_id).execute()
-            logger.info(f"Deleted products for user {user_id}")
+            client_to_use.table('products').delete().eq('user_id', user_id).execute()
+            logger.info(f"✅ Deleted products for user {user_id}")
         except Exception as e:
-            logger.error(f"Error deleting products: {str(e)}")
+            logger.error(f"❌ Error deleting products: {str(e)}")
         
         # Delete user's sales
         try:
-            supabase.table('sales').delete().eq('user_id', user_id).execute()
-            logger.info(f"Deleted sales for user {user_id}")
+            client_to_use.table('sales').delete().eq('user_id', user_id).execute()
+            logger.info(f"✅ Deleted sales for user {user_id}")
         except Exception as e:
-            logger.error(f"Error deleting sales: {str(e)}")
+            logger.error(f"❌ Error deleting sales: {str(e)}")
         
-        # Finally, delete the user profile
+        # Finally, delete the user profile (most important - must succeed)
         try:
-            supabase.table('users').delete().eq('id', user_id).execute()
-            logger.info(f"Deleted user profile for user {user_id}")
+            client_to_use.table('users').delete().eq('id', user_id).execute()
+            logger.info(f"✅ Deleted user profile for user {user_id}")
         except Exception as e:
-            logger.error(f"Error deleting user profile: {str(e)}")
+            logger.error(f"❌ Error deleting user profile: {str(e)}")
+            return jsonify({"success": False, "error": f"Failed to delete user profile: {str(e)}"}), 500
         
-        logger.info(f"Successfully deleted all data for user {user_id}")
+        logger.info(f"✅ Successfully deleted all data for user {user_id}")
         return jsonify({"success": True, "message": "Account deleted successfully"})
         
     except Exception as e:
-        logger.error(f"Error in delete_user_account: {str(e)}")
+        logger.error(f"❌ Error in delete_user_account: {str(e)}")
         return jsonify({"success": False, "error": f"Failed to delete account: {str(e)}"}), 500
 
 # Create Pro checkout session with 7-day trial
@@ -4924,20 +5113,55 @@ def auth_signup():
         return response, 500
 
 @app.route("/api/analytics", methods=["GET"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def get_analytics():
-    """Get analytics data for creator dashboard"""
+    """Get analytics data for creator dashboard - PRECISE tracking by user_id"""
     try:
-        # Get user ID and channel ID from query parameters
+        # Get user ID and channel ID from query parameters - user_id is REQUIRED for precise tracking
         user_id = request.args.get('user_id')
         channel_id = request.args.get('channel_id')
+        
+        # Validate user_id is provided for precise tracking
+        if not user_id:
+            logger.warning("⚠️ Analytics request missing user_id - returning empty data for security")
+            return jsonify({
+                'total_sales': 0,
+                'total_revenue': 0,
+                'avg_order_value': 0,
+                'products_sold_count': 0,
+                'videos_with_sales_count': 0,
+                'sales_data': [0] * 30,
+                'products_sold': [],
+                'videos_with_sales': []
+            })
         
         logger.info(f"📊 Analytics request - User ID: {user_id}, Channel ID: {channel_id}")
         
         # Get all orders from database and in-memory store
         all_orders = []
         
-        # Get orders from order_store (recent orders)
+        # Get orders from order_store (recent orders) - FILTER by user_id for precise tracking
         for order_id, order_data in order_store.items():
+            # IMPORTANT: Only include orders that belong to this creator
+            # Check if order has creator_name that matches this user
+            order_creator_name = order_data.get('creator_name', 'Unknown Creator')
+            
+            # If we have user_id, try to match orders to this creator
+            # Skip orders that don't match this creator for precise tracking
+            if user_id and order_creator_name != 'Unknown Creator':
+                try:
+                    # Look up if this creator_name matches the user_id
+                    creator_match = supabase_admin.table('users').select('id').or_(
+                        f"display_name.ilike.{order_creator_name},username.ilike.{order_creator_name}"
+                    ).eq('id', user_id).limit(1).execute()
+                    
+                    # If creator doesn't match this user_id, skip this order
+                    if not creator_match.data or len(creator_match.data) == 0:
+                        continue  # Skip orders not belonging to this creator
+                except:
+                    # If lookup fails, skip to be safe (ensures precise tracking)
+                    continue
+            
             order_data['order_id'] = order_id
             order_data['status'] = 'pending'
             order_data['created_at'] = order_data.get('timestamp', 'N/A')
@@ -4947,24 +5171,32 @@ def get_analytics():
         try:
             logger.info("🔍 Fetching sales data from database...")
             
-            # Build query based on filters - use more efficient approach
-            if channel_id or user_id:
-                # If filters provided, use them
-                query = supabase.table('sales').select('id,product_name,amount,image_url,user_id,channel_id')
+            # IMPORTANT: Use service role client for precise tracking (bypasses RLS)
+            client_to_use = supabase_admin if supabase_admin else supabase
+            
+            # Build query based on filters - user_id is REQUIRED for precise tracking
+            if user_id:
+                # PRECISE TRACKING: Filter by user_id to ensure creator only sees their own sales
+                query = client_to_use.table('sales').select('id,product_name,amount,image_url,user_id,channel_id,creator_name,video_title')
+                query = query.eq('user_id', user_id)  # CRITICAL: Only get sales for this creator
                 
                 if channel_id:
                     query = query.eq('channel_id', channel_id)
                     logger.info(f"🔍 Filtering sales by channel_id: {channel_id}")
                 
-                if user_id:
-                    query = query.eq('user_id', user_id)
-                    logger.info(f"🔍 Filtering sales by user_id: {user_id}")
-                
+                logger.info(f"✅ PRECISE TRACKING: Filtering sales by user_id: {user_id}")
+                sales_result = query.execute()
+            elif channel_id:
+                # If only channel_id provided (fallback)
+                query = client_to_use.table('sales').select('id,product_name,amount,image_url,user_id,channel_id')
+                query = query.eq('channel_id', channel_id)
+                logger.info(f"🔍 Filtering sales by channel_id: {channel_id}")
                 sales_result = query.execute()
             else:
-                # If no filters, get only sales with non-zero amounts (faster query)
-                logger.info("🔍 Getting sales with non-zero amounts (no filters provided)")
-                sales_result = supabase.table('sales').select('id,product_name,amount').gt('amount', 0).execute()
+                # No user_id provided - return empty for security (precise tracking requires user_id)
+                logger.warning("⚠️ Analytics request missing user_id - returning empty sales for security")
+                sales_result = type('obj', (object,), {'data': []})()  # Empty result
+            
             logger.info(f"📊 Found {len(sales_result.data)} sales records in database")
             
             # Debug: Log the first few sales to see what we're getting
@@ -4977,22 +5209,23 @@ def get_analytics():
             
             for sale in sales_result.data:
                 logger.info(f"📦 Processing sale: {sale.get('product_name')} - ${sale.get('amount')}")
-                # Convert database sale to order format
+                # Convert database sale to order format - preserve creator info for precise tracking
                 order_data = {
                     'order_id': sale.get('id', 'db-' + str(sale.get('id'))),
                     'cart': [{
                         'product': sale.get('product_name', 'Unknown Product'),
                         'variants': {'color': 'N/A', 'size': 'N/A'},
                         'note': '',
-                        'img': '',
-                        'video_title': 'Unknown Video',
-                        'creator_name': 'Unknown Creator'
+                        'img': sale.get('image_url', ''),
+                        'video_title': sale.get('video_title', 'Unknown Video'),
+                        'creator_name': sale.get('creator_name', 'Unknown Creator')
                     }],
                     'status': 'completed',
                     'created_at': 'N/A',  # created_at column doesn't exist
                     'total_value': sale.get('amount', 0),
-                    'user_id': None,
-                    'channel_id': None
+                    'user_id': sale.get('user_id'),  # Preserve user_id for tracking
+                    'channel_id': sale.get('channel_id'),
+                    'creator_name': sale.get('creator_name', 'Unknown Creator')  # Preserve creator_name
                 }
                 all_orders.append(order_data)
                 logger.info(f"✅ Added sale to analytics: {sale.get('product_name')} - ${sale.get('amount')}")
