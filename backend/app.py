@@ -1130,7 +1130,7 @@ PRODUCTS = [
         "filename": "greetingcard.png",
         "main_image": "greetingcard.png",
         "preview_image": "greetingcardpreview.png",
-        "description": "Premium quality greeting card perfect for any occasion. High-quality printing with vibrant colors.",
+        "description": "A well-designed greeting card has the power to help people express gratitude or sympathy, as well as inform attendees and set the mood for any given occasion. Coming in three different sizes, the greeting cards are customizable from top to bottom, and they can be designed to stand both horizontally and vertically. Create your own greeting cards tailored to any circumstance, be it a seasonal one or a once-in-a-lifetime event. Cardboard paper. Sizes: Small: 4″ × 6″ (101 × 152 mm), Medium: 5″ × 7″ (127 × 178 mm), Large: 5.83″ × 8.27″ (148 × 210 mm). Product weight: Small: 0.39 oz (11 g), Medium: 0.6 oz (17 g), Large: 0.85 oz (24 g). Toner-based printing. Vibrant colors. Comes with a complimentary envelope. Blank product materials sourced from Sweden. Disclaimer: Greeting cards shipped from Europe have a matte outside and a thicker envelope (120 g/m²). Greeting cards shipped from the US have a glossy outside and a thinner envelope (60#). Due to the different coatings on the inside and outside of the card, identical colors will look slightly different on the respective surfaces. Small cracks are likely to appear in the fold area over time. A small QR code is printed on the lower left corner of the back of the postcard. This is intended only for the production team's use. In case of low card stock, we might use comparable paper to fulfill the order. The substitute will be as close to the original as possible. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["4\"x6\""]},
         "size_pricing": {
             "4\"x6\"": 0
@@ -1142,7 +1142,7 @@ PRODUCTS = [
         "filename": "hardcovernotebook.png",
         "main_image": "hardcovernotebook.png",
         "preview_image": "hardcovernotebookpreview.png",
-        "description": "",
+        "description": "Whether crafting a masterpiece or brainstorming the next big idea, the Hardcover Bound Notebook will inspire your inner wordsmith. The notebook features 80 lined, cream-colored pages, a built-in elastic closure, and a matching ribbon page marker. Plus, the expandable inner pocket is perfect for storing loose notes and business cards to never lose track of important information. Make it your own with an original cover design and sell it on your store! Cover material: UltraHyde hardcover paper. Size: 5.5\" × 8.5\" (13.97 cm × 21.59 cm). Weight: 10.9 oz (309 g). 80 pages of lined, cream-colored paper. Matching elastic closure and ribbon marker. Expandable inner pocket. Blank product sourced from China. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Red", "Blue", "Turquoise", "Orange", "Silver", "Lime", "White"], "size": ["5.5\"x8.5\""]},
         "size_pricing": {
             "5.5\"x8.5\"": 0
@@ -1154,6 +1154,7 @@ PRODUCTS = [
         "filename": "coaster.png",
         "main_image": "coaster.png",
         "preview_image": "coasterpreview.png",
+        "description": "Hello beverage coaster, goodbye mug stain! Introducing the long-awaited Cork-Back Coaster that's designed to protect your countertops and furniture from spills and scratches. It's crafted from genuine cork, hardboard, with a high-gloss coating that ensures a quality print. The coaster is heat-resistant, water-repellent, and easy to clean—just wipe it with a damp cloth. Add a vibrant design, a meaningful quote, or a photo to the coaster and pair it with your favorite mug or offer the item to your customers online. Hardboard MDF 0.12″ (3 mm). Cork 0.04″ (1 mm). High-gloss coating on top. Size: 3.74″ × 3.74″ × 0.16″ (95 × 95 × 4 mm). Rounded corners. Water-repellent, heat-resistant, and non-slip. Easy to clean. Blank product sourced from China. The displayed price is for a single item. This product is made on demand. No minimums.",
         "options": {"color": ["Wood", "Cork", "Black"], "size": ["4\"x4\""]},
         "size_pricing": {
             "4\"x4\"": 0
@@ -1165,6 +1166,7 @@ PRODUCTS = [
         "filename": "apron.png",
         "main_image": "apron.png",
         "preview_image": "apronpreview.png",
+        "description": "This apron is a canvas for bold, custom designs, perfect for pros behind the grill or home chefs mastering pasta night. It seamlessly blends fashion and function with a sleek fit, button-adjustable straps, and a durable yet lightweight fabric. It's a bestseller for online stores offering kitchen-ready gear or a thoughtful gift for foodies, newlyweds, or housewarming hosts. 100% polyester. Size: 27.6″ × 30.3″ (70 cm × 77 cm). Weight: 10.9 oz (310 g). Durable overlocked seams. Button-adjustable black twill straps. One size fits most. One-sided print. Blank product sourced from China. Disclaimer: Apron size may vary by ±1″ (2.5 cm). This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "Red", "Green"], "size": ["S", "M", "L", "XL"]},
         "size_pricing": {
             "S": 0,
@@ -1179,6 +1181,7 @@ PRODUCTS = [
         "filename": "stickers.png",
         "main_image": "stickers.png",
         "preview_image": "stickerspreview.png",
+        "description": "These Kiss-Cut Stickers can be cut in any shape you want, while also leaving a wide enough border around your design for smooth peeling. Available in four sizes that can be used for a single sticker or multiple smaller ones. What's more, there are no order minimums, so you can get a single sticker or a whole bunch—the world of stickers is your oyster. High opacity film that's impossible to see through. Durable vinyl. 95µ thickness. Fast and easy bubble-free application. Blank product sourced from Japan. Follow these tips when applying stickers: Apply the sticker to a clean, dust-free, oil-free, and moisture-free surface. After application, press the sticker down with a clean cloth to maximize the sticker's ability to stick to the surface and avoid air bubbles. Make sure that the sticker is applied correctly the first time. With every reapplication, the sticker's ability to stick will decrease. Apply the sticker to a flat surface only. If applied on items that bend, are round, or in a cylinder form, we can't guarantee its ability to hold. Disclaimer: Please note that the sticker paper is white and a transparent background isn't possible. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["3\"x3\"", "4\"x4\"", "5.5\"x5.5\"", "15\"x3.75\""]},
         "size_pricing": {
             "3\"x3\"": 0,
@@ -1221,6 +1224,7 @@ PRODUCTS = [
         "filename": "bandana.png",
         "main_image": "bandana.png",
         "preview_image": "bandanapreview.png",
+        "description": "A headband, armband, necktie, bag accessory, or even a scarf for a beloved pet—that's the All-Over Print Bandana! With double-folded edges and a detailed single-sided print, it's sturdy and durable to use for as long as you like. Create your own custom design for this bandana and get one for yourself or start selling! 65% recycled polyester, 35% polyester. Fabric weight: 2.95 oz./yd.² (100 g/m²). Breathable and moisture-wicking material. Lightweight and soft to the touch. Double-folded edges. Single-sided print. Multifunctional. UPF50+ protection. The fabric is OEKO-TEX 100 standard certified. The recycled content of this product is certified under GRS (Global Recycled Standard). Important sizing information: the smallest bandana size is made for small pets and won't fit a grown-up. Please choose the medium or large size if you're selling/ordering for a grown-up and disclose this sizing information on your store. Product code: 655. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Red", "Blue", "Green", "Pink"], "size": ["Small", "Medium", "Large"]},
         "size_pricing": {
             "Small": 0,
@@ -1234,7 +1238,7 @@ PRODUCTS = [
         "filename": "jigsawpuzzle.png",
         "main_image": "jigsawpuzzle.png",
         "preview_image": "jigsawpuzzlepreview.png",
-        "description": "Make quality time more fun with a custom jigsaw puzzle that's both a challenge and a keepsake. Whether it's a cozy night in with family or a weekend brain-teaser with friends, this puzzle delivers an experience worth framing. With rich colors, a glossy finish, and your design, it's ideal for sellers looking to offer meaningful, personalized gifts. Features: Pre-die-cut chipboard with non-edge pieces, white metal tin box with the image on the lid, glossy finish, vibrant colors. Ideal for gifting or wall decor. Important: Choking hazard—small parts. Not suitable for children under 4 years. This product is made on demand. No minimums.",
+        "description": "Make quality time more fun with a custom jigsaw puzzle that's both a challenge and a keepsake. Whether it's a cozy night in with family or a weekend brain-teaser with friends, this puzzle delivers an experience worth framing. With rich colors, a glossy finish, and your design, it's ideal for sellers looking to offer meaningful, personalized gifts. Pre-die-cut chipboard with non-edge pieces. White metal tin box with the image on the lid. Available in 6 sizes: 30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm), 110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm), 252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm), 500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm), 1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm), 2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm). Weight by size: 30 pcs: 8 oz (227 g), 110 pcs: 8 oz (227 g), 252 pcs: 9.6 oz (272 g), 500 pcs: 20 oz (567 g), 1000 pcs: 24 oz (680 g), 2000 pcs: 28 oz (794 g). Glossy finish. Vibrant colors. Ideal for gifting or wall decor. Blank product sourced from China. Important: Choking hazard—small parts. Not suitable for children under 4 years. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)", "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)", "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)", "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)"]},
         "size_pricing": {
             "30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,
@@ -1277,6 +1281,7 @@ PRODUCTS = [
         "filename": "magnet.png",
         "main_image": "magnet.png",
         "preview_image": "magnetpreview.png",
+        "description": "Make jokes, memories, or original drawings last forever with our Die-Cut Magnets. Featuring a sleek, professional matte finish, these magnets come in three sizes and can be cut into any defined shape. The entire back of each magnet is covered with a strong magnetic material, ensuring a secure hold on any metallic surface. Create travel magnets and order in bulk to sell as souvenirs, or design a cool complement to different collections for your online store. Made from 20 mil (0.5 mm) flexible vinyl. Premium matte finish on top. Black magnetic backing. 3 sizes available: 3″ × 3″ (8 × 8 cm), 4″ × 4″ (10 × 10 cm), 6″ × 6″ (15 × 15 cm). Blank product sourced from the USA. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["3\"x3\"", "4\"x4\"", "6\"x6\""]},
         "size_pricing": {
             "3\"x3\"": 0,
