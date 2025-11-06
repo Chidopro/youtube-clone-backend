@@ -1193,6 +1193,7 @@ PRODUCTS = [
         "filename": "dogbowl.png",
         "main_image": "dogbowl.png",
         "preview_image": "dogbowlpreview.png",
+        "description": "Whether you're looking for a new addition to your store or the perfect gift for a pet lover, this Pet Bowl is an excellent choice. It works for dogs, cats or any other type of pet. But that's not all—since it's made with double-walled stainless steel and has an anti-slip rubber base, it's built to last and to withstand even the most impetuous of pets. Available in 2 sizes: 18 oz (532 ml) and 32 oz (946 ml). Double-wall stainless steel. Anti-slip rubber base. Food grade safe. Dishwasher safe when the rubber base is removed. Blank product sourced from China. Important: This product is available only in select countries. If you sell this item on your online store, make sure you let your customers know that they won't be able to order this product outside of these countries. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["18oz", "32oz"]},
         "size_pricing": {
             "18oz": 0,
@@ -1205,6 +1206,7 @@ PRODUCTS = [
         "filename": "scarfcollar.png",
         "main_image": "scarfcollar.png",
         "preview_image": "scarfcollarpreview.png",
+        "description": "Add personality to your pet's wardrobe with this fun and functional bandana collar. Whether you're snapping pics for social media or just out for a walk, this collar brings a playful twist that pet lovers will adore. Available in four sizes to fit most pets, it's a great choice for online sellers in the pet product market. 100% polyester. Adjustable black collar with plastic buckle. 4 sizes: S, M, L, XL. Collar circumference: S: 10″–16.75″ (25.4 cm–42.5 cm), M: 12″–20.25″ (30.5 cm–51.4 cm), L: 14.25″–23″ (36.2 cm–58.4 cm), XL: 15.5″–23.5″ (39.4 cm–59.7 cm). Durable construction, machine washable (max 90ºF (30ºC)). One-sided print: white reverse. Blank product sourced from China. Disclaimer: Product size may vary by ±1″ (2.5 cm). This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Red", "Blue", "Green"], "size": ["Small 10″–16.75″", "Medium 12″–20.25″", "Large 14.25″–23″", "XL 15.5″–23.5″"]},
         "size_pricing": {
             "Small 10″–16.75″": 0,
@@ -1249,6 +1251,7 @@ PRODUCTS = [
         "filename": "leash.png",
         "main_image": "leash.png",
         "preview_image": "leashpreview.png",
+        "description": "Design custom pet collar and leash sets for yourself or sell them to pet owners online. With all-over print sublimation, designs stay vibrant and last long. The padded collar inside and leash handle offer comfort to the pet and its owner. Optionally, add branding to the product packaging. Durable 100% polyester webbing. 92% polyester, 8% spandex collar and leash handle inside. Black 100% polyester sponge collar and handle padding. Metal snap hook and D-ring for the leash. Black plastic main buckle, adjustable buckle, and strap holder for the collar. Leash length: 6 ft. (1.83 m). Leash and collar width: 1″ (2.54 cm). 3 collar sizes available: S 11.8″–17.8″ (30–45 cm), M 13.5″–20.5″ (35–52 cm), L 14.8″–23.8″ (38–60 cm). Adjustable collar length. The leash is customizable on both sides. The collar is customizable on one side. Option to add branding to the cardboard packaging and poly mailer. Blank product sourced from China. Disclaimers: The collar has visible black stitching. Hand wash with mild detergent or machine wash on a gentle cycle in a mesh bag. Air dry. Important: This product is available only in select countries. If you sell this item on your online store, make sure you let your customers know that they won't be able to order this product outside of these countries. As of April 21, 2025, express shipping is no longer available for customers who previously had this option enabled. This change is due to increased carrier surcharges of up to $25–$30 per package. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Brown", "Blue", "Red"], "size": ["6 feet"]},
         "size_pricing": {
             "6 feet": 0
@@ -1260,6 +1263,7 @@ PRODUCTS = [
         "filename": "collar.png",
         "main_image": "collar.png",
         "preview_image": "collarpreview.png",
+        "description": "Expand your pet accessory range with custom collars. The all-over print sublimation technique allows for vibrant, long-lasting prints. The premium quality collar features black padding on the inside to ensure comfort for pets. Available in three adjustable sizes. Optionally, add branding to the packaging. Durable 100% polyester webbing. 92% polyester, 8% spandex collar inside. Black 100% polyester sponge collar inside padding. 3 sizes available: S 11.8″–17.8″ (30–45 cm), M 13.5″–20.5″ (35–52 cm), L 14.8″–23.8″ (38–60 cm). Adjustable collar length. Collar width: 1″ (2.54 cm). Black plastic main buckle, adjustable buckle, and strap holder. The collar is customizable on one side. Option to add branding to the cardboard packaging and poly mailer. Blank product sourced from China. Disclaimers: The collar has visible black stitching. Hand wash with mild detergent or machine wash on a gentle cycle in a mesh bag. Air dry. Important: This product is available only in select countries. If you sell this item on your online store, make sure you let your customers know that they won't be able to order this product outside of these countries. As of April 21, 2025, express shipping is no longer available for customers who previously had this option enabled. This change is due to increased carrier surcharges of up to $25–$30 per package. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Brown", "Blue", "Red", "Green"], "size": ["S 11.8\"-17.8\"", "M 13.5\"-20.5\"", "L 14.8\"-23.8\""]},
         "size_pricing": {
             "S 11.8\"-17.8\"": 0,
