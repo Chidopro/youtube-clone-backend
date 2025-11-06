@@ -145,7 +145,7 @@ const ProductPage = ({ sidebar }) => {
         "Distressed Dad Hat",
         "Snapback Hat",
         "Five Panel Trucker Hat",
-        "5 Panel Baseball Cap"
+        "Five Panel Baseball Cap"
       ],
       'mugs': [
         "White Glossy Mug",
@@ -218,7 +218,7 @@ const ProductPage = ({ sidebar }) => {
       "Distressed Dad Hat": { filename: "distresseddadhat.png", preview: "distresseddadhatpreview.png", price: 24.95 },
       "Snapback Hat": { filename: "snapbackhat.png", preview: "snapbackhatpreview.png", price: 24.95 },
       "Five Panel Trucker Hat": { filename: "fivepaneltruckerhat.png", preview: "fivepaneltruckerhatpreview.png", price: 24.95 },
-      "5 Panel Baseball Cap": { filename: "youthbaseballcap.png", preview: "youthbaseballcappreview.png", price: 24.95 },
+      "Five Panel Baseball Cap": { filename: "youthbaseballcap.png", preview: "youthbaseballcappreview.png", price: 24.95 },
       "White Glossy Mug": { filename: "mug1.png", preview: "mug1preview.png", price: 15.95 },
       "Travel Mug": { filename: "travelmug.png", preview: "travelmugpreview.png", price: 19.95 },
       "Enamel Mug": { filename: "enamalmug.png", preview: "enamalmugpreview.png", price: 18.95 },
@@ -678,7 +678,7 @@ const ProductPage = ({ sidebar }) => {
               'mens': ["Unisex Hoodie", "Men's Tank Top", "Mens Fitted T-Shirt", "Men's Fitted Long Sleeve", "Unisex T-Shirt", "Unisex Oversized T-Shirt", "Men's Long Sleeve Shirt", "Unisex Champion Hoodie"],
               'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve", "Toddler Short Sleeve T-Shirt", "Toddler Jersey T-Shirt", "Kids Sweatshirt", "Youth All Over Print Swimsuit", "Girls Leggings", "Baby Staple Tee", "Baby Jersey T-Shirt", "Baby Body Suit"],
               'mugs': ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"],
-              'hats': ["Distressed Dad Hat", "Snapback Hat", "Five Panel Trucker Hat", "5 Panel Baseball Cap"],
+              'hats': ["Distressed Dad Hat", "Snapback Hat", "Five Panel Trucker Hat", "Five Panel Baseball Cap"],
               'bags': ["Laptop Sleeve", "All-Over Print Drawstring", "All Over Print Tote Pocket", "All-Over Print Crossbody Bag", "All-Over Print Utility Bag"],
               'pets': ["Pet Bowl All-Over Print", "Pet Bandana Collar", "All Over Print Leash", "All Over Print Collar"],
               'misc': ["Bandana", "Hardcover Bound Notebook", "Coasters", "Apron", "Jigsaw Puzzle with Tin", "Greeting Card", "Kiss-Cut Stickers", "Die-Cut Magnets"]

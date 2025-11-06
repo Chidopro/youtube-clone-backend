@@ -1355,6 +1355,7 @@ PRODUCTS = [
         "filename": "distresseddadhat.png",
         "main_image": "distresseddadhat.png",
         "preview_image": "distresseddadhatpreview.png",
+        "description": "Expand your headwear collection with this fashionable Dad Hat. The fabric on its brim and crown is distressed, giving the hat an edgy look. 100% pre-shrunk cotton twill. Unstructured 6-panel cap with a low profile. Soft crown. 6 sewn eyelets. 4 stitched rows on the brim. Adjustable hook-and-loop closure. Seamed front panel without buckram. Blank product sourced from China. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Charcoal Gray", "Khaki"], "size": ["One Size"]},
         "size_pricing": {
             "One Size": 0
@@ -1366,6 +1367,7 @@ PRODUCTS = [
         "filename": "snapbackhat.png",
         "main_image": "snapbackhat.png",
         "preview_image": "snapbackhatpreview.png",
+        "description": "This Snapback exudes quality craftsmanship. It's structured with a firm front panel, flat visor, and full buckram. Made with 8 rows of stitching on the brim, pro-stitching on the crown, and 6 embroidered eyelets. 85% acrylic, 15% wool. Structured, 6-panel, high-profile. Plastic snap closure. 6 embroidered eyelets that match the crown color. Grey under visor. Head circumference: 22″–24″ (55–60 cm). Blank product sourced from China. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Purple / Black / Black", "Red / Black / Black", "Gray / Black / Black", "Gold / Black / Black", "Navy blue", "Red", "Black / Charcoal gray / Charcoal gray", "Charcoal gray", "Kelly green", "Black / White / White", "White", "Aqua blue / Black / Black", "Orange / Black / Black", "Burgundy maroon", "Black / Red / Red", "Black / Gray / Gray"], "size": ["One Size"]},
         "size_pricing": {
             "One Size": 0
@@ -1377,6 +1379,7 @@ PRODUCTS = [
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
         "preview_image": "fivepaneltruckerhatpreview.png",
+        "description": "This structured, high-profile 5 Panel Trucker Cap is the perfect choice for sunny days. It can also serve as a stylish accessory for your outfit as the flat bill gives the cap a modern twist. Put your striking designs on this cap—be it a catchy phrase, your logo, or a cute graphic—and sell it on your store or get one for yourself! 47% cotton, 28% nylon, 25% polyester, or 65% polyester, 35% cotton. Structured, five-panel, high-profile. Classic trucker cap styling. Flat bill. Snapback closure. Head circumference: 21⅝″–23⅝″ (53.3 cm–60 cm). Blank product sourced from Vietnam or Bangladesh. This product is made on demand. No minimums.",
         "options": {"color": [
             "Black/ White",
             "Black",
@@ -1397,11 +1400,12 @@ PRODUCTS = [
         }
     },
     {
-        "name": "5 Panel Baseball Cap",
+        "name": "Five Panel Baseball Cap",
         "price": 21.72,
         "filename": "youthbaseballcap.png",
         "main_image": "youthbaseballcap.png",
         "preview_image": "youthbaseballcappreview.png",
+        "description": "Our 5 panel cap is a time-tested favorite. With a structured front panel, it offers a clean, crisp canvas for print and embroidery. The cap has a popular mid-profile fit with an adjustable snap closure for a snug shape. Its slightly curved visor adds a classic look, and a matching undervisor and sweatband give it a cohesive, professional finish—built for bold and clean designs. 65% polyester, 35% cotton. Mid-profile, contoured fit with a structured, firm front panel. 6 sewn eyelets for breathability. Adjustable plastic snap closure for a secure fit. Matching fabric undervisor and sweatband. Blank product sourced from China and Myanmar. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Black/Natural", "Red/Natural", "Navy/Natural", "Dark Green/Natural", "Royal/Natural", "White"], "size": ["One Size"]},
         "size_pricing": {
             "One Size": 0
@@ -1573,7 +1577,7 @@ def filter_products_by_category(category):
             "Distressed Dad Hat",
             "Snapback Hat",
             "Five Panel Trucker Hat",
-            "5 Panel Baseball Cap"
+            "Five Panel Baseball Cap"
         ],
         'mugs': [
             "White Glossy Mug",
