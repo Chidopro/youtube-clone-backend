@@ -53,7 +53,7 @@ const MerchandiseCategories = ({ sidebar }) => {
     { name: "Hats", emoji: "🧢", category: "hats" },
     { name: "Bags", emoji: "👜", category: "bags" },
     { name: "Pets", emoji: "🐕", category: "pets" },
-    { name: "All Products", emoji: "🛍️", category: "all-products" },
+    { name: "Product Info", emoji: "🛍️", category: "all-products" },
     { name: "Miscellaneous", emoji: "📦", category: "misc" },
     { name: "Thumbnails", emoji: "🖼️", category: "thumbnails" }
   ];

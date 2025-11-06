@@ -51,7 +51,7 @@ const ProductPage = ({ sidebar }) => {
 
   // Categories for selection
   const categories = [
-    { name: "All Products", emoji: "🛍️", category: "all-products" },
+    { name: "Product Info", emoji: "🛍️", category: "all-products" },
     { name: "Women's", emoji: "👩", category: "womens" },
     { name: "Men's", emoji: "👨", category: "mens" },
     { name: "Kids", emoji: "👶", category: "kids" },
@@ -656,6 +656,7 @@ const ProductPage = ({ sidebar }) => {
         }
       })() && (
         <div className="all-products-info-container">
+          <h1 className="product-information-title">Product Information</h1>
           {(() => {
             if (window.__DEBUG__) {
               console.log('✅ Rendering All Products informational layout');
