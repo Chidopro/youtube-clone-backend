@@ -1093,6 +1093,7 @@ PRODUCTS = [
         "filename": "laptopsleeve.png",
         "main_image": "laptopsleeve.png",
         "preview_image": "laptopsleevepreview.png",
+        "description": "This lightweight, form-fitting laptop sleeve is a must-have for any laptop owner on the go. To prevent any scratches, it contains a padded zipper binding and its interior is lined with faux fur. What's more, it's made from a water-resistant and scratch-proof material, making sure that both the laptop and the sleeve design are intact from day to day. 100% neoprene. 13″ sleeve weight: 6.49 oz (220 g). 15″ sleeve weight: 8.8 oz (250 g). Lightweight and resistant to water, oil, and heat. Snug fit. Faux fur interior lining. Top-loading zippered enclosure with two sliders. Padded zipper binding. Customizable front, solid black rear. Blank product sourced from China. The laptop sleeve fits most 13″ and 15″ laptops—see our size guide for precise measurements. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["13.5\"x10.5\"", "14.75\"x11.25\""]},
         "size_pricing": {
             "13.5\"x10.5\"": 0,
@@ -1105,7 +1106,7 @@ PRODUCTS = [
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
         "preview_image": "drawstringbagpreview.png",
-        "description": "",
+        "description": "Gym bag, drawstring bag, or backpack? Call it as you like! It's a must-have gym essential that can be worn as a backpack with drawstring closure at the top, and narrow, contrasting shoulder straps. Combine your love for vibrant prints and a sporty style! 100% polyester. One size: 15″ × 17″ (38.1 cm × 43.2 cm). Fabric weight (may vary by 5%): 6.64 oz./yd.² (225 g/m²). Maximum weight limit: 33 lbs (15 kg). Twin cotton handles. Drawstring closure. Printed, cut, and hand-sewn by our in-house team. Fabric is OEKO-TEX 100 standard certified. Price includes a full print.",
         "options": {"color": ["White", "Black", "Blue"], "size": ["15\"x17\""]},
         "size_pricing": {
             "15\"x17\"": 0
@@ -1117,6 +1118,7 @@ PRODUCTS = [
         "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
         "preview_image": "largecanvasbagpreview.png",
+        "description": "Meet your companion for any occasion—our All-Over Print Large Tote Bag! It's spacious, comfy, and a great choice no matter where you're going. Take it with you on your next beach trip or on a stroll around town. Customize the bag with your fun designs and get it for yourself, or sell it on your online store. 100% polyester. Fabric weight (may vary by 5%): 6.64 oz/yd² (225 g/m²). Maximum weight limit: 44lbs (20kg). Capacity: 4.4 US gal (17.8l). Large inside pocket that can be customized with a logo. Printed, cut, and hand-sewn by our in-house team. Comfortable cotton webbing handles. Vibrant colors that won't fade. Available in one size. Fabric is OEKO-TEX 100 standard certified. Product code: #602. This product is made on demand. No minimums.",
         "options": {"handle_color": ["Black", "Red", "Yellow"], "size": ["16\"x20\""]},
         "size_pricing": {
             "16\"x20\"": 0
@@ -1469,7 +1471,7 @@ PRODUCTS = [
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
         "preview_image": "crossbodybagpreview.png",
-        "description": "",
+        "description": "Designed for those who love to explore the great outdoors or dance the night away at festivals, this versatile bag will become the ideal companion for all your and your customers' daily adventures. 100% polyester. Fabric weight: 9 oz./yd.² (305 g/m²). Bag size: 5.7″ × 7.7″ × 2″ (14.5 cm × 19.5 cm × 5 cm). Capacity: 0.37 gallons (1.4 l). Water-resistant and durable. Sturdy fabric with fusible backing to add firmness. Inside and outside pockets. Adjustable strap. Two-way zipper. Product code: #609. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["5.7\"x7.7\"x2\""]},
         "size_pricing": {
             "5.7\"x7.7\"x2\"": 0
