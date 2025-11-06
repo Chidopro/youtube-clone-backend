@@ -870,9 +870,6 @@ const ProductPage = ({ sidebar }) => {
                   })()}
                   
                   <h3>{product.name}</h3>
-                  {product.description && (
-                    <p className="product-description">{product.description}</p>
-                  )}
                   <p className="product-price">${calculatePrice(product, index).toFixed(2)}</p>
                   
                   <div className="product-options">
