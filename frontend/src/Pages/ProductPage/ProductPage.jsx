@@ -61,7 +61,7 @@ const ProductPage = ({ sidebar }) => {
     { name: "Bags", emoji: "👜", category: "bags" },
     { name: "Pets", emoji: "🐕", category: "pets" },
     { name: "Misc", emoji: "📦", category: "misc" },
-    { name: "Thumbnails", emoji: "🖼️", category: "thumbnails" }
+    { name: "Tools", emoji: "🛠️", category: "thumbnails" }
   ];
 
   const handleCategoryClick = (newCategory) => {

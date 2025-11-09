@@ -108,47 +108,50 @@ const ToolsPage = () => {
 
       // Apply feather edge (soft edge effect) - only softens edges, doesn't create circle
       if (featherEdge > 0 && !isCircle) {
+        // Calculate feather size
+        const featherSize = Math.min(featherEdge, Math.min(canvas.width, canvas.height) / 4);
+        
         // Create a mask canvas for feather effect
         const maskCanvas = document.createElement('canvas');
         const maskCtx = maskCanvas.getContext('2d');
         maskCanvas.width = canvas.width;
         maskCanvas.height = canvas.height;
         
-        // Calculate feather size
-        const featherSize = Math.min(featherEdge, Math.min(canvas.width, canvas.height) / 4);
-        
-        // Create a white rectangle (full opacity in center)
+        // Start with a fully opaque white rectangle
         maskCtx.fillStyle = 'white';
         maskCtx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Create soft edges by drawing gradients on each edge
-        // Top edge
+        // Create soft edges by erasing with gradients on each edge
+        // Top edge - fade from transparent to opaque
         const topGradient = maskCtx.createLinearGradient(0, 0, 0, featherSize);
-        topGradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        topGradient.addColorStop(1, 'rgba(255, 255, 255, 1)');
+        topGradient.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Fully erase at edge
+        topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // No erase in center
+        maskCtx.globalCompositeOperation = 'destination-out';
         maskCtx.fillStyle = topGradient;
         maskCtx.fillRect(0, 0, canvas.width, featherSize);
         
         // Bottom edge
         const bottomGradient = maskCtx.createLinearGradient(0, canvas.height - featherSize, 0, canvas.height);
-        bottomGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        bottomGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
         maskCtx.fillStyle = bottomGradient;
         maskCtx.fillRect(0, canvas.height - featherSize, canvas.width, featherSize);
         
         // Left edge
         const leftGradient = maskCtx.createLinearGradient(0, 0, featherSize, 0);
-        leftGradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        leftGradient.addColorStop(1, 'rgba(255, 255, 255, 1)');
+        leftGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+        leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
         maskCtx.fillStyle = leftGradient;
         maskCtx.fillRect(0, featherSize, featherSize, canvas.height - (featherSize * 2));
         
         // Right edge
         const rightGradient = maskCtx.createLinearGradient(canvas.width - featherSize, 0, canvas.width, 0);
-        rightGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        rightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        rightGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        rightGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
         maskCtx.fillStyle = rightGradient;
         maskCtx.fillRect(canvas.width - featherSize, featherSize, featherSize, canvas.height - (featherSize * 2));
+        
+        maskCtx.globalCompositeOperation = 'source-over';
         
         // Draw image first
         ctx.drawImage(tempCanvas, 0, 0);
