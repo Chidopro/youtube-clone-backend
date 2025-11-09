@@ -327,6 +327,80 @@ export class AdminService {
   }
 
   /**
+   * Update video details
+   * @param {string} videoId - Video ID
+   * @param {Object} updates - Object with title, thumbnail, video_url to update
+   * @returns {Promise<Object>} Result object
+   */
+  static async updateVideo(videoId, updates) {
+    try {
+      // Get current user to verify ownership
+      const isAuthenticated = localStorage.getItem('isAuthenticated');
+      const userData = localStorage.getItem('user');
+      
+      let user = null;
+      if (isAuthenticated === 'true' && userData) {
+        user = JSON.parse(userData);
+      } else {
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+        user = supabaseUser;
+      }
+
+      if (!user) {
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      // Verify the video belongs to the user
+      const { data: video, error: fetchError } = await supabase
+        .from('videos2')
+        .select('user_id')
+        .eq('id', videoId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (video.user_id !== user.id) {
+        return { success: false, error: 'You can only edit your own videos' };
+      }
+
+      // Build update object with only provided fields
+      const updateData = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (updates.title !== undefined) {
+        updateData.title = updates.title;
+      }
+      if (updates.thumbnail !== undefined) {
+        updateData.thumbnail = updates.thumbnail;
+      }
+      if (updates.video_url !== undefined) {
+        updateData.video_url = updates.video_url;
+      }
+
+      const { data, error } = await supabase
+        .from('videos2')
+        .update(updateData)
+        .eq('id', videoId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Log admin action (if user is admin) or creator action
+      await this.logAdminAction('update_video', 'video', videoId, {
+        updates: updateData,
+        target_video_id: videoId
+      });
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error updating video:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Delete video
    * @param {string} videoId - Video ID
    * @returns {Promise<Object>} Result object
@@ -532,6 +606,7 @@ export const {
   updateUserStatus,
   deleteUser,
   updateVideoStatus,
+  updateVideo,
   deleteVideo,
   getAdminSettings,
   updateAdminSetting,

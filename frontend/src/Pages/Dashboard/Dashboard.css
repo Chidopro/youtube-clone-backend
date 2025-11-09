@@ -424,6 +424,37 @@
     font-size: 0.85rem;
 }
 
+.edit-video-btn {
+    position: absolute;
+    top: 8px;
+    right: 48px;
+    background: rgba(0, 123, 255, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    opacity: 0;
+    transform: scale(0.8);
+    z-index: 10;
+}
+
+.dashboard-video-card:hover .edit-video-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.edit-video-btn:hover {
+    background: rgba(0, 123, 255, 1);
+    transform: scale(1.1);
+}
+
 .delete-video-btn {
     position: absolute;
     top: 8px;
@@ -607,6 +638,34 @@
     .quick-upload-section {
         margin: 10px;
         padding: 20px;
+    }
+
+    /* Mobile: Always show edit and delete buttons */
+    .dashboard-video-card {
+        position: relative;
+    }
+
+    .edit-video-btn,
+    .delete-video-btn {
+        opacity: 1;
+        transform: scale(1);
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    .edit-video-btn {
+        right: 44px;
+    }
+
+    .delete-video-btn {
+        right: 8px;
+    }
+
+    .dashboard-video-card:hover .edit-video-btn,
+    .dashboard-video-card:hover .delete-video-btn {
+        opacity: 1;
+        transform: scale(1);
     }
 
 
@@ -2189,5 +2248,318 @@
     
     .modal-content {
         max-height: 98vh;
+    }
+}
+
+/* Edit Video Modal */
+.edit-video-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.edit-video-modal {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+.edit-video-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.edit-video-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.edit-video-modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.edit-video-modal-close:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.edit-video-modal-content {
+    padding: 24px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.edit-video-form-group {
+    margin-bottom: 24px;
+}
+
+.edit-video-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+.edit-video-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.edit-video-input:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.edit-video-thumbnail-preview {
+    margin-bottom: 12px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8f9fa;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.thumbnail-preview-img {
+    max-width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.edit-video-file-input {
+    display: none;
+}
+
+.edit-video-file-label {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #007bff;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.edit-video-file-label:hover {
+    background: #0056b3;
+}
+
+.edit-video-file-label:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.edit-video-tip {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
+}
+
+.edit-video-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.edit-video-cancel-btn {
+    padding: 10px 20px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.edit-video-cancel-btn:hover {
+    background: #5a6268;
+}
+
+.edit-video-save-btn {
+    padding: 10px 20px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.edit-video-save-btn:hover:not(:disabled) {
+    background: #218838;
+}
+
+.edit-video-save-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .edit-video-modal-overlay {
+        padding: 10px;
+        align-items: flex-start;
+        padding-top: 20px;
+    }
+
+    .edit-video-modal {
+        max-width: 100%;
+        max-height: calc(100vh - 40px);
+        border-radius: 12px 12px 0 0;
+        margin-top: auto;
+    }
+
+    .edit-video-modal-header {
+        padding: 16px 20px;
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 10;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .edit-video-modal-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .edit-video-modal-close {
+        width: 36px;
+        height: 36px;
+        font-size: 24px;
+    }
+
+    .edit-video-modal-content {
+        padding: 16px 20px;
+        overflow-y: auto;
+    }
+
+    .edit-video-form-group {
+        margin-bottom: 20px;
+    }
+
+    .edit-video-input {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 14px;
+    }
+
+    .edit-video-file-label {
+        padding: 14px 24px;
+        font-size: 1rem;
+        min-height: 48px; /* Better touch target */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .edit-video-thumbnail-preview {
+        min-height: 150px;
+    }
+
+    .thumbnail-preview-img {
+        max-height: 200px;
+    }
+
+    .edit-video-modal-footer {
+        padding: 16px 20px;
+        flex-direction: column;
+        gap: 12px;
+        position: sticky;
+        bottom: 0;
+        background: white;
+        border-top: 1px solid #e0e0e0;
+        z-index: 10;
+    }
+
+    .edit-video-cancel-btn,
+    .edit-video-save-btn {
+        width: 100%;
+        padding: 14px 20px;
+        font-size: 1rem;
+        min-height: 48px; /* Better touch target */
+    }
+
+    .edit-video-tip {
+        font-size: 0.8rem;
+        margin-top: 6px;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    .edit-video-modal-overlay {
+        padding: 0;
+        padding-top: 0;
+    }
+
+    .edit-video-modal {
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .edit-video-modal-header {
+        padding: 14px 16px;
+    }
+
+    .edit-video-modal-header h2 {
+        font-size: 1.2rem;
+    }
+
+    .edit-video-modal-content {
+        padding: 14px 16px;
+    }
+
+    .edit-video-form-group {
+        margin-bottom: 18px;
+    }
+
+    .edit-video-modal-footer {
+        padding: 14px 16px;
     }
 } 

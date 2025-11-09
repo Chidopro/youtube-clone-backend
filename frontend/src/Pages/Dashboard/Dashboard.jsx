@@ -38,6 +38,15 @@ const Dashboard = ({ sidebar }) => {
         products_sold: []
     });
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
+    const [editingVideo, setEditingVideo] = useState(null);
+    const [editVideoForm, setEditVideoForm] = useState({
+        title: '',
+        thumbnail: '',
+        video_url: ''
+    });
+    const [uploadingVideoFile, setUploadingVideoFile] = useState(false);
+    const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+    const [thumbnailPreview, setThumbnailPreview] = useState(null);
     
 
     const navigate = useNavigate();
@@ -286,6 +295,177 @@ const Dashboard = ({ sidebar }) => {
         } catch (error) {
             console.error('Error deleting video:', error);
             alert('Failed to delete video. Please try again.');
+        }
+    };
+
+    const handleEditVideo = (video, event) => {
+        event.stopPropagation();
+        setEditingVideo(video);
+        setEditVideoForm({
+            title: video.title || '',
+            thumbnail: video.thumbnail || '',
+            video_url: video.video_url || ''
+        });
+        setThumbnailPreview(null);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingVideo(null);
+        setEditVideoForm({ title: '', thumbnail: '', video_url: '' });
+        setThumbnailPreview(null);
+    };
+
+    const uploadThumbnailToSupabase = async (file) => {
+        try {
+            setUploadingThumbnail(true);
+            
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/thumbnails/${Date.now()}.${fileExt}`;
+            
+            const { data, error } = await supabase.storage
+                .from('thumbnails')
+                .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+
+            if (error) {
+                console.error('Error uploading thumbnail:', error);
+                alert('Failed to upload thumbnail. Please try again.');
+                return null;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('thumbnails')
+                .getPublicUrl(fileName);
+
+            return publicUrl;
+        } catch (error) {
+            console.error('Error in uploadThumbnailToSupabase:', error);
+            alert('Failed to upload thumbnail. Please try again.');
+            return null;
+        } finally {
+            setUploadingThumbnail(false);
+        }
+    };
+
+    const uploadVideoToSupabase = async (file) => {
+        try {
+            setUploadingVideoFile(true);
+            
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/videos/${Date.now()}.${fileExt}`;
+            
+            const { data, error } = await supabase.storage
+                .from('videos2')
+                .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+
+            if (error) {
+                console.error('Error uploading video:', error);
+                alert('Failed to upload video. Please try again.');
+                return null;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('videos2')
+                .getPublicUrl(fileName);
+
+            return publicUrl;
+        } catch (error) {
+            console.error('Error in uploadVideoToSupabase:', error);
+            alert('Failed to upload video. Please try again.');
+            return null;
+        } finally {
+            setUploadingVideoFile(false);
+        }
+    };
+
+    const handleThumbnailChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Please select a valid image file.');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert('File size must be less than 5MB.');
+            return;
+        }
+
+        // Create preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            setThumbnailPreview(e.target.result);
+        };
+        reader.readAsDataURL(file);
+
+        // Upload to Supabase
+        const thumbnailUrl = await uploadThumbnailToSupabase(file);
+        if (thumbnailUrl) {
+            setEditVideoForm(prev => ({ ...prev, thumbnail: thumbnailUrl }));
+        }
+    };
+
+    const handleVideoFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('video/')) {
+            alert('Please select a valid video file.');
+            return;
+        }
+
+        // Upload to Supabase
+        const videoUrl = await uploadVideoToSupabase(file);
+        if (videoUrl) {
+            setEditVideoForm(prev => ({ ...prev, video_url: videoUrl }));
+        }
+    };
+
+    const handleSaveVideo = async () => {
+        if (!editingVideo) return;
+
+        try {
+            const updates = {};
+            if (editVideoForm.title.trim()) {
+                updates.title = editVideoForm.title.trim();
+            }
+            if (editVideoForm.thumbnail) {
+                updates.thumbnail = editVideoForm.thumbnail;
+            }
+            if (editVideoForm.video_url) {
+                updates.video_url = editVideoForm.video_url;
+            }
+
+            if (Object.keys(updates).length === 0) {
+                alert('No changes to save.');
+                return;
+            }
+
+            const result = await AdminService.updateVideo(editingVideo.id, updates);
+            
+            if (result.success) {
+                // Update the video in the local state
+                setVideos(prevVideos => 
+                    prevVideos.map(video => 
+                        video.id === editingVideo.id 
+                            ? { ...video, ...updates }
+                            : video
+                    )
+                );
+                alert('Video updated successfully!');
+                handleCancelEdit();
+            } else {
+                alert(`Failed to update video: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Error updating video:', error);
+            alert('Failed to update video. Please try again.');
         }
     };
 
@@ -585,6 +765,9 @@ const Dashboard = ({ sidebar }) => {
                                                 <p>{new Date(video.created_at).toLocaleDateString()}</p>
                                                 <span className="video-views">0 views</span>
                                             </div>
+                                            <button className="edit-video-btn" onClick={(e) => handleEditVideo(video, e)} title="Edit Video">
+                                                ✏️
+                                            </button>
                                             <button className="delete-video-btn" onClick={(e) => handleDeleteVideo(video.id, video.title, e)} title="Delete Video">
                                                 🗑️
                                             </button>
@@ -802,6 +985,91 @@ const Dashboard = ({ sidebar }) => {
 
 
             </div>
+
+            {/* Edit Video Modal */}
+            {editingVideo && (
+                <div className="edit-video-modal-overlay" onClick={handleCancelEdit}>
+                    <div className="edit-video-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="edit-video-modal-header">
+                            <h2>Edit Video</h2>
+                            <button className="edit-video-modal-close" onClick={handleCancelEdit}>×</button>
+                        </div>
+                        <div className="edit-video-modal-content">
+                            <div className="edit-video-form-group">
+                                <label htmlFor="edit-video-title">Video Name</label>
+                                <input
+                                    type="text"
+                                    id="edit-video-title"
+                                    value={editVideoForm.title}
+                                    onChange={(e) => setEditVideoForm({ ...editVideoForm, title: e.target.value })}
+                                    placeholder="Enter video name"
+                                    className="edit-video-input"
+                                />
+                            </div>
+
+                            <div className="edit-video-form-group">
+                                <label htmlFor="edit-video-thumbnail">Thumbnail</label>
+                                <div className="edit-video-thumbnail-preview">
+                                    {(thumbnailPreview || editVideoForm.thumbnail) && (
+                                        <img 
+                                            src={thumbnailPreview || editVideoForm.thumbnail} 
+                                            alt="Thumbnail preview" 
+                                            className="thumbnail-preview-img"
+                                        />
+                                    )}
+                                </div>
+                                <input
+                                    type="file"
+                                    id="edit-video-thumbnail"
+                                    accept="image/*"
+                                    onChange={handleThumbnailChange}
+                                    disabled={uploadingThumbnail}
+                                    className="edit-video-file-input"
+                                />
+                                <label htmlFor="edit-video-thumbnail" className="edit-video-file-label">
+                                    {uploadingThumbnail ? '⏳ Uploading...' : '📷 Choose Thumbnail Image'}
+                                </label>
+                                <p className="edit-video-tip">Max 5MB, recommended: 1280x720</p>
+                            </div>
+
+                            <div className="edit-video-form-group">
+                                <label htmlFor="edit-video-url">Video URL</label>
+                                <input
+                                    type="text"
+                                    id="edit-video-url"
+                                    value={editVideoForm.video_url}
+                                    onChange={(e) => setEditVideoForm({ ...editVideoForm, video_url: e.target.value })}
+                                    placeholder="Enter video URL (YouTube or direct link)"
+                                    className="edit-video-input"
+                                />
+                                <p className="edit-video-tip">Or upload a video file below</p>
+                            </div>
+
+                            <div className="edit-video-form-group">
+                                <label htmlFor="edit-video-file">Upload Video File</label>
+                                <input
+                                    type="file"
+                                    id="edit-video-file"
+                                    accept="video/*"
+                                    onChange={handleVideoFileChange}
+                                    disabled={uploadingVideoFile}
+                                    className="edit-video-file-input"
+                                />
+                                <label htmlFor="edit-video-file" className="edit-video-file-label">
+                                    {uploadingVideoFile ? '⏳ Uploading...' : '🎬 Choose Video File'}
+                                </label>
+                                <p className="edit-video-tip">Max file size depends on your plan</p>
+                            </div>
+                        </div>
+                        <div className="edit-video-modal-footer">
+                            <button className="edit-video-cancel-btn" onClick={handleCancelEdit}>Cancel</button>
+                            <button className="edit-video-save-btn" onClick={handleSaveVideo} disabled={uploadingThumbnail || uploadingVideoFile}>
+                                {uploadingThumbnail || uploadingVideoFile ? 'Saving...' : 'Save Changes'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

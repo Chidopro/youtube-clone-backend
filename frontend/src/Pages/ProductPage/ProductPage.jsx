@@ -973,10 +973,12 @@ const ProductPage = ({ sidebar }) => {
                 <div className="cart-items">
                   {cartItems.map((ci, i) => (
                   <div key={i} className="cart-item">
-                    {ci.image && <img src={ci.image.includes('?') ? `${ci.image}&v=${getCacheBuster()}` : `${ci.image}?v=${getCacheBuster()}`} alt={ci.name} />}
+                    <div className="cart-item-image-wrapper">
+                      {ci.image && <img src={ci.image.includes('?') ? `${ci.image}&v=${getCacheBuster()}` : `${ci.image}?v=${getCacheBuster()}`} alt={ci.name} />}
+                      <div className="cart-item-meta">{ci.color} • {ci.size}</div>
+                    </div>
                     <div className="cart-item-info">
                       <div className="cart-item-name">{ci.name}</div>
-                      <div className="cart-item-meta">{ci.color} • {ci.size}</div>
                       <div className="cart-item-price">${(ci.price || 0).toFixed(2)}</div>
                     </div>
                     {ci.screenshot && <img className="cart-item-shot" src={ci.screenshot} alt="screenshot" />}
