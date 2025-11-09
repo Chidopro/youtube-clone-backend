@@ -2285,6 +2285,9 @@
     padding: 20px 24px;
     border-bottom: 1px solid #e0e0e0;
     flex-shrink: 0; /* Prevent header from shrinking */
+    position: relative; /* Ensure header doesn't overlap content */
+    z-index: 1;
+    background: white; /* Ensure header has background */
 }
 
 .edit-video-modal-header h2 {
@@ -2316,11 +2319,19 @@
 
 .edit-video-modal-content {
     padding: 24px;
+    padding-top: 24px; /* Ensure top padding is explicit */
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
     min-height: 0; /* Allows flex child to shrink and enable scrolling */
     scroll-behavior: smooth;
+    position: relative; /* Ensure proper positioning */
+}
+
+/* Ensure first form group is visible */
+.edit-video-modal-content > .edit-video-form-group:first-child {
+    margin-top: 0;
+    padding-top: 0;
 }
 
 /* Ensure content starts at the top */
@@ -2501,6 +2512,7 @@
 
     .edit-video-modal-content {
         padding: 16px 20px;
+        padding-top: 16px; /* Ensure top padding on mobile */
         overflow-y: auto;
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */

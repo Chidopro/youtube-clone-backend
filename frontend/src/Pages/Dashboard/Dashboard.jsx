@@ -310,10 +310,13 @@ const Dashboard = ({ sidebar }) => {
         setThumbnailPreview(null);
     };
 
-    // Reset scroll position when modal opens
+    // Reset scroll position when modal opens and ensure content is visible
     useEffect(() => {
         if (editingVideo && modalContentRef.current) {
+            // Reset scroll to top
             modalContentRef.current.scrollTop = 0;
+            // Force a reflow to ensure content is properly positioned
+            modalContentRef.current.offsetHeight;
         }
     }, [editingVideo]);
 
