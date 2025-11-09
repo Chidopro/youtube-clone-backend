@@ -2285,9 +2285,10 @@
     padding: 20px 24px;
     border-bottom: 1px solid #e0e0e0;
     flex-shrink: 0; /* Prevent header from shrinking */
-    position: relative; /* Ensure header doesn't overlap content */
+    position: relative; /* Ensure header doesn't overlap content - NOT sticky */
     z-index: 1;
     background: white; /* Ensure header has background */
+    margin: 0; /* Remove any margin */
 }
 
 .edit-video-modal-header h2 {
@@ -2326,6 +2327,24 @@
     min-height: 0; /* Allows flex child to shrink and enable scrolling */
     scroll-behavior: smooth;
     position: relative; /* Ensure proper positioning */
+    margin: 0; /* Remove any margin */
+    margin-top: 0; /* Explicitly set top margin to 0 */
+}
+
+/* Ensure the label is visible */
+.edit-video-form-group:first-child {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+.edit-video-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+    font-size: 0.95rem;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 /* Ensure first form group is visible */
@@ -2493,10 +2512,10 @@
 
     .edit-video-modal-header {
         padding: 16px 20px;
-        position: sticky;
-        top: 0;
+        position: relative; /* Changed from sticky - prevents covering content */
+        top: auto;
         background: white;
-        z-index: 10;
+        z-index: 1;
         border-bottom: 1px solid #e0e0e0;
     }
 
