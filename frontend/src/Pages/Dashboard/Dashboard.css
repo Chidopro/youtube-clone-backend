@@ -2331,26 +2331,22 @@
     margin-top: 0; /* Explicitly set top margin to 0 */
 }
 
-/* Ensure the label is visible */
+/* Ensure the label is visible - remove conflicting rules */
 .edit-video-form-group:first-child {
-    margin-top: 0 !important;
-    padding-top: 0 !important;
+    margin-top: 0;
+    padding-top: 0;
 }
 
 .edit-video-form-group label {
-    display: block;
-    margin-bottom: 8px;
+    display: block !important;
+    margin-bottom: 8px !important;
     font-weight: 600;
     color: #333;
     font-size: 0.95rem;
     visibility: visible !important;
     opacity: 1 !important;
-}
-
-/* Ensure first form group is visible */
-.edit-video-modal-content > .edit-video-form-group:first-child {
-    margin-top: 0;
-    padding-top: 0;
+    height: auto !important;
+    overflow: visible !important;
 }
 
 /* Ensure content starts at the top */

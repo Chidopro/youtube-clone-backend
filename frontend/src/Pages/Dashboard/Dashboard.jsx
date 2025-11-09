@@ -364,6 +364,15 @@ const Dashboard = ({ sidebar }) => {
         try {
             setUploadingVideoFile(true);
             
+            // Check if user is authenticated with Supabase (not just Google OAuth)
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                // For Google OAuth users, we can't upload directly to Supabase storage
+                // Instead, suggest using video URL input
+                alert('Video file upload requires Supabase authentication. Please use the Video URL field instead, or sign in with email/password.');
+                return null;
+            }
+            
             const fileExt = file.name.split('.').pop();
             const fileName = `${user.id}/videos/${Date.now()}.${fileExt}`;
             
@@ -376,7 +385,11 @@ const Dashboard = ({ sidebar }) => {
 
             if (error) {
                 console.error('Error uploading video:', error);
-                alert('Failed to upload video. Please try again.');
+                if (error.message.includes('row-level security')) {
+                    alert('Upload failed: Permission denied. Please check your Supabase storage policies or use the Video URL field instead.');
+                } else {
+                    alert(`Failed to upload video: ${error.message}`);
+                }
                 return null;
             }
 
@@ -387,7 +400,7 @@ const Dashboard = ({ sidebar }) => {
             return publicUrl;
         } catch (error) {
             console.error('Error in uploadVideoToSupabase:', error);
-            alert('Failed to upload video. Please try again.');
+            alert(`Failed to upload video: ${error.message || 'Please try again or use the Video URL field instead.'}`);
             return null;
         } finally {
             setUploadingVideoFile(false);
