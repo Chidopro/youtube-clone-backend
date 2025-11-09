@@ -364,9 +364,8 @@ export class AdminService {
       }
 
       // Build update object with only provided fields
-      const updateData = {
-        updated_at: new Date().toISOString()
-      };
+      // Note: updated_at is handled by database trigger, don't set it manually
+      const updateData = {};
 
       if (updates.title !== undefined) {
         updateData.title = updates.title;
