@@ -2271,11 +2271,11 @@
     border-radius: 12px;
     width: 100%;
     max-width: 600px;
-    max-height: 90vh;
-    overflow-y: auto;
+    max-height: 95vh;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .edit-video-modal-header {
@@ -2317,6 +2317,8 @@
     padding: 24px;
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0; /* Allows flex child to shrink and enable scrolling */
 }
 
 .edit-video-form-group {
@@ -2451,7 +2453,7 @@
 
     .edit-video-modal {
         max-width: 100%;
-        max-height: calc(100vh - 40px);
+        max-height: calc(100vh - 20px);
         border-radius: 12px 12px 0 0;
         margin-top: auto;
     }
@@ -2478,6 +2480,8 @@
     .edit-video-modal-content {
         padding: 16px 20px;
         overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     }
 
     .edit-video-form-group {
