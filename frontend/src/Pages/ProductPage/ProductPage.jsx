@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import ToolsPage from '../ToolsPage/ToolsPage';
 import './ProductPage.css';
 
 const IMG_BASE = 'https://screenmerch.fly.dev/static/images';
@@ -609,6 +610,11 @@ const ProductPage = ({ sidebar }) => {
     );
   }
 
+  // Show ToolsPage when category is thumbnails
+  if (category === 'thumbnails') {
+    return <ToolsPage />;
+  }
+
   return (
     <div className={`container ${sidebar ? "" : " large-container"}`}>
       {/* User Flow Section - Step 3 Only - Hide for All Products */}
@@ -759,6 +765,15 @@ const ProductPage = ({ sidebar }) => {
           <div className="screenshots-section">
             <h2 className="screenshots-title">Select Your Screenshot</h2>
             <p className="screenshots-subtitle">Choose which screenshot to use for your custom merchandise</p>
+            {/* Tools Page Button */}
+            <div className="tools-button-container">
+              <button 
+                className="tools-page-btn"
+                onClick={() => navigate('/tools')}
+              >
+                🛠️ Tools Page
+              </button>
+            </div>
             <div className="screenshots-preview">
               <div className="screenshot-grid">
                 {/* Thumbnail */}

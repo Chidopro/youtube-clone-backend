@@ -208,6 +208,16 @@ const Checkout = () => {
             {/* Order Items */}
             <div className="order-section">
               <h2>Order Items</h2>
+              {/* Tool Usage Acknowledgment Notice */}
+              {items.some(item => item.edited || item.tools_acknowledged) && (
+                <div className="tool-acknowledgment-notice">
+                  <div className="notice-icon">⚠️</div>
+                  <div className="notice-content">
+                    <strong>Customized Items Notice</strong>
+                    <p>Some items in your cart have been edited with our tools. Customized merchandise is <strong>non-refundable</strong>. By proceeding with checkout, you acknowledge that you have reviewed and approved all edits applied to your screenshots.</p>
+                  </div>
+                </div>
+              )}
               <div className="items-list">
                 {items.map((ci, i) => {
                   // Get the screenshot/image - check multiple fields
@@ -222,7 +232,10 @@ const Checkout = () => {
                       )}
                       <div className="item-details">
                         <h3 className="item-name">{ci.name || ci.product}</h3>
-                        <div className="item-variants">{ci.color} • {ci.size}</div>
+                        <div className="item-variants">
+                          {ci.color} • {ci.size}
+                          {ci.edited && <span className="edited-badge">✏️ Edited</span>}
+                        </div>
                       </div>
                       <div className="item-price">${(ci.price || 0).toFixed(2)}</div>
                     </div>

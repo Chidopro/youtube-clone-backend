@@ -238,6 +238,56 @@
   display: inline-block;
 }
 
+.edited-badge {
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: rgba(255, 193, 7, 0.2);
+  color: #856404;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.tool-acknowledgment-notice {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border: 2px solid #ffc107;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+}
+
+.notice-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.notice-content {
+  flex: 1;
+}
+
+.notice-content strong {
+  display: block;
+  font-size: 1.1rem;
+  color: #856404;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.notice-content p {
+  margin: 0;
+  color: #856404;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.notice-content p strong {
+  display: inline;
+  font-weight: 700;
+}
+
 .item-price {
   font-size: 1.5rem;
   font-weight: 800;
