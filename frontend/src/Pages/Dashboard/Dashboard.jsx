@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
 import { supabase } from '../../supabaseClient';
@@ -47,6 +47,7 @@ const Dashboard = ({ sidebar }) => {
     const [uploadingVideoFile, setUploadingVideoFile] = useState(false);
     const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
     const [thumbnailPreview, setThumbnailPreview] = useState(null);
+    const modalContentRef = useRef(null);
     
 
     const navigate = useNavigate();
@@ -308,6 +309,13 @@ const Dashboard = ({ sidebar }) => {
         });
         setThumbnailPreview(null);
     };
+
+    // Reset scroll position when modal opens
+    useEffect(() => {
+        if (editingVideo && modalContentRef.current) {
+            modalContentRef.current.scrollTop = 0;
+        }
+    }, [editingVideo]);
 
     const handleCancelEdit = () => {
         setEditingVideo(null);
@@ -994,7 +1002,7 @@ const Dashboard = ({ sidebar }) => {
                             <h2>Edit Video</h2>
                             <button className="edit-video-modal-close" onClick={handleCancelEdit}>×</button>
                         </div>
-                        <div className="edit-video-modal-content">
+                        <div className="edit-video-modal-content" ref={modalContentRef}>
                             <div className="edit-video-form-group">
                                 <label htmlFor="edit-video-title">Video Name</label>
                                 <input

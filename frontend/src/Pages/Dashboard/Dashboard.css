@@ -2284,6 +2284,7 @@
     align-items: center;
     padding: 20px 24px;
     border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .edit-video-modal-header h2 {
@@ -2319,6 +2320,26 @@
     overflow-y: auto;
     overflow-x: hidden;
     min-height: 0; /* Allows flex child to shrink and enable scrolling */
+    scroll-behavior: smooth;
+}
+
+/* Ensure content starts at the top */
+.edit-video-modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.edit-video-modal-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.edit-video-modal-content::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.edit-video-modal-content::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
 
 .edit-video-form-group {
@@ -2406,6 +2427,7 @@
     gap: 12px;
     padding: 20px 24px;
     border-top: 1px solid #e0e0e0;
+    flex-shrink: 0; /* Prevent footer from shrinking */
 }
 
 .edit-video-cancel-btn {
