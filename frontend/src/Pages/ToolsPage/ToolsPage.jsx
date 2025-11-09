@@ -15,6 +15,7 @@ const ToolsPage = () => {
   const [frameEnabled, setFrameEnabled] = useState(false);
   const [frameColor, setFrameColor] = useState('#FF0000');
   const [frameWidth, setFrameWidth] = useState(10);
+  const [doubleFrame, setDoubleFrame] = useState(false);
   const [editedImageUrl, setEditedImageUrl] = useState('');
   const [showAcknowledgment, setShowAcknowledgment] = useState(false);
 
@@ -79,41 +80,80 @@ const ToolsPage = () => {
       // Draw original image to temp canvas
       tempCtx.drawImage(img, 0, 0);
 
-      // Apply corner radius clipping
-      if (cornerRadius > 0) {
+      // Calculate max corner radius for circle (half of smallest dimension)
+      const maxCornerRadius = Math.min(canvas.width, canvas.height) / 2;
+      const isCircle = cornerRadius >= 100; // When maxed out, create perfect circle
+      const effectiveCornerRadius = isCircle ? maxCornerRadius : cornerRadius;
+
+      // Apply corner radius clipping (or circle if maxed out)
+      if (effectiveCornerRadius > 0) {
         ctx.save();
-        drawRoundedRect(ctx, 0, 0, canvas.width, canvas.height, cornerRadius);
-        ctx.clip();
+        if (isCircle) {
+          // Create perfect circle
+          ctx.beginPath();
+          ctx.arc(
+            canvas.width / 2,
+            canvas.height / 2,
+            maxCornerRadius,
+            0,
+            Math.PI * 2
+          );
+          ctx.clip();
+        } else {
+          // Use rounded rectangle
+          drawRoundedRect(ctx, 0, 0, canvas.width, canvas.height, effectiveCornerRadius);
+          ctx.clip();
+        }
       }
 
-      // Apply feather edge (soft edge effect) using alpha mask
-      if (featherEdge > 0) {
+      // Apply feather edge (soft edge effect) - only softens edges, doesn't create circle
+      if (featherEdge > 0 && !isCircle) {
         // Create a mask canvas for feather effect
         const maskCanvas = document.createElement('canvas');
         const maskCtx = maskCanvas.getContext('2d');
         maskCanvas.width = canvas.width;
         maskCanvas.height = canvas.height;
         
-        // Create radial gradient for feather effect
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const maxRadius = Math.min(canvas.width, canvas.height) / 2;
-        const innerRadius = Math.max(0, maxRadius - featherEdge);
+        // Calculate feather size
+        const featherSize = Math.min(featherEdge, Math.min(canvas.width, canvas.height) / 4);
         
-        const gradient = maskCtx.createRadialGradient(
-          centerX, centerY, innerRadius,
-          centerX, centerY, maxRadius
-        );
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        // Create a white rectangle (full opacity in center)
+        maskCtx.fillStyle = 'white';
+        maskCtx.fillRect(0, 0, canvas.width, canvas.height);
         
-        maskCtx.fillStyle = gradient;
-        maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+        // Create soft edges by drawing gradients on each edge
+        // Top edge
+        const topGradient = maskCtx.createLinearGradient(0, 0, 0, featherSize);
+        topGradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        topGradient.addColorStop(1, 'rgba(255, 255, 255, 1)');
+        maskCtx.fillStyle = topGradient;
+        maskCtx.fillRect(0, 0, canvas.width, featherSize);
+        
+        // Bottom edge
+        const bottomGradient = maskCtx.createLinearGradient(0, canvas.height - featherSize, 0, canvas.height);
+        bottomGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        bottomGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        maskCtx.fillStyle = bottomGradient;
+        maskCtx.fillRect(0, canvas.height - featherSize, canvas.width, featherSize);
+        
+        // Left edge
+        const leftGradient = maskCtx.createLinearGradient(0, 0, featherSize, 0);
+        leftGradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        leftGradient.addColorStop(1, 'rgba(255, 255, 255, 1)');
+        maskCtx.fillStyle = leftGradient;
+        maskCtx.fillRect(0, featherSize, featherSize, canvas.height - (featherSize * 2));
+        
+        // Right edge
+        const rightGradient = maskCtx.createLinearGradient(canvas.width - featherSize, 0, canvas.width, 0);
+        rightGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        rightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        maskCtx.fillStyle = rightGradient;
+        maskCtx.fillRect(canvas.width - featherSize, featherSize, featherSize, canvas.height - (featherSize * 2));
         
         // Draw image first
         ctx.drawImage(tempCanvas, 0, 0);
         
-        // Apply mask
+        // Apply mask to soften edges
         ctx.globalCompositeOperation = 'destination-in';
         ctx.drawImage(maskCanvas, 0, 0);
         ctx.globalCompositeOperation = 'source-over';
@@ -123,7 +163,7 @@ const ToolsPage = () => {
       }
 
       // Restore clipping if corner radius was applied
-      if (cornerRadius > 0) {
+      if (effectiveCornerRadius > 0) {
         ctx.restore();
       }
 
@@ -134,14 +174,28 @@ const ToolsPage = () => {
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
         
-        if (cornerRadius > 0) {
+        const maxCornerRadius = Math.min(canvas.width, canvas.height) / 2;
+        const isCircle = cornerRadius >= 100;
+        const effectiveCornerRadius = isCircle ? maxCornerRadius : cornerRadius;
+        
+        // Draw outer frame
+        if (isCircle) {
+          ctx.beginPath();
+          ctx.arc(
+            canvas.width / 2,
+            canvas.height / 2,
+            maxCornerRadius - frameWidth / 2,
+            0,
+            Math.PI * 2
+          );
+        } else if (effectiveCornerRadius > 0) {
           drawRoundedRect(
             ctx, 
             frameWidth / 2, 
             frameWidth / 2, 
             canvas.width - frameWidth, 
             canvas.height - frameWidth, 
-            Math.max(0, cornerRadius - frameWidth / 2)
+            Math.max(0, effectiveCornerRadius - frameWidth / 2)
           );
         } else {
           ctx.beginPath();
@@ -153,6 +207,43 @@ const ToolsPage = () => {
           );
         }
         ctx.stroke();
+        
+        // Draw inner frame for double frame effect
+        if (doubleFrame) {
+          const innerFrameOffset = frameWidth * 1.5; // Space between frames
+          const innerFrameWidth = frameWidth * 0.7; // Slightly thinner inner frame
+          
+          ctx.lineWidth = innerFrameWidth;
+          
+          if (isCircle) {
+            ctx.beginPath();
+            ctx.arc(
+              canvas.width / 2,
+              canvas.height / 2,
+              maxCornerRadius - frameWidth - innerFrameOffset,
+              0,
+              Math.PI * 2
+            );
+          } else if (effectiveCornerRadius > 0) {
+            drawRoundedRect(
+              ctx, 
+              frameWidth + innerFrameOffset, 
+              frameWidth + innerFrameOffset, 
+              canvas.width - (frameWidth + innerFrameOffset) * 2, 
+              canvas.height - (frameWidth + innerFrameOffset) * 2, 
+              Math.max(0, effectiveCornerRadius - frameWidth - innerFrameOffset)
+            );
+          } else {
+            ctx.beginPath();
+            ctx.rect(
+              frameWidth + innerFrameOffset, 
+              frameWidth + innerFrameOffset, 
+              canvas.width - (frameWidth + innerFrameOffset) * 2, 
+              canvas.height - (frameWidth + innerFrameOffset) * 2
+            );
+          }
+          ctx.stroke();
+        }
       }
 
       // Convert to data URL
@@ -163,7 +254,7 @@ const ToolsPage = () => {
       console.error('Failed to load image');
     };
     img.src = imageUrl;
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame]);
 
   const handleApplyEdits = () => {
     if (!editedImageUrl) {
@@ -184,7 +275,8 @@ const ToolsPage = () => {
         cornerRadius,
         frameEnabled,
         frameColor,
-        frameWidth
+        frameWidth,
+        doubleFrame
       };
       localStorage.setItem('pending_merch_data', JSON.stringify(data));
       
@@ -283,7 +375,7 @@ const ToolsPage = () => {
 
           <div className="tool-control-group">
             <h3>Corner Radius</h3>
-            <p className="tool-description">Round the corners of your screenshot</p>
+            <p className="tool-description">Round the corners of your screenshot (max = perfect circle)</p>
             <div className="slider-control">
               <input
                 type="range"
@@ -293,7 +385,7 @@ const ToolsPage = () => {
                 onChange={(e) => setCornerRadius(parseInt(e.target.value))}
                 className="slider"
               />
-              <span className="slider-value">{cornerRadius}px</span>
+              <span className="slider-value">{cornerRadius === 100 ? 'Circle' : `${cornerRadius}px`}</span>
             </div>
           </div>
 
@@ -312,6 +404,16 @@ const ToolsPage = () => {
             </div>
             {frameEnabled && (
               <>
+                <div className="checkbox-control" style={{ marginTop: '0.5rem' }}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={doubleFrame}
+                      onChange={(e) => setDoubleFrame(e.target.checked)}
+                    />
+                    Double Frame (3D Look)
+                  </label>
+                </div>
                 <div className="color-control">
                   <label>Frame Color:</label>
                   <input
@@ -354,6 +456,7 @@ const ToolsPage = () => {
                 setFrameEnabled(false);
                 setFrameWidth(10);
                 setFrameColor('#FF0000');
+                setDoubleFrame(false);
               }}
             >
               Reset
