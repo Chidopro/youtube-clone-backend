@@ -364,17 +364,16 @@ const Dashboard = ({ sidebar }) => {
         try {
             setUploadingVideoFile(true);
             
-            // Check if user is authenticated with Supabase (not just Google OAuth)
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                // For Google OAuth users, we can't upload directly to Supabase storage
-                // Instead, suggest using video URL input
-                alert('Video file upload requires Supabase authentication. Please use the Video URL field instead, or sign in with email/password.');
+            if (!user || !user.id) {
+                alert('User not found. Please sign in again.');
                 return null;
             }
             
             const fileExt = file.name.split('.').pop();
             const fileName = `${user.id}/videos/${Date.now()}.${fileExt}`;
+            
+            console.log('Attempting to upload video:', fileName);
+            console.log('User ID:', user.id);
             
             const { data, error } = await supabase.storage
                 .from('videos2')
@@ -385,10 +384,14 @@ const Dashboard = ({ sidebar }) => {
 
             if (error) {
                 console.error('Error uploading video:', error);
-                if (error.message.includes('row-level security')) {
-                    alert('Upload failed: Permission denied. Please check your Supabase storage policies or use the Video URL field instead.');
+                console.error('Error details:', JSON.stringify(error, null, 2));
+                
+                if (error.message && error.message.includes('row-level security')) {
+                    alert('Upload failed: Permission denied. The storage policies may not allow uploads for your account. Please use the Video URL field instead, or ensure you are authenticated through Supabase Auth.');
+                } else if (error.message && error.message.includes('new row violates')) {
+                    alert('Upload failed: Storage policy error. Please check your Supabase storage policies or use the Video URL field instead.');
                 } else {
-                    alert(`Failed to upload video: ${error.message}`);
+                    alert(`Failed to upload video: ${error.message || 'Unknown error. Please try using the Video URL field instead.'}`);
                 }
                 return null;
             }
@@ -397,9 +400,11 @@ const Dashboard = ({ sidebar }) => {
                 .from('videos2')
                 .getPublicUrl(fileName);
 
+            console.log('Video uploaded successfully:', publicUrl);
             return publicUrl;
         } catch (error) {
             console.error('Error in uploadVideoToSupabase:', error);
+            console.error('Error stack:', error.stack);
             alert(`Failed to upload video: ${error.message || 'Please try again or use the Video URL field instead.'}`);
             return null;
         } finally {
