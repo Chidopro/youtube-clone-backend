@@ -21,7 +21,6 @@ const ToolsPage = () => {
   const [imageOffsetX, setImageOffsetX] = useState(0); // -100 to 100 (percentage)
   const [imageOffsetY, setImageOffsetY] = useState(0); // -100 to 100 (percentage)
   const [editedImageUrl, setEditedImageUrl] = useState('');
-  const [showAcknowledgment, setShowAcknowledgment] = useState(false);
   const [selectedProductName, setSelectedProductName] = useState('');
   const [currentImageDimensions, setCurrentImageDimensions] = useState({ width: 0, height: 0 });
   const [isUpgrading, setIsUpgrading] = useState(false);
@@ -445,10 +444,7 @@ const ToolsPage = () => {
       alert('Please wait for the image to process, or select a screenshot first.');
       return;
     }
-    setShowAcknowledgment(true);
-  };
-
-  const handleAcknowledgmentConfirm = () => {
+    
     // Save edited image to localStorage
     try {
       const raw = localStorage.getItem('pending_merch_data');
@@ -480,8 +476,7 @@ const ToolsPage = () => {
       console.error('Failed to save edited image:', e);
     }
     
-    setShowAcknowledgment(false);
-    // Navigate to cart
+    // Navigate directly to cart
     navigate('/checkout');
   };
 
@@ -803,37 +798,6 @@ const ToolsPage = () => {
         </div>
       </div>
 
-      {/* Acknowledgment Modal */}
-      {showAcknowledgment && (
-        <div className="acknowledgment-modal" onClick={() => setShowAcknowledgment(false)}>
-          <div className="acknowledgment-content" onClick={(e) => e.stopPropagation()}>
-            <h2>⚠️ Important Notice</h2>
-            <div className="acknowledgment-text">
-              <p><strong>Customized items are non-refundable.</strong></p>
-              <p>By proceeding, you acknowledge that:</p>
-              <ul>
-                <li>You have reviewed and approved the edited screenshot</li>
-                <li>Customized merchandise cannot be returned or refunded</li>
-                <li>You are satisfied with the tool edits applied to your screenshot</li>
-              </ul>
-            </div>
-            <div className="acknowledgment-actions">
-              <button 
-                className="cancel-btn"
-                onClick={() => setShowAcknowledgment(false)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="confirm-btn"
-                onClick={handleAcknowledgmentConfirm}
-              >
-                I Understand - Proceed to Cart
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

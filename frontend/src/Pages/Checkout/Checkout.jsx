@@ -208,13 +208,6 @@ const Checkout = () => {
             {/* Order Items */}
             <div className="order-section">
               <h2>Order Items</h2>
-              {/* Tool Usage Acknowledgment Notice - Simplified */}
-              {items.some(item => item.edited || item.tools_acknowledged) && (
-                <div className="tool-acknowledgment-notice">
-                  <span className="notice-icon-small">⚠️</span>
-                  <span className="notice-text-small">Customized Notice</span>
-                </div>
-              )}
               <div className="items-list">
                 {items.map((ci, i) => {
                   // Get the screenshot/image - check multiple fields

@@ -115,9 +115,9 @@ const TermsOfService = () => {
 
           <h3>7.2 Refunds and Returns</h3>
           <ul>
-            <li>Custom merchandise is typically non-refundable due to personalized nature</li>
-            <li>Defective or damaged products may be eligible for replacement</li>
-            <li>Refund requests must be submitted within 30 days of delivery</li>
+            <li>All items are customized and cannot be returned or refunded</li>
+            <li>Refunds are only available in cases of producer error or manufacturing defects</li>
+            <li>Refund requests for producer errors must be submitted within 30 days of delivery</li>
             <li>No refunds for violation of exclusivity terms</li>
           </ul>
         </section>
