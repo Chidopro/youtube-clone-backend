@@ -820,7 +820,21 @@ const ProductPage = ({ sidebar }) => {
           <div className="tools-button-container">
             <button 
               className="tools-page-btn"
-              onClick={() => navigate('/tools')}
+              onClick={() => {
+                // Save the selected screenshot URL before navigating to tools
+                const selectedScreenshotUrl = getSelectedScreenshotUrl();
+                if (selectedScreenshotUrl) {
+                  try {
+                    const raw = localStorage.getItem('pending_merch_data');
+                    const data = raw ? JSON.parse(raw) : {};
+                    data.selected_screenshot = selectedScreenshotUrl;
+                    localStorage.setItem('pending_merch_data', JSON.stringify(data));
+                  } catch (e) {
+                    console.warn('Could not save selected screenshot:', e);
+                  }
+                }
+                navigate('/tools');
+              }}
             >
               🛠️ Tools Page
             </button>

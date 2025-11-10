@@ -25,15 +25,15 @@ const ToolsPage = () => {
       const raw = localStorage.getItem('pending_merch_data');
       if (raw) {
         const data = JSON.parse(raw);
-        // Try to get edited screenshot first, then selected screenshot or thumbnail
-        const screenshot = data.edited_screenshot || data.screenshots?.[0] || data.thumbnail || '';
+        // Priority: edited screenshot > selected screenshot > first screenshot > thumbnail
+        const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
         if (screenshot) {
           setImageUrl(screenshot);
           setSelectedImage(screenshot);
         }
       }
       
-      // Also check if there's a selected screenshot from ProductPage
+      // Also check if there's a selected screenshot from URL params
       const selectedScreenshot = searchParams.get('screenshot');
       if (selectedScreenshot) {
         setImageUrl(selectedScreenshot);
