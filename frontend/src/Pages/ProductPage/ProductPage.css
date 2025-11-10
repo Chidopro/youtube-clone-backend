@@ -91,7 +91,8 @@
 .tools-button-container {
   display: flex;
   justify-content: center;
-  margin-bottom: 20px;
+  margin: 20px auto 20px auto;
+  padding: 0 20px;
 }
 
 .tools-page-btn {

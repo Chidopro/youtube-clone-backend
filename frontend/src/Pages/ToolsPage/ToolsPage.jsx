@@ -106,8 +106,8 @@ const ToolsPage = () => {
         }
       }
 
-      // Apply feather edge (soft edge effect) - only softens edges, doesn't create circle
-      if (featherEdge > 0 && !isCircle) {
+      // Apply feather edge (soft edge effect) - works with both rectangles and circles
+      if (featherEdge > 0) {
         // Calculate feather size
         const featherSize = Math.min(featherEdge, Math.min(canvas.width, canvas.height) / 4);
         
@@ -117,39 +117,75 @@ const ToolsPage = () => {
         maskCanvas.width = canvas.width;
         maskCanvas.height = canvas.height;
         
-        // Start with a fully opaque white rectangle
+        // Start with a fully opaque white shape (circle or rectangle)
         maskCtx.fillStyle = 'white';
-        maskCtx.fillRect(0, 0, canvas.width, canvas.height);
+        if (isCircle) {
+          // For circle, create a white circle
+          maskCtx.beginPath();
+          maskCtx.arc(
+            canvas.width / 2,
+            canvas.height / 2,
+            maxCornerRadius,
+            0,
+            Math.PI * 2
+          );
+          maskCtx.fill();
+        } else {
+          // For rectangle, create a white rectangle
+          maskCtx.fillRect(0, 0, canvas.width, canvas.height);
+        }
         
-        // Create soft edges by erasing with gradients on each edge
-        // Top edge - fade from transparent to opaque
-        const topGradient = maskCtx.createLinearGradient(0, 0, 0, featherSize);
-        topGradient.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Fully erase at edge
-        topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // No erase in center
-        maskCtx.globalCompositeOperation = 'destination-out';
-        maskCtx.fillStyle = topGradient;
-        maskCtx.fillRect(0, 0, canvas.width, featherSize);
-        
-        // Bottom edge
-        const bottomGradient = maskCtx.createLinearGradient(0, canvas.height - featherSize, 0, canvas.height);
-        bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
-        maskCtx.fillStyle = bottomGradient;
-        maskCtx.fillRect(0, canvas.height - featherSize, canvas.width, featherSize);
-        
-        // Left edge
-        const leftGradient = maskCtx.createLinearGradient(0, 0, featherSize, 0);
-        leftGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
-        leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        maskCtx.fillStyle = leftGradient;
-        maskCtx.fillRect(0, featherSize, featherSize, canvas.height - (featherSize * 2));
-        
-        // Right edge
-        const rightGradient = maskCtx.createLinearGradient(canvas.width - featherSize, 0, canvas.width, 0);
-        rightGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        rightGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
-        maskCtx.fillStyle = rightGradient;
-        maskCtx.fillRect(canvas.width - featherSize, featherSize, featherSize, canvas.height - (featherSize * 2));
+        // Create soft edges using radial gradient for circles, linear for rectangles
+        if (isCircle) {
+          // For circular images, use radial gradient to create soft edge
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+          const innerRadius = Math.max(0, maxCornerRadius - featherSize);
+          const outerRadius = maxCornerRadius;
+          
+          const radialGradient = maskCtx.createRadialGradient(
+            centerX, centerY, innerRadius,
+            centerX, centerY, outerRadius
+          );
+          radialGradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // No erase in center
+          radialGradient.addColorStop(1, 'rgba(0, 0, 0, 1)'); // Fully erase at edge
+          
+          maskCtx.globalCompositeOperation = 'destination-out';
+          maskCtx.fillStyle = radialGradient;
+          maskCtx.beginPath();
+          maskCtx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
+          maskCtx.fill();
+        } else {
+          // For rectangular images, use linear gradients on each edge
+          // Top edge - fade from transparent to opaque
+          const topGradient = maskCtx.createLinearGradient(0, 0, 0, featherSize);
+          topGradient.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Fully erase at edge
+          topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // No erase in center
+          maskCtx.globalCompositeOperation = 'destination-out';
+          maskCtx.fillStyle = topGradient;
+          maskCtx.fillRect(0, 0, canvas.width, featherSize);
+          
+          // Bottom edge
+          const bottomGradient = maskCtx.createLinearGradient(0, canvas.height - featherSize, 0, canvas.height);
+          bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+          maskCtx.fillStyle = bottomGradient;
+          maskCtx.fillRect(0, canvas.height - featherSize, canvas.width, featherSize);
+          
+          // Left edge
+          const leftGradient = maskCtx.createLinearGradient(0, 0, featherSize, 0);
+          leftGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+          leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          maskCtx.fillStyle = leftGradient;
+          maskCtx.fillRect(0, featherSize, featherSize, canvas.height - (featherSize * 2));
+          
+          // Right edge
+          const rightGradient = maskCtx.createLinearGradient(canvas.width - featherSize, 0, canvas.width, 0);
+          rightGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          rightGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+          maskCtx.fillStyle = rightGradient;
+          maskCtx.fillRect(canvas.width - featherSize, featherSize, featherSize, canvas.height - (featherSize * 2));
+        }
         
         maskCtx.globalCompositeOperation = 'source-over';
         

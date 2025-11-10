@@ -765,15 +765,6 @@ const ProductPage = ({ sidebar }) => {
           <div className="screenshots-section">
             <h2 className="screenshots-title">Select Your Screenshot</h2>
             <p className="screenshots-subtitle">Choose which screenshot to use for your custom merchandise</p>
-            {/* Tools Page Button */}
-            <div className="tools-button-container">
-              <button 
-                className="tools-page-btn"
-                onClick={() => navigate('/tools')}
-              >
-                🛠️ Tools Page
-              </button>
-            </div>
             <div className="screenshots-preview">
               <div className="screenshot-grid">
                 {/* Thumbnail */}
@@ -823,6 +814,16 @@ const ProductPage = ({ sidebar }) => {
                 })()}
               </div>
             </div>
+          </div>
+
+          {/* Tools Page Button - Underneath screenshots, above cart/checkout */}
+          <div className="tools-button-container">
+            <button 
+              className="tools-page-btn"
+              onClick={() => navigate('/tools')}
+            >
+              🛠️ Tools Page
+            </button>
           </div>
 
           <div className="product-page-container">
