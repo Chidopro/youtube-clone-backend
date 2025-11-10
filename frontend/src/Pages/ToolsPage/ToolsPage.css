@@ -227,6 +227,33 @@
   font-family: monospace;
 }
 
+.select-control {
+  margin-top: 0.5rem;
+}
+
+.print-area-select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.print-area-select:hover {
+  border-color: #667eea;
+}
+
+.print-area-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .tools-actions {
   display: flex;
   gap: 1rem;

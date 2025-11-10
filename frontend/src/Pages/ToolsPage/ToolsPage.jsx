@@ -16,6 +16,7 @@ const ToolsPage = () => {
   const [frameColor, setFrameColor] = useState('#FF0000');
   const [frameWidth, setFrameWidth] = useState(10);
   const [doubleFrame, setDoubleFrame] = useState(false);
+  const [printAreaFit, setPrintAreaFit] = useState('none'); // 'none', 'horizontal', 'square', 'vertical'
   const [editedImageUrl, setEditedImageUrl] = useState('');
   const [showAcknowledgment, setShowAcknowledgment] = useState(false);
 
@@ -77,8 +78,51 @@ const ToolsPage = () => {
       tempCanvas.width = img.width;
       tempCanvas.height = img.height;
 
-      // Draw original image to temp canvas
-      tempCtx.drawImage(img, 0, 0);
+      // Apply print area fit first (crop/resize to fit print area)
+      let sourceWidth = img.width;
+      let sourceHeight = img.height;
+      let sourceX = 0;
+      let sourceY = 0;
+      
+      if (printAreaFit !== 'none') {
+        const imgAspect = img.width / img.height;
+        let targetAspect;
+        
+        // Define aspect ratios for different print areas
+        switch (printAreaFit) {
+          case 'horizontal':
+            targetAspect = 1.5; // Wider (e.g., 3:2 or 4:3)
+            break;
+          case 'square':
+            targetAspect = 1.0; // Square (1:1)
+            break;
+          case 'vertical':
+            targetAspect = 0.67; // Taller (e.g., 2:3 or 3:4) - for tank tops, vertical shirts
+            break;
+          default:
+            targetAspect = imgAspect;
+        }
+        
+        // Calculate crop area to fit target aspect ratio
+        if (imgAspect > targetAspect) {
+          // Image is wider than target - crop width
+          sourceWidth = img.height * targetAspect;
+          sourceX = (img.width - sourceWidth) / 2; // Center crop
+        } else if (imgAspect < targetAspect) {
+          // Image is taller than target - crop height
+          sourceHeight = img.width / targetAspect;
+          sourceY = (img.height - sourceHeight) / 2; // Center crop
+        }
+      }
+      
+      // Update canvas size to match cropped area
+      canvas.width = sourceWidth;
+      canvas.height = sourceHeight;
+      tempCanvas.width = sourceWidth;
+      tempCanvas.height = sourceHeight;
+      
+      // Draw cropped image to temp canvas
+      tempCtx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
 
       // Calculate max corner radius for circle (half of smallest dimension)
       const maxCornerRadius = Math.min(canvas.width, canvas.height) / 2;
@@ -293,7 +337,7 @@ const ToolsPage = () => {
       console.error('Failed to load image');
     };
     img.src = imageUrl;
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, printAreaFit]);
 
   const handleApplyEdits = () => {
     if (!editedImageUrl) {
@@ -315,7 +359,8 @@ const ToolsPage = () => {
         frameEnabled,
         frameColor,
         frameWidth,
-        doubleFrame
+        doubleFrame,
+        printAreaFit
       };
       localStorage.setItem('pending_merch_data', JSON.stringify(data));
       
@@ -429,6 +474,23 @@ const ToolsPage = () => {
           </div>
 
           <div className="tool-control-group">
+            <h3>Fit to Print Area</h3>
+            <p className="tool-description">Crop image to fit vertical or horizontal print areas</p>
+            <div className="select-control">
+              <select
+                value={printAreaFit}
+                onChange={(e) => setPrintAreaFit(e.target.value)}
+                className="print-area-select"
+              >
+                <option value="none">Original (No Fit)</option>
+                <option value="horizontal">Horizontal (Wide - for standard shirts)</option>
+                <option value="square">Square (1:1 - for mugs, square items)</option>
+                <option value="vertical">Vertical (Tall - for tank tops, vertical shirts)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="tool-control-group">
             <h3>Framed Border</h3>
             <p className="tool-description">Add a colored frame around your screenshot</p>
             <div className="checkbox-control">
@@ -496,6 +558,7 @@ const ToolsPage = () => {
                 setFrameWidth(10);
                 setFrameColor('#FF0000');
                 setDoubleFrame(false);
+                setPrintAreaFit('none');
               }}
             >
               Reset
