@@ -821,13 +821,29 @@ const ProductPage = ({ sidebar }) => {
             <button 
               className="tools-page-btn"
               onClick={() => {
-                // Save the selected screenshot URL before navigating to tools
+                // Save the selected screenshot URL and product info before navigating to tools
                 const selectedScreenshotUrl = getSelectedScreenshotUrl();
                 if (selectedScreenshotUrl) {
                   try {
                     const raw = localStorage.getItem('pending_merch_data');
                     const data = raw ? JSON.parse(raw) : {};
                     data.selected_screenshot = selectedScreenshotUrl;
+                    // Save the first product name if available (user can change in tools page)
+                    // Get product names for the selected category
+                    const category_mappings = {
+                      'mens': ["Unisex Hoodie", "Men's Tank Top", "Mens Fitted T-Shirt", "Men's Fitted Long Sleeve", "Unisex T-Shirt", "Unisex Oversized T-Shirt", "Men's Long Sleeve Shirt", "Unisex Champion Hoodie"],
+                      'womens': ["Cropped Hoodie", "Fitted Racerback Tank", "Micro-Rib Tank Top", "Women's Ribbed Neck", "Women's Shirt", "Unisex Heavyweight T-Shirt", "Unisex Pullover Hoodie", "Women's Crop Top"],
+                      'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve", "Toddler Short Sleeve T-Shirt", "Toddler Jersey T-Shirt", "Kids Sweatshirt", "Youth All Over Print Swimsuit", "Girls Leggings", "Baby Staple Tee", "Baby Jersey T-Shirt", "Baby Body Suit"],
+                      'bags': ["Laptop Sleeve", "All-Over Print Drawstring", "All Over Print Tote Pocket", "All-Over Print Crossbody Bag", "All-Over Print Utility Bag"],
+                      'hats': ["Distressed Dad Hat", "Snapback Hat", "Five Panel Trucker Hat", "Five Panel Baseball Cap"],
+                      'mugs': ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"],
+                      'pets': ["Pet Bowl All-Over Print", "Pet Bandana Collar", "All Over Print Leash", "All Over Print Collar"],
+                      'misc': ["Bandana"]
+                    };
+                    const category_products = category_mappings[category] || [];
+                    if (category_products && category_products.length > 0) {
+                      data.selected_product_name = category_products[0];
+                    }
                     localStorage.setItem('pending_merch_data', JSON.stringify(data));
                   } catch (e) {
                     console.warn('Could not save selected screenshot:', e);
@@ -871,25 +887,23 @@ const ProductPage = ({ sidebar }) => {
                           <img
                             className={isApparelCategory ? "product-image-clear" : "product-image-normal"}
                             src={
-                              product.main_image
-                                ? (product.main_image.startsWith('http') 
+                              product.preview_image
+                                ? (product.preview_image.startsWith('http') 
+                                    ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
+                                    : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
+                                : (product.main_image.startsWith('http') 
                                     ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
                                     : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
-                                : (product.preview_image
-                                    ? (product.preview_image.startsWith('http') 
-                                        ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
-                                        : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
-                                    : '')
                             }
                             alt={product.name}
                             loading="lazy"
                             referrerPolicy="no-referrer"
                             onError={(e) => {
-                              // Fallback to preview_image if main_image fails
-                              const fallback = product.preview_image
-                                ? (product.preview_image.startsWith('http') 
-                                    ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
-                                    : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
+                              // Fallback to main_image if preview fails
+                              const fallback = product.main_image
+                                ? (product.main_image.startsWith('http') 
+                                    ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
+                                    : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
                                 : '';
                               if (fallback && e.currentTarget.src !== fallback) {
                                 e.currentTarget.src = fallback;
