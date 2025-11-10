@@ -481,21 +481,39 @@ class VideoScreenshotCapture:
             min_print_width = 2400
             min_print_height = 3000
             
-            # Scale up if original is smaller than print requirements
-            scale_factor = max(1.0, min_print_width / original_width, min_print_height / original_height)
-            target_width = int(original_width * scale_factor)
-            target_height = int(original_height * scale_factor)
+            # Check if image is already at print quality (within 10% tolerance to avoid unnecessary resizing)
+            # This prevents quality loss from re-processing images that are already at print quality
+            is_already_print_quality = (
+                original_width >= min_print_width * 0.9 and 
+                original_height >= min_print_height * 0.9
+            )
             
-            # Ensure dimensions are even numbers (required for some codecs)
-            target_width = target_width + (target_width % 2)
-            target_height = target_height + (target_height % 2)
-            
-            logger.info(f"Print quality dimensions: {target_width}x{target_height} (scale factor: {scale_factor:.2f})")
-            
-            # Resize image for print quality
-            if scale_factor > 1.0:
-                # Use high-quality resampling for upscaling
-                image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+            if is_already_print_quality:
+                logger.info(f"Image is already at print quality ({original_width}x{original_height}), skipping resize to preserve quality")
+                target_width = original_width
+                target_height = original_height
+                scale_factor = 1.0
+            else:
+                # Scale up if original is smaller than print requirements
+                scale_factor = max(1.0, min_print_width / original_width, min_print_height / original_height)
+                target_width = int(original_width * scale_factor)
+                target_height = int(original_height * scale_factor)
+                
+                # Ensure dimensions are even numbers (required for some codecs)
+                target_width = target_width + (target_width % 2)
+                target_height = target_height + (target_height % 2)
+                
+                logger.info(f"Print quality dimensions: {target_width}x{target_height} (scale factor: {scale_factor:.2f})")
+                
+                # Only resize if we need to scale up (avoid downscaling high-res images)
+                if scale_factor > 1.0:
+                    # Use high-quality resampling for upscaling
+                    image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
+                else:
+                    # Image is larger than target, but we'll keep original size to preserve quality
+                    target_width = original_width
+                    target_height = original_height
+                    logger.info(f"Image is larger than target, keeping original dimensions to preserve quality")
             
             # Apply cropping if specified
             if crop_area and isinstance(crop_area, dict):

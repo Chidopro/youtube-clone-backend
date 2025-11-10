@@ -492,20 +492,41 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
         original_height, original_width = image.shape[:2]
         aspect_ratio = original_width / original_height
         
-        # Scale to a reasonable print size while preserving aspect ratio
-        # Use 8 inches as the base dimension
-        base_size = 8 * print_dpi
+        # Check if image is already at print quality (within 10% tolerance to avoid unnecessary resizing)
+        # This prevents quality loss from re-processing images that are already at print quality
+        min_print_width = 2400  # 8 inches at 300 DPI
+        min_print_height = 3000  # 10 inches at 300 DPI
+        is_already_print_quality = (
+            original_width >= min_print_width * 0.9 and 
+            original_height >= min_print_height * 0.9
+        )
         
-        if aspect_ratio > 1:  # Landscape
-            target_width = int(base_size)
-            target_height = int(base_size / aspect_ratio)
-        else:  # Portrait
-            target_height = int(base_size)
-            target_width = int(base_size * aspect_ratio)
-        
-        # Resize image to print quality dimensions while preserving aspect ratio
-        # Use INTER_LANCZOS4 for better quality preservation
-        image = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_LANCZOS4)
+        if is_already_print_quality:
+            logger.info(f"Image is already at print quality ({original_width}x{original_height}), skipping resize to preserve quality")
+            target_width = original_width
+            target_height = original_height
+        else:
+            # Scale to a reasonable print size while preserving aspect ratio
+            # Use 8 inches as the base dimension
+            base_size = 8 * print_dpi
+            
+            if aspect_ratio > 1:  # Landscape
+                target_width = int(base_size)
+                target_height = int(base_size / aspect_ratio)
+            else:  # Portrait
+                target_height = int(base_size)
+                target_width = int(base_size * aspect_ratio)
+            
+            # Only resize if we need to scale up (avoid downscaling high-res images)
+            if target_width > original_width or target_height > original_height:
+                # Resize image to print quality dimensions while preserving aspect ratio
+                # Use INTER_LANCZOS4 for better quality preservation
+                image = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_LANCZOS4)
+            else:
+                # Image is larger than target, keep original size to preserve quality
+                target_width = original_width
+                target_height = original_height
+                logger.info(f"Image is larger than target, keeping original dimensions to preserve quality")
         
         # Apply corner radius effect to the HIGH-RESOLUTION print quality image (AFTER resize)
         if soft_corners:
