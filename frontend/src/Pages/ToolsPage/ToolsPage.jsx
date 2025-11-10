@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getPrintAreaConfig, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG } from '../../config/printAreaConfig';
 import './ToolsPage.css';
 
 const ToolsPage = () => {
@@ -16,13 +17,15 @@ const ToolsPage = () => {
   const [frameColor, setFrameColor] = useState('#FF0000');
   const [frameWidth, setFrameWidth] = useState(10);
   const [doubleFrame, setDoubleFrame] = useState(false);
-  const [printAreaFit, setPrintAreaFit] = useState('none'); // 'none', 'horizontal', 'square', 'vertical'
+  const [printAreaFit, setPrintAreaFit] = useState('none'); // 'none', 'horizontal', 'square', 'vertical', 'product'
   const [imageOffsetX, setImageOffsetX] = useState(0); // -100 to 100 (percentage)
   const [imageOffsetY, setImageOffsetY] = useState(0); // -100 to 100 (percentage)
   const [editedImageUrl, setEditedImageUrl] = useState('');
   const [showAcknowledgment, setShowAcknowledgment] = useState(false);
+  const [selectedProductName, setSelectedProductName] = useState('');
+  const [currentImageDimensions, setCurrentImageDimensions] = useState({ width: 0, height: 0 });
 
-  // Load screenshot from localStorage or URL params
+  // Load screenshot and product name from localStorage or URL params
   useEffect(() => {
     try {
       const raw = localStorage.getItem('pending_merch_data');
@@ -33,6 +36,10 @@ const ToolsPage = () => {
         if (screenshot) {
           setImageUrl(screenshot);
           setSelectedImage(screenshot);
+        }
+        // Load selected product name
+        if (data.selected_product_name) {
+          setSelectedProductName(data.selected_product_name);
         }
       }
       
@@ -69,6 +76,9 @@ const ToolsPage = () => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
+      // Store current image dimensions
+      setCurrentImageDimensions({ width: img.width, height: img.height });
+      
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       canvas.width = img.width;
@@ -90,19 +100,30 @@ const ToolsPage = () => {
         const imgAspect = img.width / img.height;
         let targetAspect;
         
-        // Define aspect ratios for different print areas
-        switch (printAreaFit) {
-          case 'horizontal':
-            targetAspect = 1.5; // Wider (e.g., 3:2 or 4:3)
-            break;
-          case 'square':
-            targetAspect = 1.0; // Square (1:1)
-            break;
-          case 'vertical':
-            targetAspect = 0.67; // Taller (e.g., 2:3 or 3:4) - for tank tops, vertical shirts
-            break;
-          default:
-            targetAspect = imgAspect;
+        // Check if using product-specific dimensions
+        if (printAreaFit === 'product' && selectedProductName) {
+          const printConfig = getPrintAreaConfig(selectedProductName);
+          if (printConfig) {
+            targetAspect = getAspectRatio(printConfig.width, printConfig.height);
+          } else {
+            // Fallback to generic vertical if product not found
+            targetAspect = 0.67;
+          }
+        } else {
+          // Define aspect ratios for different print areas
+          switch (printAreaFit) {
+            case 'horizontal':
+              targetAspect = 1.5; // Wider (e.g., 3:2 or 4:3)
+              break;
+            case 'square':
+              targetAspect = 1.0; // Square (1:1)
+              break;
+            case 'vertical':
+              targetAspect = 0.67; // Taller (e.g., 2:3 or 3:4) - for tank tops, vertical shirts
+              break;
+            default:
+              targetAspect = imgAspect;
+          }
         }
         
         // Calculate crop area to fit target aspect ratio
@@ -346,7 +367,7 @@ const ToolsPage = () => {
       console.error('Failed to load image');
     };
     img.src = imageUrl;
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, printAreaFit, imageOffsetX, imageOffsetY]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName]);
 
   const handleApplyEdits = () => {
     if (!editedImageUrl) {
@@ -486,8 +507,33 @@ const ToolsPage = () => {
 
           <div className="tool-control-group">
             <h3>Fit to Print Area</h3>
-            <p className="tool-description">Crop image to fit vertical or horizontal print areas</p>
+            <p className="tool-description">Crop image to fit product print areas</p>
+            
+            {/* Product Selector */}
+            <div className="select-control" style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Select Product:</label>
+              <select
+                value={selectedProductName}
+                onChange={(e) => {
+                  setSelectedProductName(e.target.value);
+                  // Auto-select product fit if product is selected
+                  if (e.target.value) {
+                    setPrintAreaFit('product');
+                  }
+                }}
+                className="print-area-select"
+              >
+                <option value="">-- Select Product --</option>
+                {Object.keys(PRINT_AREA_CONFIG).map(productName => (
+                  <option key={productName} value={productName}>
+                    {productName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
             <div className="select-control">
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Fit Type:</label>
               <select
                 value={printAreaFit}
                 onChange={(e) => {
@@ -499,11 +545,52 @@ const ToolsPage = () => {
                 className="print-area-select"
               >
                 <option value="none">Original (No Fit)</option>
+                {selectedProductName && (
+                  <option value="product">Product Specific ({selectedProductName})</option>
+                )}
                 <option value="horizontal">Horizontal (Wide - for standard shirts)</option>
                 <option value="square">Square (1:1 - for mugs, square items)</option>
                 <option value="vertical">Vertical (Tall - for tank tops, vertical shirts)</option>
               </select>
             </div>
+            
+            {/* Dimension Information */}
+            {printAreaFit === 'product' && selectedProductName && (() => {
+              const printConfig = getPrintAreaConfig(selectedProductName);
+              if (printConfig) {
+                const targetPixels = getPixelDimensions(printConfig.width, printConfig.height, printConfig.dpi);
+                const currentPixels = currentImageDimensions;
+                const widthMatch = Math.abs(currentPixels.width - targetPixels.width) < 50;
+                const heightMatch = Math.abs(currentPixels.height - targetPixels.height) < 50;
+                const isMatch = widthMatch && heightMatch;
+                
+                return (
+                  <div style={{ 
+                    marginTop: '1rem', 
+                    padding: '0.75rem', 
+                    backgroundColor: isMatch ? '#e8f5e9' : '#fff3e0',
+                    border: `1px solid ${isMatch ? '#4caf50' : '#ff9800'}`,
+                    borderRadius: '4px',
+                    fontSize: '0.85rem'
+                  }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                      {printConfig.description} - {printConfig.width}" × {printConfig.height}" @ {printConfig.dpi} DPI
+                    </div>
+                    <div style={{ marginBottom: '0.25rem' }}>
+                      Target: {targetPixels.width} × {targetPixels.height} pixels
+                    </div>
+                    <div style={{ marginBottom: '0.25rem' }}>
+                      Current: {currentPixels.width} × {currentPixels.height} pixels
+                    </div>
+                    <div style={{ fontWeight: 'bold', color: isMatch ? '#2e7d32' : '#e65100' }}>
+                      {isMatch ? '✓ Dimensions match!' : '⚠ Dimensions do not match - image will be cropped'}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            
             {printAreaFit !== 'none' && (
               <>
                 <div className="slider-control" style={{ marginTop: '1rem' }}>
