@@ -871,23 +871,25 @@ const ProductPage = ({ sidebar }) => {
                           <img
                             className={isApparelCategory ? "product-image-clear" : "product-image-normal"}
                             src={
-                              product.preview_image
-                                ? (product.preview_image.startsWith('http') 
-                                    ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
-                                    : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
-                                : (product.main_image.startsWith('http') 
+                              product.main_image
+                                ? (product.main_image.startsWith('http') 
                                     ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
                                     : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
+                                : (product.preview_image
+                                    ? (product.preview_image.startsWith('http') 
+                                        ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
+                                        : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
+                                    : '')
                             }
                             alt={product.name}
                             loading="lazy"
                             referrerPolicy="no-referrer"
                             onError={(e) => {
-                              // Fallback to main_image if preview fails
-                              const fallback = product.main_image
-                                ? (product.main_image.startsWith('http') 
-                                    ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
-                                    : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
+                              // Fallback to preview_image if main_image fails
+                              const fallback = product.preview_image
+                                ? (product.preview_image.startsWith('http') 
+                                    ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
+                                    : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
                                 : '';
                               if (fallback && e.currentTarget.src !== fallback) {
                                 e.currentTarget.src = fallback;
