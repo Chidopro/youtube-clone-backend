@@ -208,14 +208,11 @@ const Checkout = () => {
             {/* Order Items */}
             <div className="order-section">
               <h2>Order Items</h2>
-              {/* Tool Usage Acknowledgment Notice */}
+              {/* Tool Usage Acknowledgment Notice - Simplified */}
               {items.some(item => item.edited || item.tools_acknowledged) && (
                 <div className="tool-acknowledgment-notice">
-                  <div className="notice-icon">⚠️</div>
-                  <div className="notice-content">
-                    <strong>Customized Items Notice</strong>
-                    <p>Some items in your cart have been edited with our tools. Customized merchandise is <strong>non-refundable</strong>. By proceeding with checkout, you acknowledge that you have reviewed and approved all edits applied to your screenshots.</p>
-                  </div>
+                  <span className="notice-icon-small">⚠️</span>
+                  <span className="notice-text-small">Customized Notice</span>
                 </div>
               )}
               <div className="items-list">
