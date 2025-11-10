@@ -244,22 +244,73 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
 
         // Get current timestamp
         const currentTime = videoElement.currentTime || 0;
-
-        // Always use print quality server-side capture for optimal quality
-        // Skip client-side capture to ensure screenshots are always at print-ready dimensions (3000x3600+ pixels)
         const videoUrl = video?.video_url || videoElement.src;
+
+        // Step 1: Instant client-side capture for immediate feedback
+        const clientScreenshot = await captureCurrentVideoFrame();
         
+        if (clientScreenshot) {
+            // Add client-side screenshot immediately for instant response
+            const tempIndex = screenshots.length;
+            setScreenshots(prev => {
+                const newScreenshots = prev.length < 6 ? [...prev, clientScreenshot] : prev;
+                showGreenFlagConfirmation(prev.length);
+                return newScreenshots;
+            });
+            setScreenshotTimestamps(prev => {
+                const newTimestamps = prev.length < 6 ? [...prev, currentTime] : newTimestamps;
+                return newTimestamps;
+            });
+            
+            // Step 2: Upgrade to print quality in the background (non-blocking)
+            if (videoUrl) {
+                // Don't await - let it run in background and replace when ready
+                fetch(API_CONFIG.ENDPOINTS.CAPTURE_PRINT_QUALITY, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        video_url: videoUrl,
+                        timestamp: currentTime,
+                        print_dpi: 300
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
+                    return response.json();
+                })
+                .then(result => {
+                    if (result.success && result.screenshot) {
+                        // Replace client-side screenshot with print quality version
+                        setScreenshots(prev => {
+                            const updated = [...prev];
+                            if (updated[tempIndex]) {
+                                updated[tempIndex] = result.screenshot;
+                            }
+                            return updated;
+                        });
+                        console.log('✅ Screenshot upgraded to print quality');
+                    }
+                })
+                .catch(error => {
+                    console.warn('⚠️ Print quality upgrade failed, keeping client-side capture:', error);
+                    // Keep the client-side capture - it's better than nothing
+                });
+            }
+            return; // Success with instant capture
+        }
+        
+        // Fallback: If client-side capture fails, use server-side
         if (!videoUrl) {
             safeAlert('No video URL available for screenshot capture.');
             return;
         }
         
         try {
-            // console.log(`Capturing PRINT QUALITY screenshot at ${currentTime}s from ${videoUrl}`);
-            
-            // Extended timeout for print quality processing (60 seconds)
+            // Try print quality first
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000);
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // Shorter timeout for responsiveness
             
             const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_PRINT_QUALITY, {
                 method: 'POST',
@@ -283,18 +334,16 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             const result = await response.json();
             
             if (result.success && result.screenshot) {
-                // console.log('✅ Print quality screenshot captured successfully');
-                // console.log(`Dimensions: ${result.dimensions?.width}x${result.dimensions?.height}, Size: ${result.file_size} bytes`);
                 setScreenshots(prev => {
                     const newScreenshots = prev.length < 6 ? [...prev, result.screenshot] : prev;
                     showGreenFlagConfirmation(prev.length);
                     return newScreenshots;
                 });
-                // Store the timestamp
                 setScreenshotTimestamps(prev => {
                     const newTimestamps = prev.length < 6 ? [...prev, currentTime] : newTimestamps;
                     return newTimestamps;
                 });
+                return;
             } else {
                 throw new Error(result.error || 'Server failed to capture print quality screenshot');
             }
@@ -302,10 +351,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         } catch (error) {
             console.error('❌ Print quality capture failed, trying regular screenshot endpoint:', error);
             
-            // Fallback to regular screenshot endpoint if print quality fails
+            // Fallback to regular screenshot endpoint
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // Quick timeout
                 
                 const fallbackResponse = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
                     method: 'POST',
@@ -326,7 +375,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     const fallbackResult = await fallbackResponse.json();
                     
                     if (fallbackResult.success && fallbackResult.screenshot) {
-                        console.log('✅ Fallback screenshot captured successfully');
                         setScreenshots(prev => {
                             const newScreenshots = prev.length < 6 ? [...prev, fallbackResult.screenshot] : prev;
                             showGreenFlagConfirmation(prev.length);
@@ -336,14 +384,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             const newTimestamps = prev.length < 6 ? [...prev, currentTime] : newTimestamps;
                             return newTimestamps;
                         });
-                        return; // Success with fallback
+                        return;
                     }
                 }
             } catch (fallbackError) {
                 console.error('❌ Fallback screenshot capture also failed:', fallbackError);
             }
             
-            // Last resort: use thumbnail only if both screenshot methods failed
+            // Last resort: use thumbnail
             const thumbnailUrl = video?.thumbnail || video?.poster || videoElement.poster;
             
             if (thumbnailUrl) {
