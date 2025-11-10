@@ -17,6 +17,8 @@ const ToolsPage = () => {
   const [frameWidth, setFrameWidth] = useState(10);
   const [doubleFrame, setDoubleFrame] = useState(false);
   const [printAreaFit, setPrintAreaFit] = useState('none'); // 'none', 'horizontal', 'square', 'vertical'
+  const [imageOffsetX, setImageOffsetX] = useState(0); // -100 to 100 (percentage)
+  const [imageOffsetY, setImageOffsetY] = useState(0); // -100 to 100 (percentage)
   const [editedImageUrl, setEditedImageUrl] = useState('');
   const [showAcknowledgment, setShowAcknowledgment] = useState(false);
 
@@ -107,11 +109,18 @@ const ToolsPage = () => {
         if (imgAspect > targetAspect) {
           // Image is wider than target - crop width
           sourceWidth = img.height * targetAspect;
-          sourceX = (img.width - sourceWidth) / 2; // Center crop
+          const maxOffsetX = img.width - sourceWidth;
+          // Apply X offset: 0 = center, -100 = left (show left side), +100 = right (show right side)
+          sourceX = (img.width - sourceWidth) / 2 + (imageOffsetX / 100) * (maxOffsetX / 2);
+          sourceX = Math.max(0, Math.min(sourceX, maxOffsetX)); // Clamp to bounds
         } else if (imgAspect < targetAspect) {
           // Image is taller than target - crop height
           sourceHeight = img.width / targetAspect;
-          sourceY = (img.height - sourceHeight) / 2; // Center crop
+          const maxOffsetY = img.height - sourceHeight;
+          // Apply Y offset: 0 = center, -100 = up (show top), +100 = down (show bottom)
+          // Negative offset moves crop window up (towards top of image)
+          sourceY = (img.height - sourceHeight) / 2 - (imageOffsetY / 100) * (maxOffsetY / 2);
+          sourceY = Math.max(0, Math.min(sourceY, maxOffsetY)); // Clamp to bounds
         }
       }
       
@@ -337,7 +346,7 @@ const ToolsPage = () => {
       console.error('Failed to load image');
     };
     img.src = imageUrl;
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, printAreaFit]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, printAreaFit, imageOffsetX, imageOffsetY]);
 
   const handleApplyEdits = () => {
     if (!editedImageUrl) {
@@ -360,7 +369,9 @@ const ToolsPage = () => {
         frameColor,
         frameWidth,
         doubleFrame,
-        printAreaFit
+        printAreaFit,
+        imageOffsetX,
+        imageOffsetY
       };
       localStorage.setItem('pending_merch_data', JSON.stringify(data));
       
@@ -479,7 +490,12 @@ const ToolsPage = () => {
             <div className="select-control">
               <select
                 value={printAreaFit}
-                onChange={(e) => setPrintAreaFit(e.target.value)}
+                onChange={(e) => {
+                  setPrintAreaFit(e.target.value);
+                  // Reset offsets when changing print area
+                  setImageOffsetX(0);
+                  setImageOffsetY(0);
+                }}
                 className="print-area-select"
               >
                 <option value="none">Original (No Fit)</option>
@@ -488,6 +504,34 @@ const ToolsPage = () => {
                 <option value="vertical">Vertical (Tall - for tank tops, vertical shirts)</option>
               </select>
             </div>
+            {printAreaFit !== 'none' && (
+              <>
+                <div className="slider-control" style={{ marginTop: '1rem' }}>
+                  <label>Move Horizontal:</label>
+                  <input
+                    type="range"
+                    min="-100"
+                    max="100"
+                    value={imageOffsetX}
+                    onChange={(e) => setImageOffsetX(parseInt(e.target.value))}
+                    className="slider"
+                  />
+                  <span className="slider-value">{imageOffsetX > 0 ? `Right ${imageOffsetX}%` : imageOffsetX < 0 ? `Left ${Math.abs(imageOffsetX)}%` : 'Center'}</span>
+                </div>
+                <div className="slider-control">
+                  <label>Move Vertical:</label>
+                  <input
+                    type="range"
+                    min="-100"
+                    max="100"
+                    value={imageOffsetY}
+                    onChange={(e) => setImageOffsetY(parseInt(e.target.value))}
+                    className="slider"
+                  />
+                  <span className="slider-value">{imageOffsetY > 0 ? `Down ${imageOffsetY}%` : imageOffsetY < 0 ? `Up ${Math.abs(imageOffsetY)}%` : 'Center'}</span>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="tool-control-group">
@@ -559,6 +603,8 @@ const ToolsPage = () => {
                 setFrameColor('#FF0000');
                 setDoubleFrame(false);
                 setPrintAreaFit('none');
+                setImageOffsetX(0);
+                setImageOffsetY(0);
               }}
             >
               Reset
