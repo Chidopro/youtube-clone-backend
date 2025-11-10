@@ -264,7 +264,39 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             
             // Step 2: Upgrade to print quality in the background (non-blocking)
             if (videoUrl) {
+                // Mark upgrade as starting in localStorage so Tools page knows
+                try {
+                    const raw = localStorage.getItem('pending_merch_data');
+                    if (raw) {
+                        const data = JSON.parse(raw);
+                        data.print_quality_upgrade_timestamp = Date.now();
+                        delete data.print_quality_upgrade_failed; // Clear any previous failure
+                        localStorage.setItem('pending_merch_data', JSON.stringify(data));
+                        window.dispatchEvent(new Event('localStorageUpdated'));
+                    }
+                } catch (e) {
+                    console.warn('Failed to mark upgrade as starting:', e);
+                }
+                
                 // Don't await - let it run in background and replace when ready
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    controller.abort();
+                    console.warn('⚠️ Print quality upgrade timed out after 60 seconds');
+                    // Mark upgrade as failed in localStorage so Tools page knows
+                    try {
+                        const raw = localStorage.getItem('pending_merch_data');
+                        if (raw) {
+                            const data = JSON.parse(raw);
+                            data.print_quality_upgrade_failed = true;
+                            localStorage.setItem('pending_merch_data', JSON.stringify(data));
+                            window.dispatchEvent(new Event('localStorageUpdated'));
+                        }
+                    } catch (e) {
+                        console.warn('Failed to mark upgrade as failed:', e);
+                    }
+                }, 60000); // 60 second timeout
+                
                 fetch(API_CONFIG.ENDPOINTS.CAPTURE_PRINT_QUALITY, {
                     method: 'POST',
                     headers: {
@@ -274,9 +306,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         video_url: videoUrl,
                         timestamp: currentTime,
                         print_dpi: 300
-                    })
+                    }),
+                    signal: controller.signal
                 })
                 .then(response => {
+                    clearTimeout(timeoutId);
                     if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
                     return response.json();
                 })
@@ -302,6 +336,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                                     if (data.selected_screenshot === clientScreenshot) {
                                         data.selected_screenshot = result.screenshot;
                                     }
+                                    // Clear upgrade failure flag if it exists
+                                    delete data.print_quality_upgrade_failed;
+                                    delete data.print_quality_upgrade_timestamp;
                                     localStorage.setItem('pending_merch_data', JSON.stringify(data));
                                     // Trigger custom event for same-tab updates (storage event only fires cross-tab)
                                     window.dispatchEvent(new Event('localStorageUpdated'));
@@ -312,10 +349,30 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         }
                         
                         console.log('✅ Screenshot upgraded to print quality and saved to localStorage');
+                    } else {
+                        throw new Error(result.error || 'Server failed to capture print quality screenshot');
                     }
                 })
                 .catch(error => {
-                    console.warn('⚠️ Print quality upgrade failed, keeping client-side capture:', error);
+                    clearTimeout(timeoutId);
+                    if (error.name === 'AbortError') {
+                        console.warn('⚠️ Print quality upgrade aborted (timeout)');
+                    } else {
+                        console.warn('⚠️ Print quality upgrade failed, keeping client-side capture:', error);
+                    }
+                    // Mark upgrade as failed in localStorage so Tools page knows
+                    try {
+                        const raw = localStorage.getItem('pending_merch_data');
+                        if (raw) {
+                            const data = JSON.parse(raw);
+                            data.print_quality_upgrade_failed = true;
+                            data.print_quality_upgrade_timestamp = Date.now();
+                            localStorage.setItem('pending_merch_data', JSON.stringify(data));
+                            window.dispatchEvent(new Event('localStorageUpdated'));
+                        }
+                    } catch (e) {
+                        console.warn('Failed to mark upgrade as failed:', e);
+                    }
                     // Keep the client-side capture - it's better than nothing
                 });
             }

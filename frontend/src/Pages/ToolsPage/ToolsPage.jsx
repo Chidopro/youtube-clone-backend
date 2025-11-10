@@ -25,6 +25,7 @@ const ToolsPage = () => {
   const [selectedProductName, setSelectedProductName] = useState('');
   const [currentImageDimensions, setCurrentImageDimensions] = useState({ width: 0, height: 0 });
   const [isUpgrading, setIsUpgrading] = useState(false);
+  const [upgradeFailed, setUpgradeFailed] = useState(false);
 
   // Load screenshot and product name from localStorage or URL params
   useEffect(() => {
@@ -40,6 +41,13 @@ const ToolsPage = () => {
             setSelectedImage(screenshot);
             // Reset upgrading state when new image loads (will be set again when image actually loads)
             setIsUpgrading(false);
+          }
+          // Check if upgrade failed
+          if (data.print_quality_upgrade_failed) {
+            setUpgradeFailed(true);
+            setIsUpgrading(false);
+          } else {
+            setUpgradeFailed(false);
           }
           // Load selected product name
           if (data.selected_product_name) {
@@ -77,11 +85,33 @@ const ToolsPage = () => {
     window.addEventListener('localStorageUpdated', handleLocalStorageUpdate);
     
     // Also check periodically for upgrades (backup in case events don't fire)
+    // Check more frequently for first 10 seconds, then every 5 seconds for up to 70 seconds total
+    let checkCount = 0;
     const checkInterval = setInterval(() => {
       loadScreenshot();
-    }, 2000); // Check every 2 seconds for first 10 seconds
+      checkCount++;
+      // Check if upgrade has been running too long (more than 60 seconds)
+      try {
+        const raw = localStorage.getItem('pending_merch_data');
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data.print_quality_upgrade_timestamp) {
+            const timeSinceUpgrade = Date.now() - data.print_quality_upgrade_timestamp;
+            if (timeSinceUpgrade > 60000 && !data.print_quality_upgrade_failed) {
+              // Upgrade has been running for more than 60 seconds, mark as failed
+              data.print_quality_upgrade_failed = true;
+              localStorage.setItem('pending_merch_data', JSON.stringify(data));
+              loadScreenshot();
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not check upgrade status:', e);
+      }
+    }, 2000); // Check every 2 seconds
     
-    setTimeout(() => clearInterval(checkInterval), 10000);
+    // Stop checking after 70 seconds (enough time for 60 second timeout + buffer)
+    setTimeout(() => clearInterval(checkInterval), 70000);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
@@ -613,8 +643,12 @@ const ToolsPage = () => {
                 let warningColor = '#e65100';
                 let bgColor = '#fff3e0';
                 
-                // If image is small and upgrade might be in progress, show upgrading message
-                if (isUpgrading && needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000)) {
+                // If upgrade failed, show failure message
+                if (upgradeFailed && needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000)) {
+                  warningMessage = '⚠ Print quality upgrade failed or timed out. Using current image quality.';
+                  warningColor = '#d32f2f';
+                  bgColor = '#ffebee';
+                } else if (isUpgrading && needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000)) {
                   warningMessage = '⏳ Upgrading to print quality... (this may take a few seconds)';
                   warningColor = '#1976d2';
                   bgColor = '#e3f2fd';
