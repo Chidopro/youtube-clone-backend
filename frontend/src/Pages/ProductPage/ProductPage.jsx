@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import ToolsPage from '../ToolsPage/ToolsPage';
-import { getPrintAreaConfig } from '../../config/printAreaConfig';
 import './ProductPage.css';
 
 const IMG_BASE = 'https://screenmerch.fly.dev/static/images';
@@ -866,17 +865,8 @@ const ProductPage = ({ sidebar }) => {
                   {/* Product Image */}
                   {(product.preview_image || product.main_image) && (() => {
                     const isApparelCategory = category === 'womens' || category === 'mens' || category === 'kids';
-                    const printConfig = getPrintAreaConfig(product.name);
-                    const printWidth = printConfig ? printConfig.width : 12;
-                    const printHeight = printConfig ? printConfig.height : 16;
                     return (
-                      <div 
-                        className="product-image"
-                        style={{
-                          '--print-width': printWidth,
-                          '--print-height': printHeight
-                        }}
-                      >
+                      <div className="product-image">
                         <div className="product-image-wrapper">
                           <img
                             className={isApparelCategory ? "product-image-clear" : "product-image-normal"}
@@ -904,13 +894,6 @@ const ProductPage = ({ sidebar }) => {
                               }
                             }}
                           />
-                          {printConfig && (
-                            <>
-                              <div className={`print-area-overlay ${isApparelCategory ? 'print-area-apparel' : ''}`}>
-                                <div className="print-area-border"></div>
-                              </div>
-                            </>
-                          )}
                         </div>
                       </div>
                     );
