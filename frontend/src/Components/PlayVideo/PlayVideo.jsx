@@ -300,45 +300,80 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             }
             
         } catch (error) {
-            // console.log('❌ Print quality capture failed, using thumbnail as last resort:', error);
+            console.error('❌ Print quality capture failed, trying regular screenshot endpoint:', error);
             
-            // Check if it's a timeout/abort error
-            if (error.name === 'AbortError') {
-                // console.log('Print quality screenshot capture timed out after 60 seconds');
-                safeAlert('Print quality screenshot capture timed out. The video might be too large or slow to process. Using thumbnail instead.');
-            }
+            // Fallback to regular screenshot endpoint if print quality fails
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
                 
-                // Last resort: use thumbnail
-                const thumbnailUrl = video?.thumbnail || video?.poster || videoElement.poster;
+                const fallbackResponse = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        video_url: videoUrl,
+                        timestamp: currentTime,
+                        quality: 95
+                    }),
+                    signal: controller.signal
+                });
                 
-                if (thumbnailUrl) {
-                    // console.log('Using thumbnail as last resort:', thumbnailUrl);
-                    setScreenshots(prev => {
-                        const newScreenshots = prev.length < 6 ? [...prev, thumbnailUrl] : prev;
-                        showGreenFlagConfirmation(prev.length);
-                        return newScreenshots;
-                    });
-                } else {
-                    const notification = document.createElement('div');
-                    notification.style.cssText = `
-                        position: fixed;
-                        top: 20px;
-                        right: 20px;
-                        background: #f44336;
-                        color: white;
-                        padding: 12px 20px;
-                        border-radius: 8px;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                        z-index: 10000;
-                        animation: slideIn 0.3s ease-out;
-                        max-width: 300px;
-                        font-size: 14px;
-                        font-weight: 500;
-                    `;
-                    notification.textContent = 'Failed to capture print quality screenshot. Please try again.';
-                    document.body.appendChild(notification);
-                    setTimeout(() => document.body.removeChild(notification), 3000);
+                clearTimeout(timeoutId);
+                
+                if (fallbackResponse.ok) {
+                    const fallbackResult = await fallbackResponse.json();
+                    
+                    if (fallbackResult.success && fallbackResult.screenshot) {
+                        console.log('✅ Fallback screenshot captured successfully');
+                        setScreenshots(prev => {
+                            const newScreenshots = prev.length < 6 ? [...prev, fallbackResult.screenshot] : prev;
+                            showGreenFlagConfirmation(prev.length);
+                            return newScreenshots;
+                        });
+                        setScreenshotTimestamps(prev => {
+                            const newTimestamps = prev.length < 6 ? [...prev, currentTime] : newTimestamps;
+                            return newTimestamps;
+                        });
+                        return; // Success with fallback
+                    }
                 }
+            } catch (fallbackError) {
+                console.error('❌ Fallback screenshot capture also failed:', fallbackError);
+            }
+            
+            // Last resort: use thumbnail only if both screenshot methods failed
+            const thumbnailUrl = video?.thumbnail || video?.poster || videoElement.poster;
+            
+            if (thumbnailUrl) {
+                console.warn('⚠️ Using thumbnail as last resort - screenshot capture failed');
+                setScreenshots(prev => {
+                    const newScreenshots = prev.length < 6 ? [...prev, thumbnailUrl] : prev;
+                    showGreenFlagConfirmation(prev.length);
+                    return newScreenshots;
+                });
+            } else {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #f44336;
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    z-index: 10000;
+                    animation: slideIn 0.3s ease-out;
+                    max-width: 300px;
+                    font-size: 14px;
+                    font-weight: 500;
+                `;
+                notification.textContent = 'Failed to capture screenshot. Please try again.';
+                document.body.appendChild(notification);
+                setTimeout(() => document.body.removeChild(notification), 3000);
+            }
         }
     }, [video, videoRef, setScreenshots]);
 
