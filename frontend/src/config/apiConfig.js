@@ -45,6 +45,7 @@ export const API_CONFIG = {
     VERIFY_SUBSCRIPTION: `${currentConfig.SUBSCRIPTION_API_URL}/api/verify-subscription`,
     USER_SUBSCRIPTION: `${currentConfig.SUBSCRIPTION_API_URL}/api/users`,
     CAPTURE_SCREENSHOT: `${currentConfig.API_BASE_URL}/api/capture-screenshot`,
+    CAPTURE_PRINT_QUALITY: `${currentConfig.API_BASE_URL}/api/capture-print-quality`,
     CAPTURE_MULTIPLE_SCREENSHOTS: `${currentConfig.API_BASE_URL}/api/capture-multiple-screenshots`,
     VIDEO_INFO: `${currentConfig.API_BASE_URL}/api/video-info`
   }

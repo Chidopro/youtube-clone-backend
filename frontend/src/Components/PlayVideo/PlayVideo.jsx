@@ -245,85 +245,68 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         // Get current timestamp
         const currentTime = videoElement.currentTime || 0;
 
-        // Use client-side capture as primary method
-        // console.log('Attempting client-side capture from parent...');
-        const clientScreenshot = await captureCurrentVideoFrame();
+        // Always use print quality server-side capture for optimal quality
+        // Skip client-side capture to ensure screenshots are always at print-ready dimensions (3000x3600+ pixels)
+        const videoUrl = video?.video_url || videoElement.src;
         
-        if (clientScreenshot) {
-            // console.log('✅ Client-side screenshot captured successfully from parent');
-            setScreenshots(prev => {
-                const newScreenshots = prev.length < 6 ? [...prev, clientScreenshot] : prev;
-                showGreenFlagConfirmation(prev.length);
-                return newScreenshots;
-            });
-            // Store the timestamp
-            setScreenshotTimestamps(prev => {
-                const newTimestamps = prev.length < 6 ? [...prev, currentTime] : prev;
-                return newTimestamps;
-            });
-        } else {
-            // console.log('❌ Client-side capture failed, trying server-side...');
+        if (!videoUrl) {
+            safeAlert('No video URL available for screenshot capture.');
+            return;
+        }
+        
+        try {
+            // console.log(`Capturing PRINT QUALITY screenshot at ${currentTime}s from ${videoUrl}`);
             
-            // Fallback to server-side capture
-            try {
-                const currentTime = videoElement.currentTime || 0;
-                const videoUrl = video?.video_url || videoElement.src;
-                
-                if (!videoUrl) {
-                    throw new Error('No video URL available');
-                }
-                
-                // console.log(`Attempting server-side screenshot capture at ${currentTime}s from ${videoUrl}`);
-                
-                // Add timeout to prevent long delays
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for ffmpeg processing
-                
-                const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        video_url: videoUrl,
-                        timestamp: currentTime,
-                        quality: 85
-                    }),
-                    signal: controller.signal
+            // Extended timeout for print quality processing (60 seconds)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
+            
+            const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_PRINT_QUALITY, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    video_url: videoUrl,
+                    timestamp: currentTime,
+                    print_dpi: 300
+                }),
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`Server responded with status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success && result.screenshot) {
+                // console.log('✅ Print quality screenshot captured successfully');
+                // console.log(`Dimensions: ${result.dimensions?.width}x${result.dimensions?.height}, Size: ${result.file_size} bytes`);
+                setScreenshots(prev => {
+                    const newScreenshots = prev.length < 6 ? [...prev, result.screenshot] : prev;
+                    showGreenFlagConfirmation(prev.length);
+                    return newScreenshots;
                 });
-                
-                clearTimeout(timeoutId);
-                
-                if (!response.ok) {
-                    throw new Error(`Server responded with status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                
-                if (result.success && result.screenshot) {
-                    // console.log('✅ Server-side screenshot captured successfully');
-                    setScreenshots(prev => {
-                        const newScreenshots = prev.length < 6 ? [...prev, result.screenshot] : prev;
-                        showGreenFlagConfirmation(prev.length);
-                        return newScreenshots;
-                    });
-                    // Store the timestamp
-                    setScreenshotTimestamps(prev => {
-                        const newTimestamps = prev.length < 6 ? [...prev, currentTime] : prev;
-                        return newTimestamps;
-                    });
-                } else {
-                    throw new Error(result.error || 'Server failed to capture screenshot');
-                }
-                
-            } catch (error) {
-                // console.log('❌ Server capture failed, using thumbnail as last resort:', error);
-                
-                // Check if it's a timeout/abort error
-                if (error.name === 'AbortError') {
-                    // console.log('Screenshot capture timed out after 30 seconds');
-                    safeAlert('Screenshot capture timed out. The video might be too large or slow to process. Using thumbnail instead.');
-                }
+                // Store the timestamp
+                setScreenshotTimestamps(prev => {
+                    const newTimestamps = prev.length < 6 ? [...prev, currentTime] : newTimestamps;
+                    return newTimestamps;
+                });
+            } else {
+                throw new Error(result.error || 'Server failed to capture print quality screenshot');
+            }
+            
+        } catch (error) {
+            // console.log('❌ Print quality capture failed, using thumbnail as last resort:', error);
+            
+            // Check if it's a timeout/abort error
+            if (error.name === 'AbortError') {
+                // console.log('Print quality screenshot capture timed out after 60 seconds');
+                safeAlert('Print quality screenshot capture timed out. The video might be too large or slow to process. Using thumbnail instead.');
+            }
                 
                 // Last resort: use thumbnail
                 const thumbnailUrl = video?.thumbnail || video?.poster || videoElement.poster;
@@ -352,7 +335,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         font-size: 14px;
                         font-weight: 500;
                     `;
-                    notification.textContent = 'Failed to capture screenshot. Please try again.';
+                    notification.textContent = 'Failed to capture print quality screenshot. Please try again.';
                     document.body.appendChild(notification);
                     setTimeout(() => document.body.removeChild(notification), 3000);
                 }
@@ -738,7 +721,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             
             // console.log(`Requesting server-side screenshot at ${currentTime}s from ${videoUrl}`);
             
-            const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
+            const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_PRINT_QUALITY, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -746,7 +729,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 },
                 body: JSON.stringify({
                     video_url: videoUrl,
-                    timestamp: currentTime
+                    timestamp: currentTime,
+                    print_dpi: 300
                 })
             });
             
