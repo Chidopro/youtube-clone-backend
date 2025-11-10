@@ -24,6 +24,7 @@ const ToolsPage = () => {
   const [showAcknowledgment, setShowAcknowledgment] = useState(false);
   const [selectedProductName, setSelectedProductName] = useState('');
   const [currentImageDimensions, setCurrentImageDimensions] = useState({ width: 0, height: 0 });
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
   // Load screenshot and product name from localStorage or URL params
   useEffect(() => {
@@ -37,6 +38,8 @@ const ToolsPage = () => {
           if (screenshot) {
             setImageUrl(screenshot);
             setSelectedImage(screenshot);
+            // Reset upgrading state when new image loads (will be set again when image actually loads)
+            setIsUpgrading(false);
           }
           // Load selected product name
           if (data.selected_product_name) {
@@ -111,6 +114,11 @@ const ToolsPage = () => {
     img.onload = () => {
       // Store current image dimensions
       setCurrentImageDimensions({ width: img.width, height: img.height });
+      
+      // Check if image is small (likely client-side capture) - upgrade might be in progress
+      // Small images are typically < 2000 pixels in either dimension
+      const isSmallImage = img.width < 2000 || img.height < 2000;
+      setIsUpgrading(isSmallImage);
       
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -605,7 +613,12 @@ const ToolsPage = () => {
                 let warningColor = '#e65100';
                 let bgColor = '#fff3e0';
                 
-                if (isMatch) {
+                // If image is small and upgrade might be in progress, show upgrading message
+                if (isUpgrading && needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000)) {
+                  warningMessage = '⏳ Upgrading to print quality... (this may take a few seconds)';
+                  warningColor = '#1976d2';
+                  bgColor = '#e3f2fd';
+                } else if (isMatch) {
                   warningMessage = '✓ Dimensions match!';
                   warningColor = '#2e7d32';
                   bgColor = '#e8f5e9';
