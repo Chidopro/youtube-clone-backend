@@ -27,31 +27,64 @@ const ToolsPage = () => {
 
   // Load screenshot and product name from localStorage or URL params
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('pending_merch_data');
-      if (raw) {
-        const data = JSON.parse(raw);
-        // Priority: edited screenshot > selected screenshot > first screenshot > thumbnail
-        const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
-        if (screenshot) {
-          setImageUrl(screenshot);
-          setSelectedImage(screenshot);
+    const loadScreenshot = () => {
+      try {
+        const raw = localStorage.getItem('pending_merch_data');
+        if (raw) {
+          const data = JSON.parse(raw);
+          // Priority: edited screenshot > selected screenshot > first screenshot > thumbnail
+          const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
+          if (screenshot) {
+            setImageUrl(screenshot);
+            setSelectedImage(screenshot);
+          }
+          // Load selected product name
+          if (data.selected_product_name) {
+            setSelectedProductName(data.selected_product_name);
+          }
         }
-        // Load selected product name
-        if (data.selected_product_name) {
-          setSelectedProductName(data.selected_product_name);
+        
+        // Also check if there's a selected screenshot from URL params
+        const selectedScreenshot = searchParams.get('screenshot');
+        if (selectedScreenshot) {
+          setImageUrl(selectedScreenshot);
+          setSelectedImage(selectedScreenshot);
         }
+      } catch (e) {
+        console.warn('Could not load screenshot from localStorage:', e);
       }
-      
-      // Also check if there's a selected screenshot from URL params
-      const selectedScreenshot = searchParams.get('screenshot');
-      if (selectedScreenshot) {
-        setImageUrl(selectedScreenshot);
-        setSelectedImage(selectedScreenshot);
+    };
+    
+    // Load immediately
+    loadScreenshot();
+    
+    // Listen for storage events (when print quality upgrade completes from other tabs)
+    const handleStorageChange = (e) => {
+      if (e.key === 'pending_merch_data' && e.newValue) {
+        loadScreenshot();
       }
-    } catch (e) {
-      console.warn('Could not load screenshot from localStorage:', e);
-    }
+    };
+    
+    // Listen for custom event (when print quality upgrade completes in same tab)
+    const handleLocalStorageUpdate = () => {
+      loadScreenshot();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('localStorageUpdated', handleLocalStorageUpdate);
+    
+    // Also check periodically for upgrades (backup in case events don't fire)
+    const checkInterval = setInterval(() => {
+      loadScreenshot();
+    }, 2000); // Check every 2 seconds for first 10 seconds
+    
+    setTimeout(() => clearInterval(checkInterval), 10000);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('localStorageUpdated', handleLocalStorageUpdate);
+      clearInterval(checkInterval);
+    };
   }, [searchParams]);
 
   // Helper function to draw rounded rectangle
@@ -564,11 +597,34 @@ const ToolsPage = () => {
                 const heightMatch = Math.abs(currentPixels.height - targetPixels.height) < 50;
                 const isMatch = widthMatch && heightMatch;
                 
+                // Determine if image needs enlargement or cropping
+                const needsEnlargement = currentPixels.width < targetPixels.width || currentPixels.height < targetPixels.height;
+                const needsCropping = currentPixels.width > targetPixels.width || currentPixels.height > targetPixels.height;
+                
+                let warningMessage = '';
+                let warningColor = '#e65100';
+                let bgColor = '#fff3e0';
+                
+                if (isMatch) {
+                  warningMessage = '✓ Dimensions match!';
+                  warningColor = '#2e7d32';
+                  bgColor = '#e8f5e9';
+                } else if (needsEnlargement && needsCropping) {
+                  // Mixed case - might need both
+                  warningMessage = '⚠ Image dimensions differ - will be adjusted to fit (may crop and enlarge)';
+                } else if (needsEnlargement) {
+                  warningMessage = '⚠ Image is smaller than target - will be enlarged (may lose quality)';
+                } else if (needsCropping) {
+                  warningMessage = '⚠ Image is larger than target - will be cropped to fit';
+                } else {
+                  warningMessage = '⚠ Dimensions do not match - will be adjusted';
+                }
+                
                 return (
                   <div style={{ 
                     marginTop: '1rem', 
                     padding: '0.75rem', 
-                    backgroundColor: isMatch ? '#e8f5e9' : '#fff3e0',
+                    backgroundColor: bgColor,
                     border: `1px solid ${isMatch ? '#4caf50' : '#ff9800'}`,
                     borderRadius: '4px',
                     fontSize: '0.85rem'
@@ -582,8 +638,8 @@ const ToolsPage = () => {
                     <div style={{ marginBottom: '0.25rem' }}>
                       Current: {currentPixels.width} × {currentPixels.height} pixels
                     </div>
-                    <div style={{ fontWeight: 'bold', color: isMatch ? '#2e7d32' : '#e65100' }}>
-                      {isMatch ? '✓ Dimensions match!' : '⚠ Dimensions do not match - image will be cropped'}
+                    <div style={{ fontWeight: 'bold', color: warningColor }}>
+                      {warningMessage}
                     </div>
                   </div>
                 );

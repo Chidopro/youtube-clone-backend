@@ -290,7 +290,28 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             }
                             return updated;
                         });
-                        console.log('✅ Screenshot upgraded to print quality');
+                        
+                        // Also update localStorage so Tools page gets the upgraded version
+                        try {
+                            const raw = localStorage.getItem('pending_merch_data');
+                            if (raw) {
+                                const data = JSON.parse(raw);
+                                if (data.screenshots && Array.isArray(data.screenshots) && data.screenshots[tempIndex]) {
+                                    data.screenshots[tempIndex] = result.screenshot;
+                                    // Also update selected_screenshot if this is the selected one
+                                    if (data.selected_screenshot === clientScreenshot) {
+                                        data.selected_screenshot = result.screenshot;
+                                    }
+                                    localStorage.setItem('pending_merch_data', JSON.stringify(data));
+                                    // Trigger custom event for same-tab updates (storage event only fires cross-tab)
+                                    window.dispatchEvent(new Event('localStorageUpdated'));
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('Failed to update localStorage with print quality screenshot:', e);
+                        }
+                        
+                        console.log('✅ Screenshot upgraded to print quality and saved to localStorage');
                     }
                 })
                 .catch(error => {
