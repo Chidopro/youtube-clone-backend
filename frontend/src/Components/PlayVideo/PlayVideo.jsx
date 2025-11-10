@@ -339,7 +339,6 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     document.body.appendChild(notification);
                     setTimeout(() => document.body.removeChild(notification), 3000);
                 }
-            }
         }
     }, [video, videoRef, setScreenshots]);
 
