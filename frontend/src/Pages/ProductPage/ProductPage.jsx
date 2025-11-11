@@ -156,7 +156,11 @@ const ProductPage = ({ sidebar }) => {
     );
   }
 
-  if (!productData) {
+  // If no productId, we're on the browse page - show category selection
+  if (!productId) {
+    // Don't show "Product Not Found" - show category selection instead
+  } else if (!productData) {
+    // Only show "Product Not Found" if we have a productId but no data
     return (
       <div className={`container ${sidebar ? "" : " large-container"}`}>
         <div style={{ padding: '2rem', textAlign: 'center' }}>
