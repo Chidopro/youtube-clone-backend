@@ -29,16 +29,16 @@ const ProductPage = ({ sidebar }) => {
 
   // Categories for selection
   const categories = [
-    { name: "All Products", emoji: "🛍️", category: "all" },
-    { name: "Women's", emoji: "👚", category: "womens" },
-    { name: "Men's", emoji: "👔", category: "mens" },
-    { name: "Kids", emoji: "👕", category: "kids" },
-    { name: "Mugs", emoji: "☕", category: "mugs" },
-    { name: "Hats", emoji: "🧢", category: "hats" },
-    { name: "Bags", emoji: "👜", category: "bags" },
-    { name: "Pets", emoji: "🐾", category: "pets" },
-    { name: "Misc", emoji: "🎁", category: "misc" },
-    { name: "Thumbnails", emoji: "🖼️", category: "thumbnails" }
+    { name: "All Products", emoji: "≡ƒ¢ì∩╕Å", category: "all" },
+    { name: "Women's", emoji: "≡ƒæ⌐", category: "womens" },
+    { name: "Men's", emoji: "≡ƒæ¿", category: "mens" },
+    { name: "Kids", emoji: "≡ƒæ╢", category: "kids" },
+    { name: "Mugs", emoji: "Γÿò", category: "mugs" },
+    { name: "Hats", emoji: "≡ƒºó", category: "hats" },
+    { name: "Bags", emoji: "≡ƒæ£", category: "bags" },
+    { name: "Pets", emoji: "≡ƒÉò", category: "pets" },
+    { name: "Misc", emoji: "≡ƒôª", category: "misc" },
+    { name: "Thumbnails", emoji: "≡ƒû╝∩╕Å", category: "thumbnails" }
   ];
 
   const handleCategoryClick = (newCategory) => {
@@ -112,10 +112,10 @@ const ProductPage = ({ sidebar }) => {
         }
         
         const data = await response.json();
-        console.log('🔍 Product Data Received:', data);
-        console.log('📸 Thumbnail URL:', data.product?.thumbnail_url);
-        console.log('📸 Screenshots:', data.product?.screenshots);
-        console.log('📸 Screenshots Length:', data.product?.screenshots?.length || 0);
+        console.log('≡ƒôª Product Data Received:', data);
+        console.log('≡ƒô╕ Thumbnail URL:', data.product?.thumbnail_url);
+        console.log('≡ƒô╕ Screenshots:', data.product?.screenshots);
+        console.log('≡ƒô╕ Screenshots Length:', data.product?.screenshots?.length || 0);
         setProductData(data);
       } catch (err) {
         console.error('Error fetching product data:', err);
@@ -127,9 +127,6 @@ const ProductPage = ({ sidebar }) => {
 
     if (productId) {
       fetchProductData();
-    } else {
-      // No productId means we're on the browse page - set loading to false immediately
-      setLoading(false);
     }
   }, [productId, category, authenticated, email]);
 
@@ -156,11 +153,7 @@ const ProductPage = ({ sidebar }) => {
     );
   }
 
-  // If no productId, we're on the browse page - show category selection
-  if (!productId) {
-    // Don't show "Product Not Found" - show category selection instead
-  } else if (!productData) {
-    // Only show "Product Not Found" if we have a productId but no data
+  if (!productData) {
     return (
       <div className={`container ${sidebar ? "" : " large-container"}`}>
         <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -187,7 +180,7 @@ const ProductPage = ({ sidebar }) => {
       </div>
 
       {/* Category Selection Section - Only show when category is "all" or no specific category */}
-      {(category === 'all' || !productData || !productData.products || productData.products.length === 0) && (
+      {(category === 'all' || !productData.products || productData.products.length === 0) && (
         <div className="merchandise-categories">
           <div className="categories-container">
             <h1 className="categories-title">Choose a Product Category</h1>
@@ -210,7 +203,7 @@ const ProductPage = ({ sidebar }) => {
       )}
 
       {/* Products Section - Only show when specific category is selected (not "all") and has products */}
-      {category !== 'all' && productData && productData.products && productData.products.length > 0 && (
+      {category !== 'all' && productData.products && productData.products.length > 0 && (
         <>
           {/* Screenshot Selection Section */}
           <div className="screenshots-section">
@@ -283,7 +276,7 @@ const ProductPage = ({ sidebar }) => {
             </div>
 
             <div className="products-grid">
-              {productData && productData.products && productData.products.map((product, index) => (
+              {productData.products && productData.products.map((product, index) => (
                 <div key={index} className="product-card">
                   {/* Product Image */}
                   {product.preview_image && (
@@ -364,7 +357,7 @@ const ProductPage = ({ sidebar }) => {
                     {ci.image && <img src={ci.image} alt={ci.name} />}
                     <div className="cart-item-info">
                       <div className="cart-item-name">{ci.name}</div>
-                      <div className="cart-item-meta">{ci.color} • {ci.size}</div>
+                      <div className="cart-item-meta">{ci.color} ΓÇó {ci.size}</div>
                       <div className="cart-item-price">${(ci.price || 0).toFixed(2)}</div>
                     </div>
                     {ci.screenshot && <img className="cart-item-shot" src={ci.screenshot} alt="screenshot" />}
