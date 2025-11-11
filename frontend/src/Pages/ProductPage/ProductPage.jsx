@@ -187,7 +187,7 @@ const ProductPage = ({ sidebar }) => {
       </div>
 
       {/* Category Selection Section - Only show when category is "all" or no specific category */}
-      {(category === 'all' || !productData.products || productData.products.length === 0) && (
+      {(category === 'all' || !productData || !productData.products || productData.products.length === 0) && (
         <div className="merchandise-categories">
           <div className="categories-container">
             <h1 className="categories-title">Choose a Product Category</h1>
@@ -210,7 +210,7 @@ const ProductPage = ({ sidebar }) => {
       )}
 
       {/* Products Section - Only show when specific category is selected (not "all") and has products */}
-      {category !== 'all' && productData.products && productData.products.length > 0 && (
+      {category !== 'all' && productData && productData.products && productData.products.length > 0 && (
         <>
           {/* Screenshot Selection Section */}
           <div className="screenshots-section">
@@ -283,7 +283,7 @@ const ProductPage = ({ sidebar }) => {
             </div>
 
             <div className="products-grid">
-              {productData.products && productData.products.map((product, index) => (
+              {productData && productData.products && productData.products.map((product, index) => (
                 <div key={index} className="product-card">
                   {/* Product Image */}
                   {product.preview_image && (
