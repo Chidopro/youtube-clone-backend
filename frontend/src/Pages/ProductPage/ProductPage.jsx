@@ -105,17 +105,26 @@ const ProductPage = ({ sidebar }) => {
       try {
         setLoading(true);
         // Fetch product data from backend API
-        const response = await fetch(`https://screenmerch.fly.dev/api/product/${productId}?category=${category}&authenticated=${authenticated}&email=${email}`);
+        let apiUrl;
+        if (productId) {
+          // Fetch specific product
+          apiUrl = `https://screenmerch.fly.dev/api/product/${productId}?category=${category}&authenticated=${authenticated}&email=${email}`;
+        } else {
+          // Fetch products by category for browse page
+          apiUrl = `https://screenmerch.fly.dev/api/product/browse?category=${category}&authenticated=${authenticated}&email=${email}`;
+        }
+        
+        const response = await fetch(apiUrl);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch product data: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('≡ƒôª Product Data Received:', data);
-        console.log('≡ƒô╕ Thumbnail URL:', data.product?.thumbnail_url);
-        console.log('≡ƒô╕ Screenshots:', data.product?.screenshots);
-        console.log('≡ƒô╕ Screenshots Length:', data.product?.screenshots?.length || 0);
+        console.log('🔍 Product Data Received:', data);
+        console.log('📸 Thumbnail URL:', data.product?.thumbnail_url);
+        console.log('📸 Screenshots:', data.product?.screenshots);
+        console.log('📸 Screenshots Length:', data.product?.screenshots?.length || 0);
         setProductData(data);
       } catch (err) {
         console.error('Error fetching product data:', err);
@@ -125,9 +134,8 @@ const ProductPage = ({ sidebar }) => {
       }
     };
 
-    if (productId) {
-      fetchProductData();
-    }
+    // Always fetch when category changes (for browse page) or when productId exists
+    fetchProductData();
   }, [productId, category, authenticated, email]);
 
   if (loading) {
@@ -153,7 +161,11 @@ const ProductPage = ({ sidebar }) => {
     );
   }
 
-  if (!productData) {
+  // Only show "Product Not Found" if we have a productId but no data
+  // If no productId, we're on browse page - show categories/products
+  if (!productId && !productData) {
+    // Still loading or no data yet - let it render categories
+  } else if (productId && !productData) {
     return (
       <div className={`container ${sidebar ? "" : " large-container"}`}>
         <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -180,7 +192,7 @@ const ProductPage = ({ sidebar }) => {
       </div>
 
       {/* Category Selection Section - Only show when category is "all" or no specific category */}
-      {(category === 'all' || !productData.products || productData.products.length === 0) && (
+      {(category === 'all' || !productData || !productData.products || productData.products.length === 0) && (
         <div className="merchandise-categories">
           <div className="categories-container">
             <h1 className="categories-title">Choose a Product Category</h1>
@@ -203,7 +215,7 @@ const ProductPage = ({ sidebar }) => {
       )}
 
       {/* Products Section - Only show when specific category is selected (not "all") and has products */}
-      {category !== 'all' && productData.products && productData.products.length > 0 && (
+      {category !== 'all' && productData && productData.products && productData.products.length > 0 && (
         <>
           {/* Screenshot Selection Section */}
           <div className="screenshots-section">
@@ -276,7 +288,7 @@ const ProductPage = ({ sidebar }) => {
             </div>
 
             <div className="products-grid">
-              {productData.products && productData.products.map((product, index) => (
+              {productData && productData.products && productData.products.map((product, index) => (
                 <div key={index} className="product-card">
                   {/* Product Image */}
                   {product.preview_image && (
