@@ -127,6 +127,9 @@ const ProductPage = ({ sidebar }) => {
 
     if (productId) {
       fetchProductData();
+    } else {
+      // No productId means we're on the browse page - set loading to false immediately
+      setLoading(false);
     }
   }, [productId, category, authenticated, email]);
 
