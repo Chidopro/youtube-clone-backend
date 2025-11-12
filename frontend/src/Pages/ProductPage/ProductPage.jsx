@@ -683,10 +683,10 @@ const ProductPage = ({ sidebar }) => {
             const productCategoryMap = {
               'womens': ["Cropped Hoodie", "Fitted Racerback Tank", "Micro-Rib Tank Top", "Women's Ribbed Neck", "Women's Shirt", "Unisex Heavyweight T-Shirt", "Unisex Pullover Hoodie", "Women's Crop Top"],
               'mens': ["Unisex Hoodie", "Men's Tank Top", "Mens Fitted T-Shirt", "Men's Fitted Long Sleeve", "Unisex T-Shirt", "Unisex Oversized T-Shirt", "Men's Long Sleeve Shirt", "Unisex Champion Hoodie"],
-              'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve", "Toddler Short Sleeve T-Shirt", "Toddler Jersey T-Shirt", "Kids Sweatshirt", "Youth All Over Print Swimsuit", "Girls Leggings", "Baby Staple Tee", "Baby Jersey T-Shirt", "Baby Body Suit"],
+              'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve", "Toddler Jersey T-Shirt", "Kids Sweatshirt", "Baby Staple Tee", "Baby Jersey T-Shirt", "Baby Body Suit"],
               'mugs': ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"],
               'hats': ["Distressed Dad Hat", "Snapback Hat", "Five Panel Trucker Hat", "Five Panel Baseball Cap"],
-              'bags': ["Laptop Sleeve", "All-Over Print Drawstring", "All Over Print Tote Pocket", "All-Over Print Crossbody Bag", "All-Over Print Utility Bag"],
+              'bags': ["Laptop Sleeve", "All-Over Print Drawstring", "All Over Print Tote Pocket", "All-Over Print Utility Bag"],
               'pets': ["Pet Bowl All-Over Print", "Pet Bandana Collar", "All Over Print Leash", "All Over Print Collar"],
               'misc': ["Bandana", "Hardcover Bound Notebook", "Coasters", "Apron", "Jigsaw Puzzle with Tin", "Greeting Card", "Kiss-Cut Stickers", "Die-Cut Magnets"]
             };

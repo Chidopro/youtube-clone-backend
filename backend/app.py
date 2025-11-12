@@ -777,7 +777,7 @@ PRODUCTS = [
         "price": 21.69,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
-        "preview_image": "guidonteepreview.png",
+        "preview_image": "mensunisextshirtpreview.png",
         "description": "The Unisex Staple T-Shirt feels soft and light with just the right amount of stretch. It's comfortable and flattering for all. We can't compliment this shirt enough–it's one of our crowd favorites, and it's sure to be your next favorite too! Solid colors are 100% Airlume combed and ring-spun cotton. Ash color is 99% combed and ring-spun cotton, 1% polyester. Heather colors are 52% combed and ring-spun cotton, 48% polyester. Athletic and Black Heather are 90% combed and ring-spun cotton, 10% polyester. Heather Prism colors are 99% combed and ring-spun cotton, 1% polyester. Fabric weight: 4.2 oz./yd.² (142 g/m²). Pre-shrunk fabric. 30 singles. Side-seamed construction. Tear-away label. Shoulder-to-shoulder taping. Blank product sourced from Nicaragua, Mexico, Honduras, or the US. Disclaimer: The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Dark Grey Heather", "Navy", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
         "size_pricing": {
@@ -816,7 +816,7 @@ PRODUCTS = [
         "price": 26.49,
         "filename": "unisexoversizedtshirt.png",
         "main_image": "unisexoversizedtshirt.png",
-        "preview_image": "unisexoversizedtshirtpreview.png",
+        "preview_image": "mensunisexoversizedtshirtpreview.png",
         "description": "This oversized 100% cotton tee is made for streetwear drops and everyday fits. The heavyweight fabric gives it structure and a premium feel, while the relaxed, roomy cut makes it perfect for layering or wearing on its own. Add bold prints or clean embroidery—this tee is ready to carry your brand's style. 100% ring-spun cotton. Fabric weight: 6.5 oz./yd.² (220.4 g/m²). 18 singles yarn. Oversized fit. Tear-away label. Washed-color options for a trendy vintage look. Streetwear-inspired style. Blank product sourced from Nicaragua. This product is made on demand. No minimums.",
         "options": {"color": ["Washed Black", "Washed Maroon", "Washed Charcoal", "Khaki", "Light Washed Denim", "Vintage White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
@@ -834,7 +834,7 @@ PRODUCTS = [
         "price": 24.23,
         "filename": "random.png",
         "main_image": "random.png",
-        "preview_image": "randompreview.png",
+        "preview_image": "menstanktoppreview.png",
         "description": "The Men's Staple Tank Top is made of high-quality durable materials. Wear it on a sunny day out or offer it to your customers on your online store. 100% combed and ring-spun cotton. Tri-blends are 50% polyester, 25% combed, 25% ring-spun cotton, and rayon. Athletic Heather is 90% airlume combed and ring-spun cotton, 10% polyester. All the other Heather colors are 52% airlume combed and ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/yd² (142.40 g/m²), triblends: 3.8 oz/yd² (90.07 g/m²). 30 singles. Regular fit. Side-seamed construction. Blank product sourced from Nicaragua, Honduras, or the US. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "True Royal", "Athletic Heather", "Red", "Oatmeal Triblend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
@@ -851,7 +851,7 @@ PRODUCTS = [
         "price": 29.33,
         "filename": "mensfittedlongsleeve.png",
         "main_image": "mensfittedlongsleeve.png",
-        "preview_image": "mensfittedlongsleevepreview.png",
+        "preview_image": "mensfittedlongsleeveshirtpreview.png",
         "description": "This super-soft long-sleeved crew shirt will be a classic piece in your wardrobe. There are multiple branding options for this 100% cotton shirt, so get your designs ready and customize it to your liking! 100% combed ring-spun cotton. Fabric weight: 4.3 oz/yd² (149.2 g/m²). 32 singles. Pre-shrunk fabric. Set-in 1 × 1 baby rib collar. Tear-away label. Blank product sourced from Nicaragua or Cambodia. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Heavy Metal", "White"], "size": ["S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
@@ -867,7 +867,7 @@ PRODUCTS = [
         "price": 36.95,
         "filename": "tested.png",
         "main_image": "tested.png",
-        "preview_image": "testedpreview.png",
+        "preview_image": "mensunisexhoodiepreview.png",
         "description": "Classic unisex hoodie with a front pouch pocket and matching flat drawstrings. The 100% cotton exterior makes this hoodie soft to the touch. What's more, if you go with custom prints, you can personalize the hoodie to your heart's content and maximize your branding thanks to the custom inside label. Use it to showcase your logo, strengthen customer loyalty, and boost your brand's visibility on the market. 65% ring-spun cotton, 35% polyester. Charcoal Heather is 60% ring-spun cotton, 40% polyester. Carbon Grey is 55% ring-spun cotton, 45% polyester. 100% cotton face. Fabric weight: 8.5 oz./yd.² (288.2 g/m²). Front pouch pocket. Self-fabric patch on the back. Matching flat drawstrings. 3-panel hood. Tear-away tag. Blank product sourced from Pakistan. Disclaimer: Please be aware that, for legal reasons, this product comes with a manufacturer's side tag attached. The tag is discreet and won't compromise your design's integrity. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy Blazer", "Carbon Grey", "White", "Maroon", "Charcoal Heather", "Vintage Black", "Forest Green", "Military Green", "Team Red", "Dusty Rose", "Sky Blue", "Purple", "Team Royal"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
@@ -884,7 +884,7 @@ PRODUCTS = [
         "price": 43.15,
         "filename": "croppedhoodie.png",
         "main_image": "croppedhoodie.png",
-        "preview_image": "croppedhoodiepreview.png",
+        "preview_image": "womenscroppedhoodiepreview.png",
         "description": "Comfort and style rolled into one—that's the easiest way to describe this fashion-forward hoodie. It serves as a great statement piece in any wardrobe, and with its trendy raw hem and matching drawstrings, the hoodie is bound to become a true favorite on your online store. 52% airlume combed and ring-spun cotton, 48% poly fleece. Fabric weight: 6.5 oz/yd² (220.39 g/m²). Dyed-to-match drawstrings. Dropped shoulder cut. Cropped body with a raw hem. Blank product sourced from Mexico, Nicaragua or the United States. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Military Green", "Storm", "Peach"], "size": ["S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
@@ -900,7 +900,7 @@ PRODUCTS = [
         "price": 45.00,
         "filename": "hoodiechampion.png",
         "main_image": "hoodiechampion.png",
-        "preview_image": "hoodiechampionpreview.png",
+        "preview_image": "mensunisexchampionhoodiepreview.png",
         "description": "A classic hoodie that combines Champion's signature quality with everyday comfort. The cotton-poly blend makes it soft and durable, while the two-ply hood and snug rib-knit cuffs lock in warmth. Champion's double Dry technology keeps the wearer dry on the move, and the kangaroo pocket keeps essentials handy. Customize it with your design, order one for yourself, or sell it online. 50% cotton, 50% polyester. Light Steel color is 50% cotton, 40% polyester, and 10% black polyester. Fabric weight: 9 oz./yd.² (305 g/m²). Regular fit. Set-in sleeves. Two-ply hood. Dyed-to-match drawcord. Kangaroo pocket. Heavy rib-knit waistband and cuffs. Embroidered C logo on the left cuff. Blank product sourced from Honduras and Guatemala. Disclaimer: Size up for a looser fit.",
         "options": {"color": ["Black", "Light Steel"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
@@ -936,7 +936,7 @@ PRODUCTS = [
         "price": 23.69,
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
-        "preview_image": "womensshirtpreview.png",
+        "preview_image": "womenshirtpreview.png",
         "description": "The perfect women's t-shirt is hard to find, but this Bella + Canvas relaxed tee just might be it. Its soft and smooth fabric, as well as the relaxed fit will appeal to anyone looking for a comfy everyday t-shirt, or an addition to their business casual wardrobe. Add your design and turn this shirt into something truly special. 100% combed and ring-spun cotton. Heather Prism Lilac & Heather Prism Natural are 99% combed and ring-spun cotton, 1% polyester. Athletic Heather is 90% combed and ring-spun cotton, 10% polyester. Other Heather colors are 52% combed and ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/y² (142 g/m²). Relaxed fit. Pre-shrunk fabric. Side-seamed construction. Crew neck. Blank product sourced from Nicaragua, Honduras, or the US. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Dark Grey Heather", "Pink", "Navy", "Heather Mauve", "Heather Red", "Berry", "Leaf", "Heather Blue Lagoon", "Athletic Heather", "Heather Stone"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
@@ -971,7 +971,7 @@ PRODUCTS = [
         "price": 23.49,
         "filename": "kidshirtpreview.png",
         "main_image": "kidshirtpreview.png",
-        "preview_image": "kidshirtpreview.png",
+        "preview_image": "kidsshirtpreview.png",
         "description": "This Youth Staple Tee is light, comfy, and has just the right amount of stretch youngsters need for an active lifestyle. Both your print and embroidery designs will look great on this soft cotton tee. Add your artistry and make this crowd favorite into something special! 100% Airlume combed and ring-spun cotton. Heather colors are 52% combed and ring-spun cotton, 48% polyester. Athletic Heather is 90% combed and ring-spun cotton, 10% polyester. Fabric weight: 4.2 oz/yd² (142 g/m²). Pre-shrunk fabric. 32 singles. Relaxed unisex fit. Side-seamed construction. Blank product sourced from Nicaragua, the US, Guatemala, or Honduras. Disclaimer: The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions. Take a look at our Bella + Canvas 3001 unisex, toddler, and baby tees as well! This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Maroon", "Forest", "Red", "Dark Grey Heather", "True Royal", "Berry", "Heather Forest", "Kelly", "Heather Columbia Blue", "Athletic Heather", "Mustard", "Pink", "Heather Dust", "Natural", "White"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
@@ -987,7 +987,7 @@ PRODUCTS = [
         "price": 29.33,
         "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
-        "preview_image": "kidhoodiepreview.png",
+        "preview_image": "kidsyouthheavyblendhoodiepreview.png",
         "description": "The Youth Heavy Blend Hoodie is a timeless and versatile piece, combining resilience with comfort. The blend of breathable cotton and durable polyester ensures this hoodie can withstand daily wear and frequent washes, making it a suitable fit for children on-the-go. Comfortable fleece and air jet yarn guarantees minimal pilling, and the hoodie comes with a front pouch pocket and no drawcords. Design a hoodie for your child, or start selling today! 50% cotton, 50% polyester, 20 singles. Fabric weight: 8 oz./yd² (271.25 g/m²). 2-end midweight fleece fabric. Air jet yarn for a softer feel and reduced pilling. Double-lined hood. No drawcords for child safety. Front pouch pocket. Double-needle stitching detailing at shoulders, armholes, neck, waistband and cuffs. 1 x 1 rib with spandex at cuffs and hem for enhanced stretch and recovery. CPSIA Tracking Label Compliant. Tear away label. Blank product sourced from Honduras. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Royal", "White", "Dark Heather", "Carolina Blue"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
@@ -1003,7 +1003,7 @@ PRODUCTS = [
         "price": 26.49,
         "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
-        "preview_image": "kidlongsleevepreview.png",
+        "preview_image": "kidslongsleevepreview.png",
         "description": "When it comes to apparel classics, this is it! The Youth Long Sleeve Tee is a wardrobe staple that'll go great with casual, sporty, or loungewear looks. The shirt is made of airlume combed and ring-spun cotton and will feel soft and comfy to the always energetic youth. Create print or embroidery designs and start selling the shirt on your store! 100% airlume combed and ring-spun cotton. Athletic Heather is 90% airlume combed and ring-spun cotton, 10% polyester. Fabric weight: 4.2 oz/yd² (180 g/m²). Regular fit. Side-seamed construction. Ribbed cuff. Blank product sourced Honduras, Nicaragua, US. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Red", "Athletic Heather", "White"], "size": ["S", "M", "L"]},
         "size_pricing": {
@@ -1033,7 +1033,7 @@ PRODUCTS = [
         "price": 20.90,
         "filename": "youthalloverprintswimsuit.png",
         "main_image": "youthalloverprintswimsuit.png",
-        "preview_image": "youthalloverprintswimsuitpreview.png",
+        "preview_image": "kidsbabybodysuitpreview.png",
         "description": "Made from supremely soft cotton, this one-piece is ideal for delicate skin. The lap shoulder design and three-snap closure ensure quick, easy outfit changes, making it a practical choice for parents. Add your design, order this bodysuit for your little one, or start selling it online! 100% combed ring-spun cotton in a 1 × 1 rib. Heather color is 90% combed ring-spun cotton, 10% polyester. Fabric weight: 5 oz./yd.² (170 g/m²). Three-snap closure. Lap shoulders. Blank product sourced from India. Note that due to the ribbed fabric, the print can break when stretched. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Heather", "Pink", "White"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
@@ -1048,7 +1048,7 @@ PRODUCTS = [
         "price": 20.29,
         "filename": "toddlerjerseytshirt.png",
         "main_image": "toddlerjerseytshirt.png",
-        "preview_image": "toddlerjerseytshirtpreview.png",
+        "preview_image": "kidstoddlerjerseytshirtpreview.png",
         "description": "This soft jersey t-shirt is built to handle the energy of active toddlers. Its ribbed collar, self-fabric neck tape, and double-stitched sleeves add comfort and durability. Customize the shirt with print designs and add it to your store! 100% combed ring-spun cotton. Ash color is 99% combed ring-spun cotton and 1% polyester. Heather color is 90% combed ring-spun cotton and 10% polyester. Fabric weight: 4.5 oz./yd.² (153 g/m²). Side-seamed construction. Shoulder-to-shoulder taping. Double-needle stitching on the sleeves and bottom hem. Ribbed topstitch on the collar. EasyTear label. Blank product sourced from India. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Hot Pink", "Heather", "Light Blue", "White"], "size": ["2", "3", "4", "5/6"]},
         "size_pricing": {
@@ -1063,7 +1063,7 @@ PRODUCTS = [
         "price": 22.19,
         "filename": "babystapletshirt.png",
         "main_image": "babystapletshirt.png",
-        "preview_image": "babystapletshirtpreview.png",
+        "preview_image": "kidsbabystapleteepreview.png",
         "description": "This Bella + Canvas baby short sleeve tee is made from soft and light jersey cotton and ensures maximum comfort. Combined with your unique design, the casual crew neck tee will become a well-loved item in any baby's wardrobe! 100% Airlume combed ring-spun cotton. Heather colors are 52% combed ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/yd² (142 g/m²). Pre-shrunk fabric. 32 singles. Relaxed fit. Side-seamed construction. Blank product sourced from Nicaragua, the US, or Honduras. Looking for bigger sizes? Check out the same tee for toddlers and youth! This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Pink", "White"], "size": ["6-12m", "12-18m", "18-24m"]},
         "size_pricing": {
@@ -1077,7 +1077,7 @@ PRODUCTS = [
         "price": 20.29,
         "filename": "toddlershortsleevet.png",
         "main_image": "toddlershortsleevet.png",
-        "preview_image": "toddlershortsleevetpreview.png",
+        "preview_image": "kidsbabyjerseytshirtpreview.png",
         "description": "Soft, cozy, and made for everyday wear—this baby jersey t-shirt is designed with gentle, breathable fabric that's perfect for delicate skin. The ribbed collar keeps the shirt snug and maintains its shape wash after wash. Whether it's playtime, naptime, or a family outing, it's a reliable choice. Customize this baby tee with your design, order it for your child, or start selling it online. 100% combed ring-spun cotton. Fabric weight: 4.5 oz./yd.² (153 g/m²). Regular fit. Side-seamed construction. Topstitched ribbed collar. Shoulder-to-shoulder self-fabric back neck tape. Double-needle topstitch on sleeves and bottom hem. EasyTear label. Blank product sourced from India. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Royal", "Pink", "Light Blue", "White", "Charcoal"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
@@ -1092,7 +1092,7 @@ PRODUCTS = [
         "price": 31.16,
         "filename": "laptopsleeve.png",
         "main_image": "laptopsleeve.png",
-        "preview_image": "laptopsleevepreview.png",
+        "preview_image": "bagslaptopsleevepreview.png",
         "description": "This lightweight, form-fitting laptop sleeve is a must-have for any laptop owner on the go. To prevent any scratches, it contains a padded zipper binding and its interior is lined with faux fur. What's more, it's made from a water-resistant and scratch-proof material, making sure that both the laptop and the sleeve design are intact from day to day. 100% neoprene. 13″ sleeve weight: 6.49 oz (220 g). 15″ sleeve weight: 8.8 oz (250 g). Lightweight and resistant to water, oil, and heat. Snug fit. Faux fur interior lining. Top-loading zippered enclosure with two sliders. Padded zipper binding. Customizable front, solid black rear. Blank product sourced from China. The laptop sleeve fits most 13″ and 15″ laptops—see our size guide for precise measurements. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["13.5\"x10.5\"", "14.75\"x11.25\""]},
         "size_pricing": {
@@ -1105,7 +1105,7 @@ PRODUCTS = [
         "price": 25.25,
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
-        "preview_image": "drawstringbagpreview.png",
+        "preview_image": "bagsalloverprintdrawstringpreview.png",
         "description": "Gym bag, drawstring bag, or backpack? Call it as you like! It's a must-have gym essential that can be worn as a backpack with drawstring closure at the top, and narrow, contrasting shoulder straps. Combine your love for vibrant prints and a sporty style! 100% polyester. One size: 15″ × 17″ (38.1 cm × 43.2 cm). Fabric weight (may vary by 5%): 6.64 oz./yd.² (225 g/m²). Maximum weight limit: 33 lbs (15 kg). Twin cotton handles. Drawstring closure. Printed, cut, and hand-sewn by our in-house team. Fabric is OEKO-TEX 100 standard certified. Price includes a full print.",
         "options": {"color": ["White", "Black", "Blue"], "size": ["15\"x17\""]},
         "size_pricing": {
@@ -1117,7 +1117,7 @@ PRODUCTS = [
         "price": 33.41,
         "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
-        "preview_image": "largecanvasbagpreview.png",
+        "preview_image": "bagsalloverprinttotepocketpreview.png",
         "description": "Meet your companion for any occasion—our All-Over Print Large Tote Bag! It's spacious, comfy, and a great choice no matter where you're going. Take it with you on your next beach trip or on a stroll around town. Customize the bag with your fun designs and get it for yourself, or sell it on your online store. 100% polyester. Fabric weight (may vary by 5%): 6.64 oz/yd² (225 g/m²). Maximum weight limit: 44lbs (20kg). Capacity: 4.4 US gal (17.8l). Large inside pocket that can be customized with a logo. Printed, cut, and hand-sewn by our in-house team. Comfortable cotton webbing handles. Vibrant colors that won't fade. Available in one size. Fabric is OEKO-TEX 100 standard certified. Product code: #602. This product is made on demand. No minimums.",
         "options": {"handle_color": ["Black", "Red", "Yellow"], "size": ["16\"x20\""]},
         "size_pricing": {
@@ -1129,7 +1129,7 @@ PRODUCTS = [
         "price": 5.00,
         "filename": "greetingcard.png",
         "main_image": "greetingcard.png",
-        "preview_image": "greetingcardpreview.png",
+        "preview_image": "miscellaneousgreetingcardpreview.png",
         "description": "A well-designed greeting card has the power to help people express gratitude or sympathy, as well as inform attendees and set the mood for any given occasion. Coming in three different sizes, the greeting cards are customizable from top to bottom, and they can be designed to stand both horizontally and vertically. Create your own greeting cards tailored to any circumstance, be it a seasonal one or a once-in-a-lifetime event. Cardboard paper. Sizes: Small: 4″ × 6″ (101 × 152 mm), Medium: 5″ × 7″ (127 × 178 mm), Large: 5.83″ × 8.27″ (148 × 210 mm). Product weight: Small: 0.39 oz (11 g), Medium: 0.6 oz (17 g), Large: 0.85 oz (24 g). Toner-based printing. Vibrant colors. Comes with a complimentary envelope. Blank product materials sourced from Sweden. Disclaimer: Greeting cards shipped from Europe have a matte outside and a thicker envelope (120 g/m²). Greeting cards shipped from the US have a glossy outside and a thinner envelope (60#). Due to the different coatings on the inside and outside of the card, identical colors will look slightly different on the respective surfaces. Small cracks are likely to appear in the fold area over time. A small QR code is printed on the lower left corner of the back of the postcard. This is intended only for the production team's use. In case of low card stock, we might use comparable paper to fulfill the order. The substitute will be as close to the original as possible. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["4\"x6\""]},
         "size_pricing": {
@@ -1141,7 +1141,7 @@ PRODUCTS = [
         "price": 23.21,
         "filename": "hardcovernotebook.png",
         "main_image": "hardcovernotebook.png",
-        "preview_image": "hardcovernotebookpreview.png",
+        "preview_image": "miscellaneoushardcovernotebookpreview.png",
         "description": "Whether crafting a masterpiece or brainstorming the next big idea, the Hardcover Bound Notebook will inspire your inner wordsmith. The notebook features 80 lined, cream-colored pages, a built-in elastic closure, and a matching ribbon page marker. Plus, the expandable inner pocket is perfect for storing loose notes and business cards to never lose track of important information. Make it your own with an original cover design and sell it on your store! Cover material: UltraHyde hardcover paper. Size: 5.5\" × 8.5\" (13.97 cm × 21.59 cm). Weight: 10.9 oz (309 g). 80 pages of lined, cream-colored paper. Matching elastic closure and ribbon marker. Expandable inner pocket. Blank product sourced from China. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Red", "Blue", "Turquoise", "Orange", "Silver", "Lime", "White"], "size": ["5.5\"x8.5\""]},
         "size_pricing": {
@@ -1153,7 +1153,7 @@ PRODUCTS = [
         "price": 33.99,
         "filename": "coaster.png",
         "main_image": "coaster.png",
-        "preview_image": "coasterpreview.png",
+        "preview_image": "miscellaneouscoasterspreview.png",
         "description": "Hello beverage coaster, goodbye mug stain! Introducing the long-awaited Cork-Back Coaster that's designed to protect your countertops and furniture from spills and scratches. It's crafted from genuine cork, hardboard, with a high-gloss coating that ensures a quality print. The coaster is heat-resistant, water-repellent, and easy to clean—just wipe it with a damp cloth. Add a vibrant design, a meaningful quote, or a photo to the coaster and pair it with your favorite mug or offer the item to your customers online. Hardboard MDF 0.12″ (3 mm). Cork 0.04″ (1 mm). High-gloss coating on top. Size: 3.74″ × 3.74″ × 0.16″ (95 × 95 × 4 mm). Rounded corners. Water-repellent, heat-resistant, and non-slip. Easy to clean. Blank product sourced from China. The displayed price is for a single item. This product is made on demand. No minimums.",
         "options": {"color": ["Wood", "Cork", "Black"], "size": ["4\"x4\""]},
         "size_pricing": {
@@ -1165,7 +1165,7 @@ PRODUCTS = [
         "price": 19.99,
         "filename": "apron.png",
         "main_image": "apron.png",
-        "preview_image": "apronpreview.png",
+        "preview_image": "miscellaneousapronpreview.png",
         "description": "This apron is a canvas for bold, custom designs, perfect for pros behind the grill or home chefs mastering pasta night. It seamlessly blends fashion and function with a sleek fit, button-adjustable straps, and a durable yet lightweight fabric. It's a bestseller for online stores offering kitchen-ready gear or a thoughtful gift for foodies, newlyweds, or housewarming hosts. 100% polyester. Size: 27.6″ × 30.3″ (70 cm × 77 cm). Weight: 10.9 oz (310 g). Durable overlocked seams. Button-adjustable black twill straps. One size fits most. One-sided print. Blank product sourced from China. Disclaimer: Apron size may vary by ±1″ (2.5 cm). This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "Red", "Green"], "size": ["S", "M", "L", "XL"]},
         "size_pricing": {
@@ -1180,7 +1180,7 @@ PRODUCTS = [
         "price": 4.29,
         "filename": "stickers.png",
         "main_image": "stickers.png",
-        "preview_image": "stickerspreview.png",
+        "preview_image": "miscellaneouskisscutstickerspreview.png",
         "description": "These Kiss-Cut Stickers can be cut in any shape you want, while also leaving a wide enough border around your design for smooth peeling. Available in four sizes that can be used for a single sticker or multiple smaller ones. What's more, there are no order minimums, so you can get a single sticker or a whole bunch—the world of stickers is your oyster. High opacity film that's impossible to see through. Durable vinyl. 95µ thickness. Fast and easy bubble-free application. Blank product sourced from Japan. Follow these tips when applying stickers: Apply the sticker to a clean, dust-free, oil-free, and moisture-free surface. After application, press the sticker down with a clean cloth to maximize the sticker's ability to stick to the surface and avoid air bubbles. Make sure that the sticker is applied correctly the first time. With every reapplication, the sticker's ability to stick will decrease. Apply the sticker to a flat surface only. If applied on items that bend, are round, or in a cylinder form, we can't guarantee its ability to hold. Disclaimer: Please note that the sticker paper is white and a transparent background isn't possible. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["3\"x3\"", "4\"x4\"", "5.5\"x5.5\"", "15\"x3.75\""]},
         "size_pricing": {
@@ -1195,7 +1195,7 @@ PRODUCTS = [
         "price": 31.49,
         "filename": "dogbowl.png",
         "main_image": "dogbowl.png",
-        "preview_image": "dogbowlpreview.png",
+        "preview_image": "petspetbowlalloverprintpreview.png",
         "description": "Whether you're looking for a new addition to your store or the perfect gift for a pet lover, this Pet Bowl is an excellent choice. It works for dogs, cats or any other type of pet. But that's not all—since it's made with double-walled stainless steel and has an anti-slip rubber base, it's built to last and to withstand even the most impetuous of pets. Available in 2 sizes: 18 oz (532 ml) and 32 oz (946 ml). Double-wall stainless steel. Anti-slip rubber base. Food grade safe. Dishwasher safe when the rubber base is removed. Blank product sourced from China. Important: This product is available only in select countries. If you sell this item on your online store, make sure you let your customers know that they won't be able to order this product outside of these countries. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["18oz", "32oz"]},
         "size_pricing": {
@@ -1208,7 +1208,7 @@ PRODUCTS = [
         "price": 23.67,
         "filename": "scarfcollar.png",
         "main_image": "scarfcollar.png",
-        "preview_image": "scarfcollarpreview.png",
+        "preview_image": "petspetbandanacollarpreview.png",
         "description": "Add personality to your pet's wardrobe with this fun and functional bandana collar. Whether you're snapping pics for social media or just out for a walk, this collar brings a playful twist that pet lovers will adore. Available in four sizes to fit most pets, it's a great choice for online sellers in the pet product market. 100% polyester. Adjustable black collar with plastic buckle. 4 sizes: S, M, L, XL. Collar circumference: S: 10″–16.75″ (25.4 cm–42.5 cm), M: 12″–20.25″ (30.5 cm–51.4 cm), L: 14.25″–23″ (36.2 cm–58.4 cm), XL: 15.5″–23.5″ (39.4 cm–59.7 cm). Durable construction, machine washable (max 90ºF (30ºC)). One-sided print: white reverse. Blank product sourced from China. Disclaimer: Product size may vary by ±1″ (2.5 cm). This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Red", "Blue", "Green"], "size": ["Small 10″–16.75″", "Medium 12″–20.25″", "Large 14.25″–23″", "XL 15.5″–23.5″"]},
         "size_pricing": {
@@ -1223,7 +1223,7 @@ PRODUCTS = [
         "price": 12.99,
         "filename": "bandana.png",
         "main_image": "bandana.png",
-        "preview_image": "bandanapreview.png",
+        "preview_image": "miscellaneousbandanapreview.png",
         "description": "A headband, armband, necktie, bag accessory, or even a scarf for a beloved pet—that's the All-Over Print Bandana! With double-folded edges and a detailed single-sided print, it's sturdy and durable to use for as long as you like. Create your own custom design for this bandana and get one for yourself or start selling! 65% recycled polyester, 35% polyester. Fabric weight: 2.95 oz./yd.² (100 g/m²). Breathable and moisture-wicking material. Lightweight and soft to the touch. Double-folded edges. Single-sided print. Multifunctional. UPF50+ protection. The fabric is OEKO-TEX 100 standard certified. The recycled content of this product is certified under GRS (Global Recycled Standard). Important sizing information: the smallest bandana size is made for small pets and won't fit a grown-up. Please choose the medium or large size if you're selling/ordering for a grown-up and disclose this sizing information on your store. Product code: 655. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Red", "Blue", "Green", "Pink"], "size": ["Small", "Medium", "Large"]},
         "size_pricing": {
@@ -1237,7 +1237,7 @@ PRODUCTS = [
         "price": 27.65,
         "filename": "jigsawpuzzle.png",
         "main_image": "jigsawpuzzle.png",
-        "preview_image": "jigsawpuzzlepreview.png",
+        "preview_image": "miscellaneousjigsawpuzzlewithtinpreview.png",
         "description": "Make quality time more fun with a custom jigsaw puzzle that's both a challenge and a keepsake. Whether it's a cozy night in with family or a weekend brain-teaser with friends, this puzzle delivers an experience worth framing. With rich colors, a glossy finish, and your design, it's ideal for sellers looking to offer meaningful, personalized gifts. Pre-die-cut chipboard with non-edge pieces. White metal tin box with the image on the lid. Available in 6 sizes: 30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm), 110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm), 252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm), 500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm), 1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm), 2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm). Weight by size: 30 pcs: 8 oz (227 g), 110 pcs: 8 oz (227 g), 252 pcs: 9.6 oz (272 g), 500 pcs: 20 oz (567 g), 1000 pcs: 24 oz (680 g), 2000 pcs: 28 oz (794 g). Glossy finish. Vibrant colors. Ideal for gifting or wall decor. Blank product sourced from China. Important: Choking hazard—small parts. Not suitable for children under 4 years. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)", "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)", "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)", "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)"]},
         "size_pricing": {
@@ -1254,7 +1254,7 @@ PRODUCTS = [
         "price": 24.90,
         "filename": "leash.png",
         "main_image": "leash.png",
-        "preview_image": "leashpreview.png",
+        "preview_image": "petsalloverprintleash.png",
         "description": "Design custom pet collar and leash sets for yourself or sell them to pet owners online. With all-over print sublimation, designs stay vibrant and last long. The padded collar inside and leash handle offer comfort to the pet and its owner. Optionally, add branding to the product packaging. Durable 100% polyester webbing. 92% polyester, 8% spandex collar and leash handle inside. Black 100% polyester sponge collar and handle padding. Metal snap hook and D-ring for the leash. Black plastic main buckle, adjustable buckle, and strap holder for the collar. Leash length: 6 ft. (1.83 m). Leash and collar width: 1″ (2.54 cm). 3 collar sizes available: S 11.8″–17.8″ (30–45 cm), M 13.5″–20.5″ (35–52 cm), L 14.8″–23.8″ (38–60 cm). Adjustable collar length. The leash is customizable on both sides. The collar is customizable on one side. Option to add branding to the cardboard packaging and poly mailer. Blank product sourced from China. Disclaimers: The collar has visible black stitching. Hand wash with mild detergent or machine wash on a gentle cycle in a mesh bag. Air dry. Important: This product is available only in select countries. If you sell this item on your online store, make sure you let your customers know that they won't be able to order this product outside of these countries. As of April 21, 2025, express shipping is no longer available for customers who previously had this option enabled. This change is due to increased carrier surcharges of up to $25–$30 per package. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Brown", "Blue", "Red"], "size": ["6 feet"]},
         "size_pricing": {
@@ -1266,7 +1266,7 @@ PRODUCTS = [
         "price": 23.08,
         "filename": "collar.png",
         "main_image": "collar.png",
-        "preview_image": "collarpreview.png",
+        "preview_image": "petsalloverprintcollarpreview.png",
         "description": "Expand your pet accessory range with custom collars. The all-over print sublimation technique allows for vibrant, long-lasting prints. The premium quality collar features black padding on the inside to ensure comfort for pets. Available in three adjustable sizes. Optionally, add branding to the packaging. Durable 100% polyester webbing. 92% polyester, 8% spandex collar inside. Black 100% polyester sponge collar inside padding. 3 sizes available: S 11.8″–17.8″ (30–45 cm), M 13.5″–20.5″ (35–52 cm), L 14.8″–23.8″ (38–60 cm). Adjustable collar length. Collar width: 1″ (2.54 cm). Black plastic main buckle, adjustable buckle, and strap holder. The collar is customizable on one side. Option to add branding to the cardboard packaging and poly mailer. Blank product sourced from China. Disclaimers: The collar has visible black stitching. Hand wash with mild detergent or machine wash on a gentle cycle in a mesh bag. Air dry. Important: This product is available only in select countries. If you sell this item on your online store, make sure you let your customers know that they won't be able to order this product outside of these countries. As of April 21, 2025, express shipping is no longer available for customers who previously had this option enabled. This change is due to increased carrier surcharges of up to $25–$30 per package. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Brown", "Blue", "Red", "Green"], "size": ["S 11.8\"-17.8\"", "M 13.5\"-20.5\"", "L 14.8\"-23.8\""]},
         "size_pricing": {
@@ -1280,7 +1280,7 @@ PRODUCTS = [
         "price": 5.32,
         "filename": "magnet.png",
         "main_image": "magnet.png",
-        "preview_image": "magnetpreview.png",
+        "preview_image": "miscellaneousdiecutmagnetspreview.png",
         "description": "Make jokes, memories, or original drawings last forever with our Die-Cut Magnets. Featuring a sleek, professional matte finish, these magnets come in three sizes and can be cut into any defined shape. The entire back of each magnet is covered with a strong magnetic material, ensuring a secure hold on any metallic surface. Create travel magnets and order in bulk to sell as souvenirs, or design a cool complement to different collections for your online store. Made from 20 mil (0.5 mm) flexible vinyl. Premium matte finish on top. Black magnetic backing. 3 sizes available: 3″ × 3″ (8 × 8 cm), 4″ × 4″ (10 × 10 cm), 6″ × 6″ (15 × 15 cm). Blank product sourced from the USA. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["3\"x3\"", "4\"x4\"", "6\"x6\""]},
         "size_pricing": {
@@ -1329,7 +1329,7 @@ PRODUCTS = [
         "price": 41.06,
         "filename": "unisexpulloverhoodie.png",
         "main_image": "unisexpulloverhoodie.png",
-        "preview_image": "unisexpulloverhoodiepreview.png",
+        "preview_image": "womensunisexpulloverhoodiepreview.png",
         "description": "This classic Unisex Pullover Hoodie should be a staple in every store and wardrobe. It's soft and warm with cuffed long sleeves. Add your designs and start selling! 52% airlume combed ring-spun cotton, 48% poly fleece. Heather colors are 60% airlume combed ring-spun cotton, 40% poly fleece. Fabric weight: 6.5 oz/yd² (220.4 g/m²). Regular fit. Side-seamed construction. Blank product sourced from Honduras, Nicaragua or the US. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Heather Forest", "Heather Navy"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
         "size_pricing": {
@@ -1348,7 +1348,7 @@ PRODUCTS = [
         "price": 25.81,
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
-        "preview_image": "womensteepreview.png",
+        "preview_image": "womensmicroribtanktoppreview.png",
         "description": "This women's tank top redefines the classic tank with its flattering 1 × 1 micro-rib texture, thick straps, and mid-length cut. The tank's soft, stretchy fabric ensures all-day comfort. It pairs well with high-waisted jeans or under a blazer for a polished look. Order one for yourself or add it to your online store. 52% Airlume combed and ring-spun cotton, 48% polyester. Athletic Heather colors are 90% Airlume combed and ring-spun cotton and 10% polyester. Fabric weight: 5.4 oz./yd.² (183 g/m²). Yarn diameter: 32 singles. 1 × 1 micro ribbing. Pre-shrunk. Stretch fit. Mid-length. Thick straps. Scoop neck. Side-seamed construction. Blank product sourced from Nicaragua. This product is made on demand. No minimums.",
         "options": {"color": ["Solid Black Blend", "Solid Navy Blend", "Athletic Heather", "Solid Baby Blue Blend", "Solid Pink Blend", "Solid White Blend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
@@ -1365,7 +1365,7 @@ PRODUCTS = [
         "price": 23.99,
         "filename": "distresseddadhat.png",
         "main_image": "distresseddadhat.png",
-        "preview_image": "distresseddadhatpreview.png",
+        "preview_image": "hatsdistresseddadhatpreview.png",
         "description": "Expand your headwear collection with this fashionable Dad Hat. The fabric on its brim and crown is distressed, giving the hat an edgy look. 100% pre-shrunk cotton twill. Unstructured 6-panel cap with a low profile. Soft crown. 6 sewn eyelets. 4 stitched rows on the brim. Adjustable hook-and-loop closure. Seamed front panel without buckram. Blank product sourced from China. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Charcoal Gray", "Khaki"], "size": ["One Size"]},
         "size_pricing": {
@@ -1377,7 +1377,7 @@ PRODUCTS = [
         "price": 26.19,
         "filename": "snapbackhat.png",
         "main_image": "snapbackhat.png",
-        "preview_image": "snapbackhatpreview.png",
+        "preview_image": "hatssnapbackhatpreview.png",
         "description": "This Snapback exudes quality craftsmanship. It's structured with a firm front panel, flat visor, and full buckram. Made with 8 rows of stitching on the brim, pro-stitching on the crown, and 6 embroidered eyelets. 85% acrylic, 15% wool. Structured, 6-panel, high-profile. Plastic snap closure. 6 embroidered eyelets that match the crown color. Grey under visor. Head circumference: 22″–24″ (55–60 cm). Blank product sourced from China. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Purple / Black / Black", "Red / Black / Black", "Gray / Black / Black", "Gold / Black / Black", "Navy blue", "Red", "Black / Charcoal gray / Charcoal gray", "Charcoal gray", "Kelly green", "Black / White / White", "White", "Aqua blue / Black / Black", "Orange / Black / Black", "Burgundy maroon", "Black / Red / Red", "Black / Gray / Gray"], "size": ["One Size"]},
         "size_pricing": {
@@ -1389,7 +1389,7 @@ PRODUCTS = [
         "price": 24.79,
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
-        "preview_image": "fivepaneltruckerhatpreview.png",
+        "preview_image": "hatsfivepaneltruckerhatpreview.png",
         "description": "This structured, high-profile 5 Panel Trucker Cap is the perfect choice for sunny days. It can also serve as a stylish accessory for your outfit as the flat bill gives the cap a modern twist. Put your striking designs on this cap—be it a catchy phrase, your logo, or a cute graphic—and sell it on your store or get one for yourself! 47% cotton, 28% nylon, 25% polyester, or 65% polyester, 35% cotton. Structured, five-panel, high-profile. Classic trucker cap styling. Flat bill. Snapback closure. Head circumference: 21⅝″–23⅝″ (53.3 cm–60 cm). Blank product sourced from Vietnam or Bangladesh. This product is made on demand. No minimums.",
         "options": {"color": [
             "Black/ White",
@@ -1415,7 +1415,7 @@ PRODUCTS = [
         "price": 21.72,
         "filename": "youthbaseballcap.png",
         "main_image": "youthbaseballcap.png",
-        "preview_image": "youthbaseballcappreview.png",
+        "preview_image": "hatsfivepanelbaseballhatpreview.png",
         "description": "Our 5 panel cap is a time-tested favorite. With a structured front panel, it offers a clean, crisp canvas for print and embroidery. The cap has a popular mid-profile fit with an adjustable snap closure for a snug shape. Its slightly curved visor adds a classic look, and a matching undervisor and sweatband give it a cohesive, professional finish—built for bold and clean designs. 65% polyester, 35% cotton. Mid-profile, contoured fit with a structured, firm front panel. 6 sewn eyelets for breathability. Adjustable plastic snap closure for a secure fit. Matching fabric undervisor and sweatband. Blank product sourced from China and Myanmar. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Black/Natural", "Red/Natural", "Navy/Natural", "Dark Green/Natural", "Royal/Natural", "White"], "size": ["One Size"]},
         "size_pricing": {
@@ -1427,7 +1427,7 @@ PRODUCTS = [
         "price": 15.95,
         "filename": "mug1.png",
         "main_image": "mug1.png",
-        "preview_image": "mug1preview.png",
+        "preview_image": "mugwhiteglossymugpreview.png",
         "description": "This sturdy mug is perfect for your morning coffee, afternoon tea, or whatever hot beverage you enjoy. It's glossy white and yields vivid prints that retain their quality when dish-washed and microwaved. Add a graphic of your choice and add this best-seller to your store, so others can enjoy your magical designs too! Ceramic. 11 oz mug dimensions: 3.8″ (9.6 cm) in height, 3.2″ (8.2 cm) in diameter. 15 oz mug dimensions: 4.7″ (11.9 cm) in height, 3.3″ (8.5 cm) in diameter. 20 oz mug dimensions: 4.3″ (10.9 cm) in height, 3.7″ (9.3 cm) in diameter. Lead and BPA-free material. Dishwasher and microwave safe. Blank product sourced from China. Disclaimer: The White Glossy Mug may vary slightly in size by up to +/- 0.1″ (2 mm) due to the nature of the production process. These variations are normal and won't affect your mug's quality or functionality. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["11 oz", "15 oz", "20 oz"]},
         "size_pricing": {
@@ -1441,7 +1441,7 @@ PRODUCTS = [
         "price": 32.10,
         "filename": "travelmug.png",
         "main_image": "travelmug.png",
-        "preview_image": "travelmugpreview.png",
+        "preview_image": "mugtravelmugpreview.png",
         "description": "Enjoy your favorite beverage on the go with a premium-quality travel mug. It's made with stainless steel and keeps hot drinks hot for up to 6 h, and cold drinks cold for up to 8 h. It fits into most car cup holders and has a spill-proof plastic lid. Personalize it for yourself or add it to your online store and start selling modern drinkware. Made with stainless steel. Lead and BPA-free materials used. Hand-wash only. Blank product sourced from China. 25 oz (739 ml) size: Height: 7.9″ (20 cm), Upper diameter: 3.3″ (8.4 cm), Bottom diameter: 2.7″ (7 cm). Comes with a plastic press-in lid. 40 oz (1183 ml) size: Height: 10.4″ (26.5 cm), Upper diameter: 3.9″ (9.9 cm), Bottom diameter: 2.9″ (7.4 cm). Comes with a plastic straw and screw-on lid. Caution! To prevent steam pressure buildup, always open the lid before placing it on a hot drink. This product is made on demand. No minimums.",
         "options": {"color": ["White", "Black", "Navy", "Gray"], "size": ["25 oz", "40 oz"]},
         "size_pricing": {
@@ -1454,7 +1454,7 @@ PRODUCTS = [
         "price": 22.42,
         "filename": "enamalmug.png",
         "main_image": "enamalmug.png",
-        "preview_image": "enamalmugpreview.png",
+        "preview_image": "mugenamelmugpreview.png",
         "description": "Lightweight and durable, our Enamel Mug is a must-have for every devoted camper. Use it for your favorite beverage or a hot meal, and attach it to your bag for easy access on a hike. Order a personalized mug for your next camping trip or add your designs and start selling online. Material: Metal with an enamel layer and sublimation coating. Dimensions: height 3.14″ (8 cm), diameter 3.25″ (8.5 cm). Lead and BPA-free material. White coating with a silver rim. NOT dishwasher or microwave-safe. Hand-wash only. Blank product sourced from China. Attention! Don't heat liquids or food directly in the mug—it can damage the coating. Disclaimer: The Enamel Mug is susceptible to staining when used with certain beverages, including coffee, tea, and natural juices. That's a normal characteristic of enamel products and not specific to our mug alone. Due to the enamel's rough and porous surface texture, particles from these drinks may easily adhere to the mug, resulting in stains over time. Stains can be effectively removed by applying lemon juice or soda to the affected area and gently scrubbing with a hard sponge. This product is made on demand. No minimums.",
         "options": {"color": ["White", "Black", "Navy", "Red"], "size": ["12 oz"]},
         "size_pricing": {
@@ -1466,7 +1466,7 @@ PRODUCTS = [
         "price": 17.95,
         "filename": "coloredmug.png",
         "main_image": "coloredmug.png",
-        "preview_image": "coloredmugpreview.png",
+        "preview_image": "mugcoloredmugpreview.png",
         "description": "This sturdy White Ceramic Mug has a colorful inside and a white print area all around the mug. Choose between vibrant color options, create your own unique designs, and start selling the mug to your customers! Ceramic. 11 oz mug dimensions: 3.79″ (9.6 cm) in height, 3.25″ (8.3 cm) in diameter. 15 oz mug dimensions: 4.69″ (11.9 cm) in height, 3.35″ (8.5 cm) in diameter. Lead and BPA-free material. White print area. Colored rim, inside, and handle. Dishwasher and microwave safe. Blank product sourced from China. This product is made on demand. No minimums. Disclaimer: This product is not suitable for children under 18 months. Depending on the light setting, the handle color of the White Ceramic Mug in Black may appear blue.",
         "options": {"color": ["Black", "Red", "Blue", "Dark Green"], "size": ["11 oz", "15 oz"]},
         "size_pricing": {
@@ -1479,7 +1479,7 @@ PRODUCTS = [
         "price": 31.79,
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
-        "preview_image": "crossbodybagpreview.png",
+        "preview_image": "bagsalloverprintutilitybagpreview.png",
         "description": "Designed for those who love to explore the great outdoors or dance the night away at festivals, this versatile bag will become the ideal companion for all your and your customers' daily adventures. 100% polyester. Fabric weight: 9 oz./yd.² (305 g/m²). Bag size: 5.7″ × 7.7″ × 2″ (14.5 cm × 19.5 cm × 5 cm). Capacity: 0.37 gallons (1.4 l). Water-resistant and durable. Sturdy fabric with fusible backing to add firmness. Inside and outside pockets. Adjustable strap. Two-way zipper. Product code: #609. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["5.7\"x7.7\"x2\""]},
         "size_pricing": {
@@ -1568,11 +1568,8 @@ def filter_products_by_category(category):
             "Youth Heavy Blend Hoodie",
             "Kids Shirt",
             "Kids Long Sleeve",
-            "Toddler Short Sleeve T-Shirt",
             "Toddler Jersey T-Shirt",
             "Kids Sweatshirt",
-            "Youth All Over Print Swimsuit",
-            "Girls Leggings",
             "Baby Staple Tee",
             "Baby Jersey T-Shirt",
             "Baby Body Suit"
@@ -1581,7 +1578,6 @@ def filter_products_by_category(category):
             "Laptop Sleeve",
             "All-Over Print Drawstring", 
             "All Over Print Tote Pocket",
-            "All-Over Print Crossbody Bag",
             "All-Over Print Utility Bag"
         ],
         'hats': [
