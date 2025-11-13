@@ -379,15 +379,57 @@ const ToolsPage = () => {
           return response.json();
         })
       .then(result => {
-      console.log('📦 [UPGRADE] Response data received:', { success: result.success, hasScreenshot: !!result.screenshot });
+      console.log('📦 [UPGRADE] Response data received:', { success: result.success, hasScreenshot: !!result.screenshot, dimensions: result.dimensions });
       if (result.success && result.screenshot) {
+        // Check if upgrade actually increased dimensions
+        const upgradedWidth = result.dimensions?.width || 0;
+        const upgradedHeight = result.dimensions?.height || 0;
+        const wasUpgraded = upgradedWidth >= 2000 || upgradedHeight >= 2000;
+        
         console.log('✅ [UPGRADE] Upgrade successful! Updating UI...');
+        console.log('📊 [UPGRADE] New image size:', result.screenshot ? Math.round(result.screenshot.length / 1024) + ' KB' : 'N/A');
+        console.log('📐 [UPGRADE] Upgraded dimensions:', { width: upgradedWidth, height: upgradedHeight, wasUpgraded });
+        
+        if (!wasUpgraded) {
+          console.warn('⚠️ [UPGRADE] Upgrade completed but dimensions are still small - upgrade may have failed silently');
+        }
         // IMPORTANT: Update UI state FIRST - the upgrade succeeded regardless of localStorage
         // Clear failure flag IMMEDIATELY since upgrade succeeded
         setUpgradeFailed(false);
-        setImageUrl(result.screenshot);
-        setSelectedImage(result.screenshot);
         setIsUpgrading(false);
+        // Force image reload by clearing first, then setting
+        // This ensures React detects the change and reloads the image
+        const oldUrl = imageUrl;
+        setImageUrl('');
+        setSelectedImage('');
+        
+        // Use setTimeout to ensure state updates properly and force re-render
+        setTimeout(() => {
+          // Add a cache-busting parameter to force reload if it's the same URL
+          const newImageUrl = result.screenshot;
+          setImageUrl(newImageUrl);
+          setSelectedImage(newImageUrl);
+          console.log('🔄 [UPGRADE] Image URL updated, waiting for dimensions to load...');
+          console.log('📏 [UPGRADE] Expected dimensions from server:', { width: upgradedWidth, height: upgradedHeight });
+          
+          // Force a check after image should have loaded (2 seconds)
+          setTimeout(() => {
+            const img = new Image();
+            img.onload = () => {
+              console.log('🔍 [UPGRADE] Verification - Image actually loaded with dimensions:', { width: img.width, height: img.height });
+              if (img.width >= 2000 || img.height >= 2000) {
+                console.log('✅ [UPGRADE] Verified: Image is at print quality!');
+                setCurrentImageDimensions({ width: img.width, height: img.height });
+              } else {
+                console.warn('⚠️ [UPGRADE] Warning: Image loaded but dimensions are still small:', { width: img.width, height: img.height });
+              }
+            };
+            img.onerror = () => {
+              console.error('❌ [UPGRADE] Failed to load upgraded image');
+            };
+            img.src = newImageUrl;
+          }, 2000);
+        }, 100);
         
         // Clear failure flag in localStorage immediately (before trying to save the large image)
         try {
@@ -526,7 +568,9 @@ const ToolsPage = () => {
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       // Store current image dimensions
-      setCurrentImageDimensions({ width: img.width, height: img.height });
+      const newDimensions = { width: img.width, height: img.height };
+      setCurrentImageDimensions(newDimensions);
+      console.log('🖼️ [IMAGE] Image loaded with dimensions:', newDimensions);
       
       // Check if image is already at print quality (large dimensions)
       // If image is large, it's already upgraded - clear any failure flags
@@ -1062,36 +1106,28 @@ const ToolsPage = () => {
                 let warningColor = '#e65100';
                 let bgColor = '#fff3e0';
                 
-                // Check if upgrade just completed (image might still be loading new dimensions)
-                const imageJustUpgraded = !isUpgrading && !upgradeFailed && (currentPixels.width < 2000 || currentPixels.height < 2000) && needsEnlargement;
-                
-                // If upgrade failed, show failure message with retry option
-                if (upgradeFailed && needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000)) {
-                  warningMessage = '⚠ Print quality upgrade failed or timed out. Using current image quality.';
-                  warningColor = '#d32f2f';
-                  bgColor = '#ffebee';
-                } else if (isUpgrading && needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000)) {
-                  warningMessage = '⏳ Upgrading to print quality... (this may take up to 2 minutes)';
-                  warningColor = '#1976d2';
-                  bgColor = '#e3f2fd';
-                } else if (imageJustUpgraded) {
-                  // Upgrade completed but image dimensions haven't updated yet - show success message
-                  warningMessage = '✓ Upgrade completed! Image is loading...';
-                  warningColor = '#2e7d32';
-                  bgColor = '#e8f5e9';
-                } else if (isMatch) {
+                // Show neutral dimension information (no upgrade-related messages for customers)
+                if (isMatch) {
                   warningMessage = '✓ Dimensions match!';
                   warningColor = '#2e7d32';
                   bgColor = '#e8f5e9';
                 } else if (needsEnlargement && needsCropping) {
                   // Mixed case - might need both
-                  warningMessage = '⚠ Image dimensions differ - will be adjusted to fit (may crop and enlarge)';
+                  warningMessage = 'ℹ️ Image dimensions differ - will be adjusted to fit';
+                  warningColor = '#1976d2';
+                  bgColor = '#e3f2fd';
                 } else if (needsEnlargement) {
-                  warningMessage = '⚠ Image is smaller than target - will be enlarged (may lose quality)';
+                  warningMessage = 'ℹ️ Image will be adjusted to fit print area';
+                  warningColor = '#1976d2';
+                  bgColor = '#e3f2fd';
                 } else if (needsCropping) {
-                  warningMessage = '⚠ Image is larger than target - will be cropped to fit';
+                  warningMessage = 'ℹ️ Image will be cropped to fit print area';
+                  warningColor = '#1976d2';
+                  bgColor = '#e3f2fd';
                 } else {
-                  warningMessage = '⚠ Dimensions do not match - will be adjusted';
+                  warningMessage = 'ℹ️ Image will be adjusted to fit';
+                  warningColor = '#1976d2';
+                  bgColor = '#e3f2fd';
                 }
                 
                 return (
@@ -1112,44 +1148,9 @@ const ToolsPage = () => {
                     <div style={{ marginBottom: '0.25rem' }}>
                       Current: {currentPixels.width} × {currentPixels.height} pixels
                     </div>
-                    <div style={{ fontWeight: 'bold', color: warningColor, marginBottom: upgradeFailed && needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000) ? '0.5rem' : '0' }}>
+                    <div style={{ fontWeight: 'bold', color: warningColor, marginTop: '0.5rem' }}>
                       {warningMessage}
                     </div>
-                    {/* Show upgrade button if image needs upgrade and is not already upgrading */}
-                    {needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000) && !isUpgrading && (
-                      <button
-                        onClick={() => {
-                          triggerPrintQualityUpgrade();
-                        }}
-                        style={{
-                          marginTop: '0.5rem',
-                          padding: '0.5rem 1rem',
-                          backgroundColor: upgradeFailed ? '#d32f2f' : '#1976d2',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                          fontSize: '0.85rem'
-                        }}
-                      >
-                        {upgradeFailed ? '🔄 Retry Upgrade to 300 DPI' : '⬆️ Upgrade to 300 DPI'}
-                      </button>
-                    )}
-                    {/* Show loading state when upgrading */}
-                    {isUpgrading && (
-                      <div style={{
-                        marginTop: '0.5rem',
-                        padding: '0.5rem',
-                        backgroundColor: '#e3f2fd',
-                        color: '#1976d2',
-                        borderRadius: '4px',
-                        fontSize: '0.85rem',
-                        fontWeight: 'bold'
-                      }}>
-                        ⏳ Upgrading to print quality... This may take up to 2 minutes.
-                      </div>
-                    )}
                   </div>
                 );
               }
