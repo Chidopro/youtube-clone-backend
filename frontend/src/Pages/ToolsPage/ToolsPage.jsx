@@ -611,13 +611,13 @@ const ToolsPage = () => {
       }
       
       const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { alpha: true }); // Ensure alpha channel for transparency
       canvas.width = img.width;
       canvas.height = img.height;
 
       // Create a temporary canvas for processing
       const tempCanvas = document.createElement('canvas');
-      const tempCtx = tempCanvas.getContext('2d');
+      const tempCtx = tempCanvas.getContext('2d', { alpha: true }); // Ensure alpha channel
       tempCanvas.width = img.width;
       tempCanvas.height = img.height;
 
@@ -696,15 +696,12 @@ const ToolsPage = () => {
       const isCircle = cornerRadius >= 100; // When maxed out, create perfect circle
       const effectiveCornerRadius = isCircle ? maxCornerRadius : cornerRadius;
 
-      // Draw image to canvas first (before applying rounded corners)
-      ctx.drawImage(tempCanvas, 0, 0);
-
       // Apply corner radius clipping (or circle if maxed out)
-      // Use destination-in composite to clip image to rounded shape (preserves transparency)
+      // Create a new transparent canvas for the final result to ensure no black background
       if (effectiveCornerRadius > 0) {
         // Create a mask canvas for the rounded corners
         const roundedMaskCanvas = document.createElement('canvas');
-        const roundedMaskCtx = roundedMaskCanvas.getContext('2d');
+        const roundedMaskCtx = roundedMaskCanvas.getContext('2d', { alpha: true });
         roundedMaskCanvas.width = canvas.width;
         roundedMaskCanvas.height = canvas.height;
         
@@ -728,10 +725,29 @@ const ToolsPage = () => {
           roundedMaskCtx.fill();
         }
         
+        // Create a new transparent canvas for the final result
+        const finalCanvas = document.createElement('canvas');
+        const finalCtx = finalCanvas.getContext('2d', { alpha: true });
+        finalCanvas.width = canvas.width;
+        finalCanvas.height = canvas.height;
+        
+        // Draw image to final canvas first
+        finalCtx.drawImage(tempCanvas, 0, 0);
+        
         // Use destination-in to clip the image to the rounded shape (removes black background)
-        ctx.globalCompositeOperation = 'destination-in';
-        ctx.drawImage(roundedMaskCanvas, 0, 0);
-        ctx.globalCompositeOperation = 'source-over';
+        // This operation keeps only the pixels where the mask is opaque, making everything else transparent
+        finalCtx.globalCompositeOperation = 'destination-in';
+        finalCtx.drawImage(roundedMaskCanvas, 0, 0);
+        finalCtx.globalCompositeOperation = 'source-over';
+        
+        // Replace the original canvas with the final transparent canvas
+        canvas.width = finalCanvas.width;
+        canvas.height = finalCanvas.height;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(finalCanvas, 0, 0);
+      } else {
+        // No rounded corners, just draw the image
+        ctx.drawImage(tempCanvas, 0, 0);
       }
 
       // Apply feather edge (soft edge effect) - works with both rectangles and circles
