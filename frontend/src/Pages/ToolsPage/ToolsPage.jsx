@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getPrintAreaConfig, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG } from '../../config/printAreaConfig';
+import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG } from '../../config/printAreaConfig';
+import API_CONFIG from '../../config/apiConfig';
 import './ToolsPage.css';
 
 const ToolsPage = () => {
@@ -25,6 +26,7 @@ const ToolsPage = () => {
   const [currentImageDimensions, setCurrentImageDimensions] = useState({ width: 0, height: 0 });
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [upgradeFailed, setUpgradeFailed] = useState(false);
+  const upgradeTriggeredRef = useRef(false); // Track if we've already triggered an upgrade for this image
 
   // Load screenshot and product name from localStorage or URL params
   useEffect(() => {
@@ -36,16 +38,55 @@ const ToolsPage = () => {
           // Priority: edited screenshot > selected screenshot > first screenshot > thumbnail
           const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
           if (screenshot) {
+            // Reset upgrade trigger if image changed
+            if (screenshot !== imageUrl) {
+              upgradeTriggeredRef.current = false;
+            }
             setImageUrl(screenshot);
             setSelectedImage(screenshot);
             // Reset upgrading state when new image loads (will be set again when image actually loads)
             setIsUpgrading(false);
           }
-          // Check if upgrade failed
+          // Check if upgrade failed - but verify the current image isn't already upgraded
+          // If we have a print quality screenshot that matches the current image, clear failure
           if (data.print_quality_upgrade_failed) {
-            setUpgradeFailed(true);
-            setIsUpgrading(false);
+            console.log('🔍 [UPGRADE] Found failure flag in localStorage, checking if image is actually upgraded...');
+            // Check if the current screenshot is actually the upgraded one
+            const currentScreenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
+            if (data.print_quality_screenshot && currentScreenshot === data.print_quality_screenshot) {
+              // Image is already upgraded, clear failure flag
+              console.log('✅ [UPGRADE] Current image matches print_quality_screenshot - clearing failure flag');
+              setUpgradeFailed(false);
+              // Also clear the flag in localStorage
+              try {
+                delete data.print_quality_upgrade_failed;
+                localStorage.setItem('pending_merch_data', JSON.stringify(data));
+              } catch (e) {
+                console.warn('Could not clear failure flag:', e);
+              }
+            } else if (currentImageDimensions.width && currentImageDimensions.height && currentImageDimensions.width >= 2000 && currentImageDimensions.height >= 2000) {
+              // Image dimensions indicate it's already at print quality, clear failure flag
+              console.log('✅ [UPGRADE] Image dimensions indicate print quality - clearing failure flag', {
+                width: currentImageDimensions.width,
+                height: currentImageDimensions.height
+              });
+              setUpgradeFailed(false);
+              // Also clear the flag in localStorage
+              try {
+                delete data.print_quality_upgrade_failed;
+                localStorage.setItem('pending_merch_data', JSON.stringify(data));
+              } catch (e) {
+                console.warn('Could not clear failure flag:', e);
+              }
+            } else {
+              // Upgrade actually failed - but don't set the state yet, wait for image to load
+              // The image load handler will check dimensions and clear if needed
+              console.log('⚠️ [UPGRADE] Failure flag found and image appears to be small - will check again when image loads');
+              setUpgradeFailed(true);
+              setIsUpgrading(false);
+            }
           } else {
+            // No failure flag, clear failure state
             setUpgradeFailed(false);
           }
           // Load selected product name
@@ -57,6 +98,9 @@ const ToolsPage = () => {
         // Also check if there's a selected screenshot from URL params
         const selectedScreenshot = searchParams.get('screenshot');
         if (selectedScreenshot) {
+          if (selectedScreenshot !== imageUrl) {
+            upgradeTriggeredRef.current = false;
+          }
           setImageUrl(selectedScreenshot);
           setSelectedImage(selectedScreenshot);
         }
@@ -117,7 +161,7 @@ const ToolsPage = () => {
       window.removeEventListener('localStorageUpdated', handleLocalStorageUpdate);
       clearInterval(checkInterval);
     };
-  }, [searchParams]);
+  }, [searchParams, imageUrl]);
 
   // Helper function to draw rounded rectangle
   const drawRoundedRect = (ctx, x, y, width, height, radius) => {
@@ -134,6 +178,346 @@ const ToolsPage = () => {
     ctx.closePath();
   };
 
+  // Manual 300 DPI upgrade function (no longer automatic)
+  const triggerPrintQualityUpgrade = () => {
+    if (!imageUrl || !currentImageDimensions.width || !currentImageDimensions.height) {
+      console.log('🔍 [UPGRADE] Cannot upgrade: missing imageUrl or dimensions');
+      return;
+    }
+    
+    // Check if image is small (likely client-side capture) - needs upgrade
+    // Small images are typically < 2000 pixels in either dimension
+    const isSmallImage = currentImageDimensions.width < 2000 || currentImageDimensions.height < 2000;
+    
+    // Don't trigger if image is already large enough
+    if (!isSmallImage) {
+      console.log('✅ [UPGRADE] Image is already at print quality, no upgrade needed');
+      alert('Image is already at print quality!');
+      return;
+    }
+    
+    // Don't trigger if upgrade is already in progress
+    if (isUpgrading) {
+      console.log('⏸️ [UPGRADE] Upgrade already in progress');
+      return;
+    }
+    
+    // Check current upgrade state from localStorage
+    let currentUpgradeInProgress = false;
+    let currentUpgradeFailed = false;
+    try {
+      const raw = localStorage.getItem('pending_merch_data');
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data.print_quality_upgrade_timestamp) {
+          const timeSinceUpgrade = Date.now() - data.print_quality_upgrade_timestamp;
+          currentUpgradeInProgress = timeSinceUpgrade < 60000;
+          console.log('🔍 [UPGRADE] Upgrade timestamp check', {
+            timestamp: data.print_quality_upgrade_timestamp,
+            timeSinceUpgrade: Math.round(timeSinceUpgrade / 1000) + 's',
+            inProgress: currentUpgradeInProgress
+          });
+        }
+        currentUpgradeFailed = !!data.print_quality_upgrade_failed;
+        console.log('🔍 [UPGRADE] Failure flag check', { failed: currentUpgradeFailed });
+      }
+    } catch (e) {
+      console.warn('❌ [UPGRADE] Could not check upgrade status:', e);
+    }
+    
+    // Don't trigger if upgrade is currently in progress (within last 60 seconds)
+    // BUT allow retry if it previously failed (failure flag might be stale)
+    if (currentUpgradeInProgress) {
+      console.log('⏸️ [UPGRADE] Skipping: upgrade currently in progress', {
+        inProgress: currentUpgradeInProgress
+      });
+      return;
+    }
+    
+    // If it previously failed, log it but still allow retry
+    if (currentUpgradeFailed) {
+      console.log('⚠️ [UPGRADE] Previous upgrade failed, but allowing retry...', {
+        failed: currentUpgradeFailed
+      });
+      // Clear the failure flag so we can try again
+      try {
+        const raw = localStorage.getItem('pending_merch_data');
+        if (raw) {
+          const data = JSON.parse(raw);
+          delete data.print_quality_upgrade_failed;
+          localStorage.setItem('pending_merch_data', JSON.stringify(data));
+          console.log('✅ [UPGRADE] Cleared previous failure flag to allow retry');
+        }
+      } catch (e) {
+        console.warn('⚠️ [UPGRADE] Could not clear failure flag, but continuing anyway:', e);
+      }
+    }
+    
+    // Check if image has already been upgraded (check if there's a print quality version)
+    try {
+      const raw = localStorage.getItem('pending_merch_data');
+      if (raw) {
+        const data = JSON.parse(raw);
+        // If the current image URL matches a print quality screenshot, don't upgrade again
+        if (data.print_quality_screenshot && imageUrl === data.print_quality_screenshot) {
+          upgradeTriggeredRef.current = true;
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not check if image already upgraded:', e);
+    }
+    
+    // Mark that we're triggering an upgrade
+    console.log('🚀 [UPGRADE] Starting manual 300 DPI upgrade');
+    upgradeTriggeredRef.current = true;
+    setIsUpgrading(true);
+    setUpgradeFailed(false); // Clear any previous failure state
+    
+    // Mark upgrade as starting in localStorage
+    try {
+      const raw = localStorage.getItem('pending_merch_data');
+      if (raw) {
+        const data = JSON.parse(raw);
+        data.print_quality_upgrade_timestamp = Date.now();
+        delete data.print_quality_upgrade_failed; // Clear any previous failure
+        localStorage.setItem('pending_merch_data', JSON.stringify(data));
+        window.dispatchEvent(new Event('localStorageUpdated'));
+        console.log('✅ [UPGRADE] Marked upgrade as starting in localStorage');
+      }
+    } catch (e) {
+      console.warn('❌ [UPGRADE] Failed to mark upgrade as starting:', e);
+    }
+    
+    // Trigger manual 300 DPI upgrade
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.warn('⚠️ Print quality upgrade timed out after 120 seconds');
+      // Mark upgrade as failed
+      try {
+        const raw = localStorage.getItem('pending_merch_data');
+        if (raw) {
+          const data = JSON.parse(raw);
+          data.print_quality_upgrade_failed = true;
+          localStorage.setItem('pending_merch_data', JSON.stringify(data));
+          window.dispatchEvent(new Event('localStorageUpdated'));
+        }
+      } catch (e) {
+        console.warn('Failed to mark upgrade as failed:', e);
+      }
+      setIsUpgrading(false);
+      setUpgradeFailed(true);
+    }, 120000); // 120 second timeout (increased from 60s)
+    
+    // Convert image to base64 if it's not already
+    const getImageAsBase64 = async (url) => {
+      // If it's already a data URL, return it
+      if (url.startsWith('data:image')) {
+        return url;
+      }
+      
+      // If it's a blob URL, convert it
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (error) {
+        console.error('Failed to convert image to base64:', error);
+        throw error;
+      }
+    };
+    
+    // Use process-thumbnail-print-quality endpoint to upgrade the image
+    const upgradeUrl = API_CONFIG.BASE_URL === 'http://127.0.0.1:5000' 
+      ? 'http://127.0.0.1:5000/api/process-thumbnail-print-quality'
+      : 'https://screenmerch.fly.dev/api/process-thumbnail-print-quality';
+    
+    console.log('🌐 [UPGRADE] API URL:', upgradeUrl);
+    console.log('🖼️ [UPGRADE] Converting image to base64...');
+    
+    // Convert image to base64 first
+    getImageAsBase64(imageUrl)
+      .then(base64Image => {
+        console.log('✅ [UPGRADE] Image converted to base64, size:', Math.round(base64Image.length / 1024) + ' KB');
+        console.log('📤 [UPGRADE] Sending request to:', upgradeUrl);
+        return fetch(upgradeUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            thumbnail_data: base64Image,
+            print_dpi: 300,
+            soft_corners: false,
+            edge_feather: false
+          }),
+          signal: controller.signal
+        });
+      })
+        .then(response => {
+          clearTimeout(timeoutId);
+          console.log('📥 [UPGRADE] Response received:', response.status, response.statusText);
+          if (!response.ok) {
+            return response.text().then(text => {
+              let errorMsg = `Server responded with status: ${response.status}`;
+              try {
+                const errorData = JSON.parse(text);
+                errorMsg = errorData.error || errorMsg;
+              } catch (e) {
+                errorMsg = text || errorMsg;
+              }
+              console.error('❌ [UPGRADE] Server error:', errorMsg);
+              throw new Error(errorMsg);
+            });
+          }
+          return response.json();
+        })
+      .then(result => {
+      console.log('📦 [UPGRADE] Response data received:', { success: result.success, hasScreenshot: !!result.screenshot });
+      if (result.success && result.screenshot) {
+        console.log('✅ [UPGRADE] Upgrade successful! Updating UI...');
+        // IMPORTANT: Update UI state FIRST - the upgrade succeeded regardless of localStorage
+        // Clear failure flag IMMEDIATELY since upgrade succeeded
+        setUpgradeFailed(false);
+        setImageUrl(result.screenshot);
+        setSelectedImage(result.screenshot);
+        setIsUpgrading(false);
+        
+        // Clear failure flag in localStorage immediately (before trying to save the large image)
+        try {
+          const raw = localStorage.getItem('pending_merch_data');
+          if (raw) {
+            const data = JSON.parse(raw);
+            delete data.print_quality_upgrade_failed;
+            // Try to save just the flag clearing (small operation)
+            try {
+              localStorage.setItem('pending_merch_data', JSON.stringify(data));
+              console.log('✅ [UPGRADE] Cleared failure flag in localStorage');
+            } catch (e) {
+              console.warn('⚠️ [UPGRADE] Could not clear failure flag in localStorage, but upgrade succeeded');
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ [UPGRADE] Error clearing failure flag:', e);
+        }
+        
+        // Then try to save to localStorage (but don't let failures affect UI state)
+        try {
+          const raw = localStorage.getItem('pending_merch_data');
+          if (raw) {
+            const data = JSON.parse(raw);
+            
+            // Update the appropriate screenshot field
+            if (data.selected_screenshot === imageUrl) {
+              data.selected_screenshot = result.screenshot;
+            } else if (data.screenshots && Array.isArray(data.screenshots)) {
+              const index = data.screenshots.findIndex(s => s === imageUrl);
+              if (index >= 0) {
+                data.screenshots[index] = result.screenshot;
+              }
+            } else if (data.thumbnail === imageUrl) {
+              data.thumbnail = result.screenshot;
+            }
+            
+            // Store print quality version
+            data.print_quality_screenshot = result.screenshot;
+            
+            // Clear upgrade flags FIRST before trying to save
+            delete data.print_quality_upgrade_failed;
+            delete data.print_quality_upgrade_timestamp;
+            
+            // Try to save - if it fails due to quota, clear more data
+            try {
+              localStorage.setItem('pending_merch_data', JSON.stringify(data));
+            } catch (quotaError) {
+              if (quotaError.name === 'QuotaExceededError') {
+                console.warn('⚠️ localStorage quota exceeded, clearing old screenshots to make room');
+                // Clear old screenshots array and thumbnail to free space
+                delete data.screenshots;
+                delete data.thumbnail;
+                // Keep only the essential upgraded screenshot
+                if (!data.selected_screenshot || data.selected_screenshot === imageUrl) {
+                  data.selected_screenshot = result.screenshot;
+                }
+                // Make sure failure flag is still cleared
+                delete data.print_quality_upgrade_failed;
+                delete data.print_quality_upgrade_timestamp;
+                // Try again with minimal data
+                try {
+                  localStorage.setItem('pending_merch_data', JSON.stringify(data));
+                  console.log('✅ Saved upgraded screenshot after clearing old data');
+                } catch (secondError) {
+                  console.warn('⚠️ Still unable to save to localStorage, but upgrade succeeded. Image is available in memory.');
+                  // Even if we can't save, try one more time with just the essential data and cleared flags
+                  try {
+                    const minimalData = {
+                      selected_screenshot: result.screenshot,
+                      print_quality_screenshot: result.screenshot,
+                      selected_product_name: data.selected_product_name
+                    };
+                    localStorage.setItem('pending_merch_data', JSON.stringify(minimalData));
+                    console.log('✅ Saved minimal data with upgraded screenshot');
+                  } catch (finalError) {
+                    console.warn('⚠️ Could not save even minimal data, but upgrade succeeded. Image is in memory.');
+                  }
+                }
+              } else {
+                throw quotaError;
+              }
+            }
+            
+            // Trigger custom event for same-tab updates
+            window.dispatchEvent(new Event('localStorageUpdated'));
+          }
+        } catch (e) {
+          console.warn('Failed to update localStorage with print quality screenshot:', e);
+          // localStorage save failed, but upgrade succeeded - UI already updated above
+        }
+        
+        console.log('✅ Screenshot upgraded to 300 DPI print quality');
+        // IMPORTANT: Even if localStorage save failed, the upgrade succeeded and image is in memory
+        // Don't show error - the image is available and will work for this session
+        console.log('💡 [UPGRADE] Note: Image is in memory. If localStorage save failed, it will be lost on page reload, but works for current session.');
+      } else {
+        throw new Error(result.error || 'Server failed to upgrade screenshot');
+      }
+    })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          console.warn('⚠️ [UPGRADE] Print quality upgrade aborted (timeout after 120s)');
+          alert('Upgrade timed out. The image may be too large or the server is slow. Try again or use a smaller image.');
+        } else {
+          console.error('❌ [UPGRADE] Failed to upgrade screenshot to print quality:', error);
+          alert(`Upgrade failed: ${error.message || 'Unknown error'}. Please try again.`);
+        }
+        setIsUpgrading(false);
+        setUpgradeFailed(true);
+      // Mark upgrade as failed in localStorage (only if it actually failed, not if localStorage quota was exceeded)
+      try {
+        const raw = localStorage.getItem('pending_merch_data');
+        if (raw) {
+          const data = JSON.parse(raw);
+          // Only mark as failed if the API call actually failed, not if localStorage quota was exceeded
+          // The upgrade might have succeeded but localStorage save failed
+          if (error.name !== 'QuotaExceededError') {
+            data.print_quality_upgrade_failed = true;
+            localStorage.setItem('pending_merch_data', JSON.stringify(data));
+            window.dispatchEvent(new Event('localStorageUpdated'));
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to mark upgrade as failed:', e);
+      }
+    });
+  };
+
   // Apply edits to image
   useEffect(() => {
     if (!imageUrl) return;
@@ -144,10 +528,43 @@ const ToolsPage = () => {
       // Store current image dimensions
       setCurrentImageDimensions({ width: img.width, height: img.height });
       
+      // Check if image is already at print quality (large dimensions)
+      // If image is large, it's already upgraded - clear any failure flags
+      const isPrintQuality = img.width >= 2000 && img.height >= 2000;
+      if (isPrintQuality) {
+        console.log('✅ [UPGRADE] Image loaded with print quality dimensions:', { width: img.width, height: img.height });
+        // Image is already at print quality, clear failure state
+        setUpgradeFailed(false);
+        // Also clear failure flag in localStorage if it exists
+        try {
+          const raw = localStorage.getItem('pending_merch_data');
+          if (raw) {
+            const data = JSON.parse(raw);
+            if (data.print_quality_upgrade_failed) {
+              console.log('✅ [UPGRADE] Clearing failure flag because image is at print quality');
+              delete data.print_quality_upgrade_failed;
+              try {
+                localStorage.setItem('pending_merch_data', JSON.stringify(data));
+                console.log('✅ [UPGRADE] Failure flag cleared in localStorage');
+              } catch (e) {
+                console.warn('⚠️ [UPGRADE] Could not save cleared flag to localStorage, but image is upgraded');
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Could not clear failure flag:', e);
+        }
+      } else {
+        console.log('🔍 [UPGRADE] Image dimensions are small:', { width: img.width, height: img.height });
+      }
+      
       // Check if image is small (likely client-side capture) - upgrade might be in progress
       // Small images are typically < 2000 pixels in either dimension
       const isSmallImage = img.width < 2000 || img.height < 2000;
-      setIsUpgrading(isSmallImage);
+      // Only set upgrading state if we haven't already triggered an upgrade
+      if (isSmallImage && !upgradeTriggeredRef.current) {
+        setIsUpgrading(isSmallImage);
+      }
       
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -172,9 +589,11 @@ const ToolsPage = () => {
         
         // Check if using product-specific dimensions
         if (printAreaFit === 'product' && selectedProductName) {
-          const printConfig = getPrintAreaConfig(selectedProductName);
-          if (printConfig) {
-            targetAspect = getAspectRatio(printConfig.width, printConfig.height);
+          // Use new helper function that supports size-specific dimensions
+          // For now, size is null (will use default), but can be added later
+          const dimensions = getPrintAreaDimensions(selectedProductName, null, 'front');
+          if (dimensions) {
+            targetAspect = getAspectRatio(dimensions.width, dimensions.height);
           } else {
             // Fallback to generic vertical if product not found
             targetAspect = 0.67;
@@ -623,8 +1042,13 @@ const ToolsPage = () => {
             {/* Dimension Information */}
             {printAreaFit === 'product' && selectedProductName && (() => {
               const printConfig = getPrintAreaConfig(selectedProductName);
-              if (printConfig) {
-                const targetPixels = getPixelDimensions(printConfig.width, printConfig.height, printConfig.dpi);
+              // Use new helper function that supports size-specific dimensions
+              // For now, size is null (will use default), but can be added later
+              const dimensions = getPrintAreaDimensions(selectedProductName, null, 'front');
+              if (printConfig && dimensions) {
+                const dpi = printConfig.dpi || 300;
+                const description = printConfig.description || selectedProductName;
+                const targetPixels = getPixelDimensions(dimensions.width, dimensions.height, dpi);
                 const currentPixels = currentImageDimensions;
                 const widthMatch = Math.abs(currentPixels.width - targetPixels.width) < 50;
                 const heightMatch = Math.abs(currentPixels.height - targetPixels.height) < 50;
@@ -638,15 +1062,23 @@ const ToolsPage = () => {
                 let warningColor = '#e65100';
                 let bgColor = '#fff3e0';
                 
-                // If upgrade failed, show failure message
+                // Check if upgrade just completed (image might still be loading new dimensions)
+                const imageJustUpgraded = !isUpgrading && !upgradeFailed && (currentPixels.width < 2000 || currentPixels.height < 2000) && needsEnlargement;
+                
+                // If upgrade failed, show failure message with retry option
                 if (upgradeFailed && needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000)) {
                   warningMessage = '⚠ Print quality upgrade failed or timed out. Using current image quality.';
                   warningColor = '#d32f2f';
                   bgColor = '#ffebee';
                 } else if (isUpgrading && needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000)) {
-                  warningMessage = '⏳ Upgrading to print quality... (this may take a few seconds)';
+                  warningMessage = '⏳ Upgrading to print quality... (this may take up to 2 minutes)';
                   warningColor = '#1976d2';
                   bgColor = '#e3f2fd';
+                } else if (imageJustUpgraded) {
+                  // Upgrade completed but image dimensions haven't updated yet - show success message
+                  warningMessage = '✓ Upgrade completed! Image is loading...';
+                  warningColor = '#2e7d32';
+                  bgColor = '#e8f5e9';
                 } else if (isMatch) {
                   warningMessage = '✓ Dimensions match!';
                   warningColor = '#2e7d32';
@@ -672,7 +1104,7 @@ const ToolsPage = () => {
                     fontSize: '0.85rem'
                   }}>
                     <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                      {printConfig.description} - {printConfig.width}" × {printConfig.height}" @ {printConfig.dpi} DPI
+                      {description} - {dimensions.width}" × {dimensions.height}" @ {dpi} DPI
                     </div>
                     <div style={{ marginBottom: '0.25rem' }}>
                       Target: {targetPixels.width} × {targetPixels.height} pixels
@@ -680,9 +1112,44 @@ const ToolsPage = () => {
                     <div style={{ marginBottom: '0.25rem' }}>
                       Current: {currentPixels.width} × {currentPixels.height} pixels
                     </div>
-                    <div style={{ fontWeight: 'bold', color: warningColor }}>
+                    <div style={{ fontWeight: 'bold', color: warningColor, marginBottom: upgradeFailed && needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000) ? '0.5rem' : '0' }}>
                       {warningMessage}
                     </div>
+                    {/* Show upgrade button if image needs upgrade and is not already upgrading */}
+                    {needsEnlargement && (currentPixels.width < 2000 || currentPixels.height < 2000) && !isUpgrading && (
+                      <button
+                        onClick={() => {
+                          triggerPrintQualityUpgrade();
+                        }}
+                        style={{
+                          marginTop: '0.5rem',
+                          padding: '0.5rem 1rem',
+                          backgroundColor: upgradeFailed ? '#d32f2f' : '#1976d2',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                          fontSize: '0.85rem'
+                        }}
+                      >
+                        {upgradeFailed ? '🔄 Retry Upgrade to 300 DPI' : '⬆️ Upgrade to 300 DPI'}
+                      </button>
+                    )}
+                    {/* Show loading state when upgrading */}
+                    {isUpgrading && (
+                      <div style={{
+                        marginTop: '0.5rem',
+                        padding: '0.5rem',
+                        backgroundColor: '#e3f2fd',
+                        color: '#1976d2',
+                        borderRadius: '4px',
+                        fontSize: '0.85rem',
+                        fontWeight: 'bold'
+                      }}>
+                        ⏳ Upgrading to print quality... This may take up to 2 minutes.
+                      </div>
+                    )}
                   </div>
                 );
               }

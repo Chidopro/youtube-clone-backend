@@ -309,11 +309,11 @@ class VideoScreenshotCapture:
             cmd = ffmpeg.compile(stream, overwrite_output=True)
             
             try:
-                result = subprocess.run(cmd, capture_output=True, timeout=60, check=True)  # Extended timeout
+                result = subprocess.run(cmd, capture_output=True, timeout=120, check=True)  # Extended timeout to 120s
             except subprocess.TimeoutExpired:
                 return {
                     'success': False,
-                    'error': 'Print quality screenshot capture timed out (60s limit)'
+                    'error': 'Print quality screenshot capture timed out (120s limit). The video may be too large or processing is slow.'
                 }
             except subprocess.CalledProcessError as e:
                 return {
