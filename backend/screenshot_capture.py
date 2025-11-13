@@ -405,7 +405,8 @@ def apply_corner_radius_only(image_data, corner_radius=15):
         
         image_bytes = base64.b64decode(image_data)
         nparr = np.frombuffer(image_bytes, np.uint8)
-        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        # Use IMREAD_UNCHANGED to preserve alpha channel if present
+        image = cv2.imdecode(nparr, cv2.IMREAD_UNCHANGED)
         
         if image is None:
             return {"success": False, "error": "Failed to decode image"}
@@ -414,8 +415,18 @@ def apply_corner_radius_only(image_data, corner_radius=15):
         
         logger.info(f"Applying corner radius {corner_radius} to image {width}x{height}")
         
+        # Check if image has alpha channel, if not convert to RGBA
+        if image.shape[2] == 3:
+            # Convert BGR to BGRA (add alpha channel)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+        elif image.shape[2] == 4:
+            # Already has alpha channel, but OpenCV uses BGRA, ensure it's correct
+            pass
+        else:
+            return {"success": False, "error": "Unsupported image format"}
+        
         # Create a proper rounded rectangle mask
-        mask = np.zeros(image.shape[:2], dtype=np.uint8)
+        mask = np.zeros((height, width), dtype=np.uint8)
         
         # Create rounded rectangle using cv2.ellipse for smooth corners
         # Top-left corner
@@ -431,23 +442,16 @@ def apply_corner_radius_only(image_data, corner_radius=15):
         cv2.rectangle(mask, (corner_radius, 0), (width - corner_radius, height), 255, -1)
         cv2.rectangle(mask, (0, corner_radius), (width, height - corner_radius), 255, -1)
         
-        # Create a new image with transparent background
-        result = np.zeros((height, width, 4), dtype=np.uint8)
-        
-        # Copy the original image to the result
-        result[:, :, :3] = image
-        
-        # Set alpha channel based on mask
-        result[:, :, 3] = mask
-        
-        # Create a 4-channel image with transparency
+        # Create a new image with transparent background (RGBA)
         final_image = np.zeros((height, width, 4), dtype=np.uint8)
         
-        # Copy the original image to the first 3 channels
-        final_image[:, :, :3] = image
+        # Copy the original image RGB channels
+        final_image[:, :, :3] = image[:, :, :3]
         
-        # Set alpha channel based on mask (255 = opaque, 0 = transparent)
-        final_image[:, :, 3] = mask
+        # Apply mask to alpha channel: where mask is 255 (inside rounded rect), use original alpha or 255
+        # Where mask is 0 (outside rounded rect), set alpha to 0 (transparent)
+        original_alpha = image[:, :, 3] if image.shape[2] == 4 else np.full((height, width), 255, dtype=np.uint8)
+        final_image[:, :, 3] = np.where(mask > 0, original_alpha, 0).astype(np.uint8)
         
         # Convert back to base64 as PNG to preserve transparency
         _, buffer = cv2.imencode('.png', final_image)
@@ -492,6 +496,8 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
         original_height, original_width = image.shape[:2]
         aspect_ratio = original_width / original_height
         
+        logger.info(f"📐 [PRINT_QUALITY] Original image dimensions: {original_width}x{original_height}, aspect ratio: {aspect_ratio:.2f}")
+        
         # Check if image is already at print quality (within 10% tolerance to avoid unnecessary resizing)
         # This prevents quality loss from re-processing images that are already at print quality
         min_print_width = 2400  # 8 inches at 300 DPI
@@ -502,7 +508,7 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
         )
         
         if is_already_print_quality:
-            logger.info(f"Image is already at print quality ({original_width}x{original_height}), skipping resize to preserve quality")
+            logger.info(f"✅ [PRINT_QUALITY] Image is already at print quality ({original_width}x{original_height}), skipping resize to preserve quality")
             target_width = original_width
             target_height = original_height
         else:
@@ -517,16 +523,32 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 target_height = int(base_size)
                 target_width = int(base_size * aspect_ratio)
             
+            logger.info(f"📐 [PRINT_QUALITY] Calculated target dimensions: {target_width}x{target_height} (from {original_width}x{original_height})")
+            
             # Only resize if we need to scale up (avoid downscaling high-res images)
             if target_width > original_width or target_height > original_height:
+                logger.info(f"⬆️ [PRINT_QUALITY] Resizing image from {original_width}x{original_height} to {target_width}x{target_height}")
                 # Resize image to print quality dimensions while preserving aspect ratio
                 # Use INTER_LANCZOS4 for better quality preservation
-                image = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_LANCZOS4)
+                try:
+                    image = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_LANCZOS4)
+                    # Verify resize worked
+                    actual_height, actual_width = image.shape[:2]
+                    logger.info(f"✅ [PRINT_QUALITY] Resize successful! Actual dimensions: {actual_width}x{actual_height}")
+                    if actual_width != target_width or actual_height != target_height:
+                        logger.warn(f"⚠️ [PRINT_QUALITY] Resize dimensions mismatch! Expected {target_width}x{target_height}, got {actual_width}x{actual_height}")
+                        target_width = actual_width
+                        target_height = actual_height
+                except Exception as resize_error:
+                    logger.error(f"❌ [PRINT_QUALITY] Resize failed: {str(resize_error)}")
+                    # Fall back to original dimensions if resize fails
+                    target_width = original_width
+                    target_height = original_height
             else:
                 # Image is larger than target, keep original size to preserve quality
                 target_width = original_width
                 target_height = original_height
-                logger.info(f"Image is larger than target, keeping original dimensions to preserve quality")
+                logger.info(f"ℹ️ [PRINT_QUALITY] Image is larger than target, keeping original dimensions to preserve quality")
         
         # Apply corner radius effect to the HIGH-RESOLUTION print quality image (AFTER resize)
         if soft_corners:

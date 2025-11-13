@@ -2508,6 +2508,8 @@ def place_order():
             
             # Handle data URLs (base64 images) - convert to attachments
             image_tag = ""
+            print_quality_info = ""
+            download_link = ""
             if image_url:
                 if image_url.startswith('data:image'):
                     # AUTOMATIC 300 DPI UPGRADE: Ensure print quality before email
@@ -2521,6 +2523,24 @@ def place_order():
                             logger.info(f"✅ [EMAIL] Image {idx} upgraded to print quality: {print_quality_result['dimensions']}")
                         else:
                             logger.info(f"ℹ️ [EMAIL] Image {idx} already at print quality or upgrade not needed")
+                        
+                        # Get print quality info and download link if upgrade was successful
+                        upgrade_dimensions = print_quality_result.get('dimensions', {})
+                        if upgrade_dimensions and (upgrade_dimensions.get('width', 0) >= 2000 or upgrade_dimensions.get('height', 0) >= 2000):
+                            width = upgrade_dimensions.get('width', 0)
+                            height = upgrade_dimensions.get('height', 0)
+                            print_quality_info = f"""
+                        <div style='background: #d4edda; border: 1px solid #c3e6cb; padding: 10px; border-radius: 5px; margin-top: 10px;'>
+                            <p style='margin: 0; color: #155724;'><strong>✅ Print Quality: 300 DPI Ready</strong></p>
+                            <p style='margin: 5px 0 0 0; color: #155724; font-size: 0.9em;'>Dimensions: {width} × {height} pixels | Format: PNG</p>
+                        </div>
+                    """
+                            # Create download link for the print-ready image
+                            download_link = f"""
+                        <p style='margin-top: 10px;'>
+                            <a href='{image_url}' download='print_quality_{order_id}_{idx}.png' style='background: #28a745; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block;'>📥 Download Print Quality Image</a>
+                        </p>
+                    """
                     
                     # Data URL - convert to attachment for email
                     try:
@@ -2576,6 +2596,8 @@ def place_order():
                     <p><strong>Size:</strong> {size}</p>
                     <p><strong>Note:</strong> {note}</p>
                     {image_tag}
+                    {print_quality_info}
+                    {download_link}
                 </div>
             """
 
@@ -2594,8 +2616,9 @@ def place_order():
         html_body += "<br>"
         html_body += "<hr>"
         html_body += "<h2>🖨️ Print Quality Images</h2>"
-        html_body += "<p>Use the print quality generator to get 300 DPI images:</p>"
-        html_body += f"<p><strong>Web Interface:</strong> <a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}'>https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>"
+        html_body += "<p><strong>✅ Images are automatically upgraded to 300 DPI print quality!</strong></p>"
+        html_body += "<p>All images in this email are print-ready (300 DPI, PNG format). You can download them directly from above, or use the generator for additional processing:</p>"
+        html_body += f"<p><strong>Web Interface (for additional processing):</strong> <a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}'>https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>"
         html_body += "<br>"
         html_body += "<p><small>This is an automated notification from ScreenMerch</small></p>"
 
@@ -2778,6 +2801,8 @@ def success():
                     image_url = top_level_screenshot or item.get('screenshot') or item.get('selected_screenshot') or item.get('thumbnail') or item.get('img', '')
                     
                     image_tag = ""
+                    print_quality_info = ""
+                    download_link = ""
                     if image_url:
                         if image_url.startswith('data:image'):
                             # AUTOMATIC 300 DPI UPGRADE: Ensure print quality before email
@@ -2791,6 +2816,24 @@ def success():
                                     logger.info(f"✅ [SUCCESS] Image {idx} upgraded to print quality: {print_quality_result['dimensions']}")
                                 else:
                                     logger.info(f"ℹ️ [SUCCESS] Image {idx} already at print quality or upgrade not needed")
+                                
+                                # Get print quality info and download link if upgrade was successful
+                                upgrade_dimensions = print_quality_result.get('dimensions', {})
+                                if upgrade_dimensions and (upgrade_dimensions.get('width', 0) >= 2000 or upgrade_dimensions.get('height', 0) >= 2000):
+                                    width = upgrade_dimensions.get('width', 0)
+                                    height = upgrade_dimensions.get('height', 0)
+                                    print_quality_info = f"""
+                        <div style='background: #d4edda; border: 1px solid #c3e6cb; padding: 10px; border-radius: 5px; margin-top: 10px;'>
+                            <p style='margin: 0; color: #155724;'><strong>✅ Print Quality: 300 DPI Ready</strong></p>
+                            <p style='margin: 5px 0 0 0; color: #155724; font-size: 0.9em;'>Dimensions: {width} × {height} pixels | Format: PNG</p>
+                        </div>
+                    """
+                                    # Create download link for the print-ready image
+                                    download_link = f"""
+                        <p style='margin-top: 10px;'>
+                            <a href='{image_url}' download='print_quality_{order_id}_{idx}.png' style='background: #28a745; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block;'>📥 Download Print Quality Image</a>
+                        </p>
+                    """
                             
                             # Data URL - embed directly as base64 (most compatible)
                             image_tag = f"<img src='{image_url}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
@@ -2806,6 +2849,8 @@ def success():
                             <p><strong>Size:</strong> {size}</p>
                             <p><strong>Note:</strong> {note}</p>
                             {image_tag}
+                            {print_quality_info}
+                            {download_link}
                         </div>
                     """
                 
@@ -2824,7 +2869,9 @@ def success():
                 html_body += "<br>"
                 html_body += "<hr>"
                 html_body += "<h2>🖨️ Print Quality Images</h2>"
-                html_body += f"<p><strong>Web Interface:</strong> <a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}'>https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>"
+                html_body += "<p><strong>✅ Images are automatically upgraded to 300 DPI print quality!</strong></p>"
+                html_body += "<p>All images in this email are print-ready (300 DPI, PNG format). You can download them directly from above, or use the generator for additional processing:</p>"
+                html_body += f"<p><strong>Web Interface (for additional processing):</strong> <a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}'>https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>"
                 html_body += "<br>"
                 html_body += "<p><small>This is an automated notification from ScreenMerch</small></p>"
                 
@@ -3325,8 +3372,11 @@ def stripe_webhook():
                             if print_quality_result['success']:
                                 # Use upgraded image
                                 screenshot_url = print_quality_result['image_data']
-                                if print_quality_result['was_upgraded']:
-                                    logger.info(f"✅ [WEBHOOK] Item {i} screenshot upgraded to print quality: {print_quality_result['dimensions']}")
+                                upgrade_dimensions = print_quality_result.get('dimensions', {})
+                                was_upgraded = print_quality_result.get('was_upgraded', False)
+                                
+                                if was_upgraded:
+                                    logger.info(f"✅ [WEBHOOK] Item {i} screenshot upgraded to print quality: {upgrade_dimensions}")
                                 else:
                                     logger.info(f"ℹ️ [WEBHOOK] Item {i} screenshot already at print quality or upgrade not needed")
                             
@@ -3350,6 +3400,12 @@ def stripe_webhook():
                                     })
                                     logger.info(f"📎 [WEBHOOK] Added screenshot attachment {i} with CID: {cid}")
                                 
+                                # Determine note based on upgrade status
+                                if upgrade_dimensions and (upgrade_dimensions.get('width', 0) >= 2000 or upgrade_dimensions.get('height', 0) >= 2000):
+                                    note = f"✅ 300 DPI Print Ready ({upgrade_dimensions.get('width', 0)} × {upgrade_dimensions.get('height', 0)} pixels)"
+                                else:
+                                    note = 'User-selected screenshot (base64)'
+                                
                                 # Use BOTH CID and base64 - different email clients support different methods
                                 # Many email clients support base64 directly, so prioritize that
                                 # CID is for clients that prefer attachments
@@ -3358,7 +3414,9 @@ def stripe_webhook():
                                     'preview': screenshot_url,  # Use base64 directly (works in more email clients)
                                     'cid': f"cid:{cid}",  # Also provide CID for clients that prefer attachments
                                     'fallback_base64': screenshot_url,  # Same as preview
-                                    'note': 'User-selected screenshot (base64)'
+                                    'note': note,
+                                    'dimensions': upgrade_dimensions,
+                                    'download_url': screenshot_url  # Store for download link
                                 })
                             except Exception as e:
                                 logger.error(f"⚠️ [WEBHOOK] Failed to convert base64 to attachment for item {i}: {str(e)}")
@@ -3462,6 +3520,28 @@ def stripe_webhook():
                     image_tag = '<p style="color: #dc3545; padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;"><strong>⚠️ Screenshot not available</strong></p>'
                     logger.warning(f"⚠️ [WEBHOOK] Item {i} has NO screenshot - preview and fallback both empty")
                 
+                # Get print quality info and download link
+                print_quality_info_html = ""
+                download_link_html = ""
+                dimensions = print_info.get('dimensions', {})
+                if dimensions and (dimensions.get('width', 0) >= 2000 or dimensions.get('height', 0) >= 2000):
+                    width = dimensions.get('width', 0)
+                    height = dimensions.get('height', 0)
+                    print_quality_info_html = f"""
+                        <div style='background: #d4edda; border: 1px solid #c3e6cb; padding: 10px; border-radius: 5px; margin-top: 10px;'>
+                            <p style='margin: 0; color: #155724;'><strong>✅ Print Quality: 300 DPI Ready</strong></p>
+                            <p style='margin: 5px 0 0 0; color: #155724; font-size: 0.9em;'>Dimensions: {width} × {height} pixels | Format: PNG</p>
+                        </div>
+                    """
+                    # Create download link
+                    download_url = print_info.get('download_url') or print_info.get('preview') or print_info.get('fallback_base64', '')
+                    if download_url:
+                        download_link_html = f"""
+                        <p style='margin-top: 10px;'>
+                            <a href='{download_url}' download='print_quality_{order_id}_{i}.png' style='background: #28a745; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block;'>📥 Download Print Quality Image</a>
+                        </p>
+                    """
+                
                 html_body += f"""
                     <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
                         <h3>{category} - {product_name}</h3>
@@ -3472,7 +3552,8 @@ def stripe_webhook():
                         <p><strong>📅 Order Time:</strong> {timestamp_str}</p>
                         <p><strong>📸 Screenshot Selected (Preview):</strong></p>
                         {image_tag}
-                        <p><strong>🖨️ Print Quality:</strong> {print_info.get('note', 'Preview only')}</p>
+                        {print_quality_info_html}
+                        {download_link_html}
                     </div>
                 """
             
@@ -3512,7 +3593,7 @@ def stripe_webhook():
                     <h3>📝 Quick Instructions:</h3>
                     <ol>
                         <li><strong>View Order:</strong> Click "View Order Details" to see full order information</li>
-                        <li><strong>Print Quality:</strong> Click "Generate Print Quality Images" to create 300 DPI images for Printify</li>
+                        <li><strong>Print Quality:</strong> ✅ Images are automatically upgraded to 300 DPI! Download directly from above, or use the generator for additional processing (edge feather, corner radius)</li>
                         <li><strong>Video URL:</strong> Copy the video URL from order details and paste it into the print quality tool</li>
                         <li><strong>Timestamp:</strong> Use the timestamp shown above in the print quality tool</li>
                     </ol>
