@@ -684,6 +684,10 @@ const ToolsPage = () => {
       tempCanvas.width = sourceWidth;
       tempCanvas.height = sourceHeight;
       
+      // Clear canvas to ensure transparent background (important for rounded corners)
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+      
       // Draw cropped image to temp canvas
       tempCtx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);
 
@@ -692,25 +696,42 @@ const ToolsPage = () => {
       const isCircle = cornerRadius >= 100; // When maxed out, create perfect circle
       const effectiveCornerRadius = isCircle ? maxCornerRadius : cornerRadius;
 
+      // Draw image to canvas first (before applying rounded corners)
+      ctx.drawImage(tempCanvas, 0, 0);
+
       // Apply corner radius clipping (or circle if maxed out)
+      // Use destination-in composite to clip image to rounded shape (preserves transparency)
       if (effectiveCornerRadius > 0) {
-        ctx.save();
+        // Create a mask canvas for the rounded corners
+        const roundedMaskCanvas = document.createElement('canvas');
+        const roundedMaskCtx = roundedMaskCanvas.getContext('2d');
+        roundedMaskCanvas.width = canvas.width;
+        roundedMaskCanvas.height = canvas.height;
+        
+        // Clear mask canvas to transparent
+        roundedMaskCtx.clearRect(0, 0, roundedMaskCanvas.width, roundedMaskCanvas.height);
+        
+        // Draw white shape (will be used as mask)
+        roundedMaskCtx.fillStyle = 'white';
         if (isCircle) {
-          // Create perfect circle
-          ctx.beginPath();
-          ctx.arc(
-            canvas.width / 2,
-            canvas.height / 2,
+          roundedMaskCtx.beginPath();
+          roundedMaskCtx.arc(
+            roundedMaskCanvas.width / 2,
+            roundedMaskCanvas.height / 2,
             maxCornerRadius,
             0,
             Math.PI * 2
           );
-          ctx.clip();
+          roundedMaskCtx.fill();
         } else {
-          // Use rounded rectangle
-          drawRoundedRect(ctx, 0, 0, canvas.width, canvas.height, effectiveCornerRadius);
-          ctx.clip();
+          drawRoundedRect(roundedMaskCtx, 0, 0, roundedMaskCanvas.width, roundedMaskCanvas.height, effectiveCornerRadius);
+          roundedMaskCtx.fill();
         }
+        
+        // Use destination-in to clip the image to the rounded shape (removes black background)
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.drawImage(roundedMaskCanvas, 0, 0);
+        ctx.globalCompositeOperation = 'source-over';
       }
 
       // Apply feather edge (soft edge effect) - works with both rectangles and circles
@@ -796,21 +817,10 @@ const ToolsPage = () => {
         
         maskCtx.globalCompositeOperation = 'source-over';
         
-        // Draw image first
-        ctx.drawImage(tempCanvas, 0, 0);
-        
-        // Apply mask to soften edges
+        // Apply mask to soften edges (image already drawn, just apply feather mask)
         ctx.globalCompositeOperation = 'destination-in';
         ctx.drawImage(maskCanvas, 0, 0);
         ctx.globalCompositeOperation = 'source-over';
-      } else {
-        // No feather edge, just draw the image
-        ctx.drawImage(tempCanvas, 0, 0);
-      }
-
-      // Restore clipping if corner radius was applied
-      if (effectiveCornerRadius > 0) {
-        ctx.restore();
       }
 
       // Apply frame border
@@ -1141,12 +1151,6 @@ const ToolsPage = () => {
                   }}>
                     <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
                       {description} - {dimensions.width}" × {dimensions.height}" @ {dpi} DPI
-                    </div>
-                    <div style={{ marginBottom: '0.25rem' }}>
-                      Target: {targetPixels.width} × {targetPixels.height} pixels
-                    </div>
-                    <div style={{ marginBottom: '0.25rem' }}>
-                      Current: {currentPixels.width} × {currentPixels.height} pixels
                     </div>
                     <div style={{ fontWeight: 'bold', color: warningColor, marginTop: '0.5rem' }}>
                       {warningMessage}
