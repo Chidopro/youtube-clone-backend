@@ -85,6 +85,72 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def ensure_print_quality_image(image_data):
+    """
+    Ensure image is at 300 DPI print quality before attaching to email.
+    Automatically upgrades small images to print quality.
+    
+    Args:
+        image_data: Base64 image data (data URL or base64 string)
+    
+    Returns:
+        dict: {
+            'success': bool,
+            'image_data': str (upgraded base64 data URL),
+            'dimensions': dict (width, height),
+            'was_upgraded': bool
+        }
+    """
+    try:
+        # Check if it's a data URL
+        if isinstance(image_data, str) and image_data.startswith('data:image'):
+            # Process for print quality
+            result = sc_module.process_thumbnail_for_print(
+                image_data,
+                print_dpi=300,
+                soft_corners=False,
+                edge_feather=False
+            )
+            
+            if result.get('success') and result.get('screenshot'):
+                dimensions = result.get('dimensions', {})
+                original_width = dimensions.get('width', 0)
+                was_upgraded = original_width >= 2000  # Check if actually upgraded
+                
+                logger.info(f"✅ [EMAIL] Image processed for print quality: {dimensions.get('width')}x{dimensions.get('height')}, upgraded: {was_upgraded}")
+                
+                return {
+                    'success': True,
+                    'image_data': result['screenshot'],
+                    'dimensions': dimensions,
+                    'was_upgraded': was_upgraded
+                }
+            else:
+                logger.warning(f"⚠️ [EMAIL] Print quality upgrade failed, using original image: {result.get('error', 'Unknown error')}")
+                return {
+                    'success': False,
+                    'image_data': image_data,  # Return original
+                    'dimensions': {},
+                    'was_upgraded': False
+                }
+        else:
+            # Not a data URL, return as-is (might be a URL)
+            return {
+                'success': True,
+                'image_data': image_data,
+                'dimensions': {},
+                'was_upgraded': False
+            }
+    except Exception as e:
+        logger.error(f"❌ [EMAIL] Error ensuring print quality: {str(e)}")
+        # Return original image on error
+        return {
+            'success': False,
+            'image_data': image_data,
+            'dimensions': {},
+            'was_upgraded': False
+        }
+
 def send_order_email(order_details):
     """Send order notification email instead of SMS"""
     if not ADMIN_EMAIL:
@@ -2444,6 +2510,18 @@ def place_order():
             image_tag = ""
             if image_url:
                 if image_url.startswith('data:image'):
+                    # AUTOMATIC 300 DPI UPGRADE: Ensure print quality before email
+                    logger.info(f"🖨️ [EMAIL] Ensuring print quality for image {idx} before email attachment")
+                    print_quality_result = ensure_print_quality_image(image_url)
+                    
+                    if print_quality_result['success']:
+                        # Use upgraded image
+                        image_url = print_quality_result['image_data']
+                        if print_quality_result['was_upgraded']:
+                            logger.info(f"✅ [EMAIL] Image {idx} upgraded to print quality: {print_quality_result['dimensions']}")
+                        else:
+                            logger.info(f"ℹ️ [EMAIL] Image {idx} already at print quality or upgrade not needed")
+                    
                     # Data URL - convert to attachment for email
                     try:
                         # Parse data URL: data:image/png;base64,<data>
@@ -2702,6 +2780,18 @@ def success():
                     image_tag = ""
                     if image_url:
                         if image_url.startswith('data:image'):
+                            # AUTOMATIC 300 DPI UPGRADE: Ensure print quality before email
+                            logger.info(f"🖨️ [SUCCESS] Ensuring print quality for image {idx} before email attachment")
+                            print_quality_result = ensure_print_quality_image(image_url)
+                            
+                            if print_quality_result['success']:
+                                # Use upgraded image
+                                image_url = print_quality_result['image_data']
+                                if print_quality_result['was_upgraded']:
+                                    logger.info(f"✅ [SUCCESS] Image {idx} upgraded to print quality: {print_quality_result['dimensions']}")
+                                else:
+                                    logger.info(f"ℹ️ [SUCCESS] Image {idx} already at print quality or upgrade not needed")
+                            
                             # Data URL - embed directly as base64 (most compatible)
                             image_tag = f"<img src='{image_url}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
                             logger.info(f"📸 [SUCCESS] Embedded base64 screenshot for item {idx}")
@@ -3228,6 +3318,18 @@ def stripe_webhook():
                     logger.info(f"📸 [WEBHOOK] Item {i} screenshot check: selected_screenshot={bool(item.get('selected_screenshot'))}, screenshot={bool(item.get('screenshot'))}, img={bool(item.get('img'))}, thumbnail={bool(item.get('thumbnail'))}, found={bool(screenshot_url)}")
                     if screenshot_url:
                         if isinstance(screenshot_url, str) and 'data:image' in screenshot_url:
+                            # AUTOMATIC 300 DPI UPGRADE: Ensure print quality before email
+                            logger.info(f"🖨️ [WEBHOOK] Ensuring print quality for item {i} screenshot before email attachment")
+                            print_quality_result = ensure_print_quality_image(screenshot_url)
+                            
+                            if print_quality_result['success']:
+                                # Use upgraded image
+                                screenshot_url = print_quality_result['image_data']
+                                if print_quality_result['was_upgraded']:
+                                    logger.info(f"✅ [WEBHOOK] Item {i} screenshot upgraded to print quality: {print_quality_result['dimensions']}")
+                                else:
+                                    logger.info(f"ℹ️ [WEBHOOK] Item {i} screenshot already at print quality or upgrade not needed")
+                            
                             # This is a base64 screenshot - convert to email attachment
                             try:
                                 # Parse data URL: data:image/png;base64,<data>
@@ -4321,7 +4423,19 @@ def get_order_screenshot(order_id):
 def print_quality_page():
     """Serve the print quality image generator page"""
     order_id = request.args.get('order_id')
-    return render_template('print_quality.html', order_id=order_id)
+    response = make_response(render_template('print_quality.html', order_id=order_id))
+    # Set permissive CSP for this page since it needs to make API calls to the same domain
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' https: data: blob:; "
+        "font-src 'self' data:; "
+        "connect-src 'self' https://screenmerch.fly.dev; "
+        "frame-src 'self'; "
+        "object-src 'none';"
+    )
+    return response
 
 @app.route("/api/users/ensure-exists", methods=["POST"])
 def ensure_user_exists():
