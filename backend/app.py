@@ -544,6 +544,10 @@ def add_cors_headers(response):
 @app.before_request
 def security_check():
     """Security checks before each request"""
+    # Log all API requests for debugging
+    if request.path.startswith('/api/'):
+        logger.info(f"🔵 [BEFORE_REQUEST] {request.method} {request.path} from {request.headers.get('Origin', 'unknown')}")
+    
     # Get client IP
     client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
     
@@ -1439,13 +1443,13 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Snapback Hat",
-        "price": 26.19,
-        "filename": "snapbackhat.png",
-        "main_image": "snapbackhat.png",
-        "preview_image": "hatssnapbackhatpreview.png",
-        "description": "This Snapback exudes quality craftsmanship. It's structured with a firm front panel, flat visor, and full buckram. Made with 8 rows of stitching on the brim, pro-stitching on the crown, and 6 embroidered eyelets. 85% acrylic, 15% wool. Structured, 6-panel, high-profile. Plastic snap closure. 6 embroidered eyelets that match the crown color. Grey under visor. Head circumference: 22″–24″ (55–60 cm). Blank product sourced from China. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "Purple / Black / Black", "Red / Black / Black", "Gray / Black / Black", "Gold / Black / Black", "Navy blue", "Red", "Black / Charcoal gray / Charcoal gray", "Charcoal gray", "Kelly green", "Black / White / White", "White", "Aqua blue / Black / Black", "Orange / Black / Black", "Burgundy maroon", "Black / Red / Red", "Black / Gray / Gray"], "size": ["One Size"]},
+        "name": "Closed Back Cap",
+        "price": 25.19,
+        "filename": "closedbackcap.png",
+        "main_image": "closedbackcap.png",
+        "preview_image": "hatsclosedbackcappreview.png",
+        "description": "Closed back cap with adjustable fit. Perfect for custom designs and logos.",
+        "options": {"color": ["Dark Navy", "Black", "Royal Blue", "Red", "Grey", "White", "Dark Grey", "Multicam Black", "Olive", "Multicam Green", "Khaki"], "size": ["One Size"]},
         "size_pricing": {
             "One Size": 0
         }
@@ -1648,7 +1652,7 @@ def filter_products_by_category(category):
         ],
         'hats': [
             "Distressed Dad Hat",
-            "Snapback Hat",
+            "Closed Back Cap",
             "Five Panel Trucker Hat",
             "Five Panel Baseball Cap"
         ],
@@ -2415,6 +2419,9 @@ def place_order():
 
         # Prepare DB payload restricted to known columns
         # Also store screenshot at order level for easy retrieval
+        user_email_from_data = data.get("user_email", "")
+        customer_email_from_data = data.get("customer_email", "")
+        logger.info(f"📧 [ORDER] Email from request - user_email: '{user_email_from_data}', customer_email: '{customer_email_from_data}'")
         order_data = {
             "order_id": order_id,
             "cart": enriched_cart,
@@ -2608,19 +2615,44 @@ def place_order():
         html_body += f"<p><strong>Video URL:</strong> {order_data['video_url']}</p>"
         html_body += f"<p><strong>Screenshot Timestamp:</strong> {order_store[order_id]['screenshot_timestamp']} seconds</p>"
         html_body += "<br>"
-        html_body += "<p><strong>📋 View Full Order Details:</strong></p>"
-        html_body += f"<p><a href='https://screenmerch.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
-        html_body += "<br>"
-        html_body += "<p><strong>📊 All Orders Dashboard:</strong></p>"
-        html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
-        html_body += "<br>"
-        html_body += "<hr>"
-        html_body += "<h2>🖨️ Print Quality Images</h2>"
-        html_body += "<p><strong>✅ Images are automatically upgraded to 300 DPI print quality!</strong></p>"
-        html_body += "<p>All images in this email are print-ready (300 DPI, PNG format). You can download them directly from above, or use the generator for additional processing:</p>"
-        html_body += f"<p><strong>Web Interface (for additional processing):</strong> <a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}'>https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>"
-        html_body += "<br>"
-        html_body += "<p><small>This is an automated notification from ScreenMerch</small></p>"
+        
+        # Add action buttons section with better email client compatibility (matching webhook email format)
+        html_body += f"""
+            <hr>
+            <h2>🚀 Order Management & Print Quality</h2>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                <tr>
+                    <td align="center">
+                        <table cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td style="padding: 10px;">
+                                    <a href="https://screenmerch.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
+                                </td>
+                                <td style="padding: 10px;">
+                                    <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" style="padding: 10px; text-align: center;">
+                                    <a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📊 View All Orders</a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3>📝 Quick Instructions:</h3>
+                <ol>
+                    <li><strong>View Order:</strong> Click "View Order Details" to see full order information</li>
+                    <li><strong>Print Quality:</strong> ✅ Images are automatically upgraded to 300 DPI! Click "Generate Print Quality Images" to access the tools page for additional processing (edge feather, corner radius, etc.)</li>
+                    <li><strong>Video URL:</strong> The print quality tool will automatically load the order details, or you can copy the video URL from order details</li>
+                    <li><strong>Timestamp:</strong> The screenshot timestamp is shown above and will be used in the print quality tool</li>
+                </ol>
+            </div>
+            <hr>
+            <p><small>This is an automated notification from ScreenMerch</small></p>
+        """
 
         # Send email with Resend if configured; fall back to logging
         logger.info(f"📧 Email configuration check: RESEND_API_KEY={'SET' if RESEND_API_KEY else 'NOT SET'}, MAIL_TO={'SET' if MAIL_TO else 'NOT SET'}")
@@ -2699,6 +2731,120 @@ def place_order():
             if not MAIL_TO:
                 logger.error("❌ MAIL_TO not configured; order email not sent")
             logger.warning("Email service not configured; order email not sent")
+
+        # Send confirmation email to customer if email is provided
+        customer_email = order_data.get("customer_email", "").strip()
+        logger.info(f"📧 [CUSTOMER] Checking customer email: '{customer_email}' (empty: {not customer_email}, RESEND_API_KEY: {bool(RESEND_API_KEY)})")
+        if customer_email and RESEND_API_KEY:
+            logger.info(f"📧 [CUSTOMER] Preparing confirmation email for customer: {customer_email}")
+            
+            # Build customer-friendly confirmation email
+            customer_html_body = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #333;">🎉 Thank You for Your Order!</h1>
+                <p>Hi there,</p>
+                <p>We've received your order and are getting it ready for you!</p>
+                
+                <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h2 style="margin-top: 0; color: #333;">Order Details</h2>
+                    <p><strong>Order Number:</strong> #{order_number}</p>
+                    <p><strong>Order ID:</strong> {order_id}</p>
+                    <p><strong>Items:</strong> {len(enriched_cart)}</p>
+                    <p><strong>Subtotal:</strong> ${total_amount - shipping_cost:.2f}</p>
+                    <p><strong>Shipping:</strong> ${shipping_cost:.2f}</p>
+                    <p><strong style="font-size: 18px;">Total:</strong> <strong style="font-size: 18px; color: #007bff;">${total_amount:.2f}</strong></p>
+                </div>
+                
+                <h2 style="color: #333;">Order Items</h2>
+            """
+            
+            # Add order items to customer email
+            for idx, item in enumerate(enriched_cart):
+                product_name = item.get('product', 'N/A')
+                color = (item.get('variants') or {}).get('color', 'N/A')
+                size = (item.get('variants') or {}).get('size', 'N/A')
+                price = item.get('price', 0)
+                note = item.get('note', '')
+                
+                customer_html_body += f"""
+                <div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+                    <h3 style="margin-top: 0; color: #333;">{product_name}</h3>
+                    <p><strong>Color:</strong> {color}</p>
+                    <p><strong>Size:</strong> {size}</p>
+                    <p><strong>Price:</strong> ${price:.2f}</p>
+                    {f'<p><strong>Note:</strong> {note}</p>' if note else ''}
+                </div>
+                """
+            
+            # Add video information if available
+            if order_data.get('video_title') and order_data.get('video_title') != 'Unknown Video':
+                customer_html_body += f"""
+                <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #333;">📹 Video Information</h3>
+                    <p><strong>Video:</strong> {order_data['video_title']}</p>
+                    <p><strong>Creator:</strong> {order_data['creator_name']}</p>
+                </div>
+                """
+            
+            # Add shipping address if available
+            if shipping_address:
+                customer_html_body += f"""
+                <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #333;">📦 Shipping Address</h3>
+                    <p>{shipping_address.get('name', '')}<br>
+                    {shipping_address.get('line1', '')}<br>
+                    {shipping_address.get('line2', '') + '<br>' if shipping_address.get('line2') else ''}
+                    {shipping_address.get('city', '')}, {shipping_address.get('state', '')} {shipping_address.get('postal_code', '')}<br>
+                    {shipping_address.get('country', '')}</p>
+                </div>
+                """
+            
+            customer_html_body += """
+                <p style="margin-top: 30px;">We'll send you another email when your order ships!</p>
+                <p>If you have any questions, please don't hesitate to reach out to us.</p>
+                <p>Best regards,<br>The ScreenMerch Team</p>
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                <p style="color: #666; font-size: 12px;">This is an automated confirmation email. Please do not reply to this email.</p>
+            </div>
+            """
+            
+            try:
+                customer_email_data = {
+                    "from": RESEND_FROM,
+                    "to": [customer_email],
+                    "subject": f"🎉 Order Confirmation - #{order_number}",
+                    "html": customer_html_body,
+                }
+                
+                logger.info(f"📧 [CUSTOMER] Sending confirmation email to {customer_email}")
+                customer_resp = requests.post(
+                    "https://api.resend.com/emails",
+                    headers={
+                        "Authorization": f"Bearer {RESEND_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json=customer_email_data,
+                    timeout=30
+                )
+                
+                if customer_resp.status_code == 200:
+                    logger.info(f"✅ [CUSTOMER] Confirmation email sent successfully to {customer_email}")
+                    try:
+                        resp_data = customer_resp.json()
+                        logger.info(f"📧 [CUSTOMER] Email ID: {resp_data.get('id', 'unknown')}")
+                    except:
+                        pass
+                else:
+                    error_text = customer_resp.text
+                    logger.error(f"❌ [CUSTOMER] Failed to send confirmation email ({customer_resp.status_code}): {error_text}")
+            except Exception as e:
+                logger.error(f"❌ [CUSTOMER] Error sending confirmation email: {str(e)}")
+                import traceback
+                logger.error(f"Full traceback: {traceback.format_exc()}")
+        elif not customer_email:
+            logger.warning(f"⚠️ [CUSTOMER] No customer email provided - skipping confirmation email")
+        elif not RESEND_API_KEY:
+            logger.warning(f"⚠️ [CUSTOMER] RESEND_API_KEY not configured - skipping confirmation email")
 
         response = jsonify({"success": True, "order_id": order_id})
         origin = request.headers.get('Origin', '*')
@@ -4296,9 +4442,14 @@ def process_thumbnail_print_quality():
             response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 400
         
-        logger.info(f"Processing thumbnail for print quality: DPI={print_dpi}, soft_corners={soft_corners}, edge_feather={edge_feather}")
+        # Log thumbnail_data info for debugging (without logging the full base64 string)
+        thumbnail_type = type(thumbnail_data).__name__
+        thumbnail_length = len(str(thumbnail_data)) if thumbnail_data else 0
+        thumbnail_preview = str(thumbnail_data)[:100] if thumbnail_data else "None"
+        logger.info(f"📧 [PRINT_QUALITY] Processing thumbnail - Type: {thumbnail_type}, Length: {thumbnail_length}, Preview: {thumbnail_preview}...")
+        logger.info(f"📧 [PRINT_QUALITY] DPI={print_dpi}, soft_corners={soft_corners}, edge_feather={edge_feather}")
         if crop_area:
-            logger.info(f"Crop area provided: {crop_area}")
+            logger.info(f"📧 [PRINT_QUALITY] Crop area provided: {crop_area}")
         
         # Process the thumbnail for print quality
         result = screenshot_capture.process_thumbnail_for_print(
@@ -4387,70 +4538,95 @@ def get_order_screenshot(order_id):
             order_data = result.data[0]
             logger.info(f"✅ Retrieved order {order_id} from database")
         
-        # Extract screenshot data from cart items - check all possible fields
-        screenshot_data = None
+        # Extract screenshot data from cart items - return all products with their images
         cart = order_data.get('cart', [])
         
-        logger.info(f"🔍 [GET-SCREENSHOT] Looking for screenshot in order {order_id}")
+        logger.info(f"🔍 [GET-SCREENSHOT] Looking for screenshots in order {order_id}")
         logger.info(f"🔍 [GET-SCREENSHOT] Order data keys: {list(order_data.keys())}")
         logger.info(f"🔍 [GET-SCREENSHOT] Cart has {len(cart)} items")
         
-        # First check order-level fields (might be stored here)
+        # Check for order-level screenshot (fallback for single screenshot orders)
+        order_level_screenshot = None
         if order_data.get('selected_screenshot'):
-            screenshot_data = order_data.get('selected_screenshot')
-            logger.info(f"✅ Found screenshot in order-level selected_screenshot")
+            order_level_screenshot = order_data.get('selected_screenshot')
         elif order_data.get('thumbnail'):
-            screenshot_data = order_data.get('thumbnail')
-            logger.info(f"✅ Found screenshot in order-level thumbnail")
+            order_level_screenshot = order_data.get('thumbnail')
         elif order_data.get('screenshot'):
-            screenshot_data = order_data.get('screenshot')
-            logger.info(f"✅ Found screenshot in order-level screenshot")
+            order_level_screenshot = order_data.get('screenshot')
         elif order_data.get('image_url'):
-            screenshot_data = order_data.get('image_url')
-            logger.info(f"✅ Found screenshot in order-level image_url")
+            order_level_screenshot = order_data.get('image_url')
         elif order_data.get('screenshot_data'):
-            screenshot_data = order_data.get('screenshot_data')
-            logger.info(f"✅ Found screenshot in order-level screenshot_data")
+            order_level_screenshot = order_data.get('screenshot_data')
         elif order_data.get('thumbnail_data'):
-            screenshot_data = order_data.get('thumbnail_data')
-            logger.info(f"✅ Found screenshot in order-level thumbnail_data")
+            order_level_screenshot = order_data.get('thumbnail_data')
         
-        # Then check cart items - check all possible fields
-        if not screenshot_data:
-            logger.info(f"🔍 Checking cart items for screenshot...")
-            for idx, item in enumerate(cart):
-                logger.info(f"🔍 Cart item {idx} keys: {list(item.keys())}")
-                
-                # Check selected_screenshot field first (this is where we store it now)
-                if item.get('selected_screenshot'):
-                    screenshot_data = item.get('selected_screenshot')
-                    logger.info(f"✅ Found screenshot in cart item {idx} selected_screenshot")
-                    break
-                # Check img field (base64 or URL)
-                elif item.get('img'):
-                    screenshot_data = item.get('img')
-                    logger.info(f"✅ Found screenshot in cart item {idx} img")
-                    break
-                # Check screenshot field (base64)
-                elif item.get('screenshot'):
-                    screenshot_data = item.get('screenshot')
-                    logger.info(f"✅ Found screenshot in cart item {idx} screenshot")
-                    break
-                # Check thumbnail field (base64 or URL)
-                elif item.get('thumbnail'):
-                    screenshot_data = item.get('thumbnail')
-                    logger.info(f"✅ Found screenshot in cart item {idx} thumbnail")
-                    break
+        # Build products list with their screenshots - include ALL products even if they share screenshots
+        products = []
+        for idx, item in enumerate(cart):
+            product_name = item.get('product', f'Product {idx + 1}')
+            color = (item.get('variants') or {}).get('color', 'N/A')
+            size = (item.get('variants') or {}).get('size', 'N/A')
+            
+            # Find screenshot for this product - check item-specific fields first
+            screenshot_data = None
+            if item.get('selected_screenshot'):
+                screenshot_data = item.get('selected_screenshot')
+                logger.info(f"✅ Found screenshot in cart item {idx} ({product_name}) selected_screenshot")
+            elif item.get('img'):
+                screenshot_data = item.get('img')
+                logger.info(f"✅ Found screenshot in cart item {idx} ({product_name}) img")
+            elif item.get('screenshot'):
+                screenshot_data = item.get('screenshot')
+                logger.info(f"✅ Found screenshot in cart item {idx} ({product_name}) screenshot")
+            elif item.get('thumbnail'):
+                screenshot_data = item.get('thumbnail')
+                logger.info(f"✅ Found screenshot in cart item {idx} ({product_name}) thumbnail")
+            elif order_level_screenshot:
+                # Use order-level screenshot as fallback - ALL products can use this
+                screenshot_data = order_level_screenshot
+                logger.info(f"✅ Using order-level screenshot for cart item {idx} ({product_name})")
+            
+            # Always add product to list, even if screenshot is shared (user can still process each product separately)
+            if screenshot_data:
+                products.append({
+                    "index": idx,
+                    "product": product_name,
+                    "screenshot": screenshot_data,
+                    "color": color,
+                    "size": size
+                })
+            else:
+                # Even if no screenshot found, add product so user knows it exists (they can still process it)
+                logger.warning(f"⚠️ No screenshot found for cart item {idx} ({product_name}), but adding to list anyway")
+                products.append({
+                    "index": idx,
+                    "product": product_name,
+                    "screenshot": order_level_screenshot or '',  # Use order-level or empty
+                    "color": color,
+                    "size": size
+                })
         
-        if screenshot_data:
-            # Log screenshot info (first 100 chars to verify format)
-            screenshot_preview = str(screenshot_data)[:100] if screenshot_data else "None"
-            screenshot_type = "base64" if isinstance(screenshot_data, str) and screenshot_data.startswith('data:image') else "URL"
-            logger.info(f"✅ [GET-SCREENSHOT] Found screenshot (type: {screenshot_type}, preview: {screenshot_preview}...)")
+        # If no products found but we have order-level screenshot, create a single product entry
+        if not products and order_level_screenshot:
+            products.append({
+                "index": 0,
+                "product": "Order Screenshot",
+                "screenshot": order_level_screenshot,
+                "color": "N/A",
+                "size": "N/A"
+            })
+        
+        if products:
+            # Return first product's screenshot for backward compatibility, plus all products
+            first_screenshot = products[0]['screenshot']
+            screenshot_preview = str(first_screenshot)[:100] if first_screenshot else "None"
+            screenshot_type = "base64" if isinstance(first_screenshot, str) and first_screenshot.startswith('data:image') else "URL"
+            logger.info(f"✅ [GET-SCREENSHOT] Found {len(products)} product(s) with screenshots (type: {screenshot_type}, preview: {screenshot_preview}...)")
             
             response = jsonify({
                 "success": True,
-                "screenshot": screenshot_data,
+                "screenshot": first_screenshot,  # Backward compatibility - first product's screenshot
+                "products": products,  # All products with their screenshots
                 "order_id": order_id,
                 "video_title": order_data.get('video_title', 'Unknown Video'),
                 "creator_name": order_data.get('creator_name', 'Unknown Creator')
@@ -5302,6 +5478,28 @@ def auth_signup():
         if len(password) < 6:
             return jsonify({"success": False, "error": "Password must be at least 6 characters long"}), 400
         
+        # Check if this is a creator signup (from "Start Free" flow)
+        is_creator = data.get("is_creator", False) or data.get("role") == "creator"
+        
+        # If creator signup, check the 20-user limit
+        if is_creator:
+            try:
+                # Count existing creators (both active and pending)
+                # First get all creators with active or pending status
+                creator_result = supabase.table('users').select('id').in_('status', ['active', 'pending']).eq('role', 'creator').execute()
+                current_count = len(creator_result.data) if creator_result.data else 0
+                
+                if current_count >= 20:
+                    response = jsonify({
+                        "success": False, 
+                        "error": "We've reached our limit of 20 creator signups. Please check back later or contact support."
+                    })
+                    response.headers.add('Access-Control-Allow-Origin', '*')
+                    return response, 403
+            except Exception as limit_error:
+                logger.error(f"Error checking creator limit: {str(limit_error)}")
+                # Continue with signup if limit check fails (fail open for now)
+        
         # Check if user already exists
         try:
             existing_user = supabase.table('users').select('*').eq('email', email).execute()
@@ -5311,26 +5509,40 @@ def auth_signup():
             
             # Create new user
             # For demo purposes, store password as-is (replace with bcrypt in production)
+            # Set role and status based on whether it's a creator signup
+            user_role = 'creator' if is_creator else 'customer'
+            user_status = 'pending' if is_creator else 'active'  # Creators need approval
+            
             new_user = {
                 'email': email,
                 'password_hash': password,  # Replace with bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()) in production
-                'role': 'customer',
-                'status': 'active',
+                'role': user_role,
+                'status': user_status,
                 'email_verified': False
             }
             
             result = supabase.table('users').insert(new_user).execute()
             
             if result.data:
-                logger.info(f"New user {email} created successfully")
+                user_role = result.data[0].get('role', 'customer')
+                user_status = result.data[0].get('status', 'active')
+                
+                # Different success messages for creators vs customers
+                if user_role == 'creator' and user_status == 'pending':
+                    success_message = "Account created successfully! Your application is pending approval. You'll receive an email once approved."
+                else:
+                    success_message = "Account created successfully!"
+                
+                logger.info(f"New user {email} created successfully (role: {user_role}, status: {user_status})")
                 response = jsonify({
                     "success": True, 
-                    "message": "Account created successfully!",
+                    "message": success_message,
                     "user": {
                         "id": result.data[0].get('id'),
                         "email": result.data[0].get('email'),
                         "display_name": result.data[0].get('display_name'),
-                        "role": result.data[0].get('role', 'customer')
+                        "role": user_role,
+                        "status": user_status
                     }
                 })
                 
@@ -5346,8 +5558,8 @@ def auth_signup():
                 else:
                     resp = make_response(jsonify(
                         success=True,
-                        message="Account created successfully!",
-                        user={"email": email, "role": "customer"},
+                        message=success_message if 'success_message' in locals() else "Account created successfully!",
+                        user={"email": email, "role": user_role, "status": user_status},
                         token=token
                     ), 200)
                 
@@ -5375,6 +5587,323 @@ def auth_signup():
         logger.error(f"Signup error: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
         response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
+
+@app.route("/api/auth/signup/email-only", methods=["POST", "OPTIONS"])
+def auth_signup_email_only():
+    """Handle customer signup with email only - sends verification email"""
+    logger.info("🔵 [EMAIL-ONLY-SIGNUP] Endpoint called")
+    logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] Request method: {request.method}")
+    
+    if request.method == "OPTIONS":
+        logger.info("🔵 [EMAIL-ONLY-SIGNUP] Handling OPTIONS preflight")
+        response = jsonify(success=True)
+        response = _allow_origin(response)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        logger.info("🔵 [EMAIL-ONLY-SIGNUP] Processing POST request")
+        data = _data_from_request()
+        email = (data.get("email") or "").strip().lower()
+        logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] Email received: {email}")
+        
+        if not email:
+            logger.warning("🔵 [EMAIL-ONLY-SIGNUP] No email provided")
+            return jsonify({"success": False, "error": "Email is required"}), 400
+        
+        # Validate email format
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            logger.warning(f"🔵 [EMAIL-ONLY-SIGNUP] Invalid email format: {email}")
+            return jsonify({"success": False, "error": "Please enter a valid email address"}), 400
+        
+        logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] Email validated: {email}")
+        
+        # Check if user already exists (exclude deleted/suspended users)
+        try:
+            existing_user = supabase.table('users').select('*').eq('email', email).execute()
+            
+            # Filter out deleted, suspended, or null status users - allow re-signup for these
+            if existing_user.data:
+                active_user = None
+                for user in existing_user.data:
+                    user_status = user.get('status')
+                    # Only consider active or pending users as "existing"
+                    # Allow re-signup if status is null, empty, 'suspended', 'deleted', 'canceled', or any other non-active/pending status
+                    if user_status in ['active', 'pending']:
+                        active_user = user
+                        break
+                
+                if active_user:
+                    return jsonify({"success": False, "error": "An account with this email already exists. Please sign in instead."}), 409
+                # If user exists but is not active/pending, allow re-signup (will update existing record or create new)
+            
+            # Generate verification token
+            import uuid
+            import datetime
+            verification_token = str(uuid.uuid4())
+            token_expiry = (datetime.datetime.now() + datetime.timedelta(hours=24)).isoformat()
+            
+            # Create new user without password (will be set after email verification)
+            new_user = {
+                'email': email,
+                'role': 'customer',
+                'status': 'active',
+                'email_verified': False,
+                'email_verification_token': verification_token
+            }
+            
+            # Only add token_expiry if column exists (handle gracefully if not)
+            try:
+                new_user['token_expiry'] = token_expiry
+            except:
+                pass  # Column might not exist yet
+            
+            # Use admin client to bypass RLS (same pattern as other signup endpoints)
+            client_to_use = supabase_admin if supabase_admin else supabase
+            
+            if not supabase_admin:
+                logger.warning("⚠️ Admin client not available - signup may fail due to RLS")
+            
+            logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] Inserting user into database: {email}")
+            result = client_to_use.table('users').insert(new_user).execute()
+            logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] Database insert result: {len(result.data) if result.data else 0} record(s)")
+            
+            if result.data:
+                user_id = result.data[0].get('id')
+                logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] User created successfully. User ID: {user_id}")
+                
+                # Send verification email
+                logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] Starting email sending process")
+                logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] RESEND_API_KEY present: {bool(RESEND_API_KEY)}")
+                logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] RESEND_FROM: {RESEND_FROM}")
+                try:
+                    frontend_url = os.getenv("FRONTEND_URL", "https://screenmerch.com")
+                    verification_link = f"{frontend_url}/verify-email?token={verification_token}&email={email}"
+                    logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] Verification link: {verification_link}")
+                    
+                    email_html = f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Verify Your Email - ScreenMerch</title>
+                    </head>
+                    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                            <h1 style="color: white; margin: 0;">Welcome to ScreenMerch!</h1>
+                        </div>
+                        <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
+                            <p>Hi there,</p>
+                            <p>Thank you for signing up! Please verify your email address and set your password by clicking the button below:</p>
+                            <div style="text-align: center; margin: 30px 0;">
+                                <a href="{verification_link}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Verify Email & Set Password</a>
+                            </div>
+                            <p style="font-size: 12px; color: #666;">Or copy and paste this link into your browser:</p>
+                            <p style="font-size: 12px; color: #667eea; word-break: break-all;">{verification_link}</p>
+                            <p style="font-size: 12px; color: #666; margin-top: 30px;">This link will expire in 24 hours.</p>
+                            <p style="font-size: 12px; color: #666;">If you didn't create an account, you can safely ignore this email.</p>
+                        </div>
+                    </body>
+                    </html>
+                    """
+                    
+                    if RESEND_API_KEY:
+                        logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] 📧 Attempting to send verification email to {email}")
+                        logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] 📧 Using RESEND_FROM: {RESEND_FROM}")
+                        logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] 📧 Making request to Resend API...")
+                        email_response = requests.post(
+                            "https://api.resend.com/emails",
+                            headers={
+                                "Authorization": f"Bearer {RESEND_API_KEY}",
+                                "Content-Type": "application/json"
+                            },
+                            json={
+                                "from": RESEND_FROM,
+                                "to": email,
+                                "subject": "Verify Your Email - ScreenMerch",
+                                "html": email_html
+                            },
+                            timeout=30
+                        )
+                        
+                        logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] 📧 Resend API response status: {email_response.status_code}")
+                        if email_response.status_code == 200:
+                            response_data = email_response.json()
+                            logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] ✅ Verification email sent successfully to {email}")
+                            logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] 📧 Email ID: {response_data.get('id', 'N/A')}")
+                        else:
+                            error_text = email_response.text
+                            logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Failed to send verification email: {email_response.status_code}")
+                            logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Error response: {error_text}")
+                            try:
+                                error_json = email_response.json()
+                                logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Error details: {error_json}")
+                            except:
+                                pass
+                    else:
+                        logger.error("🔵 [EMAIL-ONLY-SIGNUP] ❌ RESEND_API_KEY not configured - verification email not sent")
+                        logger.error("🔵 [EMAIL-ONLY-SIGNUP] ❌ Please set RESEND_API_KEY environment variable in Fly.io")
+                    
+                except Exception as email_error:
+                    logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Exception sending verification email: {str(email_error)}")
+                    logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Exception type: {type(email_error).__name__}")
+                    import traceback
+                    logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Traceback: {traceback.format_exc()}")
+                    # Continue even if email fails - user can request resend later
+                
+                logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] ✅ Returning success response for {email}")
+                response = jsonify({
+                    "success": True,
+                    "message": "Please check your email to verify your account and set your password."
+                })
+                response = _allow_origin(response)
+                return response, 200
+            else:
+                logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Failed to create account - no data returned from database")
+                response = jsonify({"success": False, "error": "Failed to create account"})
+                response = _allow_origin(response)
+                return response, 500
+                
+        except Exception as db_error:
+            error_msg = str(db_error)
+            logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Database error during email-only signup: {error_msg}")
+            logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Full error details: {repr(db_error)}")
+            import traceback
+            logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Traceback: {traceback.format_exc()}")
+            if "duplicate key" in error_msg.lower() or "already exists" in error_msg.lower():
+                response = jsonify({"success": False, "error": "An account with this email already exists. Please sign in instead."})
+                response = _allow_origin(response)
+                return response, 409
+            # Return more detailed error for debugging (remove in production)
+            response = jsonify({"success": False, "error": f"Account creation failed: {error_msg}"})
+            response = _allow_origin(response)
+            return response, 500
+            
+    except Exception as e:
+        logger.error(f"Email-only signup error: {str(e)}")
+        response = jsonify({"success": False, "error": "Internal server error"})
+        response = _allow_origin(response)
+        return response, 500
+
+@app.route("/api/auth/verify-email", methods=["POST", "OPTIONS"])
+def auth_verify_email():
+    """Verify email token and set password"""
+    logger.info("🔵 [VERIFY-EMAIL] Endpoint called")
+    logger.info(f"🔵 [VERIFY-EMAIL] Request method: {request.method}")
+    
+    if request.method == "OPTIONS":
+        logger.info("🔵 [VERIFY-EMAIL] Handling OPTIONS preflight")
+        response = jsonify(success=True)
+        response = _allow_origin(response)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        logger.info("🔵 [VERIFY-EMAIL] Processing POST request")
+        data = _data_from_request()
+        token = data.get("token", "").strip()
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password", "")
+        logger.info(f"🔵 [VERIFY-EMAIL] Email: {email}, Token present: {bool(token)}, Password present: {bool(password)}")
+        
+        if not token or not email or not password:
+            return jsonify({"success": False, "error": "Token, email, and password are required"}), 400
+        
+        # Validate password strength
+        if len(password) < 6:
+            return jsonify({"success": False, "error": "Password must be at least 6 characters long"}), 400
+        
+        # Find user by email and token
+        try:
+            logger.info(f"🔵 [VERIFY-EMAIL] Searching for user with email: {email} and token: {token[:10]}...")
+            result = supabase.table('users').select('*').eq('email', email).eq('email_verification_token', token).execute()
+            logger.info(f"🔵 [VERIFY-EMAIL] Database query result: {len(result.data) if result.data else 0} user(s) found")
+            
+            if not result.data:
+                logger.warning(f"🔵 [VERIFY-EMAIL] No user found with matching email and token")
+                return jsonify({"success": False, "error": "Invalid or expired verification link"}), 400
+            
+            user = result.data[0]
+            
+            # Check if token is expired
+            import datetime
+            token_expiry_str = user.get('token_expiry')
+            if token_expiry_str:
+                try:
+                    token_expiry = datetime.datetime.fromisoformat(token_expiry_str.replace('Z', '+00:00'))
+                    if datetime.datetime.now(datetime.timezone.utc) > token_expiry.replace(tzinfo=datetime.timezone.utc):
+                        return jsonify({"success": False, "error": "Verification link has expired. Please request a new one."}), 400
+                except Exception as date_error:
+                    logger.error(f"Error parsing token expiry: {str(date_error)}")
+                    # Continue if date parsing fails
+            
+            # Check if already verified
+            if user.get('email_verified'):
+                return jsonify({"success": False, "error": "Email already verified. Please sign in."}), 400
+            
+            # Update user: set password, mark as verified, clear token
+            update_data = {
+                'password_hash': password,  # Replace with bcrypt in production
+                'email_verified': True,
+                'email_verification_token': None,
+                'token_expiry': None
+            }
+            
+            logger.info(f"🔵 [VERIFY-EMAIL] Updating user {user.get('id')} with password and verification status")
+            # Use admin client to bypass RLS (same pattern as signup endpoint)
+            client_to_use = supabase_admin if supabase_admin else supabase
+            if not supabase_admin:
+                logger.warning("🔵 [VERIFY-EMAIL] ⚠️ Admin client not available - update may fail due to RLS")
+            update_result = client_to_use.table('users').update(update_data).eq('id', user.get('id')).execute()
+            logger.info(f"🔵 [VERIFY-EMAIL] Update result: {len(update_result.data) if update_result.data else 0} record(s) updated")
+            
+            if update_result.data:
+                logger.info(f"🔵 [VERIFY-EMAIL] ✅ Email verified and password set for {email}")
+                
+                # Generate token for auto-login
+                import uuid
+                token = str(uuid.uuid4())
+                
+                response = jsonify({
+                    "success": True,
+                    "message": "Email verified and password set successfully!",
+                    "user": {
+                        "id": update_result.data[0].get('id'),
+                        "email": update_result.data[0].get('email'),
+                        "display_name": update_result.data[0].get('display_name'),
+                        "role": update_result.data[0].get('role', 'customer')
+                    },
+                    "token": token
+                })
+                response = _allow_origin(response)
+                return response, 200
+            else:
+                response = jsonify({"success": False, "error": "Failed to verify email"})
+                response = _allow_origin(response)
+                return response, 500
+                
+        except Exception as db_error:
+            logger.error(f"🔵 [VERIFY-EMAIL] ❌ Database error during email verification: {str(db_error)}")
+            logger.error(f"🔵 [VERIFY-EMAIL] ❌ Error type: {type(db_error).__name__}")
+            import traceback
+            logger.error(f"🔵 [VERIFY-EMAIL] ❌ Traceback: {traceback.format_exc()}")
+            response = jsonify({"success": False, "error": "Verification failed"})
+            response = _allow_origin(response)
+            return response, 500
+            
+    except Exception as e:
+        logger.error(f"🔵 [VERIFY-EMAIL] ❌ Email verification error: {str(e)}")
+        logger.error(f"🔵 [VERIFY-EMAIL] ❌ Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"🔵 [VERIFY-EMAIL] ❌ Traceback: {traceback.format_exc()}")
+        response = jsonify({"success": False, "error": "Internal server error"})
+        response = _allow_origin(response)
         return response, 500
 
 @app.route("/api/analytics", methods=["GET"])

@@ -4,11 +4,730 @@ import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, ge
 import API_CONFIG from '../../config/apiConfig';
 import './ToolsPage.css';
 
+// Component for product preview with draggable screenshot
+const ProductPreviewWithDrag = ({ 
+  productImage, 
+  screenshot, 
+  productName, 
+  productSize,
+  offsetX, 
+  offsetY, 
+  onOffsetChange,
+  featherEdge,
+  cornerRadius,
+  printAreaFit,
+  selectedProductName,
+  screenshotScale = 100
+}) => {
+  const containerRef = useRef(null);
+  const productImageRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const lastDragPositionRef = useRef({ x: 0, y: 0 });
+  const [processedImage, setProcessedImage] = useState(screenshot);
+  const [screenshotDisplaySize, setScreenshotDisplaySize] = useState({ width: 150, height: 150 });
+  const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
+
+  // Calculate screenshot display size based on product print area
+  useEffect(() => {
+    // Use selectedProductName if available and printAreaFit is 'product', otherwise use productName
+    const effectiveProductName = (printAreaFit === 'product' && selectedProductName) ? selectedProductName : productName;
+    
+    if (!effectiveProductName) return;
+
+    const calculateSize = () => {
+      // For products without preview images, use a default size for calculation
+      // Reset productImageSize when product changes to force recalculation
+      const hasProductImage = productImageRef.current && productImageSize.width > 0;
+      const defaultProductSize = { width: 400, height: 400 }; // Default size for calculation when no product image
+      const effectiveProductSize = hasProductImage ? productImageSize : defaultProductSize;
+      
+      if (!hasProductImage && !productImageRef.current) {
+        // If no product image ref exists, we'll still calculate but use defaults
+        // This allows size calculation for products without previews
+      }
+
+      try {
+        // Get print area dimensions for this product
+        const printDimensions = getPrintAreaDimensions(effectiveProductName, productSize || null, 'front');
+        
+        console.log(`🔍 [SIZE_CALC] Product: "${effectiveProductName}" (from ${printAreaFit === 'product' && selectedProductName ? 'dropdown' : 'cart'}), Size: "${productSize || 'default'}", Print Area:`, printDimensions);
+        
+        if (printDimensions && effectiveProductSize.width > 0) {
+          const displayedProductWidth = effectiveProductSize.width;
+          const displayedProductHeight = effectiveProductSize.height;
+          
+          // Calculate size based on print area dimensions and product image size
+          // Direct mapping: print area inches → percentage of product image
+          // This ensures consistent sizing across all product types
+          
+          // Calculate print area aspect ratio (must maintain this)
+          const printAspectRatio = printDimensions.width / printDimensions.height;
+          
+          // Estimate typical product width in inches for scaling reference
+          // This helps convert print area inches to a percentage of product image
+          const productNameLower = effectiveProductName.toLowerCase();
+          const isCroppedHoodie = productNameLower.includes('cropped') && productNameLower.includes('hoodie');
+          
+          // Check if this is a square product (aspect ratio very close to 1.0)
+          // Cropped Hoodie has 10x10 print area, so it's square
+          const isSquare = Math.abs(printAspectRatio - 1.0) < 0.01 || isCroppedHoodie;
+          
+          let typicalProductWidthInches = 18; // default
+          
+          // Check for hats first (they have much smaller print areas)
+          const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
+          
+          // Check in order: more specific first, then general
+          if (isHat) {
+            typicalProductWidthInches = 6.5; // Hats are much smaller - typical width ~6.5 inches
+          } else if (isCroppedHoodie) {
+            typicalProductWidthInches = 18; // Cropped hoodies use standard sizing (print area is 10x10 square)
+          } else if (productNameLower.includes('cropped')) {
+            typicalProductWidthInches = 15;
+          } else if (productNameLower.includes('tank')) {
+            typicalProductWidthInches = 17;
+          } else if (productNameLower.includes('hoodie')) {
+            typicalProductWidthInches = 20;
+          } else if (productNameLower.includes('shirt') || productNameLower.includes('tee')) {
+            typicalProductWidthInches = 18;
+          } else if (productNameLower.includes('kids') || productNameLower.includes('youth')) {
+            typicalProductWidthInches = 14;
+          } else if (productNameLower.includes('toddler') || productNameLower.includes('baby')) {
+            typicalProductWidthInches = 10;
+          }
+          
+          // Check if this is a shirt (women's, men's, or kids) for optimized sizing
+          const isShirt = productNameLower.includes('shirt') || productNameLower.includes('tee');
+          const isWomensShirt = productNameLower.includes("women") && isShirt;
+          const isMensShirt = productNameLower.includes("men") && isShirt;
+          const isKidsShirt = productNameLower.includes("kids") && isShirt;
+          
+          // Direct mapping: print area width in inches → percentage of product image width
+          // Print areas typically range from 5" (hats) to 15" (large shirts) wide
+          // For hats, use a different calculation since they're much smaller
+          let minPercent, maxPercent;
+          
+          if (isHat) {
+            // For hats: 5" print area on ~6.5" hat = ~77% of hat width
+            // But we want it to look proportional, so use 60-75% range
+            minPercent = 0.60;  // 60% of hat width for 5" print area
+            maxPercent = 0.75;  // 75% of hat width for 5.5" print area (trucker hat)
+            
+            // Calculate percentage directly based on print area width
+            // 5" = 60%, 5.5" = 75% (linear interpolation)
+            const hatPrintWidth = printDimensions.width; // 5 or 5.5
+            const widthPercent = hatPrintWidth <= 5 ? 0.60 : 0.60 + ((hatPrintWidth - 5) / 0.5) * (0.75 - 0.60);
+            
+            // Calculate base width from product image
+            let finalWidth = displayedProductWidth * widthPercent;
+            
+            // Calculate height to maintain print area aspect ratio
+            let finalHeight = finalWidth / printAspectRatio;
+            
+            // Set bounds for hats (can be larger percentage since print area is on front panel)
+            const maxWidth = displayedProductWidth * 0.80;
+            const maxHeight = displayedProductHeight * 0.50; // Hats are taller, print area is on front panel
+            
+            if (finalWidth > maxWidth) {
+              finalWidth = maxWidth;
+              finalHeight = finalWidth / printAspectRatio;
+            }
+            if (finalHeight > maxHeight) {
+              finalHeight = maxHeight;
+              finalWidth = finalHeight * printAspectRatio;
+            }
+            
+            // Ensure minimum size for visibility
+            const minWidth = displayedProductWidth * 0.40;
+            const minHeight = displayedProductHeight * 0.20;
+            
+            if (finalWidth < minWidth) {
+              finalWidth = minWidth;
+              finalHeight = finalWidth / printAspectRatio;
+            }
+            if (finalHeight < minHeight) {
+              finalHeight = minHeight;
+              finalWidth = finalHeight * printAspectRatio;
+            }
+            
+            setScreenshotDisplaySize({
+              width: finalWidth,
+              height: finalHeight
+            });
+            
+            console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}px (${(finalWidth/displayedProductWidth*100).toFixed(1)}% x ${(finalHeight/displayedProductHeight*100).toFixed(1)}% of product)`);
+            return; // Exit early for hats
+          }
+          
+          // For non-hat products, use the original logic
+          const minPrintWidth = 7;  // smallest print area (non-hats)
+          const maxPrintWidth = 15; // largest print area
+          
+          // Use higher percentages for shirts to ensure perfect coverage
+          if (isWomensShirt || isMensShirt || isKidsShirt) {
+            minPercent = 0.50;  // 50% of product width for shirts (increased from 45%)
+            maxPercent = 0.70;  // 70% of product width for shirts (increased from 60%)
+          } else {
+            minPercent = 0.47;  // 47% of product width for other products (increased from 42%)
+            maxPercent = 0.65;  // 65% of product width for other products (increased from 57%)
+          }
+          
+          // Calculate percentage based on print area width
+          const normalizedPrintWidth = Math.max(minPrintWidth, Math.min(maxPrintWidth, printDimensions.width));
+          const widthPercent = minPercent + ((normalizedPrintWidth - minPrintWidth) / (maxPrintWidth - minPrintWidth)) * (maxPercent - minPercent);
+          
+          // Calculate base width from product image
+          let finalWidth = displayedProductWidth * widthPercent;
+          
+          // Calculate height to maintain print area aspect ratio
+          let finalHeight = finalWidth / printAspectRatio;
+          
+          // For square products, ensure width and height are always equal
+          if (isSquare) {
+            // Use the smaller dimension to maintain square shape
+            const baseSize = Math.min(displayedProductWidth, displayedProductHeight);
+            finalWidth = baseSize * widthPercent;
+            finalHeight = finalWidth; // Force square
+            
+            // Apply square-specific bounds (use same percentage for both dimensions)
+            const maxPercent = isShirt ? 0.75 : 0.70;
+            const minPercent = 0.35;
+            const maxSize = baseSize * maxPercent;
+            const minSize = baseSize * minPercent;
+            
+            if (finalWidth > maxSize) {
+              finalWidth = maxSize;
+              finalHeight = maxSize; // Keep square
+            }
+            if (finalWidth < minSize) {
+              finalWidth = minSize;
+              finalHeight = minSize; // Keep square
+            }
+          } else {
+            // For non-square products, use the original logic
+            // Ensure it doesn't exceed reasonable bounds
+            // For shirts, allow slightly more to ensure perfect fit
+            const maxWidth = isShirt ? displayedProductWidth * 0.75 : displayedProductWidth * 0.70;
+            const maxHeight = isShirt ? displayedProductHeight * 0.70 : displayedProductHeight * 0.65;
+            
+            if (finalWidth > maxWidth) {
+              finalWidth = maxWidth;
+              finalHeight = finalWidth / printAspectRatio;
+            }
+            if (finalHeight > maxHeight) {
+              finalHeight = maxHeight;
+              finalWidth = finalHeight * printAspectRatio;
+            }
+            
+            // Ensure minimum size for visibility (at least 35% width, 30% height)
+            const minWidth = displayedProductWidth * 0.35;
+            const minHeight = displayedProductHeight * 0.30;
+            
+            if (finalWidth < minWidth) {
+              finalWidth = minWidth;
+              finalHeight = finalWidth / printAspectRatio;
+            }
+            if (finalHeight < minHeight) {
+              finalHeight = minHeight;
+              finalWidth = finalHeight * printAspectRatio;
+            }
+          }
+          
+          setScreenshotDisplaySize({
+            width: finalWidth,
+            height: finalHeight
+          });
+          
+          console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}px (${(finalWidth/displayedProductWidth*100).toFixed(1)}% x ${(finalHeight/displayedProductHeight*100).toFixed(1)}% of product)`);
+        } else {
+          // Fallback: use a percentage of product image size based on product type
+          const fallbackPercent = effectiveProductName.toLowerCase().includes('cropped') ? 0.25 : 0.30;
+          const fallbackSize = Math.min(productImageSize.width, productImageSize.height) * fallbackPercent;
+          setScreenshotDisplaySize({ width: fallbackSize, height: fallbackSize });
+        }
+      } catch (e) {
+        console.warn('Could not calculate print area size:', e);
+        // Fallback: use a percentage of product image size
+        const fallbackSize = Math.min(productImageSize.width, productImageSize.height) * 0.25;
+        setScreenshotDisplaySize({ width: fallbackSize, height: fallbackSize });
+      }
+    };
+
+    calculateSize();
+  }, [productName, productSize, productImageSize, selectedProductName, printAreaFit, productImage]);
+
+  // Measure product image when it loads
+  const handleProductImageLoad = (e) => {
+    const img = e.target;
+    const newSize = {
+      width: img.offsetWidth || img.naturalWidth,
+      height: img.offsetHeight || img.naturalHeight
+    };
+    setProductImageSize(newSize);
+    // Force recalculation when image loads, especially after product selection
+    // This ensures size updates correctly when switching products
+  };
+
+  // Process image with effects in real-time
+  useEffect(() => {
+    const processImage = async () => {
+      if (!screenshot) return;
+
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Draw image
+        ctx.drawImage(img, 0, 0);
+
+        // Apply corner radius
+        if (cornerRadius > 0) {
+          const maxRadius = Math.min(canvas.width, canvas.height) / 2;
+          const radius = cornerRadius >= 100 ? maxRadius : cornerRadius;
+          
+          const tempCanvas = document.createElement('canvas');
+          const tempCtx = tempCanvas.getContext('2d');
+          tempCanvas.width = canvas.width;
+          tempCanvas.height = canvas.height;
+          
+          tempCtx.fillStyle = 'white';
+          tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+          
+          if (cornerRadius >= 100) {
+            tempCtx.beginPath();
+            tempCtx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
+            tempCtx.fill();
+          } else {
+            tempCtx.beginPath();
+            tempCtx.moveTo(radius, 0);
+            tempCtx.lineTo(canvas.width - radius, 0);
+            tempCtx.quadraticCurveTo(canvas.width, 0, canvas.width, radius);
+            tempCtx.lineTo(canvas.width, canvas.height - radius);
+            tempCtx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - radius, canvas.height);
+            tempCtx.lineTo(radius, canvas.height);
+            tempCtx.quadraticCurveTo(0, canvas.height, 0, canvas.height - radius);
+            tempCtx.lineTo(0, radius);
+            tempCtx.quadraticCurveTo(0, 0, radius, 0);
+            tempCtx.closePath();
+            tempCtx.fill();
+          }
+          
+          ctx.globalCompositeOperation = 'destination-in';
+          ctx.drawImage(tempCanvas, 0, 0);
+          ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // Apply feather edge
+        if (featherEdge > 0) {
+          const maskCanvas = document.createElement('canvas');
+          const maskCtx = maskCanvas.getContext('2d');
+          maskCanvas.width = canvas.width;
+          maskCanvas.height = canvas.height;
+          
+          maskCtx.fillStyle = 'white';
+          maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+          
+          const gradient = maskCtx.createRadialGradient(
+            canvas.width / 2, canvas.height / 2, Math.min(canvas.width, canvas.height) / 2 - featherEdge,
+            canvas.width / 2, canvas.height / 2, Math.min(canvas.width, canvas.height) / 2
+          );
+          gradient.addColorStop(0, 'white');
+          gradient.addColorStop(1, 'transparent');
+          
+          maskCtx.fillStyle = gradient;
+          maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+          
+          ctx.globalCompositeOperation = 'destination-in';
+          ctx.drawImage(maskCanvas, 0, 0);
+          ctx.globalCompositeOperation = 'source-over';
+        }
+
+        setProcessedImage(canvas.toDataURL('image/png'));
+      };
+      img.src = screenshot;
+    };
+
+    processImage();
+  }, [screenshot, featherEdge, cornerRadius]);
+
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+    // Store the initial mouse position
+    const startPos = { x: e.clientX, y: e.clientY };
+    setDragStart(startPos);
+    lastDragPositionRef.current = startPos;
+  };
+
+  const handleTouchStart = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    setIsDragging(true);
+    // Store the initial touch position
+    const startPos = { x: touch.clientX, y: touch.clientY };
+    setDragStart(startPos);
+    lastDragPositionRef.current = startPos;
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      const handleMove = (e) => {
+        // Prevent default behavior (scrolling, selection, etc.) on mobile
+        if (e.touches) {
+          e.preventDefault();
+        }
+        
+        const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
+        
+        if (clientX === undefined || clientY === undefined) return;
+        
+        // Reduce sensitivity by applying a multiplier (0.5 = 50% sensitivity = less sensitive)
+        const sensitivityMultiplier = 0.5;
+        // Calculate delta from last position (not from start) for smoother, less sensitive movement
+        const deltaX = (clientX - lastDragPositionRef.current.x) * sensitivityMultiplier;
+        const deltaY = (clientY - lastDragPositionRef.current.y) * sensitivityMultiplier;
+        
+        // Update last position for next calculation
+        lastDragPositionRef.current = { x: clientX, y: clientY };
+        
+        // Calculate new position relative to current offset
+        const newX = offsetX + deltaX;
+        const newY = offsetY + deltaY;
+        
+        // Calculate drag bounds based on product image size to allow full range of movement
+        // Account for screenshot scale when calculating bounds
+        const scaledWidth = screenshotDisplaySize.width * (screenshotScale / 100);
+        const scaledHeight = screenshotDisplaySize.height * (screenshotScale / 100);
+        
+        // Screenshot starts centered (50% of product image), so we need to allow movement
+        // up to at least half the product image height to reach the top
+        if (productImageSize.width > 0 && productImageSize.height > 0) {
+          // Allow horizontal movement up to 40% of product image width
+          const maxOffsetX = productImageSize.width * 0.4;
+          // Allow upward movement up to 60% of product image height (to reach top of print area)
+          const maxOffsetYUp = productImageSize.height * 0.6;
+          // Allow downward movement up to 40% of product image height
+          const maxOffsetYDown = productImageSize.height * 0.4;
+          
+          // Clamp to bounds
+          let clampedX = Math.max(-maxOffsetX, Math.min(maxOffsetX, newX));
+          let clampedY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, newY));
+          
+          // Add "snapping" behavior - if very close to center (within 5px), snap to center
+          const snapThreshold = 5;
+          if (Math.abs(clampedX) < snapThreshold) {
+            clampedX = 0;
+          }
+          if (Math.abs(clampedY) < snapThreshold) {
+            clampedY = 0;
+          }
+          
+          onOffsetChange(clampedX, clampedY);
+        } else {
+          // Fallback to screenshot-based bounds if product image size not available
+          const maxOffsetX = Math.max(scaledWidth, scaledHeight) * 0.5;
+          const maxOffsetYUp = Math.max(scaledWidth, scaledHeight) * 1.2; // Increased significantly
+          const maxOffsetYDown = Math.max(scaledWidth, scaledHeight) * 0.5;
+          const clampedX = Math.max(-maxOffsetX, Math.min(maxOffsetX, newX));
+          const clampedY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, newY));
+          onOffsetChange(clampedX, clampedY);
+        }
+      };
+      
+      const handleUp = () => {
+        setIsDragging(false);
+      };
+      
+      document.addEventListener('mousemove', handleMove);
+      document.addEventListener('mouseup', handleUp);
+      document.addEventListener('touchmove', handleMove, { passive: false });
+      document.addEventListener('touchend', handleUp);
+      document.addEventListener('touchcancel', handleUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMove);
+        document.removeEventListener('mouseup', handleUp);
+        document.removeEventListener('touchmove', handleMove);
+        document.removeEventListener('touchend', handleUp);
+        document.removeEventListener('touchcancel', handleUp);
+      };
+    }
+  }, [isDragging, dragStart, onOffsetChange, screenshotDisplaySize, productImageSize, screenshotScale, offsetX, offsetY]);
+
+  return (
+    <div 
+      ref={containerRef}
+      style={{
+        position: 'relative',
+        width: '100%',
+        maxWidth: '200px',
+        margin: '0 auto',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+        touchAction: 'none'
+      }}
+    >
+      {/* Product Image */}
+      <img 
+        ref={productImageRef}
+        src={productImage} 
+        alt={productName}
+        onLoad={handleProductImageLoad}
+        style={{
+          width: '100%',
+          height: 'auto',
+          display: 'block',
+          borderRadius: '4px'
+        }}
+      />
+      
+      {/* Print Area Indicator (for hats) - Shows where the print area is located */}
+      {(() => {
+        const productNameLower = (productName || '').toLowerCase();
+        const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
+        
+        if (isHat && productImageSize.width > 0 && screenshotDisplaySize.width > 0) {
+          // Calculate print area position (centered horizontally, moved up slightly for hats)
+          const printAreaWidth = screenshotDisplaySize.width;
+          const printAreaHeight = screenshotDisplaySize.height;
+          const left = (productImageSize.width - printAreaWidth) / 2;
+          // Move print area up by 8% of hat height (positioned above the bill but not too high)
+          const top = (productImageSize.height - printAreaHeight) / 2 - (productImageSize.height * 0.08);
+          
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                left: `${(left / productImageSize.width) * 100}%`,
+                top: `${(top / productImageSize.height) * 100}%`,
+                width: `${(printAreaWidth / productImageSize.width) * 100}%`,
+                height: `${(printAreaHeight / productImageSize.height) * 100}%`,
+                border: '2px dashed #007bff',
+                borderRadius: '4px',
+                pointerEvents: 'none',
+                boxSizing: 'border-box',
+                opacity: 0.7,
+                zIndex: 1
+              }}
+            >
+              {/* Optional: Add corner markers */}
+              <div style={{
+                position: 'absolute',
+                top: '-2px',
+                left: '-2px',
+                width: '8px',
+                height: '8px',
+                border: '2px solid #007bff',
+                borderRadius: '2px',
+                backgroundColor: 'rgba(0, 123, 255, 0.2)'
+              }} />
+              <div style={{
+                position: 'absolute',
+                top: '-2px',
+                right: '-2px',
+                width: '8px',
+                height: '8px',
+                border: '2px solid #007bff',
+                borderRadius: '2px',
+                backgroundColor: 'rgba(0, 123, 255, 0.2)'
+              }} />
+              <div style={{
+                position: 'absolute',
+                bottom: '-2px',
+                left: '-2px',
+                width: '8px',
+                height: '8px',
+                border: '2px solid #007bff',
+                borderRadius: '2px',
+                backgroundColor: 'rgba(0, 123, 255, 0.2)'
+              }} />
+              <div style={{
+                position: 'absolute',
+                bottom: '-2px',
+                right: '-2px',
+                width: '8px',
+                height: '8px',
+                border: '2px solid #007bff',
+                borderRadius: '2px',
+                backgroundColor: 'rgba(0, 123, 255, 0.2)'
+              }} />
+            </div>
+          );
+        }
+        return null;
+      })()}
+      
+      {/* Screenshot Overlay (Draggable) */}
+      {processedImage && (
+        <div
+          style={{
+            position: 'absolute',
+            top: (() => {
+              // For hats, position higher to match print area indicator (moved up 8%)
+              const productNameLower = (productName || '').toLowerCase();
+              const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
+              if (isHat && productImageSize.height > 0) {
+                return `${50 - 8}%`; // Move up 8% from center
+              }
+              return '50%';
+            })(),
+            left: '50%',
+            transform: `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`,
+            cursor: isDragging ? 'grabbing' : 'grab',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none',
+            touchAction: 'none',
+            pointerEvents: 'auto'
+          }}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+        >
+          {(() => {
+            const productNameLower = (productName || '').toLowerCase();
+            const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
+            const scaleFactor = screenshotScale / 100;
+            const aspectRatio = screenshotDisplaySize.width / screenshotDisplaySize.height;
+            const isSquare = Math.abs(aspectRatio - 1.0) < 0.01; // Check if display size is square
+            let scaledWidth, scaledHeight;
+            
+            if (isSquare) {
+              // For square products: Scale both dimensions equally to maintain square shape
+              scaledWidth = screenshotDisplaySize.width * scaleFactor;
+              scaledHeight = scaledWidth; // Force square
+            } else if (isHat) {
+              // For hats: Scale primarily based on width to fill horizontal print area
+              // This ensures the width grows more than height when enlarging
+              scaledWidth = screenshotDisplaySize.width * scaleFactor;
+              scaledHeight = scaledWidth / aspectRatio; // Maintain aspect ratio
+            } else {
+              // For shirts and other products: Use balanced scaling (original logic)
+              if (screenshotDisplaySize.width <= screenshotDisplaySize.height) {
+                // Width is smaller or equal - scale based on width, then calculate height
+                scaledWidth = screenshotDisplaySize.width * scaleFactor;
+                scaledHeight = scaledWidth / aspectRatio;
+              } else {
+                // Height is smaller - scale based on height, then calculate width
+                scaledHeight = screenshotDisplaySize.height * scaleFactor;
+                scaledWidth = scaledHeight * aspectRatio;
+              }
+            }
+            
+            return (
+              <img 
+                src={processedImage}
+                alt="Screenshot overlay"
+                style={{
+                  width: `${scaledWidth}px`,
+                  height: `${scaledHeight}px`,
+                  objectFit: 'contain',
+                  display: 'block',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                  touchAction: 'none'
+                }}
+                draggable={false}
+              />
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Helper functions to determine product handling
+const isMugProduct = (productName) => {
+  if (!productName) return false;
+  const mugs = ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"];
+  return mugs.some(mug => productName.includes(mug) || mug.includes(productName));
+};
+
+const isHatProduct = (productName) => {
+  if (!productName) return false;
+  const productNameLower = productName.toLowerCase().trim();
+  const hats = [
+    "distressed dad hat",
+    "closed back cap",
+    "five panel trucker hat",
+    "five panel baseball cap",
+    "5 panel baseball cap",
+    "snapback hat" // Legacy support
+  ];
+  // More robust matching - check if product name contains any hat name or vice versa
+  const isHat = hats.some(hat => {
+    const hatLower = hat.toLowerCase().trim();
+    return productNameLower.includes(hatLower) || hatLower.includes(productNameLower) ||
+           productNameLower === hatLower;
+  });
+  if (isHat) {
+    console.log('🎩 [HAT CHECK] Matched:', productName, 'as hat product');
+  }
+  return isHat;
+};
+
+const isAllOverPrintProduct = (productName) => {
+  if (!productName) return false;
+  // Bags - all over print
+  const allOverPrintBags = [
+    "All-Over Print Drawstring",
+    "All Over Print Tote Pocket",
+    "All-Over Print Crossbody Bag",
+    "All-Over Print Utility Bag"
+  ];
+  // Pets - all over print
+  const allOverPrintPets = [
+    "Pet Bowl All-Over Print",
+    "All Over Print Leash",
+    "All Over Print Collar"
+  ];
+  // Misc - all over print
+  const allOverPrintMisc = ["Apron"]; // Only apron is all over print in misc
+  
+  const allOverPrintProducts = [...allOverPrintBags, ...allOverPrintPets, ...allOverPrintMisc];
+  return allOverPrintProducts.some(product => 
+    productName.includes(product) || product.includes(productName) ||
+    productName.toLowerCase().includes('all over print') ||
+    productName.toLowerCase().includes('all-over print')
+  );
+};
+
+const isMiscProductNoPreview = (productName) => {
+  if (!productName) return false;
+  const miscNoPreview = [
+    "Greeting Card",
+    "Hardcover Bound Notebook",
+    "Coasters",
+    "Kiss-Cut Stickers",
+    "Kiss Cut Stickers",
+    "Bandana"
+  ];
+  return miscNoPreview.some(product => productName.includes(product) || product.includes(productName));
+};
+
+const getGenericHatImage = () => {
+  // Use a generic hat image for all hats in tools page
+  // This flat front-facing hat template works well for accurate screenshot positioning
+  // All hats use this same preview image in tools (except 5 Panel Trucker Hat which has slightly bigger print area)
+  return "https://screenmerch.fly.dev/static/images/hatflatfront.png";
+};
+
 const ToolsPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
+  const leftColumnRef = useRef(null);
+  const containerRef = useRef(null);
   
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
@@ -27,11 +746,173 @@ const ToolsPage = () => {
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [upgradeFailed, setUpgradeFailed] = useState(false);
   const upgradeTriggeredRef = useRef(false); // Track if we've already triggered an upgrade for this image
+  const [cartProducts, setCartProducts] = useState([]); // Store all cart products
+  const [selectedCartProductIndex, setSelectedCartProductIndex] = useState(null); // Selected product index from cart
+  const [productImageOffsets, setProductImageOffsets] = useState({}); // Store image offsets for each cart product {cartIndex: {x: 0, y: 0}}
+  const [screenshotScale, setScreenshotScale] = useState(100); // Screenshot size scale (percentage: 50-150%)
+
+  // Calculate and set fixed position for left column
+  useEffect(() => {
+    const updateLeftColumnPosition = () => {
+      if (leftColumnRef.current && containerRef.current) {
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const leftPosition = containerRect.left + 100; // Add 100px for the grey spacer column
+        leftColumnRef.current.style.left = `${leftPosition}px`;
+      }
+    };
+
+    // Update on mount and resize
+    updateLeftColumnPosition();
+    window.addEventListener('resize', updateLeftColumnPosition);
+    window.addEventListener('scroll', updateLeftColumnPosition);
+
+    return () => {
+      window.removeEventListener('resize', updateLeftColumnPosition);
+      window.removeEventListener('scroll', updateLeftColumnPosition);
+    };
+  }, []);
+
+  // Load tool page state from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedState = localStorage.getItem('tools_page_state');
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        if (state.screenshotScale !== undefined) setScreenshotScale(state.screenshotScale);
+        if (state.productImageOffsets) setProductImageOffsets(state.productImageOffsets);
+        if (state.selectedCartProductIndex !== undefined) setSelectedCartProductIndex(state.selectedCartProductIndex);
+        console.log('📦 Restored tool page state from localStorage');
+      }
+    } catch (e) {
+      console.warn('Could not load tool page state:', e);
+    }
+  }, []);
+
+  // Save tool page state to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      const stateToSave = {
+        screenshotScale,
+        productImageOffsets,
+        selectedCartProductIndex
+      };
+      localStorage.setItem('tools_page_state', JSON.stringify(stateToSave));
+    } catch (e) {
+      console.warn('Could not save tool page state:', e);
+    }
+  }, [screenshotScale, productImageOffsets, selectedCartProductIndex]);
+
+  // Auto-adjust screenshot scale to 100% when product is selected (mobile only)
+  // This ensures the screenshot is proportionately sized to fit the print area
+  useEffect(() => {
+    if (selectedProductName && printAreaFit === 'product') {
+      // Reset scale to 100% for proper proportional sizing
+      setScreenshotScale(100);
+    }
+  }, [selectedProductName, printAreaFit]);
+
+  // Load cart products on mount and when component becomes visible
+  useEffect(() => {
+    const loadCartProducts = () => {
+      try {
+        const cartItems = JSON.parse(localStorage.getItem('cart_items') || '[]');
+        if (cartItems && cartItems.length > 0) {
+          // Filter items that have screenshots, preserving original cart index
+          const productsWithScreenshots = cartItems
+            .map((item, originalIndex) => ({
+              originalCartIndex: originalIndex, // Store original cart index for matching
+              name: item.name || 'Product',
+              color: item.color || 'N/A',
+              size: item.size || 'N/A',
+              screenshot: item.screenshot || '',
+              productImage: item.image || '', // Store product image from cart
+              toolSettings: item.toolSettings || null // Store tool settings if they exist
+            }))
+            .filter(item => item.screenshot && item.screenshot.trim() !== '')
+            .map((item, filteredIndex) => ({
+              ...item,
+              filteredIndex // Also store filtered index for dropdown
+            }));
+          
+          // Restore tool settings from cart items if available
+          if (productsWithScreenshots.length > 0) {
+            const firstProduct = productsWithScreenshots[0];
+            if (firstProduct.toolSettings) {
+              const settings = firstProduct.toolSettings;
+              if (settings.screenshotScale !== undefined) setScreenshotScale(settings.screenshotScale);
+              if (settings.offsetX !== undefined && settings.offsetY !== undefined) {
+                setProductImageOffsets(prev => ({
+                  ...prev,
+                  [firstProduct.originalCartIndex]: { x: settings.offsetX, y: settings.offsetY }
+                }));
+              }
+            }
+          }
+          
+          setCartProducts(productsWithScreenshots);
+          
+          // Auto-select first product if products exist and none is currently selected
+          if (productsWithScreenshots.length > 0) {
+            if (selectedCartProductIndex === null || selectedCartProductIndex >= productsWithScreenshots.length) {
+              setSelectedCartProductIndex(0);
+            }
+            if (productsWithScreenshots.length > 1) {
+              console.log(`🛍️ Found ${productsWithScreenshots.length} products in cart`);
+            }
+          }
+        } else {
+          setCartProducts([]);
+          setSelectedCartProductIndex(null);
+        }
+      } catch (e) {
+        console.warn('Could not load cart items:', e);
+        setCartProducts([]);
+        setSelectedCartProductIndex(null);
+      }
+    };
+    
+    // Load immediately
+    loadCartProducts();
+    
+    // Also listen for storage changes (when cart is updated in other tabs/pages)
+    const handleStorageChange = (e) => {
+      if (e.key === 'cart_items') {
+        loadCartProducts();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically in case localStorage is updated in same tab
+    const checkInterval = setInterval(loadCartProducts, 2000);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(checkInterval);
+    };
+  }, [selectedCartProductIndex]); // Re-run if selected index becomes invalid
 
   // Load screenshot and product name from localStorage or URL params
   useEffect(() => {
     const loadScreenshot = () => {
       try {
+        // Priority 1: Use selected cart product screenshot if available
+        if (selectedCartProductIndex !== null && cartProducts.length > 0 && cartProducts[selectedCartProductIndex]) {
+          const selectedProduct = cartProducts[selectedCartProductIndex];
+          if (selectedProduct.screenshot && selectedProduct.screenshot.trim() !== '') {
+            const screenshot = selectedProduct.screenshot;
+            if (screenshot !== imageUrl) {
+              upgradeTriggeredRef.current = false;
+            }
+            setImageUrl(screenshot);
+            setSelectedImage(screenshot);
+            setIsUpgrading(false);
+            console.log(`📸 Loaded screenshot from cart product ${selectedCartProductIndex + 1}: ${selectedProduct.name}`);
+            return; // Exit early, don't check other sources
+          }
+        }
+        
+        // Priority 2: Fallback to pending_merch_data
         const raw = localStorage.getItem('pending_merch_data');
         if (raw) {
           const data = JSON.parse(raw);
@@ -111,17 +992,45 @@ const ToolsPage = () => {
     
     // Load immediately
     loadScreenshot();
-    
+  }, [selectedCartProductIndex, cartProducts]); // Re-run when cart product selection changes
+
+  // Listen for storage events and set up upgrade checking
+  useEffect(() => {
     // Listen for storage events (when print quality upgrade completes from other tabs)
     const handleStorageChange = (e) => {
       if (e.key === 'pending_merch_data' && e.newValue) {
-        loadScreenshot();
+        // Reload screenshot when storage changes
+        const raw = localStorage.getItem('pending_merch_data');
+        if (raw) {
+          try {
+            const data = JSON.parse(raw);
+            const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
+            if (screenshot && screenshot !== imageUrl) {
+              setImageUrl(screenshot);
+              setSelectedImage(screenshot);
+            }
+          } catch (e) {
+            console.warn('Could not parse storage data:', e);
+          }
+        }
       }
     };
     
     // Listen for custom event (when print quality upgrade completes in same tab)
     const handleLocalStorageUpdate = () => {
-      loadScreenshot();
+      const raw = localStorage.getItem('pending_merch_data');
+      if (raw) {
+        try {
+          const data = JSON.parse(raw);
+          const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
+          if (screenshot && screenshot !== imageUrl) {
+            setImageUrl(screenshot);
+            setSelectedImage(screenshot);
+          }
+        } catch (e) {
+          console.warn('Could not parse storage data:', e);
+        }
+      }
     };
     
     window.addEventListener('storage', handleStorageChange);
@@ -131,7 +1040,6 @@ const ToolsPage = () => {
     // Check more frequently for first 10 seconds, then every 5 seconds for up to 70 seconds total
     let checkCount = 0;
     const checkInterval = setInterval(() => {
-      loadScreenshot();
       checkCount++;
       // Check if upgrade has been running too long (more than 60 seconds)
       try {
@@ -144,7 +1052,6 @@ const ToolsPage = () => {
               // Upgrade has been running for more than 60 seconds, mark as failed
               data.print_quality_upgrade_failed = true;
               localStorage.setItem('pending_merch_data', JSON.stringify(data));
-              loadScreenshot();
             }
           }
         }
@@ -779,7 +1686,7 @@ const ToolsPage = () => {
           maskCtx.fillRect(0, 0, canvas.width, canvas.height);
         }
         
-        // Create soft edges using radial gradient for circles, linear for rectangles
+        // Create soft edges using distance-based approach for smooth corners
         if (isCircle) {
           // For circular images, use radial gradient to create soft edge
           const centerX = canvas.width / 2;
@@ -800,35 +1707,43 @@ const ToolsPage = () => {
           maskCtx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
           maskCtx.fill();
         } else {
-          // For rectangular images, use linear gradients on each edge
-          // Top edge - fade from transparent to opaque
-          const topGradient = maskCtx.createLinearGradient(0, 0, 0, featherSize);
-          topGradient.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Fully erase at edge
-          topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // No erase in center
-          maskCtx.globalCompositeOperation = 'destination-out';
-          maskCtx.fillStyle = topGradient;
-          maskCtx.fillRect(0, 0, canvas.width, featherSize);
+          // For rectangular images, use distance-based mask for smooth corners
+          // This approach calculates distance from each pixel to the nearest edge
+          // and creates a smooth gradient that works perfectly on corners
           
-          // Bottom edge
-          const bottomGradient = maskCtx.createLinearGradient(0, canvas.height - featherSize, 0, canvas.height);
-          bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-          bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
-          maskCtx.fillStyle = bottomGradient;
-          maskCtx.fillRect(0, canvas.height - featherSize, canvas.width, featherSize);
+          // Get image data to manipulate pixels directly
+          const imageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+          const data = imageData.data;
           
-          // Left edge
-          const leftGradient = maskCtx.createLinearGradient(0, 0, featherSize, 0);
-          leftGradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
-          leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          maskCtx.fillStyle = leftGradient;
-          maskCtx.fillRect(0, featherSize, featherSize, canvas.height - (featherSize * 2));
+          // Calculate distance from each pixel to the nearest edge
+          for (let y = 0; y < maskCanvas.height; y++) {
+            for (let x = 0; x < maskCanvas.width; x++) {
+              // Calculate distance to each edge
+              const distTop = y;
+              const distBottom = maskCanvas.height - y;
+              const distLeft = x;
+              const distRight = maskCanvas.width - x;
+              
+              // Find minimum distance to any edge (this handles corners automatically)
+              const minDist = Math.min(distTop, distBottom, distLeft, distRight);
+              
+              // Calculate alpha based on distance from edge
+              // Pixels at the edge (minDist = 0) should be fully transparent (alpha = 0)
+              // Pixels at featherSize or more from edge should be fully opaque (alpha = 255)
+              let alpha = 255;
+              if (minDist < featherSize) {
+                // Linear fade from edge to featherSize
+                alpha = Math.floor((minDist / featherSize) * 255);
+              }
+              
+              // Apply the alpha to the mask (index 3 is alpha channel)
+              const index = (y * maskCanvas.width + x) * 4;
+              data[index + 3] = alpha;
+            }
+          }
           
-          // Right edge
-          const rightGradient = maskCtx.createLinearGradient(canvas.width - featherSize, 0, canvas.width, 0);
-          rightGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-          rightGradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
-          maskCtx.fillStyle = rightGradient;
-          maskCtx.fillRect(canvas.width - featherSize, featherSize, featherSize, canvas.height - (featherSize * 2));
+          // Put the modified image data back
+          maskCtx.putImageData(imageData, 0, 0);
         }
         
         maskCtx.globalCompositeOperation = 'source-over';
@@ -954,12 +1869,52 @@ const ToolsPage = () => {
       
       // Also update cart items if they exist
       const cartItems = JSON.parse(localStorage.getItem('cart_items') || '[]');
-      const updatedCart = cartItems.map(item => ({
-        ...item,
-        screenshot: editedImageUrl,
-        edited: true,
-        tools_acknowledged: true
-      }));
+      let updatedCart;
+      
+      // If a specific cart product is selected, only update that one
+      if (selectedCartProductIndex !== null && cartProducts.length > 0 && cartProducts[selectedCartProductIndex]) {
+        const selectedProduct = cartProducts[selectedCartProductIndex];
+        const cartIndex = selectedProduct.originalCartIndex;
+        const offsets = productImageOffsets[cartIndex] || { x: 0, y: 0 };
+        
+        // Use the original cart index to update the correct item
+        updatedCart = cartItems.map((item, index) => {
+          // Check if this is the selected product using original cart index
+          if (index === cartIndex) {
+            return {
+              ...item,
+              screenshot: editedImageUrl,
+              edited: true,
+              tools_acknowledged: true,
+              // Save tool settings for this product
+              toolSettings: {
+                screenshotScale,
+                offsetX: offsets.x,
+                offsetY: offsets.y,
+                featherEdge,
+                cornerRadius,
+                frameEnabled,
+                frameColor,
+                frameWidth,
+                doubleFrame,
+                printAreaFit
+              }
+            };
+          }
+          return item;
+        });
+        console.log(`💾 Updated screenshot for selected cart product: ${selectedProduct.name} (cart index: ${selectedProduct.originalCartIndex})`);
+      } else {
+        // No specific product selected, update all items (backward compatibility)
+        updatedCart = cartItems.map(item => ({
+          ...item,
+          screenshot: editedImageUrl,
+          edited: true,
+          tools_acknowledged: true
+        }));
+        console.log('💾 Updated screenshot for all cart items');
+      }
+      
       localStorage.setItem('cart_items', JSON.stringify(updatedCart));
     } catch (e) {
       console.error('Failed to save edited image:', e);
@@ -983,83 +1938,465 @@ const ToolsPage = () => {
   };
 
   return (
-    <div className="tools-page-container">
+    <div className="tools-page-container" ref={containerRef}>
       <div className="tools-page-header">
-        <h1>Screenshot Editing Tools</h1>
+        <h1>Edit Tools</h1>
         <p className="tools-subtitle">Edit your screenshot with professional tools</p>
       </div>
 
-      <div className="tools-content">
-        <div className="tools-preview-section">
-          <div className="preview-container">
-            <h3>Preview</h3>
-            {editedImageUrl ? (
-              <div className="preview-image-wrapper">
-                <img 
-                  src={editedImageUrl} 
-                  alt="Edited screenshot" 
-                  className="preview-image"
-                />
-              </div>
-            ) : imageUrl ? (
-              <div className="preview-image-wrapper">
-                <img 
-                  src={imageUrl} 
-                  alt="Original screenshot" 
-                  className="preview-image"
-                />
-              </div>
-            ) : (
-              <div className="preview-placeholder">
-                <p>No screenshot selected</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="file-input"
-                  id="screenshot-upload"
-                />
-                <label htmlFor="screenshot-upload" className="upload-button">
-                  Upload Screenshot
-                </label>
+      {(() => {
+        // Check if screenshot and product are selected
+        const hasScreenshot = imageUrl || editedImageUrl;
+        const hasProduct = cartProducts.length > 0 && selectedCartProductIndex !== null;
+        const isEnabled = hasScreenshot && hasProduct;
+        
+        return (
+          <>
+            {!isEnabled && (
+              <div style={{
+                textAlign: 'center',
+                padding: '2rem',
+                background: '#fff3cd',
+                border: '2px solid #ffc107',
+                borderRadius: '8px',
+                margin: '2rem 0',
+                color: '#856404'
+              }}>
+                <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚠️</div>
+                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '1.2rem' }}>Tools Unavailable</div>
+                <div style={{ fontSize: '14px' }}>
+                  Please select a screenshot and product from your cart to use the editing tools.
+                </div>
               </div>
             )}
+            <div 
+              className={`tools-content-reorganized ${!isEnabled ? 'tools-disabled' : ''}`}
+              style={!isEnabled ? { opacity: 0.5, pointerEvents: 'none' } : {}}
+            >
+        {/* Left Column: Product Preview and Screenshot Size - Fixed Position */}
+        <div className="tools-left-column" ref={leftColumnRef}>
+          {/* Fixed section at top - Product Preview and Screenshot Preview */}
+          <div className="cart-products-preview-fixed">
+            {/* Cart Products Preview Section - Show only selected product */}
+            {cartProducts.length > 0 && selectedCartProductIndex !== null && cartProducts[selectedCartProductIndex] && (
+              <div className="cart-products-preview-section-compact">
+                <h3 style={{ marginTop: '10px', marginBottom: '15px', fontSize: '18px', fontWeight: 'bold' }}>
+                  Product Preview ({selectedCartProductIndex + 1} of {cartProducts.length})
+                </h3>
+              {(() => {
+                const product = cartProducts[selectedCartProductIndex];
+                const cartIndex = product.originalCartIndex;
+                const offset = productImageOffsets[cartIndex] || { x: 0, y: 0 };
+                const currentImage = editedImageUrl || imageUrl;
+                
+                return (
+                  <div style={{
+                    background: 'white',
+                    padding: '15px',
+                    borderRadius: '8px',
+                    border: '2px solid #dee2e6',
+                    position: 'relative'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '10px',
+                      gap: '8px',
+                      justifyContent: 'center'
+                    }}>
+                      <span style={{
+                        background: '#007bff',
+                        color: 'white',
+                        borderRadius: '50%',
+                        width: '30px',
+                        height: '30px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 'bold',
+                        fontSize: '14px',
+                        flexShrink: 0
+                      }}>
+                        {selectedCartProductIndex + 1}
+                      </span>
+                      <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px', wordBreak: 'break-word' }}>{product.name}</div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {product.color} • {product.size}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Product Preview - Handle different product types */}
+                    {(() => {
+                      const productName = product.name || '';
+                      const isMug = isMugProduct(productName);
+                      const isHat = isHatProduct(productName);
+                      const isAllOverPrint = isAllOverPrintProduct(productName);
+                      const isMiscNoPreview = isMiscProductNoPreview(productName);
+                      
+                      // Debug logging for hat products
+                      if (isHat) {
+                        console.log('🎩 [HAT DETECTED] Product:', productName, 'Will use generic hat image');
+                      }
+                      
+                      // All-over-print products: Show notice, no preview, tools disabled
+                      if (isAllOverPrint) {
+                        return (
+                          <div style={{
+                            padding: '20px',
+                            textAlign: 'center',
+                            background: '#fff3cd',
+                            border: '2px solid #ffc107',
+                            borderRadius: '8px',
+                            color: '#856404'
+                          }}>
+                            <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚠️</div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>No Tools for All-Over Print</div>
+                            <div style={{ fontSize: '14px' }}>
+                              Editing tools (feather, corner radius, frame) are not available for all-over print products.
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // Mugs: Show "Preview Not Available" message, but allow tools
+                      if (isMug) {
+                        return (
+                          <div style={{
+                            padding: '20px',
+                            textAlign: 'center',
+                            background: '#e7f3ff',
+                            border: '2px solid #b3d9ff',
+                            borderRadius: '8px',
+                            color: '#004085',
+                            minHeight: '150px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                          }}>
+                            <div style={{ fontSize: '24px', marginBottom: '10px' }}>☕</div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Preview Not Available</div>
+                            <div style={{ fontSize: '14px' }}>
+                              Mug preview is not available due to the curved surface, but you can still use the editing tools to customize your screenshot.
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // Misc products (no preview needed): Allow tools but no preview
+                      // Still render ProductPreviewWithDrag for size calculation, but use placeholder image
+                      if (isMiscNoPreview) {
+                        if (currentImage) {
+                          // Use a placeholder transparent/white image for size calculation
+                          // Create a data URL for a white rectangle
+                          const placeholderSize = 400;
+                          const canvas = document.createElement('canvas');
+                          canvas.width = placeholderSize;
+                          canvas.height = placeholderSize;
+                          const ctx = canvas.getContext('2d');
+                          ctx.fillStyle = '#f8f9fa';
+                          ctx.fillRect(0, 0, placeholderSize, placeholderSize);
+                          const placeholderImage = canvas.toDataURL();
+                          
+                          return (
+                            <div style={{ position: 'relative' }}>
+                              <ProductPreviewWithDrag
+                                productImage={placeholderImage}
+                                screenshot={currentImage}
+                                productName={productName}
+                                productSize={product.size}
+                                offsetX={offset.x}
+                                offsetY={offset.y}
+                                onOffsetChange={(x, y) => {
+                                  setProductImageOffsets(prev => ({
+                                    ...prev,
+                                    [cartIndex]: { x, y }
+                                  }));
+                                }}
+                                featherEdge={featherEdge}
+                                cornerRadius={cornerRadius}
+                                printAreaFit={printAreaFit}
+                                selectedProductName={selectedProductName}
+                                screenshotScale={screenshotScale}
+                              />
+                              <div style={{
+                                position: 'absolute',
+                                top: '10px',
+                                left: '10px',
+                                right: '10px',
+                                background: 'rgba(255, 255, 255, 0.9)',
+                                padding: '8px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                textAlign: 'center',
+                                border: '1px solid #dee2e6'
+                              }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Product Preview Not Available</div>
+                                <div style={{ fontSize: '11px', color: '#666' }}>
+                                  Screenshot size reflects selected product print area
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div style={{
+                              padding: '20px',
+                              textAlign: 'center',
+                              background: '#f8f9fa',
+                              border: '2px solid #dee2e6',
+                              borderRadius: '8px',
+                              color: '#495057',
+                              minHeight: '150px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              alignItems: 'center'
+                            }}>
+                              <div style={{ fontSize: '24px', marginBottom: '10px' }}>✏️</div>
+                              <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Product Preview Not Available</div>
+                              <div style={{ fontSize: '14px' }}>
+                                You can use the editing tools to customize your screenshot for this product.
+                              </div>
+                            </div>
+                          );
+                        }
+                      }
+                      
+                      // Hats: Use generic hat image for all hats (always, even without screenshot)
+                      if (isHat) {
+                        const hatImage = getGenericHatImage();
+                        console.log('🎩 [HAT DETECTED] Product:', productName);
+                        console.log('🎩 [HAT IMAGE] Using generic hat image:', hatImage);
+                        console.log('🎩 [HAT IMAGE] Original product image from cart:', product.productImage);
+                        console.log('🎩 [HAT IMAGE] Will override with:', hatImage);
+                        // Only show preview if there's a screenshot
+                        if (currentImage) {
+                          return (
+                            <ProductPreviewWithDrag
+                              productImage={hatImage}
+                              screenshot={currentImage}
+                              productName={productName}
+                              productSize={product.size}
+                              offsetX={offset.x}
+                              offsetY={offset.y}
+                              onOffsetChange={(x, y) => {
+                                setProductImageOffsets(prev => ({
+                                  ...prev,
+                                  [cartIndex]: { x, y }
+                                }));
+                              }}
+                              featherEdge={featherEdge}
+                              cornerRadius={cornerRadius}
+                              printAreaFit={printAreaFit}
+                              selectedProductName={selectedProductName}
+                              screenshotScale={screenshotScale}
+                            />
+                          );
+                        } else {
+                          // Show placeholder for hat when no screenshot
+                          return (
+                            <div style={{
+                              padding: '20px',
+                              textAlign: 'center',
+                              background: '#f8f9fa',
+                              border: '2px solid #dee2e6',
+                              borderRadius: '8px',
+                              color: '#495057',
+                              minHeight: '150px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              alignItems: 'center'
+                            }}>
+                              <img 
+                                src={hatImage} 
+                                alt={productName}
+                                style={{ maxWidth: '200px', maxHeight: '150px', marginBottom: '10px' }}
+                              />
+                              <div style={{ fontSize: '14px', color: '#666' }}>
+                                Add a screenshot to see preview
+                              </div>
+                            </div>
+                          );
+                        }
+                      }
+                      
+                      // Regular products (shirts, etc.): Show normal preview
+                      if (product.productImage && currentImage) {
+                        return (
+                          <ProductPreviewWithDrag
+                            productImage={product.productImage}
+                            screenshot={currentImage}
+                            productName={productName}
+                            productSize={product.size}
+                            offsetX={offset.x}
+                            offsetY={offset.y}
+                            onOffsetChange={(x, y) => {
+                              setProductImageOffsets(prev => ({
+                                ...prev,
+                                [cartIndex]: { x, y }
+                              }));
+                            }}
+                            featherEdge={featherEdge}
+                            cornerRadius={cornerRadius}
+                            printAreaFit={printAreaFit}
+                            selectedProductName={selectedProductName}
+                            screenshotScale={screenshotScale}
+                          />
+                        );
+                      }
+                      
+                      return null;
+                    })()}
+                  </div>
+                );
+              })()}
+              </div>
+            )}
+
+          </div>
+
+          {/* Scrollable section below fixed previews */}
+          <div className="tools-left-column-scrollable">
+            {/* Screenshot Size Tool - Directly under product */}
+            <div className="tool-control-group" style={{ marginTop: '20px' }}>
+              <h3 style={{ textAlign: 'center' }}>Screenshot Size</h3>
+              <p className="tool-description" style={{ textAlign: 'center' }}>Adjust the size of your screenshot to fit the print area perfectly</p>
+              <div className="slider-control">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input
+                    type="range"
+                    min="50"
+                    max="150"
+                    value={screenshotScale}
+                    onChange={(e) => setScreenshotScale(parseInt(e.target.value))}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onSelectStart={(e) => e.preventDefault()}
+                    className="slider"
+                    style={{ 
+                      flex: 1,
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                      WebkitTouchCallout: 'none',
+                      touchAction: 'manipulation'
+                    }}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setScreenshotScale(Math.min(150, screenshotScale + 1))}
+                      onContextMenu={(e) => e.preventDefault()}
+                      onSelectStart={(e) => e.preventDefault()}
+                      style={{
+                        background: '#667eea',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        width: '28px',
+                        height: '20px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        padding: 0,
+                        lineHeight: 1,
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
+                        WebkitTouchCallout: 'none',
+                        touchAction: 'manipulation'
+                      }}
+                      title="Increase size"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScreenshotScale(Math.max(50, screenshotScale - 1))}
+                      onContextMenu={(e) => e.preventDefault()}
+                      onSelectStart={(e) => e.preventDefault()}
+                      style={{
+                        background: '#667eea',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        width: '28px',
+                        height: '20px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        padding: 0,
+                        lineHeight: 1,
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
+                        WebkitTouchCallout: 'none',
+                        touchAction: 'manipulation'
+                      }}
+                      title="Decrease size"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                  <span 
+                    className="slider-value" 
+                    style={{ 
+                      minWidth: '50px', 
+                      textAlign: 'right',
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                      WebkitTouchCallout: 'none'
+                    }}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onSelectStart={(e) => e.preventDefault()}
+                  >
+                    {screenshotScale}%
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+        
+        {/* Spacer to maintain grid layout since left column is fixed */}
+        <div style={{ width: '100px', flexShrink: 0 }} className="tools-left-column-spacer"></div>
+        <div style={{ width: '350px', flexShrink: 0 }} className="tools-left-column-spacer"></div>
 
+        {/* Right Column: Tools */}
         <div className="tools-controls-section">
-          <div className="tool-control-group">
-            <h3>Feather Edge</h3>
-            <p className="tool-description">Softens the edges of your screenshot</p>
-            <div className="slider-control">
-              <input
-                type="range"
-                min="0"
-                max="50"
-                value={featherEdge}
-                onChange={(e) => setFeatherEdge(parseInt(e.target.value))}
-                className="slider"
-              />
-              <span className="slider-value">{featherEdge}px</span>
+          {/* Product Selector - Small dropdown at top of tools */}
+          {cartProducts.length > 1 && (
+            <div className="tool-control-group" style={{ marginBottom: '1rem' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                Select Product From Cart:
+              </h3>
+              <select
+                value={selectedCartProductIndex !== null ? selectedCartProductIndex : ''}
+                onChange={(e) => {
+                  const index = parseInt(e.target.value);
+                  if (!isNaN(index)) {
+                    setSelectedCartProductIndex(index);
+                    console.log(`🔄 Product changed to index ${index}`);
+                  }
+                }}
+                className="print-area-select"
+                style={{ width: '100%' }}
+              >
+                <option value="">-- Select Product --</option>
+                {cartProducts.map((product, index) => (
+                  <option key={index} value={index}>
+                    {product.name}{product.color && product.color !== 'N/A' ? ` - ${product.color}` : ''}{product.size && product.size !== 'N/A' ? ` (${product.size})` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
-
-          <div className="tool-control-group">
-            <h3>Corner Radius</h3>
-            <p className="tool-description">Round the corners of your screenshot (max = perfect circle)</p>
-            <div className="slider-control">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={cornerRadius}
-                onChange={(e) => setCornerRadius(parseInt(e.target.value))}
-                className="slider"
-              />
-              <span className="slider-value">{cornerRadius === 100 ? 'Circle' : `${cornerRadius}px`}</span>
-            </div>
-          </div>
-
+          )}
+          
+          {/* Fit to Print Area - At the top */}
           <div className="tool-control-group">
             <h3>Fit to Print Area</h3>
             <p className="tool-description">Crop image to fit product print areas</p>
@@ -1079,7 +2416,7 @@ const ToolsPage = () => {
                 className="print-area-select"
               >
                 <option value="">-- Select Product --</option>
-                {Object.keys(PRINT_AREA_CONFIG).map(productName => (
+                {Object.keys(PRINT_AREA_CONFIG).sort().map(productName => (
                   <option key={productName} value={productName}>
                     {productName}
                   </option>
@@ -1108,74 +2445,6 @@ const ToolsPage = () => {
                 <option value="vertical">Vertical (Tall - for tank tops, vertical shirts)</option>
               </select>
             </div>
-            
-            {/* Dimension Information */}
-            {printAreaFit === 'product' && selectedProductName && (() => {
-              const printConfig = getPrintAreaConfig(selectedProductName);
-              // Use new helper function that supports size-specific dimensions
-              // For now, size is null (will use default), but can be added later
-              const dimensions = getPrintAreaDimensions(selectedProductName, null, 'front');
-              if (printConfig && dimensions) {
-                const dpi = printConfig.dpi || 300;
-                const description = printConfig.description || selectedProductName;
-                const targetPixels = getPixelDimensions(dimensions.width, dimensions.height, dpi);
-                const currentPixels = currentImageDimensions;
-                const widthMatch = Math.abs(currentPixels.width - targetPixels.width) < 50;
-                const heightMatch = Math.abs(currentPixels.height - targetPixels.height) < 50;
-                const isMatch = widthMatch && heightMatch;
-                
-                // Determine if image needs enlargement or cropping
-                const needsEnlargement = currentPixels.width < targetPixels.width || currentPixels.height < targetPixels.height;
-                const needsCropping = currentPixels.width > targetPixels.width || currentPixels.height > targetPixels.height;
-                
-                let warningMessage = '';
-                let warningColor = '#e65100';
-                let bgColor = '#fff3e0';
-                
-                // Show neutral dimension information (no upgrade-related messages for customers)
-                if (isMatch) {
-                  warningMessage = '✓ Dimensions match!';
-                  warningColor = '#2e7d32';
-                  bgColor = '#e8f5e9';
-                } else if (needsEnlargement && needsCropping) {
-                  // Mixed case - might need both
-                  warningMessage = 'ℹ️ Image dimensions differ - will be adjusted to fit';
-                  warningColor = '#1976d2';
-                  bgColor = '#e3f2fd';
-                } else if (needsEnlargement) {
-                  warningMessage = 'ℹ️ Image will be adjusted to fit print area';
-                  warningColor = '#1976d2';
-                  bgColor = '#e3f2fd';
-                } else if (needsCropping) {
-                  warningMessage = 'ℹ️ Image will be cropped to fit print area';
-                  warningColor = '#1976d2';
-                  bgColor = '#e3f2fd';
-                } else {
-                  warningMessage = 'ℹ️ Image will be adjusted to fit';
-                  warningColor = '#1976d2';
-                  bgColor = '#e3f2fd';
-                }
-                
-                return (
-                  <div style={{ 
-                    marginTop: '1rem', 
-                    padding: '0.75rem', 
-                    backgroundColor: bgColor,
-                    border: `1px solid ${isMatch ? '#4caf50' : '#ff9800'}`,
-                    borderRadius: '4px',
-                    fontSize: '0.85rem'
-                  }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                      {description} - {dimensions.width}" × {dimensions.height}" @ {dpi} DPI
-                    </div>
-                    <div style={{ fontWeight: 'bold', color: warningColor, marginTop: '0.5rem' }}>
-                      {warningMessage}
-                    </div>
-                  </div>
-                );
-              }
-              return null;
-            })()}
             
             {printAreaFit !== 'none' && (
               <>
@@ -1207,56 +2476,196 @@ const ToolsPage = () => {
             )}
           </div>
 
-          <div className="tool-control-group">
-            <h3>Framed Border</h3>
-            <p className="tool-description">Add a colored frame around your screenshot</p>
-            <div className="checkbox-control">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={frameEnabled}
-                  onChange={(e) => setFrameEnabled(e.target.checked)}
-                />
-                Enable Frame
-              </label>
-            </div>
-            {frameEnabled && (
+          {(() => {
+            // Check if current product is all-over-print (tools should be disabled)
+            const currentProduct = cartProducts.length > 0 && selectedCartProductIndex !== null 
+              ? cartProducts[selectedCartProductIndex] 
+              : null;
+            const currentProductName = currentProduct?.name || '';
+            const toolsDisabled = isAllOverPrintProduct(currentProductName);
+            
+            if (toolsDisabled) {
+              return (
+                <div className="tool-control-group">
+                  <div style={{
+                    padding: '20px',
+                    textAlign: 'center',
+                    background: '#fff3cd',
+                    border: '2px solid #ffc107',
+                    borderRadius: '8px',
+                    color: '#856404'
+                  }}>
+                    <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚠️</div>
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Tools Not Available</div>
+                    <div style={{ fontSize: '14px' }}>
+                      Editing tools (feather, corner radius, frame) are not available for all-over print products.
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            
+            return (
               <>
-                <div className="checkbox-control" style={{ marginTop: '0.5rem' }}>
-                  <label>
+                <div className="tool-control-group">
+                  <h3>Feather Edge</h3>
+                  <p className="tool-description">Softens the edges of your screenshot</p>
+                  <div className="slider-control">
                     <input
-                      type="checkbox"
-                      checked={doubleFrame}
-                      onChange={(e) => setDoubleFrame(e.target.checked)}
+                      type="range"
+                      min="0"
+                      max="50"
+                      value={featherEdge}
+                      onChange={(e) => setFeatherEdge(parseInt(e.target.value))}
+                      className="slider"
                     />
-                    Double Frame (3D Look)
-                  </label>
+                    <span className="slider-value">{featherEdge}px</span>
+                  </div>
                 </div>
-                <div className="color-control">
-                  <label>Frame Color:</label>
-                  <input
-                    type="color"
-                    value={frameColor}
-                    onChange={(e) => setFrameColor(e.target.value)}
-                    className="color-picker"
-                  />
-                  <span className="color-value">{frameColor}</span>
+
+                <div className="tool-control-group">
+                  <h3>Corner Radius</h3>
+                  <p className="tool-description">Round the corners of your screenshot (max = perfect circle)</p>
+                  <div className="slider-control">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={cornerRadius}
+                      onChange={(e) => setCornerRadius(parseInt(e.target.value))}
+                      className="slider"
+                    />
+                    <span className="slider-value">{cornerRadius === 100 ? 'Circle' : `${cornerRadius}px`}</span>
+                  </div>
                 </div>
-                <div className="slider-control">
-                  <label>Frame Width:</label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="50"
-                    value={frameWidth}
-                    onChange={(e) => setFrameWidth(parseInt(e.target.value))}
-                    className="slider"
-                  />
-                  <span className="slider-value">{frameWidth}px</span>
+
+                <div className="tool-control-group">
+                  <div className="framed-border-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ width: '100%' }}>
+                      <h3>Framed Border</h3>
+                      <p className="tool-description">Add a colored frame around your screenshot</p>
+                      <div className="checkbox-control">
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={frameEnabled}
+                            onChange={(e) => setFrameEnabled(e.target.checked)}
+                          />
+                          Enable Frame
+                        </label>
+                      </div>
+                      {frameEnabled && (
+                        <>
+                          <div className="checkbox-control" style={{ marginTop: '0.5rem' }}>
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={doubleFrame}
+                                onChange={(e) => setDoubleFrame(e.target.checked)}
+                              />
+                              Double Frame (3D Look)
+                            </label>
+                          </div>
+                          <div className="color-control" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <label style={{ minWidth: '100px' }}>Frame Color:</label>
+                            <input
+                              type="color"
+                              value={frameColor}
+                              onChange={(e) => setFrameColor(e.target.value)}
+                              className="color-picker"
+                            />
+                            <span className="color-value" style={{ wordBreak: 'break-all' }}>{frameColor}</span>
+                          </div>
+                          <div className="slider-control">
+                            <label>Frame Width:</label>
+                            <input
+                              type="range"
+                              min="1"
+                              max="50"
+                              value={frameWidth}
+                              onChange={(e) => setFrameWidth(parseInt(e.target.value))}
+                              className="slider"
+                            />
+                            <span className="slider-value">{frameWidth}px</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    
+                    {/* Screenshot Preview - Small window to the right */}
+                    <div style={{ 
+                      flexShrink: 0, 
+                      width: '200px', 
+                      background: 'white', 
+                      borderRadius: '8px', 
+                      padding: '12px',
+                      border: '2px solid #e0e0e0',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                    }}>
+                      <h4 className="screenshot-preview-title" style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold' }}>
+                        Screenshot Preview
+                      </h4>
+                      <div style={{ 
+                        width: '100%', 
+                        minHeight: '120px', 
+                        maxHeight: '150px',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        background: '#f8f9fa', 
+                        borderRadius: '6px', 
+                        overflow: 'hidden',
+                        border: '1px solid #dee2e6'
+                      }}>
+                        {editedImageUrl ? (
+                          <img 
+                            src={editedImageUrl} 
+                            alt="Screenshot Preview" 
+                            style={{ 
+                              maxWidth: '100%', 
+                              maxHeight: '150px', 
+                              objectFit: 'contain',
+                              display: 'block'
+                            }}
+                          />
+                        ) : imageUrl ? (
+                          <img 
+                            src={imageUrl} 
+                            alt="Screenshot Preview" 
+                            style={{ 
+                              maxWidth: '100%', 
+                              maxHeight: '150px', 
+                              objectFit: 'contain',
+                              display: 'block'
+                            }}
+                          />
+                        ) : (
+                          <p style={{ color: '#999', fontSize: '0.85rem', margin: 0, textAlign: 'center', padding: '10px' }}>
+                            No screenshot loaded
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </>
-            )}
-          </div>
+            );
+          })()}
+          
+          {(() => {
+            // Check if current product is all-over-print (tools should be disabled)
+            const currentProduct = cartProducts.length > 0 && selectedCartProductIndex !== null 
+              ? cartProducts[selectedCartProductIndex] 
+              : null;
+            const currentProductName = currentProduct?.name || '';
+            const toolsDisabled = isAllOverPrintProduct(currentProductName);
+            
+            if (toolsDisabled) {
+              return null; // Don't show Framed Border if tools are disabled
+            }
+            
+            return null; // Framed Border is already shown above
+          })()}
 
           <div className="tools-actions">
             <button 
@@ -1285,6 +2694,9 @@ const ToolsPage = () => {
           </div>
         </div>
       </div>
+          </>
+        );
+      })()}
 
     </div>
   );

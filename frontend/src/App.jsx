@@ -28,6 +28,7 @@ import PaymentPortal from "./Pages/PaymentPortal/PaymentPortal";
 import Checkout from "./Pages/Checkout/Checkout";
 import PaymentSetup from "./Pages/PaymentSetup/PaymentSetup";
 import ToolsPage from "./Pages/ToolsPage/ToolsPage";
+import VerifyEmail from "./Pages/VerifyEmail/VerifyEmail";
 import { API_CONFIG } from "./config/apiConfig";
 
 const App = () => {
@@ -205,6 +206,7 @@ const App = () => {
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/payment-setup" element={<PaymentSetup />} />
               <Route path="/tools" element={<ToolsPage />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
             </Routes>
           </div>

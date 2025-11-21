@@ -15,8 +15,26 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
     setIsLoading(true);
     setMessage('');
 
+    // For customer signups (not login), only require email
+    const isCustomerSignup = !isLoginMode;
+    
+    if (!email.trim()) {
+      setMessage({ type: 'error', text: 'Please enter your email.' });
+      setIsLoading(false);
+      return;
+    }
+    
+    if (isLoginMode && !password) {
+      setMessage({ type: 'error', text: 'Please enter your password.' });
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
+      // For customer signups, use email-only endpoint
+      const endpoint = isLoginMode 
+        ? '/api/auth/login' 
+        : '/api/auth/signup/email-only';
       const url = `${API_CONFIG.BASE_URL}${endpoint}`;
       
       // Debug logging and UI display
@@ -33,10 +51,12 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
       console.log('🔍 AuthModal - Mode:', isLoginMode ? 'login' : 'signup');
       setDebugInfo(debug);
       
-      const requestBody = {
-        email: email.trim(),
-        password: password
-      };
+      const requestBody = isCustomerSignup
+        ? { email: email.trim() }
+        : {
+            email: email.trim(),
+            password: password
+          };
       
       // Add timeout to prevent hanging requests on mobile
       const controller = new AbortController();
@@ -96,6 +116,19 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
       }
 
       const data = await response.json();
+
+      // For customer email-only signup, show message and don't log in yet
+      if (isCustomerSignup && data.success) {
+        setMessage({ 
+          type: 'success', 
+          text: 'Please check your email to verify your account and set your password.' 
+        });
+        // Clear the form
+        setEmail('');
+        setPassword('');
+        // Don't close modal immediately - let user see the message
+        return;
+      }
 
       if (data.success) {
         // Store authentication state
@@ -168,6 +201,10 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
     setIsLoginMode(!isLoginMode);
     setMessage('');
     setDebugInfo(null);
+    // Clear password when switching to signup mode (email-only)
+    if (!isLoginMode) {
+      setPassword('');
+    }
   };
 
   if (!isOpen) return null;
@@ -199,17 +236,20 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="Enter your password"
-            />
-          </div>
+          {/* Only show password field for login */}
+          {isLoginMode && (
+            <div className="form-group">
+              <label htmlFor="password">Password</label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="Enter your password"
+              />
+            </div>
+          )}
 
           <button type="submit" className="auth-submit-btn" disabled={isLoading}>
             {isLoading ? (

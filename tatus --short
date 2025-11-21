@@ -1,0 +1,104 @@
+[1mdiff --git a/frontend/src/Pages/ToolsPage/ToolsPage.jsx b/frontend/src/Pages/ToolsPage/ToolsPage.jsx[m
+[1mindex e4e9f23a1..abffc74c3 100644[m
+[1m--- a/frontend/src/Pages/ToolsPage/ToolsPage.jsx[m
+[1m+++ b/frontend/src/Pages/ToolsPage/ToolsPage.jsx[m
+[36m@@ -684,6 +684,10 @@[m [mconst ToolsPage = () => {[m
+       tempCanvas.width = sourceWidth;[m
+       tempCanvas.height = sourceHeight;[m
+       [m
+[32m+[m[32m      // Clear canvas to ensure transparent background (important for rounded corners)[m
+[32m+[m[32m      ctx.clearRect(0, 0, canvas.width, canvas.height);[m
+[32m+[m[32m      tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);[m
+[32m+[m[41m      [m
+       // Draw cropped image to temp canvas[m
+       tempCtx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, sourceWidth, sourceHeight);[m
+ [m
+[36m@@ -692,25 +696,42 @@[m [mconst ToolsPage = () => {[m
+       const isCircle = cornerRadius >= 100; // When maxed out, create perfect circle[m
+       const effectiveCornerRadius = isCircle ? maxCornerRadius : cornerRadius;[m
+ [m
+[32m+[m[32m      // Draw image to canvas first (before applying rounded corners)[m
+[32m+[m[32m      ctx.drawImage(tempCanvas, 0, 0);[m
+[32m+[m
+       // Apply corner radius clipping (or circle if maxed out)[m
+[32m+[m[32m      // Use destination-in composite to clip image to rounded shape (preserves transparency)[m
+       if (effectiveCornerRadius > 0) {[m
+[31m-        ctx.save();[m
+[32m+[m[32m        // Create a mask canvas for the rounded corners[m
+[32m+[m[32m        const roundedMaskCanvas = document.createElement('canvas');[m
+[32m+[m[32m        const roundedMaskCtx = roundedMaskCanvas.getContext('2d');[m
+[32m+[m[32m        roundedMaskCanvas.width = canvas.width;[m
+[32m+[m[32m        roundedMaskCanvas.height = canvas.height;[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Clear mask canvas to transparent[m
+[32m+[m[32m        roundedMaskCtx.clearRect(0, 0, roundedMaskCanvas.width, roundedMaskCanvas.height);[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Draw white shape (will be used as mask)[m
+[32m+[m[32m        roundedMaskCtx.fillStyle = 'white';[m
+         if (isCircle) {[m
+[31m-          // Create perfect circle[m
+[31m-          ctx.beginPath();[m
+[31m-          ctx.arc([m
+[31m-            canvas.width / 2,[m
+[31m-            canvas.height / 2,[m
+[32m+[m[32m          roundedMaskCtx.beginPath();[m
+[32m+[m[32m          roundedMaskCtx.arc([m
+[32m+[m[32m            roundedMaskCanvas.width / 2,[m
+[32m+[m[32m            roundedMaskCanvas.height / 2,[m
+             maxCornerRadius,[m
+             0,[m
+             Math.PI * 2[m
+           );[m
+[31m-          ctx.clip();[m
+[32m+[m[32m          roundedMaskCtx.fill();[m
+         } else {[m
+[31m-          // Use rounded rectangle[m
+[31m-          drawRoundedRect(ctx, 0, 0, canvas.width, canvas.height, effectiveCornerRadius);[m
+[31m-          ctx.clip();[m
+[32m+[m[32m          drawRoundedRect(roundedMaskCtx, 0, 0, roundedMaskCanvas.width, roundedMaskCanvas.height, effectiveCornerRadius);[m
+[32m+[m[32m          roundedMaskCtx.fill();[m
+         }[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Use destination-in to clip the image to the rounded shape (removes black background)[m
+[32m+[m[32m        ctx.globalCompositeOperation = 'destination-in';[m
+[32m+[m[32m        ctx.drawImage(roundedMaskCanvas, 0, 0);[m
+[32m+[m[32m        ctx.globalCompositeOperation = 'source-over';[m
+       }[m
+ [m
+       // Apply feather edge (soft edge effect) - works with both rectangles and circles[m
+[36m@@ -796,21 +817,10 @@[m [mconst ToolsPage = () => {[m
+         [m
+         maskCtx.globalCompositeOperation = 'source-over';[m
+         [m
+[31m-        // Draw image first[m
+[31m-        ctx.drawImage(tempCanvas, 0, 0);[m
+[31m-        [m
+[31m-        // Apply mask to soften edges[m
+[32m+[m[32m        // Apply mask to soften edges (image already drawn, just apply feather mask)[m
+         ctx.globalCompositeOperation = 'destination-in';[m
+         ctx.drawImage(maskCanvas, 0, 0);[m
+         ctx.globalCompositeOperation = 'source-over';[m
+[31m-      } else {[m
+[31m-        // No feather edge, just draw the image[m
+[31m-        ctx.drawImage(tempCanvas, 0, 0);[m
+[31m-      }[m
+[31m-[m
+[31m-      // Restore clipping if corner radius was applied[m
+[31m-      if (effectiveCornerRadius > 0) {[m
+[31m-        ctx.restore();[m
+       }[m
+ [m
+       // Apply frame border[m
+[36m@@ -1142,12 +1152,6 @@[m [mconst ToolsPage = () => {[m
+                     <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>[m
+                       {description} - {dimensions.width}" × {dimensions.height}" @ {dpi} DPI[m
+                     </div>[m
+[31m-                    <div style={{ marginBottom: '0.25rem' }}>[m
+[31m-                      Target: {targetPixels.width} × {targetPixels.height} pixels[m
+[31m-                    </div>[m
+[31m-                    <div style={{ marginBottom: '0.25rem' }}>[m
+[31m-                      Current: {currentPixels.width} × {currentPixels.height} pixels[m
+[31m-                    </div>[m
+                     <div style={{ fontWeight: 'bold', color: warningColor, marginTop: '0.5rem' }}>[m
+                       {warningMessage}[m
+                     </div>[m

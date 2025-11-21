@@ -471,18 +471,59 @@ def apply_corner_radius_only(image_data, corner_radius=15):
 def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None):
     """Process a thumbnail image for print quality output"""
     try:
-        # Decode base64 image
-        import base64
-        if image_data.startswith('data:image'):
-            image_data = image_data.split(',')[1]
+        # Validate input
+        if not image_data:
+            logger.error("❌ [PRINT_QUALITY] image_data is None or empty")
+            return {"success": False, "error": "No image data provided"}
         
-        image_bytes = base64.b64decode(image_data)
+        if not isinstance(image_data, str):
+            logger.error(f"❌ [PRINT_QUALITY] image_data is not a string, type: {type(image_data)}")
+            return {"success": False, "error": f"Invalid image data type: {type(image_data).__name__}"}
+        
+        import base64
+        import requests
+        
+        # Handle URL input - download the image first
+        if image_data.startswith('http://') or image_data.startswith('https://'):
+            logger.info(f"📥 [PRINT_QUALITY] Detected URL, downloading image from: {image_data[:100]}")
+            try:
+                response = requests.get(image_data, timeout=30)
+                response.raise_for_status()
+                image_bytes = response.content
+                logger.info(f"✅ [PRINT_QUALITY] Image downloaded successfully, bytes length: {len(image_bytes)}")
+            except Exception as download_error:
+                logger.error(f"❌ [PRINT_QUALITY] Failed to download image from URL: {str(download_error)}")
+                return {"success": False, "error": f"Failed to download image from URL: {str(download_error)}"}
+        # Handle base64 data URL
+        elif image_data.startswith('data:image'):
+            logger.info(f"📥 [PRINT_QUALITY] Detected data URL, extracting base64 data")
+            try:
+                image_data = image_data.split(',')[1]
+                image_bytes = base64.b64decode(image_data, validate=True)
+                logger.info(f"✅ [PRINT_QUALITY] Base64 decoded successfully, bytes length: {len(image_bytes)}")
+            except Exception as decode_error:
+                logger.error(f"❌ [PRINT_QUALITY] Base64 decode failed: {str(decode_error)}")
+                logger.error(f"❌ [PRINT_QUALITY] Image data preview: {image_data[:100] if len(image_data) > 100 else image_data}")
+                return {"success": False, "error": f"Failed to decode base64 image: {str(decode_error)}"}
+        # Handle raw base64 string
+        else:
+            logger.info(f"📥 [PRINT_QUALITY] Detected raw base64 string")
+            try:
+                image_bytes = base64.b64decode(image_data, validate=True)
+                logger.info(f"✅ [PRINT_QUALITY] Base64 decoded successfully, bytes length: {len(image_bytes)}")
+            except Exception as decode_error:
+                logger.error(f"❌ [PRINT_QUALITY] Base64 decode failed: {str(decode_error)}")
+                logger.error(f"❌ [PRINT_QUALITY] Image data preview: {image_data[:100] if len(image_data) > 100 else image_data}")
+                return {"success": False, "error": f"Failed to decode base64 image: {str(decode_error)}"}
+        
         nparr = np.frombuffer(image_bytes, np.uint8)
         # Use IMREAD_UNCHANGED to preserve alpha channel if present
         image = cv2.imdecode(nparr, cv2.IMREAD_UNCHANGED)
         
         if image is None:
-            return {"success": False, "error": "Failed to decode image"}
+            logger.error(f"❌ [PRINT_QUALITY] cv2.imdecode returned None - invalid image format or corrupted data")
+            logger.error(f"❌ [PRINT_QUALITY] Image bytes length: {len(image_bytes)}, first 20 bytes: {image_bytes[:20]}")
+            return {"success": False, "error": "Failed to decode image - invalid format or corrupted data"}
         
         # Check if image has alpha channel, if not convert to BGRA
         if len(image.shape) == 2:

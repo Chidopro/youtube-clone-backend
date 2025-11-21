@@ -15,11 +15,29 @@ const Admin = () => {
   const [stats, setStats] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterRole, setFilterRole] = useState('creator'); // Default to showing creators
+  const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState('active'); // Filter for subscriptions
   const navigate = useNavigate();
 
   useEffect(() => {
     checkAdminStatus();
   }, []);
+
+  // Reload users when filters change
+  useEffect(() => {
+    if (isAdmin && activeTab === 'users') {
+      loadUsers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, filterStatus, filterRole, isAdmin, activeTab]);
+
+  // Reload subscriptions when filter changes
+  useEffect(() => {
+    if (isAdmin && activeTab === 'subscriptions') {
+      loadSubscriptions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscriptionStatusFilter, isAdmin, activeTab]);
 
   const checkAdminStatus = async () => {
     try {
@@ -80,7 +98,7 @@ const Admin = () => {
 
   const loadUsers = async () => {
     try {
-      const result = await AdminService.getUsers(0, 100, searchTerm, filterStatus);
+      const result = await AdminService.getUsers(0, 100, searchTerm, filterStatus, filterRole);
       console.log('Loaded users:', result.users);
       setUsers(result.users);
     } catch (error) {
@@ -99,7 +117,7 @@ const Admin = () => {
 
   const loadSubscriptions = async () => {
     try {
-      const data = await AdminService.getSubscriptions();
+      const data = await AdminService.getSubscriptions(subscriptionStatusFilter);
       setSubscriptions(data);
     } catch (error) {
       console.error('Error loading subscriptions:', error);
@@ -147,6 +165,10 @@ const Admin = () => {
         console.log(`Activating user ${userId}...`);
         result = await AdminService.updateUserStatus(userId, 'active');
         console.log('Activate result:', result);
+      } else if (action === 'approve') {
+        console.log(`Approving user ${userId}...`);
+        result = await AdminService.approveUser(userId);
+        console.log('Approve result:', result);
       }
 
       if (result.success) {
@@ -189,11 +211,37 @@ const Admin = () => {
     }
   };
 
+  const handleSubscriptionAction = async (subscriptionId, action) => {
+    const actionText = action === 'delete' ? 'delete (cancel)' : action;
+    if (!confirm(`Are you sure you want to ${actionText} this subscription? All data will be preserved.`)) return;
+
+    try {
+      let result;
+      
+      if (action === 'delete') {
+        result = await AdminService.deleteSubscription(subscriptionId);
+      } else if (action === 'reactivate') {
+        result = await AdminService.reactivateSubscription(subscriptionId);
+      }
+
+      if (result.success) {
+        alert(`Subscription ${action === 'delete' ? 'canceled' : 'reactivated'} successfully`);
+        loadSubscriptions();
+      } else {
+        alert(`Failed to ${action} subscription: ${result.error}`);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing subscription:`, error);
+      alert(`Failed to ${action} subscription`);
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
-    return matchesSearch && matchesStatus;
+    const matchesRole = filterRole === 'all' || user.role === filterRole;
+    return matchesSearch && matchesStatus && matchesRole;
   });
 
   const filteredVideos = videos.filter(video => {
@@ -348,11 +396,21 @@ const Admin = () => {
                   className="admin-search"
                 />
                 <select 
+                  value={filterRole} 
+                  onChange={(e) => setFilterRole(e.target.value)}
+                  className="admin-filter"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="creator">Creators</option>
+                  <option value="customer">Customers</option>
+                </select>
+                <select 
                   value={filterStatus} 
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="admin-filter"
                 >
                   <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
                   <option value="active">Active</option>
                   <option value="suspended">Suspended</option>
                 </select>
@@ -364,6 +422,7 @@ const Admin = () => {
                     <tr>
                       <th>User</th>
                       <th>Email</th>
+                      <th>Role</th>
                       <th>Joined</th>
                       <th>Status</th>
                       <th style={{ backgroundColor: '#ffeb3b', color: '#000', minWidth: '200px', position: 'sticky', right: '0' }}>Actions</th>
@@ -391,6 +450,19 @@ const Admin = () => {
                           </div>
                         </td>
                         <td>{user.email}</td>
+                        <td>
+                          <span style={{ 
+                            padding: '4px 8px', 
+                            borderRadius: '4px', 
+                            backgroundColor: user.role === 'creator' ? '#e3f2fd' : '#f5f5f5',
+                            color: user.role === 'creator' ? '#1976d2' : '#666',
+                            textTransform: 'capitalize',
+                            fontSize: '12px',
+                            fontWeight: '500'
+                          }}>
+                            {user.role || 'customer'}
+                          </span>
+                        </td>
                         <td>{new Date(user.created_at).toLocaleDateString()}</td>
                         <td>
                           <span className={`status-badge ${user.status || 'active'}`}>
@@ -399,6 +471,15 @@ const Admin = () => {
                         </td>
                         <td style={{ minWidth: '200px', position: 'sticky', right: '0', backgroundColor: '#fff', zIndex: 10 }}>
                           <div className="action-buttons">
+                            {user.status === 'pending' && (
+                              <button
+                                onClick={() => handleUserAction(user.id, 'approve')}
+                                className="action-btn approve"
+                                style={{ backgroundColor: '#28a745', color: 'white' }}
+                              >
+                                Approve
+                              </button>
+                            )}
                             <button
                               onClick={() => handleUserAction(user.id, 'suspend')}
                               className="action-btn suspend"
@@ -409,7 +490,7 @@ const Admin = () => {
                             <button
                               onClick={() => handleUserAction(user.id, 'activate')}
                               className="action-btn activate"
-                              disabled={user.status === 'active'}
+                              disabled={user.status === 'active' || user.status === 'pending'}
                             >
                               Activate
                             </button>
@@ -530,6 +611,17 @@ const Admin = () => {
           {activeTab === 'subscriptions' && (
             <div className="admin-subscriptions">
               <h3>Subscription Management</h3>
+              <div className="admin-filters">
+                <select 
+                  value={subscriptionStatusFilter} 
+                  onChange={(e) => setSubscriptionStatusFilter(e.target.value)}
+                  className="admin-filter"
+                >
+                  <option value="active">Active Subscriptions</option>
+                  <option value="canceled">Canceled Subscriptions</option>
+                  <option value="all">All Subscriptions</option>
+                </select>
+              </div>
               <div className="subscriptions-table">
                 <table>
                   <thead>
@@ -539,6 +631,7 @@ const Admin = () => {
                       <th>Status</th>
                       <th>Start Date</th>
                       <th>End Date</th>
+                      <th style={{ backgroundColor: '#ffeb3b', color: '#000', minWidth: '150px', position: 'sticky', right: '0' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -555,8 +648,37 @@ const Admin = () => {
                             {sub.status}
                           </span>
                         </td>
-                        <td>{new Date(sub.current_period_start).toLocaleDateString()}</td>
-                        <td>{new Date(sub.current_period_end).toLocaleDateString()}</td>
+                        <td>
+                          {sub.current_period_start 
+                            ? new Date(sub.current_period_start).toLocaleDateString() 
+                            : 'N/A'}
+                        </td>
+                        <td>
+                          {sub.current_period_end 
+                            ? new Date(sub.current_period_end).toLocaleDateString() 
+                            : 'N/A'}
+                        </td>
+                        <td style={{ minWidth: '150px', position: 'sticky', right: '0', backgroundColor: '#fff', zIndex: 10 }}>
+                          <div className="action-buttons">
+                            {sub.status === 'canceled' ? (
+                              <button
+                                onClick={() => handleSubscriptionAction(sub.id, 'reactivate')}
+                                className="action-btn activate"
+                                style={{ backgroundColor: '#28a745', color: 'white' }}
+                              >
+                                Reactivate
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleSubscriptionAction(sub.id, 'delete')}
+                                className="action-btn delete"
+                                style={{ backgroundColor: '#dc3545', color: 'white' }}
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

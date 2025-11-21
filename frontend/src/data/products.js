@@ -1503,23 +1503,43 @@ export const products = {
   }
 }
   },
-  "snapbackhat": {
-    "name": "Snapback Hat",
-    "price": 26.89,
-    "description": "Classic snapback hat",
-    "image": "/static/images/snapbackhat.png",
-    "preview": "/static/images/snapbackhatpreview.png",
+  "closedbackcap": {
+    "name": "Closed Back Cap",
+    "price": 25.19,
+    "description": "Closed back cap",
+    "image": "/static/images/closedbackcap.png",
+    "preview": "/static/images/hatsclosedbackcappreview.png",
     "category": "hats",
     "variables": {
   "sizes": [
     "One size"
   ],
   "colors": [
-    "White"
+    "Dark Navy",
+    "Black",
+    "Royal Blue",
+    "Red",
+    "Grey",
+    "White",
+    "Dark Grey",
+    "Multicam Black",
+    "Olive",
+    "Multicam Green",
+    "Khaki"
   ],
   "availability": {
     "One size": {
-      "White": true
+      "Dark Navy": true,
+      "Black": true,
+      "Royal Blue": true,
+      "Red": true,
+      "Grey": true,
+      "White": true,
+      "Dark Grey": true,
+      "Multicam Black": true,
+      "Olive": true,
+      "Multicam Green": true,
+      "Khaki": true
     }
   }
 }

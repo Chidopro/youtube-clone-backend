@@ -38,13 +38,16 @@ export class SubscriptionService {
         throw new Error('User not authenticated');
       }
 
+      const now = new Date();
       const { data, error } = await supabase
         .from('user_subscriptions')
         .upsert({
           user_id: user.id,
           tier: 'free',
           status: 'active',
-          updated_at: new Date().toISOString()
+          current_period_start: now.toISOString(),
+          current_period_end: null, // Free tier doesn't expire
+          updated_at: now.toISOString()
         }, {
           onConflict: 'user_id'
         })

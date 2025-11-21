@@ -337,28 +337,28 @@ export const PRINT_AREA_CONFIG = {
   
   // Hats
   "Distressed Dad Hat": {
-    width: 4,
-    height: 4,
+    width: 5,
+    height: 2,
     dpi: 300,
-    description: "Dad Hat (Square)"
+    description: "Dad Hat Front (5\" × 2\")"
   },
-  "Snapback Hat": {
-    width: 4,
-    height: 4,
+  "Closed Back Cap": {
+    width: 5,
+    height: 2,
     dpi: 300,
-    description: "Snapback Hat (Square)"
+    description: "Closed Back Cap Front (5\" × 2\")"
   },
   "Five Panel Trucker Hat": {
-    width: 4,
-    height: 4,
+    width: 5.5,
+    height: 2.5,
     dpi: 300,
-    description: "Trucker Hat (Square)"
+    description: "Trucker Hat Front (5.5\" × 2.5\")"
   },
   "Five Panel Baseball Cap": {
-    width: 4,
-    height: 4,
+    width: 5,
+    height: 2,
     dpi: 300,
-    description: "Baseball Cap (Square)"
+    description: "Baseball Cap Front (5\" × 2\")"
   },
   
   // Mugs
@@ -464,11 +464,119 @@ export const PRINT_AREA_CONFIG = {
   },
   
   // Misc
-  "Bandana": {
-    width: 22,
-    height: 22,
+  "Hardcover Bound Notebook": {
+    width: 3,
+    height: 5,
     dpi: 300,
-    description: "Bandana (Square)"
+    description: "Hardcover Bound Notebook (3\" × 5\")"
+  },
+  "Coasters": {
+    width: 3.97,
+    height: 3.97,
+    dpi: 300,
+    description: "Coasters (3.97\" × 3.97\")"
+  },
+  "Apron": {
+    width: 12,
+    height: 14,
+    dpi: 300,
+    description: "Apron (All-Over Print - Tools Not Available)"
+  },
+  "Kiss Cut Stickers - 3\" × 3\"": {
+    width: 3,
+    height: 3,
+    dpi: 300,
+    description: "Kiss Cut Stickers (3\" × 3\" - Print 3\" × 3\")"
+  },
+  "Kiss Cut Stickers - 4\" × 4\"": {
+    width: 4,
+    height: 4,
+    dpi: 300,
+    description: "Kiss Cut Stickers (4\" × 4\" - Print 4\" × 4\")"
+  },
+  "Kiss Cut Stickers - 5.5\" × 5.5\"": {
+    width: 5.5,
+    height: 5.5,
+    dpi: 300,
+    description: "Kiss Cut Stickers (5.5\" × 5.5\" - Print 5.5\" × 5.5\")"
+  },
+  "Kiss Cut Stickers - 3.75\" × 15\"": {
+    width: 3.75,
+    height: 15,
+    dpi: 300,
+    description: "Kiss Cut Stickers (3.75\" × 15\" - Print 3.75\" × 15\")"
+  },
+  "Bandana": {
+    width: 27.5,
+    height: 27.5,
+    dpi: 300,
+    description: "Bandana (27.5\" × 27.5\")"
+  },
+  "Jigsaw Puzzle with Tin - 10\" × 18\" (110 pcs)": {
+    width: 9.84,
+    height: 7.83,
+    dpi: 300,
+    description: "Jigsaw Puzzle with Tin (10\" × 18\" - 110 pcs - Print 9.84\" × 7.83\")"
+  },
+  "Jigsaw Puzzle with Tin - 10\" × 18\" (30 pcs)": {
+    width: 9.84,
+    height: 7.83,
+    dpi: 300,
+    description: "Jigsaw Puzzle with Tin (10\" × 18\" - 30 pcs - Print 9.84\" × 7.83\")"
+  },
+  "Jigsaw Puzzle with Tin - 14\" × 11\" (252 pcs)": {
+    width: 14,
+    height: 11,
+    dpi: 300,
+    description: "Jigsaw Puzzle with Tin (14\" × 11\" - 252 pcs - Print 14\" × 11\")"
+  },
+  "Jigsaw Puzzle with Tin - 21\" × 15.5\" (500 pcs)": {
+    width: 21,
+    height: 15.5,
+    dpi: 300,
+    description: "Jigsaw Puzzle with Tin (21\" × 15.5\" - 500 pcs - Print 21\" × 15.50\")"
+  },
+  "Jigsaw Puzzle with Tin - 30\" × 20\" (1000 pcs)": {
+    width: 30.25,
+    height: 20.5,
+    dpi: 300,
+    description: "Jigsaw Puzzle with Tin (30\" × 20\" - 1000 pcs - Print 30.25\" × 20.50\")"
+  },
+  "Die-Cut Magnets - 3\" × 3\"": {
+    width: 3,
+    height: 3,
+    dpi: 300,
+    description: "Die-Cut Magnets (3\" × 3\" - Print 3\" × 3\")"
+  },
+  "Die-Cut Magnets - 4\" × 4\"": {
+    width: 4,
+    height: 4,
+    dpi: 300,
+    description: "Die-Cut Magnets (4\" × 4\" - Print 4\" × 4\")"
+  },
+  "Die-Cut Magnets - 6\" × 6\"": {
+    width: 6,
+    height: 6,
+    dpi: 300,
+    description: "Die-Cut Magnets (6\" × 6\" - Print 6\" × 6\")"
+  },
+  "Greeting Card - 4\" × 6\"": {
+    width: 4.15,
+    height: 6.15,
+    dpi: 300,
+    description: "Greeting Card (4\" × 6\" - Print Size 4.15\" × 6.15\")"
+  },
+  "Greeting Card - 5\" × 7\"": {
+    width: 5.15,
+    height: 7.15,
+    dpi: 300,
+    description: "Greeting Card (5\" × 7\" - Print Size 5.15\" × 7.15\")"
+  },
+  "Greeting Card - 5.83\" × 8.27\"": {
+    width: 5.98,
+    height: 8.42,
+    dpi: 300,
+    description: "Greeting Card (5.83\" × 8.27\" - Print Size 5.98\" × 8.42\")"
   }
 };
 

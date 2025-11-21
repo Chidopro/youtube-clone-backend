@@ -7,7 +7,7 @@ const OrderSuccess = () => {
   const [orderData, setOrderData] = useState(null);
 
   useEffect(() => {
-    // Clear cart immediately and comprehensively - run first!
+    // Clear cart immediately and comprehensively after successful purchase - run first!
     (function clearCartCompletely() {
       try {
         // Clear all cart-related storage
@@ -15,15 +15,12 @@ const OrderSuccess = () => {
         localStorage.removeItem('cart_items');
         localStorage.removeItem('cartData');
         localStorage.removeItem('persistent_cart');
-        localStorage.removeItem('screenshots');
-        localStorage.removeItem('screenshot_timestamps');
-        localStorage.removeItem('pending_merch_data');
         
         // Clear session storage
         sessionStorage.removeItem('cartData');
         sessionStorage.removeItem('cart');
         
-        // Also clear any variations/case-insensitive matches
+        // Also clear any variations/case-insensitive matches for cart
         Object.keys(localStorage).forEach(key => {
           if (key.toLowerCase().includes('cart')) {
             localStorage.removeItem(key);

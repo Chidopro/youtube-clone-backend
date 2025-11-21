@@ -1,0 +1,20 @@
+[33m174633004[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Restore all preview image graphics from commit bbb5f425e - category-specific fill-in graphics
+[33m31fc45a94[m Restore preview image graphics from commit 2bb91c01c
+[33m76aaa7a80[m Restore ProductPage from commit 2bb91c01c - category-specific fill-in graphics
+[33m215f0546d[m Use main_image (blank products) instead of preview_image (with designs) on ProductPage
+[33m66c760b62[m Remove print area overlays from ProductPage - restore to morning version
+[33m4829104ee[m Restore print area overlays on product images - was accidentally removed
+[33m616c9dde5[m Revert ProductPage to original - remove print area overlays and restore clean product image display
+[33m2bb91c01c[m Remove custom product warning before purchase and yellow cart warning - update refund policy to state all items customized, no refunds except producer error
+[33mb20c5410c[m Prevent pixelation by skipping unnecessary resize of images already at print quality - preserves quality when re-processing
+[33m29b1390a7[m Add timeout and failure detection for print quality upgrade - prevents infinite 'Upgrading...' message
+[33m9138ebe38[m Show 'Upgrading to print quality' message instead of upscale warning while upgrade is in progress
+[33me124b74c6[m Fix crop warning - update localStorage when print quality upgrade completes and make Tools page auto-refresh when upgrade is ready
+[33m770600d11[m Restore instant screenshot capture with background print quality upgrade - instant response while video plays, upgrades to 300 DPI in background
+[33m0ca6dc03f[m Add fallback to regular screenshot endpoint if print quality fails - prevents thumbnail-only captures
+[33m4d0684387[m Fix syntax error - remove extra closing brace in PlayVideo.jsx
+[33m44636cdea[m Always capture screenshots at print quality (300 DPI) - ensures screenshots are 3000x3600+ pixels from capture, no quality loss from upscaling
+[33mb66fcf335[m Add product-specific print area dimensions with dimension matching display - Users can select products and see target vs current dimensions at 300 DPI
+[33md039ff79d[m Add move tool to adjust image position within print area crop - allows repositioning to show important parts like heads
+[33md391527e1[m Add Fit to Print Area tool - crop images to fit vertical/horizontal print areas for better product utilization
+[33mbbb5f425e[m Fix Tools page to use selected screenshot instead of always showing thumbnail

@@ -52,7 +52,6 @@ const ProductPage = ({ sidebar }) => {
 
   // Categories for selection
   const categories = [
-    { name: "Product Info", emoji: "🛍️", category: "all-products" },
     { name: "Women's", emoji: "👩", category: "womens" },
     { name: "Men's", emoji: "👨", category: "mens" },
     { name: "Kids", emoji: "👶", category: "kids" },
@@ -61,7 +60,8 @@ const ProductPage = ({ sidebar }) => {
     { name: "Bags", emoji: "👜", category: "bags" },
     { name: "Pets", emoji: "🐕", category: "pets" },
     { name: "Misc", emoji: "📦", category: "misc" },
-    { name: "Tools", emoji: "🛠️", category: "thumbnails" }
+    { name: "Product Info", emoji: "🛍️", category: "all-products" },
+    { name: "Image Tools", emoji: "🛠️", category: "thumbnails" }
   ];
 
   const handleCategoryClick = (newCategory) => {
@@ -144,7 +144,7 @@ const ProductPage = ({ sidebar }) => {
       ],
       'hats': [
         "Distressed Dad Hat",
-        "Snapback Hat",
+        "Closed Back Cap",
         "Five Panel Trucker Hat",
         "Five Panel Baseball Cap"
       ],
@@ -217,7 +217,7 @@ const ProductPage = ({ sidebar }) => {
       "All Over Print Tote Pocket": { filename: "largecanvasbag.png", preview: "largecanvasbagpreview.png", price: 33.41 },
       "All-Over Print Crossbody Bag": { filename: "crossbodybag.png", preview: "crossbodybagpreview.png", price: 28.95 },
       "Distressed Dad Hat": { filename: "distresseddadhat.png", preview: "distresseddadhatpreview.png", price: 24.95 },
-      "Snapback Hat": { filename: "snapbackhat.png", preview: "snapbackhatpreview.png", price: 24.95 },
+      "Closed Back Cap": { filename: "closedbackcap.png", preview: "hatsclosedbackcappreview.png", price: 25.19 },
       "Five Panel Trucker Hat": { filename: "fivepaneltruckerhat.png", preview: "fivepaneltruckerhatpreview.png", price: 24.95 },
       "Five Panel Baseball Cap": { filename: "youthbaseballcap.png", preview: "youthbaseballcappreview.png", price: 24.95 },
       "White Glossy Mug": { filename: "mug1.png", preview: "mug1preview.png", price: 15.95 },
@@ -685,7 +685,7 @@ const ProductPage = ({ sidebar }) => {
               'mens': ["Unisex Hoodie", "Men's Tank Top", "Mens Fitted T-Shirt", "Men's Fitted Long Sleeve", "Unisex T-Shirt", "Unisex Oversized T-Shirt", "Men's Long Sleeve Shirt", "Unisex Champion Hoodie"],
               'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve", "Toddler Jersey T-Shirt", "Kids Sweatshirt", "Baby Staple Tee", "Baby Jersey T-Shirt", "Baby Body Suit"],
               'mugs': ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"],
-              'hats': ["Distressed Dad Hat", "Snapback Hat", "Five Panel Trucker Hat", "Five Panel Baseball Cap"],
+              'hats': ["Distressed Dad Hat", "Closed Back Cap", "Five Panel Trucker Hat", "Five Panel Baseball Cap"],
               'bags': ["Laptop Sleeve", "All-Over Print Drawstring", "All Over Print Tote Pocket", "All-Over Print Utility Bag"],
               'pets': ["Pet Bowl All-Over Print", "Pet Bandana Collar", "All Over Print Leash", "All Over Print Collar"],
               'misc': ["Bandana", "Hardcover Bound Notebook", "Coasters", "Apron", "Jigsaw Puzzle with Tin", "Greeting Card", "Kiss-Cut Stickers", "Die-Cut Magnets"]
@@ -725,7 +725,14 @@ const ProductPage = ({ sidebar }) => {
                     </div>
                     {categoryGroups[cat].map((product, index) => (
                       <div key={index} className="info-table-row">
-                        <div className="info-col-name">{product.name}</div>
+                        <div className="info-col-name">
+                          {product.name}
+                          {product.name && product.name.includes('Jigsaw Puzzle with Tin') && (
+                            <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#666', display: 'block', marginTop: '4px' }}>
+                              (Ages 4+ only)
+                            </span>
+                          )}
+                        </div>
                         <div className="info-col-image">
                           <img 
                             src={
@@ -899,7 +906,14 @@ const ProductPage = ({ sidebar }) => {
                     );
                   })()}
                   
-                  <h3>{product.name}</h3>
+                  <h3>
+                    {product.name}
+                    {product.name && product.name.includes('Jigsaw Puzzle with Tin') && (
+                      <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#666', display: 'block', marginTop: '4px' }}>
+                        (Ages 4+ only)
+                      </span>
+                    )}
+                  </h3>
                   <p className="product-price">${calculatePrice(product, index).toFixed(2)}</p>
                   
                   <div className="product-options">
@@ -1029,6 +1043,7 @@ const ProductPage = ({ sidebar }) => {
                 <div className="cart-actions">
                   <button className="view-cart-btn" onClick={() => setIsCartOpen(false)}>Continue Shopping</button>
                   <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+                  <button className="edit-tools-btn" onClick={() => navigate('/tools')}>Edit Tools</button>
                 </div>
               </div>
             )}

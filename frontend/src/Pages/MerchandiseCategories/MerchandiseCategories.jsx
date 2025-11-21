@@ -53,9 +53,9 @@ const MerchandiseCategories = ({ sidebar }) => {
     { name: "Hats", emoji: "🧢", category: "hats" },
     { name: "Bags", emoji: "👜", category: "bags" },
     { name: "Pets", emoji: "🐕", category: "pets" },
-    { name: "Product Info", emoji: "🛍️", category: "all-products" },
     { name: "Miscellaneous", emoji: "📦", category: "misc" },
-    { name: "Tools", emoji: "🛠️", category: "thumbnails" }
+    { name: "Product Info", emoji: "🛍️", category: "all-products" },
+    { name: "Image Tools", emoji: "🛠️", category: "thumbnails" }
   ];
 
   const handleCategoryClick = (category) => {

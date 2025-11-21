@@ -18,13 +18,31 @@ const Login = () => {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState(null); // {type: 'error'|'success', text: string}
+  const [isCreatorSignup, setIsCreatorSignup] = useState(false);
 
   // Force signup view if routed to /signup
+  // Check if coming from "Start Free" flow (payment-setup with flow=new_user)
   useEffect(() => {
     if (location.pathname === '/signup') {
       setIsLoginMode(false);
+      // Check if user came from payment-setup (Start Free flow) or has pending payment info
+      const pendingPaypalEmail = localStorage.getItem('pending_paypal_email');
+      const pendingPaymentMethod = localStorage.getItem('pending_payment_method');
+      const fromPaymentSetup = location.state?.from?.includes('/payment-setup') || 
+                               document.referrer.includes('/payment-setup');
+      
+      // If coming from payment setup or has pending payment info, it's a creator signup
+      if (pendingPaypalEmail || pendingPaymentMethod || fromPaymentSetup) {
+        setIsCreatorSignup(true);
+      } else {
+        // Ensure creator signup is false for regular customer signups
+        setIsCreatorSignup(false);
+      }
+    } else {
+      // If not on /signup route, ensure creator signup is false
+      setIsCreatorSignup(false);
     }
-  }, [location.pathname]);
+  }, [location.pathname, location.state]);
 
   // Optional notice if a protected route bounced the user here
   useEffect(() => {
@@ -45,16 +63,31 @@ const Login = () => {
       setMessage({ type: 'error', text: 'Please enter your email.' });
       return;
     }
-    if (!password) {
+    
+    // For customer signups (not creators), only require email
+    const isCustomerSignup = !isLoginMode && !isCreatorSignup;
+    
+    if (!isCustomerSignup && !password) {
       setMessage({ type: 'error', text: 'Please enter your password.' });
       return;
     }
 
-    const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
+    // For customer signups, use email-only endpoint
+    const endpoint = isLoginMode 
+      ? '/api/auth/login' 
+      : (isCustomerSignup ? '/api/auth/signup/email-only' : '/api/auth/signup');
     const url = apiUrl(endpoint);
 
     try {
       setIsLoading(true);
+
+      const requestBody = isCustomerSignup
+        ? { email: email.trim() }
+        : {
+            email: email.trim(),
+            password: password,
+            is_creator: !isLoginMode && isCreatorSignup  // Pass is_creator flag for creator signups
+          };
 
       const response = await fetch(url, {
         method: 'POST',
@@ -63,10 +96,7 @@ const Login = () => {
           'Accept': 'application/json'
         },
         // If you move to cookie sessions, also add: credentials: 'include'
-        body: JSON.stringify({
-          email: email.trim(),
-          password: password
-        })
+        body: JSON.stringify(requestBody)
       });
 
       // If backend ever sends HTML (like a 404 page), catch it early
@@ -101,6 +131,17 @@ const Login = () => {
 
       const data = await response.json();
 
+      // For customer email-only signup, show message and don't log in yet
+      if (isCustomerSignup) {
+        setMessage({ 
+          type: 'success', 
+          text: 'Please check your email to verify your account and set your password.' 
+        });
+        // Clear the form
+        setEmail('');
+        return;
+      }
+
       if (data?.token) localStorage.setItem('auth_token', data.token);
       if (data?.user) localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('isAuthenticated', 'true');
@@ -115,18 +156,39 @@ const Login = () => {
       if (!isLoginMode) {
         const pendingPaypalEmail = localStorage.getItem('pending_paypal_email');
         const pendingTaxId = localStorage.getItem('pending_tax_id');
-        setTimeout(() => {
-          if (pendingPaypalEmail || pendingTaxId) {
-            navigate('/subscription-success');
-          } else {
-            navigate('/payment-setup?ref=new_user');
-          }
-        }, 1000);
+        
+        // If creator signup with pending approval, show message and redirect appropriately
+        if (isCreatorSignup && data?.user?.status === 'pending') {
+          // Creator signup is pending approval - redirect to a waiting page or dashboard
+          setTimeout(() => {
+            navigate('/dashboard', { 
+              state: { 
+                message: 'Your account is pending approval. You will receive an email once approved.' 
+              } 
+            });
+          }, 2000);
+        } else {
+          setTimeout(() => {
+            if (pendingPaypalEmail || pendingTaxId) {
+              navigate('/subscription-success');
+            } else {
+              navigate('/payment-setup?ref=new_user');
+            }
+          }, 1000);
+        }
       } else {
+        // Login mode - check user role to redirect appropriately
         setTimeout(() => {
+          const userRole = data?.user?.role || 'customer';
           if (returnTo === 'merch') navigate('/merchandise');
           else if (returnTo === 'subscription-success') navigate('/subscription-success');
-          else navigate('/dashboard');
+          else if (userRole === 'customer') {
+            // Customers go to product category page to continue shopping
+            navigate('/product/browse');
+          } else {
+            // Creators and admins go to dashboard
+            navigate('/dashboard');
+          }
         }, 700);
       }
     } catch (err) {
@@ -139,6 +201,10 @@ const Login = () => {
   const handleToggleMode = () => {
     setIsLoginMode((prev) => !prev);
     setMessage(null);
+    // Reset creator signup flag when toggling (unless coming from payment setup)
+    if (location.pathname !== '/signup') {
+      setIsCreatorSignup(false);
+    }
   };
 
   const handleGoogleSignIn = () => {
@@ -181,20 +247,26 @@ const Login = () => {
             />
           </div>
 
-          <div className="login-field">
-            <label htmlFor="password" className="login-label">Password</label>
-            <input
-              id="password"
-              type="password"
-              className="login-input"
-              placeholder="••••••••"
-              autoComplete={isLoginMode ? 'current-password' : 'new-password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-              required
-            />
-          </div>
+          {/* Only show password field for login or creator signup */}
+          {(() => {
+            const shouldShowPassword = isLoginMode || isCreatorSignup;
+            return shouldShowPassword ? (
+              <div className="login-field">
+                <label htmlFor="password" className="login-label">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  className="login-input"
+                  placeholder="••••••••"
+                  autoComplete={isLoginMode ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            ) : null;
+          })()}
 
           <button type="submit" className="login-submit-btn" disabled={isLoading}>
             {isLoading ? (

@@ -33,16 +33,6 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
             is_available: true
         },
         {
-            method_name: 'ach',
-            display_name: 'Direct Bank Transfer',
-            description: 'Direct deposit to your bank account with minimal fees',
-            fees_percentage: 0.5,
-            fees_fixed: 0.25,
-            processing_time_days: 3,
-            min_payout: 50.00,
-            is_available: true
-        },
-        {
             method_name: 'stripe',
             display_name: 'Stripe Connect',
             description: 'Professional payment processing with advanced features',
@@ -50,6 +40,16 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
             fees_fixed: 0.30,
             processing_time_days: 2,
             min_payout: 25.00,
+            is_available: true
+        },
+        {
+            method_name: 'ach',
+            display_name: 'Direct Bank Transfer',
+            description: 'Direct deposit to your bank account with minimal fees',
+            fees_percentage: 0.5,
+            fees_fixed: 0.25,
+            processing_time_days: 3,
+            min_payout: 50.00,
             is_available: true
         }
     ]);
@@ -76,16 +76,6 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
                 is_available: true
             },
             {
-                method_name: 'ach',
-                display_name: 'Direct Bank Transfer',
-                description: 'Direct deposit to your bank account with minimal fees',
-                fees_percentage: 0.5,
-                fees_fixed: 0.25,
-                processing_time_days: 3,
-                min_payout: 50.00,
-                is_available: true
-            },
-            {
                 method_name: 'stripe',
                 display_name: 'Stripe Connect',
                 description: 'Professional payment processing with advanced features',
@@ -93,6 +83,16 @@ const PaymentSetup = ({ onComplete, onSkip, onClose }) => {
                 fees_fixed: 0.30,
                 processing_time_days: 2,
                 min_payout: 25.00,
+                is_available: true
+            },
+            {
+                method_name: 'ach',
+                display_name: 'Direct Bank Transfer',
+                description: 'Direct deposit to your bank account with minimal fees',
+                fees_percentage: 0.5,
+                fees_fixed: 0.25,
+                processing_time_days: 3,
+                min_payout: 50.00,
                 is_available: true
             }
         ];

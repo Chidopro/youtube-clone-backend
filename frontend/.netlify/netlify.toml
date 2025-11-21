@@ -7,11 +7,11 @@ plugins = []
 [functions."*"]
 
 [build]
-publish = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone - Copy (5)\\frontend\\dist"
+publish = "C:\\Users\\suppo\\Desktop\\youtube-clone - Copy (5)\\frontend\\dist"
 publishOrigin = "config"
 commandOrigin = "config"
-base = "C:\\Users\\chido\\OneDrive\\Desktop\\youtube-clone - Copy (5)\\frontend"
-command = "npm ci && npm run build"
+base = "C:\\Users\\suppo\\Desktop\\youtube-clone - Copy (5)\\frontend"
+command = "npm install --legacy-peer-deps && npm run build"
 
 [build.environment]
 NODE_VERSION = "18"
@@ -75,6 +75,7 @@ force = true
 [redirects.conditions]
 
 [redirects.headers]
+X-Forwarded-Host = "screenmerch.com"
 
 [[redirects]]
 from = "/*"

@@ -215,19 +215,18 @@ const Checkout = () => {
                   
                   return (
                     <div key={i} className="item-card">
+                      <div className="item-details">
+                        <h3 className="item-name">{ci.name || ci.product}</h3>
+                        <div className="item-variants">
+                          {ci.color} • {ci.size}
+                        </div>
+                      </div>
+                      <div className="item-price">${(ci.price || 0).toFixed(2)}</div>
                       {productImage && (
                         <div className="item-image">
                           <img src={productImage} alt={ci.name || ci.product} />
                         </div>
                       )}
-                      <div className="item-details">
-                        <h3 className="item-name">{ci.name || ci.product}</h3>
-                        <div className="item-variants">
-                          {ci.color} • {ci.size}
-                          {ci.edited && <span className="edited-badge">✏️ Edited</span>}
-                        </div>
-                      </div>
-                      <div className="item-price">${(ci.price || 0).toFixed(2)}</div>
                     </div>
                   );
                 })}
@@ -610,6 +609,28 @@ const Checkout = () => {
                   
                   const data = await res.json();
                   if (data?.url) {
+                    // Clear cart immediately when checkout session is created and redirecting to Stripe
+                    // This ensures cart is cleared even if user doesn't return to success page
+                    try {
+                      localStorage.removeItem('cart');
+                      localStorage.removeItem('cart_items');
+                      localStorage.removeItem('cartData');
+                      localStorage.removeItem('persistent_cart');
+                      // Also clear any variations/case-insensitive matches for cart
+                      Object.keys(localStorage).forEach(key => {
+                        if (key.toLowerCase().includes('cart')) {
+                          localStorage.removeItem(key);
+                        }
+                      });
+                      Object.keys(sessionStorage).forEach(key => {
+                        if (key.toLowerCase().includes('cart')) {
+                          sessionStorage.removeItem(key);
+                        }
+                      });
+                      console.log('🛒 Cart cleared before redirecting to Stripe checkout');
+                    } catch (error) {
+                      console.error('Error clearing cart:', error);
+                    }
                     window.location.href = data.url;
                   } else {
                     // Fallback: hit legacy place-order which now returns next_url
@@ -637,6 +658,28 @@ const Checkout = () => {
                       
                       const data2 = await res2.json();
                       if (data2?.next_url) {
+                        // Clear cart immediately when checkout session is created and redirecting to Stripe
+                        // This ensures cart is cleared even if user doesn't return to success page
+                        try {
+                          localStorage.removeItem('cart');
+                          localStorage.removeItem('cart_items');
+                          localStorage.removeItem('cartData');
+                          localStorage.removeItem('persistent_cart');
+                          // Also clear any variations/case-insensitive matches for cart
+                          Object.keys(localStorage).forEach(key => {
+                            if (key.toLowerCase().includes('cart')) {
+                              localStorage.removeItem(key);
+                            }
+                          });
+                          Object.keys(sessionStorage).forEach(key => {
+                            if (key.toLowerCase().includes('cart')) {
+                              sessionStorage.removeItem(key);
+                            }
+                          });
+                          console.log('🛒 Cart cleared before redirecting to Stripe checkout (fallback)');
+                        } catch (error) {
+                          console.error('Error clearing cart:', error);
+                        }
                         window.location.href = data2.next_url;
                       } else {
                         button.innerHTML = originalContent;

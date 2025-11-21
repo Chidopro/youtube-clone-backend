@@ -112,9 +112,10 @@ export class AdminService {
    * @param {number} limit - Items per page
    * @param {string} search - Search term
    * @param {string} status - Filter by status
+   * @param {string} role - Filter by role ('creator', 'customer', 'all')
    * @returns {Promise<Object>} Users data with pagination
    */
-  static async getUsers(page = 0, limit = 20, search = '', status = 'all') {
+  static async getUsers(page = 0, limit = 20, search = '', status = 'all', role = 'all') {
     try {
       console.log('👥 Fetching users from database...');
       let query = supabase
@@ -127,6 +128,11 @@ export class AdminService {
 
       if (status !== 'all') {
         query = query.eq('status', status);
+      }
+
+      // Filter by role - default to showing creators in admin panel
+      if (role !== 'all') {
+        query = query.eq('role', role);
       }
 
       const { data, error, count } = await query
@@ -197,14 +203,25 @@ export class AdminService {
 
   /**
    * Get all subscriptions
+   * @param {string} statusFilter - Filter by status ('all', 'active', 'canceled', etc.)
    * @returns {Promise<Array>} Subscriptions data
    */
-  static async getSubscriptions() {
+  static async getSubscriptions(statusFilter = 'active') {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('user_subscriptions')
         .select('*, users(display_name, email)')
         .order('created_at', { ascending: false });
+
+      // Filter subscriptions by status
+      if (statusFilter === 'all') {
+        // Show all subscriptions including canceled
+        // No filter applied
+      } else {
+        query = query.eq('status', statusFilter);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data || [];
@@ -215,9 +232,71 @@ export class AdminService {
   }
 
   /**
+   * Soft delete a subscription (marks as canceled, preserves all data)
+   * @param {string} subscriptionId - Subscription ID
+   * @returns {Promise<Object>} Result object
+   */
+  static async deleteSubscription(subscriptionId) {
+    try {
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .update({ 
+          status: 'canceled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', subscriptionId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Log admin action
+      await this.logAdminAction('delete_subscription', 'subscription', subscriptionId, {
+        target_subscription_id: subscriptionId
+      });
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error deleting subscription:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Reactivate a canceled subscription
+   * @param {string} subscriptionId - Subscription ID
+   * @returns {Promise<Object>} Result object
+   */
+  static async reactivateSubscription(subscriptionId) {
+    try {
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .update({ 
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', subscriptionId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Log admin action
+      await this.logAdminAction('reactivate_subscription', 'subscription', subscriptionId, {
+        target_subscription_id: subscriptionId
+      });
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error reactivating subscription:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Update user status
    * @param {string} userId - User ID
-   * @param {string} status - New status ('active', 'suspended', 'banned')
+   * @param {string} status - New status ('active', 'suspended', 'banned', 'pending')
    * @returns {Promise<Object>} Result object
    */
   static async updateUserStatus(userId, status) {
@@ -253,6 +332,15 @@ export class AdminService {
       console.error('Error updating user status:', error);
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Approve a pending user (changes status from 'pending' to 'active')
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} Result object
+   */
+  static async approveUser(userId) {
+    return this.updateUserStatus(userId, 'active');
   }
 
   /**
