@@ -1659,8 +1659,10 @@ const ToolsPage = () => {
 
       // Apply feather edge (soft edge effect) - works with both rectangles and circles
       if (featherEdge > 0) {
-        // Calculate feather size
-        const featherSize = Math.min(featherEdge, Math.min(canvas.width, canvas.height) / 4);
+        // Calculate feather size as percentage of smallest dimension (0-50px slider = 0-50% of image)
+        // At 100% (50px on slider), use 50% of smallest dimension for strong feather effect
+        const minDimension = Math.min(canvas.width, canvas.height);
+        const featherSize = (featherEdge / 50) * (minDimension * 0.5); // 0-50px slider maps to 0-50% of image
         
         // Create a mask canvas for feather effect
         const maskCanvas = document.createElement('canvas');
