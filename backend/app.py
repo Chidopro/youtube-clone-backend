@@ -2519,35 +2519,9 @@ def place_order():
             download_link = ""
             if image_url:
                 if image_url.startswith('data:image'):
-                    # AUTOMATIC 300 DPI UPGRADE: Ensure print quality before email
-                    logger.info(f"🖨️ [EMAIL] Ensuring print quality for image {idx} before email attachment")
-                    print_quality_result = ensure_print_quality_image(image_url)
-                    
-                    if print_quality_result['success']:
-                        # Use upgraded image
-                        image_url = print_quality_result['image_data']
-                        if print_quality_result['was_upgraded']:
-                            logger.info(f"✅ [EMAIL] Image {idx} upgraded to print quality: {print_quality_result['dimensions']}")
-                        else:
-                            logger.info(f"ℹ️ [EMAIL] Image {idx} already at print quality or upgrade not needed")
-                        
-                        # Get print quality info and download link if upgrade was successful
-                        upgrade_dimensions = print_quality_result.get('dimensions', {})
-                        if upgrade_dimensions and (upgrade_dimensions.get('width', 0) >= 2000 or upgrade_dimensions.get('height', 0) >= 2000):
-                            width = upgrade_dimensions.get('width', 0)
-                            height = upgrade_dimensions.get('height', 0)
-                            print_quality_info = f"""
-                        <div style='background: #d4edda; border: 1px solid #c3e6cb; padding: 10px; border-radius: 5px; margin-top: 10px;'>
-                            <p style='margin: 0; color: #155724;'><strong>✅ Print Quality: 300 DPI Ready</strong></p>
-                            <p style='margin: 5px 0 0 0; color: #155724; font-size: 0.9em;'>Dimensions: {width} × {height} pixels | Format: PNG</p>
-                        </div>
-                    """
-                            # Create download link for the print-ready image
-                            download_link = f"""
-                        <p style='margin-top: 10px;'>
-                            <a href='{image_url}' download='print_quality_{order_id}_{idx}.png' style='background: #28a745; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block;'>📥 Download Print Quality Image</a>
-                        </p>
-                    """
+                    # Send original screenshot as-is (no automatic 300 DPI upgrade)
+                    # Admin will manually process through 300 DPI generator
+                    logger.info(f"📸 [EMAIL] Sending original screenshot for item {idx} (no auto-upgrade)")
                     
                     # Data URL - convert to attachment for email
                     try:
@@ -2574,20 +2548,14 @@ def place_order():
                             existing_cid = next(att.get('cid') for att in email_attachments if att.get('cid') == cid)
                             cid = existing_cid
                         
-                        # Use BOTH methods for maximum compatibility:
-                        # 1. CID attachment (works in most modern email clients)
-                        # 2. Direct base64 embedding (works as fallback)
-                        # Many email clients support base64 data URLs directly, so embed it inline
-                        direct_base64_img = f"<img src='{image_url}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
-                        
-                        # Also include CID reference for email clients that prefer attachments
+                        # Use CID attachment method (like thumbnails) - Gmail blocks base64 images in body
+                        # CID embedding shows image in email body via attachment, matching thumbnail behavior
                         cid_img_tag = f"<img src='cid:{cid}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
                         
-                        # Use direct base64 embedding as primary (most compatible), CID as fallback
-                        # Most email clients (Gmail, Outlook, Proton Mail) support inline base64 images
-                        image_tag = f"{direct_base64_img}"
+                        # Use CID method to match how thumbnails (URLs) are displayed
+                        image_tag = f"{cid_img_tag}"
                         logger.info(f"✅ Converted data URL to attachment CID: {cid}, filename: screenshot_{idx}.{image_format}")
-                        logger.info(f"✅ Also embedded directly as base64 (length: {len(image_url)} chars)")
+                        logger.info(f"✅ Using CID embedding (matching thumbnail display method)")
                     except Exception as e:
                         logger.warning(f"⚠️ Failed to convert data URL to attachment: {str(e)}")
                         # Fallback: just provide a note
@@ -2645,7 +2613,7 @@ def place_order():
                 <h3>📝 Quick Instructions:</h3>
                 <ol>
                     <li><strong>View Order:</strong> Click "View Order Details" to see full order information</li>
-                    <li><strong>Print Quality:</strong> ✅ Images are automatically upgraded to 300 DPI! Click "Generate Print Quality Images" to access the tools page for additional processing (edge feather, corner radius, etc.)</li>
+                    <li><strong>Print Quality:</strong> Use "Generate Print Quality Images" to process images to 300 DPI and apply additional processing (edge feather, corner radius, etc.)</li>
                     <li><strong>Video URL:</strong> The print quality tool will automatically load the order details, or you can copy the video URL from order details</li>
                     <li><strong>Timestamp:</strong> The screenshot timestamp is shown above and will be used in the print quality tool</li>
                 </ol>
@@ -2936,6 +2904,7 @@ def success():
                 
                 # Collect images for email attachments
                 email_attachments = []
+                attachment_cids = {}  # Track CIDs for each item
                 
                 for idx, item in enumerate(cart):
                     product_name = item.get('product', 'N/A')
@@ -2951,39 +2920,48 @@ def success():
                     download_link = ""
                     if image_url:
                         if image_url.startswith('data:image'):
-                            # AUTOMATIC 300 DPI UPGRADE: Ensure print quality before email
-                            logger.info(f"🖨️ [SUCCESS] Ensuring print quality for image {idx} before email attachment")
-                            print_quality_result = ensure_print_quality_image(image_url)
+                            # Send original screenshot as-is (no automatic 300 DPI upgrade)
+                            # Admin will manually process through 300 DPI generator
+                            logger.info(f"📸 [SUCCESS] Sending original screenshot for item {idx} (no auto-upgrade)")
                             
-                            if print_quality_result['success']:
-                                # Use upgraded image
-                                image_url = print_quality_result['image_data']
-                                if print_quality_result['was_upgraded']:
-                                    logger.info(f"✅ [SUCCESS] Image {idx} upgraded to print quality: {print_quality_result['dimensions']}")
-                                else:
-                                    logger.info(f"ℹ️ [SUCCESS] Image {idx} already at print quality or upgrade not needed")
+                            # Data URL - convert to attachment for email (matching /api/place-order logic)
+                            try:
+                                # Parse data URL: data:image/png;base64,<data>
+                                header, data = image_url.split(',', 1)
+                                image_format = header.split('/')[1].split(';')[0]  # png, jpeg, etc.
+                                image_data = data
                                 
-                                # Get print quality info and download link if upgrade was successful
-                                upgrade_dimensions = print_quality_result.get('dimensions', {})
-                                if upgrade_dimensions and (upgrade_dimensions.get('width', 0) >= 2000 or upgrade_dimensions.get('height', 0) >= 2000):
-                                    width = upgrade_dimensions.get('width', 0)
-                                    height = upgrade_dimensions.get('height', 0)
-                                    print_quality_info = f"""
-                        <div style='background: #d4edda; border: 1px solid #c3e6cb; padding: 10px; border-radius: 5px; margin-top: 10px;'>
-                            <p style='margin: 0; color: #155724;'><strong>✅ Print Quality: 300 DPI Ready</strong></p>
-                            <p style='margin: 5px 0 0 0; color: #155724; font-size: 0.9em;'>Dimensions: {width} × {height} pixels | Format: PNG</p>
-                        </div>
-                    """
-                                    # Create download link for the print-ready image
-                                    download_link = f"""
-                        <p style='margin-top: 10px;'>
-                            <a href='{image_url}' download='print_quality_{order_id}_{idx}.png' style='background: #28a745; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block;'>📥 Download Print Quality Image</a>
-                        </p>
-                    """
-                            
-                            # Data URL - embed directly as base64 (most compatible)
-                            image_tag = f"<img src='{image_url}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
-                            logger.info(f"📸 [SUCCESS] Embedded base64 screenshot for item {idx}")
+                                # Generate CID for embedding
+                                cid = f"screenshot_{order_id}_{idx}"
+                                attachment_cids[idx] = cid
+                                
+                                # Add as attachment (Resend format: content should be base64 string)
+                                # image_data is already the base64 part from data URL
+                                # Only add once per unique screenshot (don't duplicate)
+                                if cid not in [att.get('cid') for att in email_attachments]:
+                                    email_attachments.append({
+                                        "filename": f"screenshot_{idx}.{image_format}",
+                                        "content": image_data,  # Already base64 encoded from data URL
+                                        "cid": cid
+                                    })
+                                else:
+                                    # Reuse existing CID if screenshot already attached
+                                    existing_cid = next(att.get('cid') for att in email_attachments if att.get('cid') == cid)
+                                    cid = existing_cid
+                                
+                                # Use CID attachment method (like thumbnails) - Gmail blocks base64 images in body
+                                # CID embedding shows image in email body via attachment, matching thumbnail behavior
+                                cid_img_tag = f"<img src='cid:{cid}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
+                                
+                                # Use CID method to match how thumbnails (URLs) are displayed
+                                image_tag = f"{cid_img_tag}"
+                                logger.info(f"✅ [SUCCESS] Converted data URL to attachment CID: {cid}, filename: screenshot_{idx}.{image_format}")
+                                logger.info(f"✅ [SUCCESS] Using CID embedding (matching thumbnail display method)")
+                            except Exception as e:
+                                logger.warning(f"⚠️ [SUCCESS] Failed to convert data URL to attachment: {str(e)}")
+                                # Fallback: just embed directly as base64
+                                image_tag = f"<img src='{image_url}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
+                                logger.info(f"📸 [SUCCESS] Embedded base64 screenshot for item {idx} (fallback mode)")
                         else:
                             # Regular URL - use directly
                             image_tag = f"<img src='{image_url}' alt='Product Image' style='max-width: 300px; border-radius: 6px;'>"
@@ -3015,8 +2993,7 @@ def success():
                 html_body += "<br>"
                 html_body += "<hr>"
                 html_body += "<h2>🖨️ Print Quality Images</h2>"
-                html_body += "<p><strong>✅ Images are automatically upgraded to 300 DPI print quality!</strong></p>"
-                html_body += "<p>All images in this email are print-ready (300 DPI, PNG format). You can download them directly from above, or use the generator for additional processing:</p>"
+                html_body += "<p><strong>📸 Screenshot Images:</strong> Original screenshots are included. Use the generator below to process to 300 DPI print quality and apply additional processing:</p>"
                 html_body += f"<p><strong>Web Interface (for additional processing):</strong> <a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}'>https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>"
                 html_body += "<br>"
                 html_body += "<p><small>This is an automated notification from ScreenMerch</small></p>"
@@ -3031,6 +3008,26 @@ def success():
                         "subject": f"🛍️ New ScreenMerch Order #{order_number}",
                         "html": html_body,
                     }
+                    
+                    # Add attachments if any (for base64 screenshots)
+                    if email_attachments:
+                        # Convert to Resend format
+                        resend_attachments = []
+                        for att in email_attachments:
+                            resend_att = {
+                                "filename": att.get("filename", "screenshot.png"),
+                                "content": att.get("content", ""),
+                            }
+                            # Add contentId if CID exists (for inline images)
+                            if att.get("cid"):
+                                resend_att["contentId"] = att.get("cid")
+                            resend_attachments.append(resend_att)
+                        
+                        email_data["attachments"] = resend_attachments
+                        logger.info(f"📎 [SUCCESS] Adding {len(resend_attachments)} image attachments to email")
+                        logger.info(f"📎 [SUCCESS] Attachment CIDs: {[att.get('contentId') for att in resend_attachments]}")
+                    else:
+                        logger.warning(f"⚠️ [SUCCESS] No email attachments created - screenshots might be missing")
                     
                     logger.info(f"📧 [SUCCESS] Attempting to send email to {MAIL_TO} from {RESEND_FROM}")
                     logger.info(f"📧 [SUCCESS] Email subject: {email_data['subject']}")
@@ -3511,20 +3508,9 @@ def stripe_webhook():
                     logger.info(f"📸 [WEBHOOK] Item {i} screenshot check: selected_screenshot={bool(item.get('selected_screenshot'))}, screenshot={bool(item.get('screenshot'))}, img={bool(item.get('img'))}, thumbnail={bool(item.get('thumbnail'))}, found={bool(screenshot_url)}")
                     if screenshot_url:
                         if isinstance(screenshot_url, str) and 'data:image' in screenshot_url:
-                            # AUTOMATIC 300 DPI UPGRADE: Ensure print quality before email
-                            logger.info(f"🖨️ [WEBHOOK] Ensuring print quality for item {i} screenshot before email attachment")
-                            print_quality_result = ensure_print_quality_image(screenshot_url)
-                            
-                            if print_quality_result['success']:
-                                # Use upgraded image
-                                screenshot_url = print_quality_result['image_data']
-                                upgrade_dimensions = print_quality_result.get('dimensions', {})
-                                was_upgraded = print_quality_result.get('was_upgraded', False)
-                                
-                                if was_upgraded:
-                                    logger.info(f"✅ [WEBHOOK] Item {i} screenshot upgraded to print quality: {upgrade_dimensions}")
-                                else:
-                                    logger.info(f"ℹ️ [WEBHOOK] Item {i} screenshot already at print quality or upgrade not needed")
+                            # Send original screenshot as-is (no automatic 300 DPI upgrade)
+                            # Admin will manually process through 300 DPI generator
+                            logger.info(f"📸 [WEBHOOK] Sending original screenshot for item {i} (no auto-upgrade)")
                             
                             # This is a base64 screenshot - convert to email attachment
                             try:
@@ -3546,22 +3532,15 @@ def stripe_webhook():
                                     })
                                     logger.info(f"📎 [WEBHOOK] Added screenshot attachment {i} with CID: {cid}")
                                 
-                                # Determine note based on upgrade status
-                                if upgrade_dimensions and (upgrade_dimensions.get('width', 0) >= 2000 or upgrade_dimensions.get('height', 0) >= 2000):
-                                    note = f"✅ 300 DPI Print Ready ({upgrade_dimensions.get('width', 0)} × {upgrade_dimensions.get('height', 0)} pixels)"
-                                else:
-                                    note = 'User-selected screenshot (base64)'
-                                
-                                # Use BOTH CID and base64 - different email clients support different methods
-                                # Many email clients support base64 directly, so prioritize that
-                                # CID is for clients that prefer attachments
+                                # Use CID method (like thumbnails) - Gmail blocks base64 images in body
+                                # CID embedding shows image in email body via attachment, matching thumbnail behavior
                                 print_quality_images.append({
                                     'index': i,
-                                    'preview': screenshot_url,  # Use base64 directly (works in more email clients)
-                                    'cid': f"cid:{cid}",  # Also provide CID for clients that prefer attachments
-                                    'fallback_base64': screenshot_url,  # Same as preview
-                                    'note': note,
-                                    'dimensions': upgrade_dimensions,
+                                    'preview': f"cid:{cid}",  # Use CID to match thumbnail display method
+                                    'cid': f"cid:{cid}",
+                                    'fallback_base64': screenshot_url,  # Keep as fallback if needed
+                                    'note': 'User-selected screenshot (original, not upgraded)',
+                                    'dimensions': {},
                                     'download_url': screenshot_url  # Store for download link
                                 })
                             except Exception as e:
@@ -3739,7 +3718,7 @@ def stripe_webhook():
                     <h3>📝 Quick Instructions:</h3>
                     <ol>
                         <li><strong>View Order:</strong> Click "View Order Details" to see full order information</li>
-                        <li><strong>Print Quality:</strong> ✅ Images are automatically upgraded to 300 DPI! Download directly from above, or use the generator for additional processing (edge feather, corner radius)</li>
+                        <li><strong>Print Quality:</strong> Use the generator to process images to 300 DPI and apply additional processing (edge feather, corner radius)</li>
                         <li><strong>Video URL:</strong> Copy the video URL from order details and paste it into the print quality tool</li>
                         <li><strong>Timestamp:</strong> Use the timestamp shown above in the print quality tool</li>
                     </ol>
