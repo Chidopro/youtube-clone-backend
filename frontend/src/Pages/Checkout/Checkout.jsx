@@ -210,22 +210,33 @@ const Checkout = () => {
               <h2>Order Items</h2>
               <div className="items-list">
                 {items.map((ci, i) => {
-                  // Get the screenshot/image - check multiple fields
-                  const productImage = ci.screenshot || ci.selected_screenshot || ci.thumbnail || ci.image || ci.img;
+                  // Get product image and screenshot separately (matching cart display)
+                  const productImage = ci.image || ci.img;
+                  const screenshot = ci.screenshot || ci.selected_screenshot || ci.thumbnail;
                   
                   return (
                     <div key={i} className="item-card">
-                      <div className="item-details">
-                        <h3 className="item-name">{ci.name || ci.product}</h3>
+                      <div className="item-image-wrapper">
+                        {productImage && (
+                          <img 
+                            src={productImage.includes('?') ? `${productImage}&v=${Date.now()}` : `${productImage}?v=${Date.now()}`} 
+                            alt={ci.name || ci.product}
+                          />
+                        )}
                         <div className="item-variants">
                           {ci.color} • {ci.size}
                         </div>
                       </div>
-                      <div className="item-price">${(ci.price || 0).toFixed(2)}</div>
-                      {productImage && (
-                        <div className="item-image">
-                          <img src={productImage} alt={ci.name || ci.product} />
-                        </div>
+                      <div className="item-info">
+                        <h3 className="item-name">{ci.name || ci.product}</h3>
+                        <div className="item-price">${(ci.price || 0).toFixed(2)}</div>
+                      </div>
+                      {screenshot && (
+                        <img 
+                          src={screenshot} 
+                          alt="Screenshot" 
+                          className="item-screenshot"
+                        />
                       )}
                     </div>
                   );
