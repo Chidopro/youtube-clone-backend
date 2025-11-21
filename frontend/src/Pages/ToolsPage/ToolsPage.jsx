@@ -1664,11 +1664,14 @@ const ToolsPage = () => {
         
         // Create a mask canvas for feather effect
         const maskCanvas = document.createElement('canvas');
-        const maskCtx = maskCanvas.getContext('2d');
+        const maskCtx = maskCanvas.getContext('2d', { alpha: true });
         maskCanvas.width = canvas.width;
         maskCanvas.height = canvas.height;
         
-        // Start with a fully opaque white shape (circle or rectangle)
+        // Clear mask canvas to transparent
+        maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+        
+        // Start with a fully opaque white shape (circle or rectangle with same corner radius as image)
         maskCtx.fillStyle = 'white';
         if (isCircle) {
           // For circle, create a white circle
@@ -1681,8 +1684,12 @@ const ToolsPage = () => {
             Math.PI * 2
           );
           maskCtx.fill();
+        } else if (effectiveCornerRadius > 0) {
+          // For rectangle with rounded corners, create a white rounded rectangle matching the image shape
+          drawRoundedRect(maskCtx, 0, 0, canvas.width, canvas.height, effectiveCornerRadius);
+          maskCtx.fill();
         } else {
-          // For rectangle, create a white rectangle
+          // For rectangle without rounded corners, create a white rectangle
           maskCtx.fillRect(0, 0, canvas.width, canvas.height);
         }
         
@@ -1707,8 +1714,8 @@ const ToolsPage = () => {
           maskCtx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
           maskCtx.fill();
         } else {
-          // For rectangular images, use distance-based mask for smooth corners
-          // This approach calculates distance from each pixel to the nearest edge
+          // For rectangular images (with or without rounded corners), use distance-based mask
+          // This approach calculates distance from each pixel to the nearest edge/corner
           // and creates a smooth gradient that works perfectly on corners
           
           // Get image data to manipulate pixels directly
@@ -1716,16 +1723,54 @@ const ToolsPage = () => {
           const data = imageData.data;
           
           // Calculate distance from each pixel to the nearest edge
+          // For rounded rectangles, we need to account for corner radius
           for (let y = 0; y < maskCanvas.height; y++) {
             for (let x = 0; x < maskCanvas.width; x++) {
-              // Calculate distance to each edge
-              const distTop = y;
-              const distBottom = maskCanvas.height - y;
-              const distLeft = x;
-              const distRight = maskCanvas.width - x;
+              let minDist;
               
-              // Find minimum distance to any edge (this handles corners automatically)
-              const minDist = Math.min(distTop, distBottom, distLeft, distRight);
+              if (effectiveCornerRadius > 0) {
+                // For rounded rectangles, calculate distance to the rounded shape
+                // Check if we're in a corner region
+                const distToLeft = x;
+                const distToRight = maskCanvas.width - x;
+                const distToTop = y;
+                const distToBottom = maskCanvas.height - y;
+                
+                // Check if we're in the corner region (within corner radius of both edges)
+                const inTopLeftCorner = distToLeft < effectiveCornerRadius && distToTop < effectiveCornerRadius;
+                const inTopRightCorner = distToRight < effectiveCornerRadius && distToTop < effectiveCornerRadius;
+                const inBottomLeftCorner = distToLeft < effectiveCornerRadius && distToBottom < effectiveCornerRadius;
+                const inBottomRightCorner = distToRight < effectiveCornerRadius && distToBottom < effectiveCornerRadius;
+                
+                if (inTopLeftCorner || inTopRightCorner || inBottomLeftCorner || inBottomRightCorner) {
+                  // In a corner - calculate distance to the arc
+                  let cornerCenterX, cornerCenterY;
+                  if (inTopLeftCorner) {
+                    cornerCenterX = effectiveCornerRadius;
+                    cornerCenterY = effectiveCornerRadius;
+                  } else if (inTopRightCorner) {
+                    cornerCenterX = maskCanvas.width - effectiveCornerRadius;
+                    cornerCenterY = effectiveCornerRadius;
+                  } else if (inBottomLeftCorner) {
+                    cornerCenterX = effectiveCornerRadius;
+                    cornerCenterY = maskCanvas.height - effectiveCornerRadius;
+                  } else {
+                    cornerCenterX = maskCanvas.width - effectiveCornerRadius;
+                    cornerCenterY = maskCanvas.height - effectiveCornerRadius;
+                  }
+                  
+                  const distToCornerCenter = Math.sqrt(
+                    Math.pow(x - cornerCenterX, 2) + Math.pow(y - cornerCenterY, 2)
+                  );
+                  minDist = Math.max(0, effectiveCornerRadius - distToCornerCenter);
+                } else {
+                  // Not in a corner - use standard edge distance
+                  minDist = Math.min(distToTop, distToBottom, distToLeft, distToRight);
+                }
+              } else {
+                // No rounded corners - simple edge distance
+                minDist = Math.min(y, maskCanvas.height - y, x, maskCanvas.width - x);
+              }
               
               // Calculate alpha based on distance from edge
               // Pixels at the edge (minDist = 0) should be fully transparent (alpha = 0)
