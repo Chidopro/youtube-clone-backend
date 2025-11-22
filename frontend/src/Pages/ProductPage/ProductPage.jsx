@@ -322,6 +322,7 @@ const ProductPage = ({ sidebar }) => {
     };
     const next = [...cartItems, item];
     persistCart(next);
+    console.log('✅ Item added to cart, showing modal...');
     setShowAddedToCartModal(true);
   };
 
