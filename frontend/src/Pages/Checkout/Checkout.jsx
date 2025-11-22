@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
 import './Checkout.css';
 
 const Checkout = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [subtotal, setSubtotal] = useState(0);
   const [shipping, setShipping] = useState({ cost: 0, method: 'Standard Shipping', loading: false, error: '', calculated: false });
@@ -526,6 +527,9 @@ const Checkout = () => {
                     screenshot_type: item.selected_screenshot ? (item.selected_screenshot.startsWith('data:image') ? 'base64' : (item.selected_screenshot.startsWith('http') ? 'URL' : 'other')) : 'none'
                   })));
                   
+                  // Get user email from URL params or localStorage
+                  const userEmail = searchParams.get('email') || localStorage.getItem('user_email') || '';
+                  
                   // Build payload with shipping_address FIRST to ensure it's included
                   const payload = {
                     shipping_address: shippingAddress,  // Put shipping_address FIRST
@@ -536,6 +540,7 @@ const Checkout = () => {
                     videoUrl: items[0]?.video_url || null,
                     videoTitle: items[0]?.video_title || null,
                     creatorName: items[0]?.creator_name || null,
+                    user_email: userEmail,  // Add user email to payload
                   };
                   
                   // Add selected screenshot ONLY if it's a URL (never include base64 images in payload)

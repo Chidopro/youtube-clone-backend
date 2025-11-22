@@ -3360,21 +3360,32 @@ def create_checkout_session():
             logger.error("❌ No valid items in cart to check out")
             return jsonify({"error": "No valid items in cart to check out."}), 400
 
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            mode="payment",
-            line_items=line_items,
-            success_url=f"https://screenmerch.fly.dev/success?order_id={order_id}",
-            cancel_url=f"https://screenmerch.com/checkout/{product_id or ''}",
+        # Pre-populate customer email if available from frontend
+        session_params = {
+            "payment_method_types": ["card"],
+            "mode": "payment",
+            "line_items": line_items,
+            "success_url": f"https://screenmerch.fly.dev/success?order_id={order_id}",
+            "cancel_url": f"https://screenmerch.com/checkout/{product_id or ''}",
             # A2P 10DLC Compliance: Collect phone number for SMS notifications
-            phone_number_collection={"enabled": True},
-            metadata={
+            "phone_number_collection": {"enabled": True},
+            "metadata": {
                 "order_id": order_id,  # Only store the small order ID in Stripe
                 "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
                 "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
                 "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
             }
-        )
+        }
+        
+        # Pre-populate customer email if available (user can still edit it in Stripe)
+        user_email = data.get("user_email", data.get("customer_email", ""))
+        if user_email and user_email.strip():
+            session_params["customer_email"] = user_email.strip()
+            logger.info(f"📧 [CHECKOUT] Pre-populating customer email in Stripe session: {user_email}")
+        else:
+            logger.info(f"📧 [CHECKOUT] No customer email provided - Stripe will collect it during checkout (email_collection enabled)")
+        
+        session = stripe.checkout.Session.create(**session_params)
         response = jsonify({"url": session.url})
         origin = request.headers.get('Origin', '*')
         response.headers.add('Access-Control-Allow-Origin', origin)
@@ -3453,6 +3464,41 @@ def stripe_webhook():
             customer_details = session.get("customer_details", {})
             customer_name = customer_details.get("name", "Not provided")
             customer_email = customer_details.get("email", "Not provided")
+            
+            # Log customer email extraction for debugging
+            logger.info(f"📧 [WEBHOOK] ===== CUSTOMER EMAIL EXTRACTION DEBUG =====")
+            logger.info(f"📧 [WEBHOOK] customer_details.email: '{customer_email}'")
+            logger.info(f"📧 [WEBHOOK] customer_details.name: '{customer_name}'")
+            logger.info(f"📧 [WEBHOOK] Full customer_details object: {customer_details}")
+            logger.info(f"📧 [WEBHOOK] session.customer_email: '{session.get('customer_email', 'Not in session')}'")
+            logger.info(f"📧 [WEBHOOK] session.customer: '{session.get('customer', 'Not in session')}'")
+            
+            # Try alternative locations for email if not found in customer_details
+            if not customer_email or customer_email == "Not provided" or customer_email == "":
+                # Try session.customer_email (direct field)
+                alt_email = session.get("customer_email")
+                if alt_email and alt_email.strip():
+                    customer_email = alt_email.strip()
+                    logger.info(f"📧 [WEBHOOK] Found email in session.customer_email: '{customer_email}'")
+                
+                # Try order_data as fallback (email might have been stored when order was created)
+                if (not customer_email or customer_email == "Not provided" or customer_email == "") and order_data:
+                    order_customer_email = order_data.get("customer_email", "")
+                    if order_customer_email and order_customer_email.strip():
+                        customer_email = order_customer_email.strip()
+                        logger.info(f"📧 [WEBHOOK] Using customer_email from order_data: '{customer_email}'")
+                
+                # Final check - log if still not found
+                if not customer_email or customer_email == "Not provided" or customer_email == "":
+                    logger.error(f"❌ [WEBHOOK] Customer email NOT FOUND in any location!")
+                    logger.error(f"❌ [WEBHOOK] customer_details: {customer_details}")
+                    logger.error(f"❌ [WEBHOOK] session.customer_email: {session.get('customer_email')}")
+                    logger.error(f"❌ [WEBHOOK] order_data.customer_email: {order_data.get('customer_email') if order_data else 'N/A'}")
+                    logger.error(f"❌ [WEBHOOK] Full session object (first 50 keys): {list(session.keys())[:50]}")
+            else:
+                logger.info(f"✅ [WEBHOOK] Customer email found: '{customer_email}'")
+            
+            logger.info(f"📧 [WEBHOOK] ===== END EMAIL EXTRACTION DEBUG =====")
             
             # Get shipping address from Stripe session (handle None case)
             shipping_details = session.get("shipping_details")
@@ -3816,14 +3862,135 @@ def stripe_webhook():
                     logger.error("❌ [WEBHOOK] MAIL_TO not configured; order email not sent")
                 logger.warning("❌ [WEBHOOK] Email service not configured; order email not sent")
             
+            # Send customer confirmation email after payment is confirmed
+            if customer_email and customer_email != "Not provided" and RESEND_API_KEY:
+                logger.info(f"📧 [WEBHOOK] Preparing customer confirmation email for {customer_email}")
+                
+                # Build customer-friendly confirmation email
+                customer_html_body = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h1 style="color: #333;">🎉 Thank You for Your Order!</h1>
+                    <p>Hi there,</p>
+                    <p>We've received your order and payment has been confirmed. We're getting it ready for you!</p>
+                    
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h2 style="margin-top: 0; color: #333;">Order Details</h2>
+                        <p><strong>Order Number:</strong> #{order_id[-8:].upper()}</p>
+                        <p><strong>Order ID:</strong> {order_id}</p>
+                        <p><strong>Items:</strong> {len(cart)}</p>
+                        <p><strong style="font-size: 18px;">Total:</strong> <strong style="font-size: 18px; color: #007bff;">${total_amount:.2f}</strong></p>
+                    </div>
+                    
+                    <h2 style="color: #333;">Order Items</h2>
+                """
+                
+                # Add order items to customer email
+                for item in cart:
+                    product_name = item.get('product', 'N/A')
+                    color = (item.get('variants') or {}).get('color', 'N/A')
+                    size = (item.get('variants') or {}).get('size', 'N/A')
+                    price = item.get('price', 0)
+                    note = item.get('note', '')
+                    
+                    customer_html_body += f"""
+                    <div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+                        <h3 style="margin-top: 0; color: #333;">{product_name}</h3>
+                        <p><strong>Color:</strong> {color}</p>
+                        <p><strong>Size:</strong> {size}</p>
+                        <p><strong>Price:</strong> ${price:.2f}</p>
+                        {f'<p><strong>Note:</strong> {note}</p>' if note else ''}
+                    </div>
+                    """
+                
+                # Add video information if available
+                if order_data.get('video_title') and order_data.get('video_title') != 'Unknown Video':
+                    customer_html_body += f"""
+                    <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #333;">📹 Video Information</h3>
+                        <p><strong>Video:</strong> {order_data['video_title']}</p>
+                        <p><strong>Creator:</strong> {order_data.get('creator_name', 'Unknown Creator')}</p>
+                    </div>
+                    """
+                
+                # Add shipping address if available
+                if shipping_details and shipping_details.get('address'):
+                    addr = shipping_details['address']
+                    customer_html_body += f"""
+                    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #333;">📦 Shipping Address</h3>
+                        <p>{customer_name}<br>
+                        {addr.get('line1', '')}<br>
+                        {addr.get('line2', '') + '<br>' if addr.get('line2') else ''}
+                        {addr.get('city', '')}, {addr.get('state', '')} {addr.get('postal_code', '')}<br>
+                        {addr.get('country', '')}</p>
+                    </div>
+                    """
+                
+                customer_html_body += """
+                    <p style="margin-top: 30px;">We'll send you another email when your order ships!</p>
+                    <p>If you have any questions, please don't hesitate to reach out to us.</p>
+                    <p>Best regards,<br>The ScreenMerch Team</p>
+                    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                    <p style="color: #666; font-size: 12px;">This is an automated confirmation email. Please do not reply to this email.</p>
+                </div>
+                """
+                
+                try:
+                    customer_email_data = {
+                        "from": RESEND_FROM,
+                        "to": [customer_email],
+                        "subject": f"🎉 Order Confirmation - #{order_id[-8:].upper()}",
+                        "html": customer_html_body,
+                    }
+                    
+                    logger.info(f"📧 [WEBHOOK] Sending customer confirmation email to {customer_email}")
+                    customer_resp = requests.post(
+                        "https://api.resend.com/emails",
+                        headers={
+                            "Authorization": f"Bearer {RESEND_API_KEY}",
+                            "Content-Type": "application/json",
+                        },
+                        json=customer_email_data,
+                        timeout=30
+                    )
+                    
+                    if customer_resp.status_code == 200:
+                        logger.info(f"✅ [WEBHOOK] Customer confirmation email sent successfully to {customer_email}")
+                        try:
+                            resp_data = customer_resp.json()
+                            logger.info(f"📧 [WEBHOOK] Customer email ID: {resp_data.get('id', 'unknown')}")
+                            logger.info(f"📧 [WEBHOOK] Full Resend response: {resp_data}")
+                        except Exception as e:
+                            logger.warning(f"⚠️ [WEBHOOK] Could not parse customer email response: {e}")
+                    else:
+                        error_text = customer_resp.text
+                        logger.error(f"❌ [WEBHOOK] Failed to send customer confirmation email ({customer_resp.status_code}): {error_text}")
+                        try:
+                            error_json = customer_resp.json()
+                            logger.error(f"❌ [WEBHOOK] Resend error details: {error_json}")
+                        except:
+                            pass
+                except Exception as e:
+                    logger.error(f"❌ [WEBHOOK] Error sending customer confirmation email: {str(e)}")
+                    import traceback
+                    logger.error(f"Full traceback: {traceback.format_exc()}")
+            elif not customer_email or customer_email == "Not provided":
+                logger.warning(f"⚠️ [WEBHOOK] No customer email available - skipping customer confirmation email")
+            elif not RESEND_API_KEY:
+                logger.warning(f"⚠️ [WEBHOOK] RESEND_API_KEY not configured - skipping customer confirmation email")
+            
             # Update order status in database to 'paid' (regardless of email status)
             try:
-                supabase.table('orders').update({
+                update_data = {
                     'status': 'paid',
                     'customer_phone': customer_phone,
                     'stripe_session_id': session.get('id'),
                     'payment_intent_id': session.get('payment_intent')
-                }).eq('order_id', order_id).execute()
+                }
+                # Update customer_email in database if we have it from Stripe
+                if customer_email and customer_email != "Not provided":
+                    update_data['customer_email'] = customer_email
+                supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
                 logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
             except Exception as db_error:
                 logger.error(f"❌ Failed to update order status in database: {str(db_error)}")
