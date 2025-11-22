@@ -161,27 +161,14 @@
     <div class="container">
         <h1>🖨️ Print Quality Image Generator</h1>
         
-        <div class="info-box">
-            <h3>📋 How to Use:</h3>
-            <div style="margin-bottom: 15px;">
-                <label>
-                    <input type="radio" name="inputMode" value="image" checked> 
-                    <strong>Image Mode:</strong> Use order screenshot automatically
-                </label>
-                <br><br>
-                <label>
-                    <input type="radio" name="inputMode" value="video"> 
-                    <strong>Video Mode:</strong> Use video URL + timestamp
-                </label>
+        <!-- Product Information Display (always visible) -->
+        <div id="productInfoDisplay" style="background: #e7f3ff; border: 2px solid #0066cc; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: none;">
+            <h3 style="margin-top: 0; color: #0066cc; font-size: 18px;">🛍️ Order Item Information</h3>
+            <div id="productInfoContent" style="font-size: 16px; line-height: 1.8;">
+                <div><strong>Product:</strong> <span id="productName">-</span></div>
+                <div><strong>Color:</strong> <span id="productColor">-</span></div>
+                <div><strong>Size:</strong> <span id="productSize">-</span></div>
             </div>
-            <ol>
-                <li><strong>Image Mode:</strong> Order ID and screenshot are loaded automatically when accessed from order details</li>
-                <li><strong>Video Mode:</strong> Enter video URL and timestamp manually</li>
-                <li>Optionally set crop area (leave blank for full frame)</li>
-                <li>Click "Generate Print Quality Image"</li>
-                <li>Download the high-quality PNG file for Printify</li>
-            </ol>
-            <p><strong>Output:</strong> 300 DPI, PNG format, 2400x3000+ pixels</p>
         </div>
         
         <form id="printQualityForm">
@@ -199,7 +186,6 @@
                     <select id="productSelector" name="productSelector" style="width: 100%; padding: 12px; border: 2px solid #ffc107; border-radius: 5px; font-size: 16px; background: white; font-weight: bold;">
                         <option value="">-- Select Product --</option>
                     </select>
-                    <small id="productInfo" style="display: block; margin-top: 8px; color: #856404; font-weight: 500;"></small>
                 </div>
                 
                 <div class="form-group">
@@ -290,8 +276,9 @@
                 
                 <div class="form-group" id="featherRadiusGroup" style="display: none;">
                     <label for="featherRadius">Feather Intensity:</label>
-                    <input type="range" id="featherRadius" name="featherRadius" min="5" max="25" value="12" style="width: 100%;">
-                    <small style="color: #666;">Adjust the softness of edges (5-25 pixels)</small>
+                    <input type="range" id="featherRadius" name="featherRadius" min="0" max="100" value="0" style="width: 100%;">
+                    <small style="color: #666;">Adjust the softness of edges (0-100%, higher = more pronounced feather)</small>
+                    <div id="featherRadiusValue" style="margin-top: 5px; font-weight: bold; color: #17a2b8;">0%</div>
                 </div>
                 
                 <button type="button" id="applyFeatherBtn" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; display: none;">
@@ -314,9 +301,10 @@
                 </div>
                 
                 <div class="form-group" id="cornerRadiusGroup" style="display: none;">
-                    <label for="cornerRadius">Corner Radius (pixels):</label>
-                    <input type="range" id="cornerRadius" name="cornerRadius" min="5" max="50" value="15" style="width: 100%;">
-                    <small style="color: #666;">Adjust the roundness of corners (5-50 pixels)</small>
+                    <label for="cornerRadius">Corner Radius:</label>
+                    <input type="range" id="cornerRadius" name="cornerRadius" min="0" max="100" value="0" style="width: 100%;">
+                    <small style="color: #666;">Adjust the roundness of corners (0-100%, 100% = perfect circle)</small>
+                    <div id="cornerRadiusValue" style="margin-top: 5px; font-weight: bold; color: #28a745;">0px</div>
                 </div>
                 
                 <button type="button" id="applyRadiusBtn" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; display: none;">
@@ -346,20 +334,54 @@
         const urlOrderId = new URLSearchParams(window.location.search).get('order_id');
         const orderId = templateOrderId && templateOrderId !== 'None' && templateOrderId !== '' && templateOrderId !== 'null' ? templateOrderId : urlOrderId;
         let orderScreenshot = null;
+        let originalScreenshot = null;  // Store original image for independent effect application
+        let currentImageDimensions = { width: 0, height: 0 };
+        let currentFeatherValue = 0;  // Track current feather value
+        let currentCornerRadiusValue = 0;  // Track current corner radius value
+        
+        // Helper function to get image dimensions from base64 data URL
+        function getImageDimensions(imageDataUrl) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = function() {
+                    resolve({ width: this.width, height: this.height });
+                };
+                img.onerror = function() {
+                    resolve({ width: 0, height: 0 });
+                };
+                img.src = imageDataUrl;
+            });
+        }
         let allProducts = [];  // Store all products from order
+        
+        // Function to update product info display
+        function updateProductInfoDisplay(product) {
+            const productInfoDisplay = document.getElementById('productInfoDisplay');
+            const productName = document.getElementById('productName');
+            const productColor = document.getElementById('productColor');
+            const productSize = document.getElementById('productSize');
+            
+            if (product && productInfoDisplay && productName && productColor && productSize) {
+                productName.textContent = product.product || 'N/A';
+                productColor.textContent = product.color || 'N/A';
+                productSize.textContent = product.size || 'N/A';
+                productInfoDisplay.style.display = 'block';
+            }
+        }
         
         // Function to update screenshot based on selected product
         function updateScreenshotForProduct(productIndex) {
             if (allProducts && allProducts.length > 0 && productIndex !== null && productIndex !== undefined) {
                 const selectedProduct = allProducts[productIndex];
                 if (selectedProduct) {
-                    const productInfo = document.getElementById('productInfo');
-                    if (productInfo) {
-                        productInfo.textContent = `Product: ${selectedProduct.product} | Color: ${selectedProduct.color} | Size: ${selectedProduct.size}`;
-                    }
+                    // Update product info display
+                    updateProductInfoDisplay(selectedProduct);
                     
                     if (selectedProduct.screenshot && selectedProduct.screenshot.trim() !== '') {
                         orderScreenshot = selectedProduct.screenshot;
+                        originalScreenshot = selectedProduct.screenshot;  // Store original
+                        currentFeatherValue = 0;  // Reset effect values
+                        currentCornerRadiusValue = 0;
                         document.getElementById('screenshotPreview').innerHTML = `
                             <img src="${selectedProduct.screenshot}" alt="Order Screenshot" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
                             <p style="margin-top: 10px; color: green;">✅ Screenshot loaded from order ${orderId || 'N/A'}</p>
@@ -367,6 +389,7 @@
                     } else {
                         // No screenshot for this product
                         orderScreenshot = null;
+                        originalScreenshot = null;
                         document.getElementById('screenshotPreview').innerHTML = `
                             <p style="color: orange; padding: 20px; border: 2px dashed #ccc; border-radius: 5px;">
                                 ⚠️ No screenshot available for this product.<br>
@@ -434,27 +457,32 @@
                                 console.log('📦 Single product in order, hiding selector');
                                 productSelectorGroup.style.display = 'none';
                                 orderScreenshot = data.screenshot;
+                                originalScreenshot = data.screenshot;  // Store original
+                                currentFeatherValue = 0;  // Reset effect values
+                                currentCornerRadiusValue = 0;
                                 document.getElementById('screenshotPreview').innerHTML = `
                                     <img src="${data.screenshot}" alt="Order Screenshot" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
                                     <p style="margin-top: 10px; color: green;">✅ Screenshot loaded from order ${currentOrderId}</p>
                                 `;
                                 
-                                // Update product info for single product
+                                // Update product info display for single product
                                 if (allProducts.length === 1) {
-                                    const productInfo = document.getElementById('productInfo');
-                                    if (productInfo) {
-                                        productInfo.textContent = `Product: ${allProducts[0].product} | Color: ${allProducts[0].color} | Size: ${allProducts[0].size}`;
-                                    }
+                                    updateProductInfoDisplay(allProducts[0]);
                                 }
                             }
                         } else {
                             // Fallback to single screenshot (backward compatibility)
                             orderScreenshot = data.screenshot;
+                            originalScreenshot = data.screenshot;  // Store original
+                            currentFeatherValue = 0;  // Reset effect values
+                            currentCornerRadiusValue = 0;
                             document.getElementById('screenshotPreview').innerHTML = `
                                 <img src="${data.screenshot}" alt="Order Screenshot" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
                                 <p style="margin-top: 10px; color: green;">✅ Screenshot loaded from order ${currentOrderId}</p>
                             `;
                             document.getElementById('productSelectorGroup').style.display = 'none';
+                            // Hide product info if no product data available
+                            document.getElementById('productInfoDisplay').style.display = 'none';
                         }
                     } else {
                         document.getElementById('screenshotPreview').innerHTML = '<p style="color: orange;">⚠️ No screenshot found in order</p>';
@@ -626,10 +654,130 @@
         // Show/hide feather controls based on checkbox
         document.getElementById('edgeFeather').addEventListener('change', function() {
             const featherGroup = document.getElementById('featherRadiusGroup');
+            const featherBtn = document.getElementById('applyFeatherBtn');
             featherGroup.style.display = this.checked ? 'block' : 'none';
+            featherBtn.style.display = this.checked ? 'inline-block' : 'none';
         });
         
-        // STEP 2: Apply Feather Effect (Optional)
+        // Update feather radius display value
+        document.getElementById('featherRadius').addEventListener('input', function() {
+            document.getElementById('featherRadiusValue').textContent = this.value + '%';
+        });
+        
+        // Update corner radius display value
+        document.getElementById('cornerRadius').addEventListener('input', function() {
+            const value = parseInt(this.value);
+            const display = document.getElementById('cornerRadiusValue');
+            display.textContent = value === 100 ? 'Circle' : value + '%';
+        });
+        
+        // Function to apply both effects together (for independent operation)
+        async function applyBothEffects() {
+            if (!originalScreenshot) {
+                alert('No original screenshot available');
+                return null;
+            }
+            
+            let currentImage = originalScreenshot;
+            const edgeFeather = document.getElementById('edgeFeather').checked;
+            const softCorners = document.getElementById('softCorners').checked;
+            const featherValue = edgeFeather ? parseInt(document.getElementById('featherRadius').value) : 0;
+            const cornerRadiusPercent = softCorners ? parseInt(document.getElementById('cornerRadius').value) : 0;
+            
+            // Apply corner radius first (if enabled)
+            if (softCorners && cornerRadiusPercent > 0) {
+                try {
+                    const dimensions = await getImageDimensions(currentImage);
+                    const maxCornerRadius = Math.floor(Math.min(dimensions.width, dimensions.height) / 2);
+                    let cornerRadiusPixels = cornerRadiusPercent === 100 
+                        ? maxCornerRadius 
+                        : Math.floor((cornerRadiusPercent / 100) * maxCornerRadius);
+                    
+                    // Ensure minimum of 1 pixel if percentage > 0
+                    if (cornerRadiusPixels < 1 && cornerRadiusPercent > 0) {
+                        cornerRadiusPixels = 1;
+                    }
+                    
+                    // Ensure it's an integer
+                    cornerRadiusPixels = Math.floor(cornerRadiusPixels);
+                    
+                    console.log(`Applying corner radius: ${cornerRadiusPercent}% = ${cornerRadiusPixels}px (max: ${maxCornerRadius}px, image: ${dimensions.width}x${dimensions.height})`);
+                    
+                    const response = await fetch('/api/process-corner-radius', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image_data: currentImage, corner_radius: cornerRadiusPixels })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log('Corner radius API response:', { 
+                            success: result.success, 
+                            hasImage: !!result.processed_image,
+                            imageLength: result.processed_image ? result.processed_image.length : 0
+                        });
+                        if (result.success && result.processed_image) {
+                            currentImage = result.processed_image;
+                            currentCornerRadiusValue = cornerRadiusPercent;
+                            console.log('✅ Corner radius applied successfully, image updated');
+                        } else {
+                            console.error('Corner radius API returned success=false:', result);
+                            throw new Error(result.error || 'Failed to apply corner radius');
+                        }
+                    } else {
+                        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                        console.error('Corner radius API error:', response.status, errorData);
+                        throw new Error(errorData.error || `API error: ${response.status}`);
+                    }
+                } catch (error) {
+                    console.error('Error applying corner radius:', error);
+                    throw error; // Re-throw to be caught by caller
+                }
+            } else {
+                currentCornerRadiusValue = 0;
+            }
+            
+            // Apply feather effect (if enabled)
+            if (edgeFeather && featherValue > 0) {
+                try {
+                    // Convert feather percentage (0-100) to pixels
+                    // At 100%, use 50% of smallest dimension for strong feather effect
+                    const dimensions = await getImageDimensions(currentImage);
+                    const minDimension = Math.min(dimensions.width, dimensions.height);
+                    const featherRadiusPixels = Math.round((featherValue / 100) * (minDimension * 0.5));
+                    
+                    const response = await fetch('/api/process-shirt-image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image_data: currentImage, feather_radius: featherRadiusPixels })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && result.processed_image) {
+                            currentImage = result.processed_image;
+                            currentFeatherValue = featherValue;
+                        } else {
+                            console.error('Feather API returned success=false:', result);
+                            throw new Error(result.error || 'Failed to apply feather effect');
+                        }
+                    } else {
+                        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                        console.error('Feather API error:', response.status, errorData);
+                        throw new Error(errorData.error || `API error: ${response.status}`);
+                    }
+                } catch (error) {
+                    console.error('Error applying feather:', error);
+                    throw error; // Re-throw to be caught by caller
+                }
+            } else {
+                currentFeatherValue = 0;
+            }
+            
+            return currentImage;
+        }
+        
+        // STEP 2: Apply Feather Effect (Optional) - Now applies both effects together
         document.getElementById('applyFeatherBtn').addEventListener('click', async function() {
             const featherBtn = this;
             const edgeFeather = document.getElementById('edgeFeather').checked;
@@ -639,47 +787,45 @@
                 return;
             }
             
-            if (!orderScreenshot) {
-                alert('No order screenshot available');
+            if (!originalScreenshot) {
+                alert('No original screenshot available');
                 return;
             }
             
             // Update button state
             featherBtn.disabled = true;
-            featherBtn.textContent = 'Applying Feather...';
+            featherBtn.textContent = 'Applying Effects...';
             
             try {
-                const payload = {
-                    image_data: orderScreenshot,
-                    feather_radius: parseInt(document.getElementById('featherRadius').value)
-                };
+                // Apply both effects together (starting from original)
+                const processedImage = await applyBothEffects();
                 
-                // Build crop area if provided
-                const cropArea = getCropArea();
-                if (cropArea) {
-                    payload.crop_area = cropArea;
-                }
-                
-                const response = await fetch('/api/process-shirt-image', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
+                if (processedImage) {
+                    // Update the orderScreenshot with the processed image
+                    orderScreenshot = processedImage;
+                    
+                    // Update the preview to show the processed image
+                    const featherValue = document.getElementById('featherRadius').value;
+                    const cornerRadiusPercent = document.getElementById('softCorners').checked 
+                        ? parseInt(document.getElementById('cornerRadius').value) 
+                        : 0;
+                    const cornerRadiusDisplay = cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%';
+                    const effectsText = cornerRadiusPercent > 0 
+                        ? `Feather: ${featherValue}%, Corner Radius: ${cornerRadiusDisplay}`
+                        : `Feather: ${featherValue}%`;
+                    
+                    document.getElementById('screenshotPreview').innerHTML = `
+                        <img src="${processedImage}" alt="Processed Screenshot" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
+                        <p style="margin-top: 10px; color: green;">✅ Effects Applied (${effectsText})</p>
+                    `;
+                    
                     displayEffectResult({
                         success: true,
-                        screenshot: result.processed_image,
+                        screenshot: processedImage,
                         effect: "feather"
-                    }, 'Feather Effect Applied!');
-                    // Update the orderScreenshot with the processed image
-                    orderScreenshot = result.processed_image;
+                    }, 'Effects Applied!');
                 } else {
-                    const error = await response.json();
-                    displayError(error.error || 'Failed to apply feather effect');
+                    displayError('Failed to apply effects');
                 }
             } catch (error) {
                 displayError('Network error: ' + error.message);
@@ -690,7 +836,7 @@
             }
         });
         
-        // STEP 3: Apply Corner Radius (Optional)
+        // STEP 3: Apply Corner Radius (Optional) - Now applies both effects together
         document.getElementById('applyRadiusBtn').addEventListener('click', async function() {
             const radiusBtn = this;
             const softCorners = document.getElementById('softCorners').checked;
@@ -700,50 +846,54 @@
                 return;
             }
             
-            if (!orderScreenshot) {
-                alert('No order screenshot available');
+            if (!originalScreenshot) {
+                alert('No original screenshot available');
                 return;
             }
             
             // Update button state
             radiusBtn.disabled = true;
-            radiusBtn.textContent = 'Applying Radius...';
+            radiusBtn.textContent = 'Applying Effects...';
             
             try {
-                const payload = {
-                    image_data: orderScreenshot,
-                    corner_radius: parseInt(document.getElementById('cornerRadius').value)
-                };
-                
-                // Build crop area if provided
-                const cropArea = getCropArea();
-                if (cropArea) {
-                    payload.crop_area = cropArea;
-                }
-                
-                const response = await fetch('/api/process-corner-radius', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
+                // Apply both effects together (starting from original)
+                const processedImage = await applyBothEffects();
+                console.log('Corner radius button - applyBothEffects returned:', { 
+                    hasImage: !!processedImage,
+                    imageLength: processedImage ? processedImage.length : 0,
+                    imageStart: processedImage ? processedImage.substring(0, 50) : 'null'
                 });
                 
-                if (response.ok) {
-                    const result = await response.json();
+                if (processedImage) {
+                    // Update the orderScreenshot with the processed image
+                    orderScreenshot = processedImage;
+                    
+                    // Update the preview to show the processed image
+                    const cornerRadiusPercent = parseInt(document.getElementById('cornerRadius').value);
+                    const cornerRadiusDisplay = cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%';
+                    const featherValue = document.getElementById('edgeFeather').checked 
+                        ? parseInt(document.getElementById('featherRadius').value) 
+                        : 0;
+                    const effectsText = featherValue > 0 
+                        ? `Corner Radius: ${cornerRadiusDisplay}, Feather: ${featherValue}%`
+                        : `Corner Radius: ${cornerRadiusDisplay}`;
+                    
+                    document.getElementById('screenshotPreview').innerHTML = `
+                        <img src="${processedImage}" alt="Processed Screenshot" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
+                        <p style="margin-top: 10px; color: green;">✅ Effects Applied (${effectsText})</p>
+                    `;
+                    
                     displayEffectResult({
                         success: true,
-                        screenshot: result.processed_image,
+                        screenshot: processedImage,
                         effect: "corner_radius"
-                    }, 'Corner Radius Applied!');
-                    // Update the orderScreenshot with the processed image
-                    orderScreenshot = result.processed_image;
+                    }, 'Effects Applied!');
                 } else {
-                    const error = await response.json();
-                    displayError(error.error || 'Failed to apply corner radius');
+                    displayError('Failed to apply effects - no image returned');
                 }
             } catch (error) {
-                displayError('Network error: ' + error.message);
+                console.error('Error in corner radius button handler:', error);
+                displayError('Error applying corner radius: ' + (error.message || error));
             } finally {
                 // Reset button state
                 radiusBtn.disabled = false;
