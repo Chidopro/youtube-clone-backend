@@ -157,7 +157,7 @@ def get_video_info(video_url):
         return {"success": False, "error": f"Failed to get video info: {str(e)}"}
 
 def create_shirt_ready_image(image_data, feather_radius=38, enhance_quality=True):
-    """Process an image to be shirt-print ready with feathered edges"""
+    """Process an image to be shirt-print ready with feathered edges - preserves alpha channel"""
     try:
         # Decode base64 image
         import base64
@@ -166,31 +166,92 @@ def create_shirt_ready_image(image_data, feather_radius=38, enhance_quality=True
         
         image_bytes = base64.b64decode(image_data)
         nparr = np.frombuffer(image_bytes, np.uint8)
-        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        # Use IMREAD_UNCHANGED to preserve alpha channel if present
+        image = cv2.imdecode(nparr, cv2.IMREAD_UNCHANGED)
         
         if image is None:
             return None
         
-        # Create feathered edge effect
+        height, width = image.shape[:2]
+        
+        # Check if image has alpha channel, if not convert to RGBA
+        if len(image.shape) == 2:
+            # Grayscale - convert to RGBA
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGRA)
+        elif image.shape[2] == 3:
+            # BGR image - convert to BGRA (add alpha channel)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+        elif image.shape[2] == 4:
+            # Already has alpha channel (BGRA)
+            pass
+        else:
+            return None
+        
+        # Create feathered edge effect on alpha channel
         if feather_radius > 0:
-            # Create a mask with feathered edges
-            mask = np.ones(image.shape[:2], dtype=np.uint8) * 255
-            mask = cv2.GaussianBlur(mask, (feather_radius * 2 + 1, feather_radius * 2 + 1), feather_radius)
+            # Get the current alpha channel (or create full opacity if none)
+            alpha_channel = image[:, :, 3].copy() if image.shape[2] == 4 else np.full((height, width), 255, dtype=np.uint8)
             
-            # Apply mask to image
-            image = cv2.bitwise_and(image, image, mask=mask)
+            # Create a binary mask from the existing alpha channel
+            # This preserves the exact shape including corner radius
+            binary_mask = (alpha_channel > 0).astype(np.uint8) * 255
+            
+            # Calculate distance from each pixel to the nearest transparent pixel (edge)
+            # This gives us the distance to the actual shape edge, including rounded corners
+            dist_transform = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 5)
+            
+            # Create feather mask: pixels closer to edge get lower alpha
+            # Pixels at distance 0 (on edge) should have alpha = 0
+            # Pixels at distance >= feather_radius should keep their original alpha
+            # Pixels in between get interpolated
+            feather_factor = np.clip(dist_transform / feather_radius, 0.0, 1.0).astype(np.float32)
+            
+            # Apply feather: multiply original alpha by feather factor
+            # This preserves the corner radius shape while adding feather to edges
+            # Pixels already transparent (alpha=0) stay transparent
+            # Pixels at edge (dist=0) become transparent (factor=0)
+            # Pixels far from edge (dist>=feather_radius) keep original alpha (factor=1)
+            final_alpha = (alpha_channel.astype(np.float32) * feather_factor).astype(np.uint8)
+            image[:, :, 3] = final_alpha
         
-        # Enhance quality if requested
+        # Enhance quality if requested (only on RGB channels, not alpha)
         if enhance_quality:
-            # Apply slight sharpening
+            # Apply slight sharpening to RGB channels only
             kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
-            image = cv2.filter2D(image, -1, kernel)
+            rgb_channels = image[:, :, :3]
+            sharpened_rgb = cv2.filter2D(rgb_channels, -1, kernel)
+            image[:, :, :3] = sharpened_rgb
         
-        # Convert back to base64
-        _, buffer = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        processed_image_data = base64.b64encode(buffer).decode('utf-8')
+        # Convert BGRA to RGBA for PNG encoding
+        # Swap B and R channels
+        bgra_image = image.copy()
+        b_channel = bgra_image[:, :, 0].copy()
+        r_channel = bgra_image[:, :, 2].copy()
+        bgra_image[:, :, 0] = r_channel  # R to B position
+        bgra_image[:, :, 2] = b_channel  # B to R position
         
-        return f"data:image/jpeg;base64,{processed_image_data}"
+        # Use PIL to encode as PNG with RGBA to preserve transparency
+        try:
+            from PIL import Image
+            import io
+            # Convert numpy array to PIL Image (RGBA format)
+            pil_image = Image.fromarray(bgra_image, 'RGBA')
+            # Save to bytes buffer
+            buffer = io.BytesIO()
+            pil_image.save(buffer, format='PNG')
+            buffer.seek(0)
+            processed_image_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            return f"data:image/png;base64,{processed_image_data}"
+        except Exception as pil_error:
+            logger.warning(f"PIL encoding failed, falling back to cv2: {str(pil_error)}")
+            # Fallback to cv2 - encode as PNG to preserve transparency
+            success, buffer = cv2.imencode('.png', image)
+            if success:
+                processed_image_data = base64.b64encode(buffer).decode('utf-8')
+                return f"data:image/png;base64,{processed_image_data}"
+            else:
+                logger.error("Failed to encode image as PNG")
+                return None
         
     except Exception as e:
         logger.error(f"Error processing shirt image: {str(e)}")
@@ -413,7 +474,21 @@ def apply_corner_radius_only(image_data, corner_radius=15):
         
         height, width = image.shape[:2]
         
-        logger.info(f"Applying corner radius {corner_radius} to image {width}x{height}")
+        # Ensure corner_radius is an integer and within valid bounds
+        corner_radius = int(corner_radius)
+        max_radius = min(width, height) // 2
+        
+        # Check if this should be a perfect circle (corner_radius >= max_radius)
+        is_circle = corner_radius >= max_radius
+        
+        if is_circle:
+            # Use max_radius for perfect circle
+            corner_radius = max_radius
+            logger.info(f"Creating perfect circle with radius {corner_radius} for image {width}x{height}")
+        else:
+            # Clamp corner_radius to valid range
+            corner_radius = min(corner_radius, max_radius)
+            logger.info(f"Applying corner radius {corner_radius} to image {width}x{height}")
         
         # Check if image has alpha channel, if not convert to RGBA
         if image.shape[2] == 3:
@@ -428,36 +503,97 @@ def apply_corner_radius_only(image_data, corner_radius=15):
         # Create a proper rounded rectangle mask
         mask = np.zeros((height, width), dtype=np.uint8)
         
-        # Create rounded rectangle using cv2.ellipse for smooth corners
-        # Top-left corner
-        cv2.ellipse(mask, (corner_radius, corner_radius), (corner_radius, corner_radius), 180, 0, 90, 255, -1)
-        # Top-right corner  
-        cv2.ellipse(mask, (width - corner_radius, corner_radius), (corner_radius, corner_radius), 270, 0, 90, 255, -1)
-        # Bottom-left corner
-        cv2.ellipse(mask, (corner_radius, height - corner_radius), (corner_radius, corner_radius), 90, 0, 90, 255, -1)
-        # Bottom-right corner
-        cv2.ellipse(mask, (width - corner_radius, height - corner_radius), (corner_radius, corner_radius), 0, 0, 90, 255, -1)
-        
-        # Fill the center rectangle
-        cv2.rectangle(mask, (corner_radius, 0), (width - corner_radius, height), 255, -1)
-        cv2.rectangle(mask, (0, corner_radius), (width, height - corner_radius), 255, -1)
+        if is_circle:
+            # Create perfect circle mask
+            center_x = width // 2
+            center_y = height // 2
+            cv2.circle(mask, (center_x, center_y), corner_radius, 255, -1)
+        else:
+            # Create rounded rectangle using cv2.ellipse for smooth corners
+            # Ensure all coordinates are integers
+            corner_radius_int = int(corner_radius)
+            width_int = int(width)
+            height_int = int(height)
+            
+            # Top-left corner
+            cv2.ellipse(mask, (corner_radius_int, corner_radius_int), (corner_radius_int, corner_radius_int), 180, 0, 90, 255, -1)
+            # Top-right corner  
+            cv2.ellipse(mask, (width_int - corner_radius_int, corner_radius_int), (corner_radius_int, corner_radius_int), 270, 0, 90, 255, -1)
+            # Bottom-left corner
+            cv2.ellipse(mask, (corner_radius_int, height_int - corner_radius_int), (corner_radius_int, corner_radius_int), 90, 0, 90, 255, -1)
+            # Bottom-right corner
+            cv2.ellipse(mask, (width_int - corner_radius_int, height_int - corner_radius_int), (corner_radius_int, corner_radius_int), 0, 0, 90, 255, -1)
+            
+            # Fill the center rectangle
+            cv2.rectangle(mask, (corner_radius_int, 0), (width_int - corner_radius_int, height_int), 255, -1)
+            cv2.rectangle(mask, (0, corner_radius_int), (width_int, height_int - corner_radius_int), 255, -1)
         
         # Create a new image with transparent background (RGBA)
-        final_image = np.zeros((height, width, 4), dtype=np.uint8)
+        # OpenCV uses BGRA, but PNG/browsers expect RGBA, so we need to convert
+        # Convert BGRA to RGBA by swapping B and R channels
+        if image.shape[2] == 4:
+            # BGRA image - swap B and R channels to get RGBA
+            final_image = image.copy()
+            # Swap B (channel 0) and R (channel 2) channels
+            b_channel = final_image[:, :, 0].copy()
+            r_channel = final_image[:, :, 2].copy()
+            final_image[:, :, 0] = r_channel  # R goes to position 0
+            final_image[:, :, 2] = b_channel  # B goes to position 2
+            # G (channel 1) and A (channel 3) stay the same
+        else:
+            # BGR image - convert to RGBA
+            rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            final_image = np.zeros((height, width, 4), dtype=np.uint8)
+            final_image[:, :, :3] = rgb_image
+            final_image[:, :, 3] = 255  # Full opacity
         
-        # Copy the original image RGB channels
-        final_image[:, :, :3] = image[:, :, :3]
-        
-        # Apply mask to alpha channel: where mask is 255 (inside rounded rect), use original alpha or 255
+        # Apply mask to alpha channel: where mask is 255 (inside rounded rect), keep original alpha
         # Where mask is 0 (outside rounded rect), set alpha to 0 (transparent)
-        original_alpha = image[:, :, 3] if image.shape[2] == 4 else np.full((height, width), 255, dtype=np.uint8)
-        final_image[:, :, 3] = np.where(mask > 0, original_alpha, 0).astype(np.uint8)
+        # Check mask statistics for debugging
+        mask_pixels = np.sum(mask > 0)
+        total_pixels = height * width
+        logger.info(f"Mask statistics: {mask_pixels}/{total_pixels} pixels are inside mask ({100*mask_pixels/total_pixels:.1f}%)")
+        
+        final_image[:, :, 3] = np.where(mask > 0, final_image[:, :, 3], 0).astype(np.uint8)
+        
+        # Verify alpha channel was applied correctly
+        transparent_pixels = np.sum(final_image[:, :, 3] == 0)
+        logger.info(f"Alpha channel applied: {transparent_pixels}/{total_pixels} pixels are transparent ({100*transparent_pixels/total_pixels:.1f}%)")
         
         # Convert back to base64 as PNG to preserve transparency
-        _, buffer = cv2.imencode('.png', final_image)
-        processed_image_data = base64.b64encode(buffer).decode('utf-8')
+        # Note: cv2.imencode with PNG format expects BGRA, but we have RGBA
+        # So we need to convert back to BGRA for encoding, then the browser will display it correctly
+        # Actually, let's use PIL/Pillow to encode as PNG with RGBA, which handles colors correctly
+        try:
+            from PIL import Image
+            # Convert numpy array to PIL Image (RGBA format)
+            pil_image = Image.fromarray(final_image, 'RGBA')
+            # Save to bytes buffer
+            import io
+            buffer = io.BytesIO()
+            pil_image.save(buffer, format='PNG')
+            buffer.seek(0)
+            processed_image_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            success = True
+        except Exception as pil_error:
+            logger.warning(f"PIL encoding failed, falling back to cv2: {str(pil_error)}")
+            # Fallback to cv2 - convert RGBA back to BGRA for encoding
+            bgra_image = final_image.copy()
+            b_channel = bgra_image[:, :, 0].copy()
+            r_channel = bgra_image[:, :, 2].copy()
+            bgra_image[:, :, 0] = r_channel  # R to B position
+            bgra_image[:, :, 2] = b_channel  # B to R position
+            success, buffer = cv2.imencode('.png', bgra_image)
+            if success:
+                processed_image_data = base64.b64encode(buffer).decode('utf-8')
+            else:
+                logger.error("Failed to encode image as PNG with cv2")
+                return {"success": False, "error": "Failed to encode processed image"}
+        if not success:
+            logger.error("Failed to encode image as PNG")
+            return {"success": False, "error": "Failed to encode processed image"}
         
-        logger.info("Corner radius effect applied successfully")
+        logger.info(f"Corner radius effect applied successfully. Image size: {len(processed_image_data)} bytes, radius: {corner_radius}px, is_circle: {is_circle}")
         
         return {
             "success": True,

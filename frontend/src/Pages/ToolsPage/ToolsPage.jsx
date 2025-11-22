@@ -288,7 +288,8 @@ const ProductPreviewWithDrag = ({
         // Apply corner radius
         if (cornerRadius > 0) {
           const maxRadius = Math.min(canvas.width, canvas.height) / 2;
-          const radius = cornerRadius >= 100 ? maxRadius : cornerRadius;
+          // Convert percentage (0-100) to pixels
+          const radius = cornerRadius >= 100 ? maxRadius : Math.round((cornerRadius / 100) * maxRadius);
           
           const tempCanvas = document.createElement('canvas');
           const tempCtx = tempCanvas.getContext('2d');
@@ -1601,7 +1602,8 @@ const ToolsPage = () => {
       // Calculate max corner radius for circle (half of smallest dimension)
       const maxCornerRadius = Math.min(canvas.width, canvas.height) / 2;
       const isCircle = cornerRadius >= 100; // When maxed out, create perfect circle
-      const effectiveCornerRadius = isCircle ? maxCornerRadius : cornerRadius;
+      // Convert percentage (0-100) to pixels
+      const effectiveCornerRadius = isCircle ? maxCornerRadius : Math.round((cornerRadius / 100) * maxCornerRadius);
 
       // Apply corner radius clipping (or circle if maxed out)
       // Create a new transparent canvas for the final result to ensure no black background
@@ -1659,10 +1661,10 @@ const ToolsPage = () => {
 
       // Apply feather edge (soft edge effect) - works with both rectangles and circles
       if (featherEdge > 0) {
-        // Calculate feather size as percentage of smallest dimension (0-50px slider = 0-50% of image)
-        // At 100% (50px on slider), use 50% of smallest dimension for strong feather effect
+        // Calculate feather size as percentage of smallest dimension (0-100% slider)
+        // At 100%, use 50% of smallest dimension for strong feather effect
         const minDimension = Math.min(canvas.width, canvas.height);
-        const featherSize = (featherEdge / 50) * (minDimension * 0.5); // 0-50px slider maps to 0-50% of image
+        const featherSize = (featherEdge / 100) * (minDimension * 0.5); // 0-100% slider maps to 0-50% of image
         
         // Create a mask canvas for feather effect
         const maskCanvas = document.createElement('canvas');
@@ -2561,12 +2563,12 @@ const ToolsPage = () => {
                     <input
                       type="range"
                       min="0"
-                      max="50"
+                      max="100"
                       value={featherEdge}
                       onChange={(e) => setFeatherEdge(parseInt(e.target.value))}
                       className="slider"
                     />
-                    <span className="slider-value">{featherEdge}px</span>
+                    <span className="slider-value">{featherEdge}%</span>
                   </div>
                 </div>
 
@@ -2582,7 +2584,7 @@ const ToolsPage = () => {
                       onChange={(e) => setCornerRadius(parseInt(e.target.value))}
                       className="slider"
                     />
-                    <span className="slider-value">{cornerRadius === 100 ? 'Circle' : `${cornerRadius}px`}</span>
+                    <span className="slider-value">{cornerRadius === 100 ? 'Circle' : `${cornerRadius}%`}</span>
                   </div>
                 </div>
 
