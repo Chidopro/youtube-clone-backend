@@ -27,6 +27,7 @@ const ProductPage = ({ sidebar }) => {
     }
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [showAddedToCartModal, setShowAddedToCartModal] = useState(false);
   const [fallbackImages, setFallbackImages] = useState({ screenshots: [], thumbnail: '' });
 
   // Read from query first
@@ -321,7 +322,7 @@ const ProductPage = ({ sidebar }) => {
     };
     const next = [...cartItems, item];
     persistCart(next);
-    alert('Added to cart!');
+    setShowAddedToCartModal(true);
   };
 
   // Load fallback screenshots/thumbnail from localStorage in case backend data is empty
@@ -1047,6 +1048,76 @@ const ProductPage = ({ sidebar }) => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Added to Cart Modal with Tools Reminder */}
+      {showAddedToCartModal && (
+        <div className="added-to-cart-modal-overlay" onClick={() => setShowAddedToCartModal(false)}>
+          <div className="added-to-cart-modal" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="added-to-cart-modal-close" 
+              onClick={() => setShowAddedToCartModal(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            
+            <div className="added-to-cart-modal-content">
+              <div className="added-to-cart-success-icon">✓</div>
+              <h2 className="added-to-cart-title">Added to Cart!</h2>
+              <p className="added-to-cart-message">Your item has been added successfully.</p>
+              
+              <div className="tools-reminder-section">
+                <h3 className="tools-reminder-title">✨ Enhance Your Design with Our Tools</h3>
+                <p className="tools-reminder-subtitle">Customize your screenshot before checkout:</p>
+                
+                <div className="tools-list">
+                  <div className="tool-item">
+                    <div className="tool-icon">🪶</div>
+                    <div className="tool-info">
+                      <h4 className="tool-name">Feather Edge</h4>
+                      <p className="tool-description">Softens the edges of your screenshot</p>
+                    </div>
+                  </div>
+                  
+                  <div className="tool-item">
+                    <div className="tool-icon">⭕</div>
+                    <div className="tool-info">
+                      <h4 className="tool-name">Corner Radius</h4>
+                      <p className="tool-description">Round corners (max = perfect circle)</p>
+                    </div>
+                  </div>
+                  
+                  <div className="tool-item">
+                    <div className="tool-icon">🖼️</div>
+                    <div className="tool-info">
+                      <h4 className="tool-name">Framed Border</h4>
+                      <p className="tool-description">Add a colored frame around your screenshot</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="added-to-cart-modal-actions">
+                <button 
+                  className="go-to-tools-btn"
+                  onClick={() => {
+                    setShowAddedToCartModal(false);
+                    navigate('/tools');
+                  }}
+                >
+                  Go to Tools Page
+                </button>
+                <button 
+                  className="continue-shopping-btn"
+                  onClick={() => setShowAddedToCartModal(false)}
+                >
+                  Continue Shopping
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
