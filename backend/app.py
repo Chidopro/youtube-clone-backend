@@ -1359,6 +1359,28 @@ PRODUCTS = [
             "6\"x6\"": 2.55
         }
     },
+    # ============================================================================
+    # TEST ITEM - FOR TESTING STRIPE LIVE PAYMENTS ONLY
+    # ============================================================================
+    # TO REMOVE: Simply delete this entire block (lines below until the next comment)
+    # This item appears in "Misc" category only
+    # Does NOT affect: mobile, desktop, server, email, login, or Google sign-in
+    # ============================================================================
+    {
+        "name": "Test Item (Live Mode)",
+        "price": 0.50,
+        "filename": "magnet.png",
+        "main_image": "magnet.png",
+        "preview_image": "miscellaneousdiecutmagnetspreview.png",
+        "description": "This is a test item for testing live Stripe payments. Minimum charge is $0.50 USD.",
+        "options": {"color": ["White"], "size": ["One Size"]},
+        "size_pricing": {
+            "One Size": 0
+        }
+    },
+    # ============================================================================
+    # END OF TEST ITEM - Remove the block above to delete the test item
+    # ============================================================================
     {
         "name": "Men's Long Sleeve Shirt",
         "price": 24.79,
@@ -1676,7 +1698,8 @@ def filter_products_by_category(category):
             "Jigsaw Puzzle with Tin",
             "Greeting Card",
             "Kiss-Cut Stickers",
-            "Die-Cut Magnets"
+            "Die-Cut Magnets",
+            "Test Item (Live Mode)"
         ],
         'all-products': [],  # All Products category - will contain all products eventually
         'thumbnails': []  # Coming Soon - no products yet
@@ -2302,6 +2325,9 @@ def send_order():
                     success_url=f"https://screenmerch.fly.dev/success?order_id={order_id}",
                     cancel_url=f"https://screenmerch.com/checkout",
                     phone_number_collection={"enabled": True},
+                    payment_intent_data={
+                        "statement_descriptor": "ScreenMerch"
+                    },
                     metadata={
                         "order_id": order_id,
                         "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
@@ -3369,6 +3395,9 @@ def create_checkout_session():
             "cancel_url": f"https://screenmerch.com/checkout/{product_id or ''}",
             # A2P 10DLC Compliance: Collect phone number for SMS notifications
             "phone_number_collection": {"enabled": True},
+            "payment_intent_data": {
+                "statement_descriptor": "ScreenMerch"
+            },
             "metadata": {
                 "order_id": order_id,  # Only store the small order ID in Stripe
                 "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
@@ -3385,6 +3414,22 @@ def create_checkout_session():
         else:
             logger.info(f"📧 [CHECKOUT] No customer email provided - Stripe will collect it during checkout (email_collection enabled)")
         
+        # Reload Stripe API key from environment to ensure we use the latest value
+        stripe_key = os.getenv("STRIPE_SECRET_KEY")
+        if not stripe_key:
+            logger.error("❌ STRIPE_SECRET_KEY environment variable is not set")
+            response = jsonify({"error": "Payment system configuration error", "details": "Stripe API key is not configured"})
+            origin = request.headers.get('Origin', '*')
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Vary', 'Origin')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response, 500
+        
+        stripe.api_key = stripe_key
+        # Log key info for debugging (first 20 chars and last 4 chars to verify it's the new key)
+        key_preview = f"{stripe_key[:20]}...{stripe_key[-4:]}" if len(stripe_key) > 24 else "***"
+        logger.info(f"🔑 [CHECKOUT] Using Stripe API key: {key_preview} (length: {len(stripe_key)})")
+        
         session = stripe.checkout.Session.create(**session_params)
         response = jsonify({"url": session.url})
         origin = request.headers.get('Origin', '*')
@@ -3392,6 +3437,33 @@ def create_checkout_session():
         response.headers.add('Vary', 'Origin')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
+    except stripe.error.AuthenticationError as e:
+        # Handle Stripe authentication errors (invalid API key)
+        logger.error(f"❌ Stripe authentication error: {str(e)}")
+        logger.error(f"❌ Current API key preview: {stripe.api_key[:20] if stripe.api_key else 'None'}...{stripe.api_key[-4:] if stripe.api_key and len(stripe.api_key) > 24 else 'N/A'}")
+        logger.error(f"❌ Environment key preview: {os.getenv('STRIPE_SECRET_KEY', 'NOT_SET')[:20] if os.getenv('STRIPE_SECRET_KEY') else 'NOT_SET'}...{os.getenv('STRIPE_SECRET_KEY', '')[-4:] if os.getenv('STRIPE_SECRET_KEY') and len(os.getenv('STRIPE_SECRET_KEY', '')) > 24 else 'N/A'}")
+        response = jsonify({
+            "error": "Payment system configuration error",
+            "details": "Invalid Stripe API key. Please verify STRIPE_SECRET_KEY is set correctly in Fly.io secrets."
+        })
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Vary', 'Origin')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
+    except stripe.error.StripeError as e:
+        # Handle other Stripe-specific errors
+        logger.error(f"❌ Stripe error: {str(e)}")
+        logger.error(f"❌ Error type: {type(e).__name__}")
+        response = jsonify({
+            "error": "Payment processing error",
+            "details": str(e)
+        })
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Vary', 'Origin')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
     except Exception as e:
         logger.error(f"❌ Error creating checkout session: {str(e)}")
         logger.error(f"❌ Error type: {type(e).__name__}")
@@ -3403,6 +3475,8 @@ def create_checkout_session():
             error_message = "ZIP / Postal Code is required"
         elif "cart" in str(e).lower() or "empty" in str(e).lower():
             error_message = "Cart is empty or invalid"
+        elif "api key" in str(e).lower() or "authentication" in str(e).lower():
+            error_message = "Payment system configuration error - Invalid API key"
             
         response = jsonify({"error": error_message, "details": str(e)})
         origin = request.headers.get('Origin', '*')
@@ -3976,8 +4050,11 @@ def stripe_webhook():
                     logger.error(f"Full traceback: {traceback.format_exc()}")
             elif not customer_email or customer_email == "Not provided":
                 logger.warning(f"⚠️ [WEBHOOK] No customer email available - skipping customer confirmation email")
+                logger.warning(f"⚠️ [WEBHOOK] customer_email value: '{customer_email}'")
+                logger.warning(f"⚠️ [WEBHOOK] session.customer_details: {session.get('customer_details', {})}")
             elif not RESEND_API_KEY:
                 logger.warning(f"⚠️ [WEBHOOK] RESEND_API_KEY not configured - skipping customer confirmation email")
+                logger.warning(f"⚠️ [WEBHOOK] RESEND_API_KEY check: {bool(RESEND_API_KEY)}")
             
             # Update order status in database to 'paid' (regardless of email status)
             try:
@@ -5160,6 +5237,14 @@ def create_pro_checkout():
                 "metadata": {
                     "user_id": user_id or "guest",
                     "tier": tier
+                }
+            },
+            "payment_intent_data": {
+                "statement_descriptor": "ScreenMerch"
+            },
+            "payment_method_options": {
+                "card": {
+                    "statement_descriptor": "ScreenMerch"
                 }
             },
             "success_url": "https://screenmerch.com/subscription-success?session_id={CHECKOUT_SESSION_ID}",

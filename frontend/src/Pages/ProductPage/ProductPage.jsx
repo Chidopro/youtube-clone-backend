@@ -1103,6 +1103,15 @@ const ProductPage = ({ sidebar }) => {
               
               <div className="added-to-cart-modal-actions">
                 <button 
+                  className="checkout-btn-modal"
+                  onClick={() => {
+                    setShowAddedToCartModal(false);
+                    navigate('/checkout');
+                  }}
+                >
+                  Checkout
+                </button>
+                <button 
                   className="go-to-tools-btn"
                   onClick={() => {
                     setShowAddedToCartModal(false);
