@@ -3,12 +3,15 @@ import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import './Profile.css';
 import '../../Components/ChannelHeader/ChannelHeaderShared.css';
+import { API_CONFIG } from '../../config/apiConfig';
 
 const Profile = () => {
   const { username } = useParams();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [videos, setVideos] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [activeTab, setActiveTab] = useState('videos');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -37,6 +40,15 @@ const Profile = () => {
         .eq('channelTitle', userProfile.display_name || userProfile.username)
         .order('created_at', { ascending: false });
       setVideos(userVideos || []);
+      
+      // Fetch favorites for this user
+      const { data: userFavorites } = await supabase
+        .from('creator_favorites')
+        .select('*')
+        .eq('channelTitle', userProfile.display_name || userProfile.username)
+        .order('created_at', { ascending: false });
+      setFavorites(userFavorites || []);
+      
       setLoading(false);
     };
     if (username) fetchProfileAndVideos();
@@ -58,6 +70,77 @@ const Profile = () => {
     };
     fetchCurrentUser();
   }, []);
+
+  const handleMakeMerchFromFavorite = async (favorite) => {
+    // Check if user is authenticated
+    const isAuthenticated = localStorage.getItem('user_authenticated');
+    const googleAuthenticated = localStorage.getItem('isAuthenticated');
+    const isLoggedIn = (isAuthenticated === 'true') || (googleAuthenticated === 'true');
+    
+    if (!isLoggedIn) {
+      // Store favorite data for after login
+      const merchData = {
+        thumbnail: favorite.image_url || favorite.thumbnail_url,
+        screenshots: [favorite.image_url || favorite.thumbnail_url],
+        videoUrl: window.location.href,
+        videoTitle: favorite.title || 'Favorite Image',
+        creatorName: favorite.channelTitle || profile?.display_name || profile?.username || 'Unknown Creator'
+      };
+      localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+      
+      // Redirect to login or show auth modal
+      alert('Please log in to create merchandise');
+      return;
+    }
+    
+    // User is authenticated, proceed with merch creation
+    const merchData = {
+      thumbnail: favorite.image_url || favorite.thumbnail_url,
+      screenshots: [favorite.image_url || favorite.thumbnail_url],
+      videoUrl: window.location.href,
+      videoTitle: favorite.title || 'Favorite Image',
+      creatorName: favorite.channelTitle || profile?.display_name || profile?.username || 'Unknown Creator'
+    };
+    localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+    
+    try {
+      const requestData = {
+        thumbnail: favorite.image_url || favorite.thumbnail_url,
+        videoUrl: window.location.href,
+        screenshots: [favorite.image_url || favorite.thumbnail_url],
+        screenshot_timestamp: 0,
+        videoTitle: favorite.title || 'Favorite Image',
+        creatorName: favorite.channelTitle || profile?.display_name || profile?.username || 'Unknown Creator'
+      };
+      
+      const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        window.location.href = '/merchandise';
+      } else {
+        console.error('Failed to create product:', data);
+        alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Make Merch error:', err);
+      alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
+    }
+  };
 
 
 
@@ -101,31 +184,85 @@ const Profile = () => {
       </div>
       <div className="profile-page">
         <div className="profile-tabs">
-          <span className="active">Videos</span>
+          <span 
+            className={activeTab === 'videos' ? 'active' : ''}
+            onClick={() => setActiveTab('videos')}
+            style={{ cursor: 'pointer' }}
+          >
+            Videos
+          </span>
+          <span 
+            className={activeTab === 'favorites' ? 'active' : ''}
+            onClick={() => setActiveTab('favorites')}
+            style={{ cursor: 'pointer' }}
+          >
+            Favorites
+          </span>
         </div>
-        <div className="profile-videos">
-          {videos.length === 0 ? (
-            <div>No videos yet.</div>
-          ) : (
-            <div className="profile-video-grid">
-              {videos.map(video => (
-                <div 
-                  className="profile-video-card" 
-                  key={video.id}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => {
-                    console.log('Clicked video:', video);
-                    navigate(`/video/${video.categoryId || 0}/${video.id}`);
-                  }}
-                >
-                  <img src={video.thumbnail || 'https://via.placeholder.com/320x180?text=No+Thumbnail'} alt={video.title} />
-                  <h3>{video.title}</h3>
-                  <p>{video.description}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        
+        {activeTab === 'videos' && (
+          <div className="profile-videos">
+            {videos.length === 0 ? (
+              <div>No videos yet.</div>
+            ) : (
+              <div className="profile-video-grid">
+                {videos.map(video => (
+                  <div 
+                    className="profile-video-card" 
+                    key={video.id}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      console.log('Clicked video:', video);
+                      navigate(`/video/${video.categoryId || 0}/${video.id}`);
+                    }}
+                  >
+                    <img src={video.thumbnail || 'https://via.placeholder.com/320x180?text=No+Thumbnail'} alt={video.title} />
+                    <h3>{video.title}</h3>
+                    <p>{video.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {activeTab === 'favorites' && (
+          <div className="profile-favorites">
+            {favorites.length === 0 ? (
+              <div>No favorites yet.</div>
+            ) : (
+              <div className="profile-video-grid">
+                {favorites.map(favorite => (
+                  <div 
+                    className="profile-video-card" 
+                    key={favorite.id}
+                  >
+                    <img 
+                      src={favorite.image_url || favorite.thumbnail_url || 'https://via.placeholder.com/320x180?text=No+Image'} 
+                      alt={favorite.title}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        // Navigate to video page if needed, or just show image
+                        console.log('Clicked favorite:', favorite);
+                      }}
+                    />
+                    <h3>{favorite.title}</h3>
+                    {favorite.description && <p>{favorite.description}</p>}
+                    <button
+                      className="make-merch-btn-favorite"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMakeMerchFromFavorite(favorite);
+                      }}
+                    >
+                      Make Merch
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   );

@@ -644,22 +644,29 @@ const ProductPage = ({ sidebar }) => {
         const isAllProducts = categoryNormalized === 'all' || categoryNormalized === 'all-products';
         const hasProducts = productData?.products && productData.products.length > 0;
         
-        // Always log for debugging
-        console.log('🔍 All Products Check:', { 
-          category, 
-          isAllProducts, 
-          hasProducts, 
-          productCount: productData?.products?.length,
-          productDataExists: !!productData
-        });
+        // Only log for debugging when debug mode is enabled
+        if (window.__DEBUG__) {
+          console.log('🔍 All Products Check:', { 
+            category, 
+            isAllProducts, 
+            hasProducts, 
+            productCount: productData?.products?.length,
+            productDataExists: !!productData
+          });
+        }
         
         if (isAllProducts && hasProducts) {
-          console.log('✅ Showing All Products informational layout');
+          if (window.__DEBUG__) {
+            console.log('✅ Showing All Products informational layout');
+          }
           return true;
         } else {
-          console.log('❌ NOT showing All Products layout:', { 
-            reason: !isAllProducts ? 'category mismatch' : 'no products' 
-          });
+          // Only log when debug mode is enabled - this is normal behavior, not an error
+          if (window.__DEBUG__) {
+            console.log('ℹ️ Not showing All Products layout (normal for specific categories):', { 
+              reason: !isAllProducts ? 'viewing specific category' : 'no products' 
+            });
+          }
           return false;
         }
       })() && (
@@ -973,7 +980,7 @@ const ProductPage = ({ sidebar }) => {
                           onChange={(e) => {
                             const newSelectedSizes = { ...selectedSizes };
                             newSelectedSizes[index] = e.target.value;
-                            setSelectedColors(newSelectedSizes);
+                            setSelectedSizes(newSelectedSizes);
                           }}
                         >
                           {product.options.size.map((size, sizeIndex) => (

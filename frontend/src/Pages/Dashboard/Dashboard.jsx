@@ -29,6 +29,14 @@ const Dashboard = ({ sidebar }) => {
     const [isEditingAvatar, setIsEditingAvatar] = useState(false);
     const [activeTab, setActiveTab] = useState('videos');
     const [currentUser, setCurrentUser] = useState(null);
+    const [favorites, setFavorites] = useState([]);
+    const [uploadingFavorite, setUploadingFavorite] = useState(false);
+    const [newFavorite, setNewFavorite] = useState({
+        title: '',
+        description: '',
+        image: null,
+        imagePreview: null
+    });
     const [analyticsData, setAnalyticsData] = useState({
         total_sales: 0,
         total_revenue: 0,
@@ -128,9 +136,21 @@ const Dashboard = ({ sidebar }) => {
                     if (userVideos) {
                         setVideos(userVideos);
                     }
+                    
+                    // Fetch user's favorites
+                    const { data: userFavorites, error: favoritesError } = await supabase
+                        .from('creator_favorites')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false });
+                    
+                    if (userFavorites) {
+                        setFavorites(userFavorites);
+                    }
                 } else {
                     // For Google OAuth users without database ID, show empty videos
                     setVideos([]);
+                    setFavorites([]);
                 }
 
             } catch (error) {
@@ -296,6 +316,101 @@ const Dashboard = ({ sidebar }) => {
         } catch (error) {
             console.error('Error deleting video:', error);
             alert('Failed to delete video. Please try again.');
+        }
+    };
+
+    const handleUploadFavorite = async () => {
+        if (!newFavorite.title || !newFavorite.image) {
+            alert('Please provide a title and image.');
+            return;
+        }
+
+        if (!user || !user.id) {
+            alert('User not found. Please log in again.');
+            return;
+        }
+
+        try {
+            setUploadingFavorite(true);
+
+            // Upload image to Supabase storage
+            const fileExt = newFavorite.image.name.split('.').pop();
+            const fileName = `${user.id}/favorites/${Date.now()}.${fileExt}`;
+            
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('thumbnails')
+                .upload(fileName, newFavorite.image, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                console.error('Error uploading image:', uploadError);
+                alert('Failed to upload image. Please try again.');
+                return;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('thumbnails')
+                .getPublicUrl(fileName);
+
+            // Save favorite to database
+            const { data, error } = await supabase
+                .from('creator_favorites')
+                .insert({
+                    user_id: user.id,
+                    channelTitle: userProfile?.display_name || userProfile?.username || 'Unknown',
+                    title: newFavorite.title,
+                    description: newFavorite.description || null,
+                    image_url: publicUrl,
+                    thumbnail_url: publicUrl
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error saving favorite:', error);
+                alert('Failed to save favorite. Please try again.');
+            } else {
+                // Add to local state
+                setFavorites(prev => [data, ...prev]);
+                // Reset form and close modal
+                setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+                document.getElementById('favorite-upload-modal').style.display = 'none';
+                alert('Favorite uploaded successfully!');
+            }
+        } catch (error) {
+            console.error('Error uploading favorite:', error);
+            alert('Failed to upload favorite. Please try again.');
+        } finally {
+            setUploadingFavorite(false);
+        }
+    };
+
+    const handleDeleteFavorite = async (favoriteId, favoriteTitle) => {
+        const isConfirmed = window.confirm(`Are you sure you want to delete "${favoriteTitle}"? This action cannot be undone.`);
+        
+        if (!isConfirmed) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('creator_favorites')
+                .delete()
+                .eq('id', favoriteId);
+
+            if (error) {
+                console.error('Error deleting favorite:', error);
+                alert('Failed to delete favorite. Please try again.');
+            } else {
+                // Remove from local state
+                setFavorites(prev => prev.filter(fav => fav.id !== favoriteId));
+                alert('Favorite deleted successfully!');
+            }
+        } catch (error) {
+            console.error('Error deleting favorite:', error);
+            alert('Failed to delete favorite. Please try again.');
         }
     };
 
@@ -742,6 +857,12 @@ const Dashboard = ({ sidebar }) => {
                     📹 Videos ({videos.length})
                 </button>
                 <button 
+                    className={`tab-button ${activeTab === 'favorites' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('favorites')}
+                >
+                    ⭐ Favorites ({favorites.length})
+                </button>
+                <button 
                     className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
                     onClick={() => setActiveTab('analytics')}
                 >
@@ -811,6 +932,146 @@ const Dashboard = ({ sidebar }) => {
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Favorites Tab */}
+                {activeTab === 'favorites' && (
+                    <div className="favorites-tab">
+                        <div className="section-header">
+                            <h2>⭐ Your Favorites ({favorites.length})</h2>
+                            <button 
+                                className="add-favorite-btn"
+                                onClick={() => {
+                                    setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+                                    document.getElementById('favorite-upload-modal').style.display = 'block';
+                                }}
+                            >
+                                + Add Favorite
+                            </button>
+                        </div>
+                        
+                        {favorites.length > 0 ? (
+                            <div className="dashboard-video-grid">
+                                {favorites.map(favorite => (
+                                    <div 
+                                        key={favorite.id} 
+                                        className="dashboard-video-card"
+                                    >
+                                        <img 
+                                            src={favorite.image_url || favorite.thumbnail_url || 'https://via.placeholder.com/320x180?text=No+Image'} 
+                                            alt={favorite.title} 
+                                            className="dashboard-video-thumbnail" 
+                                        />
+                                        <div className="dashboard-video-info">
+                                            <h4>{favorite.title}</h4>
+                                            {favorite.description && <p>{favorite.description}</p>}
+                                            <span className="video-views">{new Date(favorite.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        <button 
+                                            className="delete-video-btn" 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteFavorite(favorite.id, favorite.title);
+                                            }} 
+                                            title="Delete Favorite"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="no-videos-placeholder">
+                                <div className="placeholder-content">
+                                    <h3>No favorites yet</h3>
+                                    <p>Upload your favorite images for users to create merchandise from!</p>
+                                    <button 
+                                        className="add-favorite-btn"
+                                        onClick={() => {
+                                            setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+                                            document.getElementById('favorite-upload-modal').style.display = 'block';
+                                        }}
+                                    >
+                                        + Add Your First Favorite
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Favorite Upload Modal */}
+                        <div id="favorite-upload-modal" className="modal" style={{ display: 'none' }}>
+                            <div className="modal-content" ref={modalContentRef}>
+                                <span className="close" onClick={() => document.getElementById('favorite-upload-modal').style.display = 'none'}>&times;</span>
+                                <h2>Upload Favorite Image</h2>
+                                <div className="upload-form">
+                                    <div className="form-group">
+                                        <label>Title *</label>
+                                        <input
+                                            type="text"
+                                            value={newFavorite.title}
+                                            onChange={(e) => setNewFavorite({...newFavorite, title: e.target.value})}
+                                            placeholder="Enter favorite title"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Description</label>
+                                        <textarea
+                                            value={newFavorite.description}
+                                            onChange={(e) => setNewFavorite({...newFavorite, description: e.target.value})}
+                                            placeholder="Enter description (optional)"
+                                            rows="3"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Image *</label>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onload = (event) => {
+                                                        setNewFavorite({
+                                                            ...newFavorite,
+                                                            image: file,
+                                                            imagePreview: event.target.result
+                                                        });
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}
+                                        />
+                                        {newFavorite.imagePreview && (
+                                            <img 
+                                                src={newFavorite.imagePreview} 
+                                                alt="Preview" 
+                                                style={{ maxWidth: '100%', marginTop: '10px', borderRadius: '8px' }}
+                                            />
+                                        )}
+                                    </div>
+                                    <div className="form-actions">
+                                        <button 
+                                            className="save-btn" 
+                                            onClick={handleUploadFavorite}
+                                            disabled={uploadingFavorite || !newFavorite.title || !newFavorite.image}
+                                        >
+                                            {uploadingFavorite ? 'Uploading...' : 'Upload Favorite'}
+                                        </button>
+                                        <button 
+                                            className="cancel-btn" 
+                                            onClick={() => {
+                                                document.getElementById('favorite-upload-modal').style.display = 'none';
+                                                setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
