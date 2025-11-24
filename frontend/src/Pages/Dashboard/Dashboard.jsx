@@ -31,6 +31,7 @@ const Dashboard = ({ sidebar }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [favorites, setFavorites] = useState([]);
     const [uploadingFavorite, setUploadingFavorite] = useState(false);
+    const [showFavoriteModal, setShowFavoriteModal] = useState(false);
     const [newFavorite, setNewFavorite] = useState({
         title: '',
         description: '',
@@ -325,17 +326,71 @@ const Dashboard = ({ sidebar }) => {
             return;
         }
 
-        if (!user || !user.id) {
-            alert('User not found. Please log in again.');
+        // Try to get user ID from Supabase Auth first
+        let userId = null;
+        let authError = null;
+        
+        const { data: { user: supabaseUser }, error: authErr } = await supabase.auth.getUser();
+        
+        if (supabaseUser && supabaseUser.id) {
+            userId = supabaseUser.id;
+            console.log('Using Supabase Auth user ID:', userId);
+        } else {
+            authError = authErr;
+            console.log('No Supabase Auth session, checking for Google OAuth user...');
+            
+            // Try to get user ID from users table (for Google OAuth users)
+            const isAuthenticated = localStorage.getItem('isAuthenticated');
+            const userData = localStorage.getItem('user');
+            
+            if (isAuthenticated === 'true' && userData) {
+                try {
+                    const googleUser = JSON.parse(userData);
+                    console.log('Found Google OAuth user:', googleUser);
+                    
+                    // Try to find user in users table by email
+                    if (googleUser.email) {
+                        const { data: userRecord, error: userError } = await supabase
+                            .from('users')
+                            .select('id')
+                            .eq('email', googleUser.email)
+                            .single();
+                        
+                        if (userRecord && userRecord.id) {
+                            userId = userRecord.id;
+                            console.log('Found user ID from users table:', userId);
+                        } else {
+                            console.error('User not found in users table:', userError);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error parsing Google OAuth user:', e);
+                }
+            }
+        }
+        
+        if (!userId) {
+            console.error('Auth error:', authError);
+            alert('Authentication required. Please ensure you are logged in. If you are using Google OAuth, you may need to sign in through Supabase Auth to upload favorites.');
             return;
         }
 
         try {
             setUploadingFavorite(true);
 
+            // Validate file size (max 5MB)
+            if (newFavorite.image.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB.');
+                setUploadingFavorite(false);
+                return;
+            }
+
             // Upload image to Supabase storage
             const fileExt = newFavorite.image.name.split('.').pop();
-            const fileName = `${user.id}/favorites/${Date.now()}.${fileExt}`;
+            const fileName = `${userId}/favorites/${Date.now()}.${fileExt}`;
+            
+            console.log('Uploading favorite image:', fileName);
+            console.log('User ID:', userId);
             
             const { data: uploadData, error: uploadError } = await supabase.storage
                 .from('thumbnails')
@@ -346,45 +401,138 @@ const Dashboard = ({ sidebar }) => {
 
             if (uploadError) {
                 console.error('Error uploading image:', uploadError);
-                alert('Failed to upload image. Please try again.');
+                console.error('Error details:', JSON.stringify(uploadError, null, 2));
+                
+                // Try alternative bucket if thumbnails fails
+                if (uploadError.message && uploadError.message.includes('not found')) {
+                    alert('Storage bucket not found. Please check your Supabase storage configuration.');
+                } else if (uploadError.message && uploadError.message.includes('row-level security')) {
+                    alert('Permission denied. Please check your Supabase storage policies.');
+                } else {
+                    alert(`Failed to upload image: ${uploadError.message || 'Unknown error'}`);
+                }
+                setUploadingFavorite(false);
                 return;
             }
+
+            console.log('Image uploaded successfully:', uploadData);
 
             const { data: { publicUrl } } = supabase.storage
                 .from('thumbnails')
                 .getPublicUrl(fileName);
 
+            console.log('Public URL:', publicUrl);
+
+            // Get channel title - use same logic as videos (display_name || username)
+            // This must match exactly what Profile.jsx queries for
+            const channelTitle = userProfile?.display_name || userProfile?.username || 'Unknown';
+            console.log('Saving favorite to database with channelTitle:', channelTitle);
+            console.log('User profile data:', { display_name: userProfile?.display_name, username: userProfile?.username });
+
             // Save favorite to database
+            // Use camelCase channelTitle to match database schema (quoted column name "channelTitle")
+            let insertData = {
+                user_id: userId,
+                channelTitle: channelTitle,  // Use camelCase to match database column "channelTitle"
+                title: newFavorite.title,
+                description: newFavorite.description || null,
+                image_url: publicUrl,
+                thumbnail_url: publicUrl
+            };
+            
             const { data, error } = await supabase
                 .from('creator_favorites')
-                .insert({
-                    user_id: user.id,
-                    channelTitle: userProfile?.display_name || userProfile?.username || 'Unknown',
-                    title: newFavorite.title,
-                    description: newFavorite.description || null,
-                    image_url: publicUrl,
-                    thumbnail_url: publicUrl
-                })
+                .insert(insertData)
                 .select()
                 .single();
 
             if (error) {
                 console.error('Error saving favorite:', error);
-                alert('Failed to save favorite. Please try again.');
+                console.error('Error details:', JSON.stringify(error, null, 2));
+                
+                // If error is about column name, try with lowercase as fallback
+                if (error.message && (error.message.includes('channelTitle') || error.message.includes('channeltitle'))) {
+                    console.log('Retrying with lowercase column name as fallback...');
+                    const retryData = {
+                        user_id: userId,
+                        channeltitle: channelTitle,  // Try lowercase as fallback
+                        title: newFavorite.title,
+                        description: newFavorite.description || null,
+                        image_url: publicUrl,
+                        thumbnail_url: publicUrl
+                    };
+                    
+                    const { data: retryData_result, error: retryError } = await supabase
+                        .from('creator_favorites')
+                        .insert(retryData)
+                        .select()
+                        .single();
+                    
+                    if (retryError) {
+                        console.error('Retry also failed:', retryError);
+                        alert(`Failed to save favorite: ${retryError.message || 'Unknown error'}. Please check that the creator_favorites table exists and has the correct columns.`);
+                    } else {
+                        console.log('Favorite saved successfully with lowercase column:', retryData_result);
+                        setFavorites(prev => [retryData_result, ...prev]);
+                        setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+                        setShowFavoriteModal(false);
+                        alert('Favorite uploaded successfully!');
+                    }
+                    setUploadingFavorite(false);
+                    return;
+                }
+                
+                alert(`Failed to save favorite: ${error.message || 'Unknown error'}`);
             } else {
+                console.log('Favorite saved successfully:', data);
                 // Add to local state
                 setFavorites(prev => [data, ...prev]);
                 // Reset form and close modal
                 setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
-                document.getElementById('favorite-upload-modal').style.display = 'none';
+                setShowFavoriteModal(false);
                 alert('Favorite uploaded successfully!');
             }
         } catch (error) {
             console.error('Error uploading favorite:', error);
-            alert('Failed to upload favorite. Please try again.');
+            console.error('Error stack:', error.stack);
+            alert(`Failed to upload favorite: ${error.message || 'Unknown error'}`);
         } finally {
             setUploadingFavorite(false);
         }
+    };
+
+    const handleMakeMerchFromFavorite = async (favorite) => {
+        // Check if user is authenticated
+        const isAuthenticated = localStorage.getItem('user_authenticated');
+        const googleAuthenticated = localStorage.getItem('isAuthenticated');
+        const isLoggedIn = (isAuthenticated === 'true') || (googleAuthenticated === 'true');
+        
+        if (!isLoggedIn) {
+            // Store favorite data for after login
+            const merchData = {
+                thumbnail: favorite.image_url || favorite.thumbnail_url,
+                screenshots: [favorite.image_url || favorite.thumbnail_url],
+                videoUrl: window.location.href,
+                videoTitle: favorite.title || 'Favorite Image',
+                creatorName: favorite.channeltitle || favorite.channelTitle || userProfile?.display_name || userProfile?.username || 'Unknown Creator'
+            };
+            localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+            alert('Please log in to create merchandise');
+            return;
+        }
+        
+        // User is authenticated, save data and navigate to merchandise page
+        const merchData = {
+            thumbnail: favorite.image_url || favorite.thumbnail_url,
+            screenshots: [favorite.image_url || favorite.thumbnail_url],
+            videoUrl: window.location.href,
+            videoTitle: favorite.title || 'Favorite Image',
+            creatorName: favorite.channeltitle || favorite.channelTitle || userProfile?.display_name || userProfile?.username || 'Unknown Creator'
+        };
+        localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+        
+        // Navigate to merchandise categories page
+        navigate('/merchandise');
     };
 
     const handleDeleteFavorite = async (favoriteId, favoriteTitle) => {
@@ -858,7 +1006,10 @@ const Dashboard = ({ sidebar }) => {
                 </button>
                 <button 
                     className={`tab-button ${activeTab === 'favorites' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('favorites')}
+                    onClick={() => {
+                        console.log('Favorites tab clicked');
+                        setActiveTab('favorites');
+                    }}
                 >
                     ⭐ Favorites ({favorites.length})
                 </button>
@@ -945,7 +1096,7 @@ const Dashboard = ({ sidebar }) => {
                                 className="add-favorite-btn"
                                 onClick={() => {
                                     setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
-                                    document.getElementById('favorite-upload-modal').style.display = 'block';
+                                    setShowFavoriteModal(true);
                                 }}
                             >
                                 + Add Favorite
@@ -970,6 +1121,15 @@ const Dashboard = ({ sidebar }) => {
                                             <span className="video-views">{new Date(favorite.created_at).toLocaleDateString()}</span>
                                         </div>
                                         <button 
+                                            className="make-merch-btn-favorite-dashboard"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleMakeMerchFromFavorite(favorite);
+                                            }}
+                                        >
+                                            Make Merch
+                                        </button>
+                                        <button 
                                             className="delete-video-btn" 
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -991,7 +1151,7 @@ const Dashboard = ({ sidebar }) => {
                                         className="add-favorite-btn"
                                         onClick={() => {
                                             setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
-                                            document.getElementById('favorite-upload-modal').style.display = 'block';
+                                            setShowFavoriteModal(true);
                                         }}
                                     >
                                         + Add Your First Favorite
@@ -1001,10 +1161,11 @@ const Dashboard = ({ sidebar }) => {
                         )}
                         
                         {/* Favorite Upload Modal */}
-                        <div id="favorite-upload-modal" className="modal" style={{ display: 'none' }}>
-                            <div className="modal-content" ref={modalContentRef}>
-                                <span className="close" onClick={() => document.getElementById('favorite-upload-modal').style.display = 'none'}>&times;</span>
-                                <h2>Upload Favorite Image</h2>
+                        {showFavoriteModal && (
+                            <div className="favorite-modal-overlay" onClick={() => setShowFavoriteModal(false)}>
+                                <div className="favorite-modal-content" onClick={(e) => e.stopPropagation()} ref={modalContentRef}>
+                                    <span className="favorite-modal-close" onClick={() => setShowFavoriteModal(false)}>&times;</span>
+                                    <h2>Upload Favorite Image</h2>
                                 <div className="upload-form">
                                     <div className="form-group">
                                         <label>Title *</label>
@@ -1063,7 +1224,7 @@ const Dashboard = ({ sidebar }) => {
                                         <button 
                                             className="cancel-btn" 
                                             onClick={() => {
-                                                document.getElementById('favorite-upload-modal').style.display = 'none';
+                                                setShowFavoriteModal(false);
                                                 setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
                                             }}
                                         >
@@ -1071,8 +1232,9 @@ const Dashboard = ({ sidebar }) => {
                                         </button>
                                     </div>
                                 </div>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 )}
 

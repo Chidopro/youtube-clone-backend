@@ -2615,4 +2615,253 @@
     .edit-video-modal-footer {
         padding: 14px 16px;
     }
+}
+
+/* Favorite Upload Modal Styles */
+.favorite-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    padding: 20px;
+}
+
+.favorite-modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 0;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    position: relative;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.favorite-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-size: 32px;
+    font-weight: 300;
+    color: #666;
+    cursor: pointer;
+    line-height: 1;
+    z-index: 10001;
+    transition: color 0.2s ease;
+    background: none;
+    border: none;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.favorite-modal-close:hover {
+    color: #e74c3c;
+}
+
+.favorite-modal-content h2 {
+    margin: 0;
+    padding: 24px 24px 20px 24px;
+    font-size: 1.5rem;
+    color: #2c3e50;
+    border-bottom: 1px solid #e3e3e3;
+}
+
+.upload-form {
+    padding: 24px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.95rem;
+}
+
+.form-group input[type="text"],
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e3e3e3;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.form-group input[type="text"]:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-group input[type="file"] {
+    width: 100%;
+    padding: 8px;
+    border: 2px dashed #e3e3e3;
+    border-radius: 8px;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.form-group input[type="file"]:hover {
+    border-color: #667eea;
+}
+
+.form-group img {
+    max-width: 100%;
+    max-height: 300px;
+    margin-top: 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    object-fit: contain;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e3e3e3;
+}
+
+.form-actions .save-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-actions .save-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.form-actions .save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.form-actions .cancel-btn {
+    background: white;
+    color: #666;
+    border: 2px solid #e3e3e3;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.form-actions .cancel-btn:hover {
+    border-color: #999;
+    color: #333;
+}
+
+.add-favorite-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.add-favorite-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.make-merch-btn-favorite-dashboard {
+    margin: 8px 12px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    width: calc(100% - 24px);
+}
+
+.make-merch-btn-favorite-dashboard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.make-merch-btn-favorite-dashboard:active {
+    transform: translateY(0);
+}
+
+/* Mobile Responsive for Favorite Modal */
+@media (max-width: 768px) {
+    .favorite-modal-content {
+        max-width: 95%;
+        max-height: 95vh;
+        border-radius: 12px;
+    }
+
+    .favorite-modal-content h2 {
+        font-size: 1.3rem;
+        padding: 20px 20px 16px 20px;
+    }
+
+    .upload-form {
+        padding: 20px;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .form-actions .save-btn,
+    .form-actions .cancel-btn {
+        width: 100%;
+    }
 } 

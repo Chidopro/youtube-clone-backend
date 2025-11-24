@@ -33,21 +33,39 @@ const Profile = () => {
         return;
       }
       setProfile(userProfile);
-      // Fetch videos for this user
+      // Fetch videos for this user - use same logic for favorites
+      const channelName = userProfile.display_name || userProfile.username;
+      console.log('Fetching content for channel:', channelName, { display_name: userProfile.display_name, username: userProfile.username });
+      
       const { data: userVideos } = await supabase
         .from('videos2')
         .select('*')
-        .eq('channelTitle', userProfile.display_name || userProfile.username)
+        .eq('channelTitle', channelName)
         .order('created_at', { ascending: false });
       setVideos(userVideos || []);
+      console.log('Fetched videos:', userVideos?.length || 0, 'items');
       
-      // Fetch favorites for this user
-      const { data: userFavorites } = await supabase
+      // Fetch favorites for this user - use EXACT same query logic as videos
+      const { data: userFavorites, error: favoritesError } = await supabase
         .from('creator_favorites')
         .select('*')
-        .eq('channelTitle', userProfile.display_name || userProfile.username)
+        .eq('channelTitle', channelName)
         .order('created_at', { ascending: false });
-      setFavorites(userFavorites || []);
+      
+      if (favoritesError) {
+        console.error('Error fetching favorites:', favoritesError);
+        // Try fallback with lowercase in case column was created differently
+        const { data: fallbackFavorites } = await supabase
+          .from('creator_favorites')
+          .select('*')
+          .eq('channeltitle', channelName)
+          .order('created_at', { ascending: false });
+        console.log('Fallback query result:', fallbackFavorites?.length || 0, 'items');
+        setFavorites(fallbackFavorites || []);
+      } else {
+        console.log('Fetched favorites:', userFavorites?.length || 0, 'items');
+        setFavorites(userFavorites || []);
+      }
       
       setLoading(false);
     };
@@ -84,7 +102,7 @@ const Profile = () => {
         screenshots: [favorite.image_url || favorite.thumbnail_url],
         videoUrl: window.location.href,
         videoTitle: favorite.title || 'Favorite Image',
-        creatorName: favorite.channelTitle || profile?.display_name || profile?.username || 'Unknown Creator'
+        creatorName: favorite.channeltitle || favorite.channelTitle || profile?.display_name || profile?.username || 'Unknown Creator'
       };
       localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
       
@@ -110,7 +128,7 @@ const Profile = () => {
         screenshots: [favorite.image_url || favorite.thumbnail_url],
         screenshot_timestamp: 0,
         videoTitle: favorite.title || 'Favorite Image',
-        creatorName: favorite.channelTitle || profile?.display_name || profile?.username || 'Unknown Creator'
+        creatorName: favorite.channeltitle || favorite.channelTitle || profile?.display_name || profile?.username || 'Unknown Creator'
       };
       
       const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
