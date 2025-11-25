@@ -844,7 +844,7 @@ PRODUCTS = [
     # Products with both COLOR and SIZE options
     {
         "name": "Unisex T-Shirt",
-        "price": 21.69,
+        "price": 19.59,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "preview_image": "mensunisextshirtpreview.png",
@@ -856,15 +856,15 @@ PRODUCTS = [
             "M": 0,       # No extra charge
             "L": 0,       # No extra charge
             "XL": 0,      # No extra charge
-            "XXL": 2,     # +$2 (2XL)
-            "XXXL": 4,    # +$4 (3XL)
-            "XXXXL": 6,   # +$6 (4XL)
-            "XXXXXL": 8   # +$8 (5XL)
+            "XXL": 1.65,  # +$1.65 = $21.24
+            "XXXL": 3.30, # +$3.30 = $22.89
+            "XXXXL": 4.95, # +$4.95 = $24.54
+            "XXXXXL": 6.60 # +$6.60 = $26.19
         }
     },
     {
         "name": "Mens Fitted T-Shirt",
-        "price": 26.58,
+        "price": 22.11,
         "filename": "mensfittedtshirt.png",
         "main_image": "mensfittedtshirt.png",
         "preview_image": "mensfittedtshirtpreview.png",
@@ -876,14 +876,14 @@ PRODUCTS = [
             "M": 0,       # No extra charge
             "L": 0,       # No extra charge
             "XL": 0,      # No extra charge
-            "XXL": 1.00,  # $27.58
-            "XXXL": 2.00, # $28.58
-            "XXXXL": 4.00 # $30.58
+            "XXL": 1.65,  # +$1.65 = $23.76
+            "XXXL": 3.30, # +$3.30 = $25.41
+            "XXXXL": 4.00 # Keep existing for 4XL
         }
     },
     {
         "name": "Unisex Oversized T-Shirt",
-        "price": 26.49,
+        "price": 24.02,
         "filename": "unisexoversizedtshirt.png",
         "main_image": "unisexoversizedtshirt.png",
         "preview_image": "mensunisexoversizedtshirtpreview.png",
@@ -895,13 +895,13 @@ PRODUCTS = [
             "M": 0,       # No extra charge
             "L": 0,       # No extra charge
             "XL": 0,      # No extra charge
-            "XXL": 2.00,  # $28.49
-            "XXXL": 4.00  # $30.49
+            "XXL": 1.65,  # +$1.65 = $25.67
+            "XXXL": 3.30  # +$3.30 = $27.32
         }
     },
     {
         "name": "Men's Tank Top",
-        "price": 24.23,
+        "price": 21.87,
         "filename": "random.png",
         "main_image": "random.png",
         "preview_image": "menstanktoppreview.png",
@@ -913,12 +913,12 @@ PRODUCTS = [
             "M": 0,       # No extra charge
             "L": 0,       # No extra charge
             "XL": 0,      # No extra charge
-            "XXL": 2      # +$2 (2XL)
+            "XXL": 1.65   # +$1.65 = $23.52
         }
     },
     {
         "name": "Men's Fitted Long Sleeve",
-        "price": 29.33,
+        "price": 26.49,
         "filename": "mensfittedlongsleeve.png",
         "main_image": "mensfittedlongsleeve.png",
         "preview_image": "mensfittedlongsleeveshirtpreview.png",
@@ -929,81 +929,81 @@ PRODUCTS = [
             "M": 0,       # No extra charge
             "L": 0,       # No extra charge
             "XL": 0,      # No extra charge
-            "XXL": 2.00   # $31.33
+            "XXL": 1.65   # +$1.65 = $28.14
         }
     },
     {
         "name": "Unisex Hoodie",
-        "price": 36.95,
+        "price": 32.99,
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "mensunisexhoodiepreview.png",
         "description": "Classic unisex hoodie with a front pouch pocket and matching flat drawstrings. The 100% cotton exterior makes this hoodie soft to the touch. What's more, if you go with custom prints, you can personalize the hoodie to your heart's content and maximize your branding thanks to the custom inside label. Use it to showcase your logo, strengthen customer loyalty, and boost your brand's visibility on the market. 65% ring-spun cotton, 35% polyester. Charcoal Heather is 60% ring-spun cotton, 40% polyester. Carbon Grey is 55% ring-spun cotton, 45% polyester. 100% cotton face. Fabric weight: 8.5 oz./yd.² (288.2 g/m²). Front pouch pocket. Self-fabric patch on the back. Matching flat drawstrings. 3-panel hood. Tear-away tag. Blank product sourced from Pakistan. Disclaimer: Please be aware that, for legal reasons, this product comes with a manufacturer's side tag attached. The tag is discreet and won't compromise your design's integrity. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy Blazer", "Carbon Grey", "White", "Maroon", "Charcoal Heather", "Vintage Black", "Forest Green", "Military Green", "Team Red", "Dusty Rose", "Sky Blue", "Purple", "Team Royal"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $36.95
-            "M": 0,       # Base price $36.95
-            "L": 0,       # Base price $36.95
-            "XL": 0,      # Base price $36.95
-            "XXL": 2,     # +$2 = $38.95
-            "XXXL": 4     # +$4 = $40.95
+            "S": 0,       # Base price $32.99
+            "M": 0,       # Base price $32.99
+            "L": 0,       # Base price $32.99
+            "XL": 0,      # Base price $32.99
+            "XXL": 1.65,  # +$1.65 = $34.64
+            "XXXL": 3.30  # +$3.30 = $36.29
         }
     },
     {
         "name": "Cropped Hoodie",
-        "price": 43.15,
+        "price": 38.27,
         "filename": "croppedhoodie.png",
         "main_image": "croppedhoodie.png",
         "preview_image": "womenscroppedhoodiepreview.png",
         "description": "Comfort and style rolled into one—that's the easiest way to describe this fashion-forward hoodie. It serves as a great statement piece in any wardrobe, and with its trendy raw hem and matching drawstrings, the hoodie is bound to become a true favorite on your online store. 52% airlume combed and ring-spun cotton, 48% poly fleece. Fabric weight: 6.5 oz/yd² (220.39 g/m²). Dyed-to-match drawstrings. Dropped shoulder cut. Cropped body with a raw hem. Blank product sourced from Mexico, Nicaragua or the United States. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Military Green", "Storm", "Peach"], "size": ["S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $43.15
-            "M": 0,       # Base price $43.15
-            "L": 0,       # Base price $43.15
-            "XL": 0,      # Base price $43.15
-            "XXL": 2      # +$2 = $45.15
+            "S": 0,       # Base price $38.27
+            "M": 0,       # Base price $38.27
+            "L": 0,       # Base price $38.27
+            "XL": 0,      # Base price $38.27
+            "XXL": 1.65   # +$1.65 = $39.92
         }
     },
     {
         "name": "Unisex Champion Hoodie",
-        "price": 45.00,
+        "price": 39.75,
         "filename": "hoodiechampion.png",
         "main_image": "hoodiechampion.png",
         "preview_image": "mensunisexchampionhoodiepreview.png",
         "description": "A classic hoodie that combines Champion's signature quality with everyday comfort. The cotton-poly blend makes it soft and durable, while the two-ply hood and snug rib-knit cuffs lock in warmth. Champion's double Dry technology keeps the wearer dry on the move, and the kangaroo pocket keeps essentials handy. Customize it with your design, order one for yourself, or sell it online. 50% cotton, 50% polyester. Light Steel color is 50% cotton, 40% polyester, and 10% black polyester. Fabric weight: 9 oz./yd.² (305 g/m²). Regular fit. Set-in sleeves. Two-ply hood. Dyed-to-match drawcord. Kangaroo pocket. Heavy rib-knit waistband and cuffs. Embroidered C logo on the left cuff. Blank product sourced from Honduras and Guatemala. Disclaimer: Size up for a looser fit.",
         "options": {"color": ["Black", "Light Steel"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $45
-            "M": 0,       # Base price $45
-            "L": 0,       # Base price $45
-            "XL": 0,      # Base price $45
-            "XXL": 2,     # +$2 = $47
-            "XXXL": 4     # +$4 = $49
+            "S": 0,       # Base price $39.75
+            "M": 0,       # Base price $39.75
+            "L": 0,       # Base price $39.75
+            "XL": 0,      # Base price $39.75
+            "XXL": 1.65,  # +$1.65 = $41.40
+            "XXXL": 3.30  # +$3.30 = $43.05
         }
     },
     {
         "name": "Women's Ribbed Neck",
-        "price": 25.60,
+        "price": 23.13,
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
         "preview_image": "womensribbedneckpreview.png",
         "description": "This classic women's t-shirt is designed to flatter every body shape. The 100% organic cotton is soft on the skin, and the ribbed collar adds a polished look. Add your design, order this tee for yourself, or sell it online. 100% organic combed ring-spun cotton. Fabric weight: 5.3 oz./yd.² (180 g/m²). Regular fit. Set-in sleeves. 1 × 1 rib at collar. Double-needle topstitch on the sleeves and bottom hems. Self-fabric neck tape on the inside of the back. The fabric of this product holds certifications for its organic cotton content under GOTS (Global Organic Textile Standard) and OCS (Organic Content Standard). Blank product sourced from Bangladesh. Disclaimer: Note that we show the US sizes for this product. The sizes correspond to a bigger size in the European market, so customers from that region should order a size down. To learn more about eco-friendly certificates, check out this FAQ article! This product is made on demand. No minimums.",
         "options": {"color": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
          "size_pricing": {
-            "S": 0,       # Base price $25.60
-            "M": 0,       # Base price $25.60
-            "L": 0,       # Base price $25.60
-            "XL": 0,      # Base price $25.60
-            "XXL": 2,     # +$2 = $27.60
-            "XXXL": 4,     # +$4 = $29.60
-            "XXXXL": 6,   # +$6 = $31.60
-            "XXXXXL": 8   # +$8 = $33.60
+            "S": 0,       # Base price $23.13
+            "M": 0,       # Base price $23.13
+            "L": 0,       # Base price $23.13
+            "XL": 0,      # Base price $23.13
+            "XXL": 1.65,  # +$1.65 = $24.78
+            "XXXL": 3.30, # +$3.30 = $26.43
+            "XXXXL": 4.95, # +$4.95 = $28.08
+            "XXXXXL": 6.60 # +$6.60 = $29.73
         }
     },
     {
         "name": "Women's Shirt",
-        "price": 23.69,
+        "price": 20.99,
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
         "preview_image": "womenshirtpreview.png",
@@ -1014,13 +1014,13 @@ PRODUCTS = [
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 2,
-            "XXXL": 4
+            "XXL": 1.65,  # +$1.65 = $22.64
+            "XXXL": 3.30  # +$3.30 = $24.29
         } 
     },
     {
         "name": "Unisex Heavyweight T-Shirt",
-        "price": 25.29,
+        "price": 22.19,
         "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
         "preview_image": "womenshdshirtpreview.png",
@@ -1031,14 +1031,14 @@ PRODUCTS = [
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 2,
-            "XXXL": 4,
-            "XXXXL": 6
+            "XXL": 1.65,  # +$1.65 = $23.84
+            "XXXL": 3.30, # +$3.30 = $25.49
+            "XXXXL": 4.95 # +$4.95 = $27.14
         }
     },
     {
         "name": "Kids Shirt",
-        "price": 23.49,
+        "price": 19.79,
         "filename": "kidshirtpreview.png",
         "main_image": "kidshirtpreview.png",
         "preview_image": "kidsshirtpreview.png",
@@ -1054,7 +1054,7 @@ PRODUCTS = [
     },
     {
         "name": "Youth Heavy Blend Hoodie",
-        "price": 29.33,
+        "price": 27.16,
         "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
         "preview_image": "kidsyouthheavyblendhoodiepreview.png",
@@ -1070,7 +1070,7 @@ PRODUCTS = [
     },
     {
         "name": "Kids Long Sleeve",
-        "price": 26.49,
+        "price": 23.99,
         "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
         "preview_image": "kidslongsleevepreview.png",
@@ -1084,7 +1084,7 @@ PRODUCTS = [
     },
     {
         "name": "Kids Sweatshirt",
-        "price": 27.29,
+        "price": 24.13,
         "filename": "kidssweatshirt.png",
         "main_image": "kidssweatshirt.png",
         "preview_image": "kidssweatshirtpreview.png",
@@ -1100,7 +1100,7 @@ PRODUCTS = [
     },
     {
         "name": "Baby Body Suit",
-        "price": 20.90,
+        "price": 19.27,
         "filename": "youthalloverprintswimsuit.png",
         "main_image": "youthalloverprintswimsuit.png",
         "preview_image": "kidsbabybodysuitpreview.png",
@@ -1115,7 +1115,7 @@ PRODUCTS = [
     },
     {
         "name": "Toddler Jersey T-Shirt",
-        "price": 20.29,
+        "price": 18.75,
         "filename": "toddlerjerseytshirt.png",
         "main_image": "toddlerjerseytshirt.png",
         "preview_image": "kidstoddlerjerseytshirtpreview.png",
@@ -1130,7 +1130,7 @@ PRODUCTS = [
     },
     {
         "name": "Baby Staple Tee",
-        "price": 22.19,
+        "price": 20.40,
         "filename": "babystapletshirt.png",
         "main_image": "babystapletshirt.png",
         "preview_image": "kidsbabystapleteepreview.png",
@@ -1144,7 +1144,7 @@ PRODUCTS = [
     },
     {
         "name": "Baby Jersey T-Shirt",
-        "price": 20.29,
+        "price": 18.75,
         "filename": "toddlershortsleevet.png",
         "main_image": "toddlershortsleevet.png",
         "preview_image": "kidsbabyjerseytshirtpreview.png",
@@ -1159,7 +1159,7 @@ PRODUCTS = [
     },
     {
         "name": "Laptop Sleeve",
-        "price": 31.16,
+        "price": 28.73,
         "filename": "laptopsleeve.png",
         "main_image": "laptopsleeve.png",
         "preview_image": "bagslaptopsleevepreview.png",
@@ -1167,12 +1167,12 @@ PRODUCTS = [
         "options": {"color": ["White"], "size": ["13.5\"x10.5\"", "14.75\"x11.25\""]},
         "size_pricing": {
             "13.5\"x10.5\"": 0,
-            "14.75\"x11.25\"": 2.04
+            "14.75\"x11.25\"": 1.78  # +$1.78 = $30.51
         }
     },
     {
         "name": "All-Over Print Drawstring",
-        "price": 25.25,
+        "price": 23.64,
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
         "preview_image": "bagsalloverprintdrawstringpreview.png",
@@ -1184,7 +1184,7 @@ PRODUCTS = [
     },
     {
         "name": "All Over Print Tote Pocket",
-        "price": 33.41,
+        "price": 25.55,
         "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
         "preview_image": "bagsalloverprinttotepocketpreview.png",
@@ -1196,7 +1196,7 @@ PRODUCTS = [
     },
     {
         "name": "Greeting Card",
-        "price": 5.00,
+        "price": 4.75,
         "filename": "greetingcard.png",
         "main_image": "greetingcard.png",
         "preview_image": "miscellaneousgreetingcardpreview.png",
@@ -1208,7 +1208,7 @@ PRODUCTS = [
     },
     {
         "name": "Hardcover Bound Notebook",
-        "price": 23.21,
+        "price": 21.05,
         "filename": "hardcovernotebook.png",
         "main_image": "hardcovernotebook.png",
         "preview_image": "miscellaneoushardcovernotebookpreview.png",
@@ -1220,7 +1220,7 @@ PRODUCTS = [
     },
     {
         "name": "Coasters",
-        "price": 33.99,
+        "price": 5.00,
         "filename": "coaster.png",
         "main_image": "coaster.png",
         "preview_image": "miscellaneouscoasterspreview.png",
@@ -1232,7 +1232,7 @@ PRODUCTS = [
     },
     {
         "name": "Apron",
-        "price": 19.99,
+        "price": 26.85,
         "filename": "apron.png",
         "main_image": "apron.png",
         "preview_image": "miscellaneousapronpreview.png",
@@ -1247,7 +1247,7 @@ PRODUCTS = [
     },
     {
         "name": "Kiss-Cut Stickers",
-        "price": 4.29,
+        "price": 3.39,
         "filename": "stickers.png",
         "main_image": "stickers.png",
         "preview_image": "miscellaneouskisscutstickerspreview.png",
@@ -1262,7 +1262,7 @@ PRODUCTS = [
     },
     {
         "name": "Pet Bowl All-Over Print",
-        "price": 31.49,
+        "price": 29.65,
         "filename": "dogbowl.png",
         "main_image": "dogbowl.png",
         "preview_image": "petspetbowlalloverprintpreview.png",
@@ -1270,12 +1270,12 @@ PRODUCTS = [
         "options": {"color": ["White"], "size": ["18oz", "32oz"]},
         "size_pricing": {
             "18oz": 0,
-            "32oz": 3
+            "32oz": 1.64  # +$1.64 = $31.29
         }
     },
     {
         "name": "Pet Bandana Collar",
-        "price": 23.67,
+        "price": 21.78,
         "filename": "scarfcollar.png",
         "main_image": "scarfcollar.png",
         "preview_image": "petspetbandanacollarpreview.png",
@@ -1284,8 +1284,8 @@ PRODUCTS = [
         "size_pricing": {
             "Small 10″–16.75″": 0,
             "Medium 12″–20.25″": 0,
-            "Large 14.25″–23″": 1.56,
-            "XL 15.5″–23.5″": 1.56
+            "Large 14.25″–23″": 1.35,  # +$1.35 = $23.13
+            "XL 15.5″–23.5″": 1.35  # +$1.35 = $23.13
         }
     },
     {
@@ -1304,19 +1304,17 @@ PRODUCTS = [
     },
     {
         "name": "Jigsaw Puzzle with Tin",
-        "price": 27.65,
+        "price": 25.59,
         "filename": "jigsawpuzzle.png",
         "main_image": "jigsawpuzzle.png",
         "preview_image": "miscellaneousjigsawpuzzlewithtinpreview.png",
         "description": "Make quality time more fun with a custom jigsaw puzzle that's both a challenge and a keepsake. Whether it's a cozy night in with family or a weekend brain-teaser with friends, this puzzle delivers an experience worth framing. With rich colors, a glossy finish, and your design, it's ideal for sellers looking to offer meaningful, personalized gifts. Pre-die-cut chipboard with non-edge pieces. White metal tin box with the image on the lid. Available in 6 sizes: 30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm), 110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm), 252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm), 500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm), 1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm), 2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm). Weight by size: 30 pcs: 8 oz (227 g), 110 pcs: 8 oz (227 g), 252 pcs: 9.6 oz (272 g), 500 pcs: 20 oz (567 g), 1000 pcs: 24 oz (680 g), 2000 pcs: 28 oz (794 g). Glossy finish. Vibrant colors. Ideal for gifting or wall decor. Blank product sourced from China. Important: Choking hazard—small parts. Not suitable for children under 4 years. This product is made on demand. No minimums.",
-        "options": {"color": ["White"], "size": ["30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)", "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)", "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)", "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)"]},
+        "options": {"color": ["White"], "size": ["252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)", "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)", "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)", "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)"]},
         "size_pricing": {
-            "30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,
-            "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,
-            "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)": 2.88,
-            "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)": 7.81,
-            "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)": 11.03,
-            "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)": 22.53
+            "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)": 0,  # Base price $25.59
+            "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)": 3.74,  # +$3.74 = $29.33
+            "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)": 6.18,  # +$6.18 = $31.77
+            "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)": 14.91  # +$14.91 = $40.50
         }
     },
     {
@@ -1347,7 +1345,7 @@ PRODUCTS = [
     },
     {
         "name": "Die-Cut Magnets",
-        "price": 5.32,
+        "price": 4.75,
         "filename": "magnet.png",
         "main_image": "magnet.png",
         "preview_image": "miscellaneousdiecutmagnetspreview.png",
@@ -1359,31 +1357,9 @@ PRODUCTS = [
             "6\"x6\"": 2.55
         }
     },
-    # ============================================================================
-    # TEST ITEM - FOR TESTING STRIPE LIVE PAYMENTS ONLY
-    # ============================================================================
-    # TO REMOVE: Simply delete this entire block (lines below until the next comment)
-    # This item appears in "Misc" category only
-    # Does NOT affect: mobile, desktop, server, email, login, or Google sign-in
-    # ============================================================================
-    {
-        "name": "Test Item (Live Mode)",
-        "price": 0.50,
-        "filename": "magnet.png",
-        "main_image": "magnet.png",
-        "preview_image": "miscellaneousdiecutmagnetspreview.png",
-        "description": "This is a test item for testing live Stripe payments. Minimum charge is $0.50 USD.",
-        "options": {"color": ["White"], "size": ["One Size"]},
-        "size_pricing": {
-            "One Size": 0
-        }
-    },
-    # ============================================================================
-    # END OF TEST ITEM - Remove the block above to delete the test item
-    # ============================================================================
     {
         "name": "Men's Long Sleeve Shirt",
-        "price": 24.79,
+        "price": 20.79,
         "filename": "menslongsleeve.png",
         "main_image": "menslongsleeve.png",
         "preview_image": "menslongsleevepreview.png",
@@ -1394,14 +1370,14 @@ PRODUCTS = [
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 2,
-            "XXXL": 4,
-            "XXXXL": 6
+            "XXL": 1.65,  # +$1.65 = $22.44
+            "XXXL": 3.30, # +$3.30 = $24.09
+            "XXXXL": 4.95 # +$4.95 = $25.74
         }
     },
     {
         "name": "Fitted Racerback Tank",
-        "price": 20.95,
+        "price": 19.31,
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.png",
@@ -1413,12 +1389,12 @@ PRODUCTS = [
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 2
+            "XXL": 1.65  # +$1.65 = $20.96
         }
     },
     {
         "name": "Unisex Pullover Hoodie",
-        "price": 41.06,
+        "price": 37.97,
         "filename": "unisexpulloverhoodie.png",
         "main_image": "unisexpulloverhoodie.png",
         "preview_image": "womensunisexpulloverhoodiepreview.png",
@@ -1429,7 +1405,7 @@ PRODUCTS = [
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 2,
+            "XXL": 1.65,  # +$1.65 = $39.62
             "XXXL": 4,
             "XXXXL": 5,
             "XXXXXL": 8
@@ -1437,7 +1413,7 @@ PRODUCTS = [
     },
     {
         "name": "Micro-Rib Tank Top",
-        "price": 25.81,
+        "price": 23.31,
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
         "preview_image": "womensmicroribtanktoppreview.png",
@@ -1449,12 +1425,12 @@ PRODUCTS = [
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 2
+            "XXL": 1.65  # +$1.65 = $24.96
         }
     },
     {
         "name": "Distressed Dad Hat",
-        "price": 23.99,
+        "price": 21.89,
         "filename": "distresseddadhat.png",
         "main_image": "distresseddadhat.png",
         "preview_image": "hatsdistresseddadhatpreview.png",
@@ -1478,7 +1454,7 @@ PRODUCTS = [
     },
     {
         "name": "Five Panel Trucker Hat",
-        "price": 24.79,
+        "price": 22.71,
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
         "preview_image": "hatsfivepaneltruckerhatpreview.png",
@@ -1504,7 +1480,7 @@ PRODUCTS = [
     },
     {
         "name": "Five Panel Baseball Cap",
-        "price": 21.72,
+        "price": 19.96,
         "filename": "youthbaseballcap.png",
         "main_image": "youthbaseballcap.png",
         "preview_image": "hatsfivepanelbaseballhatpreview.png",
@@ -1516,7 +1492,7 @@ PRODUCTS = [
     },
     {
         "name": "White Glossy Mug",
-        "price": 15.95,
+        "price": 14.95,
         "filename": "mug1.png",
         "main_image": "mug1.png",
         "preview_image": "mugwhiteglossymugpreview.png",
@@ -1524,13 +1500,13 @@ PRODUCTS = [
         "options": {"color": ["White"], "size": ["11 oz", "15 oz", "20 oz"]},
         "size_pricing": {
             "11 oz": 0,
-            "15 oz": 2.00,
-            "20 oz": 3.55
+            "15 oz": 1.50,  # +$1.50 = $16.45
+            "20 oz": 3.00   # +$3.00 = $17.95
         }
     },
     {
         "name": "Travel Mug",
-        "price": 32.10,
+        "price": 28.48,
         "filename": "travelmug.png",
         "main_image": "travelmug.png",
         "preview_image": "mugtravelmugpreview.png",
@@ -1538,12 +1514,12 @@ PRODUCTS = [
         "options": {"color": ["White", "Black", "Navy", "Gray"], "size": ["25 oz", "40 oz"]},
         "size_pricing": {
             "25 oz": 0,
-            "40 oz": 1.10
+            "40 oz": 0.93  # +$0.93 = $29.41
         }
     },
     {
         "name": "Enamel Mug",
-        "price": 22.42,
+        "price": 19.82,
         "filename": "enamalmug.png",
         "main_image": "enamalmug.png",
         "preview_image": "mugenamelmugpreview.png",
@@ -1555,7 +1531,7 @@ PRODUCTS = [
     },
     {
         "name": "Colored Mug",
-        "price": 17.95,
+        "price": 16.49,
         "filename": "coloredmug.png",
         "main_image": "coloredmug.png",
         "preview_image": "mugcoloredmugpreview.png",
@@ -1563,12 +1539,12 @@ PRODUCTS = [
         "options": {"color": ["Black", "Red", "Blue", "Dark Green"], "size": ["11 oz", "15 oz"]},
         "size_pricing": {
             "11 oz": 0,
-            "15 oz": 1.00
+            "15 oz": 0.80  # +$0.80 = $17.29
         }
     },
     {
         "name": "All-Over Print Utility Bag",
-        "price": 31.79,
+        "price": 28.57,
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
         "preview_image": "bagsalloverprintutilitybagpreview.png",
@@ -1580,7 +1556,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's Crop Top",
-        "price": 28.55,
+        "price": 26.01,
         "filename": "womens-crop-top.png",
         "main_image": "womens-crop-top.png",
         "preview_image": "womenscroptoppreview.png",
@@ -1698,8 +1674,7 @@ def filter_products_by_category(category):
             "Jigsaw Puzzle with Tin",
             "Greeting Card",
             "Kiss-Cut Stickers",
-            "Die-Cut Magnets",
-            "Test Item (Live Mode)"
+            "Die-Cut Magnets"
         ],
         'all-products': [],  # All Products category - will contain all products eventually
         'thumbnails': []  # Coming Soon - no products yet

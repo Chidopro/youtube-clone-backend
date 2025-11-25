@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS creator_favorites (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    channelTitle VARCHAR(255) NOT NULL,
+    "channelTitle" VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     image_url TEXT NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS creator_favorites (
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_creator_favorites_user_id ON creator_favorites(user_id);
-CREATE INDEX IF NOT EXISTS idx_creator_favorites_channelTitle ON creator_favorites(channelTitle);
+CREATE INDEX IF NOT EXISTS idx_creator_favorites_channelTitle ON creator_favorites("channelTitle");
 CREATE INDEX IF NOT EXISTS idx_creator_favorites_created_at ON creator_favorites(created_at);
 
 -- Create trigger to automatically update the updated_at column

@@ -868,43 +868,70 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         if (!videoElement) return;
         
         try {
-            // Use server-side screenshot capture to avoid cross-origin issues
-            // console.log('Using server-side screenshot capture for crop...');
+            // Try server-side screenshot capture first, but fallback to client-side if it fails
+            let fullScreenshot = null;
+            let useServerScreenshot = false;
             
-            if (!video?.video_url) {
-                alert('Video URL not available. Please try again.');
-                return;
+            if (video?.video_url) {
+                try {
+                    const currentTime = videoElement.currentTime || 0;
+                    const videoUrl = video.video_url;
+                    
+                    console.log(`Requesting server-side screenshot at ${currentTime}s from ${videoUrl}`);
+                    
+                    const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_PRINT_QUALITY, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            video_url: videoUrl,
+                            timestamp: currentTime,
+                            print_dpi: 300
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        
+                        if (result.success && result.screenshot) {
+                            fullScreenshot = result.screenshot;
+                            useServerScreenshot = true;
+                            console.log('Server screenshot captured successfully');
+                        } else {
+                            console.warn('Server returned unsuccessful result:', result.error || 'Unknown error');
+                        }
+                    } else {
+                        const errorText = await response.text();
+                        console.warn(`Server error ${response.status}: ${errorText}`);
+                    }
+                } catch (serverError) {
+                    console.warn('Server screenshot capture failed, using fallback:', serverError);
+                }
             }
             
-            const currentTime = videoElement.currentTime || 0;
-            const videoUrl = video.video_url;
-            
-            // console.log(`Requesting server-side screenshot at ${currentTime}s from ${videoUrl}`);
-            
-            const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_PRINT_QUALITY, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    video_url: videoUrl,
-                    timestamp: currentTime,
-                    print_dpi: 300
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
+            // Fallback to client-side screenshot capture if server failed
+            if (!fullScreenshot) {
+                console.log('Using client-side screenshot capture as fallback');
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // Get video dimensions
+                const videoWidth = videoElement.videoWidth || videoElement.clientWidth;
+                const videoHeight = videoElement.videoHeight || videoElement.clientHeight;
+                
+                // Set canvas to video dimensions
+                tempCanvas.width = videoWidth;
+                tempCanvas.height = videoHeight;
+                
+                // Draw current video frame to canvas
+                tempCtx.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
+                
+                // Convert to data URL
+                fullScreenshot = tempCanvas.toDataURL('image/png');
+                useServerScreenshot = false;
             }
-            
-            const result = await response.json();
-            
-            if (!result.success || !result.screenshot) {
-                throw new Error(result.error || 'Server failed to capture screenshot');
-            }
-            
-            const fullScreenshot = result.screenshot;
             
             // Create a new canvas to crop the screenshot
             const canvas = document.createElement('canvas');
@@ -919,6 +946,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     const displayHeight = displayRect.height;
                     
                     // Calculate scale factors between screenshot and display
+                    // If using server screenshot, it might be scaled differently
                     const scaleX = img.width / displayWidth;
                     const scaleY = img.height / displayHeight;
                     
@@ -989,9 +1017,10 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             console.error('Error details:', {
                 videoElement: !!videoElement,
                 videoReadyState: videoElement?.readyState,
-                cropArea
+                cropArea,
+                errorMessage: error.message
             });
-            alert('Failed to crop image. Please try again.');
+            alert(`Failed to crop image: ${error.message || 'Unknown error'}. Please try again.`);
         }
     };
 

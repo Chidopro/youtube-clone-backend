@@ -5,7 +5,7 @@ import './Profile.css';
 import '../../Components/ChannelHeader/ChannelHeaderShared.css';
 import { API_CONFIG } from '../../config/apiConfig';
 
-const Profile = () => {
+const Profile = ({ sidebar }) => {
   const { username } = useParams();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
@@ -172,7 +172,7 @@ const Profile = () => {
   return (
     <>
       {/* Channel Header - Cheedo V Style (copied from dashboard, no edit icons) */}
-      <div className="channel-header">
+      <div className={`channel-header ${!sidebar ? 'large-container' : ''}`}>
         <div className="channel-cover-container">
           <div className="cover-image-container">
             <img
@@ -200,7 +200,7 @@ const Profile = () => {
           </div>
         </div>
       </div>
-      <div className="profile-page">
+      <div className={`profile-page ${!sidebar ? 'large-container' : ''}`}>
         <div className="profile-tabs">
           <span 
             className={activeTab === 'videos' ? 'active' : ''}
