@@ -24,6 +24,7 @@ const ProductPreviewWithDrag = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const lastDragPositionRef = useRef({ x: 0, y: 0 });
+  const currentDragPositionRef = useRef({ x: 0, y: 0 }); // Track current position for snapping
   const [processedImage, setProcessedImage] = useState(screenshot);
   const [screenshotDisplaySize, setScreenshotDisplaySize] = useState({ width: 150, height: 150 });
   const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
@@ -388,9 +389,9 @@ const ProductPreviewWithDrag = ({
         
         if (clientX === undefined || clientY === undefined) return;
         
-        // Reduce sensitivity by applying a multiplier (0.5 = 50% sensitivity = less sensitive)
-        const sensitivityMultiplier = 0.5;
-        // Calculate delta from last position (not from start) for smoother, less sensitive movement
+        // Increase sensitivity for easier movement (0.75 = 75% sensitivity = more responsive)
+        const sensitivityMultiplier = 0.75;
+        // Calculate delta from last position (not from start) for smoother movement
         const deltaX = (clientX - lastDragPositionRef.current.x) * sensitivityMultiplier;
         const deltaY = (clientY - lastDragPositionRef.current.y) * sensitivityMultiplier;
         
@@ -420,15 +421,11 @@ const ProductPreviewWithDrag = ({
           let clampedX = Math.max(-maxOffsetX, Math.min(maxOffsetX, newX));
           let clampedY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, newY));
           
-          // Add "snapping" behavior - if very close to center (within 5px), snap to center
-          const snapThreshold = 5;
-          if (Math.abs(clampedX) < snapThreshold) {
-            clampedX = 0;
-          }
-          if (Math.abs(clampedY) < snapThreshold) {
-            clampedY = 0;
-          }
+          // Store current position for snapping on release
+          currentDragPositionRef.current = { x: clampedX, y: clampedY };
           
+          // Don't snap during dragging - allow free movement
+          // Snapping will happen on release (in handleUp)
           onOffsetChange(clampedX, clampedY);
         } else {
           // Fallback to screenshot-based bounds if product image size not available
@@ -442,6 +439,39 @@ const ProductPreviewWithDrag = ({
       };
       
       const handleUp = () => {
+        // Snap to center/print area when released if close enough
+        if (productImageSize.width > 0 && productImageSize.height > 0) {
+          const maxOffsetX = productImageSize.width * 0.4;
+          const maxOffsetYUp = productImageSize.height * 0.6;
+          const maxOffsetYDown = productImageSize.height * 0.4;
+          
+          // Use the current drag position for snapping
+          const currentX = currentDragPositionRef.current.x;
+          const currentY = currentDragPositionRef.current.y;
+          
+          // Calculate snap threshold based on product size (larger threshold for easier snapping)
+          const snapThresholdX = productImageSize.width * 0.03; // 3% of product width
+          const snapThresholdY = productImageSize.height * 0.03; // 3% of product height
+          
+          let finalX = currentX;
+          let finalY = currentY;
+          
+          // Snap to center if within threshold
+          if (Math.abs(currentX) < snapThresholdX) {
+            finalX = 0;
+          }
+          if (Math.abs(currentY) < snapThresholdY) {
+            finalY = 0;
+          }
+          
+          // Clamp to bounds
+          finalX = Math.max(-maxOffsetX, Math.min(maxOffsetX, finalX));
+          finalY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, finalY));
+          
+          // Update position (will snap if within threshold)
+          onOffsetChange(finalX, finalY);
+        }
+        
         setIsDragging(false);
       };
       
@@ -751,6 +781,8 @@ const ToolsPage = () => {
   const [selectedCartProductIndex, setSelectedCartProductIndex] = useState(null); // Selected product index from cart
   const [productImageOffsets, setProductImageOffsets] = useState({}); // Store image offsets for each cart product {cartIndex: {x: 0, y: 0}}
   const [screenshotScale, setScreenshotScale] = useState(100); // Screenshot size scale (percentage: 50-150%)
+  const [screenshotSizeInteracted, setScreenshotSizeInteracted] = useState(false); // Track if screenshot size has been adjusted
+  const [productSelectClicked, setProductSelectClicked] = useState(false); // Track if product select has been clicked
 
   // Calculate and set fixed position for left column
   useEffect(() => {
@@ -771,6 +803,13 @@ const ToolsPage = () => {
       window.removeEventListener('resize', updateLeftColumnPosition);
       window.removeEventListener('scroll', updateLeftColumnPosition);
     };
+  }, []);
+
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Reset pulse state on mount to ensure it shows
+    setProductSelectClicked(false);
   }, []);
 
   // Load tool page state from localStorage on mount
@@ -2001,23 +2040,6 @@ const ToolsPage = () => {
         
         return (
           <>
-            {!isEnabled && (
-              <div style={{
-                textAlign: 'center',
-                padding: '2rem',
-                background: '#fff3cd',
-                border: '2px solid #ffc107',
-                borderRadius: '8px',
-                margin: '2rem 0',
-                color: '#856404'
-              }}>
-                <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚠️</div>
-                <div style={{ fontWeight: 'bold', marginBottom: '5px', fontSize: '1.2rem' }}>Tools Unavailable</div>
-                <div style={{ fontSize: '14px' }}>
-                  Please select a screenshot and product from your cart to use the editing tools.
-                </div>
-              </div>
-            )}
             <div 
               className={`tools-content-reorganized ${!isEnabled ? 'tools-disabled' : ''}`}
               style={!isEnabled ? { opacity: 0.5, pointerEvents: 'none' } : {}}
@@ -2315,13 +2337,18 @@ const ToolsPage = () => {
               <h3 style={{ textAlign: 'center' }}>Screenshot Size</h3>
               <p className="tool-description" style={{ textAlign: 'center' }}>Adjust the size of your screenshot to fit the print area perfectly</p>
               <div className="slider-control">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className={`${selectedProductName && !screenshotSizeInteracted ? 'screenshot-size-pulse' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderRadius: '4px' }}>
                   <input
                     type="range"
                     min="50"
                     max="150"
                     value={screenshotScale}
-                    onChange={(e) => setScreenshotScale(parseInt(e.target.value))}
+                    onMouseDown={() => setScreenshotSizeInteracted(true)}
+                    onTouchStart={() => setScreenshotSizeInteracted(true)}
+                    onChange={(e) => {
+                      setScreenshotScale(parseInt(e.target.value));
+                      setScreenshotSizeInteracted(true);
+                    }}
                     onContextMenu={(e) => e.preventDefault()}
                     onSelectStart={(e) => e.preventDefault()}
                     className="slider"
@@ -2336,7 +2363,10 @@ const ToolsPage = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <button
                       type="button"
-                      onClick={() => setScreenshotScale(Math.min(150, screenshotScale + 1))}
+                      onClick={() => {
+                        setScreenshotScale(Math.min(150, screenshotScale + 1));
+                        setScreenshotSizeInteracted(true);
+                      }}
                       onContextMenu={(e) => e.preventDefault()}
                       onSelectStart={(e) => e.preventDefault()}
                       style={{
@@ -2364,7 +2394,10 @@ const ToolsPage = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setScreenshotScale(Math.max(50, screenshotScale - 1))}
+                      onClick={() => {
+                        setScreenshotScale(Math.max(50, screenshotScale - 1));
+                        setScreenshotSizeInteracted(true);
+                      }}
                       onContextMenu={(e) => e.preventDefault()}
                       onSelectStart={(e) => e.preventDefault()}
                       style={{
@@ -2419,7 +2452,13 @@ const ToolsPage = () => {
         <div className="tools-controls-section">
           {/* Product Selector - Small dropdown at top of tools */}
           {cartProducts.length > 1 && (
-            <div className="tool-control-group" style={{ marginBottom: '1rem' }}>
+            <div 
+              className="tool-control-group"
+              style={{ 
+                marginBottom: '1rem',
+                position: 'relative'
+              }}
+            >
               <h3 style={{ marginTop: 0, marginBottom: '0.5rem', fontWeight: 'bold' }}>
                 Select Product From Cart:
               </h3>
@@ -2451,18 +2490,31 @@ const ToolsPage = () => {
             <p className="tool-description">Crop image to fit product print areas</p>
             
             {/* Product Selector */}
-            <div className="select-control" style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Select Product:</label>
+            <div 
+              className="select-control product-select-pulse-wrapper"
+              style={{ marginBottom: '1rem', position: 'relative' }}
+            >
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                Select Product:
+              </label>
               <select
                 value={selectedProductName}
+                onClick={() => {
+                  if (!productSelectClicked) {
+                    setProductSelectClicked(true);
+                  }
+                }}
                 onChange={(e) => {
                   setSelectedProductName(e.target.value);
+                  setProductSelectClicked(true);
+                  // Reset screenshot size interaction when product changes
+                  setScreenshotSizeInteracted(false);
                   // Auto-select product fit if product is selected
                   if (e.target.value) {
                     setPrintAreaFit('product');
                   }
                 }}
-                className="print-area-select"
+                className={`print-area-select ${!productSelectClicked ? 'product-select-pulse' : ''}`}
               >
                 <option value="">-- Select Product --</option>
                 {Object.keys(PRINT_AREA_CONFIG).sort().map(productName => (

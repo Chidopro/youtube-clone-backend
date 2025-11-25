@@ -1,3 +1,37 @@
+/* Pulse animation for product selection - similar to homepage step 2 */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(118, 75, 162, 0.7);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 8px rgba(118, 75, 162, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(118, 75, 162, 0);
+  }
+}
+
+.product-select-pulse {
+  animation: pulse 2s infinite !important;
+  border: 2px solid #764ba2 !important;
+  transition: none !important;
+}
+
+.product-select-pulse:focus {
+  animation: pulse 2s infinite !important;
+  border: 2px solid #764ba2 !important;
+  outline: none !important;
+}
+
+.screenshot-size-pulse {
+  animation: pulse 2s infinite !important;
+  border: 2px solid #764ba2 !important;
+  transition: none !important;
+}
+
 .tools-page-container {
   min-height: 100vh;
   background: #f9f9f9;
