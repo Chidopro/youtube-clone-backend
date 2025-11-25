@@ -41,6 +41,7 @@ const ProductPage = ({ sidebar }) => {
   
   const authenticated = searchParams.get('authenticated') === 'true';
   const email = searchParams.get('email') || '';
+  const openCart = searchParams.get('openCart') === 'true';
 
   useEffect(() => {
     if (window.__DEBUG__) {
@@ -49,7 +50,17 @@ const ProductPage = ({ sidebar }) => {
     }
     // keep the last used category current
     if (category) localStorage.setItem('last_selected_category', category);
-  }, [qsCategory, category]);
+    
+    // Open cart modal if openCart parameter is present
+    if (openCart) {
+      setIsCartOpen(true);
+      // Remove the parameter from URL to clean it up
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('openCart');
+      const newUrl = `${window.location.pathname}?${newSearchParams.toString()}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [qsCategory, category, openCart, searchParams]);
 
   // Categories for selection
   const categories = [

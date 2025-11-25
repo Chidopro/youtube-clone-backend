@@ -135,16 +135,17 @@
   box-shadow: 0 25px 80px rgba(0, 0, 0, 0.12);
 }
 
-.order-section h2 {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: #1a202c;
+.order-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 16px;
   position: relative;
-  letter-spacing: -0.01em;
 }
 
-.order-section h2::after {
+.order-section-header::after {
   content: '';
   position: absolute;
   bottom: -12px;
@@ -153,6 +154,48 @@
   height: 4px;
   background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
   border-radius: 2px;
+}
+
+.order-section h2 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #1a202c;
+  margin: 0;
+  position: relative;
+  letter-spacing: -0.01em;
+}
+
+.back-to-cart-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: #1a202c;
+  font-weight: 800;
+  font-size: 1.75rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.back-to-cart-btn:hover {
+  color: #667eea;
+  transform: translateY(-2px);
+}
+
+.back-to-cart-btn:active {
+  transform: translateY(0);
+}
+
+.back-to-cart-text {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #1a202c;
 }
 
 .items-list {
@@ -632,6 +675,26 @@
     padding: 24px;
   }
   
+  .order-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .order-section h2 {
+    font-size: 1.5rem;
+  }
+  
+  .back-to-cart-btn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0;
+  }
+  
+  .back-to-cart-text {
+    font-size: 1.5rem;
+  }
+  
   .form-row {
     grid-template-columns: 1fr;
     gap: 16px;
@@ -670,6 +733,22 @@
   .progress-step {
     padding: 10px 16px;
     font-size: 0.85rem;
+  }
+  
+  .order-section-header {
+    gap: 10px;
+  }
+  
+  .order-section h2 {
+    font-size: 1.35rem;
+  }
+  
+  .back-to-cart-btn {
+    padding: 0;
+  }
+  
+  .back-to-cart-text {
+    font-size: 1.35rem;
   }
   
   .btn-large {

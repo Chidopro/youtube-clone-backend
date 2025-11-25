@@ -201,14 +201,29 @@ const Checkout = () => {
           <div className="empty-cart-icon">🛒</div>
           <h2>Your cart is empty</h2>
           <p>Add some items to your cart to continue</p>
-          <button className="btn-primary" onClick={() => navigate(-1)}>Continue Shopping</button>
+          <button className="btn-primary" onClick={() => navigate('/merchandise')}>Continue Shopping</button>
         </div>
       ) : (
         <div className="checkout-content">
           <div className="checkout-main">
             {/* Order Items */}
             <div className="order-section">
-              <h2>Order Items</h2>
+              <div className="order-section-header">
+                <h2>Order Items</h2>
+                <button 
+                  className="back-to-cart-btn" 
+                  onClick={() => {
+                    // Navigate to product page with flag to open cart modal
+                    const category = localStorage.getItem('last_selected_category') || 'mens';
+                    const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+                    const userEmail = localStorage.getItem('user_email') || '';
+                    navigate(`/product/browse?category=${encodeURIComponent(category)}&authenticated=${isAuthenticated}&email=${encodeURIComponent(userEmail)}&openCart=true`);
+                  }}
+                  aria-label="Back to Cart"
+                >
+                  <span className="back-to-cart-text">BACK TO CART</span>
+                </button>
+              </div>
               <div className="items-list">
                 {items.map((ci, i) => {
                   // Get product image and screenshot separately (matching cart display)
@@ -401,7 +416,7 @@ const Checkout = () => {
             </div>
             
             <div className="checkout-actions">
-              <button className="btn-outline" onClick={() => navigate(-1)}>
+              <button className="btn-outline" onClick={() => navigate('/merchandise')}>
                 Continue Shopping
               </button>
               <button 
