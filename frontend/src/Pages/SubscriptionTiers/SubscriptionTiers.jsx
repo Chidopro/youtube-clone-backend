@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import './SubscriptionTiers.css';
 import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
+import CreatorSignupModal from '../../Components/CreatorSignupModal/CreatorSignupModal';
 
 const SubscriptionTiers = () => {
     const navigate = useNavigate();
@@ -43,6 +44,7 @@ const SubscriptionTiers = () => {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [message, setMessage] = useState('');
+    const [isCreatorSignupModalOpen, setIsCreatorSignupModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -65,34 +67,29 @@ const SubscriptionTiers = () => {
     }, []);
 
     const handleGetStarted = async () => {
-        setActionLoading(true);
-        setMessage('');
-
-        try {
-            if (!currentUser) {
-                // For new users, redirect directly to PayPal setup
-                setMessage('Redirecting to PayPal setup...');
-                setTimeout(() => {
-                    navigate('/payment-setup?flow=new_user');
-                }, 1500);
-                return;
-            }
-
-            // For existing users, start the PayPal setup flow
-            const result = await SubscriptionService.subscribeToProTier();
-            
-            if (result.success) {
-                setMessage('Redirecting to PayPal setup...');
-                // The redirect will happen automatically
-            } else {
-                setMessage(result.error || 'An error occurred. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error starting PayPal setup:', error);
-            setMessage('An error occurred. Please try again.');
-        } finally {
-            setActionLoading(false);
+        if (!currentUser) {
+            // For new users, show creator signup modal
+            setIsCreatorSignupModalOpen(true);
+            return;
         }
+
+        // For existing users, redirect to dashboard payout setup
+        navigate('/dashboard?tab=payout');
+    };
+
+    const handleCreatorSignup = async (email, location) => {
+        // Store email and location for later use if needed
+        localStorage.setItem('pending_creator_email', email);
+        localStorage.setItem('pending_creator_location', location);
+        
+        // Redirect to Google OAuth
+        const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}`;
+        console.log('Redirecting to Google OAuth for creator signup:', authUrl);
+        window.location.href = authUrl;
+    };
+
+    const handleCloseCreatorSignupModal = () => {
+        setIsCreatorSignupModalOpen(false);
     };
 
     if (loading) {
@@ -108,6 +105,15 @@ const SubscriptionTiers = () => {
             <div className="tiers-header">
                 <h1>💰 Creator Earnings Calculator</h1>
                 <p>See how much you could earn with ScreenMerch's completely free merch system - No monthly fees!</p>
+                {!currentUser && (
+                    <button 
+                        className="hero-signup-btn"
+                        onClick={() => handleGetStarted()}
+                        disabled={actionLoading}
+                    >
+                        {actionLoading ? 'Processing...' : 'Sign Up Now'}
+                    </button>
+                )}
             </div>
 
             {message && (
@@ -147,9 +153,6 @@ const SubscriptionTiers = () => {
                 <div className="calculator-header">
                     <h4>🎯 ScreenMerch Free Plan</h4>
                     <p>It's completely free to use ScreenMerch! No monthly fees, no recurring charges. You earn 70% of all sales, 30% house commission.</p>
-                    <div className="pricing-note">
-                        <small>💡 Based on actual product overhead costs and 30% house commission structure</small>
-                    </div>
                 </div>
                 
                 <div className="tier-comparison-grid">
@@ -209,38 +212,6 @@ const SubscriptionTiers = () => {
                         </div>
                     </div>
                 </div>
-
-                <div className="calculator-footer">
-                    <button 
-                        className="upgrade-btn"
-                        onClick={() => handleGetStarted()}
-                        disabled={actionLoading}
-                    >
-                        {actionLoading ? 'Processing...' : currentUser ? '🚀 Set Up PayPal & Start Earning' : '🚀 Sign Up & Set Up PayPal'}
-                    </button>
-                </div>
-
-                {/* Calculation Breakdown */}
-                <div className="calculation-breakdown">
-                    <h5>📊 How We Calculate Your Earnings</h5>
-                    <div className="breakdown-grid">
-                        <div className="breakdown-item">
-                            <strong>Total Revenue:</strong> ${hypotheticalData.totalRevenue.toLocaleString()}
-                        </div>
-                        <div className="breakdown-item">
-                            <strong>Product Overhead Costs:</strong> ${(hypotheticalData.totalProductsSold * hypotheticalData.productOverheadCost).toLocaleString()}
-                        </div>
-                        <div className="breakdown-item">
-                            <strong>House Commission (30% of Gross Profit):</strong> ${(hypotheticalData.totalProductsSold * hypotheticalData.houseCommission).toLocaleString()}
-                        </div>
-                        <div className="breakdown-item highlight creator-earnings">
-                            <strong>🎯 Your Total Net Earnings:</strong> ${(hypotheticalData.totalProductsSold * hypotheticalData.yourProfitPerItem).toLocaleString()}
-                        </div>
-                    </div>
-                    <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '1.1rem', fontWeight: '600', color: '#1565c0' }}>
-                        Just One T-Shirt 50 Sales a Week!
-                    </div>
-                </div>
             </div>
 
             {/* Value Proposition */}
@@ -269,6 +240,25 @@ const SubscriptionTiers = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Sign Up CTA Section with Purple Background */}
+            {!currentUser && (
+                <div className="signup-cta-section">
+                    <button 
+                        className="hero-signup-btn"
+                        onClick={() => handleGetStarted()}
+                        disabled={actionLoading}
+                    >
+                        {actionLoading ? 'Processing...' : 'Sign Up Now'}
+                    </button>
+                </div>
+            )}
+
+            <CreatorSignupModal
+                isOpen={isCreatorSignupModalOpen}
+                onClose={handleCloseCreatorSignupModal}
+                onSignup={handleCreatorSignup}
+            />
         </div>
     );
 };
