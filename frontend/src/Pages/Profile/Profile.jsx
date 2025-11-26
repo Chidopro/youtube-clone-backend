@@ -45,22 +45,22 @@ const Profile = ({ sidebar }) => {
       setVideos(userVideos || []);
       console.log('Fetched videos:', userVideos?.length || 0, 'items');
       
-      // Fetch favorites for this user - use EXACT same query logic as videos
+      // Fetch favorites for this user - query by user_id (more reliable than channelTitle)
       const { data: userFavorites, error: favoritesError } = await supabase
         .from('creator_favorites')
         .select('*')
-        .eq('channelTitle', channelName)
+        .eq('user_id', userProfile.id)
         .order('created_at', { ascending: false });
       
       if (favoritesError) {
         console.error('Error fetching favorites:', favoritesError);
-        // Try fallback with lowercase in case column was created differently
+        // Try fallback with channelTitle in case user_id doesn't match
         const { data: fallbackFavorites } = await supabase
           .from('creator_favorites')
           .select('*')
-          .eq('channeltitle', channelName)
+          .eq('channelTitle', channelName)
           .order('created_at', { ascending: false });
-        console.log('Fallback query result:', fallbackFavorites?.length || 0, 'items');
+        console.log('Fallback query result (by channelTitle):', fallbackFavorites?.length || 0, 'items');
         setFavorites(fallbackFavorites || []);
       } else {
         console.log('Fetched favorites:', userFavorites?.length || 0, 'items');

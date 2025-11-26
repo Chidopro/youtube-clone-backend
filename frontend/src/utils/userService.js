@@ -227,6 +227,49 @@ export class UserService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Check if current user is a creator
+   * @returns {Promise<boolean>} True if user is a creator
+   */
+  static async isCreator() {
+    try {
+      // Check for Google OAuth user first
+      const isAuthenticated = localStorage.getItem('isAuthenticated');
+      const userData = localStorage.getItem('user');
+      
+      let user = null;
+      
+      if (isAuthenticated === 'true' && userData) {
+        // Google OAuth user - assume creator for now
+        return true;
+      } else {
+        // Fallback to Supabase auth
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+        if (!supabaseUser) {
+          return false;
+        }
+        user = supabaseUser;
+      }
+
+      // Check user role in database
+      const { data, error } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error checking creator status:', error);
+        return false;
+      }
+
+      return data?.role === 'creator';
+    } catch (error) {
+      console.error('Error in isCreator:', error);
+      return false;
+    }
+  }
 }
 
 // Export individual functions for convenience
@@ -237,5 +280,6 @@ export const {
   getUserProfileById,
   uploadProfileImage,
   deleteProfileImage,
-  deleteUserAccount
+  deleteUserAccount,
+  isCreator
 } = UserService; 

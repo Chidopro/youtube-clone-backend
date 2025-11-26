@@ -22,7 +22,6 @@ const Feed = ({ videos }) => {
                         <img src={item.thumbnail || 'https://via.placeholder.com/320x180?text=No+Thumbnail'} alt="" />
                         <h2>{item.title}</h2>
                         <h3>{item.channelTitle || 'Creator'}</h3>
-                        <p>{value_converter(item.viewCount || 0)} Views &bull; {" " + moment(item.created_at).fromNow()}</p>
                     </div>
                 );
             })}

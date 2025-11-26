@@ -5,6 +5,7 @@ import AuthModal from "../../Components/AuthModal/AuthModal";
 import './Video.css'
 import { useParams } from "react-router-dom";
 import { API_CONFIG } from '../../config/apiConfig'
+import { UserService } from '../../utils/userService'
 
 const Video = ({ sidebar }) => {
 
@@ -224,7 +225,18 @@ const Video = ({ sidebar }) => {
       return;
     }
     
-    // User is authenticated, proceed with merch creation
+    // Check if user is a creator
+    const isCreator = await UserService.isCreator();
+    
+    if (isCreator) {
+      // For creators, navigate directly to screenshot selection page (skip category selection)
+      localStorage.setItem('creator_favorites_mode', 'true');
+      // Navigate directly to screenshot selection page in creator mode
+      window.location.href = '/product/browse?category=mens&creatorMode=favorites';
+      return;
+    }
+    
+    // User is authenticated but not creator, proceed with merch creation
     await createMerchProduct();
   };
 

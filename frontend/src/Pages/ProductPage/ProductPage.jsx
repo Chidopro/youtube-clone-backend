@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import ToolsPage from '../ToolsPage/ToolsPage';
+import { supabase } from '../../supabaseClient';
+import { UserService } from '../../utils/userService';
 import './ProductPage.css';
 
 const IMG_BASE = 'https://screenmerch.fly.dev/static/images';
@@ -29,6 +31,9 @@ const ProductPage = ({ sidebar }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showAddedToCartModal, setShowAddedToCartModal] = useState(false);
   const [fallbackImages, setFallbackImages] = useState({ screenshots: [], thumbnail: '' });
+  const [isCreator, setIsCreator] = useState(false);
+  const [savingFavorite, setSavingFavorite] = useState(false);
+  const [selectedScreenshotForFavorite, setSelectedScreenshotForFavorite] = useState(null);
 
   // Read from query first
   const qsCategory = searchParams.get('category');
@@ -42,6 +47,7 @@ const ProductPage = ({ sidebar }) => {
   const authenticated = searchParams.get('authenticated') === 'true';
   const email = searchParams.get('email') || '';
   const openCart = searchParams.get('openCart') === 'true';
+  const creatorMode = searchParams.get('creatorMode') === 'favorites';
 
   useEffect(() => {
     if (window.__DEBUG__) {
@@ -276,6 +282,123 @@ const ProductPage = ({ sidebar }) => {
     return '';
   };
 
+  const handleToFavorite = async () => {
+    if (!selectedScreenshotForFavorite) {
+      alert('Please select a screenshot first.');
+      return;
+    }
+
+    const screenshotUrl = getSelectedScreenshotUrl();
+    if (!screenshotUrl) {
+      alert('No screenshot selected.');
+      return;
+    }
+
+    // Get screenshot label
+    let screenshotLabel = 'Screenshot';
+    if (selectedScreenshotForFavorite === 'thumbnail') {
+      screenshotLabel = 'Thumbnail';
+    } else if (typeof selectedScreenshotForFavorite === 'number') {
+      screenshotLabel = `Screenshot ${selectedScreenshotForFavorite + 1}`;
+    }
+
+    await handleSaveToFavorites(screenshotUrl, screenshotLabel);
+  };
+
+  const handleSaveToFavorites = async (screenshotUrl, screenshotLabel) => {
+    if (!isCreator) {
+      alert('Only creators can save screenshots to favorites.');
+      return;
+    }
+
+    try {
+      setSavingFavorite(true);
+
+      // Get current user
+      const isAuthenticated = localStorage.getItem('isAuthenticated');
+      const userData = localStorage.getItem('user');
+      
+      let user = null;
+      let userId = null;
+      
+      if (isAuthenticated === 'true' && userData) {
+        // Google OAuth user
+        const googleUser = JSON.parse(userData);
+        user = googleUser;
+        userId = googleUser.id;
+      } else {
+        // Fallback to Supabase auth
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+        if (!supabaseUser) {
+          alert('Please sign in to save favorites.');
+          return;
+        }
+        user = supabaseUser;
+        userId = supabaseUser.id;
+      }
+
+      if (!userId) {
+        alert('Unable to identify user. Please sign in again.');
+        return;
+      }
+
+      // Get user profile for channel title
+      const { data: profile } = await supabase
+        .from('users')
+        .select('display_name, username, channelTitle')
+        .eq('id', userId)
+        .single();
+
+      const channelTitle = profile?.channelTitle || profile?.display_name || profile?.username || user?.name || 'Unknown Creator';
+
+      // Get video metadata from localStorage if available
+      const raw = localStorage.getItem('pending_merch_data');
+      let videoTitle = screenshotLabel || 'Screenshot';
+      if (raw) {
+        try {
+          const merchData = JSON.parse(raw);
+          if (merchData.videoTitle) {
+            videoTitle = `${merchData.videoTitle} - ${screenshotLabel}`;
+          }
+        } catch (e) {
+          console.warn('Could not parse pending_merch_data');
+        }
+      }
+
+      // Save to favorites
+      const insertData = {
+        user_id: userId,
+        channelTitle: channelTitle,
+        title: videoTitle,
+        description: `Saved screenshot from product selection`,
+        image_url: screenshotUrl,
+        thumbnail_url: screenshotUrl
+      };
+
+      const { data, error } = await supabase
+        .from('creator_favorites')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error saving favorite:', error);
+        alert(`Failed to save favorite: ${error.message || 'Unknown error'}`);
+      } else {
+        console.log('Favorite saved successfully:', data);
+        alert('Screenshot saved to favorites!');
+        
+        // Stay on the page so creator can select more screenshots
+        // No navigation - creator can continue selecting and saving
+      }
+    } catch (error) {
+      console.error('Error saving favorite:', error);
+      alert(`Failed to save favorite: ${error.message || 'Unknown error'}`);
+    } finally {
+      setSavingFavorite(false);
+    }
+  };
+
   // Calculate price based on selected size
   const calculatePrice = (product, productIndex) => {
     const basePrice = product.price || 0;
@@ -337,6 +460,22 @@ const ProductPage = ({ sidebar }) => {
     setShowAddedToCartModal(true);
   };
 
+  // Check if user is a creator
+  useEffect(() => {
+    const checkCreatorStatus = async () => {
+      const creatorStatus = await UserService.isCreator();
+      setIsCreator(creatorStatus);
+      
+      // If in creator mode, set initial selected screenshot
+      if (creatorMode && creatorStatus) {
+        // Set thumbnail as default selection
+        setSelectedScreenshot('thumbnail');
+        setSelectedScreenshotForFavorite('thumbnail');
+      }
+    };
+    checkCreatorStatus();
+  }, [creatorMode]);
+
   // Load fallback screenshots/thumbnail from localStorage in case backend data is empty
   useEffect(() => {
     try {
@@ -347,11 +486,25 @@ const ProductPage = ({ sidebar }) => {
           screenshots: Array.isArray(d?.screenshots) ? d.screenshots.slice(0, 6) : [],
           thumbnail: d?.thumbnail || ''
         });
+        
+        // In creator mode, if we have video data, set up productData structure
+        if (creatorMode && d?.thumbnail) {
+          // Create a minimal productData structure for screenshot selection
+          setProductData({
+            success: true,
+            product: {
+              thumbnail_url: d.thumbnail,
+              screenshots: Array.isArray(d.screenshots) ? d.screenshots : []
+            },
+            products: [],
+            category: category
+          });
+        }
       }
     } catch (e) {
       console.warn('Invalid pending_merch_data in localStorage, ignoring');
     }
-  }, [productId]);
+  }, [productId, creatorMode, category]);
 
   useEffect(() => {
     if (window.__DEBUG__) {
@@ -790,8 +943,8 @@ const ProductPage = ({ sidebar }) => {
         <>
           {/* Screenshot Selection Section */}
           <div className="screenshots-section">
-            <h2 className="screenshots-title">Select Your Screenshot</h2>
-            <p className="screenshots-subtitle">Choose which screenshot to use for your custom merchandise</p>
+            <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Favorites' : 'Select Your Screenshot'}</h2>
+            <p className="screenshots-subtitle">{creatorMode ? 'Choose which screenshot to save to your favorites' : 'Choose which screenshot to use for your custom merchandise'}</p>
             <div className="screenshots-preview">
               <div className="screenshot-grid">
                 {/* Thumbnail */}
@@ -800,14 +953,32 @@ const ProductPage = ({ sidebar }) => {
                   return thumbnailUrl ? (
                   <div 
                     className={`screenshot-item ${selectedScreenshot === 'thumbnail' ? 'selected' : ''}`}
-                    onClick={() => setSelectedScreenshot('thumbnail')}
                   >
-                    <img 
-                      src={thumbnailUrl} 
-                      alt="Thumbnail" 
-                      className="screenshot-image"
-                    />
-                    <div className="screenshot-label">Thumbnail</div>
+                    <div onClick={() => {
+                      setSelectedScreenshot('thumbnail');
+                      if (creatorMode) setSelectedScreenshotForFavorite('thumbnail');
+                    }} style={{ cursor: 'pointer' }}>
+                      <img 
+                        src={thumbnailUrl} 
+                        alt="Thumbnail" 
+                        className="screenshot-image"
+                      />
+                      <div className="screenshot-label">Thumbnail</div>
+                    </div>
+                    {/* Only show individual save buttons when NOT in creator mode */}
+                    {isCreator && !creatorMode && (
+                      <button
+                        className="save-to-favorites-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSaveToFavorites(thumbnailUrl, 'Thumbnail');
+                        }}
+                        disabled={savingFavorite}
+                        title="Save to Favorites"
+                      >
+                        {savingFavorite ? 'Saving...' : '⭐ Save to Favorites'}
+                      </button>
+                    )}
                   </div>
                   ) : null;
                 })()}
@@ -827,14 +998,32 @@ const ProductPage = ({ sidebar }) => {
                       <div 
                         key={index}
                         className={`screenshot-item ${selectedScreenshot === originalIndex ? 'selected' : ''}`}
-                        onClick={() => setSelectedScreenshot(originalIndex)}
                       >
-                        <img 
-                          src={screenshot} 
-                          alt={`Screenshot ${index + 1}`} 
-                          className="screenshot-image"
-                        />
-                        <div className="screenshot-label">Screenshot {index + 1}</div>
+                        <div onClick={() => {
+                          setSelectedScreenshot(originalIndex);
+                          if (creatorMode) setSelectedScreenshotForFavorite(originalIndex);
+                        }} style={{ cursor: 'pointer' }}>
+                          <img 
+                            src={screenshot} 
+                            alt={`Screenshot ${index + 1}`} 
+                            className="screenshot-image"
+                          />
+                          <div className="screenshot-label">Screenshot {index + 1}</div>
+                        </div>
+                        {/* Only show individual save buttons when NOT in creator mode */}
+                        {isCreator && !creatorMode && (
+                          <button
+                            className="save-to-favorites-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSaveToFavorites(screenshot, `Screenshot ${index + 1}`);
+                            }}
+                            disabled={savingFavorite}
+                            title="Save to Favorites"
+                          >
+                            {savingFavorite ? 'Saving...' : '⭐ Save to Favorites'}
+                          </button>
+                        )}
                       </div>
                     );
                   }) : null;
@@ -843,32 +1032,49 @@ const ProductPage = ({ sidebar }) => {
             </div>
           </div>
 
-          {/* Tools Page Button - Underneath screenshots, above cart/checkout */}
-          <div className="tools-button-container">
-            <button 
-              className="tools-page-btn"
-              onClick={() => {
-                // Save the selected screenshot URL before navigating to tools
-                const selectedScreenshotUrl = getSelectedScreenshotUrl();
-                if (selectedScreenshotUrl) {
-                  try {
-                    const raw = localStorage.getItem('pending_merch_data');
-                    const data = raw ? JSON.parse(raw) : {};
-                    data.selected_screenshot = selectedScreenshotUrl;
-                    localStorage.setItem('pending_merch_data', JSON.stringify(data));
-                  } catch (e) {
-                    console.warn('Could not save selected screenshot:', e);
-                  }
-                }
-                navigate('/tools');
-              }}
-            >
-              🛠️ Tools Page
-            </button>
-          </div>
+          {/* Save Favorite Button - Only in creator mode */}
+          {creatorMode && (
+            <div className="tools-button-container">
+              <button 
+                className="to-favorite-btn"
+                onClick={handleToFavorite}
+                disabled={savingFavorite || !selectedScreenshotForFavorite}
+              >
+                {savingFavorite ? 'Saving...' : '⭐ Save Favorite'}
+              </button>
+            </div>
+          )}
 
-          <div className="product-page-container">
-        <div className="product-main">
+          {/* Tools Page Button - Underneath screenshots, above cart/checkout - Hidden in creator mode */}
+          {!creatorMode && (
+            <div className="tools-button-container">
+              <button 
+                className="tools-page-btn"
+                onClick={() => {
+                  // Save the selected screenshot URL before navigating to tools
+                  const selectedScreenshotUrl = getSelectedScreenshotUrl();
+                  if (selectedScreenshotUrl) {
+                    try {
+                      const raw = localStorage.getItem('pending_merch_data');
+                      const data = raw ? JSON.parse(raw) : {};
+                      data.selected_screenshot = selectedScreenshotUrl;
+                      localStorage.setItem('pending_merch_data', JSON.stringify(data));
+                    } catch (e) {
+                      console.warn('Could not save selected screenshot:', e);
+                    }
+                  }
+                  navigate('/tools');
+                }}
+              >
+                🛠️ Tools Page
+              </button>
+            </div>
+          )}
+
+          {/* Product Selection - Hidden in creator mode */}
+          {!creatorMode && (
+            <div className="product-page-container">
+              <div className="product-main">
           <div className="product-image-section">
             {productData.img_url && (
               <img 
@@ -1020,10 +1226,14 @@ const ProductPage = ({ sidebar }) => {
               <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
             </div>
           </div>
-        </div>
-      </div>
-      {/* Simple Cart Modal */}
-      {isCartOpen && (
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      
+      {/* Simple Cart Modal - Always available, hidden in creator mode */}
+      {!creatorMode && isCartOpen && (
         <div className="cart-modal" onClick={() => setIsCartOpen(false)}>
           <div className="cart-modal-content" onClick={(e) => e.stopPropagation()}>
             {cartItems.length === 0 ? (
@@ -1071,8 +1281,8 @@ const ProductPage = ({ sidebar }) => {
         </div>
       )}
 
-      {/* Added to Cart Modal with Tools Reminder */}
-      {showAddedToCartModal && (
+      {/* Added to Cart Modal with Tools Reminder - Always available, hidden in creator mode */}
+      {!creatorMode && showAddedToCartModal && (
         <div className="added-to-cart-modal-overlay" onClick={() => setShowAddedToCartModal(false)}>
           <div className="added-to-cart-modal" onClick={(e) => e.stopPropagation()}>
             <button 
@@ -1148,8 +1358,6 @@ const ProductPage = ({ sidebar }) => {
             </div>
           </div>
         </div>
-      )}
-        </>
       )}
     </div>
   );

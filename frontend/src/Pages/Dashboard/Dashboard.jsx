@@ -1058,7 +1058,24 @@ const Dashboard = ({ sidebar }) => {
                                         <div 
                                             key={video.id} 
                                             className="dashboard-video-card"
-                                            onClick={() => navigate(`/video/${video.categoryId || 0}/${video.id}`)}
+                                            onClick={() => {
+                                                // For creators, navigate to screenshot selection page (product page in creator mode)
+                                                // Save video data to localStorage for ProductPage to use
+                                                // Note: videos2 table doesn't have screenshots field, so we'll use empty array
+                                                // Screenshots can be generated from video or added later
+                                                const merchData = {
+                                                    thumbnail: video.thumbnail || '',
+                                                    screenshots: video.screenshots || [], // Empty if not available
+                                                    videoUrl: video.video_url || '',
+                                                    videoTitle: video.title || 'Unknown Video',
+                                                    creatorName: userProfile?.display_name || userProfile?.username || 'Unknown Creator',
+                                                    videoId: video.id
+                                                };
+                                                localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+                                                localStorage.setItem('creator_favorites_mode', 'true');
+                                                // Navigate to product page in creator favorites mode
+                                                navigate('/product/browse?category=mens&creatorMode=favorites');
+                                            }}
                                         >
                                             <img src={video.thumbnail} alt={video.title} className="dashboard-video-thumbnail" />
                                             <div className="dashboard-video-info">

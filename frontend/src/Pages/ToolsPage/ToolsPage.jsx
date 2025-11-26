@@ -74,29 +74,8 @@ const ProductPreviewWithDrag = ({
           // Cropped Hoodie has 10x10 print area, so it's square
           const isSquare = Math.abs(printAspectRatio - 1.0) < 0.01 || isCroppedHoodie;
           
-          let typicalProductWidthInches = 18; // default
-          
           // Check for hats first (they have much smaller print areas)
           const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
-          
-          // Check in order: more specific first, then general
-          if (isHat) {
-            typicalProductWidthInches = 6.5; // Hats are much smaller - typical width ~6.5 inches
-          } else if (isCroppedHoodie) {
-            typicalProductWidthInches = 18; // Cropped hoodies use standard sizing (print area is 10x10 square)
-          } else if (productNameLower.includes('cropped')) {
-            typicalProductWidthInches = 15;
-          } else if (productNameLower.includes('tank')) {
-            typicalProductWidthInches = 17;
-          } else if (productNameLower.includes('hoodie')) {
-            typicalProductWidthInches = 20;
-          } else if (productNameLower.includes('shirt') || productNameLower.includes('tee')) {
-            typicalProductWidthInches = 18;
-          } else if (productNameLower.includes('kids') || productNameLower.includes('youth')) {
-            typicalProductWidthInches = 14;
-          } else if (productNameLower.includes('toddler') || productNameLower.includes('baby')) {
-            typicalProductWidthInches = 10;
-          }
           
           // Check if this is a shirt (women's, men's, or kids) for optimized sizing
           const isShirt = productNameLower.includes('shirt') || productNameLower.includes('tee');
@@ -161,34 +140,70 @@ const ProductPreviewWithDrag = ({
             return; // Exit early for hats
           }
           
-          // For non-hat products, use the original logic
-          const minPrintWidth = 7;  // smallest print area (non-hats)
-          const maxPrintWidth = 15; // largest print area
+          // For non-hat products, calculate size to ensure full print area coverage
+          // Calculate based on print area dimensions to ensure even coverage
+          const printWidthInches = printDimensions.width;
+          const printHeightInches = printDimensions.height;
           
-          // Use higher percentages for shirts to ensure perfect coverage
-          if (isWomensShirt || isMensShirt || isKidsShirt) {
-            minPercent = 0.50;  // 50% of product width for shirts (increased from 45%)
-            maxPercent = 0.70;  // 70% of product width for shirts (increased from 60%)
-          } else {
-            minPercent = 0.47;  // 47% of product width for other products (increased from 42%)
-            maxPercent = 0.65;  // 65% of product width for other products (increased from 57%)
+          // Estimate product dimensions in inches for scaling
+          // Typical product widths: kids ~14", womens/mens ~18-20", hoodies ~20"
+          let typicalProductWidthInches = 18;
+          let typicalProductHeightInches = 24; // Typical shirt/hoodie height
+          
+          // Override based on product type (remove duplicate declaration)
+          
+          if (productNameLower.includes('kids') || productNameLower.includes('youth')) {
+            typicalProductWidthInches = 14;
+            typicalProductHeightInches = 18;
+          } else if (productNameLower.includes('hoodie')) {
+            typicalProductWidthInches = 20;
+            typicalProductHeightInches = 26;
+          } else if (productNameLower.includes('tank')) {
+            typicalProductWidthInches = 17;
+            typicalProductHeightInches = 22;
           }
           
-          // Calculate percentage based on print area width
-          const normalizedPrintWidth = Math.max(minPrintWidth, Math.min(maxPrintWidth, printDimensions.width));
-          const widthPercent = minPercent + ((normalizedPrintWidth - minPrintWidth) / (maxPrintWidth - minPrintWidth)) * (maxPercent - minPercent);
+          // Calculate what percentage of product the print area represents (with 5% buffer for safety)
+          const printWidthPercent = (printWidthInches / typicalProductWidthInches) * 1.05;
+          const printHeightPercent = (printHeightInches / typicalProductHeightInches) * 1.05;
           
-          // Calculate base width from product image
-          let finalWidth = displayedProductWidth * widthPercent;
+          // Calculate base dimensions to cover print area
+          let baseWidth = displayedProductWidth * printWidthPercent;
+          let baseHeight = displayedProductHeight * printHeightPercent;
           
-          // Calculate height to maintain print area aspect ratio
+          // Calculate dimensions maintaining print area aspect ratio
+          // Try width-based first
+          let finalWidth = baseWidth;
           let finalHeight = finalWidth / printAspectRatio;
+          
+          // Check if height-based gives better coverage
+          const heightBasedWidth = baseHeight * printAspectRatio;
+          const heightBasedHeight = baseHeight;
+          
+          // Use whichever ensures both dimensions cover their print areas
+          // If width-based height doesn't cover print height, use height-based
+          if (finalHeight < displayedProductHeight * printHeightPercent) {
+            finalWidth = heightBasedWidth;
+            finalHeight = heightBasedHeight;
+          }
+          
+          // Ensure we cover both dimensions
+          if (finalWidth < displayedProductWidth * printWidthPercent) {
+            finalWidth = displayedProductWidth * printWidthPercent;
+            finalHeight = finalWidth / printAspectRatio;
+          }
+          if (finalHeight < displayedProductHeight * printHeightPercent) {
+            finalHeight = displayedProductHeight * printHeightPercent;
+            finalWidth = finalHeight * printAspectRatio;
+          }
           
           // For square products, ensure width and height are always equal
           if (isSquare) {
-            // Use the smaller dimension to maintain square shape
+            // Use the larger of width or height to ensure full coverage, then make square
             const baseSize = Math.min(displayedProductWidth, displayedProductHeight);
-            finalWidth = baseSize * widthPercent;
+            const squareSize = Math.max(finalWidth, finalHeight);
+            // Use the larger dimension to ensure coverage, but don't exceed product bounds
+            finalWidth = Math.min(squareSize, baseSize * 0.75);
             finalHeight = finalWidth; // Force square
             
             // Apply square-specific bounds (use same percentage for both dimensions)
@@ -206,31 +221,41 @@ const ProductPreviewWithDrag = ({
               finalHeight = minSize; // Keep square
             }
           } else {
-            // For non-square products, use the original logic
-            // Ensure it doesn't exceed reasonable bounds
-            // For shirts, allow slightly more to ensure perfect fit
-            const maxWidth = isShirt ? displayedProductWidth * 0.75 : displayedProductWidth * 0.70;
-            const maxHeight = isShirt ? displayedProductHeight * 0.70 : displayedProductHeight * 0.65;
+            // For non-square products, apply reasonable maximum bounds
+            // But prioritize coverage - if print area requires larger size, allow it
+            const maxWidth = displayedProductWidth * 0.80; // Allow up to 80% of product width
+            const maxHeight = displayedProductHeight * 0.80; // Allow up to 80% of product height
             
+            // Only clamp if we exceed maximum, but maintain aspect ratio
             if (finalWidth > maxWidth) {
               finalWidth = maxWidth;
               finalHeight = finalWidth / printAspectRatio;
-            }
-            if (finalHeight > maxHeight) {
+              // If height still exceeds, recalculate from height
+              if (finalHeight > maxHeight) {
+                finalHeight = maxHeight;
+                finalWidth = finalHeight * printAspectRatio;
+              }
+            } else if (finalHeight > maxHeight) {
               finalHeight = maxHeight;
               finalWidth = finalHeight * printAspectRatio;
+              // If width still exceeds, recalculate from width
+              if (finalWidth > maxWidth) {
+                finalWidth = maxWidth;
+                finalHeight = finalWidth / printAspectRatio;
+              }
             }
             
-            // Ensure minimum size for visibility (at least 35% width, 30% height)
-            const minWidth = displayedProductWidth * 0.35;
-            const minHeight = displayedProductHeight * 0.30;
+            // Ensure minimum size for visibility (at least 30% width, 25% height)
+            // But don't override if we need larger for print area coverage
+            const minWidth = displayedProductWidth * 0.30;
+            const minHeight = displayedProductHeight * 0.25;
             
-            if (finalWidth < minWidth) {
-              finalWidth = minWidth;
+            if (finalWidth < minWidth && finalWidth < displayedProductWidth * printWidthPercent) {
+              finalWidth = Math.max(minWidth, displayedProductWidth * printWidthPercent);
               finalHeight = finalWidth / printAspectRatio;
             }
-            if (finalHeight < minHeight) {
-              finalHeight = minHeight;
+            if (finalHeight < minHeight && finalHeight < displayedProductHeight * printHeightPercent) {
+              finalHeight = Math.max(minHeight, displayedProductHeight * printHeightPercent);
               finalWidth = finalHeight * printAspectRatio;
             }
           }

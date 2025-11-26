@@ -2,9 +2,10 @@ import React, { useEffect, useState, useRef, useCallback } from 'react'
 import './PlayVideo.css'
 import { value_converter } from '../../data'
 import moment from 'moment'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
+import { UserService } from '../../utils/userService'
 import AuthModal from '../AuthModal/AuthModal'
 
 // Mobile detection hook
@@ -627,8 +628,27 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             return;
         }
         
+        // Check if user is a creator
+        const isCreator = await UserService.isCreator();
+        
+        if (isCreator) {
+            // For creators, navigate directly to screenshot selection page (skip category selection)
+            const merchData = {
+                thumbnail,
+                videoUrl: video?.video_url || window.location.href,
+                screenshots: screenshots.slice(0, 6),
+                videoTitle: video?.title || 'Unknown Video',
+                creatorName: video?.channelTitle || 'Unknown Creator'
+            };
+            localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+            localStorage.setItem('creator_favorites_mode', 'true');
+            // Navigate directly to screenshot selection page in creator mode
+            window.location.href = '/product/browse?category=mens&creatorMode=favorites';
+            return;
+        }
+        
         // console.log('✅ Authenticated - proceeding with merch creation');
-        // User is authenticated, save data to localStorage AND proceed with merch creation
+        // User is authenticated but not creator, use regular flow
         const merchData = {
             thumbnail,
             videoUrl: video?.video_url || window.location.href,
@@ -1227,6 +1247,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         key={videoId}
                         ref={videoRef} 
                         controls
+                        controlsList="nodownload"
                         poster={video.thumbnail || ''}
                         width="100%" 
                         height={isMobile ? "320" : "360"}

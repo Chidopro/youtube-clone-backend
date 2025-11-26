@@ -5687,15 +5687,18 @@ def auth_signup():
         # Check if this is a creator signup (from "Start Free" flow)
         is_creator = data.get("is_creator", False) or data.get("role") == "creator"
         
+        # Track creator count for email notification
+        current_creator_count = 0
+        
         # If creator signup, check the 20-user limit
         if is_creator:
             try:
                 # Count existing creators (both active and pending)
                 # First get all creators with active or pending status
                 creator_result = supabase.table('users').select('id').in_('status', ['active', 'pending']).eq('role', 'creator').execute()
-                current_count = len(creator_result.data) if creator_result.data else 0
+                current_creator_count = len(creator_result.data) if creator_result.data else 0
                 
-                if current_count >= 20:
+                if current_creator_count >= 20:
                     response = jsonify({
                         "success": False, 
                         "error": "We've reached our limit of 20 creator signups. Please check back later or contact support."
@@ -5740,6 +5743,45 @@ def auth_signup():
                     success_message = "Account created successfully!"
                 
                 logger.info(f"New user {email} created successfully (role: {user_role}, status: {user_status})")
+                
+                # Send admin notification email if this is a creator signup
+                if user_role == 'creator' and user_status == 'pending' and MAIL_TO:
+                    try:
+                        admin_email_data = {
+                            "from": RESEND_FROM,
+                            "to": [MAIL_TO],
+                            "subject": f"🎨 New Creator Signup Request: {email}",
+                            "html": f"""
+                            <h1>🎨 New Creator Signup Request</h1>
+                            <div style="background: #f0f8ff; padding: 20px; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                                <h2>Creator Details:</h2>
+                                <p><strong>Email:</strong> {email}</p>
+                                <p><strong>User ID:</strong> {result.data[0].get('id')}</p>
+                                <p><strong>Status:</strong> Pending Approval</p>
+                                <p><strong>Signup Date:</strong> {result.data[0].get('created_at', 'N/A')}</p>
+                            </div>
+                            <p><strong>Action Required:</strong> Please review and approve this creator signup in the admin panel.</p>
+                            <p><strong>Current Creator Count:</strong> {current_creator_count + 1} / 20</p>
+                            <p>This creator has signed up and is waiting for approval to access the platform.</p>
+                            """
+                        }
+                        
+                        email_response = requests.post(
+                            "https://api.resend.com/emails",
+                            headers={
+                                "Authorization": f"Bearer {RESEND_API_KEY}",
+                                "Content-Type": "application/json"
+                            },
+                            json=admin_email_data
+                        )
+                        if email_response.status_code == 200:
+                            logger.info(f"✅ Admin notification sent for new creator signup: {email}")
+                        else:
+                            logger.error(f"❌ Failed to send admin notification: {email_response.text}")
+                    except Exception as email_error:
+                        logger.error(f"❌ Error sending admin notification: {str(email_error)}")
+                        # Don't fail signup if email fails
+                
                 response = jsonify({
                     "success": True, 
                     "message": success_message,
