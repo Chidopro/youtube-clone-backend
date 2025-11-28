@@ -7,7 +7,7 @@ from flask_cors import CORS, cross_origin
 import uuid
 import requests
 import stripe
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 import json
 from supabase_storage import storage
 from supabase import create_client, Client
@@ -28,6 +28,15 @@ from printful_integration import ScreenMerchPrintfulIntegration
 
 # NEW: Import video screenshot capture
 from video_screenshot import screenshot_capture
+
+# NEW: Import worker portal and secure processing APIs
+try:
+    from worker_portal_api import register_worker_portal_routes
+    from secure_order_processing_api import register_secure_processing_routes
+except ImportError as e:
+    logger.warning(f"Could not import worker portal APIs: {e}")
+    register_worker_portal_routes = None
+    register_secure_processing_routes = None
 
 # Import screenshot_capture module for standalone functions
 import screenshot_capture as sc_module
@@ -77,12 +86,54 @@ print(f"YOUTUBE_API_KEY: {'OK' if YOUTUBE_API_KEY else 'MISSING'}")
 # Add session configuration (will be set after app creation)
 
 def admin_required(f):
-    """Decorator to require admin authentication"""
+    """Decorator to require admin authentication - supports both session and email-based auth"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('admin_logged_in'):
-            return redirect(url_for('admin_login'))
-        return f(*args, **kwargs)
+        # Allow OPTIONS requests to pass through for CORS preflight
+        if request.method == "OPTIONS":
+            return f(*args, **kwargs)
+        
+        # Check session-based auth (for direct backend access)
+        if session.get('admin_logged_in'):
+            return f(*args, **kwargs)
+        
+        # Check email-based auth (for cross-origin API requests)
+        user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+        if user_email:
+            try:
+                user_email = user_email.strip().lower()
+                # Check if user is admin in database
+                result = supabase.table('users').select('role, email').eq('email', user_email).execute()
+                if result.data and len(result.data) > 0:
+                    user = result.data[0]
+                    if user.get('role') == 'admin':
+                        logger.info(f"✅ Admin access granted via email: {user_email}")
+                        return f(*args, **kwargs)
+                    # Also check allowed emails list
+                    allowed_emails = [
+                        'chidopro@proton.me',
+                        'alancraigdigital@gmail.com', 
+                        'digitalavatartutorial@gmail.com',
+                        'admin@screenmerch.com',
+                        'filialsons@gmail.com'  # Add current user
+                    ]
+                    if user_email in allowed_emails:
+                        logger.info(f"✅ Admin access granted via allowed email: {user_email}")
+                        return f(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"Error checking admin status for {user_email}: {str(e)}")
+        
+        # No valid auth found - return 401 instead of redirect for API endpoints
+        if request.path.startswith('/api/'):
+            response = jsonify({"error": "Unauthorized", "message": "Admin access required"})
+            response.status_code = 401
+            origin = request.headers.get('Origin', '*')
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response
+        
+        # For non-API endpoints, redirect to login
+        return redirect(url_for('admin_login'))
     return decorated_function
 
 def ensure_print_quality_image(image_data):
@@ -599,6 +650,32 @@ MAIL_TO = os.getenv("MAIL_TO") # The email address that will receive the orders
 # Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+def ensure_stripe_test_mode():
+    """
+    Reload Stripe API key from environment and validate it's in test mode.
+    This ensures we always use the latest key and are in test mode.
+    """
+    stripe_key = os.getenv("STRIPE_SECRET_KEY")
+    if not stripe_key:
+        raise ValueError("STRIPE_SECRET_KEY environment variable is not set")
+    
+    # Validate that we're using test mode key
+    if not stripe_key.startswith("sk_test_"):
+        logger.warning(f"⚠️ WARNING: Stripe key does not start with 'sk_test_' - this may be a LIVE key!")
+        logger.warning(f"⚠️ Key preview: {stripe_key[:20]}...{stripe_key[-4:] if len(stripe_key) > 24 else '***'}")
+        logger.warning(f"⚠️ If you want test mode, ensure your STRIPE_SECRET_KEY starts with 'sk_test_'")
+    else:
+        logger.info(f"✅ Stripe test mode confirmed - key starts with 'sk_test_'")
+    
+    # Set the key
+    stripe.api_key = stripe_key
+    
+    # Log key info for debugging (first 20 chars and last 4 chars)
+    key_preview = f"{stripe_key[:20]}...{stripe_key[-4:]}" if len(stripe_key) > 24 else "***"
+    logger.info(f"🔑 Using Stripe API key: {key_preview} (length: {len(stripe_key)})")
+    
+    return stripe_key
 
 # NEW: Printful API Key (optional for now)
 PRINTFUL_API_KEY = os.getenv("PRINTFUL_API_KEY") or "dummy_key"
@@ -2073,7 +2150,7 @@ def privacy_policy():
 def terms_of_service():
     return render_template('terms-of-service.html')
 
-def record_sale(item, user_id=None, friend_id=None, channel_id=None):
+def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=None):
     from datetime import datetime
     
     # Get the correct price - try item price first, then look up in PRODUCTS
@@ -2126,6 +2203,39 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None):
         client_to_use = supabase_admin if supabase_admin else supabase
         client_to_use.table('sales').insert(sale_data).execute()
         logger.info(f"✅ Recorded sale with precise tracking: product={sale_data['product_name']}, creator_user_id={creator_user_id}, amount=${item_price}")
+        
+        # Create creator earnings record if creator_user_id exists and they are a creator
+        if creator_user_id:
+            try:
+                # Check if user is a creator
+                user_result = client_to_use.table('users').select('role').eq('id', creator_user_id).single().execute()
+                if user_result.data and user_result.data.get('role') == 'creator':
+                    # Calculate earnings (70% creator, 30% platform)
+                    creator_share = item_price * 0.70
+                    platform_fee = item_price * 0.30
+                    
+                    # Get order_id from item if available, otherwise generate one
+                    order_id = item.get('order_id', sale_data.get('order_id', str(uuid.uuid4())))
+                    
+                    # Get order_id from parameter or item, otherwise generate one
+                    earnings_order_id = order_id or item.get('order_id') or sale_data.get('order_id') or str(uuid.uuid4())
+                    
+                    # Create earnings record
+                    earnings_data = {
+                        "user_id": creator_user_id,
+                        "order_id": earnings_order_id,
+                        "product_name": sale_data['product_name'],
+                        "sale_amount": item_price,
+                        "creator_share": creator_share,
+                        "platform_fee": platform_fee,
+                        "status": "pending"
+                    }
+                    
+                    client_to_use.table('creator_earnings').insert(earnings_data).execute()
+                    logger.info(f"✅ Created creator earnings: user_id={creator_user_id}, amount=${item_price}, creator_share=${creator_share}")
+            except Exception as earnings_error:
+                logger.error(f"❌ Error creating creator earnings: {str(earnings_error)}")
+                # Don't fail the sale if earnings creation fails
     except Exception as e:
         logger.error(f"❌ Error recording sale: {str(e)}")
         # Try fallback with regular client
@@ -2205,7 +2315,7 @@ def send_order():
                 item['creator_name'] = data['creator_name']
             if 'screenshot_timestamp' in data:
                 item['screenshot_timestamp'] = data['screenshot_timestamp']
-            record_sale(item)
+            record_sale(item, order_id=order_id)
         # --- Send Email with Resend ---
         email_data = {
             "from": RESEND_FROM,
@@ -2293,6 +2403,8 @@ def send_order():
                 })
 
             if line_items:
+                # Ensure we're using test mode Stripe key
+                ensure_stripe_test_mode()
                 session = stripe.checkout.Session.create(
                     payment_method_types=["card"],
                     mode="payment",
@@ -2864,7 +2976,7 @@ def success():
             
             # Record each sale
             for item in cart:
-                record_sale(item)
+                record_sale(item, order_id=order_id)
             
             # Only send email if order is still "pending" (webhook didn't fire)
             if order_status != 'paid':
@@ -3389,21 +3501,17 @@ def create_checkout_session():
         else:
             logger.info(f"📧 [CHECKOUT] No customer email provided - Stripe will collect it during checkout (email_collection enabled)")
         
-        # Reload Stripe API key from environment to ensure we use the latest value
-        stripe_key = os.getenv("STRIPE_SECRET_KEY")
-        if not stripe_key:
-            logger.error("❌ STRIPE_SECRET_KEY environment variable is not set")
+        # Ensure we're using test mode Stripe key
+        try:
+            ensure_stripe_test_mode()
+        except ValueError as e:
+            logger.error(f"❌ {str(e)}")
             response = jsonify({"error": "Payment system configuration error", "details": "Stripe API key is not configured"})
             origin = request.headers.get('Origin', '*')
             response.headers.add('Access-Control-Allow-Origin', origin)
             response.headers.add('Vary', 'Origin')
             response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 500
-        
-        stripe.api_key = stripe_key
-        # Log key info for debugging (first 20 chars and last 4 chars to verify it's the new key)
-        key_preview = f"{stripe_key[:20]}...{stripe_key[-4:]}" if len(stripe_key) > 24 else "***"
-        logger.info(f"🔑 [CHECKOUT] Using Stripe API key: {key_preview} (length: {len(stripe_key)})")
         
         session = stripe.checkout.Session.create(**session_params)
         response = jsonify({"url": session.url})
@@ -3829,7 +3937,7 @@ def stripe_webhook():
                 # Extract channel_id from the order data if available
                 # For Cheedo V, use 'cheedo_v' as channel_id
                 channel_id = order_data.get('channel_id') or item.get('channel_id') or 'cheedo_v'
-                record_sale(item, channel_id=channel_id)
+                record_sale(item, channel_id=channel_id, order_id=order_id)
                 
             # Email notifications only - no SMS
             logger.info("📧 Order notifications will be sent via email")
@@ -4044,6 +4152,29 @@ def stripe_webhook():
                     update_data['customer_email'] = customer_email
                 supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
                 logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
+                
+                # Ensure order is added to processing queue (trigger should do this, but ensure it manually)
+                try:
+                    # Use admin client to bypass RLS
+                    admin_client = supabase_admin if supabase_admin else supabase
+                    
+                    # Check if queue entry already exists
+                    queue_check = admin_client.table('order_processing_queue').select('id').eq('order_id', order_id).execute()
+                    if not queue_check.data:
+                        # Create queue entry if it doesn't exist
+                        queue_entry = {
+                            'order_id': order_id,
+                            'status': 'pending',
+                            'priority': 0
+                        }
+                        admin_client.table('order_processing_queue').insert(queue_entry).execute()
+                        logger.info(f"✅ Created processing queue entry for order {order_id}")
+                    else:
+                        logger.info(f"✅ Processing queue entry already exists for order {order_id}")
+                except Exception as queue_error:
+                    logger.error(f"❌ Failed to create processing queue entry: {str(queue_error)}")
+                    # Don't fail the webhook if queue creation fails
+                    
             except Exception as db_error:
                 logger.error(f"❌ Failed to update order status in database: {str(db_error)}")
         
@@ -4451,9 +4582,15 @@ def capture_print_quality():
 @app.route("/api/process-shirt-image", methods=["POST", "OPTIONS"])
 def process_shirt_image():
     """Process an image to be shirt-print ready with feathered edges"""
+    # Handle CORS
+    origin = request.headers.get('Origin')
+    allowed_origins = ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]
+    cors_origin = origin if origin in allowed_origins else "https://screenmerch.fly.dev"
+    
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', cors_origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
@@ -4465,7 +4602,10 @@ def process_shirt_image():
         enhance_quality = data.get("enhance_quality", True)
         
         if not image_data:
-            return jsonify({"success": False, "error": "image_data is required"}), 400
+            response = jsonify({"success": False, "error": "image_data is required"})
+            response.headers.add('Access-Control-Allow-Origin', cors_origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response, 400
         
         logger.info(f"Processing shirt image with feather_radius={feather_radius}, enhance_quality={enhance_quality}")
         
@@ -4477,21 +4617,33 @@ def process_shirt_image():
         )
         
         logger.info("Shirt image processed successfully")
-        return jsonify({
+        response = jsonify({
             "success": True,
             "processed_image": processed_image
         })
+        response.headers.add('Access-Control-Allow-Origin', cors_origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
             
     except Exception as e:
         logger.error(f"Error processing shirt image: {str(e)}")
-        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+        response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
+        response.headers.add('Access-Control-Allow-Origin', cors_origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
 
 @app.route("/api/process-corner-radius", methods=["POST", "OPTIONS"])
 def process_corner_radius():
     """Process an image to apply corner radius only - using same approach as feather"""
+    # Handle CORS
+    origin = request.headers.get('Origin')
+    allowed_origins = ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]
+    cors_origin = origin if origin in allowed_origins else "https://screenmerch.fly.dev"
+    
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', cors_origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
@@ -4502,27 +4654,55 @@ def process_corner_radius():
         corner_radius = data.get("corner_radius", 15)
         
         if not image_data:
-            return jsonify({"success": False, "error": "image_data is required"}), 400
+            response = jsonify({"success": False, "error": "image_data is required"})
+            response.headers.add('Access-Control-Allow-Origin', cors_origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response, 400
         
         logger.info(f"Processing corner radius with radius={corner_radius}")
+        logger.info(f"Image data type: {type(image_data)}, length: {len(image_data) if image_data else 0}")
         
         # Apply corner radius effect using the dedicated function
-        result = sc_module.apply_corner_radius_only(image_data, corner_radius)
+        try:
+            result = sc_module.apply_corner_radius_only(image_data, corner_radius)
+            logger.info(f"Corner radius result: success={result.get('success') if result else False}, has_processed_image={bool(result.get('processed_image') if result else False)}")
+        except Exception as func_error:
+            logger.error(f"Error calling apply_corner_radius_only: {str(func_error)}")
+            response = jsonify({"success": False, "error": f"Function error: {str(func_error)}"})
+            response.headers.add('Access-Control-Allow-Origin', cors_origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response, 500
         
         if result and result.get('success'):
+            processed_img = result.get('processed_image')
+            if not processed_img:
+                logger.error("Result has success=True but no processed_image field")
+                response = jsonify({"success": False, "error": "No processed image returned from function"})
+                response.headers.add('Access-Control-Allow-Origin', cors_origin)
+                response.headers.add('Access-Control-Allow-Credentials', 'true')
+                return response, 500
+            
             response = jsonify({
                 "success": True,
-                "processed_image": result.get('processed_image')
+                "processed_image": processed_img
             })
-            response.headers.add('Access-Control-Allow-Origin', '*')
+            response.headers.add('Access-Control-Allow-Origin', cors_origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response
         else:
             error_msg = result.get('error', 'Failed to apply corner radius') if result else 'Failed to apply corner radius'
-            return jsonify({"success": False, "error": error_msg}), 500
+            logger.error(f"Corner radius processing failed: {error_msg}")
+            response = jsonify({"success": False, "error": error_msg})
+            response.headers.add('Access-Control-Allow-Origin', cors_origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response, 500
             
     except Exception as e:
         logger.error(f"Error processing corner radius: {str(e)}")
-        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+        response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
+        response.headers.add('Access-Control-Allow-Origin', cors_origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
 
 @app.route("/api/apply-feather-to-print-quality", methods=["POST", "OPTIONS"])
 def apply_feather_to_print_quality():
@@ -4628,6 +4808,16 @@ def process_thumbnail_print_quality():
         soft_corners = data.get("soft_corners", False)
         edge_feather = data.get("edge_feather", False)
         crop_area = data.get("crop_area")
+        # New numeric and frame parameters
+        corner_radius_percent = data.get("corner_radius_percent", 0)
+        feather_edge_percent = data.get("feather_edge_percent", 0)
+        frame_enabled = data.get("frame_enabled", False)
+        frame_color = data.get("frame_color", "#FF0000")
+        frame_width = int(data.get("frame_width", 10))  # Ensure it's an integer
+        double_frame = data.get("double_frame", False)
+        
+        # Validate frame_width is within reasonable bounds (1-100px)
+        frame_width = max(1, min(100, frame_width))
         
         if not thumbnail_data:
             response = jsonify({"success": False, "error": "thumbnail_data is required"})
@@ -4646,6 +4836,8 @@ def process_thumbnail_print_quality():
         thumbnail_preview = str(thumbnail_data)[:100] if thumbnail_data else "None"
         logger.info(f"📧 [PRINT_QUALITY] Processing thumbnail - Type: {thumbnail_type}, Length: {thumbnail_length}, Preview: {thumbnail_preview}...")
         logger.info(f"📧 [PRINT_QUALITY] DPI={print_dpi}, soft_corners={soft_corners}, edge_feather={edge_feather}")
+        logger.info(f"📧 [PRINT_QUALITY] corner_radius_percent={corner_radius_percent}, feather_edge_percent={feather_edge_percent}")
+        logger.info(f"📧 [PRINT_QUALITY] frame_enabled={frame_enabled}, frame_color={frame_color}, frame_width={frame_width}, double_frame={double_frame}")
         if crop_area:
             logger.info(f"📧 [PRINT_QUALITY] Crop area provided: {crop_area}")
         
@@ -4655,7 +4847,13 @@ def process_thumbnail_print_quality():
             print_dpi=print_dpi,
             soft_corners=soft_corners,
             edge_feather=edge_feather,
-            crop_area=crop_area
+            crop_area=crop_area,
+            corner_radius_percent=corner_radius_percent,
+            feather_edge_percent=feather_edge_percent,
+            frame_enabled=frame_enabled,
+            frame_color=frame_color,
+            frame_width=frame_width,
+            double_frame=double_frame
         )
         
         if result['success']:
@@ -5052,6 +5250,10 @@ def admin_dashboard_stats():
             suspended_users_result = client_to_use.table('users').select('id').eq('status', 'suspended').execute()
             suspended_users = len(suspended_users_result.data) if suspended_users_result.data else 0
             
+            # Get pending users (creators waiting for approval)
+            pending_users_result = client_to_use.table('users').select('id').eq('status', 'pending').execute()
+            pending_users = len(pending_users_result.data) if pending_users_result.data else 0
+            
             # Get total videos
             videos_result = client_to_use.table('videos2').select('id').execute()
             total_videos = len(videos_result.data) if videos_result.data else 0
@@ -5080,17 +5282,34 @@ def admin_dashboard_stats():
             creator_network_subscriptions_result = client_to_use.table('user_subscriptions').select('id').eq('tier', 'creator_network').execute()
             creator_network_subscriptions = len(creator_network_subscriptions_result.data) if creator_network_subscriptions_result.data else 0
             
+            # Get total orders/purchases
+            orders_result = client_to_use.table('orders').select('order_id, status, total_amount').execute()
+            total_orders = len(orders_result.data) if orders_result.data else 0
+            paid_orders = len([o for o in (orders_result.data or []) if o.get('status') == 'paid']) if orders_result.data else 0
+            total_revenue = sum([float(o.get('total_amount', 0)) for o in (orders_result.data or []) if o.get('status') == 'paid']) if orders_result.data else 0
+            
+            # Get orders in processing queue
+            queue_result = client_to_use.table('order_processing_queue').select('id').execute()
+            orders_in_queue = len(queue_result.data) if queue_result.data else 0
+            pending_queue = len([q for q in (queue_result.data or []) if q.get('status') == 'pending']) if queue_result.data else 0
+            
             stats = {
                 "total_users": total_users,
                 "active_users": active_users,
                 "suspended_users": suspended_users,
+                "pending_users": pending_users,
                 "total_videos": total_videos,
                 "pending_videos": pending_videos,
                 "approved_videos": approved_videos,
                 "total_subscriptions": total_subscriptions,
                 "active_subscriptions": active_subscriptions,
                 "premium_subscriptions": premium_subscriptions,
-                "creator_network_subscriptions": creator_network_subscriptions
+                "creator_network_subscriptions": creator_network_subscriptions,
+                "total_orders": total_orders,
+                "paid_orders": paid_orders,
+                "total_revenue": round(total_revenue, 2),
+                "orders_in_queue": orders_in_queue,
+                "pending_queue": pending_queue
             }
             
             logger.info(f"Admin dashboard stats calculated: {stats}")
@@ -5234,6 +5453,9 @@ def create_pro_checkout():
         if email:
             session_params["customer_email"] = email
         
+        # Ensure we're using test mode Stripe key
+        ensure_stripe_test_mode()
+        
         session = stripe.checkout.Session.create(**session_params)
         
         logger.info(f"Created Pro checkout session for user {user_id or 'guest'}")
@@ -5247,9 +5469,9 @@ def create_pro_checkout():
 @app.route("/api/test-stripe", methods=["GET"])
 def test_stripe():
     try:
-        # Test Stripe configuration
-        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-        if not stripe.api_key:
+        # Test Stripe configuration - ensure test mode
+        stripe_key = ensure_stripe_test_mode()
+        if not stripe_key:
             return jsonify({"error": "Stripe secret key not configured"}), 500
         
         # Test basic Stripe API call
@@ -5594,6 +5816,24 @@ def auth_login():
             
             if result.data:
                 user = result.data[0]
+                user_status = user.get('status', 'active')
+                
+                # Block login if user status is 'pending' (requires admin approval)
+                if user_status == 'pending':
+                    response = jsonify({
+                        "success": False, 
+                        "error": "Your account is pending approval. Please wait for admin approval before signing in."
+                    })
+                    return _allow_origin(response), 403
+                
+                # Block login if user is suspended or banned
+                if user_status in ['suspended', 'banned']:
+                    response = jsonify({
+                        "success": False, 
+                        "error": f"Your account has been {user_status}. Please contact support for assistance."
+                    })
+                    return _allow_origin(response), 403
+                
                 stored_password = user.get('password_hash', '')
                 
                 # Simple password verification (replace with bcrypt in production)
@@ -6652,6 +6892,240 @@ def update_order_status(order_id):
         logger.error(f"Error updating order status: {str(e)}")
         return jsonify({"error": "Failed to update status"}), 500
 
+@app.route("/api/admin/fix-order-queue/<order_id>", methods=["POST"])
+@admin_required
+def fix_order_queue(order_id):
+    """Manually fix an order that missed the webhook - mark as paid and add to processing queue"""
+    try:
+        # Check if order exists
+        order_result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
+        if not order_result.data:
+            return jsonify({"success": False, "error": "Order not found"}), 404
+        
+        order = order_result.data[0]
+        
+        # Update order status to 'paid' if it's still 'pending'
+        if order.get('status') == 'pending':
+            supabase.table('orders').update({'status': 'paid'}).eq('order_id', order_id).execute()
+            logger.info(f"✅ [ADMIN] Updated order {order_id} status to 'paid'")
+        
+        # Ensure processing queue entry exists
+        queue_check = supabase.table('order_processing_queue').select('id').eq('order_id', order_id).execute()
+        if not queue_check.data:
+            queue_entry = {
+                'order_id': order_id,
+                'status': 'pending',
+                'priority': 0
+            }
+            supabase.table('order_processing_queue').insert(queue_entry).execute()
+            logger.info(f"✅ [ADMIN] Created processing queue entry for order {order_id}")
+            return jsonify({"success": True, "message": "Order fixed and added to processing queue"})
+        else:
+            logger.info(f"✅ [ADMIN] Processing queue entry already exists for order {order_id}")
+            return jsonify({"success": True, "message": "Order already in processing queue"})
+            
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error fixing order queue: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/api/admin/processing-queue", methods=["GET", "OPTIONS"])
+@admin_required
+def admin_processing_queue():
+    """Get processing queue for admin portal"""
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
+    try:
+        status = request.args.get('status', 'all')
+        
+        # Use admin client to bypass RLS
+        client = supabase_admin if supabase_admin else supabase
+        
+        # Query queue items - handle foreign key relationships carefully
+        query = client.table('order_processing_queue').select('*').order('priority', desc=True).order('created_at')
+        
+        if status != 'all':
+            query = query.eq('status', status)
+        
+        result = query.execute()
+        
+        # Enrich queue items with order data and user data
+        enriched_data = []
+        for queue_item in (result.data or []):
+            enriched_item = dict(queue_item)
+            
+            # Get order data
+            try:
+                order_id = queue_item.get('order_id')
+                if order_id:
+                    order_result = client.table('orders').select('*').eq('order_id', order_id).execute()
+                    if order_result.data:
+                        enriched_item['orders'] = order_result.data[0]
+            except Exception as e:
+                logger.warning(f"Could not fetch order for queue item {queue_item.get('id')}: {str(e)}")
+            
+            # Get assigned user data
+            try:
+                assigned_to = queue_item.get('assigned_to')
+                if assigned_to:
+                    user_result = client.table('users').select('id, display_name, email').eq('id', assigned_to).execute()
+                    if user_result.data:
+                        enriched_item['assigned_to_user'] = user_result.data[0]
+            except Exception as e:
+                logger.warning(f"Could not fetch user for queue item {queue_item.get('id')}: {str(e)}")
+            
+            enriched_data.append(enriched_item)
+        
+        response = jsonify({
+            "success": True,
+            "data": enriched_data
+        })
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error fetching processing queue: {str(e)}")
+        response = jsonify({"success": False, "error": str(e)})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
+
+@app.route("/api/admin/processing-history", methods=["GET", "OPTIONS"])
+@admin_required
+def admin_processing_history():
+    """Get processing history for admin portal"""
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
+    try:
+        limit = int(request.args.get('limit', 50))
+        
+        # Use admin client to bypass RLS
+        client = supabase_admin if supabase_admin else supabase
+        
+        result = client.table('processing_history').select(
+            '*, processed_by_user:users!processed_by(id, display_name, email)'
+        ).order('processed_at', desc=True).limit(limit).execute()
+        
+        response = jsonify({
+            "success": True,
+            "data": result.data or []
+        })
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error fetching processing history: {str(e)}")
+        response = jsonify({"success": False, "error": str(e)})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
+
+@app.route("/api/admin/workers", methods=["GET", "OPTIONS"])
+@admin_required
+def admin_workers():
+    """Get workers list for admin portal"""
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
+    try:
+        # Use admin client to bypass RLS
+        client = supabase_admin if supabase_admin else supabase
+        
+        result = client.table('processor_permissions').select(
+            '*, user:users!user_id(id, display_name, email, profile_image_url)'
+        ).eq('is_active', True).execute()
+        
+        response = jsonify({
+            "success": True,
+            "data": result.data or []
+        })
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error fetching workers: {str(e)}")
+        response = jsonify({"success": False, "error": str(e)})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
+
+@app.route("/api/admin/recent-orders", methods=["GET", "OPTIONS"])
+@admin_required
+def admin_recent_orders():
+    """Get recent orders for debugging - shows all orders regardless of status"""
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
+    try:
+        limit = int(request.args.get('limit', 20))
+        
+        # Use admin client to bypass RLS
+        client = supabase_admin if supabase_admin else supabase
+        
+        # Get recent orders
+        orders_result = client.table('orders').select('*').order('created_at', desc=True).limit(limit).execute()
+        
+        # Get processing queue entries
+        queue_result = client.table('order_processing_queue').select('order_id, status').execute()
+        queue_map = {q['order_id']: q['status'] for q in (queue_result.data or [])}
+        
+        # Enrich orders with queue status
+        enriched_orders = []
+        for order in (orders_result.data or []):
+            order_id = order.get('order_id')
+            enriched_order = dict(order)
+            enriched_order['in_processing_queue'] = order_id in queue_map
+            enriched_order['queue_status'] = queue_map.get(order_id, 'not_in_queue')
+            enriched_orders.append(enriched_order)
+        
+        response = jsonify({
+            "success": True,
+            "data": enriched_orders,
+            "total": len(enriched_orders)
+        })
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error fetching recent orders: {str(e)}")
+        response = jsonify({"success": False, "error": str(e)})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
+
 @app.route("/api/supabase-webhook", methods=["POST"])
 def supabase_webhook():
     """Handle Supabase webhook for order creation to capture video metadata"""
@@ -6908,24 +7382,113 @@ def google_callback():
         result = supabase.table('users').select('*').eq('email', google_email).execute()
         
         if result.data:
-            # User exists, update their Google info
+            # User exists, check their status
             user = result.data[0]
+            user_status = user.get('status', 'active')
+            
+            # Block login if user status is 'pending' (requires admin approval)
+            if user_status == 'pending':
+                frontend_url = "https://screenmerch.com"
+                error_message = "Your account is pending approval. Please wait for admin approval before signing in."
+                redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
+                logger.warning(f"⚠️ Blocked login attempt for pending user: {google_email}")
+                return redirect(redirect_url)
+            
+            # Block login if user is suspended or banned
+            if user_status in ['suspended', 'banned']:
+                frontend_url = "https://screenmerch.com"
+                error_message = f"Your account has been {user_status}. Please contact support for assistance."
+                redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
+                logger.warning(f"⚠️ Blocked login attempt for {user_status} user: {google_email}")
+                return redirect(redirect_url)
+            
+            # User is active, update their Google info
             supabase.table('users').update({
                 'display_name': google_name
             }).eq('id', user['id']).execute()
         else:
-            # Create new user
+            # Create new user - Google OAuth users are treated as creators
+            # Check the 20 creator limit first
+            current_creator_count = 0
+            try:
+                # Count existing creators (both active and pending)
+                creator_result = supabase.table('users').select('id').in_('status', ['active', 'pending']).eq('role', 'creator').execute()
+                current_creator_count = len(creator_result.data) if creator_result.data else 0
+                
+                if current_creator_count >= 20:
+                    # Redirect to frontend with error message
+                    frontend_url = "https://screenmerch.com"
+                    error_message = "We've reached our limit of 20 creator signups. Please check back later or contact support."
+                    redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
+                    logger.warning(f"⚠️ Creator limit reached. Current count: {current_creator_count}")
+                    return redirect(redirect_url)
+            except Exception as limit_error:
+                logger.error(f"Error checking creator limit: {str(limit_error)}")
+                # Continue with signup if limit check fails (fail open for now)
+            
+            # Create new user with creator role and pending status
+            # Use admin client to bypass RLS policies
+            client_to_use = supabase_admin if supabase_admin else supabase
+            if not supabase_admin:
+                logger.warning("⚠️ Admin client not available - OAuth signup may fail due to RLS")
+            
             username = google_name.replace(' ', '').lower() if google_name else google_email.split('@')[0]
             new_user = {
                 'email': google_email,
                 'display_name': google_name,
-                'role': 'creator'
+                'role': 'creator',
+                'status': 'pending'  # Creators need admin approval
             }
-            result = supabase.table('users').insert(new_user).execute()
+            result = client_to_use.table('users').insert(new_user).execute()
             user = result.data[0] if result.data else None
+            
+            # Send admin notification email for new creator signup
+            if user and MAIL_TO:
+                try:
+                    admin_email_data = {
+                        "from": RESEND_FROM,
+                        "to": [MAIL_TO],
+                        "subject": f"🎨 New Creator Signup Request: {google_email}",
+                        "html": f"""
+                        <h1>🎨 New Creator Signup Request</h1>
+                        <div style="background: #f0f8ff; padding: 20px; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                            <h2>Creator Details:</h2>
+                            <p><strong>Email:</strong> {google_email}</p>
+                            <p><strong>Name:</strong> {google_name}</p>
+                            <p><strong>User ID:</strong> {user.get('id')}</p>
+                            <p><strong>Status:</strong> Pending Approval</p>
+                            <p><strong>Signup Method:</strong> Google OAuth</p>
+                            <p><strong>Signup Date:</strong> {user.get('created_at', 'N/A')}</p>
+                        </div>
+                        <p><strong>Action Required:</strong> Please review and approve this creator signup in the admin panel.</p>
+                        <p><strong>Current Creator Count:</strong> {current_creator_count + 1} / 20</p>
+                        <p>This creator has signed up via Google OAuth and is waiting for approval to access the platform.</p>
+                        """
+                    }
+                    
+                    email_response = requests.post(
+                        "https://api.resend.com/emails",
+                        headers={
+                            "Authorization": f"Bearer {RESEND_API_KEY}",
+                            "Content-Type": "application/json"
+                        },
+                        json=admin_email_data
+                    )
+                    if email_response.status_code == 200:
+                        logger.info(f"✅ Admin notification sent for new creator signup: {google_email}")
+                    else:
+                        logger.error(f"❌ Failed to send admin notification: {email_response.text}")
+                except Exception as email_error:
+                    logger.error(f"❌ Error sending admin notification: {str(email_error)}")
+                    # Don't fail signup if email fails
         
         if not user:
-            return jsonify({"success": False, "error": "Failed to create or update user"}), 500
+            # Redirect to frontend with error message
+            frontend_url = "https://screenmerch.com"
+            error_message = "Failed to create or update user account"
+            redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
+            logger.error("❌ Failed to create or update user in OAuth callback")
+            return redirect(redirect_url)
         
         # Get YouTube channel info if available
         youtube_channel = None
@@ -6940,10 +7503,6 @@ def google_callback():
         
         # Clear OAuth state
         session.pop('oauth_state', None)
-        
-        # Redirect to frontend with success
-        from flask import redirect
-        import urllib.parse
         
         # Create user data for frontend
         user_data = {
@@ -6960,7 +7519,7 @@ def google_callback():
         
         # Encode user data as URL parameter
         user_data_json = json.dumps(user_data)
-        user_data_encoded = urllib.parse.quote(user_data_json)
+        user_data_encoded = quote(user_data_json)
         
         # Redirect to frontend with user data
         frontend_url = "https://screenmerch.com"
@@ -6977,10 +7536,25 @@ def google_callback():
         # Always redirect, even on error - never return JSON in OAuth callback
         frontend_url = "https://screenmerch.com"
         error_message = str(e)[:100]  # Limit error message length
-        redirect_url = f"{frontend_url}?login=error&message={urllib.parse.quote(error_message)}"
+        redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
         
         logger.info(f"⚠️ Redirecting to error page: {redirect_url}")
         return redirect(redirect_url)
+
+# Register worker portal and secure processing routes
+if register_secure_processing_routes:
+    try:
+        register_secure_processing_routes(app, supabase, supabase_admin)
+        logger.info("✅ Registered secure processing routes")
+    except Exception as e:
+        logger.error(f"❌ Failed to register secure processing routes: {e}")
+
+if register_worker_portal_routes:
+    try:
+        register_worker_portal_routes(app, supabase, supabase_admin, printful_integration)
+        logger.info("✅ Registered worker portal routes")
+    except Exception as e:
+        logger.error(f"❌ Failed to register worker portal routes: {e}")
 
 if __name__ == "__main__":
     import os

@@ -857,9 +857,8 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             # This preserves the exact shape including corner radius
             binary_mask = (alpha_channel > 0).astype(np.uint8) * 255
             
-            # Calculate distance from each pixel to the nearest transparent pixel (edge)
-            # This gives us the distance to the actual shape edge, including rounded corners
-            dist_transform = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 5)
+            # Check if we have a fully opaque image (no corner radius applied)
+            has_transparency = np.any(alpha_channel == 0)
             
             # Calculate feather radius (0-100% maps to 0-50% of smallest dimension)
             min_dimension = min(target_width, target_height)
@@ -867,26 +866,109 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             
             logger.info(f"Using feather radius: {feather_radius} ({feather_value}%) for high-res image")
             
-            # Create feather factor: pixels closer to edge get lower alpha
-            # Pixels at distance 0 (on edge) should have alpha = 0
-            # Pixels at distance >= feather_radius should keep their original alpha
-            # Pixels in between get interpolated
-            feather_factor = np.clip(dist_transform / feather_radius, 0.0, 1.0).astype(np.float32)
-            
-            # CRITICAL: Only apply feather to pixels that are already part of the shape
-            # This ensures we preserve the corner radius shape
-            alpha_float = alpha_channel.astype(np.float32)
-            inside_shape = dist_transform > 0
-            
-            # Apply feather: 
-            # - Outside shape (dist=0): alpha = 0 (already transparent)
-            # - Inside shape, close to edge (dist < feather_radius): alpha = original_alpha * feather_factor
-            # - Inside shape, far from edge (dist >= feather_radius): alpha = original_alpha (no change)
-            final_alpha = np.where(
-                inside_shape,
-                alpha_float * feather_factor,  # Apply feather to pixels inside shape
-                alpha_float  # Keep original alpha for pixels outside (should be 0 anyway)
-            ).astype(np.uint8)
+            if not has_transparency:
+                # No corner radius - calculate distance to nearest edge for each pixel manually
+                # This ensures smooth feathering on all four sides of rectangular images
+                # Use Euclidean distance to nearest point on perimeter for smoother corners
+                logger.info("Feather: No corner radius detected, calculating distance to nearest edge for smooth 4-side feathering")
+                
+                # Create distance map: for each pixel, calculate distance to nearest point on perimeter
+                # Using Euclidean distance to corners and edges for smoother blending
+                dist_transform = np.zeros((target_height, target_width), dtype=np.float32)
+                
+                # Pre-calculate corner positions
+                corners = [
+                    (0, 0),  # Top-left
+                    (target_width - 1, 0),  # Top-right
+                    (0, target_height - 1),  # Bottom-left
+                    (target_width - 1, target_height - 1)  # Bottom-right
+                ]
+                
+                for y in range(target_height):
+                    for x in range(target_width):
+                        # Calculate distance to each edge (Manhattan-style for edges)
+                        dist_to_top = float(y)
+                        dist_to_bottom = float(target_height - 1 - y)
+                        dist_to_left = float(x)
+                        dist_to_right = float(target_width - 1 - x)
+                        
+                        # Calculate Euclidean distance to each corner
+                        dist_to_corners = [
+                            np.sqrt((x - cx)**2 + (y - cy)**2) for cx, cy in corners
+                        ]
+                        
+                        # For smooth blending, use the minimum of:
+                        # 1. Distance to nearest edge (for straight edges)
+                        # 2. Distance to nearest corner (for corner regions)
+                        # This creates a smoother transition at corners
+                        min_edge_dist = min(dist_to_top, dist_to_bottom, dist_to_left, dist_to_right)
+                        min_corner_dist = min(dist_to_corners)
+                        
+                        # In corner regions (within feather_radius of a corner), blend between edge and corner distance
+                        # This prevents visible lines at corners
+                        corner_threshold = feather_radius * 1.5  # Slightly larger than feather radius
+                        if min_corner_dist < corner_threshold:
+                            # Blend: closer to corner, use more corner distance; closer to edge, use more edge distance
+                            blend_factor = 1.0 - (min_corner_dist / corner_threshold)
+                            blend_factor = np.clip(blend_factor, 0.0, 1.0)
+                            # Use a weighted combination for smooth transition
+                            min_dist = (1.0 - blend_factor * 0.3) * min_edge_dist + (blend_factor * 0.3) * min_corner_dist
+                        else:
+                            # Far from corners, use edge distance
+                            min_dist = min_edge_dist
+                        
+                        dist_transform[y, x] = min_dist
+                
+                # Create feather factor: pixels closer to edge get lower alpha
+                # Pixels at distance 0 (on edge) should have alpha = 0
+                # Pixels at distance >= feather_radius should keep their original alpha
+                # Pixels in between get interpolated
+                # Use a smoother curve (ease-in-out) for better blending
+                normalized_dist = np.clip(dist_transform / feather_radius, 0.0, 1.0)
+                # Apply smoothstep function for smoother transitions: 3t^2 - 2t^3
+                feather_factor = normalized_dist * normalized_dist * (3.0 - 2.0 * normalized_dist)
+                feather_factor = feather_factor.astype(np.float32)
+                
+                # Apply feather to alpha channel
+                alpha_float = alpha_channel.astype(np.float32)
+                final_alpha = (alpha_float * feather_factor).astype(np.uint8)
+                
+            else:
+                # Has corner radius - use distance transform on the shape mask
+                # This preserves the rounded corner shape
+                binary_mask = (alpha_channel > 0).astype(np.uint8) * 255
+                
+                # Calculate distance from each pixel to the nearest transparent pixel (edge)
+                # This gives us the distance to the actual shape edge, including rounded corners
+                dist_transform = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 5)
+                
+                # The distance transform works well, but we need to ensure consistent feathering
+                # across corners and straight edges. The issue is that corners have different
+                # distance profiles. We'll use a normalization approach that accounts for this.
+                
+                # Normalize distance: divide by feather_radius
+                normalized_dist = np.clip(dist_transform / feather_radius, 0.0, 1.0)
+                
+                # Apply smoothstep function for smoother, more uniform transitions
+                # smoothstep: 3t^2 - 2t^3 (ease-in-out curve)
+                # This creates a smoother fade that helps blend corners and edges more evenly
+                feather_factor = normalized_dist * normalized_dist * (3.0 - 2.0 * normalized_dist)
+                feather_factor = feather_factor.astype(np.float32)
+                
+                # CRITICAL: Only apply feather to pixels that are already part of the shape
+                # This ensures we preserve the corner radius shape
+                alpha_float = alpha_channel.astype(np.float32)
+                inside_shape = dist_transform > 0
+                
+                # Apply feather: 
+                # - Outside shape (dist=0): alpha = 0 (already transparent)
+                # - Inside shape, close to edge (dist < feather_radius): alpha = original_alpha * feather_factor
+                # - Inside shape, far from edge (dist >= feather_radius): alpha = original_alpha (no change)
+                final_alpha = np.where(
+                    inside_shape,
+                    alpha_float * feather_factor,  # Apply feather to pixels inside shape
+                    alpha_float  # Keep original alpha for pixels outside (should be 0 anyway)
+                ).astype(np.uint8)
             
             image[:, :, 3] = final_alpha
             
@@ -897,7 +979,27 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
         
         # Apply frame border if enabled
         if frame_enabled and frame_width > 0:
-            logger.info(f"Applying frame border: color={frame_color}, width={frame_width}, double={double_frame}")
+            # Ensure frame_width is an integer and within bounds
+            frame_width = int(frame_width)
+            frame_width = max(1, min(100, frame_width))  # Clamp between 1-100px
+            
+            # Scale frame width based on image size for high-resolution images
+            # Use same percentage-based approach as feather and corner radius
+            # Frame width (1-50px slider) maps to percentage of smallest dimension
+            # For consistency with other tools, scale based on image size
+            # Base reference: 1200px width = 1:1 scale
+            # This ensures frame is visible and proportional on high-res images
+            base_width = 1200  # Reference width for 1:1 scaling
+            if target_width > base_width:
+                scale_factor = target_width / base_width
+                scaled_frame_width = int(frame_width * scale_factor)
+                logger.info(f"Scaling frame width: {frame_width}px -> {scaled_frame_width}px (scale factor: {scale_factor:.2f} for {target_width}px wide image)")
+                frame_width = scaled_frame_width
+            else:
+                # For smaller images, keep frame width as-is
+                logger.info(f"Frame width: {frame_width}px (no scaling needed for {target_width}px wide image)")
+            
+            logger.info(f"Applying frame border: color={frame_color}, width={frame_width}px, double={double_frame}, image_size={target_width}x{target_height}")
             
             # Convert hex color to BGR
             try:

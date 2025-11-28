@@ -39,7 +39,11 @@ const Admin = () => {
     soft_corners: false,
     crop_area: { x: '', y: '', width: '', height: '' },
     feather_edge_percent: 0,
-    corner_radius_percent: 0
+    corner_radius_percent: 0,
+    frame_enabled: false,
+    frame_color: '#FF0000',
+    frame_width: 10,
+    double_frame: false
   });
   const navigate = useNavigate();
 
@@ -289,18 +293,26 @@ const Admin = () => {
   // Helper function to apply both effects together (like email generator)
   // Uses the SAME unified API endpoint that the email generator uses
   // This ensures both effects work together correctly
-  const applyBothEffects = async () => {
+  // Optional settings parameter allows using updated settings before state is updated
+  const applyBothEffects = async (settingsOverride = null) => {
     if (!original300DpiImage) {
       throw new Error('No 300 DPI image available. Please complete Step 1 first.');
     }
 
-    const edgeFeather = printQualitySettings.edge_feather;
-    const softCorners = printQualitySettings.soft_corners;
-    const featherValue = edgeFeather ? (printQualitySettings.feather_edge_percent || 0) : 0;
-    const cornerRadiusPercent = softCorners ? (printQualitySettings.corner_radius_percent || 0) : 0;
+    // Use override settings if provided, otherwise use current state
+    const settings = settingsOverride || printQualitySettings;
+    const edgeFeather = settings.edge_feather;
+    const softCorners = settings.soft_corners;
+    const featherValue = edgeFeather ? (settings.feather_edge_percent || 0) : 0;
+    const cornerRadiusPercent = softCorners ? (settings.corner_radius_percent || 0) : 0;
     const apiUrl = process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev';
 
-    console.log(`applyBothEffects: Using unified API (like email generator). Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%`);
+    const frameEnabled = settings.frame_enabled || false;
+    const frameColor = settings.frame_color || '#FF0000';
+    const frameWidth = settings.frame_width || 10;
+    const doubleFrame = settings.double_frame || false;
+    
+    console.log(`applyBothEffects: Using unified API (like email generator). Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%, Frame: ${frameEnabled ? `enabled (${frameColor}, ${frameWidth}px, double: ${doubleFrame})` : 'disabled'}`);
 
     // Use the SAME unified endpoint that the email generator uses
     // This applies both effects together in one call, ensuring they work correctly
@@ -311,15 +323,15 @@ const Admin = () => {
         credentials: 'include',
         body: JSON.stringify({
           thumbnail_data: original300DpiImage, // Always start from original 300 DPI image
-          print_dpi: printQualitySettings.print_dpi || 300, // Keep same DPI
+          print_dpi: settings.print_dpi || 300, // Keep same DPI
           soft_corners: softCorners, // Pass checkbox state
           edge_feather: edgeFeather, // Pass checkbox state
           corner_radius_percent: cornerRadiusPercent, // Pass actual percent (0-100)
           feather_edge_percent: featherValue, // Pass actual percent (0-100)
-          frame_enabled: printQualitySettings.frame_enabled || false,
-          frame_color: printQualitySettings.frame_color || '#FF0000',
-          frame_width: printQualitySettings.frame_width || 10,
-          double_frame: printQualitySettings.double_frame || false
+          frame_enabled: frameEnabled, // Pass frame enabled state
+          frame_color: frameColor, // Pass frame color
+          frame_width: frameWidth, // Pass frame width
+          double_frame: doubleFrame // Pass double frame flag
         })
       });
 
@@ -369,9 +381,12 @@ const Admin = () => {
         const featherValue = printQualitySettings.feather_edge_percent || 0;
         const cornerRadiusPercent = printQualitySettings.soft_corners ? (printQualitySettings.corner_radius_percent || 0) : 0;
         const cornerRadiusDisplay = cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%';
-        const effectsText = cornerRadiusPercent > 0 
-          ? `Feather: ${featherValue}%, Corner Radius: ${cornerRadiusDisplay}`
-          : `Feather: ${featherValue}%`;
+        const frameEnabled = printQualitySettings.frame_enabled || false;
+        let effectsText = '';
+        if (featherValue > 0) effectsText += `Feather: ${featherValue}%`;
+        if (cornerRadiusPercent > 0) effectsText += (effectsText ? ', ' : '') + `Corner Radius: ${cornerRadiusDisplay}`;
+        if (frameEnabled) effectsText += (effectsText ? ', ' : '') + `Frame: ${printQualitySettings.frame_width}px ${printQualitySettings.double_frame ? '(Double)' : ''}`;
+        if (!effectsText) effectsText = 'Effects applied';
         
         console.log(`✅ Effects applied: ${effectsText}`);
         
@@ -419,9 +434,12 @@ const Admin = () => {
         const cornerRadiusPercent = printQualitySettings.corner_radius_percent || 0;
         const cornerRadiusDisplay = cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%';
         const featherValue = printQualitySettings.edge_feather ? (printQualitySettings.feather_edge_percent || 0) : 0;
-        const effectsText = featherValue > 0 
-          ? `Corner Radius: ${cornerRadiusDisplay}, Feather: ${featherValue}%`
-          : `Corner Radius: ${cornerRadiusDisplay}`;
+        const frameEnabled = printQualitySettings.frame_enabled || false;
+        let effectsText = '';
+        if (cornerRadiusPercent > 0) effectsText += `Corner Radius: ${cornerRadiusDisplay}`;
+        if (featherValue > 0) effectsText += (effectsText ? ', ' : '') + `Feather: ${featherValue}%`;
+        if (frameEnabled) effectsText += (effectsText ? ', ' : '') + `Frame: ${printQualitySettings.frame_width}px ${printQualitySettings.double_frame ? '(Double)' : ''}`;
+        if (!effectsText) effectsText = 'Effects applied';
         
         console.log(`✅ Effects applied: ${effectsText}`);
         
@@ -1338,14 +1356,42 @@ const Admin = () => {
                                           setSelectedOrder(order);
                                           setProcessedImage(null);
                                           setOriginal300DpiImage(null); // Reset original 300 DPI image when opening new order
-                                          setPrintQualitySettings({
+                                          
+                                          // Try to load saved tool settings from cart item
+                                          let savedSettings = {
                                             print_dpi: 300,
                                             edge_feather: false,
                                             soft_corners: false,
                                             crop_area: { x: '', y: '', width: '', height: '' },
                                             feather_edge_percent: 0,
-                                            corner_radius_percent: 0
-                                          });
+                                            corner_radius_percent: 0,
+                                            frame_enabled: false,
+                                            frame_color: '#FF0000',
+                                            frame_width: 10,
+                                            double_frame: false
+                                          };
+                                          
+                                          // Check if order has cart items with saved tool settings
+                                          if (order.cart && order.cart.length > 0) {
+                                            const firstItem = order.cart[0];
+                                            if (firstItem.toolSettings) {
+                                              savedSettings = {
+                                                print_dpi: 300,
+                                                edge_feather: firstItem.toolSettings.featherEdge > 0,
+                                                soft_corners: firstItem.toolSettings.cornerRadius > 0,
+                                                crop_area: { x: '', y: '', width: '', height: '' },
+                                                feather_edge_percent: firstItem.toolSettings.featherEdge || 0,
+                                                corner_radius_percent: firstItem.toolSettings.cornerRadius || 0,
+                                                frame_enabled: firstItem.toolSettings.frameEnabled || false,
+                                                frame_color: firstItem.toolSettings.frameColor || '#FF0000',
+                                                frame_width: firstItem.toolSettings.frameWidth || 10,
+                                                double_frame: firstItem.toolSettings.doubleFrame || false
+                                              };
+                                              console.log('📦 Loaded saved tool settings from cart item:', savedSettings);
+                                            }
+                                          }
+                                          
+                                          setPrintQualitySettings(savedSettings);
                                         }}
                                         style={{
                                           padding: '4px 12px',
@@ -1727,7 +1773,49 @@ const Admin = () => {
                                 <input
                                   type="checkbox"
                                   checked={printQualitySettings.edge_feather}
-                                  onChange={(e) => setPrintQualitySettings({...printQualitySettings, edge_feather: e.target.checked})}
+                                  onChange={async (e) => {
+                                    const newValue = e.target.checked;
+                                    const updatedSettings = {...printQualitySettings, edge_feather: newValue, feather_edge_percent: newValue ? printQualitySettings.feather_edge_percent : 0};
+                                    setPrintQualitySettings(updatedSettings);
+                                    
+                                    // If unchecked, re-apply remaining effects or reset to base
+                                    if (!newValue && original300DpiImage) {
+                                      // Check if any other effects are enabled
+                                      const hasOtherEffects = updatedSettings.soft_corners || updatedSettings.frame_enabled;
+                                      
+                                      if (hasOtherEffects) {
+                                        // Re-apply effects without feather using updated settings
+                                        try {
+                                          const processedImage = await applyBothEffects(updatedSettings);
+                                          if (processedImage) {
+                                            setProcessedImage({
+                                              success: true,
+                                              screenshot: processedImage,
+                                              effect: "reset",
+                                              effectsText: "Feather effect removed"
+                                            });
+                                          }
+                                        } catch (error) {
+                                          console.error('Error resetting feather effect:', error);
+                                          // If error, reset to original 300 DPI image
+                                          setProcessedImage({
+                                            success: true,
+                                            screenshot: original300DpiImage,
+                                            effect: "reset",
+                                            effectsText: "Reset to base image"
+                                          });
+                                        }
+                                      } else {
+                                        // No effects enabled, reset to original 300 DPI image
+                                        setProcessedImage({
+                                          success: true,
+                                          screenshot: original300DpiImage,
+                                          effect: "reset",
+                                          effectsText: "Reset to base image"
+                                        });
+                                      }
+                                    }
+                                  }}
                                   style={{ transform: 'scale(1.2)' }}
                                 />
                                 Apply Edge Feathering
@@ -1787,7 +1875,49 @@ const Admin = () => {
                                 <input
                                   type="checkbox"
                                   checked={printQualitySettings.soft_corners}
-                                  onChange={(e) => setPrintQualitySettings({...printQualitySettings, soft_corners: e.target.checked})}
+                                  onChange={async (e) => {
+                                    const newValue = e.target.checked;
+                                    const updatedSettings = {...printQualitySettings, soft_corners: newValue, corner_radius_percent: newValue ? printQualitySettings.corner_radius_percent : 0};
+                                    setPrintQualitySettings(updatedSettings);
+                                    
+                                    // If unchecked, re-apply remaining effects or reset to base
+                                    if (!newValue && original300DpiImage) {
+                                      // Check if any other effects are enabled
+                                      const hasOtherEffects = updatedSettings.edge_feather || updatedSettings.frame_enabled;
+                                      
+                                      if (hasOtherEffects) {
+                                        // Re-apply effects without corner radius using updated settings
+                                        try {
+                                          const processedImage = await applyBothEffects(updatedSettings);
+                                          if (processedImage) {
+                                            setProcessedImage({
+                                              success: true,
+                                              screenshot: processedImage,
+                                              effect: "reset",
+                                              effectsText: "Corner radius effect removed"
+                                            });
+                                          }
+                                        } catch (error) {
+                                          console.error('Error resetting corner radius effect:', error);
+                                          // If error, reset to original 300 DPI image
+                                          setProcessedImage({
+                                            success: true,
+                                            screenshot: original300DpiImage,
+                                            effect: "reset",
+                                            effectsText: "Reset to base image"
+                                          });
+                                        }
+                                      } else {
+                                        // No effects enabled, reset to original 300 DPI image
+                                        setProcessedImage({
+                                          success: true,
+                                          screenshot: original300DpiImage,
+                                          effect: "reset",
+                                          effectsText: "Reset to base image"
+                                        });
+                                      }
+                                    }
+                                  }}
                                   style={{ transform: 'scale(1.2)' }}
                                 />
                                 Apply Rounded Corners
@@ -1838,6 +1968,180 @@ const Admin = () => {
                             )}
                           </div>
 
+                          {/* STEP 4: Framed Border Tool (Optional) */}
+                          <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px', margin: '20px 0', border: '2px solid #dc3545' }}>
+                            <h3 style={{ marginTop: 0, color: '#dc3545' }}>🖼️ STEP 4: Framed Border Tool (Optional)</h3>
+                            
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={printQualitySettings.frame_enabled}
+                                  onChange={async (e) => {
+                                    const newValue = e.target.checked;
+                                    const updatedSettings = {...printQualitySettings, frame_enabled: newValue};
+                                    setPrintQualitySettings(updatedSettings);
+                                    
+                                    // If unchecked, re-apply remaining effects or reset to base
+                                    if (!newValue && original300DpiImage) {
+                                      // Check if any other effects are enabled
+                                      const hasOtherEffects = updatedSettings.edge_feather || updatedSettings.soft_corners;
+                                      
+                                      if (hasOtherEffects) {
+                                        // Re-apply effects without frame using updated settings
+                                        try {
+                                          const processedImage = await applyBothEffects(updatedSettings);
+                                          if (processedImage) {
+                                            setProcessedImage({
+                                              success: true,
+                                              screenshot: processedImage,
+                                              effect: "reset",
+                                              effectsText: "Frame effect removed"
+                                            });
+                                          }
+                                        } catch (error) {
+                                          console.error('Error resetting frame effect:', error);
+                                          // If error, reset to original 300 DPI image
+                                          setProcessedImage({
+                                            success: true,
+                                            screenshot: original300DpiImage,
+                                            effect: "reset",
+                                            effectsText: "Reset to base image"
+                                          });
+                                        }
+                                      } else {
+                                        // No effects enabled, reset to original 300 DPI image
+                                        setProcessedImage({
+                                          success: true,
+                                          screenshot: original300DpiImage,
+                                          effect: "reset",
+                                          effectsText: "Reset to base image"
+                                        });
+                                      }
+                                    }
+                                  }}
+                                  style={{ transform: 'scale(1.2)' }}
+                                />
+                                Enable Frame
+                              </label>
+                              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                Add a decorative border frame around the image
+                              </div>
+                            </div>
+
+                            {printQualitySettings.frame_enabled && (
+                              <>
+                                <div style={{ marginBottom: '12px' }}>
+                                  <label style={{ display: 'block', marginBottom: '8px' }}>Frame Color:</label>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <input
+                                      type="color"
+                                      value={printQualitySettings.frame_color}
+                                      onChange={(e) => setPrintQualitySettings({...printQualitySettings, frame_color: e.target.value})}
+                                      style={{ width: '60px', height: '40px', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' }}
+                                    />
+                                    <input
+                                      type="text"
+                                      value={printQualitySettings.frame_color}
+                                      onChange={(e) => setPrintQualitySettings({...printQualitySettings, frame_color: e.target.value})}
+                                      style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd', width: '100px' }}
+                                      placeholder="#FF0000"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div style={{ marginBottom: '12px' }}>
+                                  <label style={{ display: 'block', marginBottom: '8px' }}>Frame Width: {printQualitySettings.frame_width}px</label>
+                                  <input
+                                    type="range"
+                                    min="1"
+                                    max="50"
+                                    value={printQualitySettings.frame_width}
+                                    onChange={(e) => setPrintQualitySettings({...printQualitySettings, frame_width: parseInt(e.target.value)})}
+                                    style={{ width: '100%' }}
+                                  />
+                                  <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                    Adjust the thickness of the frame border (1-50px)
+                                  </div>
+                                </div>
+
+                                <div style={{ marginBottom: '12px' }}>
+                                  <label style={{ fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={printQualitySettings.double_frame}
+                                      onChange={(e) => setPrintQualitySettings({...printQualitySettings, double_frame: e.target.checked})}
+                                      style={{ transform: 'scale(1.2)' }}
+                                    />
+                                    Double Frame (3D Look)
+                                  </label>
+                                  <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                    Add a second inner frame for a 3D effect
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!original300DpiImage) {
+                                      alert('Please complete Step 1 (Generate 300 DPI Image) first');
+                                      return;
+                                    }
+
+                                    setStep2Processing(true);
+                                    setStep3Processing(true);
+
+                                    try {
+                                      const processedImage = await applyBothEffects();
+                                      
+                                      if (processedImage) {
+                                        const cornerRadiusPercent = printQualitySettings.soft_corners ? (printQualitySettings.corner_radius_percent || 0) : 0;
+                                        const cornerRadiusDisplay = cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%';
+                                        const featherValue = printQualitySettings.edge_feather ? (printQualitySettings.feather_edge_percent || 0) : 0;
+                                        const frameEnabled = printQualitySettings.frame_enabled || false;
+                                        let effectsText = '';
+                                        if (featherValue > 0) effectsText += `Feather: ${featherValue}%`;
+                                        if (cornerRadiusPercent > 0) effectsText += (effectsText ? ', ' : '') + `Corner Radius: ${cornerRadiusDisplay}`;
+                                        if (frameEnabled) effectsText += (effectsText ? ', ' : '') + `Frame: ${printQualitySettings.frame_width}px ${printQualitySettings.double_frame ? '(Double)' : ''}`;
+                                        if (!effectsText) effectsText = 'Effects applied';
+                                        
+                                        console.log(`✅ Effects applied: ${effectsText}`);
+                                        
+                                        setProcessedImage({
+                                          success: true,
+                                          screenshot: processedImage,
+                                          effect: "frame",
+                                          effectsText: effectsText
+                                        });
+                                      } else {
+                                        throw new Error('Failed to apply effects - no image returned');
+                                      }
+                                    } catch (error) {
+                                      console.error('Error applying frame effect:', error);
+                                      alert(`Error applying frame effect: ${error.message}`);
+                                    } finally {
+                                      setStep2Processing(false);
+                                      setStep3Processing(false);
+                                    }
+                                  }}
+                                  disabled={step2Processing || step3Processing || !original300DpiImage}
+                                  style={{
+                                    background: (step2Processing || step3Processing || !original300DpiImage) ? '#ccc' : '#dc3545',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '10px 20px',
+                                    borderRadius: '5px',
+                                    cursor: (step2Processing || step3Processing || !original300DpiImage) ? 'not-allowed' : 'pointer',
+                                    fontWeight: 'bold',
+                                    marginTop: '10px'
+                                  }}
+                                >
+                                  {(step2Processing || step3Processing) ? 'Applying Effects...' : 'Apply Frame Effect'}
+                                </button>
+                              </>
+                            )}
+                          </div>
+
                           {processedImage && processedImage.success && (
                             <div style={{ marginTop: '20px', padding: '16px', background: '#d4edda', borderRadius: '4px', border: '1px solid #c3e6cb' }}>
                               <p style={{ color: '#155724', fontWeight: 'bold', marginBottom: '12px' }}>✅ Print Quality Image Generated!</p>
@@ -1848,7 +2152,7 @@ const Admin = () => {
                                   style={{
                                     maxWidth: '400px',
                                     maxHeight: '400px',
-                                    border: '2px solid #28a745',
+                                    border: 'none',
                                     borderRadius: '4px'
                                   }}
                                 />
