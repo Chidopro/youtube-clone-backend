@@ -988,12 +988,24 @@ class VideoScreenshotCapture:
         except Exception as e:
             logger.error(f"Error cleaning up: {e}")
     
-    def process_thumbnail_for_print(self, image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None):
+    def process_thumbnail_for_print(self, image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False):
         """Process a thumbnail image for print quality output"""
         try:
             # Import the function from the screenshot_capture module
             import screenshot_capture as sc_module
-            return sc_module.process_thumbnail_for_print(image_data, print_dpi, soft_corners, edge_feather, crop_area)
+            return sc_module.process_thumbnail_for_print(
+                image_data, 
+                print_dpi=print_dpi, 
+                soft_corners=soft_corners, 
+                edge_feather=edge_feather, 
+                crop_area=crop_area,
+                corner_radius_percent=corner_radius_percent,
+                feather_edge_percent=feather_edge_percent,
+                frame_enabled=frame_enabled,
+                frame_color=frame_color,
+                frame_width=frame_width,
+                double_frame=double_frame
+            )
         except Exception as e:
             logger.error(f"Error processing thumbnail for print: {str(e)}")
             return {"success": False, "error": f"Failed to process thumbnail: {str(e)}"}

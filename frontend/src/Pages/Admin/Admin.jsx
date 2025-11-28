@@ -17,6 +17,30 @@ const Admin = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRole, setFilterRole] = useState('creator'); // Default to showing creators
   const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState('active'); // Filter for subscriptions
+  const [pendingPayouts, setPendingPayouts] = useState([]);
+  const [payoutHistory, setPayoutHistory] = useState([]);
+  const [payoutLoading, setPayoutLoading] = useState(false);
+  const [processingQueue, setProcessingQueue] = useState([]);
+  const [processingHistory, setProcessingHistory] = useState([]);
+  const [workers, setWorkers] = useState([]);
+  const [queueStatusFilter, setQueueStatusFilter] = useState('all');
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [isFullAdmin, setIsFullAdmin] = useState(false);
+  const [isOrderProcessingAdmin, setIsOrderProcessingAdmin] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [step1Processing, setStep1Processing] = useState(false);
+  const [step2Processing, setStep2Processing] = useState(false);
+  const [step3Processing, setStep3Processing] = useState(false);
+  const [processedImage, setProcessedImage] = useState(null);
+  const [original300DpiImage, setOriginal300DpiImage] = useState(null); // Store the original 300 DPI image (Step 1 result)
+  const [printQualitySettings, setPrintQualitySettings] = useState({
+    print_dpi: 300,
+    edge_feather: false,
+    soft_corners: false,
+    crop_area: { x: '', y: '', width: '', height: '' },
+    feather_edge_percent: 0,
+    corner_radius_percent: 0
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,6 +62,24 @@ const Admin = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscriptionStatusFilter, isAdmin, activeTab]);
+
+  // Reload payouts when tab changes
+  useEffect(() => {
+    if (isAdmin && activeTab === 'payouts') {
+      loadPayouts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, activeTab]);
+
+  // Reload processing queue when tab changes
+  useEffect(() => {
+    if (isAdmin && activeTab === 'order-processing') {
+      loadProcessingQueue();
+      loadProcessingHistory();
+      loadWorkers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, activeTab, queueStatusFilter]);
 
   const checkAdminStatus = async () => {
     try {
@@ -70,6 +112,16 @@ const Admin = () => {
 
       // Check if user is admin using AdminService
       const isUserAdmin = await AdminService.isAdmin();
+      const isUserFullAdmin = await AdminService.isFullAdmin();
+      const isUserOrderProcessingAdmin = await AdminService.isOrderProcessingAdmin();
+
+      console.log('🔐 Admin Status Check:', {
+        isUserAdmin,
+        isUserFullAdmin,
+        isUserOrderProcessingAdmin,
+        userEmail: user?.email || user?.user_metadata?.email,
+        userId: user?.id
+      });
 
       if (!isUserAdmin) {
         alert('Access denied. Admin privileges required.');
@@ -78,7 +130,22 @@ const Admin = () => {
       }
 
       setIsAdmin(true);
-      loadAdminData();
+      setIsFullAdmin(isUserFullAdmin);
+      setIsOrderProcessingAdmin(isUserOrderProcessingAdmin);
+      
+      console.log('✅ Admin access granted. Full Admin:', isUserFullAdmin, 'Order Processing Admin:', isUserOrderProcessingAdmin);
+      
+      // Set default tab based on role
+      if (isUserOrderProcessingAdmin && !isUserFullAdmin) {
+        // Order processing admin only - default to order processing tab
+        setActiveTab('order-processing');
+        loadProcessingQueue();
+        loadProcessingHistory();
+        loadWorkers();
+      } else {
+        // Full admin - default to dashboard
+        loadAdminData();
+      }
     } catch (error) {
       console.error('Error checking admin status:', error);
       navigate('/');
@@ -124,6 +191,290 @@ const Admin = () => {
     }
   };
 
+  const loadPayouts = async () => {
+    setPayoutLoading(true);
+    try {
+      const [pending, history] = await Promise.all([
+        AdminService.getPendingPayouts(),
+        AdminService.getPayoutHistory()
+      ]);
+      setPendingPayouts(pending);
+      setPayoutHistory(history);
+    } catch (error) {
+      console.error('Error loading payouts:', error);
+    } finally {
+      setPayoutLoading(false);
+    }
+  };
+
+  const loadProcessingQueue = async () => {
+    setQueueLoading(true);
+    try {
+      const data = await AdminService.getProcessingQueue(queueStatusFilter);
+      setProcessingQueue(data);
+    } catch (error) {
+      console.error('Error loading processing queue:', error);
+    } finally {
+      setQueueLoading(false);
+    }
+  };
+
+  const loadProcessingHistory = async () => {
+    try {
+      const data = await AdminService.getProcessingHistory(50);
+      setProcessingHistory(data);
+    } catch (error) {
+      console.error('Error loading processing history:', error);
+    }
+  };
+
+  const loadWorkers = async () => {
+    try {
+      const data = await AdminService.getWorkers();
+      setWorkers(data);
+    } catch (error) {
+      console.error('Error loading workers:', error);
+    }
+  };
+
+  // STEP 1: Generate 300 DPI Image (Standalone)
+  const generate300DpiImage = async (item) => {
+    if (!item || (!item.img && !item.selected_screenshot)) {
+      alert('No screenshot found for this item');
+      return;
+    }
+
+    setStep1Processing(true);
+    setProcessedImage(null);
+    setOriginal300DpiImage(null);
+
+    try {
+      const screenshotData = item.selected_screenshot || item.img;
+      const apiUrl = process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev';
+      
+      const response = await fetch(`${apiUrl}/api/process-thumbnail-print-quality`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          thumbnail_data: screenshotData,
+          print_dpi: printQualitySettings.print_dpi,
+          soft_corners: false,  // No effects in step 1
+          edge_feather: false   // No effects in step 1
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate 300 DPI image');
+      }
+
+      setOriginal300DpiImage(result.screenshot); // Store original 300 DPI image
+      setProcessedImage(result);
+    } catch (error) {
+      console.error('Error generating 300 DPI image:', error);
+      alert(`Error generating 300 DPI image: ${error.message}`);
+    } finally {
+      setStep1Processing(false);
+    }
+  };
+
+  // Helper function to apply both effects together (like email generator)
+  // Uses the SAME unified API endpoint that the email generator uses
+  // This ensures both effects work together correctly
+  const applyBothEffects = async () => {
+    if (!original300DpiImage) {
+      throw new Error('No 300 DPI image available. Please complete Step 1 first.');
+    }
+
+    const edgeFeather = printQualitySettings.edge_feather;
+    const softCorners = printQualitySettings.soft_corners;
+    const featherValue = edgeFeather ? (printQualitySettings.feather_edge_percent || 0) : 0;
+    const cornerRadiusPercent = softCorners ? (printQualitySettings.corner_radius_percent || 0) : 0;
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev';
+
+    console.log(`applyBothEffects: Using unified API (like email generator). Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%`);
+
+    // Use the SAME unified endpoint that the email generator uses
+    // This applies both effects together in one call, ensuring they work correctly
+    try {
+      const response = await fetch(`${apiUrl}/api/process-thumbnail-print-quality`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          thumbnail_data: original300DpiImage, // Always start from original 300 DPI image
+          print_dpi: printQualitySettings.print_dpi || 300, // Keep same DPI
+          soft_corners: softCorners, // Pass checkbox state
+          edge_feather: edgeFeather, // Pass checkbox state
+          corner_radius_percent: cornerRadiusPercent, // Pass actual percent (0-100)
+          feather_edge_percent: featherValue, // Pass actual percent (0-100)
+          frame_enabled: printQualitySettings.frame_enabled || false,
+          frame_color: printQualitySettings.frame_color || '#FF0000',
+          frame_width: printQualitySettings.frame_width || 10,
+          double_frame: printQualitySettings.double_frame || false
+        })
+      });
+
+      console.log(`Unified API response status: ${response.status}`);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`Unified API result:`, { success: result.success, hasImage: !!result.screenshot });
+        
+        if (result.success && result.screenshot) {
+          console.log('✅ Both effects applied successfully using unified API');
+          return result.screenshot;
+        } else {
+          console.error('Unified API returned success but no screenshot:', result);
+          throw new Error(result.error || 'Failed to apply effects - no image returned');
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Unified API error:', response.status, errorData);
+        throw new Error(errorData.error || `API error: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error applying effects with unified API:', error);
+      throw error;
+    }
+  };
+
+  // STEP 2: Apply Feather Effect (applies both effects together)
+  const applyFeatherEffect = async () => {
+    if (!printQualitySettings.edge_feather) {
+      alert('Please enable "Edge Feathering" first');
+      return;
+    }
+
+    if (!original300DpiImage) {
+      alert('Please complete Step 1 (Generate 300 DPI Image) first');
+      return;
+    }
+
+    setStep2Processing(true);
+
+    try {
+      // applyBothEffects always starts from original300DpiImage and applies both effects
+      const processedImage = await applyBothEffects();
+      
+      if (processedImage) {
+        const featherValue = printQualitySettings.feather_edge_percent || 0;
+        const cornerRadiusPercent = printQualitySettings.soft_corners ? (printQualitySettings.corner_radius_percent || 0) : 0;
+        const cornerRadiusDisplay = cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%';
+        const effectsText = cornerRadiusPercent > 0 
+          ? `Feather: ${featherValue}%, Corner Radius: ${cornerRadiusDisplay}`
+          : `Feather: ${featherValue}%`;
+        
+        console.log(`✅ Effects applied: ${effectsText}`);
+        
+        setProcessedImage({
+          success: true,
+          screenshot: processedImage,
+          effect: "feather",
+          effectsText: effectsText
+        });
+      } else {
+        throw new Error('Failed to apply effects - no image returned');
+      }
+    } catch (error) {
+      console.error('Error applying feather effect:', error);
+      alert(`Error applying feather effect: ${error.message}`);
+    } finally {
+      setStep2Processing(false);
+    }
+  };
+
+  // STEP 3: Apply Corner Radius (applies both effects together)
+  const applyCornerRadius = async () => {
+    if (!printQualitySettings.soft_corners) {
+      alert('Please enable "Rounded Corners" first');
+      return;
+    }
+
+    if (printQualitySettings.corner_radius_percent <= 0) {
+      alert('Please set a corner radius value greater than 0%');
+      return;
+    }
+
+    if (!original300DpiImage) {
+      alert('Please complete Step 1 (Generate 300 DPI Image) first');
+      return;
+    }
+
+    setStep3Processing(true);
+
+    try {
+      // applyBothEffects always starts from original300DpiImage and applies both effects
+      const processedImage = await applyBothEffects();
+      
+      if (processedImage) {
+        const cornerRadiusPercent = printQualitySettings.corner_radius_percent || 0;
+        const cornerRadiusDisplay = cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%';
+        const featherValue = printQualitySettings.edge_feather ? (printQualitySettings.feather_edge_percent || 0) : 0;
+        const effectsText = featherValue > 0 
+          ? `Corner Radius: ${cornerRadiusDisplay}, Feather: ${featherValue}%`
+          : `Corner Radius: ${cornerRadiusDisplay}`;
+        
+        console.log(`✅ Effects applied: ${effectsText}`);
+        
+        setProcessedImage({
+          success: true,
+          screenshot: processedImage,
+          effect: "corner_radius",
+          effectsText: effectsText
+        });
+      } else {
+        throw new Error('Failed to apply effects - no image returned');
+      }
+    } catch (error) {
+      console.error('Error applying corner radius:', error);
+      alert(`Error applying corner radius: ${error.message}`);
+    } finally {
+      setStep3Processing(false);
+    }
+  };
+
+  const downloadProcessedImage = () => {
+    if (!processedImage || !processedImage.screenshot) {
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = processedImage.screenshot;
+    link.download = `print-quality-${selectedOrder?.order_id || 'image'}-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleAssignOrder = async (queueId, workerId) => {
+    if (!workerId) {
+      alert('Please select a worker');
+      return;
+    }
+
+    try {
+      const result = await AdminService.assignOrderToWorker(queueId, workerId);
+      if (result.success) {
+        alert('Order assigned successfully');
+        loadProcessingQueue();
+      } else {
+        alert(`Failed to assign order: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error assigning order:', error);
+      alert('Failed to assign order');
+    }
+  };
+
   const loadStats = async () => {
     try {
       const data = await AdminService.getDashboardStats();
@@ -132,6 +483,7 @@ const Admin = () => {
         totalVideos: data.total_videos || 0,
         totalSubscriptions: data.total_subscriptions || 0,
         pendingVideos: data.pending_videos || 0,
+        pendingUsers: data.pending_users || 0,
         activeUsers: data.active_users || 0,
         suspendedUsers: data.suspended_users || 0
       });
@@ -236,6 +588,38 @@ const Admin = () => {
     }
   };
 
+  const handleProcessPayout = async (payout) => {
+    if (!payout.paypal_email) {
+      alert('This creator has not set up their PayPal email. Please ask them to add it in their dashboard.');
+      return;
+    }
+
+    const confirmMessage = `Process payout of $${payout.pending_amount.toFixed(2)} to ${payout.display_name}?\n\nPayPal: ${payout.paypal_email}\n\nThis will mark ${payout.earnings_count} earnings as paid.`;
+    if (!confirm(confirmMessage)) return;
+
+    setPayoutLoading(true);
+    try {
+      const earningsIds = payout.earnings.map(e => e.id);
+      const result = await AdminService.processPayout(
+        payout.user_id,
+        payout.pending_amount,
+        earningsIds
+      );
+
+      if (result.success) {
+        alert(`Payout processed successfully! Amount: $${payout.pending_amount.toFixed(2)}`);
+        await loadPayouts();
+      } else {
+        alert(`Failed to process payout: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error processing payout:', error);
+      alert('Failed to process payout');
+    } finally {
+      setPayoutLoading(false);
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -265,7 +649,7 @@ const Admin = () => {
       <div className="admin-login-container">
         <div className="admin-login-form">
           <h2>Admin Portal Login</h2>
-          <p>Please sign in with your admin account to access the admin panel.</p>
+          <p>Please sign in with your Google account to access the admin panel.</p>
           <button 
             onClick={() => {
               // Redirect to Google OAuth login with return URL
@@ -276,7 +660,7 @@ const Admin = () => {
             Sign in with Google
           </button>
           <p className="admin-login-note">
-            Only users with admin privileges can access this panel.
+            Only users with admin privileges can access this panel. Admin access requires Google OAuth sign-in for security.
           </p>
         </div>
       </div>
@@ -298,9 +682,18 @@ const Admin = () => {
   return (
     <div className="admin-container">
         <div className="admin-header">
-          <h1>Admin Portal - UPDATED VERSION 2025</h1>
+          <h1>
+            {isFullAdmin ? 'Admin Portal - UPDATED VERSION 2025' : 'Order Processing Portal'}
+          </h1>
           <div className="admin-user-info">
-            <span>Welcome, {user?.user_metadata?.name || user?.email}</span>
+            <span>
+              Welcome, {user?.user_metadata?.name || user?.email}
+              {isOrderProcessingAdmin && !isFullAdmin && (
+                <span style={{ fontSize: '14px', color: '#999', marginLeft: '10px' }}>
+                  (Order Processing Admin)
+                </span>
+              )}
+            </span>
             <button onClick={() => navigate('/')} className="admin-logout-btn">
               Back to Site
             </button>
@@ -309,40 +702,60 @@ const Admin = () => {
 
       <div className="admin-content">
         <div className="admin-sidebar">
-          <button 
-            className={`admin-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
-          >
-            Dashboard
-          </button>
-          <button 
-            className={`admin-tab ${activeTab === 'users' ? 'active' : ''}`}
-            onClick={() => setActiveTab('users')}
-          >
-            User Management
-          </button>
-          <button 
-            className={`admin-tab ${activeTab === 'videos' ? 'active' : ''}`}
-            onClick={() => setActiveTab('videos')}
-          >
-            Content Moderation
-          </button>
-          <button 
-            className={`admin-tab ${activeTab === 'subscriptions' ? 'active' : ''}`}
-            onClick={() => setActiveTab('subscriptions')}
-          >
-            Subscriptions
-          </button>
-          <button 
-            className={`admin-tab ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('settings')}
-          >
-            System Settings
-          </button>
+          {isFullAdmin && (
+            <>
+              <button 
+                className={`admin-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+                onClick={() => setActiveTab('dashboard')}
+              >
+                Dashboard
+              </button>
+              <button 
+                className={`admin-tab ${activeTab === 'users' ? 'active' : ''}`}
+                onClick={() => setActiveTab('users')}
+              >
+                User Management
+              </button>
+              <button 
+                className={`admin-tab ${activeTab === 'videos' ? 'active' : ''}`}
+                onClick={() => setActiveTab('videos')}
+              >
+                Content Moderation
+              </button>
+              <button 
+                className={`admin-tab ${activeTab === 'subscriptions' ? 'active' : ''}`}
+                onClick={() => setActiveTab('subscriptions')}
+              >
+                Subscriptions
+              </button>
+              <button 
+                className={`admin-tab ${activeTab === 'payouts' ? 'active' : ''}`}
+                onClick={() => setActiveTab('payouts')}
+              >
+                💰 Payouts
+              </button>
+            </>
+          )}
+          {(isFullAdmin || isOrderProcessingAdmin) && (
+            <button 
+              className={`admin-tab ${activeTab === 'order-processing' ? 'active' : ''}`}
+              onClick={() => setActiveTab('order-processing')}
+            >
+              📦 Order Processing
+            </button>
+          )}
+          {isFullAdmin && (
+            <button 
+              className={`admin-tab ${activeTab === 'settings' ? 'active' : ''}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              System Settings
+            </button>
+          )}
         </div>
 
         <div className="admin-main">
-          {activeTab === 'dashboard' && (
+          {activeTab === 'dashboard' && isFullAdmin && (
             <div className="admin-dashboard">
               <div className="stats-grid">
                 <div className="stat-card">
@@ -363,7 +776,10 @@ const Admin = () => {
                 </div>
                 <div className="stat-card">
                   <h3>Pending Approvals</h3>
-                  <p className="stat-number">{stats.pendingVideos}</p>
+                  <p className="stat-number">{(stats.pendingVideos || 0) + (stats.pendingUsers || 0)}</p>
+                  <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                    {stats.pendingUsers || 0} users, {stats.pendingVideos || 0} videos
+                  </p>
                 </div>
                 <div className="stat-card">
                   <h3>Active Subscriptions</h3>
@@ -385,7 +801,7 @@ const Admin = () => {
             </div>
           )}
 
-          {activeTab === 'users' && (
+          {activeTab === 'users' && isFullAdmin && (
             <div className="admin-users">
               <div className="admin-filters">
                 <input
@@ -520,7 +936,7 @@ const Admin = () => {
             </div>
           )}
 
-          {activeTab === 'videos' && (
+          {activeTab === 'videos' && isFullAdmin && (
             <div className="admin-videos">
               <div className="admin-filters">
                 <input
@@ -608,7 +1024,7 @@ const Admin = () => {
             </div>
           )}
 
-          {activeTab === 'subscriptions' && (
+          {activeTab === 'subscriptions' && isFullAdmin && (
             <div className="admin-subscriptions">
               <h3>Subscription Management</h3>
               <div className="admin-filters">
@@ -687,7 +1103,373 @@ const Admin = () => {
             </div>
           )}
 
-          {activeTab === 'settings' && (
+          {activeTab === 'payouts' && isFullAdmin && (
+            <div className="admin-payouts">
+              <div className="payouts-header">
+                <h3>💰 Payout Management</h3>
+                <p>Process payouts to creators who have reached the $50 minimum threshold</p>
+              </div>
+
+              {payoutLoading ? (
+                <div className="admin-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading payouts...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="payouts-section">
+                    <h4>Pending Payouts ({pendingPayouts.length})</h4>
+                    {pendingPayouts.length === 0 ? (
+                      <div className="no-payouts">
+                        <p>No pending payouts. All creators with earnings above $50 have been paid.</p>
+                      </div>
+                    ) : (
+                      <div className="payouts-table">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Creator</th>
+                              <th>PayPal Email</th>
+                              <th>Pending Amount</th>
+                              <th>Earnings Count</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pendingPayouts.map(payout => (
+                              <tr key={payout.user_id}>
+                                <td>
+                                  <div className="user-info">
+                                    <img
+                                      src={payout.profile_image_url || '/default-avatar.jpg'}
+                                      alt={payout.display_name}
+                                      className="user-avatar"
+                                      onError={(e) => {
+                                        e.target.src = '/default-avatar.jpg';
+                                      }}
+                                    />
+                                    <div>
+                                      <div>{payout.display_name}</div>
+                                      <div style={{ fontSize: '12px', color: '#666' }}>{payout.email}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  {payout.paypal_email ? (
+                                    <span style={{ color: '#28a745', fontWeight: '500' }}>
+                                      {payout.paypal_email}
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: '#dc3545', fontStyle: 'italic' }}>
+                                      Not set up
+                                    </span>
+                                  )}
+                                </td>
+                                <td>
+                                  <span style={{ fontSize: '18px', fontWeight: '700', color: '#28a745' }}>
+                                    ${payout.pending_amount.toFixed(2)}
+                                  </span>
+                                </td>
+                                <td>{payout.earnings_count} sales</td>
+                                <td>
+                                  <button
+                                    onClick={() => handleProcessPayout(payout)}
+                                    className="action-btn approve"
+                                    disabled={!payout.paypal_email || payoutLoading}
+                                    style={{ 
+                                      backgroundColor: payout.paypal_email ? '#28a745' : '#ccc',
+                                      color: 'white',
+                                      cursor: payout.paypal_email ? 'pointer' : 'not-allowed'
+                                    }}
+                                  >
+                                    Process Payout
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="payouts-section" style={{ marginTop: '40px' }}>
+                    <h4>Payout History</h4>
+                    {payoutHistory.length === 0 ? (
+                      <div className="no-payouts">
+                        <p>No payout history yet.</p>
+                      </div>
+                    ) : (
+                      <div className="payouts-table">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Creator</th>
+                              <th>Amount</th>
+                              <th>Payment Method</th>
+                              <th>Status</th>
+                              <th>Processed Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {payoutHistory.map(payout => (
+                              <tr key={payout.id}>
+                                <td>
+                                  {payout.user?.display_name || payout.user?.email || 'Unknown'}
+                                </td>
+                                <td>
+                                  <span style={{ fontWeight: '600' }}>
+                                    ${parseFloat(payout.amount).toFixed(2)}
+                                  </span>
+                                </td>
+                                <td>{payout.payment_method || 'paypal'}</td>
+                                <td>
+                                  <span className={`status-badge ${payout.status}`}>
+                                    {payout.status?.toUpperCase() || 'COMPLETED'}
+                                  </span>
+                                </td>
+                                <td>
+                                  {payout.processed_date 
+                                    ? new Date(payout.processed_date).toLocaleDateString()
+                                    : new Date(payout.payout_date).toLocaleDateString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'order-processing' && (isFullAdmin || isOrderProcessingAdmin) && (
+            <div className="admin-order-processing">
+              <div className="order-processing-header">
+                <h3>📦 Order Processing Queue</h3>
+                <p>Manage order processing queue and assign orders to workers</p>
+              </div>
+
+              {queueLoading ? (
+                <div className="admin-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading processing queue...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="queue-filters">
+                    <select 
+                      value={queueStatusFilter} 
+                      onChange={(e) => setQueueStatusFilter(e.target.value)}
+                      className="admin-filter"
+                    >
+                      <option value="all">All Orders</option>
+                      <option value="pending">Pending</option>
+                      <option value="assigned">Assigned</option>
+                      <option value="processing">Processing</option>
+                      <option value="completed">Completed</option>
+                      <option value="failed">Failed</option>
+                    </select>
+                    <button onClick={loadProcessingQueue} className="refresh-btn">Refresh</button>
+                  </div>
+
+                  <div className="processing-queue-section">
+                    <h4>Processing Queue ({processingQueue.length} orders)</h4>
+                    {processingQueue.length === 0 ? (
+                      <div className="no-orders">
+                        <p>No orders in the processing queue.</p>
+                      </div>
+                    ) : (
+                      <div className="queue-table">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Order ID</th>
+                              <th>Status</th>
+                              <th>Priority</th>
+                              <th>Assigned To</th>
+                              <th>Created</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {processingQueue.map(queueItem => {
+                              const order = queueItem.orders || {};
+                              return (
+                                <tr key={queueItem.id}>
+                                  <td>
+                                    <strong>{order.order_id ? order.order_id.slice(0, 8) : 'N/A'}</strong>
+                                    {order.cart && (
+                                      <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                        {order.cart.length} item(s)
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <span className={`status-badge ${queueItem.status}`}>
+                                      {queueItem.status}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {queueItem.priority === 2 && <span style={{ color: '#dc3545', fontWeight: 'bold' }}>Urgent</span>}
+                                    {queueItem.priority === 1 && <span style={{ color: '#ff9800', fontWeight: 'bold' }}>High</span>}
+                                    {queueItem.priority === 0 && <span style={{ color: '#666' }}>Normal</span>}
+                                  </td>
+                                  <td>
+                                    {queueItem.assigned_to_user ? (
+                                      <div>
+                                        <div>{queueItem.assigned_to_user.display_name || queueItem.assigned_to_user.email}</div>
+                                        <div style={{ fontSize: '11px', color: '#999' }}>
+                                          {queueItem.assigned_at ? new Date(queueItem.assigned_at).toLocaleDateString() : ''}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span style={{ color: '#999', fontStyle: 'italic' }}>Unassigned</span>
+                                    )}
+                                  </td>
+                                  <td>{new Date(queueItem.created_at).toLocaleDateString()}</td>
+                                  <td>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                      <button
+                                        className="btn-view-details"
+                                        onClick={() => {
+                                          setSelectedOrder(order);
+                                          setProcessedImage(null);
+                                          setOriginal300DpiImage(null); // Reset original 300 DPI image when opening new order
+                                          setPrintQualitySettings({
+                                            print_dpi: 300,
+                                            edge_feather: false,
+                                            soft_corners: false,
+                                            crop_area: { x: '', y: '', width: '', height: '' },
+                                            feather_edge_percent: 0,
+                                            corner_radius_percent: 0
+                                          });
+                                        }}
+                                        style={{
+                                          padding: '4px 12px',
+                                          fontSize: '12px',
+                                          background: '#007bff',
+                                          color: 'white',
+                                          border: 'none',
+                                          borderRadius: '4px',
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        View Details
+                                      </button>
+                                      {queueItem.status === 'pending' && (
+                                        <select
+                                          className="worker-select"
+                                          onChange={(e) => {
+                                            if (e.target.value) {
+                                              handleAssignOrder(queueItem.id, e.target.value);
+                                            }
+                                          }}
+                                          defaultValue=""
+                                          style={{ fontSize: '12px', padding: '4px 8px' }}
+                                        >
+                                          <option value="">Assign...</option>
+                                          {workers.map(worker => (
+                                            <option key={worker.user_id} value={worker.user_id}>
+                                              {worker.user?.display_name || worker.user?.email}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      )}
+                                    </div>
+                                    {queueItem.status === 'completed' && queueItem.notes && (
+                                      <div style={{ fontSize: '11px', color: '#666', maxWidth: '200px', marginTop: '4px' }}>
+                                        {queueItem.notes}
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="processing-history-section" style={{ marginTop: '40px' }}>
+                    <h4>Processing History (Last 50)</h4>
+                    {processingHistory.length === 0 ? (
+                      <div className="no-history">
+                        <p>No processing history yet.</p>
+                      </div>
+                    ) : (
+                      <div className="history-table">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Order ID</th>
+                              <th>Processed By</th>
+                              <th>Status</th>
+                              <th>Processing Time</th>
+                              <th>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {processingHistory.map(history => (
+                              <tr key={history.id}>
+                                <td>{history.order_id ? history.order_id.slice(0, 8) : 'N/A'}</td>
+                                <td>
+                                  {history.processed_by_user ? (
+                                    history.processed_by_user.display_name || history.processed_by_user.email
+                                  ) : (
+                                    'Unknown'
+                                  )}
+                                </td>
+                                <td>
+                                  <span className={`status-badge ${history.status}`}>
+                                    {history.status}
+                                  </span>
+                                </td>
+                                <td>
+                                  {history.processing_time_seconds ? `${history.processing_time_seconds}s` : 'N/A'}
+                                </td>
+                                <td>{new Date(history.processed_at).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="workers-section" style={{ marginTop: '40px' }}>
+                    <h4>Active Workers ({workers.length})</h4>
+                    {workers.length === 0 ? (
+                      <div className="no-workers">
+                        <p>No active workers. Grant processor permissions to users in User Management.</p>
+                      </div>
+                    ) : (
+                      <div className="workers-list">
+                        {workers.map(worker => (
+                          <div key={worker.user_id} className="worker-card">
+                            <div>
+                              <strong>{worker.user?.display_name || worker.user?.email}</strong>
+                              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                Max orders/day: {worker.max_orders_per_day || 50}
+                              </div>
+                            </div>
+                            <span className={`status-badge ${worker.is_active ? 'active' : 'inactive'}`}>
+                              {worker.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'settings' && isFullAdmin && (
             <div className="admin-settings">
               <h3>System Settings</h3>
               <div className="settings-section">
@@ -707,6 +1489,408 @@ const Admin = () => {
           )}
         </div>
       </div>
+
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setSelectedOrder(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000
+          }}
+        >
+          <div 
+            className="modal-content" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '8px',
+              padding: '24px',
+              maxWidth: '800px',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              position: 'relative',
+              width: '90%'
+            }}
+          >
+            <button 
+              className="modal-close" 
+              onClick={() => setSelectedOrder(null)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: '#666'
+              }}
+            >
+              ×
+            </button>
+            <h2 style={{ marginTop: 0 }}>Order Details</h2>
+            <div className="order-details">
+              <div style={{ marginBottom: '20px' }}>
+                <p><strong>Order ID:</strong> {selectedOrder.order_id || 'N/A'}</p>
+                <p><strong>Status:</strong> {selectedOrder.status || 'N/A'}</p>
+                <p><strong>Total Amount:</strong> ${selectedOrder.total_amount ? parseFloat(selectedOrder.total_amount).toFixed(2) : '0.00'}</p>
+                <p><strong>Customer Email:</strong> {selectedOrder.customer_email || 'N/A'}</p>
+                <p><strong>Customer Phone:</strong> {selectedOrder.customer_phone || 'N/A'}</p>
+                <p><strong>Created:</strong> {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString() : 'N/A'}</p>
+              </div>
+
+              {selectedOrder.video_title && (
+                <div style={{ marginBottom: '20px', padding: '12px', background: '#f5f5f5', borderRadius: '4px' }}>
+                  <p><strong>Video Title:</strong> {selectedOrder.video_title}</p>
+                  <p><strong>Creator:</strong> {selectedOrder.creator_name || 'N/A'}</p>
+                  {selectedOrder.video_url && (
+                    <p><strong>Video URL:</strong> <a href={selectedOrder.video_url} target="_blank" rel="noopener noreferrer">{selectedOrder.video_url}</a></p>
+                  )}
+                </div>
+              )}
+
+              {selectedOrder.cart && selectedOrder.cart.length > 0 && (
+                <div className="cart-items" style={{ marginBottom: '20px' }}>
+                  <h3>Cart Items ({selectedOrder.cart.length}):</h3>
+                  {selectedOrder.cart.map((item, idx) => (
+                    <div 
+                      key={idx} 
+                      className="cart-item"
+                      style={{
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        padding: '16px',
+                        marginBottom: '12px',
+                        display: 'flex',
+                        gap: '16px'
+                      }}
+                    >
+                      {(item.img || item.selected_screenshot) && (
+                        <div style={{ flexShrink: 0 }}>
+                          <img 
+                            src={item.img || item.selected_screenshot} 
+                            alt={item.product}
+                            style={{
+                              width: '120px',
+                              height: '120px',
+                              objectFit: 'cover',
+                              borderRadius: '4px',
+                              border: '1px solid #ddd'
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px 0' }}>{item.product || 'Unknown Product'}</p>
+                        <p style={{ margin: '4px 0' }}><strong>Color:</strong> {item.variants?.color || 'N/A'}</p>
+                        <p style={{ margin: '4px 0' }}><strong>Size:</strong> {item.variants?.size || 'N/A'}</p>
+                        <p style={{ margin: '4px 0' }}><strong>Price:</strong> ${item.price ? parseFloat(item.price).toFixed(2) : '0.00'}</p>
+                        {item.quantity && (
+                          <p style={{ margin: '4px 0' }}><strong>Quantity:</strong> {item.quantity}</p>
+                        )}
+                        {item.note && (
+                          <p style={{ margin: '4px 0', fontStyle: 'italic', color: '#666' }}><strong>Note:</strong> {item.note}</p>
+                        )}
+                        {item.videoName && (
+                          <p style={{ margin: '4px 0', fontSize: '12px', color: '#666' }}><strong>Video:</strong> {item.videoName}</p>
+                        )}
+                        {item.creatorName && (
+                          <p style={{ margin: '4px 0', fontSize: '12px', color: '#666' }}><strong>Creator:</strong> {item.creatorName}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ marginBottom: '20px', padding: '12px', background: '#f5f5f5', borderRadius: '4px' }}>
+                <h4>Shipping Address:</h4>
+                {selectedOrder.shipping_address ? (
+                  typeof selectedOrder.shipping_address === 'string' ? (
+                    <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
+                      {selectedOrder.shipping_address}
+                    </pre>
+                  ) : (
+                    <div style={{ fontFamily: 'inherit' }}>
+                      {selectedOrder.shipping_address.name && <p style={{ margin: '4px 0' }}><strong>Name:</strong> {selectedOrder.shipping_address.name}</p>}
+                      {selectedOrder.shipping_address.line1 && <p style={{ margin: '4px 0' }}>{selectedOrder.shipping_address.line1}</p>}
+                      {selectedOrder.shipping_address.line2 && <p style={{ margin: '4px 0' }}>{selectedOrder.shipping_address.line2}</p>}
+                      {(selectedOrder.shipping_address.city || selectedOrder.shipping_address.state || selectedOrder.shipping_address.postal_code) && (
+                        <p style={{ margin: '4px 0' }}>
+                          {[selectedOrder.shipping_address.city, selectedOrder.shipping_address.state, selectedOrder.shipping_address.postal_code].filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                      {selectedOrder.shipping_address.country && <p style={{ margin: '4px 0' }}>{selectedOrder.shipping_address.country}</p>}
+                      {selectedOrder.shipping_address.country_code && <p style={{ margin: '4px 0' }}><strong>Country Code:</strong> {selectedOrder.shipping_address.country_code}</p>}
+                      {selectedOrder.shipping_address.zip && <p style={{ margin: '4px 0' }}><strong>ZIP:</strong> {selectedOrder.shipping_address.zip}</p>}
+                      {Object.keys(selectedOrder.shipping_address).length === 0 && (
+                        <p style={{ color: '#999', fontStyle: 'italic' }}>No address data available</p>
+                      )}
+                    </div>
+                  )
+                ) : (
+                  <p style={{ color: '#999', fontStyle: 'italic', margin: 0 }}>
+                    No shipping address available. Note: Stripe Test Mode may not collect full shipping addresses. 
+                    Address will be available in Live Mode.
+                  </p>
+                )}
+              </div>
+
+              {/* Print Quality Image Generator */}
+              {selectedOrder.cart && selectedOrder.cart.length > 0 && (
+                <div style={{ marginTop: '30px', padding: '20px', background: '#f8f9fa', borderRadius: '8px', border: '2px solid #007bff' }}>
+                  <h3 style={{ marginTop: 0, color: '#007bff' }}>🖨️ Print Quality Image Generator</h3>
+                  <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+                    Process images to 300 DPI print quality and apply enhancement tools
+                  </p>
+
+                  {selectedOrder.cart.map((item, idx) => (
+                    <div key={idx} style={{ marginBottom: '20px', padding: '16px', background: 'white', borderRadius: '4px', border: '1px solid #ddd' }}>
+                      <h4 style={{ marginTop: 0 }}>Item {idx + 1}: {item.product}</h4>
+                      
+                      {(item.img || item.selected_screenshot) && (
+                        <>
+                          <div style={{ marginBottom: '16px' }}>
+                            <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>Original Screenshot:</p>
+                            <img 
+                              src={item.img || item.selected_screenshot} 
+                              alt={item.product}
+                              style={{
+                                maxWidth: '300px',
+                                maxHeight: '300px',
+                                border: '1px solid #ddd',
+                                borderRadius: '4px'
+                              }}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+
+                          <div style={{ marginBottom: '16px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                              Print DPI:
+                            </label>
+                            <select
+                              value={printQualitySettings.print_dpi}
+                              onChange={(e) => setPrintQualitySettings({...printQualitySettings, print_dpi: parseInt(e.target.value)})}
+                              style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd', width: '200px' }}
+                            >
+                              <option value={300}>300 DPI (Standard Print)</option>
+                              <option value={150}>150 DPI (Lower Quality)</option>
+                            </select>
+                          </div>
+
+                          {/* STEP 1: Create 300 DPI Image */}
+                          <div style={{ background: '#e8f5e8', padding: '20px', borderRadius: '10px', margin: '20px 0', border: '3px solid #28a745', textAlign: 'center' }}>
+                            <h2 style={{ marginTop: 0, color: '#28a745', fontSize: '24px' }}>🎯 STEP 1: Create 300 DPI Image</h2>
+                            <p style={{ color: '#666', marginBottom: '20px', fontSize: '16px' }}>Generate high-resolution 300 DPI image for print quality</p>
+                            <button
+                              type="button"
+                              onClick={() => generate300DpiImage(item)}
+                              disabled={step1Processing}
+                              style={{
+                                background: step1Processing ? '#ccc' : '#28a745',
+                                color: 'white',
+                                border: 'none',
+                                padding: '15px 40px',
+                                borderRadius: '8px',
+                                cursor: step1Processing ? 'not-allowed' : 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: '18px',
+                                boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
+                              }}
+                            >
+                              {step1Processing ? 'Generating 300 DPI Image...' : '🎯 Generate 300 DPI Image'}
+                            </button>
+                          </div>
+
+                          {/* STEP 2: Feather Edge Tool (Optional) */}
+                          <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px', margin: '20px 0', border: '2px solid #17a2b8' }}>
+                            <h3 style={{ marginTop: 0, color: '#17a2b8' }}>✨ STEP 2: Feather Edge Tool (Optional)</h3>
+                            
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={printQualitySettings.edge_feather}
+                                  onChange={(e) => setPrintQualitySettings({...printQualitySettings, edge_feather: e.target.checked})}
+                                  style={{ transform: 'scale(1.2)' }}
+                                />
+                                Apply Edge Feathering
+                              </label>
+                              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                Softens edges to reduce harsh contrast on all clothing products and colors
+                              </div>
+                            </div>
+
+                            {printQualitySettings.edge_feather && (
+                              <>
+                                <div style={{ marginBottom: '12px' }}>
+                                  <label style={{ display: 'block', marginBottom: '8px' }}>Feather Intensity:</label>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={printQualitySettings.feather_edge_percent}
+                                    onChange={(e) => setPrintQualitySettings({...printQualitySettings, feather_edge_percent: parseInt(e.target.value)})}
+                                    style={{ width: '100%' }}
+                                  />
+                                  <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                    Adjust the softness of edges (0-100%, higher = more pronounced feather)
+                                  </div>
+                                  <div style={{ marginTop: '5px', fontWeight: 'bold', color: '#17a2b8' }}>
+                                    {printQualitySettings.feather_edge_percent}%
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => applyFeatherEffect()}
+                                  disabled={step2Processing || !original300DpiImage}
+                                  style={{
+                                    background: (step2Processing || !original300DpiImage) ? '#ccc' : '#17a2b8',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '10px 20px',
+                                    borderRadius: '5px',
+                                    cursor: (step2Processing || !original300DpiImage) ? 'not-allowed' : 'pointer',
+                                    fontWeight: 'bold',
+                                    marginTop: '10px'
+                                  }}
+                                >
+                                  {step2Processing ? 'Applying Effects...' : 'Apply Feather Effect'}
+                                </button>
+                              </>
+                            )}
+                          </div>
+
+                          {/* STEP 3: Corner Radius Tool (Optional) */}
+                          <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px', margin: '20px 0', border: '2px solid #28a745' }}>
+                            <h3 style={{ marginTop: 0, color: '#28a745' }}>🔄 STEP 3: Corner Radius Tool (Optional)</h3>
+                            
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={printQualitySettings.soft_corners}
+                                  onChange={(e) => setPrintQualitySettings({...printQualitySettings, soft_corners: e.target.checked})}
+                                  style={{ transform: 'scale(1.2)' }}
+                                />
+                                Apply Rounded Corners
+                              </label>
+                              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                Adds rounded corners to make images look better on shirts, hoodies, and other apparel
+                              </div>
+                            </div>
+
+                            {printQualitySettings.soft_corners && (
+                              <>
+                                <div style={{ marginBottom: '12px' }}>
+                                  <label style={{ display: 'block', marginBottom: '8px' }}>Corner Radius:</label>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={printQualitySettings.corner_radius_percent}
+                                    onChange={(e) => setPrintQualitySettings({...printQualitySettings, corner_radius_percent: parseInt(e.target.value)})}
+                                    style={{ width: '100%' }}
+                                  />
+                                  <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                    Adjust the roundness of corners (0-100%, 100% = perfect circle)
+                                  </div>
+                                  <div style={{ marginTop: '5px', fontWeight: 'bold', color: '#28a745' }}>
+                                    {printQualitySettings.corner_radius_percent === 100 ? 'Circle' : printQualitySettings.corner_radius_percent + '%'}
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => applyCornerRadius()}
+                                  disabled={step3Processing || !original300DpiImage}
+                                  style={{
+                                    background: (step3Processing || !original300DpiImage) ? '#ccc' : '#28a745',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '10px 20px',
+                                    borderRadius: '5px',
+                                    cursor: (step3Processing || !original300DpiImage) ? 'not-allowed' : 'pointer',
+                                    fontWeight: 'bold',
+                                    marginTop: '10px'
+                                  }}
+                                >
+                                  {step3Processing ? 'Applying Effects...' : 'Apply Corner Radius'}
+                                </button>
+                              </>
+                            )}
+                          </div>
+
+                          {processedImage && processedImage.success && (
+                            <div style={{ marginTop: '20px', padding: '16px', background: '#d4edda', borderRadius: '4px', border: '1px solid #c3e6cb' }}>
+                              <p style={{ color: '#155724', fontWeight: 'bold', marginBottom: '12px' }}>✅ Print Quality Image Generated!</p>
+                              <div style={{ marginBottom: '12px' }}>
+                                <img 
+                                  src={processedImage.screenshot} 
+                                  alt="Processed"
+                                  style={{
+                                    maxWidth: '400px',
+                                    maxHeight: '400px',
+                                    border: '2px solid #28a745',
+                                    borderRadius: '4px'
+                                  }}
+                                />
+                              </div>
+                              {processedImage.dimensions && (
+                                <p style={{ fontSize: '14px', color: '#155724', marginBottom: '8px' }}>
+                                  <strong>Dimensions:</strong> {processedImage.dimensions.width} × {processedImage.dimensions.height} pixels
+                                  {processedImage.dimensions.dpi && ` | DPI: ${processedImage.dimensions.dpi}`}
+                                </p>
+                              )}
+                              {processedImage.file_size && (
+                                <p style={{ fontSize: '14px', color: '#155724', marginBottom: '12px' }}>
+                                  <strong>File Size:</strong> {(processedImage.file_size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              )}
+                              <button
+                                onClick={downloadProcessedImage}
+                                style={{
+                                  padding: '10px 20px',
+                                  background: '#007bff',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '14px',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                📥 Download Processed Image
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -14,6 +14,22 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def _draw_rounded_rect_filled(img, x, y, width, height, radius, color):
+    """Helper function to draw a filled rounded rectangle"""
+    if radius <= 0:
+        cv2.rectangle(img, (x, y), (x + width, y + height), color, -1)
+        return
+    
+    # Draw the four corners as circles
+    cv2.circle(img, (x + radius, y + radius), radius, color, -1)  # Top-left
+    cv2.circle(img, (x + width - radius, y + radius), radius, color, -1)  # Top-right
+    cv2.circle(img, (x + radius, y + height - radius), radius, color, -1)  # Bottom-left
+    cv2.circle(img, (x + width - radius, y + height - radius), radius, color, -1)  # Bottom-right
+    
+    # Draw the rectangles connecting the corners
+    cv2.rectangle(img, (x + radius, y), (x + width - radius, y + height), color, -1)  # Horizontal
+    cv2.rectangle(img, (x, y + radius), (x + width, y + height - radius), color, -1)  # Vertical
+
 def capture_screenshot(video_url, timestamp=0, quality=95, crop_area=None):
     """Capture a screenshot from a video at a specific timestamp"""
     try:
@@ -192,6 +208,11 @@ def create_shirt_ready_image(image_data, feather_radius=38, enhance_quality=True
             # Get the current alpha channel (or create full opacity if none)
             alpha_channel = image[:, :, 3].copy() if image.shape[2] == 4 else np.full((height, width), 255, dtype=np.uint8)
             
+            # Log alpha channel stats to verify corner radius is preserved
+            transparent_pixels_before = np.sum(alpha_channel == 0)
+            total_pixels = height * width
+            logger.info(f"Feather: Alpha channel before feather - transparent: {transparent_pixels_before}/{total_pixels} ({100*transparent_pixels_before/total_pixels:.1f}%)")
+            
             # Create a binary mask from the existing alpha channel
             # This preserves the exact shape including corner radius
             binary_mask = (alpha_channel > 0).astype(np.uint8) * 255
@@ -201,18 +222,50 @@ def create_shirt_ready_image(image_data, feather_radius=38, enhance_quality=True
             dist_transform = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 5)
             
             # Create feather mask: pixels closer to edge get lower alpha
-            # Pixels at distance 0 (on edge) should have alpha = 0
-            # Pixels at distance >= feather_radius should keep their original alpha
-            # Pixels in between get interpolated
+            # CRITICAL: Only apply feather to pixels that are already part of the shape (alpha > 0)
+            # This ensures we don't override the corner radius shape
+            
+            # For pixels inside the shape (dist > 0):
+            # - Pixels at distance 0 (on edge) should have alpha = 0
+            # - Pixels at distance >= feather_radius should keep their ORIGINAL alpha (not just 255)
+            # - Pixels in between get interpolated based on their original alpha value
+            
+            # Create feather factor: 0 at edge, 1 at feather_radius distance and beyond
+            # But only apply to pixels that are already part of the shape
             feather_factor = np.clip(dist_transform / feather_radius, 0.0, 1.0).astype(np.float32)
             
-            # Apply feather: multiply original alpha by feather factor
-            # This preserves the corner radius shape while adding feather to edges
-            # Pixels already transparent (alpha=0) stay transparent
-            # Pixels at edge (dist=0) become transparent (factor=0)
-            # Pixels far from edge (dist>=feather_radius) keep original alpha (factor=1)
-            final_alpha = (alpha_channel.astype(np.float32) * feather_factor).astype(np.uint8)
+            # CRITICAL FIX: Only apply feather to pixels that are already part of the shape
+            # Pixels that are transparent (alpha=0) should stay transparent
+            # Pixels that are opaque should be feathered based on distance from edge
+            # But pixels far from edge (dist >= feather_radius) should keep their ORIGINAL alpha value
+            
+            # Convert alpha to float for calculations
+            alpha_float = alpha_channel.astype(np.float32)
+            
+            # For pixels inside the shape (dist_transform > 0):
+            # - If distance < feather_radius: interpolate between 0 and original alpha
+            # - If distance >= feather_radius: keep original alpha (factor = 1)
+            # For pixels outside the shape (dist_transform == 0): keep alpha = 0
+            
+            # Apply feather: 
+            # - Outside shape (dist=0): alpha = 0 (already transparent)
+            # - Inside shape, close to edge (dist < feather_radius): alpha = original_alpha * feather_factor
+            # - Inside shape, far from edge (dist >= feather_radius): alpha = original_alpha (no change)
+            
+            # Only modify pixels that are inside the shape (have non-zero distance)
+            inside_shape = dist_transform > 0
+            final_alpha = np.where(
+                inside_shape,
+                alpha_float * feather_factor,  # Apply feather to pixels inside shape
+                alpha_float  # Keep original alpha for pixels outside (should be 0 anyway)
+            ).astype(np.uint8)
+            
             image[:, :, 3] = final_alpha
+            
+            # Log alpha channel stats after feather
+            transparent_pixels_after = np.sum(final_alpha == 0)
+            logger.info(f"Feather: Alpha channel after feather - transparent: {transparent_pixels_after}/{total_pixels} ({100*transparent_pixels_after/total_pixels:.1f}%)")
+            logger.info(f"Feather: Applied with radius {feather_radius}, preserving corner radius shape")
         
         # Enhance quality if requested (only on RGB channels, not alpha)
         if enhance_quality:
@@ -604,7 +657,7 @@ def apply_corner_radius_only(image_data, corner_radius=15):
         logger.error(f"Error applying corner radius: {str(e)}")
         return {"success": False, "error": f"Failed to apply corner radius: {str(e)}"}
 
-def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None):
+def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False):
     """Process a thumbnail image for print quality output"""
     try:
         # Validate input
@@ -742,16 +795,26 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 logger.info(f"ℹ️ [PRINT_QUALITY] Image is larger than target, keeping original dimensions to preserve quality")
         
         # Apply corner radius effect to the HIGH-RESOLUTION print quality image (AFTER resize)
-        if soft_corners:
+        # Support both boolean (legacy) and numeric (0-100) values
+        # Calculate corner_radius_value once for use in both corner radius and frame drawing
+        if isinstance(corner_radius_percent, (int, float)) and corner_radius_percent > 0:
+            corner_radius_value = corner_radius_percent
+        elif soft_corners:
+            corner_radius_value = 100  # Default to full circle for boolean true
+        else:
+            corner_radius_value = 0
+        
+        if corner_radius_value > 0:
             logger.info(f"Applying corner radius effect to HIGH-RESOLUTION print quality image {target_width}x{target_height}")
             
             # Create a mask for rounded corners
             mask = np.zeros((target_height, target_width), dtype=np.uint8)
             
-            # Calculate corner radius (proportional to image size)
-            corner_radius = min(target_width, target_height) // 12  # Adjust this ratio as needed
+            # Calculate corner radius (0-100% maps to 0-50% of smallest dimension)
+            max_radius = min(target_width, target_height) / 2
+            corner_radius = int((corner_radius_value / 100) * max_radius) if corner_radius_value < 100 else int(max_radius)
             
-            logger.info(f"Using corner radius: {corner_radius} for high-res image")
+            logger.info(f"Using corner radius: {corner_radius} ({corner_radius_value}%) for high-res image")
             
             # Create rounded rectangle mask using ellipses for smooth corners
             # Top-left corner
@@ -775,34 +838,178 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             
             logger.info("Corner radius effect applied successfully to high-resolution image with transparency")
         
-        # Apply feather effect to the HIGH-RESOLUTION print quality image (AFTER resize)
-        if edge_feather:
+        # Apply feather effect to the HIGH-RESOLUTION print quality image (AFTER resize and corner radius)
+        # Support both boolean (legacy) and numeric (0-100) values
+        feather_value = feather_edge_percent if isinstance(feather_edge_percent, (int, float)) and feather_edge_percent > 0 else (50 if edge_feather else 0)
+        
+        if feather_value > 0:
             logger.info(f"Applying feather effect to HIGH-RESOLUTION print quality image {target_width}x{target_height}")
             
-            # Create feather mask
-            mask = np.ones(image.shape[:2], dtype=np.uint8) * 255
+            # Get the current alpha channel (which may already have corner radius applied)
+            alpha_channel = image[:, :, 3].copy() if image.shape[2] == 4 else np.full((target_height, target_width), 255, dtype=np.uint8)
             
-            # Use a MUCH larger feather radius for visibility on high-res image
-            feather_radius = min(target_width, target_height) // 8  # Even larger radius for high-res
+            # Log alpha channel stats to verify corner radius is preserved
+            transparent_pixels_before = np.sum(alpha_channel == 0)
+            total_pixels = target_height * target_width
+            logger.info(f"Feather: Alpha channel before feather - transparent: {transparent_pixels_before}/{total_pixels} ({100*transparent_pixels_before/total_pixels:.1f}%)")
             
-            logger.info(f"Using feather radius: {feather_radius} for high-res image")
+            # Create a binary mask from the existing alpha channel
+            # This preserves the exact shape including corner radius
+            binary_mask = (alpha_channel > 0).astype(np.uint8) * 255
             
-            # Apply multiple blur passes for stronger effect on high-res image
-            mask = cv2.GaussianBlur(mask, (feather_radius*2+1, feather_radius*2+1), feather_radius/2)
-            mask = cv2.GaussianBlur(mask, (feather_radius*2+1, feather_radius*2+1), feather_radius/2)
+            # Calculate distance from each pixel to the nearest transparent pixel (edge)
+            # This gives us the distance to the actual shape edge, including rounded corners
+            dist_transform = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 5)
             
-            # Apply mask to alpha channel to preserve transparency (not using bitwise_and which creates black)
-            # Convert mask to float for smooth blending
-            mask_float = mask.astype(np.float32) / 255.0
-            # Apply feather to alpha channel
-            if image.shape[2] == 4:
-                image[:, :, 3] = (image[:, :, 3].astype(np.float32) * mask_float).astype(np.uint8)
-            else:
-                # If no alpha channel, create one
-                alpha = (np.ones((target_height, target_width), dtype=np.float32) * 255 * mask_float).astype(np.uint8)
-                image = np.dstack([image, alpha])
+            # Calculate feather radius (0-100% maps to 0-50% of smallest dimension)
+            min_dimension = min(target_width, target_height)
+            feather_radius = int((feather_value / 100) * (min_dimension * 0.5))
             
-            logger.info("Feather effect applied successfully to high-resolution image with transparency")
+            logger.info(f"Using feather radius: {feather_radius} ({feather_value}%) for high-res image")
+            
+            # Create feather factor: pixels closer to edge get lower alpha
+            # Pixels at distance 0 (on edge) should have alpha = 0
+            # Pixels at distance >= feather_radius should keep their original alpha
+            # Pixels in between get interpolated
+            feather_factor = np.clip(dist_transform / feather_radius, 0.0, 1.0).astype(np.float32)
+            
+            # CRITICAL: Only apply feather to pixels that are already part of the shape
+            # This ensures we preserve the corner radius shape
+            alpha_float = alpha_channel.astype(np.float32)
+            inside_shape = dist_transform > 0
+            
+            # Apply feather: 
+            # - Outside shape (dist=0): alpha = 0 (already transparent)
+            # - Inside shape, close to edge (dist < feather_radius): alpha = original_alpha * feather_factor
+            # - Inside shape, far from edge (dist >= feather_radius): alpha = original_alpha (no change)
+            final_alpha = np.where(
+                inside_shape,
+                alpha_float * feather_factor,  # Apply feather to pixels inside shape
+                alpha_float  # Keep original alpha for pixels outside (should be 0 anyway)
+            ).astype(np.uint8)
+            
+            image[:, :, 3] = final_alpha
+            
+            # Log alpha channel stats after feather
+            transparent_pixels_after = np.sum(final_alpha == 0)
+            logger.info(f"Feather: Alpha channel after feather - transparent: {transparent_pixels_after}/{total_pixels} ({100*transparent_pixels_after/total_pixels:.1f}%)")
+            logger.info("Feather effect applied successfully to high-resolution image, preserving corner radius shape")
+        
+        # Apply frame border if enabled
+        if frame_enabled and frame_width > 0:
+            logger.info(f"Applying frame border: color={frame_color}, width={frame_width}, double={double_frame}")
+            
+            # Convert hex color to BGR
+            try:
+                hex_color = frame_color.lstrip('#')
+                if len(hex_color) == 6:
+                    r = int(hex_color[0:2], 16)
+                    g = int(hex_color[2:4], 16)
+                    b = int(hex_color[4:6], 16)
+                    frame_bgr = (b, g, r)  # OpenCV uses BGR
+                else:
+                    frame_bgr = (0, 0, 255)  # Default red
+            except:
+                frame_bgr = (0, 0, 255)  # Default red on error
+            
+            # Calculate effective corner radius for frame
+            max_radius = min(target_width, target_height) / 2
+            effective_corner_radius = int((corner_radius_value / 100) * max_radius) if corner_radius_value < 100 else int(max_radius)
+            
+            # Draw outer frame - create a mask for the frame area
+            frame_mask = np.zeros((target_height, target_width), dtype=np.uint8)
+            
+            if corner_radius_value >= 100:  # Circle
+                # Draw outer circle
+                cv2.circle(frame_mask, (target_width // 2, target_height // 2), 
+                          int(max_radius), 255, -1)
+                # Subtract inner circle
+                cv2.circle(frame_mask, (target_width // 2, target_height // 2), 
+                          int(max_radius - frame_width), 0, -1)
+            elif effective_corner_radius > 0:  # Rounded rectangle
+                # Draw outer rounded rectangle (filled)
+                _draw_rounded_rect_filled(frame_mask, 0, 0, target_width, target_height, 
+                                         effective_corner_radius, 255)
+                # Draw inner rounded rectangle (hole) to create frame
+                inner_radius = max(0, effective_corner_radius - frame_width)
+                if inner_radius > 0:
+                    _draw_rounded_rect_filled(frame_mask, frame_width, frame_width,
+                                             target_width - frame_width * 2, 
+                                             target_height - frame_width * 2,
+                                             inner_radius, 0)
+                else:
+                    cv2.rectangle(frame_mask, (frame_width, frame_width),
+                                (target_width - frame_width, target_height - frame_width), 0, -1)
+            else:  # Rectangle
+                # Draw outer rectangle
+                cv2.rectangle(frame_mask, (0, 0), (target_width, target_height), 255, -1)
+                # Subtract inner rectangle
+                cv2.rectangle(frame_mask, (frame_width, frame_width),
+                            (target_width - frame_width, target_height - frame_width), 0, -1)
+            
+            # Apply frame mask to image - draw frame on top of image
+            # Handle both 3-channel (BGR) and 4-channel (BGRA) images
+            num_channels = image.shape[2] if len(image.shape) > 2 else 1
+            if num_channels >= 3:
+                for c in range(3):  # BGR channels
+                    image[:, :, c] = np.where(frame_mask > 0, frame_bgr[c], image[:, :, c])
+            
+            # Draw inner frame for double frame effect
+            if double_frame:
+                inner_offset = int(frame_width * 1.5)
+                inner_width = int(frame_width * 0.7)
+                inner_frame_mask = np.zeros((target_height, target_width), dtype=np.uint8)
+                
+                if corner_radius_value >= 100:  # Circle
+                    # Draw outer circle for inner frame
+                    cv2.circle(inner_frame_mask, (target_width // 2, target_height // 2),
+                              int(max_radius - frame_width - inner_offset), 255, -1)
+                    # Subtract inner circle
+                    cv2.circle(inner_frame_mask, (target_width // 2, target_height // 2),
+                              int(max_radius - frame_width - inner_offset - inner_width), 0, -1)
+                elif effective_corner_radius > 0:  # Rounded rectangle
+                    inner_radius = max(0, effective_corner_radius - frame_width - inner_offset)
+                    # Draw outer rounded rectangle
+                    _draw_rounded_rect_filled(inner_frame_mask, frame_width + inner_offset, 
+                                             frame_width + inner_offset,
+                                             target_width - (frame_width + inner_offset) * 2,
+                                             target_height - (frame_width + inner_offset) * 2,
+                                             inner_radius, 255)
+                    # Subtract inner rounded rectangle
+                    inner_inner_radius = max(0, inner_radius - inner_width)
+                    if inner_inner_radius > 0:
+                        _draw_rounded_rect_filled(inner_frame_mask, 
+                                                 frame_width + inner_offset + inner_width,
+                                                 frame_width + inner_offset + inner_width,
+                                                 target_width - (frame_width + inner_offset + inner_width) * 2,
+                                                 target_height - (frame_width + inner_offset + inner_width) * 2,
+                                                 inner_inner_radius, 0)
+                    else:
+                        cv2.rectangle(inner_frame_mask,
+                                    (frame_width + inner_offset + inner_width,
+                                     frame_width + inner_offset + inner_width),
+                                    (target_width - frame_width - inner_offset - inner_width,
+                                     target_height - frame_width - inner_offset - inner_width), 0, -1)
+                else:  # Rectangle
+                    # Draw outer rectangle
+                    cv2.rectangle(inner_frame_mask,
+                                (frame_width + inner_offset, frame_width + inner_offset),
+                                (target_width - frame_width - inner_offset, 
+                                 target_height - frame_width - inner_offset), 255, -1)
+                    # Subtract inner rectangle
+                    cv2.rectangle(inner_frame_mask,
+                                (frame_width + inner_offset + inner_width,
+                                 frame_width + inner_offset + inner_width),
+                                (target_width - frame_width - inner_offset - inner_width,
+                                 target_height - frame_width - inner_offset - inner_width), 0, -1)
+                
+                # Apply inner frame mask to image
+                num_channels = image.shape[2] if len(image.shape) > 2 else 1
+                if num_channels >= 3:
+                    for c in range(3):  # BGR channels
+                        image[:, :, c] = np.where(inner_frame_mask > 0, frame_bgr[c], image[:, :, c])
+            
+            logger.info("Frame border applied successfully")
         
         # Convert to PNG for better quality
         _, buffer = cv2.imencode('.png', image)
