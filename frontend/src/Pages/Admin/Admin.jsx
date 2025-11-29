@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { AdminService } from '../../utils/adminService';
+import { getPrintAreaDimensions } from '../../config/printAreaConfig';
 import './Admin.css';
 
 const Admin = () => {
@@ -435,21 +436,37 @@ const Admin = () => {
       const screenshotData = item.selected_screenshot || item.img;
       const apiUrl = process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev';
       
+      // Get print area dimensions for this product
+      const productName = item.product || '';
+      const productSize = (item.variants || {}).size || null;
+      const printDimensions = getPrintAreaDimensions(productName, productSize, 'front');
+      
+      const requestBody = {
+        thumbnail_data: screenshotData,
+        print_dpi: printQualitySettings.print_dpi,
+        soft_corners: false,  // No effects in step 1
+        edge_feather: false,  // No effects in step 1
+        frame_enabled: false, // No frame in step 1
+        corner_radius_percent: 0,
+        feather_edge_percent: 0
+      };
+      
+      // Add print area dimensions if available
+      if (printDimensions) {
+        requestBody.print_area_width = printDimensions.width;
+        requestBody.print_area_height = printDimensions.height;
+        console.log(`📐 [PRINT_QUALITY] Using print area dimensions for ${productName} (${productSize || 'default'}): ${printDimensions.width}"x${printDimensions.height}"`);
+      } else {
+        console.warn(`⚠️ [PRINT_QUALITY] No print area dimensions found for product: ${productName}`);
+      }
+      
       const response = await fetch(`${apiUrl}/api/process-thumbnail-print-quality`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({
-          thumbnail_data: screenshotData,
-          print_dpi: printQualitySettings.print_dpi,
-          soft_corners: false,  // No effects in step 1
-          edge_feather: false,  // No effects in step 1
-          frame_enabled: false, // No frame in step 1
-          corner_radius_percent: 0,
-          feather_edge_percent: 0
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -503,26 +520,45 @@ const Admin = () => {
     
     console.log(`applyBothEffects: Using unified API (like email generator). Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%, Frame: ${frameEnabled ? `enabled (${frameColor}, ${frameWidth}px, double: ${doubleFrame})` : 'disabled'}`);
 
+    // Get print area dimensions for this product (same as Step 1)
+    let printDimensions = null;
+    if (selectedOrder && selectedCartItemIndex !== null) {
+      const item = selectedOrder.cart[selectedCartItemIndex];
+      if (item) {
+        const productName = item.product || '';
+        const productSize = (item.variants || {}).size || null;
+        printDimensions = getPrintAreaDimensions(productName, productSize, 'front');
+      }
+    }
+
     // Use the SAME unified endpoint that the email generator uses
     // This applies both effects together in one call, ensuring they work correctly
     try {
+      const requestBody = {
+        thumbnail_data: original300DpiImage, // Always start from original 300 DPI image
+        print_dpi: settings.print_dpi || 300, // Keep same DPI
+        soft_corners: softCorners, // Pass checkbox state
+        edge_feather: edgeFeather, // Pass checkbox state
+        corner_radius_percent: cornerRadiusPercent, // Pass actual percent (0-100)
+        feather_edge_percent: featherValue, // Pass actual percent (0-100)
+        frame_enabled: frameEnabled, // Pass frame enabled state
+        frame_color: frameColor, // Pass frame color
+        frame_width: frameWidth, // Pass frame width
+        double_frame: doubleFrame, // Pass double frame flag
+        add_white_background: settings.add_white_background || false // Pass white background flag
+      };
+      
+      // Add print area dimensions if available (to maintain exact size)
+      if (printDimensions) {
+        requestBody.print_area_width = printDimensions.width;
+        requestBody.print_area_height = printDimensions.height;
+      }
+      
       const response = await fetch(`${apiUrl}/api/process-thumbnail-print-quality`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          thumbnail_data: original300DpiImage, // Always start from original 300 DPI image
-          print_dpi: settings.print_dpi || 300, // Keep same DPI
-          soft_corners: softCorners, // Pass checkbox state
-          edge_feather: edgeFeather, // Pass checkbox state
-          corner_radius_percent: cornerRadiusPercent, // Pass actual percent (0-100)
-          feather_edge_percent: featherValue, // Pass actual percent (0-100)
-          frame_enabled: frameEnabled, // Pass frame enabled state
-          frame_color: frameColor, // Pass frame color
-          frame_width: frameWidth, // Pass frame width
-          double_frame: doubleFrame, // Pass double frame flag
-          add_white_background: settings.add_white_background || false // Pass white background flag
-        })
+        body: JSON.stringify(requestBody)
       });
 
       console.log(`Unified API response status: ${response.status}`);

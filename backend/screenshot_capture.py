@@ -211,7 +211,7 @@ def create_shirt_ready_image(image_data, feather_radius=38, enhance_quality=True
             # Log alpha channel stats to verify corner radius is preserved
             transparent_pixels_before = np.sum(alpha_channel == 0)
             total_pixels = height * width
-            logger.info(f"Feather: Alpha channel before feather - transparent: {transparent_pixels_before}/{total_pixels} ({100*transparent_pixels_before/total_pixels:.1f}%)")
+            # Removed verbose logging for performance
             
             # Create a binary mask from the existing alpha channel
             # This preserves the exact shape including corner radius
@@ -219,7 +219,7 @@ def create_shirt_ready_image(image_data, feather_radius=38, enhance_quality=True
             
             # Calculate distance from each pixel to the nearest transparent pixel (edge)
             # This gives us the distance to the actual shape edge, including rounded corners
-            dist_transform = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 5)
+            dist_transform = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 3)
             
             # Create feather mask: pixels closer to edge get lower alpha
             # CRITICAL: Only apply feather to pixels that are already part of the shape (alpha > 0)
@@ -264,8 +264,7 @@ def create_shirt_ready_image(image_data, feather_radius=38, enhance_quality=True
             
             # Log alpha channel stats after feather
             transparent_pixels_after = np.sum(final_alpha == 0)
-            logger.info(f"Feather: Alpha channel after feather - transparent: {transparent_pixels_after}/{total_pixels} ({100*transparent_pixels_after/total_pixels:.1f}%)")
-            logger.info(f"Feather: Applied with radius {feather_radius}, preserving corner radius shape")
+            # Removed verbose logging for performance
         
         # Enhance quality if requested (only on RGB channels, not alpha)
         if enhance_quality:
@@ -605,13 +604,13 @@ def apply_corner_radius_only(image_data, corner_radius=15):
         # Check mask statistics for debugging
         mask_pixels = np.sum(mask > 0)
         total_pixels = height * width
-        logger.info(f"Mask statistics: {mask_pixels}/{total_pixels} pixels are inside mask ({100*mask_pixels/total_pixels:.1f}%)")
+        # Removed verbose logging for performance
         
         final_image[:, :, 3] = np.where(mask > 0, final_image[:, :, 3], 0).astype(np.uint8)
         
         # Verify alpha channel was applied correctly
         transparent_pixels = np.sum(final_image[:, :, 3] == 0)
-        logger.info(f"Alpha channel applied: {transparent_pixels}/{total_pixels} pixels are transparent ({100*transparent_pixels/total_pixels:.1f}%)")
+        # Removed verbose logging for performance
         
         # Convert back to base64 as PNG to preserve transparency
         # Note: cv2.imencode with PNG format expects BGRA, but we have RGBA
@@ -657,7 +656,7 @@ def apply_corner_radius_only(image_data, corner_radius=15):
         logger.error(f"Error applying corner radius: {str(e)}")
         return {"success": False, "error": f"Failed to apply corner radius: {str(e)}"}
 
-def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False):
+def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, add_white_background=False, print_area_width=None, print_area_height=None):
     """Process a thumbnail image for print quality output"""
     try:
         # Validate input
@@ -742,57 +741,84 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
         
         logger.info(f"📐 [PRINT_QUALITY] Original image dimensions: {original_width}x{original_height}, aspect ratio: {aspect_ratio:.2f}")
         
-        # Check if image is already at print quality (within 10% tolerance to avoid unnecessary resizing)
-        # This prevents quality loss from re-processing images that are already at print quality
-        min_print_width = 2400  # 8 inches at 300 DPI
-        min_print_height = 3000  # 10 inches at 300 DPI
-        is_already_print_quality = (
-            original_width >= min_print_width * 0.9 and 
-            original_height >= min_print_height * 0.9
-        )
-        
-        if is_already_print_quality:
-            logger.info(f"✅ [PRINT_QUALITY] Image is already at print quality ({original_width}x{original_height}), skipping resize to preserve quality")
-            target_width = original_width
-            target_height = original_height
-        else:
-            # Scale to a reasonable print size while preserving aspect ratio
-            # Use 8 inches as the base dimension
-            base_size = 8 * print_dpi
+        # If print area dimensions are provided, use them to calculate exact target size
+        # This ensures the output matches the exact print area for the product
+        if print_area_width and print_area_height:
+            # Calculate exact pixel dimensions from print area (inches) * DPI
+            target_width = int(print_area_width * print_dpi)
+            target_height = int(print_area_height * print_dpi)
             
-            if aspect_ratio > 1:  # Landscape
-                target_width = int(base_size)
-                target_height = int(base_size / aspect_ratio)
-            else:  # Portrait
-                target_height = int(base_size)
-                target_width = int(base_size * aspect_ratio)
+            logger.info(f"📐 [PRINT_QUALITY] Using exact print area dimensions: {print_area_width}\"x{print_area_height}\" → {target_width}x{target_height}px at {print_dpi} DPI")
             
-            logger.info(f"📐 [PRINT_QUALITY] Calculated target dimensions: {target_width}x{target_height} (from {original_width}x{original_height})")
-            
-            # Only resize if we need to scale up (avoid downscaling high-res images)
-            if target_width > original_width or target_height > original_height:
-                logger.info(f"⬆️ [PRINT_QUALITY] Resizing image from {original_width}x{original_height} to {target_width}x{target_height}")
-                # Resize image to print quality dimensions while preserving aspect ratio
-                # Use INTER_LANCZOS4 for better quality preservation
-                try:
-                    image = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_LANCZOS4)
-                    # Verify resize worked
-                    actual_height, actual_width = image.shape[:2]
-                    logger.info(f"✅ [PRINT_QUALITY] Resize successful! Actual dimensions: {actual_width}x{actual_height}")
-                    if actual_width != target_width or actual_height != target_height:
-                        logger.warn(f"⚠️ [PRINT_QUALITY] Resize dimensions mismatch! Expected {target_width}x{target_height}, got {actual_width}x{actual_height}")
-                        target_width = actual_width
-                        target_height = actual_height
-                except Exception as resize_error:
-                    logger.error(f"❌ [PRINT_QUALITY] Resize failed: {str(resize_error)}")
-                    # Fall back to original dimensions if resize fails
-                    target_width = original_width
-                    target_height = original_height
-            else:
-                # Image is larger than target, keep original size to preserve quality
+            # Resize image to exact print area dimensions
+            # Use INTER_LINEAR for high quality upscaling
+            try:
+                image = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_LINEAR)
+                # Verify resize worked
+                actual_height, actual_width = image.shape[:2]
+                logger.info(f"✅ [PRINT_QUALITY] Resize successful! Actual dimensions: {actual_width}x{actual_height}")
+                if actual_width != target_width or actual_height != target_height:
+                    logger.warn(f"⚠️ [PRINT_QUALITY] Resize dimensions mismatch! Expected {target_width}x{target_height}, got {actual_width}x{actual_height}")
+                    target_width = actual_width
+                    target_height = actual_height
+            except Exception as resize_error:
+                logger.error(f"❌ [PRINT_QUALITY] Resize failed: {str(resize_error)}")
+                # Fall back to original dimensions if resize fails
                 target_width = original_width
                 target_height = original_height
-                logger.info(f"ℹ️ [PRINT_QUALITY] Image is larger than target, keeping original dimensions to preserve quality")
+        else:
+            # Fallback to old behavior if print area dimensions not provided
+            # Check if image is already at print quality (within 10% tolerance to avoid unnecessary resizing)
+            # This prevents quality loss from re-processing images that are already at print quality
+            min_print_width = 2400  # 8 inches at 300 DPI
+            min_print_height = 3000  # 10 inches at 300 DPI
+            is_already_print_quality = (
+                original_width >= min_print_width * 0.9 and 
+                original_height >= min_print_height * 0.9
+            )
+            
+            if is_already_print_quality:
+                logger.info(f"✅ [PRINT_QUALITY] Image is already at print quality ({original_width}x{original_height}), skipping resize to preserve quality")
+                target_width = original_width
+                target_height = original_height
+            else:
+                # Scale to a reasonable print size while preserving aspect ratio
+                # Use 8 inches as the base dimension
+                base_size = 8 * print_dpi
+                
+                if aspect_ratio > 1:  # Landscape
+                    target_width = int(base_size)
+                    target_height = int(base_size / aspect_ratio)
+                else:  # Portrait
+                    target_height = int(base_size)
+                    target_width = int(base_size * aspect_ratio)
+                
+                logger.info(f"📐 [PRINT_QUALITY] Calculated target dimensions: {target_width}x{target_height} (from {original_width}x{original_height})")
+                
+                # Only resize if we need to scale up (avoid downscaling high-res images)
+                if target_width > original_width or target_height > original_height:
+                    logger.info(f"⬆️ [PRINT_QUALITY] Resizing image from {original_width}x{original_height} to {target_width}x{target_height}")
+                    # Resize image to print quality dimensions while preserving aspect ratio
+                    # Use INTER_LINEAR for faster processing (still high quality)
+                    try:
+                        image = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_LINEAR)
+                        # Verify resize worked
+                        actual_height, actual_width = image.shape[:2]
+                        logger.info(f"✅ [PRINT_QUALITY] Resize successful! Actual dimensions: {actual_width}x{actual_height}")
+                        if actual_width != target_width or actual_height != target_height:
+                            logger.warn(f"⚠️ [PRINT_QUALITY] Resize dimensions mismatch! Expected {target_width}x{target_height}, got {actual_width}x{actual_height}")
+                            target_width = actual_width
+                            target_height = actual_height
+                    except Exception as resize_error:
+                        logger.error(f"❌ [PRINT_QUALITY] Resize failed: {str(resize_error)}")
+                        # Fall back to original dimensions if resize fails
+                        target_width = original_width
+                        target_height = original_height
+                else:
+                    # Image is larger than target, keep original size to preserve quality
+                    target_width = original_width
+                    target_height = original_height
+                    logger.info(f"ℹ️ [PRINT_QUALITY] Image is larger than target, keeping original dimensions to preserve quality")
         
         # Apply corner radius effect to the HIGH-RESOLUTION print quality image (AFTER resize)
         # Support both boolean (legacy) and numeric (0-100) values
@@ -848,147 +874,174 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             # Get the current alpha channel (which may already have corner radius applied)
             alpha_channel = image[:, :, 3].copy() if image.shape[2] == 4 else np.full((target_height, target_width), 255, dtype=np.uint8)
             
-            # Log alpha channel stats to verify corner radius is preserved
-            transparent_pixels_before = np.sum(alpha_channel == 0)
-            total_pixels = target_height * target_width
-            logger.info(f"Feather: Alpha channel before feather - transparent: {transparent_pixels_before}/{total_pixels} ({100*transparent_pixels_before/total_pixels:.1f}%)")
-            
             # Create a binary mask from the existing alpha channel
             # This preserves the exact shape including corner radius
             binary_mask = (alpha_channel > 0).astype(np.uint8) * 255
             
             # Check if we have a fully opaque image (no corner radius applied)
+            # Use faster check: if any pixel in alpha is 0, we have transparency
             has_transparency = np.any(alpha_channel == 0)
             
             # Calculate feather radius (0-100% maps to 0-50% of smallest dimension)
             min_dimension = min(target_width, target_height)
             feather_radius = int((feather_value / 100) * (min_dimension * 0.5))
             
-            logger.info(f"Using feather radius: {feather_radius} ({feather_value}%) for high-res image")
+            # Removed verbose logging for performance
             
             if not has_transparency:
-                # No corner radius - calculate distance to nearest edge for each pixel manually
-                # This ensures smooth feathering on all four sides of rectangular images
-                # Use Euclidean distance to nearest point on perimeter for smoother corners
-                logger.info("Feather: No corner radius detected, calculating distance to nearest edge for smooth 4-side feathering")
+                # No corner radius - use vectorized operations for fast distance calculation
+                # This is MUCH faster than nested loops (100x+ speedup for high-res images)
                 
-                # Create distance map: for each pixel, calculate distance to nearest point on perimeter
-                # Using Euclidean distance to corners and edges for smoother blending
-                dist_transform = np.zeros((target_height, target_width), dtype=np.float32)
+                # Create coordinate grids using vectorized operations
+                y_coords, x_coords = np.meshgrid(
+                    np.arange(target_height, dtype=np.float32),
+                    np.arange(target_width, dtype=np.float32),
+                    indexing='ij'
+                )
                 
-                # Pre-calculate corner positions
-                corners = [
-                    (0, 0),  # Top-left
-                    (target_width - 1, 0),  # Top-right
-                    (0, target_height - 1),  # Bottom-left
-                    (target_width - 1, target_height - 1)  # Bottom-right
-                ]
+                # Calculate distance to each edge using vectorized operations
+                dist_to_top = y_coords
+                dist_to_bottom = float(target_height - 1) - y_coords
+                dist_to_left = x_coords
+                dist_to_right = float(target_width - 1) - x_coords
                 
-                for y in range(target_height):
-                    for x in range(target_width):
-                        # Calculate distance to each edge (Manhattan-style for edges)
-                        dist_to_top = float(y)
-                        dist_to_bottom = float(target_height - 1 - y)
-                        dist_to_left = float(x)
-                        dist_to_right = float(target_width - 1 - x)
-                        
-                        # Calculate Euclidean distance to each corner
-                        dist_to_corners = [
-                            np.sqrt((x - cx)**2 + (y - cy)**2) for cx, cy in corners
-                        ]
-                        
-                        # For smooth blending, use the minimum of:
-                        # 1. Distance to nearest edge (for straight edges)
-                        # 2. Distance to nearest corner (for corner regions)
-                        # This creates a smoother transition at corners
-                        min_edge_dist = min(dist_to_top, dist_to_bottom, dist_to_left, dist_to_right)
-                        min_corner_dist = min(dist_to_corners)
-                        
-                        # In corner regions (within feather_radius of a corner), blend between edge and corner distance
-                        # This prevents visible lines at corners
-                        corner_threshold = feather_radius * 1.5  # Slightly larger than feather radius
-                        if min_corner_dist < corner_threshold:
-                            # Blend: closer to corner, use more corner distance; closer to edge, use more edge distance
-                            blend_factor = 1.0 - (min_corner_dist / corner_threshold)
-                            blend_factor = np.clip(blend_factor, 0.0, 1.0)
-                            # Use a weighted combination for smooth transition
-                            min_dist = (1.0 - blend_factor * 0.3) * min_edge_dist + (blend_factor * 0.3) * min_corner_dist
-                        else:
-                            # Far from corners, use edge distance
-                            min_dist = min_edge_dist
-                        
-                        dist_transform[y, x] = min_dist
+                # Distance to nearest edge (minimum of all four)
+                min_edge_dist = np.minimum(
+                    np.minimum(dist_to_top, dist_to_bottom),
+                    np.minimum(dist_to_left, dist_to_right)
+                )
                 
-                # Create feather factor: pixels closer to edge get lower alpha
-                # Pixels at distance 0 (on edge) should have alpha = 0
-                # Pixels at distance >= feather_radius should keep their original alpha
-                # Pixels in between get interpolated
-                # Use a smoother curve (ease-in-out) for better blending
+                # Use simple edge distance for faster processing
+                # The smoothstep function will handle corner smoothing naturally
+                dist_transform = min_edge_dist
+                
+                # Normalize and apply smoothstep function
                 normalized_dist = np.clip(dist_transform / feather_radius, 0.0, 1.0)
-                # Apply smoothstep function for smoother transitions: 3t^2 - 2t^3
                 feather_factor = normalized_dist * normalized_dist * (3.0 - 2.0 * normalized_dist)
-                feather_factor = feather_factor.astype(np.float32)
                 
                 # Apply feather to alpha channel
                 alpha_float = alpha_channel.astype(np.float32)
                 final_alpha = (alpha_float * feather_factor).astype(np.uint8)
                 
             else:
-                # Has corner radius - use distance transform on the shape mask
-                # This preserves the rounded corner shape
+                # Has corner radius - calculate distance to perimeter explicitly for uniform feathering
+                # We need to ensure feather works uniformly on BOTH straight edges AND rounded corners (including circles)
+                # CRITICAL: Feather must extend BEYOND the shape boundary to be visible in "deleted" areas
                 binary_mask = (alpha_channel > 0).astype(np.uint8) * 255
+                inside_shape = binary_mask > 0
                 
-                # Calculate distance from each pixel to the nearest transparent pixel (edge)
-                # This gives us the distance to the actual shape edge, including rounded corners
-                dist_transform = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 5)
+                # Calculate distance from edge INTO the shape (for pixels inside)
+                dist_from_edge_inside = cv2.distanceTransform(binary_mask, cv2.DIST_L2, 5)
                 
-                # The distance transform works well, but we need to ensure consistent feathering
-                # across corners and straight edges. The issue is that corners have different
-                # distance profiles. We'll use a normalization approach that accounts for this.
+                # Calculate distance from edge OUTSIDE the shape (for pixels outside)
+                # Invert the mask to get distances from the shape edge outward
+                inverted_mask = 255 - binary_mask
+                dist_from_edge_outside = cv2.distanceTransform(inverted_mask, cv2.DIST_L2, 5)
                 
-                # Normalize distance: divide by feather_radius
-                normalized_dist = np.clip(dist_transform / feather_radius, 0.0, 1.0)
+                # Create a combined distance map:
+                # - For pixels inside: distance from edge INTO shape (positive)
+                # - For pixels outside: distance from edge OUTSIDE shape (negative, for feather extension)
+                # We'll use this to create a feather that extends beyond the shape boundary
+                height, width = alpha_channel.shape
+                dist_map = np.zeros((height, width), dtype=np.float32)
                 
-                # Apply smoothstep function for smoother, more uniform transitions
+                # For pixels inside shape: use positive distance (distance into shape)
+                dist_map[inside_shape] = dist_from_edge_inside[inside_shape]
+                
+                # For pixels outside shape: use negative distance (distance outside shape, for feather extension)
+                # This allows feather to extend beyond the rounded corners
+                outside_shape = ~inside_shape
+                dist_map[outside_shape] = -dist_from_edge_outside[outside_shape]
+                
+                # Create feather factor that extends beyond the shape boundary
+                # Feather should fade from full opacity (center) to transparent (beyond feather_radius)
+                # We want feather to extend feather_radius pixels BEYOND the edge
+                
+                # For pixels inside: feather_factor increases from edge (0) to center (1)
+                # For pixels outside: feather_factor decreases from edge (1) to beyond feather_radius (0)
+                # This creates a smooth fade that extends beyond the rounded corners
+                
+                # Normalize: distance from -feather_radius (outside) to +feather_radius (inside)
+                # At distance = 0 (edge): feather_factor = 0.5 (half opacity for smooth transition)
+                # At distance = -feather_radius (outside): feather_factor = 0 (fully transparent)
+                # At distance = +feather_radius (inside): feather_factor = 1 (fully opaque)
+                
+                # Map distance range [-feather_radius, feather_radius] to [0, 1]
+                normalized_dist = np.clip((dist_map + feather_radius) / (2.0 * feather_radius), 0.0, 1.0)
+                
+                # Apply smoothstep function for smoother transitions
                 # smoothstep: 3t^2 - 2t^3 (ease-in-out curve)
-                # This creates a smoother fade that helps blend corners and edges more evenly
                 feather_factor = normalized_dist * normalized_dist * (3.0 - 2.0 * normalized_dist)
                 feather_factor = feather_factor.astype(np.float32)
                 
-                # CRITICAL: Only apply feather to pixels that are already part of the shape
-                # This ensures we preserve the corner radius shape
+                # Create new alpha channel that extends beyond the original shape
+                # Start with the original alpha channel
                 alpha_float = alpha_channel.astype(np.float32)
-                inside_shape = dist_transform > 0
                 
-                # Apply feather: 
-                # - Outside shape (dist=0): alpha = 0 (already transparent)
-                # - Inside shape, close to edge (dist < feather_radius): alpha = original_alpha * feather_factor
-                # - Inside shape, far from edge (dist >= feather_radius): alpha = original_alpha (no change)
-                final_alpha = np.where(
-                    inside_shape,
-                    alpha_float * feather_factor,  # Apply feather to pixels inside shape
-                    alpha_float  # Keep original alpha for pixels outside (should be 0 anyway)
-                ).astype(np.uint8)
-            
-            image[:, :, 3] = final_alpha
-            
-            # Log alpha channel stats after feather
-            transparent_pixels_after = np.sum(final_alpha == 0)
-            logger.info(f"Feather: Alpha channel after feather - transparent: {transparent_pixels_after}/{total_pixels} ({100*transparent_pixels_after/total_pixels:.1f}%)")
-            logger.info("Feather effect applied successfully to high-resolution image, preserving corner radius shape")
+                # For pixels inside the original shape: apply feather based on distance from edge
+                # For pixels outside the original shape: create feather extension (fade from edge outward)
+                final_alpha = np.zeros((height, width), dtype=np.float32)
+                
+                # Inside shape: multiply original alpha by feather_factor
+                final_alpha[inside_shape] = alpha_float[inside_shape] * feather_factor[inside_shape]
+                
+                # Outside shape (within feather_radius): create fade from edge
+                # This extends the feather beyond the rounded corners - CRITICAL for visible feather in deleted areas
+                outside_within_feather = outside_shape & (dist_from_edge_outside <= feather_radius)
+                
+                if np.any(outside_within_feather):
+                    # For outside pixels, create a fade from the edge
+                    # Pixels at edge (dist=0) get full feather, pixels at feather_radius get 0
+                    outside_dist_feather = dist_from_edge_outside[outside_within_feather]
+                    outside_feather_factor = np.clip(1.0 - (outside_dist_feather / max(feather_radius, 1.0)), 0.0, 1.0)
+                    # Apply smoothstep to outside feather for smoother transition
+                    outside_feather_factor = outside_feather_factor * outside_feather_factor * (3.0 - 2.0 * outside_feather_factor)
+                    
+                    # CRITICAL: Copy RGB values from edge pixels to create visible feather extension
+                    # Find edge pixels (pixels inside shape that are adjacent to outside pixels)
+                    kernel = np.ones((3, 3), np.uint8)
+                    eroded = cv2.erode(binary_mask, kernel, iterations=1)
+                    edge_pixels = (binary_mask > 0) & (eroded == 0)
+                    
+                    if np.any(edge_pixels) and image.shape[2] >= 3:
+                        # Get average RGB values from edge pixels for feather extension
+                        edge_rgb = image[edge_pixels, :3].mean(axis=0)
+                        
+                        # For each outside feather pixel, use edge color scaled by feather factor
+                        # Don't blend with existing pixel values (which may be black) - just use edge color
+                        # This creates a visible feather that extends beyond the rounded corners
+                        # without adding black background
+                        for i in range(3):
+                            # Use edge RGB directly, scaled by feather factor
+                            # This ensures no black pixels are introduced
+                            image[outside_within_feather, i] = edge_rgb[i] * outside_feather_factor
+                    
+                    # Set alpha for outside feather pixels - make it stronger to be more visible
+                    # Use 0.9 multiplier to ensure feather is clearly visible in deleted corner areas
+                    final_alpha[outside_within_feather] = (255.0 * outside_feather_factor * 0.9).astype(np.uint8)
+                
+                # Convert to uint8
+                final_alpha = np.clip(final_alpha, 0.0, 255.0).astype(np.uint8)
+                
+                # Update the image alpha channel to include the extended feather
+                image[:, :, 3] = final_alpha
+                
+                # CRITICAL: Zero out RGB values where alpha is 0 to prevent black background artifacts
+                # This ensures transparent pixels don't show any color
+                zero_alpha_mask = final_alpha == 0
+                if np.any(zero_alpha_mask) and image.shape[2] >= 3:
+                    for i in range(3):
+                        image[zero_alpha_mask, i] = 0
+                
+                # Removed verbose logging for performance
         
-        # Apply frame border if enabled
+        # Apply frame border if enabled (AFTER feather to ensure frame is on top and visible)
         if frame_enabled and frame_width > 0:
             # Ensure frame_width is an integer and within bounds
             frame_width = int(frame_width)
             frame_width = max(1, min(100, frame_width))  # Clamp between 1-100px
             
             # Scale frame width based on image size for high-resolution images
-            # Use same percentage-based approach as feather and corner radius
-            # Frame width (1-50px slider) maps to percentage of smallest dimension
-            # For consistency with other tools, scale based on image size
-            # Base reference: 1200px width = 1:1 scale
-            # This ensures frame is visible and proportional on high-res images
             base_width = 1200  # Reference width for 1:1 scaling
             if target_width > base_width:
                 scale_factor = target_width / base_width
@@ -996,7 +1049,6 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 logger.info(f"Scaling frame width: {frame_width}px -> {scaled_frame_width}px (scale factor: {scale_factor:.2f} for {target_width}px wide image)")
                 frame_width = scaled_frame_width
             else:
-                # For smaller images, keep frame width as-is
                 logger.info(f"Frame width: {frame_width}px (no scaling needed for {target_width}px wide image)")
             
             logger.info(f"Applying frame border: color={frame_color}, width={frame_width}px, double={double_frame}, image_size={target_width}x{target_height}")
@@ -1014,47 +1066,57 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             except:
                 frame_bgr = (0, 0, 255)  # Default red on error
             
-            # Calculate effective corner radius for frame
+            # Get current alpha channel to determine visible shape (after feather)
+            current_alpha = image[:, :, 3] if image.shape[2] == 4 else np.full((target_height, target_width), 255, dtype=np.uint8)
+            
+            # Calculate effective corner radius for frame (same as used for corner radius effect)
             max_radius = min(target_width, target_height) / 2
             effective_corner_radius = int((corner_radius_value / 100) * max_radius) if corner_radius_value < 100 else int(max_radius)
             
-            # Draw outer frame - create a mask for the frame area
+            # Create frame mask - frame should be drawn INSIDE the image bounds
+            # Draw frame as a border around the edge, within the image dimensions
             frame_mask = np.zeros((target_height, target_width), dtype=np.uint8)
             
             if corner_radius_value >= 100:  # Circle
-                # Draw outer circle
+                # Draw outer circle for frame (at image boundary)
                 cv2.circle(frame_mask, (target_width // 2, target_height // 2), 
                           int(max_radius), 255, -1)
-                # Subtract inner circle
+                # Subtract inner circle (inset by frame_width)
+                inner_radius = max(0, int(max_radius - frame_width))
                 cv2.circle(frame_mask, (target_width // 2, target_height // 2), 
-                          int(max_radius - frame_width), 0, -1)
+                          inner_radius, 0, -1)
             elif effective_corner_radius > 0:  # Rounded rectangle
-                # Draw outer rounded rectangle (filled)
+                # Draw outer rounded rectangle (at image boundary)
                 _draw_rounded_rect_filled(frame_mask, 0, 0, target_width, target_height, 
                                          effective_corner_radius, 255)
-                # Draw inner rounded rectangle (hole) to create frame
-                inner_radius = max(0, effective_corner_radius - frame_width)
-                if inner_radius > 0:
+                # Subtract inner rounded rectangle (inset by frame_width)
+                inner_corner_radius = max(0, effective_corner_radius - frame_width)
+                if inner_corner_radius > 0:
                     _draw_rounded_rect_filled(frame_mask, frame_width, frame_width,
                                              target_width - frame_width * 2, 
                                              target_height - frame_width * 2,
-                                             inner_radius, 0)
+                                             inner_corner_radius, 0)
                 else:
+                    # If corner radius becomes 0, use rectangle
                     cv2.rectangle(frame_mask, (frame_width, frame_width),
                                 (target_width - frame_width, target_height - frame_width), 0, -1)
             else:  # Rectangle
-                # Draw outer rectangle
+                # Draw outer rectangle (at image boundary)
                 cv2.rectangle(frame_mask, (0, 0), (target_width, target_height), 255, -1)
-                # Subtract inner rectangle
+                # Subtract inner rectangle (inset by frame_width)
                 cv2.rectangle(frame_mask, (frame_width, frame_width),
                             (target_width - frame_width, target_height - frame_width), 0, -1)
             
-            # Apply frame mask to image - draw frame on top of image
-            # Handle both 3-channel (BGR) and 4-channel (BGRA) images
+            # Apply frame to BGR channels - frame should be visible regardless of alpha
+            # Frame is drawn on top, so it should be opaque even where image is feathered
             num_channels = image.shape[2] if len(image.shape) > 2 else 1
             if num_channels >= 3:
                 for c in range(3):  # BGR channels
                     image[:, :, c] = np.where(frame_mask > 0, frame_bgr[c], image[:, :, c])
+            
+            # Set alpha to fully opaque where frame is drawn (frame should be visible)
+            if num_channels == 4:
+                image[:, :, 3] = np.where(frame_mask > 0, 255, image[:, :, 3])
             
             # Draw inner frame for double frame effect
             if double_frame:
@@ -1063,37 +1125,41 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 inner_frame_mask = np.zeros((target_height, target_width), dtype=np.uint8)
                 
                 if corner_radius_value >= 100:  # Circle
-                    # Draw outer circle for inner frame
+                    # Draw outer circle for inner frame (inside the main frame)
+                    inner_outer_radius = int(max_radius - frame_width - inner_offset)
                     cv2.circle(inner_frame_mask, (target_width // 2, target_height // 2),
-                              int(max_radius - frame_width - inner_offset), 255, -1)
+                              inner_outer_radius, 255, -1)
                     # Subtract inner circle
                     cv2.circle(inner_frame_mask, (target_width // 2, target_height // 2),
-                              int(max_radius - frame_width - inner_offset - inner_width), 0, -1)
+                              int(inner_outer_radius - inner_width), 0, -1)
                 elif effective_corner_radius > 0:  # Rounded rectangle
-                    inner_radius = max(0, effective_corner_radius - frame_width - inner_offset)
-                    # Draw outer rounded rectangle
-                    _draw_rounded_rect_filled(inner_frame_mask, frame_width + inner_offset, 
-                                             frame_width + inner_offset,
-                                             target_width - (frame_width + inner_offset) * 2,
-                                             target_height - (frame_width + inner_offset) * 2,
-                                             inner_radius, 255)
+                    # Inner frame is drawn inside the main frame
+                    inner_outer_radius = max(0, effective_corner_radius - frame_width - inner_offset)
+                    inner_x = frame_width + inner_offset
+                    inner_y = frame_width + inner_offset
+                    inner_w = target_width - (frame_width + inner_offset) * 2
+                    inner_h = target_height - (frame_width + inner_offset) * 2
+                    
+                    # Draw outer rounded rectangle for inner frame
+                    _draw_rounded_rect_filled(inner_frame_mask, inner_x, inner_y,
+                                             inner_w, inner_h,
+                                             int(inner_outer_radius), 255)
                     # Subtract inner rounded rectangle
-                    inner_inner_radius = max(0, inner_radius - inner_width)
+                    inner_inner_radius = max(0, inner_outer_radius - inner_width)
                     if inner_inner_radius > 0:
                         _draw_rounded_rect_filled(inner_frame_mask, 
-                                                 frame_width + inner_offset + inner_width,
-                                                 frame_width + inner_offset + inner_width,
-                                                 target_width - (frame_width + inner_offset + inner_width) * 2,
-                                                 target_height - (frame_width + inner_offset + inner_width) * 2,
-                                                 inner_inner_radius, 0)
+                                                 inner_x + inner_width,
+                                                 inner_y + inner_width,
+                                                 inner_w - inner_width * 2,
+                                                 inner_h - inner_width * 2,
+                                                 int(inner_inner_radius), 0)
                     else:
                         cv2.rectangle(inner_frame_mask,
-                                    (frame_width + inner_offset + inner_width,
-                                     frame_width + inner_offset + inner_width),
-                                    (target_width - frame_width - inner_offset - inner_width,
-                                     target_height - frame_width - inner_offset - inner_width), 0, -1)
+                                    (inner_x + inner_width, inner_y + inner_width),
+                                    (inner_x + inner_w - inner_width, 
+                                     inner_y + inner_h - inner_width), 0, -1)
                 else:  # Rectangle
-                    # Draw outer rectangle
+                    # Draw outer rectangle for inner frame
                     cv2.rectangle(inner_frame_mask,
                                 (frame_width + inner_offset, frame_width + inner_offset),
                                 (target_width - frame_width - inner_offset, 
@@ -1105,17 +1171,86 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                                 (target_width - frame_width - inner_offset - inner_width,
                                  target_height - frame_width - inner_offset - inner_width), 0, -1)
                 
-                # Apply inner frame mask to image
+                # Apply inner frame mask to image - inner frame should also be fully visible
                 num_channels = image.shape[2] if len(image.shape) > 2 else 1
                 if num_channels >= 3:
                     for c in range(3):  # BGR channels
                         image[:, :, c] = np.where(inner_frame_mask > 0, frame_bgr[c], image[:, :, c])
+                
+                # Set alpha to fully opaque where inner frame is drawn
+                if num_channels == 4:
+                    image[:, :, 3] = np.where(inner_frame_mask > 0, 255, image[:, :, 3])
             
             logger.info("Frame border applied successfully")
         
-        # Convert to PNG for better quality
-        _, buffer = cv2.imencode('.png', image)
-        processed_image_data = base64.b64encode(buffer).decode('utf-8')
+        # Add white background if requested (for Printful compatibility)
+        if add_white_background:
+            height, width = image.shape[:2]
+            
+            # Create white background (BGR = 255, 255, 255)
+            white_background = np.ones((height, width, 3), dtype=np.uint8) * 255
+            
+            # If image has alpha channel, composite over white background
+            if image.shape[2] == 4:
+                alpha = image[:, :, 3:4].astype(np.float32) / 255.0
+                rgb = image[:, :, :3].astype(np.float32)
+                
+                # Composite: result = alpha * rgb + (1 - alpha) * white
+                composite = alpha * rgb + (1.0 - alpha) * 255.0
+                image = composite.astype(np.uint8)
+            else:
+                # No alpha channel, just use RGB channels
+                image = image[:, :, :3]
+            
+            logger.info("White background added for Printful compatibility")
+        else:
+            # When white background is NOT added, ensure transparency is preserved
+            # Make sure image has alpha channel (BGRA format)
+            if image.shape[2] == 3:
+                # Convert BGR to BGRA by adding fully opaque alpha channel
+                height, width = image.shape[:2]
+                alpha_channel = np.ones((height, width), dtype=np.uint8) * 255
+                image = np.dstack([image, alpha_channel])
+            
+            # Ensure RGB values are zero where alpha is 0 (prevent black background artifacts)
+            if image.shape[2] == 4:
+                alpha = image[:, :, 3]
+                zero_alpha_mask = alpha == 0
+                if np.any(zero_alpha_mask):
+                    image[zero_alpha_mask, 0] = 0  # B channel
+                    image[zero_alpha_mask, 1] = 0  # G channel
+                    image[zero_alpha_mask, 2] = 0  # R channel
+                logger.info("Transparency preserved - RGB values zeroed where alpha is 0")
+        
+        # Convert to PNG with proper DPI metadata using PIL
+        # If white background was added, image is now BGR (3 channels), otherwise it's BGRA (4 channels)
+        try:
+            from PIL import Image
+            import io
+            
+            # Convert OpenCV image (BGR/BGRA) to PIL Image (RGB/RGBA)
+            if image.shape[2] == 4:  # BGRA
+                # Convert BGRA to RGBA
+                rgba_image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
+                pil_image = Image.fromarray(rgba_image, 'RGBA')
+            else:  # BGR (white background added)
+                # Convert BGR to RGB
+                rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                pil_image = Image.fromarray(rgb_image, 'RGB')
+            
+            # Save to bytes buffer with DPI metadata
+            buffer = io.BytesIO()
+            # Set DPI metadata (300 DPI for print quality)
+            pil_image.save(buffer, format='PNG', dpi=(print_dpi, print_dpi))
+            buffer.seek(0)
+            processed_image_data = base64.b64encode(buffer.getvalue()).decode('utf-8')
+            
+            logger.info(f"✅ [PRINT_QUALITY] PNG encoded with {print_dpi} DPI metadata using PIL")
+        except Exception as pil_error:
+            logger.warning(f"⚠️ [PRINT_QUALITY] PIL encoding failed, falling back to cv2 (no DPI metadata): {str(pil_error)}")
+            # Fallback to cv2 - encode as PNG (but without DPI metadata)
+            _, buffer = cv2.imencode('.png', image, [cv2.IMWRITE_PNG_COMPRESSION, 1])
+            processed_image_data = base64.b64encode(buffer).decode('utf-8')
         
         return {
             "success": True,
@@ -1125,7 +1260,7 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 "height": target_height,
                 "dpi": print_dpi
             },
-            "file_size": len(buffer),
+            "file_size": len(processed_image_data),
             "format": "PNG",
             "quality": "Print Ready"
         }

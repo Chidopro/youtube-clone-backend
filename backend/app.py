@@ -4821,6 +4821,9 @@ def process_thumbnail_print_quality():
         frame_width = int(data.get("frame_width", 10))  # Ensure it's an integer
         double_frame = data.get("double_frame", False)
         add_white_background = data.get("add_white_background", False)
+        # Print area dimensions (in inches) - if provided, will be used to set exact output size
+        print_area_width = data.get("print_area_width")
+        print_area_height = data.get("print_area_height")
         
         # Validate frame_width is within reasonable bounds (1-100px)
         frame_width = max(1, min(100, frame_width))
@@ -4861,7 +4864,9 @@ def process_thumbnail_print_quality():
             frame_color=frame_color,
             frame_width=frame_width,
             double_frame=double_frame,
-            add_white_background=add_white_background
+            add_white_background=add_white_background,
+            print_area_width=print_area_width,
+            print_area_height=print_area_height
         )
         
         if result['success']:
