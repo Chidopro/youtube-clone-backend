@@ -98,6 +98,94 @@ export class AdminService {
   }
 
   /**
+   * Check if current user is a master admin (full access, oversees all operations)
+   * @returns {Promise<boolean>} True if user is master admin
+   */
+  static async isMasterAdmin() {
+    try {
+      // Check Supabase auth first (for email/password login)
+      let user = null;
+      let userEmail = null;
+      let userId = null;
+      
+      try {
+        const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser();
+        if (supabaseUser && !authError) {
+          user = supabaseUser;
+          userEmail = supabaseUser.email?.toLowerCase().trim();
+          userId = supabaseUser.id;
+        }
+      } catch (authErr) {
+        // No Supabase auth session
+      }
+      
+      // Fallback to localStorage (for Google OAuth)
+      if (!user) {
+        const isAuthenticated = localStorage.getItem('isAuthenticated');
+        const userData = localStorage.getItem('user');
+        
+        if (isAuthenticated === 'true' && userData) {
+          try {
+            user = JSON.parse(userData);
+            userEmail = (user.email || user.user_metadata?.email || user.user?.email)?.toLowerCase().trim();
+            userId = user.id || user.user?.id;
+          } catch (parseErr) {
+            // Error parsing
+          }
+        }
+      }
+      
+      if (!user || (!userEmail && !userId)) {
+        return false;
+      }
+
+      let query = supabase.from('users').select('is_admin, admin_role');
+      
+      if (userId) {
+        query = query.eq('id', userId);
+      } else if (userEmail) {
+        query = query.ilike('email', userEmail);
+      }
+
+      const { data, error } = await query.single();
+
+      if (error) {
+        console.error('❌ Error checking master admin status:', error);
+        // Try by email if ID failed
+        if (userId && userEmail) {
+          const { data: emailData, error: emailError } = await supabase
+            .from('users')
+            .select('is_admin, admin_role')
+            .ilike('email', userEmail)
+            .single();
+          
+          if (emailError) {
+            console.error('❌ Error checking master admin by email:', emailError);
+            return false;
+          }
+          
+          const isMasterAdmin = emailData?.is_admin && emailData?.admin_role === 'master_admin';
+          return isMasterAdmin;
+        }
+        return false;
+      }
+
+      const isMasterAdmin = data?.is_admin && data?.admin_role === 'master_admin';
+      console.log('✅ Master admin check result:', {
+        userId,
+        userEmail,
+        is_admin: data?.is_admin,
+        admin_role: data?.admin_role,
+        isMasterAdmin
+      });
+      return isMasterAdmin;
+    } catch (error) {
+      console.error('Error in isMasterAdmin:', error);
+      return false;
+    }
+  }
+
+  /**
    * Check if current user is a full admin (can manage users, payouts, etc.)
    * @returns {Promise<boolean>} True if user is full admin
    */
@@ -172,23 +260,15 @@ export class AdminService {
             result: emailData?.is_admin && (emailData?.admin_role === 'admin' || emailData?.admin_role === null)
           });
           
-          const isFullAdmin = emailData?.is_admin && (
-            emailData?.admin_role === 'admin' || 
-            emailData?.admin_role === null || 
-            emailData?.admin_role === undefined
-          );
+          // Only Master Admin has full access now
+          const isFullAdmin = emailData?.is_admin && emailData?.admin_role === 'master_admin';
           return isFullAdmin;
         }
         return false;
       }
 
-      // Full admin: is_admin = true AND (admin_role = 'admin' OR admin_role IS NULL for backward compatibility)
-      // If admin_role column doesn't exist, treat is_admin = true as full admin
-      const isFullAdmin = data?.is_admin && (
-        data?.admin_role === 'admin' || 
-        data?.admin_role === null || 
-        data?.admin_role === undefined
-      );
+      // Full admin: is_admin = true AND admin_role = 'master_admin' (only Master Admin has full access now)
+      const isFullAdmin = data?.is_admin && data?.admin_role === 'master_admin';
       console.log('✅ Full admin check result:', {
         userId,
         userEmail,
@@ -272,6 +352,7 @@ export class AdminService {
           const isOrderProcessingAdmin = emailData?.is_admin && (
             emailData?.admin_role === 'order_processing_admin' || 
             emailData?.admin_role === 'admin' ||
+            emailData?.admin_role === 'master_admin' ||
             emailData?.admin_role === null
           );
           return isOrderProcessingAdmin;
@@ -279,10 +360,11 @@ export class AdminService {
         return false;
       }
 
-      // Order processing admin: is_admin = true AND (admin_role = 'order_processing_admin' OR admin_role = 'admin')
+      // Order processing admin: is_admin = true AND (admin_role = 'order_processing_admin' OR admin_role = 'admin' OR admin_role = 'master_admin')
       const isOrderProcessingAdmin = data?.is_admin && (
         data?.admin_role === 'order_processing_admin' || 
         data?.admin_role === 'admin' ||
+        data?.admin_role === 'master_admin' ||
         data?.admin_role === null // Backward compatibility: treat null as full admin
       );
       console.log('🔐 AdminService: Order processing admin check result:', isOrderProcessingAdmin);
@@ -1288,6 +1370,289 @@ export class AdminService {
       return { success: true, data };
     } catch (error) {
       console.error('Error revoking processor permissions:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Submit admin signup request
+   * @param {string} email - Admin email address
+   * @returns {Promise<Object>} Result object
+   */
+  static async submitAdminSignupRequest(email) {
+    try {
+      const { data, error } = await supabase
+        .from('admin_signup_requests')
+        .insert({
+          email: email.toLowerCase().trim(),
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error submitting admin signup request:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get all admin signup requests (master admin only)
+   * @returns {Promise<Array>} Signup requests
+   */
+  static async getAdminSignupRequests() {
+    try {
+      const { data, error } = await supabase
+        .from('admin_signup_requests')
+        .select('*')
+        .order('requested_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching admin signup requests:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Approve admin signup request (master admin only)
+   * @param {string} requestId - Request ID
+   * @param {string} adminRole - Role to assign ('order_processing_admin' or 'admin')
+   * @returns {Promise<Object>} Result object
+   */
+  static async approveAdminSignupRequest(requestId, adminRole = 'order_processing_admin') {
+    try {
+      // Get the request
+      const { data: request, error: requestError } = await supabase
+        .from('admin_signup_requests')
+        .select('*')
+        .eq('id', requestId)
+        .single();
+
+      if (requestError) throw requestError;
+
+      // Get current user (master admin)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      // Update the request status
+      const { error: updateError } = await supabase
+        .from('admin_signup_requests')
+        .update({
+          status: 'approved',
+          approved_by: user.id,
+          approved_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+
+      if (updateError) throw updateError;
+
+      // Find or create user in users table and set admin role
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('*')
+        .ilike('email', request.email)
+        .single();
+
+      if (existingUser) {
+        // Update existing user
+        const { error: userUpdateError } = await supabase
+          .from('users')
+          .update({
+            is_admin: true,
+            admin_role: adminRole
+          })
+          .eq('id', existingUser.id);
+
+        if (userUpdateError) throw userUpdateError;
+      } else {
+        // Create new user (they'll need to set password via Supabase Auth)
+        // For now, just create a placeholder - master admin will need to set up auth manually
+        const { error: userCreateError } = await supabase
+          .from('users')
+          .insert({
+            email: request.email,
+            is_admin: true,
+            admin_role: adminRole,
+            role: 'customer',
+            status: 'active'
+          });
+
+        if (userCreateError) throw userCreateError;
+      }
+
+      // Log admin action
+      await this.logAdminAction('approve_admin_signup', 'admin_signup_request', requestId, {
+        approved_email: request.email,
+        admin_role: adminRole
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error approving admin signup request:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Reject admin signup request (master admin only)
+   * @param {string} requestId - Request ID
+   * @param {string} notes - Optional rejection notes
+   * @returns {Promise<Object>} Result object
+   */
+  static async rejectAdminSignupRequest(requestId, notes = '') {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      const { error } = await supabase
+        .from('admin_signup_requests')
+        .update({
+          status: 'rejected',
+          approved_by: user.id,
+          approved_at: new Date().toISOString(),
+          notes: notes
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      // Log admin action
+      await this.logAdminAction('reject_admin_signup', 'admin_signup_request', requestId, {
+        notes: notes
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error rejecting admin signup request:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get all admins (master admin only)
+   * @returns {Promise<Array>} List of admins
+   */
+  static async getAllAdmins() {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, email, display_name, admin_role, is_admin, created_at')
+        .eq('is_admin', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching admins:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Update admin role (master admin only)
+   * @param {string} userId - User ID
+   * @param {string} adminRole - New admin role ('master_admin', 'admin', 'order_processing_admin')
+   * @returns {Promise<Object>} Result object
+   */
+  static async updateAdminRole(userId, adminRole) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update({ admin_role: adminRole })
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Log admin action
+      await this.logAdminAction('update_admin_role', 'user', userId, {
+        new_role: adminRole
+      });
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error updating admin role:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Remove admin access (master admin only)
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} Result object
+   */
+  static async removeAdminAccess(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update({ 
+          is_admin: false,
+          admin_role: null
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Log admin action
+      await this.logAdminAction('remove_admin_access', 'user', userId);
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error removing admin access:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Delete order from processing queue (master admin only)
+   * @param {string} queueId - Queue item ID
+   * @returns {Promise<Object>} Result object
+   */
+  static async deleteOrder(queueId) {
+    try {
+      // Get user email for authentication
+      const userEmail = await this.getCurrentUserEmail();
+      
+      // Use API endpoint
+      const apiUrl = process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev';
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      if (userEmail) {
+        headers['X-User-Email'] = userEmail;
+      }
+      
+      const response = await fetch(`${apiUrl}/api/admin/delete-order/${queueId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      // Log admin action
+      await this.logAdminAction('delete_order', 'order_processing_queue', queueId);
+
+      return result;
+    } catch (error) {
+      console.error('Error deleting order:', error);
       return { success: false, error: error.message };
     }
   }

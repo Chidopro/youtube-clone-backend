@@ -2214,11 +2214,12 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
                     creator_share = item_price * 0.70
                     platform_fee = item_price * 0.30
                     
-                    # Get order_id from item if available, otherwise generate one
-                    order_id = item.get('order_id', sale_data.get('order_id', str(uuid.uuid4())))
+                    # Get order_id from item if available, otherwise generate one (shorter format)
+                    fallback_id = f"ORD-{str(uuid.uuid4())[:8].upper()}"
+                    order_id = item.get('order_id', sale_data.get('order_id', fallback_id))
                     
-                    # Get order_id from parameter or item, otherwise generate one
-                    earnings_order_id = order_id or item.get('order_id') or sale_data.get('order_id') or str(uuid.uuid4())
+                    # Get order_id from parameter or item, otherwise generate one (shorter format)
+                    earnings_order_id = order_id or item.get('order_id') or sale_data.get('order_id') or fallback_id
                     
                     # Create earnings record
                     earnings_data = {
@@ -2275,9 +2276,10 @@ def send_order():
                 </div>
             """
             sms_body += f"Product: {product_name}, Color: {color}, Size: {size}, Note: {note}, Image: {image_url}\n"
-        # Generate order ID and order number
-        order_id = str(uuid.uuid4())
-        order_number = order_id[-8:].upper()
+        # Generate order ID and order number (shorter format for easier record keeping)
+        full_uuid = str(uuid.uuid4())
+        order_id = f"ORD-{full_uuid[:8].upper()}"  # Short format: ORD-XXXXXXXX
+        order_number = order_id
         
         # Enrich cart items with video metadata
         enriched_cart = []
@@ -2482,9 +2484,10 @@ def place_order():
         shipping_address = addr_result
         logger.info(f"✅ Shipping address validated: {shipping_address}")
 
-        # Generate order identifiers
-        order_id = str(uuid.uuid4())
-        order_number = order_id[-8:].upper()
+        # Generate order identifiers (shorter format for easier record keeping)
+        full_uuid = str(uuid.uuid4())
+        order_id = f"ORD-{full_uuid[:8].upper()}"  # Short format: ORD-XXXXXXXX
+        order_number = order_id
 
         # Normalize items to expected structure
         # CRITICAL: Strip base64 images from cart items to reduce payload size
@@ -3252,7 +3255,9 @@ def create_checkout_session():
         # sms_consent is kept for backward compatibility but not enforced
 
         # Generate a unique order ID and store the full cart (with images) and SMS consent
-        order_id = str(uuid.uuid4())
+        # Shorter format for easier record keeping
+        full_uuid = str(uuid.uuid4())
+        order_id = f"ORD-{full_uuid[:8].upper()}"  # Short format: ORD-XXXXXXXX
         
         # Calculate total amount
         total_amount = sum(item.get('price', 0) for item in cart) + shipping_cost
@@ -4815,6 +4820,7 @@ def process_thumbnail_print_quality():
         frame_color = data.get("frame_color", "#FF0000")
         frame_width = int(data.get("frame_width", 10))  # Ensure it's an integer
         double_frame = data.get("double_frame", False)
+        add_white_background = data.get("add_white_background", False)
         
         # Validate frame_width is within reasonable bounds (1-100px)
         frame_width = max(1, min(100, frame_width))
@@ -4838,6 +4844,7 @@ def process_thumbnail_print_quality():
         logger.info(f"📧 [PRINT_QUALITY] DPI={print_dpi}, soft_corners={soft_corners}, edge_feather={edge_feather}")
         logger.info(f"📧 [PRINT_QUALITY] corner_radius_percent={corner_radius_percent}, feather_edge_percent={feather_edge_percent}")
         logger.info(f"📧 [PRINT_QUALITY] frame_enabled={frame_enabled}, frame_color={frame_color}, frame_width={frame_width}, double_frame={double_frame}")
+        logger.info(f"📧 [PRINT_QUALITY] add_white_background={add_white_background}")
         if crop_area:
             logger.info(f"📧 [PRINT_QUALITY] Crop area provided: {crop_area}")
         
@@ -4853,7 +4860,8 @@ def process_thumbnail_print_quality():
             frame_enabled=frame_enabled,
             frame_color=frame_color,
             frame_width=frame_width,
-            double_frame=double_frame
+            double_frame=double_frame,
+            add_white_background=add_white_background
         )
         
         if result['success']:
@@ -7037,10 +7045,90 @@ def admin_processing_history():
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
 
+def is_master_admin(user_email):
+    """Check if user is a master admin"""
+    try:
+        if not user_email:
+            return False
+        user_email = user_email.strip().lower()
+        client = supabase_admin if supabase_admin else supabase
+        result = client.table('users').select('is_admin, admin_role').eq('email', user_email).execute()
+        if result.data and len(result.data) > 0:
+            user = result.data[0]
+            return user.get('is_admin') and user.get('admin_role') == 'master_admin'
+        return False
+    except Exception as e:
+        logger.error(f"Error checking master admin status: {str(e)}")
+        return False
+
+@app.route("/api/admin/delete-order/<queue_id>", methods=["DELETE", "OPTIONS"])
+@admin_required
+def delete_order(queue_id):
+    """Delete an order from the processing queue (master admin only)"""
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Methods', 'DELETE, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
+    try:
+        # Check if user is master admin
+        user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+        if not is_master_admin(user_email):
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            response.status_code = 403
+            origin = request.headers.get('Origin', '*')
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response
+        
+        # Use admin client to bypass RLS
+        client = supabase_admin if supabase_admin else supabase
+        
+        # Get the queue item to find the order_id
+        queue_result = client.table('order_processing_queue').select('order_id').eq('id', queue_id).execute()
+        if not queue_result.data:
+            response = jsonify({"success": False, "error": "Order not found in queue"})
+            response.status_code = 404
+            origin = request.headers.get('Origin', '*')
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response
+        
+        order_id = queue_result.data[0].get('order_id')
+        
+        # Delete from processing queue
+        client.table('order_processing_queue').delete().eq('id', queue_id).execute()
+        
+        # Optionally delete the order itself (uncomment if you want to delete the order too)
+        # client.table('orders').delete().eq('order_id', order_id).execute()
+        
+        logger.info(f"✅ [MASTER ADMIN] Deleted order {order_id} from processing queue (queue_id: {queue_id}) by {user_email}")
+        
+        response = jsonify({
+            "success": True,
+            "message": "Order deleted successfully"
+        })
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error deleting order: {str(e)}")
+        response = jsonify({"success": False, "error": str(e)})
+        response.status_code = 500
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+
 @app.route("/api/admin/workers", methods=["GET", "OPTIONS"])
 @admin_required
 def admin_workers():
-    """Get workers list for admin portal"""
+    """Get workers list for admin portal - includes all admins (order processing admins and full admins)"""
     if request.method == "OPTIONS":
         response = jsonify({})
         origin = request.headers.get('Origin', '*')
@@ -7054,13 +7142,58 @@ def admin_workers():
         # Use admin client to bypass RLS
         client = supabase_admin if supabase_admin else supabase
         
-        result = client.table('processor_permissions').select(
+        # Get all admins (order processing admins and master admins only)
+        # This includes users with admin_role = 'order_processing_admin' or 'master_admin'
+        # Fetch all admins first, then filter in Python to handle NULL values
+        all_admins_result = client.table('users').select(
+            'id, display_name, email, profile_image_url, admin_role'
+        ).eq('is_admin', True).execute()
+        
+        # Filter to only include relevant admin roles (master_admin and order_processing_admin only)
+        admins_list = []
+        for admin in (all_admins_result.data or []):
+            admin_role = admin.get('admin_role')
+            # Include only master_admin and order_processing_admin (removed 'admin' role)
+            if admin_role in ['order_processing_admin', 'master_admin']:
+                admins_list.append(admin)
+        
+        # Also get users from processor_permissions table (for backward compatibility)
+        processor_result = client.table('processor_permissions').select(
             '*, user:users!user_id(id, display_name, email, profile_image_url)'
         ).eq('is_active', True).execute()
         
+        # Combine both lists, avoiding duplicates
+        workers_dict = {}
+        
+        # Add admins to workers list
+        for admin in admins_list:
+            user_id = admin.get('id')
+            if user_id:
+                workers_dict[user_id] = {
+                    'user_id': user_id,
+                    'user': {
+                        'id': admin.get('id'),
+                        'display_name': admin.get('display_name'),
+                        'email': admin.get('email'),
+                        'profile_image_url': admin.get('profile_image_url')
+                    },
+                    'role': 'admin',
+                    'is_active': True,
+                    'admin_role': admin.get('admin_role')
+                }
+        
+        # Add processor permissions users (if not already added as admin)
+        for processor in (processor_result.data or []):
+            user_id = processor.get('user_id')
+            if user_id and user_id not in workers_dict:
+                workers_dict[user_id] = processor
+        
+        # Convert dict to list
+        workers_list = list(workers_dict.values())
+        
         response = jsonify({
             "success": True,
-            "data": result.data or []
+            "data": workers_list
         })
         origin = request.headers.get('Origin', '*')
         response.headers.add('Access-Control-Allow-Origin', origin)

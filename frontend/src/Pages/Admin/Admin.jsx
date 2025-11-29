@@ -27,12 +27,17 @@ const Admin = () => {
   const [queueLoading, setQueueLoading] = useState(false);
   const [isFullAdmin, setIsFullAdmin] = useState(false);
   const [isOrderProcessingAdmin, setIsOrderProcessingAdmin] = useState(false);
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
+  const [adminSignupRequests, setAdminSignupRequests] = useState([]);
+  const [allAdmins, setAllAdmins] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedCartItemIndex, setSelectedCartItemIndex] = useState(null); // Track which cart item is being processed
   const [step1Processing, setStep1Processing] = useState(false);
   const [step2Processing, setStep2Processing] = useState(false);
   const [step3Processing, setStep3Processing] = useState(false);
   const [processedImage, setProcessedImage] = useState(null);
   const [original300DpiImage, setOriginal300DpiImage] = useState(null); // Store the original 300 DPI image (Step 1 result)
+  const [processedImages, setProcessedImages] = useState({}); // Store processed images for each cart item: {itemIndex: {processedImage, original300Dpi}}
   const [printQualitySettings, setPrintQualitySettings] = useState({
     print_dpi: 300,
     edge_feather: false,
@@ -43,7 +48,8 @@ const Admin = () => {
     frame_enabled: false,
     frame_color: '#FF0000',
     frame_width: 10,
-    double_frame: false
+    double_frame: false,
+    add_white_background: false
   });
   const navigate = useNavigate();
 
@@ -80,10 +86,69 @@ const Admin = () => {
     if (isAdmin && activeTab === 'order-processing') {
       loadProcessingQueue();
       loadProcessingHistory();
-      loadWorkers();
+      // Only load workers for Master Admins
+      if (isMasterAdmin) {
+        loadWorkers();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, activeTab, queueStatusFilter]);
+  }, [isAdmin, activeTab, queueStatusFilter, isMasterAdmin]);
+
+  // Reload admin management data when tab changes
+  useEffect(() => {
+    if (isMasterAdmin && activeTab === 'admin-management') {
+      loadAdminSignupRequests();
+      loadAllAdmins();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMasterAdmin, activeTab]);
+
+  // Auto-apply effects when slider values change (similar to Tools Page)
+  useEffect(() => {
+    // Only auto-apply if we have the base 300 DPI image
+    if (!original300DpiImage) return;
+    
+    const hasEffects = 
+      (printQualitySettings.edge_feather && printQualitySettings.feather_edge_percent > 0) ||
+      (printQualitySettings.soft_corners && printQualitySettings.corner_radius_percent > 0) ||
+      (printQualitySettings.frame_enabled && printQualitySettings.frame_width > 0);
+    
+    // Debounce the API call to avoid too many requests while sliding
+    const timeoutId = setTimeout(async () => {
+      try {
+        if (hasEffects) {
+          // Apply effects if any are enabled
+          const processedImageUrl = await applyBothEffects();
+          if (processedImageUrl && processedImageUrl.startsWith('data:image')) {
+            saveProcessedImage(processedImageUrl);
+          }
+        } else {
+          // Reset to original 300 DPI image if no effects are enabled
+          setProcessedImage({
+            success: true,
+            screenshot: original300DpiImage
+          });
+        }
+      } catch (error) {
+        console.error('Error auto-applying effects:', error);
+        // Don't show alert on auto-apply errors, just log
+      }
+    }, 500); // 500ms debounce - wait for user to stop sliding
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    original300DpiImage,
+    printQualitySettings.feather_edge_percent,
+    printQualitySettings.corner_radius_percent,
+    printQualitySettings.edge_feather,
+    printQualitySettings.soft_corners,
+    printQualitySettings.frame_enabled,
+    printQualitySettings.frame_width,
+    printQualitySettings.frame_color,
+    printQualitySettings.double_frame,
+    printQualitySettings.add_white_background
+  ]);
 
   const checkAdminStatus = async () => {
     try {
@@ -116,7 +181,8 @@ const Admin = () => {
 
       // Check if user is admin using AdminService
       const isUserAdmin = await AdminService.isAdmin();
-      const isUserFullAdmin = await AdminService.isFullAdmin();
+      const isUserMasterAdmin = await AdminService.isMasterAdmin();
+      const isUserFullAdmin = await AdminService.isFullAdmin(); // This now only returns true for master_admin
       const isUserOrderProcessingAdmin = await AdminService.isOrderProcessingAdmin();
 
       console.log('🔐 Admin Status Check:', {
@@ -134,20 +200,21 @@ const Admin = () => {
       }
 
       setIsAdmin(true);
-      setIsFullAdmin(isUserFullAdmin);
+      setIsMasterAdmin(isUserMasterAdmin);
+      setIsFullAdmin(isUserFullAdmin); // This is now the same as isMasterAdmin
       setIsOrderProcessingAdmin(isUserOrderProcessingAdmin);
       
-      console.log('✅ Admin access granted. Full Admin:', isUserFullAdmin, 'Order Processing Admin:', isUserOrderProcessingAdmin);
+      console.log('✅ Admin access granted. Master Admin:', isUserMasterAdmin, 'Order Processing Admin:', isUserOrderProcessingAdmin);
       
       // Set default tab based on role
-      if (isUserOrderProcessingAdmin && !isUserFullAdmin) {
+      if (isUserOrderProcessingAdmin && !isUserMasterAdmin) {
         // Order processing admin only - default to order processing tab
         setActiveTab('order-processing');
-        loadProcessingQueue();
+        // Don't load workers for order processing admins
         loadProcessingHistory();
-        loadWorkers();
-      } else {
-        // Full admin - default to dashboard
+        // Load queue after state is set (will be triggered by useEffect)
+      } else if (isUserMasterAdmin) {
+        // Master admin - default to dashboard
         loadAdminData();
       }
     } catch (error) {
@@ -215,7 +282,30 @@ const Admin = () => {
     setQueueLoading(true);
     try {
       const data = await AdminService.getProcessingQueue(queueStatusFilter);
-      setProcessingQueue(data);
+      
+      // For Order Processing Admins (not Master Admins), only show orders assigned to them
+      if (isOrderProcessingAdmin && !isMasterAdmin) {
+        // Get the database user ID from the users table
+        const userEmail = user?.email || user?.user_metadata?.email;
+        if (userEmail) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('id')
+            .ilike('email', userEmail)
+            .single();
+          
+          if (userData?.id) {
+            const filteredData = data.filter(queueItem => queueItem.assigned_to === userData.id);
+            setProcessingQueue(filteredData);
+          } else {
+            setProcessingQueue([]);
+          }
+        } else {
+          setProcessingQueue([]);
+        }
+      } else {
+        setProcessingQueue(data);
+      }
     } catch (error) {
       console.error('Error loading processing queue:', error);
     } finally {
@@ -241,8 +331,97 @@ const Admin = () => {
     }
   };
 
-  // STEP 1: Generate 300 DPI Image (Standalone)
-  const generate300DpiImage = async (item) => {
+  const loadAdminSignupRequests = async () => {
+    try {
+      const data = await AdminService.getAdminSignupRequests();
+      setAdminSignupRequests(data);
+    } catch (error) {
+      console.error('Error loading admin signup requests:', error);
+    }
+  };
+
+  const loadAllAdmins = async () => {
+    try {
+      const data = await AdminService.getAllAdmins();
+      setAllAdmins(data);
+    } catch (error) {
+      console.error('Error loading admins:', error);
+    }
+  };
+
+  const handleApproveAdminRequest = async (requestId, adminRole) => {
+    try {
+      const result = await AdminService.approveAdminSignupRequest(requestId, adminRole);
+      if (result.success) {
+        alert('Admin request approved successfully! Please set up the user in Supabase Auth with the provided password.');
+        loadAdminSignupRequests();
+        loadAllAdmins();
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error approving admin request:', error);
+      alert('Failed to approve admin request');
+    }
+  };
+
+  const handleRejectAdminRequest = async (requestId) => {
+    const notes = prompt('Enter rejection notes (optional):');
+    try {
+      const result = await AdminService.rejectAdminSignupRequest(requestId, notes || '');
+      if (result.success) {
+        alert('Admin request rejected');
+        loadAdminSignupRequests();
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error rejecting admin request:', error);
+      alert('Failed to reject admin request');
+    }
+  };
+
+  const handleUpdateAdminRole = async (userId, newRole) => {
+    try {
+      const result = await AdminService.updateAdminRole(userId, newRole);
+      if (result.success) {
+        alert('Admin role updated successfully');
+        loadAllAdmins();
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error updating admin role:', error);
+      alert('Failed to update admin role');
+    }
+  };
+
+  const handleRemoveAdminAccess = async (userId) => {
+    if (!window.confirm('Are you sure you want to remove admin access from this user?')) {
+      return;
+    }
+    try {
+      const result = await AdminService.removeAdminAccess(userId);
+      if (result.success) {
+        alert('Admin access removed successfully');
+        loadAllAdmins();
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error removing admin access:', error);
+      alert('Failed to remove admin access');
+    }
+  };
+
+  // STEP 1: Generate 300 DPI Image (Standalone) - works with selected cart item
+  const generate300DpiImage = async () => {
+    if (selectedCartItemIndex === null || !selectedOrder || !selectedOrder.cart) {
+      alert('Please select a cart item first');
+      return;
+    }
+    
+    const item = selectedOrder.cart[selectedCartItemIndex];
     if (!item || (!item.img && !item.selected_screenshot)) {
       alert('No screenshot found for this item');
       return;
@@ -266,7 +445,10 @@ const Admin = () => {
           thumbnail_data: screenshotData,
           print_dpi: printQualitySettings.print_dpi,
           soft_corners: false,  // No effects in step 1
-          edge_feather: false   // No effects in step 1
+          edge_feather: false,  // No effects in step 1
+          frame_enabled: false, // No frame in step 1
+          corner_radius_percent: 0,
+          feather_edge_percent: 0
         })
       });
 
@@ -280,6 +462,13 @@ const Admin = () => {
         throw new Error(result.error || 'Failed to generate 300 DPI image');
       }
 
+      // Validate that we have image data
+      if (!result.screenshot || !result.screenshot.startsWith('data:image')) {
+        console.error('Invalid image data received:', result);
+        throw new Error('Invalid image data received from server');
+      }
+
+      console.log('✅ 300 DPI image generated successfully, length:', result.screenshot.length);
       setOriginal300DpiImage(result.screenshot); // Store original 300 DPI image
       setProcessedImage(result);
     } catch (error) {
@@ -331,7 +520,8 @@ const Admin = () => {
           frame_enabled: frameEnabled, // Pass frame enabled state
           frame_color: frameColor, // Pass frame color
           frame_width: frameWidth, // Pass frame width
-          double_frame: doubleFrame // Pass double frame flag
+          double_frame: doubleFrame, // Pass double frame flag
+          add_white_background: settings.add_white_background || false // Pass white background flag
         })
       });
 
@@ -359,8 +549,41 @@ const Admin = () => {
     }
   };
 
+  // Helper function to save processed image for the selected cart item
+  const saveProcessedImage = (processedImageUrl) => {
+    if (selectedCartItemIndex !== null) {
+      // Validate image URL before saving
+      if (!processedImageUrl || !processedImageUrl.startsWith('data:image')) {
+        console.error('Invalid image URL in saveProcessedImage:', processedImageUrl?.substring(0, 100));
+        alert('Error: Invalid image data received. Please try again.');
+        return;
+      }
+      
+      console.log('Saving processed image, URL length:', processedImageUrl.length);
+      
+      setProcessedImages(prev => ({
+        ...prev,
+        [selectedCartItemIndex]: {
+          processedImage: processedImageUrl,
+          original300Dpi: original300DpiImage
+        }
+      }));
+      setProcessedImage({
+        success: true,
+        screenshot: processedImageUrl
+      });
+      
+      console.log('✅ Processed image saved and displayed');
+    }
+  };
+
   // STEP 2: Apply Feather Effect (applies both effects together)
   const applyFeatherEffect = async () => {
+    if (selectedCartItemIndex === null) {
+      alert('Please select a cart item first');
+      return;
+    }
+    
     if (!printQualitySettings.edge_feather) {
       alert('Please enable "Edge Feathering" first');
       return;
@@ -375,9 +598,9 @@ const Admin = () => {
 
     try {
       // applyBothEffects always starts from original300DpiImage and applies both effects
-      const processedImage = await applyBothEffects();
+      const processedImageUrl = await applyBothEffects();
       
-      if (processedImage) {
+      if (processedImageUrl) {
         const featherValue = printQualitySettings.feather_edge_percent || 0;
         const cornerRadiusPercent = printQualitySettings.soft_corners ? (printQualitySettings.corner_radius_percent || 0) : 0;
         const cornerRadiusDisplay = cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%';
@@ -390,12 +613,8 @@ const Admin = () => {
         
         console.log(`✅ Effects applied: ${effectsText}`);
         
-        setProcessedImage({
-          success: true,
-          screenshot: processedImage,
-          effect: "feather",
-          effectsText: effectsText
-        });
+        // Save processed image for this cart item
+        saveProcessedImage(processedImageUrl);
       } else {
         throw new Error('Failed to apply effects - no image returned');
       }
@@ -409,6 +628,11 @@ const Admin = () => {
 
   // STEP 3: Apply Corner Radius (applies both effects together)
   const applyCornerRadius = async () => {
+    if (selectedCartItemIndex === null) {
+      alert('Please select a cart item first');
+      return;
+    }
+    
     if (!printQualitySettings.soft_corners) {
       alert('Please enable "Rounded Corners" first');
       return;
@@ -428,9 +652,17 @@ const Admin = () => {
 
     try {
       // applyBothEffects always starts from original300DpiImage and applies both effects
-      const processedImage = await applyBothEffects();
+      const processedImageUrl = await applyBothEffects();
       
-      if (processedImage) {
+      if (processedImageUrl) {
+        // Validate image URL format
+        if (!processedImageUrl.startsWith('data:image')) {
+          console.error('Invalid image URL format:', processedImageUrl?.substring(0, 100));
+          throw new Error('Invalid image data received from server');
+        }
+        
+        console.log('✅ Corner radius applied successfully, image URL length:', processedImageUrl.length);
+        
         const cornerRadiusPercent = printQualitySettings.corner_radius_percent || 0;
         const cornerRadiusDisplay = cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%';
         const featherValue = printQualitySettings.edge_feather ? (printQualitySettings.feather_edge_percent || 0) : 0;
@@ -443,12 +675,8 @@ const Admin = () => {
         
         console.log(`✅ Effects applied: ${effectsText}`);
         
-        setProcessedImage({
-          success: true,
-          screenshot: processedImage,
-          effect: "corner_radius",
-          effectsText: effectsText
-        });
+        // Save processed image for this cart item
+        saveProcessedImage(processedImageUrl);
       } else {
         throw new Error('Failed to apply effects - no image returned');
       }
@@ -490,6 +718,25 @@ const Admin = () => {
     } catch (error) {
       console.error('Error assigning order:', error);
       alert('Failed to assign order');
+    }
+  };
+
+  const handleDeleteOrder = async (queueId, orderId) => {
+    if (!confirm(`Are you sure you want to delete order ${orderId ? orderId.slice(0, 8) : queueId}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const result = await AdminService.deleteOrder(queueId);
+      if (result.success) {
+        alert('Order deleted successfully');
+        loadProcessingQueue();
+      } else {
+        alert(`Failed to delete order: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert('Failed to delete order');
     }
   };
 
@@ -701,11 +948,16 @@ const Admin = () => {
     <div className="admin-container">
         <div className="admin-header">
           <h1>
-            {isFullAdmin ? 'Admin Portal - UPDATED VERSION 2025' : 'Order Processing Portal'}
+            {isMasterAdmin ? 'Admin Portal - UPDATED VERSION 2025' : 'Order Processing Portal'}
           </h1>
           <div className="admin-user-info">
             <span>
               Welcome, {user?.user_metadata?.name || user?.email}
+              {isMasterAdmin && (
+                <span style={{ fontSize: '14px', color: '#ff6b6b', marginLeft: '10px', fontWeight: 'bold' }}>
+                  (Master Admin)
+                </span>
+              )}
               {isOrderProcessingAdmin && !isFullAdmin && (
                 <span style={{ fontSize: '14px', color: '#999', marginLeft: '10px' }}>
                   (Order Processing Admin)
@@ -762,6 +1014,14 @@ const Admin = () => {
               📦 Order Processing
             </button>
           )}
+          {isMasterAdmin && (
+            <button 
+              className={`admin-tab ${activeTab === 'admin-management' ? 'active' : ''}`}
+              onClick={() => setActiveTab('admin-management')}
+            >
+              👥 Admin Management
+            </button>
+          )}
           {isFullAdmin && (
             <button 
               className={`admin-tab ${activeTab === 'settings' ? 'active' : ''}`}
@@ -773,7 +1033,7 @@ const Admin = () => {
         </div>
 
         <div className="admin-main">
-          {activeTab === 'dashboard' && isFullAdmin && (
+          {activeTab === 'dashboard' && isMasterAdmin && (
             <div className="admin-dashboard">
               <div className="stats-grid">
                 <div className="stat-card">
@@ -819,7 +1079,7 @@ const Admin = () => {
             </div>
           )}
 
-          {activeTab === 'users' && isFullAdmin && (
+          {activeTab === 'users' && isMasterAdmin && (
             <div className="admin-users">
               <div className="admin-filters">
                 <input
@@ -954,7 +1214,7 @@ const Admin = () => {
             </div>
           )}
 
-          {activeTab === 'videos' && isFullAdmin && (
+          {activeTab === 'videos' && isMasterAdmin && (
             <div className="admin-videos">
               <div className="admin-filters">
                 <input
@@ -1042,7 +1302,7 @@ const Admin = () => {
             </div>
           )}
 
-          {activeTab === 'subscriptions' && isFullAdmin && (
+          {activeTab === 'subscriptions' && isMasterAdmin && (
             <div className="admin-subscriptions">
               <h3>Subscription Management</h3>
               <div className="admin-filters">
@@ -1121,7 +1381,7 @@ const Admin = () => {
             </div>
           )}
 
-          {activeTab === 'payouts' && isFullAdmin && (
+          {activeTab === 'payouts' && isMasterAdmin && (
             <div className="admin-payouts">
               <div className="payouts-header">
                 <h3>💰 Payout Management</h3>
@@ -1263,11 +1523,15 @@ const Admin = () => {
             </div>
           )}
 
-          {activeTab === 'order-processing' && (isFullAdmin || isOrderProcessingAdmin) && (
+          {activeTab === 'order-processing' && (isMasterAdmin || isOrderProcessingAdmin) && (
             <div className="admin-order-processing">
               <div className="order-processing-header">
                 <h3>📦 Order Processing Queue</h3>
-                <p>Manage order processing queue and assign orders to workers</p>
+                <p>
+                  {isOrderProcessingAdmin && !isMasterAdmin 
+                    ? 'View and process your assigned orders' 
+                    : 'Manage order processing queue and assign orders to workers'}
+                </p>
               </div>
 
               {queueLoading ? (
@@ -1292,6 +1556,22 @@ const Admin = () => {
                     </select>
                     <button onClick={loadProcessingQueue} className="refresh-btn">Refresh</button>
                   </div>
+                  
+                  {isOrderProcessingAdmin && !isMasterAdmin && processingQueue.length === 0 && !queueLoading && (
+                    <div style={{ 
+                      padding: '20px', 
+                      background: '#f8f9fa', 
+                      borderRadius: '8px', 
+                      marginTop: '20px',
+                      textAlign: 'center',
+                      color: '#666'
+                    }}>
+                      <p>You don't have any assigned orders at the moment.</p>
+                      <p style={{ fontSize: '14px', marginTop: '8px' }}>
+                        Orders will appear here once they are assigned to you by a Master Admin.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="processing-queue-section">
                     <h4>Processing Queue ({processingQueue.length} orders)</h4>
@@ -1307,7 +1587,7 @@ const Admin = () => {
                               <th>Order ID</th>
                               <th>Status</th>
                               <th>Priority</th>
-                              <th>Assigned To</th>
+                              {isMasterAdmin && <th>Assigned To</th>}
                               <th>Created</th>
                               <th>Actions</th>
                             </tr>
@@ -1335,18 +1615,20 @@ const Admin = () => {
                                     {queueItem.priority === 1 && <span style={{ color: '#ff9800', fontWeight: 'bold' }}>High</span>}
                                     {queueItem.priority === 0 && <span style={{ color: '#666' }}>Normal</span>}
                                   </td>
-                                  <td>
-                                    {queueItem.assigned_to_user ? (
-                                      <div>
-                                        <div>{queueItem.assigned_to_user.display_name || queueItem.assigned_to_user.email}</div>
-                                        <div style={{ fontSize: '11px', color: '#999' }}>
-                                          {queueItem.assigned_at ? new Date(queueItem.assigned_at).toLocaleDateString() : ''}
+                                  {isMasterAdmin && (
+                                    <td>
+                                      {queueItem.assigned_to_user ? (
+                                        <div>
+                                          <div>{queueItem.assigned_to_user.display_name || queueItem.assigned_to_user.email}</div>
+                                          <div style={{ fontSize: '11px', color: '#999' }}>
+                                            {queueItem.assigned_at ? new Date(queueItem.assigned_at).toLocaleDateString() : ''}
+                                          </div>
                                         </div>
-                                      </div>
-                                    ) : (
-                                      <span style={{ color: '#999', fontStyle: 'italic' }}>Unassigned</span>
-                                    )}
-                                  </td>
+                                      ) : (
+                                        <span style={{ color: '#999', fontStyle: 'italic' }}>Unassigned</span>
+                                      )}
+                                    </td>
+                                  )}
                                   <td>{new Date(queueItem.created_at).toLocaleDateString()}</td>
                                   <td>
                                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1354,11 +1636,13 @@ const Admin = () => {
                                         className="btn-view-details"
                                         onClick={() => {
                                           setSelectedOrder(order);
+                                          setSelectedCartItemIndex(null); // Reset selected item
                                           setProcessedImage(null);
-                                          setOriginal300DpiImage(null); // Reset original 300 DPI image when opening new order
+                                          setOriginal300DpiImage(null);
+                                          setProcessedImages({}); // Reset processed images for new order
                                           
-                                          // Try to load saved tool settings from cart item
-                                          let savedSettings = {
+                                          // Reset to default settings
+                                          setPrintQualitySettings({
                                             print_dpi: 300,
                                             edge_feather: false,
                                             soft_corners: false,
@@ -1368,30 +1652,9 @@ const Admin = () => {
                                             frame_enabled: false,
                                             frame_color: '#FF0000',
                                             frame_width: 10,
-                                            double_frame: false
-                                          };
-                                          
-                                          // Check if order has cart items with saved tool settings
-                                          if (order.cart && order.cart.length > 0) {
-                                            const firstItem = order.cart[0];
-                                            if (firstItem.toolSettings) {
-                                              savedSettings = {
-                                                print_dpi: 300,
-                                                edge_feather: firstItem.toolSettings.featherEdge > 0,
-                                                soft_corners: firstItem.toolSettings.cornerRadius > 0,
-                                                crop_area: { x: '', y: '', width: '', height: '' },
-                                                feather_edge_percent: firstItem.toolSettings.featherEdge || 0,
-                                                corner_radius_percent: firstItem.toolSettings.cornerRadius || 0,
-                                                frame_enabled: firstItem.toolSettings.frameEnabled || false,
-                                                frame_color: firstItem.toolSettings.frameColor || '#FF0000',
-                                                frame_width: firstItem.toolSettings.frameWidth || 10,
-                                                double_frame: firstItem.toolSettings.doubleFrame || false
-                                              };
-                                              console.log('📦 Loaded saved tool settings from cart item:', savedSettings);
-                                            }
-                                          }
-                                          
-                                          setPrintQualitySettings(savedSettings);
+                                            double_frame: false,
+                                            add_white_background: false
+                                          });
                                         }}
                                         style={{
                                           padding: '4px 12px',
@@ -1405,7 +1668,7 @@ const Admin = () => {
                                       >
                                         View Details
                                       </button>
-                                      {queueItem.status === 'pending' && (
+                                      {isMasterAdmin && queueItem.status === 'pending' && (
                                         <select
                                           className="worker-select"
                                           onChange={(e) => {
@@ -1423,6 +1686,23 @@ const Admin = () => {
                                             </option>
                                           ))}
                                         </select>
+                                      )}
+                                      {isMasterAdmin && (
+                                        <button
+                                          onClick={() => handleDeleteOrder(queueItem.id, order.order_id)}
+                                          style={{
+                                            padding: '4px 12px',
+                                            fontSize: '12px',
+                                            background: '#dc3545',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer'
+                                          }}
+                                          title="Delete order"
+                                        >
+                                          Delete
+                                        </button>
                                       )}
                                     </div>
                                     {queueItem.status === 'completed' && queueItem.notes && (
@@ -1486,36 +1766,154 @@ const Admin = () => {
                     )}
                   </div>
 
-                  <div className="workers-section" style={{ marginTop: '40px' }}>
-                    <h4>Active Workers ({workers.length})</h4>
-                    {workers.length === 0 ? (
-                      <div className="no-workers">
-                        <p>No active workers. Grant processor permissions to users in User Management.</p>
-                      </div>
-                    ) : (
-                      <div className="workers-list">
-                        {workers.map(worker => (
-                          <div key={worker.user_id} className="worker-card">
-                            <div>
-                              <strong>{worker.user?.display_name || worker.user?.email}</strong>
-                              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                                Max orders/day: {worker.max_orders_per_day || 50}
+                  {isMasterAdmin && (
+                    <div className="workers-section" style={{ marginTop: '40px' }}>
+                      <h4>Active Workers ({workers.length})</h4>
+                      {workers.length === 0 ? (
+                        <div className="no-workers">
+                          <p>No active workers. Grant processor permissions to users in User Management.</p>
+                        </div>
+                      ) : (
+                        <div className="workers-list">
+                          {workers.map(worker => (
+                            <div key={worker.user_id} className="worker-card">
+                              <div>
+                                <strong>{worker.user?.display_name || worker.user?.email}</strong>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                  Max orders/day: {worker.max_orders_per_day || 50}
+                                </div>
                               </div>
+                              <span className={`status-badge ${worker.is_active ? 'active' : 'inactive'}`}>
+                                {worker.is_active ? 'Active' : 'Inactive'}
+                              </span>
                             </div>
-                            <span className={`status-badge ${worker.is_active ? 'active' : 'inactive'}`}>
-                              {worker.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>
           )}
 
-          {activeTab === 'settings' && isFullAdmin && (
+          {activeTab === 'admin-management' && isMasterAdmin && (
+            <div className="admin-management">
+              <h3>👥 Admin Management</h3>
+              <p>Manage admin accounts and approve signup requests</p>
+
+              <div className="admin-section" style={{ marginTop: '30px' }}>
+                <h4>Pending Admin Signup Requests</h4>
+                {adminSignupRequests.filter(r => r.status === 'pending').length === 0 ? (
+                  <p>No pending signup requests</p>
+                ) : (
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Email</th>
+                        <th>Requested At</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminSignupRequests.filter(r => r.status === 'pending').map(request => (
+                        <tr key={request.id}>
+                          <td>{request.email}</td>
+                          <td>{new Date(request.requested_at).toLocaleString()}</td>
+                          <td>
+                            <select 
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleApproveAdminRequest(request.id, e.target.value);
+                                  e.target.value = ''; // Reset
+                                }
+                              }}
+                              defaultValue=""
+                              style={{ marginRight: '10px', padding: '6px 12px', borderRadius: '4px' }}
+                            >
+                              <option value="">Approve as...</option>
+                              <option value="master_admin">Master Admin</option>
+                              <option value="order_processing_admin">Order Processing Admin</option>
+                            </select>
+                            <button 
+                              onClick={() => handleRejectAdminRequest(request.id)}
+                              className="reject-btn"
+                            >
+                              Reject
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="admin-section" style={{ marginTop: '40px' }}>
+                <h4>All Admins ({allAdmins.length})</h4>
+                {allAdmins.length === 0 ? (
+                  <p>No admins found</p>
+                ) : (
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Email</th>
+                        <th>Display Name</th>
+                        <th>Role</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allAdmins.map(admin => (
+                        <tr key={admin.id}>
+                          <td>{admin.email}</td>
+                          <td>{admin.display_name || 'N/A'}</td>
+                          <td>
+                            <select 
+                              value={admin.admin_role || 'admin'} 
+                              onChange={(e) => handleUpdateAdminRole(admin.id, e.target.value)}
+                              disabled={admin.admin_role === 'master_admin' && admin.id !== user?.id}
+                            >
+                              <option value="master_admin">Master Admin</option>
+                              <option value="order_processing_admin">Order Processing Admin</option>
+                            </select>
+                          </td>
+                          <td>{new Date(admin.created_at).toLocaleDateString()}</td>
+                          <td>
+                            {admin.admin_role !== 'master_admin' && (
+                              <button 
+                                onClick={() => handleRemoveAdminAccess(admin.id)}
+                                className="remove-btn"
+                              >
+                                Remove Access
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="admin-section" style={{ marginTop: '40px', padding: '20px', background: '#f5f5f5', borderRadius: '8px' }}>
+                <h4>Instructions for Setting Up New Admins</h4>
+                <ol style={{ lineHeight: '1.8' }}>
+                  <li>When you approve a signup request, the user will be created in the users table</li>
+                  <li>Go to Supabase Dashboard → Authentication → Users</li>
+                  <li>Click "Add User" and enter the approved email address</li>
+                  <li>Set a secure password and provide it to the admin</li>
+                  <li>The admin can then log in using their email and password</li>
+                </ol>
+                <p style={{ marginTop: '15px', fontWeight: 'bold' }}>
+                  Admin Signup Page: <a href="/admin-signup" target="_blank" rel="noopener noreferrer">/admin-signup</a>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && isMasterAdmin && (
             <div className="admin-settings">
               <h3>System Settings</h3>
               <div className="settings-section">
@@ -1612,13 +2010,61 @@ const Admin = () => {
                     <div 
                       key={idx} 
                       className="cart-item"
+                      onClick={() => {
+                        // Click cart item to select it for processing
+                        setSelectedCartItemIndex(idx);
+                        setProcessedImage(null);
+                        setOriginal300DpiImage(null);
+                        
+                        // Load saved tool settings from this cart item if available
+                        let savedSettings = {
+                          print_dpi: 300,
+                          edge_feather: false,
+                          soft_corners: false,
+                          crop_area: { x: '', y: '', width: '', height: '' },
+                          feather_edge_percent: 0,
+                          corner_radius_percent: 0,
+                          frame_enabled: false,
+                          frame_color: '#FF0000',
+                          frame_width: 10,
+                          double_frame: false,
+                          add_white_background: false
+                        };
+                        
+                        if (item.toolSettings) {
+                          savedSettings = {
+                            print_dpi: 300,
+                            edge_feather: item.toolSettings.featherEdge > 0,
+                            soft_corners: item.toolSettings.cornerRadius > 0,
+                            crop_area: { x: '', y: '', width: '', height: '' },
+                            feather_edge_percent: item.toolSettings.featherEdge || 0,
+                            corner_radius_percent: item.toolSettings.cornerRadius || 0,
+                            frame_enabled: item.toolSettings.frameEnabled || false,
+                            frame_color: item.toolSettings.frameColor || '#FF0000',
+                            frame_width: item.toolSettings.frameWidth || 10,
+                            double_frame: item.toolSettings.doubleFrame || false
+                          };
+                          console.log('📦 Loaded saved tool settings from cart item:', savedSettings);
+                        }
+                        
+                        setPrintQualitySettings(savedSettings);
+                        
+                        // If this item already has a processed image, load it
+                        if (processedImages[idx]) {
+                          setProcessedImage(processedImages[idx].processedImage);
+                          setOriginal300DpiImage(processedImages[idx].original300Dpi);
+                        }
+                      }}
                       style={{
-                        border: '1px solid #ddd',
+                        border: selectedCartItemIndex === idx ? '3px solid #007bff' : '1px solid #ddd',
                         borderRadius: '4px',
                         padding: '16px',
                         marginBottom: '12px',
                         display: 'flex',
-                        gap: '16px'
+                        gap: '16px',
+                        cursor: 'pointer',
+                        backgroundColor: selectedCartItemIndex === idx ? '#f0f8ff' : 'white',
+                        transition: 'all 0.2s ease'
                       }}
                     >
                       {(item.img || item.selected_screenshot) && (
@@ -1655,6 +2101,16 @@ const Admin = () => {
                         )}
                         {item.creatorName && (
                           <p style={{ margin: '4px 0', fontSize: '12px', color: '#666' }}><strong>Creator:</strong> {item.creatorName}</p>
+                        )}
+                        {selectedCartItemIndex === idx && (
+                          <p style={{ margin: '8px 0 0 0', fontSize: '14px', fontWeight: 'bold', color: '#007bff' }}>
+                            ✓ Selected for Processing
+                          </p>
+                        )}
+                        {processedImages[idx] && (
+                          <p style={{ margin: '8px 0 0 0', fontSize: '14px', fontWeight: 'bold', color: '#28a745' }}>
+                            ✓ Processed - Ready for Download
+                          </p>
                         )}
                       </div>
                     </div>
@@ -1695,58 +2151,60 @@ const Admin = () => {
                 )}
               </div>
 
-              {/* Print Quality Image Generator */}
-              {selectedOrder.cart && selectedOrder.cart.length > 0 && (
+              {/* Print Quality Image Generator - Only show when item is selected */}
+              {selectedCartItemIndex !== null && selectedOrder.cart && selectedOrder.cart[selectedCartItemIndex] && (
                 <div style={{ marginTop: '30px', padding: '20px', background: '#f8f9fa', borderRadius: '8px', border: '2px solid #007bff' }}>
                   <h3 style={{ marginTop: 0, color: '#007bff' }}>🖨️ Print Quality Image Generator</h3>
                   <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
-                    Process images to 300 DPI print quality and apply enhancement tools
+                    Processing: <strong>{selectedOrder.cart[selectedCartItemIndex].product}</strong>
                   </p>
+                  
+                  {(() => {
+                    const item = selectedOrder.cart[selectedCartItemIndex];
+                    return (
+                      <div style={{ marginBottom: '20px', padding: '16px', background: 'white', borderRadius: '4px', border: '1px solid #ddd' }}>
+                        <h4 style={{ marginTop: 0 }}>Item {selectedCartItemIndex + 1}: {item.product}</h4>
+                        
+                        {(item.img || item.selected_screenshot) && (
+                          <>
+                            <div style={{ marginBottom: '16px' }}>
+                              <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>Original Screenshot:</p>
+                              <img 
+                                src={item.img || item.selected_screenshot} 
+                                alt={item.product}
+                                style={{
+                                  maxWidth: '300px',
+                                  maxHeight: '300px',
+                                  border: '1px solid #ddd',
+                                  borderRadius: '4px'
+                                }}
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            </div>
 
-                  {selectedOrder.cart.map((item, idx) => (
-                    <div key={idx} style={{ marginBottom: '20px', padding: '16px', background: 'white', borderRadius: '4px', border: '1px solid #ddd' }}>
-                      <h4 style={{ marginTop: 0 }}>Item {idx + 1}: {item.product}</h4>
-                      
-                      {(item.img || item.selected_screenshot) && (
-                        <>
-                          <div style={{ marginBottom: '16px' }}>
-                            <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>Original Screenshot:</p>
-                            <img 
-                              src={item.img || item.selected_screenshot} 
-                              alt={item.product}
-                              style={{
-                                maxWidth: '300px',
-                                maxHeight: '300px',
-                                border: '1px solid #ddd',
-                                borderRadius: '4px'
-                              }}
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          </div>
+                            <div style={{ marginBottom: '16px' }}>
+                              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                                Print DPI:
+                              </label>
+                              <select
+                                value={printQualitySettings.print_dpi}
+                                onChange={(e) => setPrintQualitySettings({...printQualitySettings, print_dpi: parseInt(e.target.value)})}
+                                style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd', width: '200px' }}
+                              >
+                                <option value={300}>300 DPI (Standard Print)</option>
+                                <option value={150}>150 DPI (Lower Quality)</option>
+                              </select>
+                            </div>
 
-                          <div style={{ marginBottom: '16px' }}>
-                            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                              Print DPI:
-                            </label>
-                            <select
-                              value={printQualitySettings.print_dpi}
-                              onChange={(e) => setPrintQualitySettings({...printQualitySettings, print_dpi: parseInt(e.target.value)})}
-                              style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd', width: '200px' }}
-                            >
-                              <option value={300}>300 DPI (Standard Print)</option>
-                              <option value={150}>150 DPI (Lower Quality)</option>
-                            </select>
-                          </div>
-
-                          {/* STEP 1: Create 300 DPI Image */}
-                          <div style={{ background: '#e8f5e8', padding: '20px', borderRadius: '10px', margin: '20px 0', border: '3px solid #28a745', textAlign: 'center' }}>
-                            <h2 style={{ marginTop: 0, color: '#28a745', fontSize: '24px' }}>🎯 STEP 1: Create 300 DPI Image</h2>
-                            <p style={{ color: '#666', marginBottom: '20px', fontSize: '16px' }}>Generate high-resolution 300 DPI image for print quality</p>
-                            <button
-                              type="button"
-                              onClick={() => generate300DpiImage(item)}
+                            {/* STEP 1: Create 300 DPI Image */}
+                            <div style={{ background: '#e8f5e8', padding: '20px', borderRadius: '10px', margin: '20px 0', border: '3px solid #28a745', textAlign: 'center' }}>
+                              <h2 style={{ marginTop: 0, color: '#28a745', fontSize: '24px' }}>🎯 STEP 1: Create 300 DPI Image</h2>
+                              <p style={{ color: '#666', marginBottom: '20px', fontSize: '16px' }}>Generate high-resolution 300 DPI image for print quality</p>
+                              <button
+                                type="button"
+                                onClick={() => generate300DpiImage()}
                               disabled={step1Processing}
                               style={{
                                 background: step1Processing ? '#ccc' : '#28a745',
@@ -1773,48 +2231,14 @@ const Admin = () => {
                                 <input
                                   type="checkbox"
                                   checked={printQualitySettings.edge_feather}
-                                  onChange={async (e) => {
+                                  onChange={(e) => {
                                     const newValue = e.target.checked;
-                                    const updatedSettings = {...printQualitySettings, edge_feather: newValue, feather_edge_percent: newValue ? printQualitySettings.feather_edge_percent : 0};
-                                    setPrintQualitySettings(updatedSettings);
-                                    
-                                    // If unchecked, re-apply remaining effects or reset to base
-                                    if (!newValue && original300DpiImage) {
-                                      // Check if any other effects are enabled
-                                      const hasOtherEffects = updatedSettings.soft_corners || updatedSettings.frame_enabled;
-                                      
-                                      if (hasOtherEffects) {
-                                        // Re-apply effects without feather using updated settings
-                                        try {
-                                          const processedImage = await applyBothEffects(updatedSettings);
-                                          if (processedImage) {
-                                            setProcessedImage({
-                                              success: true,
-                                              screenshot: processedImage,
-                                              effect: "reset",
-                                              effectsText: "Feather effect removed"
-                                            });
-                                          }
-                                        } catch (error) {
-                                          console.error('Error resetting feather effect:', error);
-                                          // If error, reset to original 300 DPI image
-                                          setProcessedImage({
-                                            success: true,
-                                            screenshot: original300DpiImage,
-                                            effect: "reset",
-                                            effectsText: "Reset to base image"
-                                          });
-                                        }
-                                      } else {
-                                        // No effects enabled, reset to original 300 DPI image
-                                        setProcessedImage({
-                                          success: true,
-                                          screenshot: original300DpiImage,
-                                          effect: "reset",
-                                          effectsText: "Reset to base image"
-                                        });
-                                      }
-                                    }
+                                    setPrintQualitySettings({
+                                      ...printQualitySettings, 
+                                      edge_feather: newValue, 
+                                      feather_edge_percent: newValue ? printQualitySettings.feather_edge_percent : 0
+                                    });
+                                    // Auto-apply useEffect will handle the processing
                                   }}
                                   style={{ transform: 'scale(1.2)' }}
                                 />
@@ -1843,25 +2267,10 @@ const Admin = () => {
                                   <div style={{ marginTop: '5px', fontWeight: 'bold', color: '#17a2b8' }}>
                                     {printQualitySettings.feather_edge_percent}%
                                   </div>
+                                  <div style={{ fontSize: '12px', color: '#17a2b8', marginTop: '8px', fontStyle: 'italic' }}>
+                                    ✓ Effects apply automatically when you adjust the slider
+                                  </div>
                                 </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() => applyFeatherEffect()}
-                                  disabled={step2Processing || !original300DpiImage}
-                                  style={{
-                                    background: (step2Processing || !original300DpiImage) ? '#ccc' : '#17a2b8',
-                                    color: 'white',
-                                    border: 'none',
-                                    padding: '10px 20px',
-                                    borderRadius: '5px',
-                                    cursor: (step2Processing || !original300DpiImage) ? 'not-allowed' : 'pointer',
-                                    fontWeight: 'bold',
-                                    marginTop: '10px'
-                                  }}
-                                >
-                                  {step2Processing ? 'Applying Effects...' : 'Apply Feather Effect'}
-                                </button>
                               </>
                             )}
                           </div>
@@ -1875,48 +2284,14 @@ const Admin = () => {
                                 <input
                                   type="checkbox"
                                   checked={printQualitySettings.soft_corners}
-                                  onChange={async (e) => {
+                                  onChange={(e) => {
                                     const newValue = e.target.checked;
-                                    const updatedSettings = {...printQualitySettings, soft_corners: newValue, corner_radius_percent: newValue ? printQualitySettings.corner_radius_percent : 0};
-                                    setPrintQualitySettings(updatedSettings);
-                                    
-                                    // If unchecked, re-apply remaining effects or reset to base
-                                    if (!newValue && original300DpiImage) {
-                                      // Check if any other effects are enabled
-                                      const hasOtherEffects = updatedSettings.edge_feather || updatedSettings.frame_enabled;
-                                      
-                                      if (hasOtherEffects) {
-                                        // Re-apply effects without corner radius using updated settings
-                                        try {
-                                          const processedImage = await applyBothEffects(updatedSettings);
-                                          if (processedImage) {
-                                            setProcessedImage({
-                                              success: true,
-                                              screenshot: processedImage,
-                                              effect: "reset",
-                                              effectsText: "Corner radius effect removed"
-                                            });
-                                          }
-                                        } catch (error) {
-                                          console.error('Error resetting corner radius effect:', error);
-                                          // If error, reset to original 300 DPI image
-                                          setProcessedImage({
-                                            success: true,
-                                            screenshot: original300DpiImage,
-                                            effect: "reset",
-                                            effectsText: "Reset to base image"
-                                          });
-                                        }
-                                      } else {
-                                        // No effects enabled, reset to original 300 DPI image
-                                        setProcessedImage({
-                                          success: true,
-                                          screenshot: original300DpiImage,
-                                          effect: "reset",
-                                          effectsText: "Reset to base image"
-                                        });
-                                      }
-                                    }
+                                    setPrintQualitySettings({
+                                      ...printQualitySettings, 
+                                      soft_corners: newValue, 
+                                      corner_radius_percent: newValue ? printQualitySettings.corner_radius_percent : 0
+                                    });
+                                    // Auto-apply useEffect will handle the processing
                                   }}
                                   style={{ transform: 'scale(1.2)' }}
                                 />
@@ -1945,25 +2320,10 @@ const Admin = () => {
                                   <div style={{ marginTop: '5px', fontWeight: 'bold', color: '#28a745' }}>
                                     {printQualitySettings.corner_radius_percent === 100 ? 'Circle' : printQualitySettings.corner_radius_percent + '%'}
                                   </div>
+                                  <div style={{ fontSize: '12px', color: '#28a745', marginTop: '8px', fontStyle: 'italic' }}>
+                                    ✓ Effects apply automatically when you adjust the slider
+                                  </div>
                                 </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() => applyCornerRadius()}
-                                  disabled={step3Processing || !original300DpiImage}
-                                  style={{
-                                    background: (step3Processing || !original300DpiImage) ? '#ccc' : '#28a745',
-                                    color: 'white',
-                                    border: 'none',
-                                    padding: '10px 20px',
-                                    borderRadius: '5px',
-                                    cursor: (step3Processing || !original300DpiImage) ? 'not-allowed' : 'pointer',
-                                    fontWeight: 'bold',
-                                    marginTop: '10px'
-                                  }}
-                                >
-                                  {step3Processing ? 'Applying Effects...' : 'Apply Corner Radius'}
-                                </button>
                               </>
                             )}
                           </div>
@@ -1977,48 +2337,13 @@ const Admin = () => {
                                 <input
                                   type="checkbox"
                                   checked={printQualitySettings.frame_enabled}
-                                  onChange={async (e) => {
+                                  onChange={(e) => {
                                     const newValue = e.target.checked;
-                                    const updatedSettings = {...printQualitySettings, frame_enabled: newValue};
-                                    setPrintQualitySettings(updatedSettings);
-                                    
-                                    // If unchecked, re-apply remaining effects or reset to base
-                                    if (!newValue && original300DpiImage) {
-                                      // Check if any other effects are enabled
-                                      const hasOtherEffects = updatedSettings.edge_feather || updatedSettings.soft_corners;
-                                      
-                                      if (hasOtherEffects) {
-                                        // Re-apply effects without frame using updated settings
-                                        try {
-                                          const processedImage = await applyBothEffects(updatedSettings);
-                                          if (processedImage) {
-                                            setProcessedImage({
-                                              success: true,
-                                              screenshot: processedImage,
-                                              effect: "reset",
-                                              effectsText: "Frame effect removed"
-                                            });
-                                          }
-                                        } catch (error) {
-                                          console.error('Error resetting frame effect:', error);
-                                          // If error, reset to original 300 DPI image
-                                          setProcessedImage({
-                                            success: true,
-                                            screenshot: original300DpiImage,
-                                            effect: "reset",
-                                            effectsText: "Reset to base image"
-                                          });
-                                        }
-                                      } else {
-                                        // No effects enabled, reset to original 300 DPI image
-                                        setProcessedImage({
-                                          success: true,
-                                          screenshot: original300DpiImage,
-                                          effect: "reset",
-                                          effectsText: "Reset to base image"
-                                        });
-                                      }
-                                    }
+                                    setPrintQualitySettings({
+                                      ...printQualitySettings, 
+                                      frame_enabled: newValue
+                                    });
+                                    // Auto-apply useEffect will handle the processing
                                   }}
                                   style={{ transform: 'scale(1.2)' }}
                                 />
@@ -2080,9 +2405,29 @@ const Admin = () => {
                                   </div>
                                 </div>
 
+                                <div style={{ marginTop: '20px', padding: '15px', background: '#f0f8ff', borderRadius: '8px', border: '1px solid #4a90e2' }}>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 'bold', color: '#4a90e2' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={printQualitySettings.add_white_background}
+                                      onChange={(e) => setPrintQualitySettings({...printQualitySettings, add_white_background: e.target.checked})}
+                                      style={{ transform: 'scale(1.2)' }}
+                                    />
+                                    Add White Background for Printful
+                                  </label>
+                                  <div style={{ fontSize: '12px', color: '#666', marginTop: '8px', marginLeft: '28px' }}>
+                                    Adds a solid white background behind the design. Recommended for Printful to avoid transparency warnings. Preserves all effects (feather, corner radius, frame).
+                                  </div>
+                                </div>
+
                                 <button
                                   type="button"
                                   onClick={async () => {
+                                    if (selectedCartItemIndex === null) {
+                                      alert('Please select a cart item first');
+                                      return;
+                                    }
+                                    
                                     if (!original300DpiImage) {
                                       alert('Please complete Step 1 (Generate 300 DPI Image) first');
                                       return;
@@ -2092,9 +2437,9 @@ const Admin = () => {
                                     setStep3Processing(true);
 
                                     try {
-                                      const processedImage = await applyBothEffects();
+                                      const processedImageUrl = await applyBothEffects();
                                       
-                                      if (processedImage) {
+                                      if (processedImageUrl) {
                                         const cornerRadiusPercent = printQualitySettings.soft_corners ? (printQualitySettings.corner_radius_percent || 0) : 0;
                                         const cornerRadiusDisplay = cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%';
                                         const featherValue = printQualitySettings.edge_feather ? (printQualitySettings.feather_edge_percent || 0) : 0;
@@ -2107,12 +2452,8 @@ const Admin = () => {
                                         
                                         console.log(`✅ Effects applied: ${effectsText}`);
                                         
-                                        setProcessedImage({
-                                          success: true,
-                                          screenshot: processedImage,
-                                          effect: "frame",
-                                          effectsText: effectsText
-                                        });
+                                        // Save processed image for this cart item
+                                        saveProcessedImage(processedImageUrl);
                                       } else {
                                         throw new Error('Failed to apply effects - no image returned');
                                       }
@@ -2142,53 +2483,119 @@ const Admin = () => {
                             )}
                           </div>
 
-                          {processedImage && processedImage.success && (
-                            <div style={{ marginTop: '20px', padding: '16px', background: '#d4edda', borderRadius: '4px', border: '1px solid #c3e6cb' }}>
-                              <p style={{ color: '#155724', fontWeight: 'bold', marginBottom: '12px' }}>✅ Print Quality Image Generated!</p>
-                              <div style={{ marginBottom: '12px' }}>
-                                <img 
-                                  src={processedImage.screenshot} 
-                                  alt="Processed"
-                                  style={{
-                                    maxWidth: '400px',
-                                    maxHeight: '400px',
-                                    border: 'none',
-                                    borderRadius: '4px'
+                            {processedImage && processedImage.success && (
+                              <div style={{ marginTop: '20px', padding: '16px', background: '#d4edda', borderRadius: '4px', border: '1px solid #c3e6cb' }}>
+                                <p style={{ color: '#155724', fontWeight: 'bold', marginBottom: '12px' }}>✅ Image Processed Successfully!</p>
+                                <div style={{ marginBottom: '12px' }}>
+                                  {processedImage.screenshot ? (
+                                    <img 
+                                      src={processedImage.screenshot} 
+                                      alt="Processed"
+                                      onError={(e) => {
+                                        console.error('Image failed to load:', processedImage.screenshot?.substring(0, 100));
+                                        e.target.style.display = 'none';
+                                        alert('Error: Image failed to load. Please try again.');
+                                      }}
+                                      onLoad={() => {
+                                        console.log('Image loaded successfully');
+                                      }}
+                                      style={{
+                                        maxWidth: '400px',
+                                        maxHeight: '400px',
+                                        border: '1px solid #ddd',
+                                        borderRadius: '4px',
+                                        backgroundColor: '#f0f0f0'
+                                      }}
+                                    />
+                                  ) : (
+                                    <div style={{ padding: '20px', textAlign: 'center', color: '#dc3545' }}>
+                                      Error: No image data received
+                                    </div>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    // Save the processed image for this cart item
+                                    if (processedImage.screenshot) {
+                                      saveProcessedImage(processedImage.screenshot);
+                                      alert('Image saved! You can now process the next item or download all processed images below.');
+                                    }
                                   }}
-                                />
+                                  style={{
+                                    padding: '10px 20px',
+                                    background: '#28a745',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: 'bold',
+                                    marginRight: '10px'
+                                  }}
+                                >
+                                  ✓ Save & Continue to Next Item
+                                </button>
                               </div>
-                              {processedImage.dimensions && (
-                                <p style={{ fontSize: '14px', color: '#155724', marginBottom: '8px' }}>
-                                  <strong>Dimensions:</strong> {processedImage.dimensions.width} × {processedImage.dimensions.height} pixels
-                                  {processedImage.dimensions.dpi && ` | DPI: ${processedImage.dimensions.dpi}`}
-                                </p>
-                              )}
-                              {processedImage.file_size && (
-                                <p style={{ fontSize: '14px', color: '#155724', marginBottom: '12px' }}>
-                                  <strong>File Size:</strong> {(processedImage.file_size / 1024 / 1024).toFixed(2)} MB
-                                </p>
-                              )}
-                              <button
-                                onClick={downloadProcessedImage}
-                                style={{
-                                  padding: '10px 20px',
-                                  background: '#007bff',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '14px',
-                                  fontWeight: 'bold'
-                                }}
-                              >
-                                📥 Download Processed Image
-                              </button>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  ))}
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Display all processed images ready for download */}
+              {Object.keys(processedImages).length > 0 && (
+                <div style={{ marginTop: '30px', padding: '20px', background: '#e8f5e9', borderRadius: '8px', border: '2px solid #28a745' }}>
+                  <h3 style={{ marginTop: 0, color: '#28a745' }}>✅ Processed Images Ready for Download</h3>
+                  <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+                    All processed images are ready. Download each one individually for Printful.
+                  </p>
+                  
+                  {selectedOrder.cart.map((item, idx) => {
+                    if (!processedImages[idx]) return null;
+                    
+                    return (
+                      <div key={idx} style={{ marginBottom: '20px', padding: '16px', background: 'white', borderRadius: '4px', border: '1px solid #28a745' }}>
+                        <h4 style={{ marginTop: 0, color: '#28a745' }}>Item {idx + 1}: {item.product}</h4>
+                        <div style={{ marginBottom: '12px' }}>
+                          <img 
+                            src={processedImages[idx].processedImage} 
+                            alt={`Processed ${item.product}`}
+                            style={{
+                              maxWidth: '300px',
+                              maxHeight: '300px',
+                              border: '1px solid #ddd',
+                              borderRadius: '4px'
+                            }}
+                          />
+                        </div>
+                        <button
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = processedImages[idx].processedImage;
+                            link.download = `print-quality-${selectedOrder?.order_id || 'image'}-item${idx + 1}-${Date.now()}.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                          style={{
+                            padding: '10px 20px',
+                            background: '#007bff',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          📥 Download {item.product}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
