@@ -1,6 +1,6 @@
 export const products = {
   "unisexstapletshirt": {
-    "name": "Unisex Staple T-Shirt",
+    "name": "Unisex T-Shirt",
     "price": 31.99,
     "description": "Comfortable soft t-shirt with custom design",
     "image": "/static/images/guidontee.png",
@@ -50,7 +50,7 @@ export const products = {
           "Dark Grey Heather": true,
           "Red": true,
           "Kelly": true,
-          "Heather Midnight Navy": false,
+          "Heather Midnight Navy": true,
           "True Royal": false,
           "Asphalt": false,
           "Heather True Royal": false,
@@ -225,7 +225,7 @@ export const products = {
           "Athletic Heather": true,
           "Dark Grey Heather": true,
           "Red": true,
-          "Kelly": true,
+          "Kelly": false,
           "Heather Midnight Navy": false,
           "True Royal": false,
           "Asphalt": false,
@@ -435,6 +435,232 @@ export const products = {
       }
     }
   },
+  "mensfittedtshirt": {
+    "name": "Mens Fitted T-Shirt",
+    "price": 22.11,
+    "description": "The Next Level 3600 Men's Fitted T-Shirt combines softness with a modern, tailored fit",
+    "image": "/static/images/mensfittedtshirt.png",
+    "preview": "/static/images/mensfittedtshirtpreview.png",
+    "category": "t-shirts",
+    "variables": {
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL"
+      ],
+      "colors": [
+        "Black",
+        "White",
+        "Heather Grey",
+        "Midnight Navy",
+        "Royal Blue",
+        "Red",
+        "Desert Pink",
+        "Light Blue"
+      ],
+      "availability": {
+        "XS": {
+          "Black": true,
+          "White": true,
+          "Heather Grey": true,
+          "Midnight Navy": true,
+          "Royal Blue": true,
+          "Red": false,
+          "Desert Pink": false,
+          "Light Blue": false
+        },
+        "S": {
+          "Black": true,
+          "White": true,
+          "Heather Grey": true,
+          "Midnight Navy": true,
+          "Royal Blue": true,
+          "Red": true,
+          "Desert Pink": true,
+          "Light Blue": true
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "Heather Grey": true,
+          "Midnight Navy": true,
+          "Royal Blue": true,
+          "Red": true,
+          "Desert Pink": true,
+          "Light Blue": true
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "Heather Grey": true,
+          "Midnight Navy": true,
+          "Royal Blue": true,
+          "Red": true,
+          "Desert Pink": true,
+          "Light Blue": true
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+          "Heather Grey": true,
+          "Midnight Navy": true,
+          "Royal Blue": true,
+          "Red": true,
+          "Desert Pink": true,
+          "Light Blue": true
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+          "Heather Grey": true,
+          "Midnight Navy": true,
+          "Royal Blue": true,
+          "Red": true,
+          "Desert Pink": true,
+          "Light Blue": true
+        },
+        "XXXL": {
+          "Black": true,
+          "White": true,
+          "Heather Grey": true,
+          "Midnight Navy": true,
+          "Royal Blue": true,
+          "Red": true,
+          "Desert Pink": true,
+          "Light Blue": true
+        }
+      }
+    }
+  },
+  "unisexoversizedtshirt": {
+    "name": "Unisex Oversized T-Shirt",
+    "price": 24.02,
+    "description": "This oversized 100% cotton tee is made for streetwear drops and everyday fits",
+    "image": "/static/images/unisexoversizedtshirt.png",
+    "preview": "/static/images/unisexoversizedtshirtpreview.png",
+    "category": "t-shirts",
+    "variables": {
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL"
+      ],
+      "colors": [
+        "Washed Black",
+        "Washed Maroon",
+        "Washed Charcoal",
+        "Khaki",
+        "Light Washed Denim",
+        "Vintage White"
+      ],
+      "availability": {
+        "S": {
+          "Washed Black": true,
+          "Washed Maroon": true,
+          "Washed Charcoal": true,
+          "Khaki": true,
+          "Light Washed Denim": true,
+          "Vintage White": true
+        },
+        "M": {
+          "Washed Black": true,
+          "Washed Maroon": true,
+          "Washed Charcoal": true,
+          "Khaki": true,
+          "Light Washed Denim": true,
+          "Vintage White": true
+        },
+        "L": {
+          "Washed Black": true,
+          "Washed Maroon": true,
+          "Washed Charcoal": true,
+          "Khaki": true,
+          "Light Washed Denim": true,
+          "Vintage White": true
+        },
+        "XL": {
+          "Washed Black": true,
+          "Washed Maroon": true,
+          "Washed Charcoal": true,
+          "Khaki": true,
+          "Light Washed Denim": true,
+          "Vintage White": true
+        },
+        "XXL": {
+          "Washed Black": true,
+          "Washed Maroon": true,
+          "Washed Charcoal": true,
+          "Khaki": true,
+          "Light Washed Denim": true,
+          "Vintage White": true
+        },
+        "XXXL": {
+          "Washed Black": true,
+          "Washed Maroon": true,
+          "Washed Charcoal": true,
+          "Khaki": true,
+          "Light Washed Denim": true,
+          "Vintage White": true
+        }
+      }
+    }
+  },
+  "mensfittedlongsleeve": {
+    "name": "Men's Fitted Long Sleeve",
+    "price": 26.49,
+    "description": "This super-soft long-sleeved crew shirt will be a classic piece in your wardrobe",
+    "image": "/static/images/mensfittedlongsleeve.png",
+    "preview": "/static/images/mensfittedlongsleeveshirtpreview.png",
+    "category": "men's-shirts",
+    "variables": {
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ],
+      "colors": [
+        "Black",
+        "Heavy Metal",
+        "White"
+      ],
+      "availability": {
+        "S": {
+          "Black": true,
+          "Heavy Metal": true,
+          "White": true
+        },
+        "M": {
+          "Black": true,
+          "Heavy Metal": true,
+          "White": true
+        },
+        "L": {
+          "Black": true,
+          "Heavy Metal": true,
+          "White": true
+        },
+        "XL": {
+          "Black": true,
+          "Heavy Metal": true,
+          "White": true
+        },
+        "XXL": {
+          "Black": true,
+          "Heavy Metal": true,
+          "White": true
+        }
+      }
+    }
+  },
   "men'stanktop": {
     "name": "Men's Tank Top",
     "price": 24.23,
@@ -443,18 +669,64 @@ export const products = {
     "preview": "/static/images/randompreview.png",
     "category": "tank-tops",
     "variables": {
-  "sizes": [
-    "XS"
-  ],
-  "colors": [
-    "White"
-  ],
-  "availability": {
-    "XS": {
-      "White": true
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ],
+      "colors": [
+        "Black",
+        "White",
+        "True Royal",
+        "Navy",
+        "Red",
+        "Athletic Heather"
+      ],
+      "availability": {
+        "S": {
+          "Black": true,
+          "White": true,
+          "True Royal": true,
+          "Navy": true,
+          "Red": true,
+          "Athletic Heather": true
+        },
+        "M": {
+          "Black": true,
+          "White": true,
+          "True Royal": true,
+          "Navy": true,
+          "Red": true,
+          "Athletic Heather": true
+        },
+        "L": {
+          "Black": true,
+          "White": true,
+          "True Royal": true,
+          "Navy": true,
+          "Red": true,
+          "Athletic Heather": true
+        },
+        "XL": {
+          "Black": true,
+          "White": true,
+          "True Royal": true,
+          "Navy": true,
+          "Red": true,
+          "Athletic Heather": true
+        },
+        "XXL": {
+          "Black": true,
+          "White": true,
+          "True Royal": true,
+          "Navy": true,
+          "Red": true,
+          "Athletic Heather": true
+        }
+      }
     }
-  }
-}
   },
   "unisexhoodie": {
     "name": "Unisex Hoodie",
@@ -464,38 +736,171 @@ export const products = {
     "preview": "/static/images/testedpreview.png",
     "category": "hoodies",
     "variables": {
-  "sizes": [
-    "S",
-    "M",
-    "L",
-    "XL",
-    "XXL",
-    "XXXL"
-  ],
-  "colors": [
-    "White"
-  ],
-  "availability": {
-    "S": {
-      "White": true
-    },
-    "M": {
-      "White": true
-    },
-    "L": {
-      "White": true
-    },
-    "XL": {
-      "White": true
-    },
-    "XXL": {
-      "White": true
-    },
-    "XXXL": {
-      "White": true
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL",
+        "XXXL"
+      ],
+      "colors": [
+        "Black",
+        "Maroon",
+        "Charcoal Heather",
+        "White",
+        "Carbon Grey",
+        "Navy Blazer",
+        "Vintage Black",
+        "Forest Green",
+        "Military Green",
+        "Team Red",
+        "Dusty Rose",
+        "Sky Blue",
+        "Purple",
+        "Team Royal",
+        "Adobe",
+        "Latte",
+        "Khaki",
+        "Team Gold",
+        "Carolina Blue",
+        "Light Pink"
+      ],
+      "availability": {
+        "S": {
+          "Black": true,
+          "Maroon": true,
+          "Charcoal Heather": true,
+          "White": true,
+          "Carbon Grey": true,
+          "Navy Blazer": true,
+          "Vintage Black": true,
+          "Forest Green": true,
+          "Military Green": true,
+          "Team Red": true,
+          "Dusty Rose": true,
+          "Sky Blue": true,
+          "Purple": true,
+          "Team Royal": true,
+          "Adobe": true,
+          "Latte": true,
+          "Khaki": true,
+          "Team Gold": true,
+          "Carolina Blue": true,
+          "Light Pink": true
+        },
+        "M": {
+          "Black": true,
+          "Maroon": true,
+          "Charcoal Heather": true,
+          "White": true,
+          "Carbon Grey": true,
+          "Navy Blazer": true,
+          "Vintage Black": true,
+          "Forest Green": true,
+          "Military Green": true,
+          "Team Red": true,
+          "Dusty Rose": true,
+          "Sky Blue": true,
+          "Purple": true,
+          "Team Royal": true,
+          "Adobe": true,
+          "Latte": true,
+          "Khaki": true,
+          "Team Gold": true,
+          "Carolina Blue": true,
+          "Light Pink": true
+        },
+        "L": {
+          "Black": true,
+          "Maroon": true,
+          "Charcoal Heather": true,
+          "White": true,
+          "Carbon Grey": true,
+          "Navy Blazer": true,
+          "Vintage Black": true,
+          "Forest Green": true,
+          "Military Green": true,
+          "Team Red": true,
+          "Dusty Rose": true,
+          "Sky Blue": true,
+          "Purple": true,
+          "Team Royal": true,
+          "Adobe": true,
+          "Latte": true,
+          "Khaki": true,
+          "Team Gold": true,
+          "Carolina Blue": true,
+          "Light Pink": true
+        },
+        "XL": {
+          "Black": true,
+          "Maroon": true,
+          "Charcoal Heather": true,
+          "White": true,
+          "Carbon Grey": true,
+          "Navy Blazer": true,
+          "Vintage Black": true,
+          "Forest Green": true,
+          "Military Green": true,
+          "Team Red": true,
+          "Dusty Rose": true,
+          "Sky Blue": true,
+          "Purple": true,
+          "Team Royal": true,
+          "Adobe": true,
+          "Latte": true,
+          "Khaki": true,
+          "Team Gold": true,
+          "Carolina Blue": true,
+          "Light Pink": true
+        },
+        "XXL": {
+          "Black": true,
+          "Maroon": true,
+          "Charcoal Heather": true,
+          "White": true,
+          "Carbon Grey": true,
+          "Navy Blazer": true,
+          "Vintage Black": true,
+          "Forest Green": true,
+          "Military Green": true,
+          "Team Red": true,
+          "Dusty Rose": true,
+          "Sky Blue": true,
+          "Purple": true,
+          "Team Royal": true,
+          "Adobe": true,
+          "Latte": true,
+          "Khaki": true,
+          "Team Gold": true,
+          "Carolina Blue": true,
+          "Light Pink": true
+        },
+        "XXXL": {
+          "Black": true,
+          "Maroon": true,
+          "Charcoal Heather": true,
+          "White": true,
+          "Carbon Grey": true,
+          "Navy Blazer": true,
+          "Vintage Black": true,
+          "Forest Green": true,
+          "Military Green": true,
+          "Team Red": true,
+          "Dusty Rose": true,
+          "Sky Blue": true,
+          "Purple": true,
+          "Team Royal": true,
+          "Adobe": true,
+          "Latte": true,
+          "Khaki": true,
+          "Team Gold": true,
+          "Carolina Blue": true,
+          "Light Pink": true
+        }
+      }
     }
-  }
-}
   },
   "croppedhoodie": {
     "name": "Cropped Hoodie",
@@ -561,56 +966,41 @@ export const products = {
     "category": "hoodies",
     "variables": {
       "sizes": [
-        "XS",
         "S",
         "M",
         "L",
         "XL",
         "XXL",
-        "XXXL",
-        "XXXXL",
-        "XXXXXL"
+        "XXXL"
       ],
       "colors": [
         "Black",
-        "Gray"
+        "Light Steel"
       ],
       "availability": {
-        "XS": {
-          "Black": true,
-          "Gray": true
-        },
         "S": {
           "Black": true,
-          "Gray": true
+          "Light Steel": true
         },
         "M": {
           "Black": true,
-          "Gray": true
+          "Light Steel": true
         },
         "L": {
           "Black": true,
-          "Gray": true
+          "Light Steel": true
         },
         "XL": {
           "Black": true,
-          "Gray": true
+          "Light Steel": true
         },
         "XXL": {
           "Black": true,
-          "Gray": true
+          "Light Steel": true
         },
         "XXXL": {
           "Black": true,
-          "Gray": true
-        },
-        "XXXXL": {
-          "Black": true,
-          "Gray": true
-        },
-        "XXXXXL": {
-          "Black": true,
-          "Gray": true
+          "Light Steel": true
         }
       }
     }
@@ -1003,47 +1393,112 @@ export const products = {
     "category": "kids",
     "variables": {
       "sizes": [
-        "XS",
         "S",
         "M",
-        "L"
+        "L",
+        "XL"
       ],
       "colors": [
+        "True Royal",
         "Black",
+        "Navy",
         "White",
-        "Gray",
-        "Pink"
+        "Maroon",
+        "Forest",
+        "Red",
+        "Dark Grey Heather",
+        "Berry",
+        "Heather Forest",
+        "Kelly",
+        "Heather Columbia Blue",
+        "Athletic Heather",
+        "Mustard",
+        "Pink",
+        "Heather Dust",
+        "Natural"
       ],
       "availability": {
-        "XS": {
-          "Black": true,
-          "White": true,
-          "Gray": true,
-          "Pink": true
-        },
         "S": {
+          "True Royal": true,
           "Black": true,
+          "Navy": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Maroon": true,
+          "Forest": true,
+          "Red": true,
+          "Dark Grey Heather": true,
+          "Berry": true,
+          "Heather Forest": true,
+          "Kelly": true,
+          "Heather Columbia Blue": true,
+          "Athletic Heather": true,
+          "Mustard": true,
+          "Pink": true,
+          "Heather Dust": true,
+          "Natural": true
         },
         "M": {
+          "True Royal": true,
           "Black": true,
+          "Navy": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Maroon": true,
+          "Forest": true,
+          "Red": true,
+          "Dark Grey Heather": true,
+          "Berry": true,
+          "Heather Forest": true,
+          "Kelly": true,
+          "Heather Columbia Blue": true,
+          "Athletic Heather": true,
+          "Mustard": true,
+          "Pink": true,
+          "Heather Dust": true,
+          "Natural": true
         },
         "L": {
+          "True Royal": true,
           "Black": true,
+          "Navy": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Maroon": true,
+          "Forest": true,
+          "Red": true,
+          "Dark Grey Heather": true,
+          "Berry": true,
+          "Heather Forest": true,
+          "Kelly": true,
+          "Heather Columbia Blue": true,
+          "Athletic Heather": true,
+          "Mustard": true,
+          "Pink": true,
+          "Heather Dust": true,
+          "Natural": true
+        },
+        "XL": {
+          "True Royal": true,
+          "Black": true,
+          "Navy": true,
+          "White": true,
+          "Maroon": true,
+          "Forest": true,
+          "Red": true,
+          "Dark Grey Heather": true,
+          "Berry": true,
+          "Heather Forest": true,
+          "Kelly": true,
+          "Heather Columbia Blue": true,
+          "Athletic Heather": true,
+          "Mustard": true,
+          "Pink": true,
+          "Heather Dust": true,
+          "Natural": true
         }
       }
     }
   },
   "kidshoodie": {
-    "name": "Kids Hoodie",
+    "name": "Youth Heavy Blend Hoodie",
     "price": 39.99,
     "description": "Warm kids hoodie",
     "image": "/static/images/kidhoodie.png",
@@ -1054,38 +1509,69 @@ export const products = {
         "XS",
         "S",
         "M",
-        "L"
+        "L",
+        "XL"
       ],
       "colors": [
         "Black",
+        "Navy",
+        "Royal",
         "White",
-        "Gray",
-        "Navy"
+        "Dark Heather",
+        "Carolina Blue",
+        "Light Pink",
+        "Sport Grey"
       ],
       "availability": {
         "XS": {
           "Black": true,
+          "Navy": true,
+          "Royal": true,
           "White": true,
-          "Gray": true,
-          "Navy": true
+          "Dark Heather": true,
+          "Carolina Blue": true,
+          "Light Pink": true,
+          "Sport Grey": true
         },
         "S": {
           "Black": true,
+          "Navy": true,
+          "Royal": true,
           "White": true,
-          "Gray": true,
-          "Navy": true
+          "Dark Heather": true,
+          "Carolina Blue": true,
+          "Light Pink": true,
+          "Sport Grey": true
         },
         "M": {
           "Black": true,
+          "Navy": true,
+          "Royal": true,
           "White": true,
-          "Gray": true,
-          "Navy": true
+          "Dark Heather": true,
+          "Carolina Blue": true,
+          "Light Pink": true,
+          "Sport Grey": true
         },
         "L": {
           "Black": true,
+          "Navy": true,
+          "Royal": true,
           "White": true,
-          "Gray": true,
-          "Navy": true
+          "Dark Heather": true,
+          "Carolina Blue": true,
+          "Light Pink": true,
+          "Sport Grey": true
+        },
+        "XL": {
+          "Black": true,
+          "Navy": true,
+          "Royal": true,
+          "White": true,
+          "Dark Heather": true,
+          "Carolina Blue": true,
+          "Light Pink": true,
+          "Sport Grey": true
         }
       }
     }
@@ -1099,41 +1585,318 @@ export const products = {
     "category": "kids",
     "variables": {
       "sizes": [
-        "XS",
         "S",
         "M",
         "L"
       ],
       "colors": [
         "Black",
+        "Navy",
+        "Red",
+        "Athletic Heather",
+        "White"
+      ],
+      "availability": {
+        "S": {
+          "Black": true,
+          "Navy": true,
+          "Red": true,
+          "Athletic Heather": true,
+          "White": true
+        },
+        "M": {
+          "Black": true,
+          "Navy": true,
+          "Red": true,
+          "Athletic Heather": true,
+          "White": true
+        },
+        "L": {
+          "Black": true,
+          "Navy": true,
+          "Red": true,
+          "Athletic Heather": true,
+          "White": true
+        }
+      }
+    }
+  },
+  "kidssweatshirt": {
+    "name": "Kids Sweatshirt",
+    "price": 24.99,
+    "description": "Comfortable kids sweatshirt",
+    "image": "/static/images/kidssweatshirt.png",
+    "preview": "/static/images/kidssweatshirtpreview.png",
+    "category": "kids",
+    "variables": {
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "colors": [
+        "Black",
+        "Navy",
+        "Dark Heather",
+        "Royal",
+        "Sport Grey",
         "White",
-        "Gray",
-        "Pink"
+        "Maroon",
+        "Red"
       ],
       "availability": {
         "XS": {
           "Black": true,
+          "Navy": true,
+          "Dark Heather": true,
+          "Royal": true,
+          "Sport Grey": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Maroon": true,
+          "Red": true
         },
         "S": {
           "Black": true,
+          "Navy": true,
+          "Dark Heather": true,
+          "Royal": true,
+          "Sport Grey": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Maroon": true,
+          "Red": true
         },
         "M": {
           "Black": true,
+          "Navy": true,
+          "Dark Heather": true,
+          "Royal": true,
+          "Sport Grey": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Maroon": true,
+          "Red": true
         },
         "L": {
           "Black": true,
+          "Navy": true,
+          "Dark Heather": true,
+          "Royal": true,
+          "Sport Grey": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Maroon": true,
+          "Red": true
+        },
+        "XL": {
+          "Black": true,
+          "Navy": true,
+          "Dark Heather": true,
+          "Royal": true,
+          "Sport Grey": true,
+          "White": true,
+          "Maroon": true,
+          "Red": true
+        }
+      }
+    }
+  },
+  "babybodysuit": {
+    "name": "Baby Body Suit",
+    "price": 19.99,
+    "description": "Comfortable baby bodysuit",
+    "image": "/static/images/babybodysuit.png",
+    "preview": "/static/images/babybodysuitpreview.png",
+    "category": "kids",
+    "variables": {
+      "sizes": [
+        "6M",
+        "12M",
+        "18M",
+        "24M"
+      ],
+      "colors": [
+        "Black",
+        "Heather",
+        "Pink",
+        "White"
+      ],
+      "availability": {
+        "6M": {
+          "Black": true,
+          "Heather": true,
+          "Pink": true,
+          "White": true
+        },
+        "12M": {
+          "Black": true,
+          "Heather": true,
+          "Pink": true,
+          "White": true
+        },
+        "18M": {
+          "Black": true,
+          "Heather": true,
+          "Pink": true,
+          "White": true
+        },
+        "24M": {
+          "Black": true,
+          "Heather": true,
+          "Pink": true,
+          "White": true
+        }
+      }
+    }
+  },
+  "toddlerjerseytshirt": {
+    "name": "Toddler Jersey T-Shirt",
+    "price": 18.99,
+    "description": "Comfortable toddler jersey t-shirt",
+    "image": "/static/images/toddlerjerseytshirt.png",
+    "preview": "/static/images/toddlerjerseytshirtpreview.png",
+    "category": "kids",
+    "variables": {
+      "sizes": [
+        "2",
+        "3",
+        "4",
+        "5/6"
+      ],
+      "colors": [
+        "Black",
+        "Navy",
+        "Hot Pink",
+        "Heather",
+        "Light Blue",
+        "White"
+      ],
+      "availability": {
+        "2": {
+          "Black": true,
+          "Navy": true,
+          "Hot Pink": true,
+          "Heather": true,
+          "Light Blue": true,
+          "White": true
+        },
+        "3": {
+          "Black": true,
+          "Navy": true,
+          "Hot Pink": true,
+          "Heather": true,
+          "Light Blue": true,
+          "White": true
+        },
+        "4": {
+          "Black": true,
+          "Navy": true,
+          "Hot Pink": true,
+          "Heather": true,
+          "Light Blue": true,
+          "White": true
+        },
+        "5/6": {
+          "Black": true,
+          "Navy": true,
+          "Hot Pink": true,
+          "Heather": true,
+          "Light Blue": true,
+          "White": true
+        }
+      }
+    }
+  },
+  "babystapletee": {
+    "name": "Baby Staple Tee",
+    "price": 20.99,
+    "description": "Comfortable baby staple tee",
+    "image": "/static/images/babystapletshirt.png",
+    "preview": "/static/images/babystapleteepreview.png",
+    "category": "kids",
+    "variables": {
+      "sizes": [
+        "6-12m",
+        "12-18m",
+        "18-24m"
+      ],
+      "colors": [
+        "Black",
+        "Pink",
+        "White"
+      ],
+      "availability": {
+        "6-12m": {
+          "Black": true,
+          "Pink": true,
+          "White": true
+        },
+        "12-18m": {
+          "Black": true,
+          "Pink": true,
+          "White": true
+        },
+        "18-24m": {
+          "Black": true,
+          "Pink": true,
+          "White": true
+        }
+      }
+    }
+  },
+  "babyjerseytshirt": {
+    "name": "Baby Jersey T-Shirt",
+    "price": 18.99,
+    "description": "Comfortable baby jersey t-shirt",
+    "image": "/static/images/babyjerseytshirt.png",
+    "preview": "/static/images/babyjerseytshirtpreview.png",
+    "category": "kids",
+    "variables": {
+      "sizes": [
+        "6M",
+        "12M",
+        "18M",
+        "24M"
+      ],
+      "colors": [
+        "Black",
+        "Royal",
+        "Pink",
+        "Light Blue",
+        "White",
+        "Charcoal"
+      ],
+      "availability": {
+        "6M": {
+          "Black": true,
+          "Royal": true,
+          "Pink": true,
+          "Light Blue": true,
+          "White": true,
+          "Charcoal": true
+        },
+        "12M": {
+          "Black": true,
+          "Royal": true,
+          "Pink": true,
+          "Light Blue": true,
+          "White": true,
+          "Charcoal": true
+        },
+        "18M": {
+          "Black": true,
+          "Royal": true,
+          "Pink": true,
+          "Light Blue": true,
+          "White": true,
+          "Charcoal": true
+        },
+        "24M": {
+          "Black": true,
+          "Royal": true,
+          "Pink": true,
+          "Light Blue": true,
+          "White": true,
+          "Charcoal": true
         }
       }
     }
@@ -1260,54 +2023,79 @@ export const products = {
       }
     }
   },
-  "canvastote": {
-    "name": "Canvas Tote",
-    "price": 28.99,
-    "description": "Eco-friendly canvas tote bag",
-    "image": "/static/images/allovertotebag.png",
-    "preview": "/static/images/allovertotebagpreview.png",
+  "laptopsleeve": {
+    "name": "Laptop Sleeve",
+    "price": 28.73,
+    "description": "This lightweight, form-fitting laptop sleeve is a must-have for any laptop owner on the go. To prevent any scratches, it contains a padded zipper binding and its interior is lined with faux fur. What's more, it's made from a water-resistant and scratch-proof material, making sure that both the laptop and the sleeve design are intact from day to day. 100% neoprene. 13″ sleeve weight: 6.49 oz (220 g). 15″ sleeve weight: 8.8 oz (250 g). Lightweight and resistant to water, oil, and heat. Snug fit. Faux fur interior lining. Top-loading zippered enclosure with two sliders. Padded zipper binding. Customizable front, solid black rear. Blank product sourced from China. The laptop sleeve fits most 13″ and 15″ laptops—see our size guide for precise measurements. This product is made on demand. No minimums.",
+    "image": "/static/images/laptopsleeve.png",
+    "preview": "/static/images/bagslaptopsleevepreview.png",
     "category": "bags",
     "variables": {
-      "sizes": [],
-      "colors": [
-        "Natural",
-        "Black"
+      "sizes": [
+        "13.5\"x10.5\"",
+        "14.75\"x11.25\""
       ],
-      "availability": {}
+      "colors": [
+        "White"
+      ],
+      "availability": {
+        "13.5\"x10.5\"": {
+          "White": true
+        },
+        "14.75\"x11.25\"": {
+          "White": true
+        }
+      }
     }
   },
-  "totebag": {
-    "name": "Tote Bag",
-    "price": 31.99,
-    "description": "Versatile tote bag",
+  "alloverprintdrawstring": {
+    "name": "All-Over Print Drawstring",
+    "price": 23.64,
+    "description": "Gym bag, drawstring bag, or backpack? Call it as you like! It's a must-have gym essential that can be worn as a backpack with drawstring closure at the top, and narrow, contrasting shoulder straps. Combine your love for vibrant prints and a sporty style! 100% polyester. One size: 15″ × 17″ (38.1 cm × 43.2 cm). Fabric weight (may vary by 5%): 6.64 oz./yd.² (225 g/m²). Maximum weight limit: 33 lbs (15 kg). Twin cotton handles. Drawstring closure. Printed, cut, and hand-sewn by our in-house team. Fabric is OEKO-TEX 100 standard certified. Price includes a full print.",
     "image": "/static/images/drawstringbag.png",
-    "preview": "/static/images/drawstringbagpreview.png",
+    "preview": "/static/images/bagsalloverprintdrawstringpreview.png",
     "category": "bags",
     "variables": {
-      "sizes": [],
+      "sizes": [
+        "15\"x17\""
+      ],
       "colors": [
         "White",
         "Black",
         "Blue"
       ],
-      "availability": {}
+      "availability": {
+        "15\"x17\"": {
+          "White": true,
+          "Black": true,
+          "Blue": true
+        }
+      }
     }
   },
-  "largecanvasbag": {
-    "name": "Large Canvas Bag",
-    "price": 34.99,
-    "description": "Large canvas bag for all your needs",
+  "alloverprinttotepocket": {
+    "name": "All Over Print Tote Pocket",
+    "price": 25.55,
+    "description": "Meet your companion for any occasion—our All-Over Print Large Tote Bag! It's spacious, comfy, and a great choice no matter where you're going. Take it with you on your next beach trip or on a stroll around town. Customize the bag with your fun designs and get it for yourself, or sell it on your online store. 100% polyester. Fabric weight (may vary by 5%): 6.64 oz/yd² (225 g/m²). Maximum weight limit: 44lbs (20kg). Capacity: 4.4 US gal (17.8l). Large inside pocket that can be customized with a logo. Printed, cut, and hand-sewn by our in-house team. Comfortable cotton webbing handles. Vibrant colors that won't fade. Available in one size. Fabric is OEKO-TEX 100 standard certified. Product code: #602. This product is made on demand. No minimums.",
     "image": "/static/images/largecanvasbag.png",
-    "preview": "/static/images/largecanvasbagpreview.png",
+    "preview": "/static/images/bagsalloverprinttotepocketpreview.png",
     "category": "bags",
     "variables": {
-      "sizes": [],
-      "colors": [
-        "Natural",
-        "Black",
-        "Navy"
+      "sizes": [
+        "16\"x20\""
       ],
-      "availability": {}
+      "colors": [
+        "Black",
+        "Red",
+        "Yellow"
+      ],
+      "availability": {
+        "16\"x20\"": {
+          "Black": true,
+          "Red": true,
+          "Yellow": true
+        }
+      }
     }
   },
   "greetingcard": {
@@ -1399,7 +2187,7 @@ export const products = {
     }
   },
   "men'slongsleeve": {
-    "name": "Men's Long Sleeve",
+    "name": "Men's Long Sleeve Shirt",
     "price": 39.99,
     "description": "Comfortable men's long sleeve shirt",
     "image": "/static/images/menslongsleeve.png",
@@ -1407,66 +2195,150 @@ export const products = {
     "category": "men's-shirts",
     "variables": {
       "sizes": [
-        "XS",
         "S",
         "M",
         "L",
         "XL",
         "XXL",
         "XXXL",
-        "XXXXL",
-        "XXXXXL"
+        "XXXXL"
       ],
       "colors": [
         "Black",
         "White",
-        "Gray"
+        "Navy",
+        "Sport Grey",
+        "Royal",
+        "Maroon",
+        "Red",
+        "Light Blue",
+        "Military Green",
+        "Sand",
+        "Ash",
+        "Forest Green",
+        "Indigo Blue",
+        "Irish Green",
+        "Light Pink"
       ],
       "availability": {
-        "XS": {
-          "Black": true,
-          "White": true,
-          "Gray": true
-        },
         "S": {
           "Black": true,
           "White": true,
-          "Gray": true
+          "Navy": true,
+          "Sport Grey": true,
+          "Royal": true,
+          "Maroon": true,
+          "Red": true,
+          "Light Blue": true,
+          "Military Green": true,
+          "Sand": true,
+          "Ash": true,
+          "Forest Green": true,
+          "Indigo Blue": true,
+          "Irish Green": true,
+          "Light Pink": true
         },
         "M": {
           "Black": true,
           "White": true,
-          "Gray": true
+          "Navy": true,
+          "Sport Grey": true,
+          "Royal": true,
+          "Maroon": true,
+          "Red": true,
+          "Light Blue": true,
+          "Military Green": true,
+          "Sand": true,
+          "Ash": true,
+          "Forest Green": true,
+          "Indigo Blue": true,
+          "Irish Green": true,
+          "Light Pink": true
         },
         "L": {
           "Black": true,
           "White": true,
-          "Gray": true
+          "Navy": true,
+          "Sport Grey": true,
+          "Royal": true,
+          "Maroon": true,
+          "Red": true,
+          "Light Blue": true,
+          "Military Green": true,
+          "Sand": true,
+          "Ash": true,
+          "Forest Green": true,
+          "Indigo Blue": true,
+          "Irish Green": true,
+          "Light Pink": true
         },
         "XL": {
           "Black": true,
           "White": true,
-          "Gray": true
+          "Navy": true,
+          "Sport Grey": true,
+          "Royal": true,
+          "Maroon": true,
+          "Red": true,
+          "Light Blue": true,
+          "Military Green": true,
+          "Sand": true,
+          "Ash": true,
+          "Forest Green": true,
+          "Indigo Blue": true,
+          "Irish Green": true,
+          "Light Pink": true
         },
         "XXL": {
           "Black": true,
           "White": true,
-          "Gray": true
+          "Navy": true,
+          "Sport Grey": true,
+          "Royal": true,
+          "Maroon": true,
+          "Red": true,
+          "Light Blue": true,
+          "Military Green": true,
+          "Sand": true,
+          "Ash": true,
+          "Forest Green": true,
+          "Indigo Blue": true,
+          "Irish Green": false,
+          "Light Pink": true
         },
         "XXXL": {
           "Black": true,
           "White": true,
-          "Gray": true
+          "Navy": true,
+          "Sport Grey": true,
+          "Royal": true,
+          "Maroon": false,
+          "Red": true,
+          "Light Blue": true,
+          "Military Green": true,
+          "Sand": false,
+          "Ash": true,
+          "Forest Green": true,
+          "Indigo Blue": true,
+          "Irish Green": true,
+          "Light Pink": false
         },
         "XXXXL": {
           "Black": true,
           "White": true,
-          "Gray": true
-        },
-        "XXXXXL": {
-          "Black": true,
-          "White": true,
-          "Gray": true
+          "Navy": true,
+          "Sport Grey": true,
+          "Royal": false,
+          "Maroon": false,
+          "Red": true,
+          "Light Blue": false,
+          "Military Green": true,
+          "Sand": false,
+          "Ash": true,
+          "Forest Green": false,
+          "Indigo Blue": false,
+          "Irish Green": true,
+          "Light Pink": false
         }
       }
     }
@@ -1774,21 +2646,25 @@ export const products = {
       }
     }
   },
-  "crossbodybag": {
-    "name": "Crossbody Bag",
-    "price": 42.99,
-    "description": "Stylish crossbody bag",
+  "alloverprintutilitybag": {
+    "name": "All-Over Print Utility Bag",
+    "price": 28.57,
+    "description": "Designed for those who love to explore the great outdoors or dance the night away at festivals, this versatile bag will become the ideal companion for all your and your customers' daily adventures. 100% polyester. Fabric weight: 9 oz./yd.² (305 g/m²). Bag size: 5.7″ × 7.7″ × 2″ (14.5 cm × 19.5 cm × 5 cm). Capacity: 0.37 gallons (1.4 l). Water-resistant and durable. Sturdy fabric with fusible backing to add firmness. Inside and outside pockets. Adjustable strap. Two-way zipper. Product code: #609. This product is made on demand. No minimums.",
     "image": "/static/images/crossbodybag.png",
-    "preview": "/static/images/crossbodybagpreview.png",
+    "preview": "/static/images/bagsalloverprintutilitybagpreview.png",
     "category": "bags",
     "variables": {
-      "sizes": [],
-      "colors": [
-        "Black",
-        "Brown",
-        "Tan"
+      "sizes": [
+        "5.7\"x7.7\"x2\""
       ],
-      "availability": {}
+      "colors": [
+        "White"
+      ],
+      "availability": {
+        "5.7\"x7.7\"x2\"": {
+          "White": true
+        }
+      }
     }
   },
   "babybib": {

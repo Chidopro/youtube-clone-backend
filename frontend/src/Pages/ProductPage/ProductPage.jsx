@@ -158,7 +158,6 @@ const ProductPage = ({ sidebar }) => {
         "Laptop Sleeve",
         "All-Over Print Drawstring", 
         "All Over Print Tote Pocket",
-        "All-Over Print Crossbody Bag",
         "All-Over Print Utility Bag"
       ],
       'hats': [
@@ -230,11 +229,10 @@ const ProductPage = ({ sidebar }) => {
       "Kids Sweatshirt": { filename: "kidssweatshirt.png", preview: "kidssweatshirtpreview.png", price: 27.29 },
       "Youth All Over Print Swimsuit": { filename: "youthalloverprintswimsuit.png", preview: "youthalloverprintswimsuitpreview.png", price: 33.95 },
       "Girls Leggings": { filename: "girlsleggings.png", preview: "girlsleggingspreview.png", price: 28.31 },
-      "Laptop Sleeve": { filename: "laptopsleeve.png", preview: "laptopsleevepreview.png", price: 31.16 },
-      "All-Over Print Drawstring": { filename: "drawstringbag.png", preview: "drawstringbagpreview.png", price: 25.25 },
-      "All-Over Print Utility Bag": { filename: "crossbodybag.png", preview: "crossbodybagpreview.png", price: 31.79 },
-      "All Over Print Tote Pocket": { filename: "largecanvasbag.png", preview: "largecanvasbagpreview.png", price: 33.41 },
-      "All-Over Print Crossbody Bag": { filename: "crossbodybag.png", preview: "crossbodybagpreview.png", price: 28.95 },
+      "Laptop Sleeve": { filename: "laptopsleeve.png", preview: "bagslaptopsleevepreview.png", price: 28.73 },
+      "All-Over Print Drawstring": { filename: "drawstringbag.png", preview: "bagsalloverprintdrawstringpreview.png", price: 23.64 },
+      "All-Over Print Utility Bag": { filename: "crossbodybag.png", preview: "bagsalloverprintutilitybagpreview.png", price: 28.57 },
+      "All Over Print Tote Pocket": { filename: "largecanvasbag.png", preview: "bagsalloverprinttotepocketpreview.png", price: 25.55 },
       "Distressed Dad Hat": { filename: "distresseddadhat.png", preview: "distresseddadhatpreview.png", price: 24.95 },
       "Closed Back Cap": { filename: "closedbackcap.png", preview: "hatsclosedbackcappreview.png", price: 25.19 },
       "Five Panel Trucker Hat": { filename: "fivepaneltruckerhat.png", preview: "fivepaneltruckerhatpreview.png", price: 24.95 },
@@ -414,8 +412,13 @@ const ProductPage = ({ sidebar }) => {
     });
     
     if (!productKey) {
-      // Product not found in local data, return all sizes
-      return product.options?.size || [];
+      // Product not found in local data - log for debugging
+      if (window.__DEBUG__) {
+        console.warn(`Product "${product.name}" not found in products.js. Available products:`, 
+          Object.values(products).map(p => p.name));
+      }
+      // Return empty array instead of all sizes to prevent invalid selections
+      return [];
     }
     
     const localProduct = products[productKey];
@@ -435,8 +438,46 @@ const ProductPage = ({ sidebar }) => {
       return sizeAvailability[color] === true;
     });
     
-    // If no sizes are available, fall back to all sizes (shouldn't happen, but defensive)
-    return availableSizes.length > 0 ? availableSizes : (product.options?.size || []);
+    // Return available sizes (empty array if none available - don't fall back to all sizes)
+    return availableSizes;
+  };
+
+  // Get available colors for a product (colors that have at least one available size)
+  const getAvailableColors = (product) => {
+    if (!product || !product.options?.color) {
+      return product?.options?.color || [];
+    }
+    
+    // Find product in products.js by name (case-insensitive, trim whitespace)
+    const productName = (product.name || '').trim().toLowerCase();
+    const productKey = Object.keys(products).find(key => {
+      const localProductName = (products[key].name || '').trim().toLowerCase();
+      return localProductName === productName;
+    });
+    
+    if (!productKey) {
+      // Product not found in local data - log for debugging
+      if (window.__DEBUG__) {
+        console.warn(`Product "${product.name}" not found in products.js for color filtering. Available products:`, 
+          Object.values(products).map(p => p.name));
+      }
+      // Return empty array instead of all colors to prevent invalid selections
+      return [];
+    }
+    
+    const localProduct = products[productKey];
+    if (!localProduct.variables?.availability) {
+      // No availability data, return all colors
+      return product.options.color;
+    }
+    
+    // Filter colors that have at least one available size
+    const availableColors = product.options.color.filter(color => {
+      const availableSizes = getAvailableSizes(product, color);
+      return availableSizes.length > 0;
+    });
+    
+    return availableColors.length > 0 ? availableColors : product.options.color;
   };
 
   // Calculate price based on selected size
@@ -724,6 +765,33 @@ const ProductPage = ({ sidebar }) => {
     fetchProductData();
   }, [productId, category, authenticated, email]);
 
+  // Initialize and validate colors when products load
+  useEffect(() => {
+    if (!productData?.products || productData.products.length === 0) return;
+    
+    setSelectedColors(prevColors => {
+      const newSelectedColors = { ...prevColors };
+      let hasChanges = false;
+      
+      productData.products.forEach((product, index) => {
+        if (!product || !product.options) return;
+        
+        const availableColors = getAvailableColors(product);
+        if (availableColors.length === 0) return;
+        
+        const currentColor = prevColors[index];
+        
+        // If no color is selected yet, or current color is not available, set to first available
+        if (!currentColor || !availableColors.includes(currentColor)) {
+          newSelectedColors[index] = availableColors[0];
+          hasChanges = true;
+        }
+      });
+      
+      return hasChanges ? newSelectedColors : prevColors;
+    });
+  }, [productData]);
+
   // Validate and reset sizes when products or colors change
   useEffect(() => {
     if (!productData?.products || productData.products.length === 0) return;
@@ -735,14 +803,15 @@ const ProductPage = ({ sidebar }) => {
       productData.products.forEach((product, index) => {
         if (!product || !product.options) return;
         
-        const selectedColor = selectedColors[index] || product.options?.color?.[0];
+        const availableColors = getAvailableColors(product);
+        const selectedColor = selectedColors[index] || availableColors[0] || product.options?.color?.[0];
         if (!selectedColor) return;
         
         const availableSizes = getAvailableSizes(product, selectedColor);
         if (availableSizes.length === 0) {
-          // If no available sizes found, use first size from product options as fallback
-          if (product.options?.size?.[0] && !prevSizes[index]) {
-            newSelectedSizes[index] = product.options.size[0];
+          // If no available sizes found, clear the size selection
+          if (prevSizes[index]) {
+            newSelectedSizes[index] = '';
             hasChanges = true;
           }
           return;
@@ -1185,9 +1254,9 @@ const ProductPage = ({ sidebar }) => {
                                 ? (product.preview_image.startsWith('http') 
                                     ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
                                     : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
-                                : (product.main_image.startsWith('http') 
+                                : (product.main_image && product.main_image.startsWith('http') 
                                     ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
-                                    : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
+                                    : (product.main_image ? (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`) : ''))
                             }
                             alt={product.name}
                             loading="lazy"
@@ -1221,36 +1290,48 @@ const ProductPage = ({ sidebar }) => {
                   
                   <div className="product-options">
                     {/* Color Options */}
-                    {product.options && product.options.color && product.options.color.length > 0 && (
-                      <div className="option-group">
-                        <label>Color:</label>
-                        <select 
-                          className="color-select"
-                          value={selectedColors[index] || product.options.color[0]}
-                          onChange={(e) => {
-                            const newSelectedColors = { ...selectedColors };
-                            const newColor = e.target.value;
-                            newSelectedColors[index] = newColor;
-                            setSelectedColors(newSelectedColors);
-                            
-                            // Check if current size is available for new color, if not reset to first available
-                            const availableSizes = getAvailableSizes(product, newColor);
-                            const currentSize = selectedSizes[index] || product.options.size[0];
-                            if (availableSizes.length > 0 && !availableSizes.includes(currentSize)) {
-                              const newSelectedSizes = { ...selectedSizes };
-                              newSelectedSizes[index] = availableSizes[0];
-                              setSelectedSizes(newSelectedSizes);
-                            }
-                          }}
-                        >
-                          {product.options.color.map((color, colorIndex) => (
-                            <option key={colorIndex} value={color}>
-                              {color}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
+                    {product.options && product.options.color && product.options.color.length > 0 && (() => {
+                      const availableColors = getAvailableColors(product);
+                      const currentColor = selectedColors[index] || (product.options.color && product.options.color.length > 0 ? product.options.color[0] : '');
+                      // Use current color if it's available, otherwise use first available color
+                      const displayColor = availableColors.includes(currentColor) ? currentColor : (availableColors[0] || (product.options.color && product.options.color.length > 0 ? product.options.color[0] : ''));
+                      
+                      return (
+                        <div className="option-group">
+                          <label>Color:</label>
+                          <select 
+                            className="color-select"
+                            value={displayColor}
+                            onChange={(e) => {
+                              const newSelectedColors = { ...selectedColors };
+                              const newColor = e.target.value;
+                              newSelectedColors[index] = newColor;
+                              setSelectedColors(newSelectedColors);
+                              
+                              // Check if current size is available for new color, if not reset to first available
+                              const availableSizes = getAvailableSizes(product, newColor);
+                              const currentSize = selectedSizes[index] || (product.options.size && product.options.size.length > 0 ? product.options.size[0] : '');
+                              if (availableSizes.length > 0 && !availableSizes.includes(currentSize)) {
+                                const newSelectedSizes = { ...selectedSizes };
+                                newSelectedSizes[index] = availableSizes[0];
+                                setSelectedSizes(newSelectedSizes);
+                              } else if (availableSizes.length === 0) {
+                                // If no sizes available for this color, clear the size selection
+                                const newSelectedSizes = { ...selectedSizes };
+                                newSelectedSizes[index] = '';
+                                setSelectedSizes(newSelectedSizes);
+                              }
+                            }}
+                          >
+                            {availableColors.map((color, colorIndex) => (
+                              <option key={colorIndex} value={color}>
+                                {color}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })()}
                     
                     {/* Handle Color Options */}
                     {product.options && product.options.handle_color && product.options.handle_color.length > 0 && (
@@ -1276,8 +1357,10 @@ const ProductPage = ({ sidebar }) => {
                     
                     {/* Size Options */}
                     {product.options && product.options.size && product.options.size.length > 0 && (() => {
-                      const selectedColor = selectedColors[index] || product.options.color[0];
-                      const availableSizes = getAvailableSizes(product, selectedColor);
+                      const selectedColor = selectedColors[index] || (product.options.color && product.options.color.length > 0 ? product.options.color[0] : '') || (product.options.handle_color && product.options.handle_color.length > 0 ? product.options.handle_color[0] : '');
+                      const availableColors = getAvailableColors(product);
+                      const displayColor = availableColors.includes(selectedColor) ? selectedColor : (availableColors[0] || (product.options.color && product.options.color.length > 0 ? product.options.color[0] : '') || (product.options.handle_color && product.options.handle_color.length > 0 ? product.options.handle_color[0] : ''));
+                      const availableSizes = getAvailableSizes(product, displayColor);
                       const currentSize = selectedSizes[index];
                       
                       // Determine the size to display - use current if available, otherwise first available
@@ -1287,7 +1370,7 @@ const ProductPage = ({ sidebar }) => {
                       } else if (availableSizes.length > 0) {
                         displaySize = availableSizes[0];
                       } else {
-                        displaySize = product.options.size[0];
+                        displaySize = '';
                       }
                       
                       return (
@@ -1301,12 +1384,17 @@ const ProductPage = ({ sidebar }) => {
                               newSelectedSizes[index] = e.target.value;
                               setSelectedSizes(newSelectedSizes);
                             }}
+                            disabled={availableSizes.length === 0}
                           >
-                            {availableSizes.map((size, sizeIndex) => (
-                              <option key={sizeIndex} value={size}>
-                                {size}
-                              </option>
-                            ))}
+                            {availableSizes.length === 0 ? (
+                              <option value="">No sizes available for this color</option>
+                            ) : (
+                              availableSizes.map((size, sizeIndex) => (
+                                <option key={sizeIndex} value={size}>
+                                  {size}
+                                </option>
+                              ))
+                            )}
                           </select>
                         </div>
                       );
