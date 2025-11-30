@@ -21,83 +21,223 @@ export const products = {
       "colors": [
         "Black",
         "White",
-        "Dark Gray",
         "Navy",
+        "Black Heather",
+        "Athletic Heather",
+        "Dark Grey Heather",
         "Red",
-        "Athletic Heather"
+        "Kelly",
+        "Heather Midnight Navy",
+        "True Royal",
+        "Asphalt",
+        "Heather True Royal",
+        "Heather Prism Lilac",
+        "Soft Cream",
+        "Heather Prism Ice Blue",
+        "Mauve",
+        "Forest",
+        "Heather Forest",
+        "Olive",
+        "Heather Deep Teal"
       ],
       "availability": {
         "XS": {
           "Black": true,
           "White": true,
-          "Dark Gray": true,
           "Navy": true,
+          "Black Heather": true,
+          "Athletic Heather": true,
+          "Dark Grey Heather": true,
           "Red": true,
-          "Athletic Heather": true
+          "Kelly": true,
+          "Heather Midnight Navy": false,
+          "True Royal": false,
+          "Asphalt": false,
+          "Heather True Royal": false,
+          "Heather Prism Lilac": true,
+          "Soft Cream": true,
+          "Heather Prism Ice Blue": true,
+          "Mauve": false,
+          "Forest": false,
+          "Heather Forest": false,
+          "Olive": false,
+          "Heather Deep Teal": false
         },
         "S": {
           "Black": true,
           "White": true,
-          "Dark Gray": true,
           "Navy": true,
+          "Black Heather": true,
+          "Athletic Heather": true,
+          "Dark Grey Heather": true,
           "Red": true,
-          "Athletic Heather": true
+          "Kelly": true,
+          "Heather Midnight Navy": true,
+          "True Royal": true,
+          "Asphalt": true,
+          "Heather True Royal": true,
+          "Heather Prism Lilac": true,
+          "Soft Cream": true,
+          "Heather Prism Ice Blue": true,
+          "Mauve": true,
+          "Forest": true,
+          "Heather Forest": true,
+          "Olive": true,
+          "Heather Deep Teal": true
         },
         "M": {
           "Black": true,
           "White": true,
-          "Dark Gray": true,
           "Navy": true,
+          "Black Heather": true,
+          "Athletic Heather": true,
+          "Dark Grey Heather": true,
           "Red": true,
-          "Athletic Heather": true
+          "Kelly": true,
+          "Heather Midnight Navy": true,
+          "True Royal": true,
+          "Asphalt": true,
+          "Heather True Royal": true,
+          "Heather Prism Lilac": true,
+          "Soft Cream": true,
+          "Heather Prism Ice Blue": true,
+          "Mauve": true,
+          "Forest": true,
+          "Heather Forest": true,
+          "Olive": true,
+          "Heather Deep Teal": true
         },
         "L": {
           "Black": true,
           "White": true,
-          "Dark Gray": true,
           "Navy": true,
+          "Black Heather": true,
+          "Athletic Heather": true,
+          "Dark Grey Heather": true,
           "Red": true,
-          "Athletic Heather": true
+          "Kelly": true,
+          "Heather Midnight Navy": true,
+          "True Royal": true,
+          "Asphalt": true,
+          "Heather True Royal": true,
+          "Heather Prism Lilac": true,
+          "Soft Cream": true,
+          "Heather Prism Ice Blue": true,
+          "Mauve": true,
+          "Forest": true,
+          "Heather Forest": true,
+          "Olive": true,
+          "Heather Deep Teal": true
         },
         "XL": {
           "Black": true,
           "White": true,
-          "Dark Gray": true,
           "Navy": true,
+          "Black Heather": true,
+          "Athletic Heather": true,
+          "Dark Grey Heather": true,
           "Red": true,
-          "Athletic Heather": true
+          "Kelly": true,
+          "Heather Midnight Navy": true,
+          "True Royal": true,
+          "Asphalt": true,
+          "Heather True Royal": true,
+          "Heather Prism Lilac": true,
+          "Soft Cream": true,
+          "Heather Prism Ice Blue": true,
+          "Mauve": true,
+          "Forest": true,
+          "Heather Forest": true,
+          "Olive": true,
+          "Heather Deep Teal": true
         },
         "XXL": {
           "Black": true,
           "White": true,
-          "Dark Gray": true,
           "Navy": true,
+          "Black Heather": true,
+          "Athletic Heather": true,
+          "Dark Grey Heather": true,
           "Red": true,
-          "Athletic Heather": true
+          "Kelly": true,
+          "Heather Midnight Navy": true,
+          "True Royal": true,
+          "Asphalt": true,
+          "Heather True Royal": true,
+          "Heather Prism Lilac": true,
+          "Soft Cream": true,
+          "Heather Prism Ice Blue": true,
+          "Mauve": true,
+          "Forest": true,
+          "Heather Forest": true,
+          "Olive": true,
+          "Heather Deep Teal": true
         },
         "XXXL": {
           "Black": true,
           "White": true,
-          "Dark Gray": true,
           "Navy": true,
+          "Black Heather": true,
+          "Athletic Heather": true,
+          "Dark Grey Heather": true,
           "Red": true,
-          "Athletic Heather": true
+          "Kelly": true,
+          "Heather Midnight Navy": true,
+          "True Royal": true,
+          "Asphalt": true,
+          "Heather True Royal": true,
+          "Heather Prism Lilac": true,
+          "Soft Cream": true,
+          "Heather Prism Ice Blue": true,
+          "Mauve": true,
+          "Forest": true,
+          "Heather Forest": true,
+          "Olive": true,
+          "Heather Deep Teal": true
         },
         "XXXXL": {
           "Black": true,
           "White": true,
-          "Dark Gray": true,
           "Navy": true,
+          "Black Heather": true,
+          "Athletic Heather": true,
+          "Dark Grey Heather": true,
           "Red": true,
-          "Athletic Heather": true
+          "Kelly": true,
+          "Heather Midnight Navy": true,
+          "True Royal": true,
+          "Asphalt": true,
+          "Heather True Royal": true,
+          "Heather Prism Lilac": true,
+          "Soft Cream": true,
+          "Heather Prism Ice Blue": true,
+          "Mauve": true,
+          "Forest": true,
+          "Heather Forest": true,
+          "Olive": true,
+          "Heather Deep Teal": true
         },
         "XXXXXL": {
           "Black": true,
           "White": true,
-          "Dark Gray": true,
           "Navy": true,
+          "Black Heather": true,
+          "Athletic Heather": true,
+          "Dark Grey Heather": true,
           "Red": true,
-          "Athletic Heather": true
+          "Kelly": true,
+          "Heather Midnight Navy": false,
+          "True Royal": false,
+          "Asphalt": false,
+          "Heather True Royal": false,
+          "Heather Prism Lilac": false,
+          "Soft Cream": false,
+          "Heather Prism Ice Blue": false,
+          "Mauve": false,
+          "Forest": false,
+          "Heather Forest": false,
+          "Olive": false,
+          "Heather Deep Teal": false
         }
       }
     }
@@ -366,66 +506,48 @@ export const products = {
     "category": "hoodies",
     "variables": {
       "sizes": [
-        "XS",
         "S",
         "M",
         "L",
         "XL",
-        "XXL",
-        "XXXL",
-        "XXXXL",
-        "XXXXXL"
+        "XXL"
       ],
       "colors": [
         "Black",
-        "Gray",
-        "Navy"
+        "Military Green",
+        "Storm",
+        "Peach"
       ],
       "availability": {
-        "XS": {
-          "Black": true,
-          "Gray": true,
-          "Navy": true
-        },
         "S": {
           "Black": true,
-          "Gray": true,
-          "Navy": true
+          "Military Green": true,
+          "Storm": true,
+          "Peach": false
         },
         "M": {
           "Black": true,
-          "Gray": true,
-          "Navy": true
+          "Military Green": true,
+          "Storm": true,
+          "Peach": false
         },
         "L": {
           "Black": true,
-          "Gray": true,
-          "Navy": true
+          "Military Green": true,
+          "Storm": true,
+          "Peach": false
         },
         "XL": {
-          "Black": true,
-          "Gray": true,
-          "Navy": true
+          "Black": false,
+          "Military Green": true,
+          "Storm": true,
+          "Peach": true
         },
         "XXL": {
-          "Black": true,
-          "Gray": true,
-          "Navy": true
-        },
-        "XXXL": {
-          "Black": true,
-          "Gray": true,
-          "Navy": true
-        },
-        "XXXXL": {
-          "Black": true,
-          "Gray": true,
-          "Navy": true
-        },
-        "XXXXXL": {
-          "Black": true,
-          "Gray": true,
-          "Navy": true
+          "Black": false,
+          "Military Green": true,
+          "Storm": true,
+          "Peach": false
         }
       }
     }
@@ -628,19 +750,52 @@ export const products = {
           "Black": true,
           "French Navy": true,
           "Heather Grey": true,
-          "White": true
+          "White": true,
+          "Dark Heather Grey": false,
+          "Burgundy": false,
+          "India Ink Grey": false,
+          "Anthracite": false,
+          "Red": false,
+          "Stargazer": false,
+          "Khaki": false,
+          "Desert Dust": false,
+          "Fraiche Peche": false,
+          "Cotton Pink": false,
+          "Lavender": false
         },
         "XXXXL": {
           "Black": true,
           "French Navy": true,
           "Heather Grey": true,
-          "White": true
+          "White": true,
+          "Dark Heather Grey": false,
+          "Burgundy": false,
+          "India Ink Grey": false,
+          "Anthracite": false,
+          "Red": false,
+          "Stargazer": false,
+          "Khaki": false,
+          "Desert Dust": false,
+          "Fraiche Peche": false,
+          "Cotton Pink": false,
+          "Lavender": false
         },
         "XXXXXL": {
           "Black": true,
           "French Navy": true,
           "Heather Grey": true,
-          "White": true
+          "White": true,
+          "Dark Heather Grey": false,
+          "Burgundy": false,
+          "India Ink Grey": false,
+          "Anthracite": false,
+          "Red": false,
+          "Stargazer": false,
+          "Khaki": false,
+          "Desert Dust": false,
+          "Fraiche Peche": false,
+          "Cotton Pink": false,
+          "Lavender": false
         }
       }
     }
@@ -654,76 +809,104 @@ export const products = {
     "category": "women's-shirts",
     "variables": {
       "sizes": [
-        "XS",
         "S",
         "M",
         "L",
         "XL",
         "XXL",
-        "XXXL",
-        "XXXXL",
-        "XXXXXL"
+        "XXXL"
       ],
       "colors": [
         "Black",
         "White",
-        "Gray",
-        "Pink"
+        "Dark Grey Heather",
+        "Pink",
+        "Navy",
+        "Heather Mauve",
+        "Heather Red",
+        "Leaf",
+        "Heather Blue Lagoon",
+        "Athletic Heather",
+        "Heather Stone"
       ],
       "availability": {
-        "XS": {
-          "Black": true,
-          "White": true,
-          "Gray": true,
-          "Pink": true
-        },
         "S": {
           "Black": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Dark Grey Heather": true,
+          "Pink": true,
+          "Navy": true,
+          "Heather Mauve": true,
+          "Heather Red": true,
+          "Leaf": true,
+          "Heather Blue Lagoon": true,
+          "Athletic Heather": true,
+          "Heather Stone": true
         },
         "M": {
           "Black": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Dark Grey Heather": true,
+          "Pink": true,
+          "Navy": true,
+          "Heather Mauve": true,
+          "Heather Red": true,
+          "Leaf": true,
+          "Heather Blue Lagoon": true,
+          "Athletic Heather": true,
+          "Heather Stone": true
         },
         "L": {
           "Black": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Dark Grey Heather": true,
+          "Pink": true,
+          "Navy": true,
+          "Heather Mauve": true,
+          "Heather Red": true,
+          "Leaf": true,
+          "Heather Blue Lagoon": true,
+          "Athletic Heather": true,
+          "Heather Stone": true
         },
         "XL": {
           "Black": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Dark Grey Heather": true,
+          "Pink": true,
+          "Navy": true,
+          "Heather Mauve": true,
+          "Heather Red": true,
+          "Leaf": true,
+          "Heather Blue Lagoon": true,
+          "Athletic Heather": true,
+          "Heather Stone": true
         },
         "XXL": {
           "Black": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
+          "Dark Grey Heather": true,
+          "Pink": true,
+          "Navy": true,
+          "Heather Mauve": true,
+          "Heather Red": true,
+          "Leaf": true,
+          "Heather Blue Lagoon": true,
+          "Athletic Heather": true,
+          "Heather Stone": true
         },
         "XXXL": {
           "Black": true,
           "White": true,
-          "Gray": true,
-          "Pink": true
-        },
-        "XXXXL": {
-          "Black": true,
-          "White": true,
-          "Gray": true,
-          "Pink": true
-        },
-        "XXXXXL": {
-          "Black": true,
-          "White": true,
-          "Gray": true,
-          "Pink": true
+          "Dark Grey Heather": true,
+          "Pink": true,
+          "Navy": true,
+          "Heather Mauve": true,
+          "Heather Red": true,
+          "Leaf": true,
+          "Heather Blue Lagoon": true,
+          "Athletic Heather": true,
+          "Heather Stone": true
         }
       }
     }
@@ -1380,22 +1563,17 @@ export const products = {
     "category": "women's-shirts",
     "variables": {
       "sizes": [
-        "XS",
         "S",
         "M",
         "L",
         "XL",
-        "XXL",
-        "XXXL",
-        "XXXXL",
-        "XXXXXL"
+        "XXL"
       ],
       "colors": [
         "Black",
         "White",
-        "Gray",
-        "Navy",
-        "Red"
+        "Heather Forest",
+        "Heather Navy"
       ]
     }
   },
@@ -1628,6 +1806,97 @@ export const products = {
         "Blue"
       ],
       "availability": {}
+    }
+  },
+  "womenscroptop": {
+    "name": "Women's Crop Top",
+    "price": 26.01,
+    "description": "Simple and classic crop top",
+    "image": "/static/images/womens-crop-top.png",
+    "preview": "/static/images/womenscroptoppreview.png",
+    "category": "women's-shirts",
+    "variables": {
+      "sizes": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "colors": [
+        "Black",
+        "Hazy Pink",
+        "Pale Pink",
+        "Orchid",
+        "Ecru",
+        "White",
+        "Bubblegum",
+        "Bone",
+        "Mineral",
+        "Natural"
+      ],
+      "availability": {
+        "XS": {
+          "Black": true,
+          "Hazy Pink": true,
+          "Pale Pink": true,
+          "Orchid": true,
+          "Ecru": true,
+          "White": true,
+          "Bubblegum": false,
+          "Bone": true,
+          "Mineral": true,
+          "Natural": true
+        },
+        "S": {
+          "Black": true,
+          "Hazy Pink": true,
+          "Pale Pink": true,
+          "Orchid": true,
+          "Ecru": true,
+          "White": true,
+          "Bubblegum": false,
+          "Bone": true,
+          "Mineral": true,
+          "Natural": true
+        },
+        "M": {
+          "Black": true,
+          "Hazy Pink": true,
+          "Pale Pink": true,
+          "Orchid": true,
+          "Ecru": true,
+          "White": true,
+          "Bubblegum": false,
+          "Bone": true,
+          "Mineral": true,
+          "Natural": true
+        },
+        "L": {
+          "Black": true,
+          "Hazy Pink": true,
+          "Pale Pink": true,
+          "Orchid": true,
+          "Ecru": true,
+          "White": true,
+          "Bubblegum": false,
+          "Bone": true,
+          "Mineral": true,
+          "Natural": true
+        },
+        "XL": {
+          "Black": true,
+          "Hazy Pink": true,
+          "Pale Pink": true,
+          "Orchid": true,
+          "Ecru": true,
+          "White": true,
+          "Bubblegum": false,
+          "Bone": true,
+          "Mineral": true,
+          "Natural": true
+        }
+      }
     }
   }
 };

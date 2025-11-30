@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import ToolsPage from '../ToolsPage/ToolsPage';
 import { supabase } from '../../supabaseClient';
 import { UserService } from '../../utils/userService';
+import { products } from '../../data/products';
 import './ProductPage.css';
 
 const IMG_BASE = 'https://screenmerch.fly.dev/static/images';
@@ -399,6 +400,45 @@ const ProductPage = ({ sidebar }) => {
     }
   };
 
+  // Get available sizes for a product and color based on availability data
+  const getAvailableSizes = (product, color) => {
+    if (!product || !color) {
+      return product?.options?.size || [];
+    }
+    
+    // Find product in products.js by name (case-insensitive, trim whitespace)
+    const productName = (product.name || '').trim().toLowerCase();
+    const productKey = Object.keys(products).find(key => {
+      const localProductName = (products[key].name || '').trim().toLowerCase();
+      return localProductName === productName;
+    });
+    
+    if (!productKey) {
+      // Product not found in local data, return all sizes
+      return product.options?.size || [];
+    }
+    
+    const localProduct = products[productKey];
+    if (!localProduct.variables?.availability) {
+      // No availability data, return all sizes
+      return product.options?.size || [];
+    }
+    
+    const availability = localProduct.variables.availability;
+    const allSizes = localProduct.variables.sizes || product.options?.size || [];
+    
+    // Filter sizes where this color is available (explicitly true)
+    const availableSizes = allSizes.filter(size => {
+      const sizeAvailability = availability[size];
+      if (!sizeAvailability || typeof sizeAvailability !== 'object') return false;
+      // Check if color exists and is explicitly true
+      return sizeAvailability[color] === true;
+    });
+    
+    // If no sizes are available, fall back to all sizes (shouldn't happen, but defensive)
+    return availableSizes.length > 0 ? availableSizes : (product.options?.size || []);
+  };
+
   // Calculate price based on selected size
   const calculatePrice = (product, productIndex) => {
     const basePrice = product.price || 0;
@@ -683,6 +723,43 @@ const ProductPage = ({ sidebar }) => {
     // Call fetchProductData for both specific products and browse mode
     fetchProductData();
   }, [productId, category, authenticated, email]);
+
+  // Validate and reset sizes when products or colors change
+  useEffect(() => {
+    if (!productData?.products || productData.products.length === 0) return;
+    
+    setSelectedSizes(prevSizes => {
+      const newSelectedSizes = { ...prevSizes };
+      let hasChanges = false;
+      
+      productData.products.forEach((product, index) => {
+        if (!product || !product.options) return;
+        
+        const selectedColor = selectedColors[index] || product.options?.color?.[0];
+        if (!selectedColor) return;
+        
+        const availableSizes = getAvailableSizes(product, selectedColor);
+        if (availableSizes.length === 0) {
+          // If no available sizes found, use first size from product options as fallback
+          if (product.options?.size?.[0] && !prevSizes[index]) {
+            newSelectedSizes[index] = product.options.size[0];
+            hasChanges = true;
+          }
+          return;
+        }
+        
+        const currentSize = prevSizes[index];
+        
+        // If no size is selected yet, or current size is not available, set to first available
+        if (!currentSize || !availableSizes.includes(currentSize)) {
+          newSelectedSizes[index] = availableSizes[0];
+          hasChanges = true;
+        }
+      });
+      
+      return hasChanges ? newSelectedSizes : prevSizes;
+    });
+  }, [productData, selectedColors]);
 
   if (loading) {
     return (
@@ -1152,8 +1229,18 @@ const ProductPage = ({ sidebar }) => {
                           value={selectedColors[index] || product.options.color[0]}
                           onChange={(e) => {
                             const newSelectedColors = { ...selectedColors };
-                            newSelectedColors[index] = e.target.value;
+                            const newColor = e.target.value;
+                            newSelectedColors[index] = newColor;
                             setSelectedColors(newSelectedColors);
+                            
+                            // Check if current size is available for new color, if not reset to first available
+                            const availableSizes = getAvailableSizes(product, newColor);
+                            const currentSize = selectedSizes[index] || product.options.size[0];
+                            if (availableSizes.length > 0 && !availableSizes.includes(currentSize)) {
+                              const newSelectedSizes = { ...selectedSizes };
+                              newSelectedSizes[index] = availableSizes[0];
+                              setSelectedSizes(newSelectedSizes);
+                            }
                           }}
                         >
                           {product.options.color.map((color, colorIndex) => (
@@ -1188,26 +1275,42 @@ const ProductPage = ({ sidebar }) => {
                     )}
                     
                     {/* Size Options */}
-                    {product.options && product.options.size && product.options.size.length > 0 && (
-                      <div className="option-group">
-                        <label>Size:</label>
-                        <select 
-                          className="size-select"
-                          value={selectedSizes[index] || product.options.size[0]}
-                          onChange={(e) => {
-                            const newSelectedSizes = { ...selectedSizes };
-                            newSelectedSizes[index] = e.target.value;
-                            setSelectedSizes(newSelectedSizes);
-                          }}
-                        >
-                          {product.options.size.map((size, sizeIndex) => (
-                            <option key={sizeIndex} value={size}>
-                              {size}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
+                    {product.options && product.options.size && product.options.size.length > 0 && (() => {
+                      const selectedColor = selectedColors[index] || product.options.color[0];
+                      const availableSizes = getAvailableSizes(product, selectedColor);
+                      const currentSize = selectedSizes[index];
+                      
+                      // Determine the size to display - use current if available, otherwise first available
+                      let displaySize;
+                      if (currentSize && availableSizes.includes(currentSize)) {
+                        displaySize = currentSize;
+                      } else if (availableSizes.length > 0) {
+                        displaySize = availableSizes[0];
+                      } else {
+                        displaySize = product.options.size[0];
+                      }
+                      
+                      return (
+                        <div className="option-group">
+                          <label>Size:</label>
+                          <select 
+                            className="size-select"
+                            value={displaySize}
+                            onChange={(e) => {
+                              const newSelectedSizes = { ...selectedSizes };
+                              newSelectedSizes[index] = e.target.value;
+                              setSelectedSizes(newSelectedSizes);
+                            }}
+                          >
+                            {availableSizes.map((size, sizeIndex) => (
+                              <option key={sizeIndex} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })()}
                   </div>
                   
                   <button 

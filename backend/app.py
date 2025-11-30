@@ -926,7 +926,7 @@ PRODUCTS = [
         "main_image": "guidontee.png",
         "preview_image": "mensunisextshirtpreview.png",
         "description": "The Unisex Staple T-Shirt feels soft and light with just the right amount of stretch. It's comfortable and flattering for all. We can't compliment this shirt enough–it's one of our crowd favorites, and it's sure to be your next favorite too! Solid colors are 100% Airlume combed and ring-spun cotton. Ash color is 99% combed and ring-spun cotton, 1% polyester. Heather colors are 52% combed and ring-spun cotton, 48% polyester. Athletic and Black Heather are 90% combed and ring-spun cotton, 10% polyester. Heather Prism colors are 99% combed and ring-spun cotton, 1% polyester. Fabric weight: 4.2 oz./yd.² (142 g/m²). Pre-shrunk fabric. 30 singles. Side-seamed construction. Tear-away label. Shoulder-to-shoulder taping. Blank product sourced from Nicaragua, Mexico, Honduras, or the US. Disclaimer: The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "White", "Dark Grey Heather", "Navy", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "options": {"color": ["Black", "White", "Navy", "Black Heather", "Athletic Heather", "Dark Grey Heather", "Red", "Kelly", "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal", "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
         "size_pricing": {
             "XS": 0,      # No extra charge
             "S": 0,       # No extra charge  
@@ -1085,7 +1085,7 @@ PRODUCTS = [
         "main_image": "womensshirt.png",
         "preview_image": "womenshirtpreview.png",
         "description": "The perfect women's t-shirt is hard to find, but this Bella + Canvas relaxed tee just might be it. Its soft and smooth fabric, as well as the relaxed fit will appeal to anyone looking for a comfy everyday t-shirt, or an addition to their business casual wardrobe. Add your design and turn this shirt into something truly special. 100% combed and ring-spun cotton. Heather Prism Lilac & Heather Prism Natural are 99% combed and ring-spun cotton, 1% polyester. Athletic Heather is 90% combed and ring-spun cotton, 10% polyester. Other Heather colors are 52% combed and ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/y² (142 g/m²). Relaxed fit. Pre-shrunk fabric. Side-seamed construction. Crew neck. Blank product sourced from Nicaragua, Honduras, or the US. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "White", "Dark Grey Heather", "Pink", "Navy", "Heather Mauve", "Heather Red", "Berry", "Leaf", "Heather Blue Lagoon", "Athletic Heather", "Heather Stone"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
+        "options": {"color": ["Black", "White", "Dark Grey Heather", "Pink", "Navy", "Heather Mauve", "Heather Red", "Leaf", "Heather Blue Lagoon", "Athletic Heather", "Heather Stone"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
             "S": 0,
             "M": 0,
@@ -1102,7 +1102,7 @@ PRODUCTS = [
         "main_image": "womenshdshirt.png",
         "preview_image": "womenshdshirtpreview.png",
         "description": "The Comfort Colors 1717 Heavyweight T-Shirt combines a structured fit with garment-dyed softness that feels lived-in from day one. Made from 100% cotton, it's durable enough for repeat wear and comfortable enough to style for any occasion. Perfect for custom designs that call for a structured, yet relaxed look. 100% ring-spun cotton. Fabric weight: 6.1 oz/yd² (206.8 g/m²). Yarn diameter: 20 singles. Garment-dyed, pre-shrunk fabric. Relaxed fit. 7/8″ double-needle topstitched collar. Twill-taped neck and shoulders for extra durability. Double-needle armhole, sleeve, and bottom hems. Signature twill label. Blank product sourced from Honduras. Disclaimer: This t-shirt undergoes garment-dyeing and softening processes, which may cause slight color variations. This product is made on demand. No minimums.",
-        "options": {"color": ["Berry", "Blue Jean", "Grey", "Violet", "White", "Black", "True Navy", "Brick", "Moss", "Lagoon Blue", "Blue Spruce", "Flo Blue", "Butter", "Pepper", "Bay", "Ivory", "Red", "Sage", "Midnight", "Grape"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
+        "options": {"color": ["Berry", "Blue Jean", "Grey", "Violet", "White", "Black", "True Navy", "Brick", "Moss", "Lagoon Blue", "Blue Spruce", "Flo Blue", "Butter", "Pepper", "Bay", "Ivory", "Paprika", "Sage", "Midnight", "Grape"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
             "S": 0,
             "M": 0,
@@ -1476,16 +1476,13 @@ PRODUCTS = [
         "main_image": "unisexpulloverhoodie.png",
         "preview_image": "womensunisexpulloverhoodiepreview.png",
         "description": "This classic Unisex Pullover Hoodie should be a staple in every store and wardrobe. It's soft and warm with cuffed long sleeves. Add your designs and start selling! 52% airlume combed ring-spun cotton, 48% poly fleece. Heather colors are 60% airlume combed ring-spun cotton, 40% poly fleece. Fabric weight: 6.5 oz/yd² (220.4 g/m²). Regular fit. Side-seamed construction. Blank product sourced from Honduras, Nicaragua or the US. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "White", "Heather Forest", "Heather Navy"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
+        "options": {"color": ["Black", "White", "Heather Forest", "Heather Navy"], "size": ["S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "S": 0,
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 1.65,  # +$1.65 = $39.62
-            "XXXL": 4,
-            "XXXXL": 5,
-            "XXXXXL": 8
+            "XXL": 1.65  # +$1.65 = $39.62
         }
     },
     {
@@ -2253,6 +2250,80 @@ def send_order():
         cart = data.get("cart", [])
         if not cart:
             return jsonify({"success": False, "error": "Cart is empty"}), 400
+        
+        # Validate color-size availability for each cart item
+        for item in cart:
+            product_name = item.get('product', '')
+            color = item.get('variants', {}).get('color', '')
+            size = item.get('variants', {}).get('size', '')
+            
+            # Check Women's Ribbed Neck availability
+            if product_name == "Women's Ribbed Neck":
+                # Colors that are NOT available in XXXL, XXXXL, XXXXXL
+                restricted_colors = [
+                    "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite",
+                    "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche",
+                    "Cotton Pink", "Lavender"
+                ]
+                
+                # Sizes that are restricted for certain colors
+                restricted_sizes = ["XXXL", "XXXXL", "XXXXXL"]
+                
+                if color in restricted_colors and size in restricted_sizes:
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size {size} for Women's Ribbed Neck. Please select a different size or color."
+                    }), 400
+            
+            # Check Cropped Hoodie availability
+            if product_name == "Cropped Hoodie":
+                # Black is NOT available in XL and XXL
+                if color == "Black" and size in ["XL", "XXL"]:
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size {size} for Cropped Hoodie. Please select a different size or color."
+                    }), 400
+                
+                # Peach is ONLY available in XL
+                if color == "Peach" and size != "XL":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
+                    }), 400
+            
+            # Check Women's Crop Top availability
+            if product_name == "Women's Crop Top":
+                # Bubblegum is out of stock
+                if color == "Bubblegum":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
+                    }), 400
+            
+            # Check Unisex T-Shirt availability
+            if product_name == "Unisex T-Shirt":
+                # Colors not available in XS
+                unavailable_in_xs = [
+                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
+                    "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
+                ]
+                if color in unavailable_in_xs and size == "XS":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size XS for Unisex T-Shirt. Please select a different size or color."
+                    }), 400
+                
+                # Colors not available in 5XL (XXXXXL)
+                unavailable_in_5xl = [
+                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
+                    "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve",
+                    "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
+                ]
+                if color in unavailable_in_5xl and size == "XXXXXL":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size 5XL for Unisex T-Shirt. Please select a different size or color."
+                    }), 400
 
         # --- Email Formatting ---
         html_body = "<h1>New ScreenMerch Order</h1>"
@@ -2474,6 +2545,80 @@ def place_order():
 
         if not cart:
             return jsonify({"success": False, "error": "Cart is empty"}), 400
+        
+        # Validate color-size availability for each cart item
+        for item in cart:
+            product_name = item.get('product', '')
+            color = item.get('variants', {}).get('color', '')
+            size = item.get('variants', {}).get('size', '')
+            
+            # Check Women's Ribbed Neck availability
+            if product_name == "Women's Ribbed Neck":
+                # Colors that are NOT available in XXXL, XXXXL, XXXXXL
+                restricted_colors = [
+                    "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite",
+                    "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche",
+                    "Cotton Pink", "Lavender"
+                ]
+                
+                # Sizes that are restricted for certain colors
+                restricted_sizes = ["XXXL", "XXXXL", "XXXXXL"]
+                
+                if color in restricted_colors and size in restricted_sizes:
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size {size} for Women's Ribbed Neck. Please select a different size or color."
+                    }), 400
+            
+            # Check Cropped Hoodie availability
+            if product_name == "Cropped Hoodie":
+                # Black is NOT available in XL and XXL
+                if color == "Black" and size in ["XL", "XXL"]:
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size {size} for Cropped Hoodie. Please select a different size or color."
+                    }), 400
+                
+                # Peach is ONLY available in XL
+                if color == "Peach" and size != "XL":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
+                    }), 400
+            
+            # Check Women's Crop Top availability
+            if product_name == "Women's Crop Top":
+                # Bubblegum is out of stock
+                if color == "Bubblegum":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
+                    }), 400
+            
+            # Check Unisex T-Shirt availability
+            if product_name == "Unisex T-Shirt":
+                # Colors not available in XS
+                unavailable_in_xs = [
+                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
+                    "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
+                ]
+                if color in unavailable_in_xs and size == "XS":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size XS for Unisex T-Shirt. Please select a different size or color."
+                    }), 400
+                
+                # Colors not available in 5XL (XXXXXL)
+                unavailable_in_5xl = [
+                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
+                    "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve",
+                    "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
+                ]
+                if color in unavailable_in_5xl and size == "XXXXXL":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size 5XL for Unisex T-Shirt. Please select a different size or color."
+                    }), 400
         
         # Validate shipping address using robust function
         ok, addr_result = require_shipping_address(data)
@@ -3219,6 +3364,74 @@ def create_checkout_session():
         cart = data.get("cart", [])
         product_id = data.get("product_id")
         sms_consent = data.get("sms_consent", False)
+        
+        # Validate color-size availability for each cart item
+        for item in cart:
+            product_name = item.get('product', '')
+            color = item.get('variants', {}).get('color', '')
+            size = item.get('variants', {}).get('size', '')
+            
+            # Check Women's Ribbed Neck availability
+            if product_name == "Women's Ribbed Neck":
+                # Colors that are NOT available in XXXL, XXXXL, XXXXXL
+                restricted_colors = [
+                    "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite",
+                    "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche",
+                    "Cotton Pink", "Lavender"
+                ]
+                
+                # Sizes that are restricted for certain colors
+                restricted_sizes = ["XXXL", "XXXXL", "XXXXXL"]
+                
+                if color in restricted_colors and size in restricted_sizes:
+                    return jsonify({
+                        "error": f"{color} is not available in size {size} for Women's Ribbed Neck. Please select a different size or color."
+                    }), 400
+            
+            # Check Cropped Hoodie availability
+            if product_name == "Cropped Hoodie":
+                # Black is NOT available in XL and XXL
+                if color == "Black" and size in ["XL", "XXL"]:
+                    return jsonify({
+                        "error": f"{color} is not available in size {size} for Cropped Hoodie. Please select a different size or color."
+                    }), 400
+                
+                # Peach is ONLY available in XL
+                if color == "Peach" and size != "XL":
+                    return jsonify({
+                        "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
+                    }), 400
+            
+            # Check Women's Crop Top availability
+            if product_name == "Women's Crop Top":
+                # Bubblegum is out of stock
+                if color == "Bubblegum":
+                    return jsonify({
+                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
+                    }), 400
+            
+            # Check Unisex T-Shirt availability
+            if product_name == "Unisex T-Shirt":
+                # Colors not available in XS
+                unavailable_in_xs = [
+                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
+                    "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
+                ]
+                if color in unavailable_in_xs and size == "XS":
+                    return jsonify({
+                        "error": f"{color} is not available in size XS for Unisex T-Shirt. Please select a different size or color."
+                    }), 400
+                
+                # Colors not available in 5XL (XXXXXL)
+                unavailable_in_5xl = [
+                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
+                    "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve",
+                    "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
+                ]
+                if color in unavailable_in_5xl and size == "XXXXXL":
+                    return jsonify({
+                        "error": f"{color} is not available in size 5XL for Unisex T-Shirt. Please select a different size or color."
+                    }), 400
         
         # Validate shipping address using robust function
         ok, addr_result = require_shipping_address(data)
