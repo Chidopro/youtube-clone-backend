@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { AdminService } from '../../utils/adminService';
-import { getPrintAreaDimensions } from '../../config/printAreaConfig';
+import { getPrintAreaDimensions, PRINT_AREA_CONFIG, getAspectRatio } from '../../config/printAreaConfig';
+import PrintfulVariableEditor from './PrintfulVariableEditor';
 import './Admin.css';
 
 const Admin = () => {
@@ -26,13 +27,14 @@ const Admin = () => {
   const [workers, setWorkers] = useState([]);
   const [queueStatusFilter, setQueueStatusFilter] = useState('all');
   const [queueLoading, setQueueLoading] = useState(false);
-  const [isFullAdmin, setIsFullAdmin] = useState(false);
   const [isOrderProcessingAdmin, setIsOrderProcessingAdmin] = useState(false);
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [adminSignupRequests, setAdminSignupRequests] = useState([]);
   const [allAdmins, setAllAdmins] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedCartItemIndex, setSelectedCartItemIndex] = useState(null); // Track which cart item is being processed
+  const [selectedProductName, setSelectedProductName] = useState(''); // For Fit to Print Area dropdown
+  const [printAreaFit, setPrintAreaFit] = useState('none'); // Fit type: 'none', 'product', 'horizontal', 'square', 'vertical'
   const [step1Processing, setStep1Processing] = useState(false);
   const [step2Processing, setStep2Processing] = useState(false);
   const [step3Processing, setStep3Processing] = useState(false);
@@ -183,12 +185,11 @@ const Admin = () => {
       // Check if user is admin using AdminService
       const isUserAdmin = await AdminService.isAdmin();
       const isUserMasterAdmin = await AdminService.isMasterAdmin();
-      const isUserFullAdmin = await AdminService.isFullAdmin(); // This now only returns true for master_admin
       const isUserOrderProcessingAdmin = await AdminService.isOrderProcessingAdmin();
 
       console.log('🔐 Admin Status Check:', {
         isUserAdmin,
-        isUserFullAdmin,
+        isUserMasterAdmin,
         isUserOrderProcessingAdmin,
         userEmail: user?.email || user?.user_metadata?.email,
         userId: user?.id
@@ -202,7 +203,6 @@ const Admin = () => {
 
       setIsAdmin(true);
       setIsMasterAdmin(isUserMasterAdmin);
-      setIsFullAdmin(isUserFullAdmin); // This is now the same as isMasterAdmin
       setIsOrderProcessingAdmin(isUserOrderProcessingAdmin);
       
       console.log('✅ Admin access granted. Master Admin:', isUserMasterAdmin, 'Order Processing Admin:', isUserOrderProcessingAdmin);
@@ -436,10 +436,10 @@ const Admin = () => {
       const screenshotData = item.selected_screenshot || item.img;
       const apiUrl = process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev';
       
-      // Get print area dimensions for this product
-      const productName = item.product || '';
+      // Use selectedProductName from dropdown if available, otherwise use cart item's product
+      const effectiveProductName = (printAreaFit === 'product' && selectedProductName) ? selectedProductName : (item.product || '');
       const productSize = (item.variants || {}).size || null;
-      const printDimensions = getPrintAreaDimensions(productName, productSize, 'front');
+      const printDimensions = getPrintAreaDimensions(effectiveProductName, productSize, 'front');
       
       const requestBody = {
         thumbnail_data: screenshotData,
@@ -451,13 +451,88 @@ const Admin = () => {
         feather_edge_percent: 0
       };
       
+      // Calculate crop_area based on printAreaFit if not 'none'
+      let cropArea = null;
+      if (printAreaFit !== 'none' && screenshotData) {
+        try {
+          // Decode image to get dimensions
+          const base64Data = screenshotData.includes(',') ? screenshotData.split(',')[1] : screenshotData;
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          const blob = new Blob([bytes], { type: 'image/png' });
+          const img = new Image();
+          const imgLoadPromise = new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = URL.createObjectURL(blob);
+          });
+          await imgLoadPromise;
+          
+          const imgWidth = img.width;
+          const imgHeight = img.height;
+          const imgAspect = imgWidth / imgHeight;
+          let targetAspect;
+          
+          if (printAreaFit === 'product' && selectedProductName && printDimensions) {
+            targetAspect = getAspectRatio(printDimensions.width, printDimensions.height);
+          } else {
+            switch (printAreaFit) {
+              case 'horizontal':
+                targetAspect = 1.5;
+                break;
+              case 'square':
+                targetAspect = 1.0;
+                break;
+              case 'vertical':
+                targetAspect = 0.67;
+                break;
+              default:
+                targetAspect = imgAspect;
+            }
+          }
+          
+          // Calculate crop area to fit target aspect ratio
+          let cropX = 0, cropY = 0, cropWidth = imgWidth, cropHeight = imgHeight;
+          
+          if (imgAspect > targetAspect) {
+            // Image is wider than target - crop width
+            cropWidth = imgHeight * targetAspect;
+            cropX = (imgWidth - cropWidth) / 2;
+          } else if (imgAspect < targetAspect) {
+            // Image is taller than target - crop height
+            cropHeight = imgWidth / targetAspect;
+            cropY = (imgHeight - cropHeight) / 2;
+          }
+          
+          // Convert pixel coordinates to normalized coordinates (0-1) for backend
+          cropArea = {
+            x: cropX / imgWidth,  // Normalize to 0-1
+            y: cropY / imgHeight, // Normalize to 0-1
+            width: cropWidth / imgWidth,   // Normalize to 0-1
+            height: cropHeight / imgHeight // Normalize to 0-1
+          };
+          
+          URL.revokeObjectURL(img.src);
+        } catch (cropError) {
+          console.warn('Could not calculate crop area:', cropError);
+        }
+      }
+      
+      if (cropArea) {
+        requestBody.crop_area = cropArea;
+        console.log(`✂️ [PRINT_QUALITY] Crop area calculated: ${cropArea.x},${cropArea.y} ${cropArea.width}x${cropArea.height}`);
+      }
+      
       // Add print area dimensions if available
       if (printDimensions) {
         requestBody.print_area_width = printDimensions.width;
         requestBody.print_area_height = printDimensions.height;
-        console.log(`📐 [PRINT_QUALITY] Using print area dimensions for ${productName} (${productSize || 'default'}): ${printDimensions.width}"x${printDimensions.height}"`);
+        console.log(`📐 [PRINT_QUALITY] Using print area dimensions for ${effectiveProductName} (${productSize || 'default'}): ${printDimensions.width}"x${printDimensions.height}"`);
       } else {
-        console.warn(`⚠️ [PRINT_QUALITY] No print area dimensions found for product: ${productName}`);
+        console.warn(`⚠️ [PRINT_QUALITY] No print area dimensions found for product: ${effectiveProductName}`);
       }
       
       const response = await fetch(`${apiUrl}/api/process-thumbnail-print-quality`, {
@@ -521,13 +596,14 @@ const Admin = () => {
     console.log(`applyBothEffects: Using unified API (like email generator). Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%, Frame: ${frameEnabled ? `enabled (${frameColor}, ${frameWidth}px, double: ${doubleFrame})` : 'disabled'}`);
 
     // Get print area dimensions for this product (same as Step 1)
+    // Use selectedProductName from dropdown if available, otherwise use cart item's product
     let printDimensions = null;
     if (selectedOrder && selectedCartItemIndex !== null) {
       const item = selectedOrder.cart[selectedCartItemIndex];
       if (item) {
-        const productName = item.product || '';
+        const effectiveProductName = (printAreaFit === 'product' && selectedProductName) ? selectedProductName : (item.product || '');
         const productSize = (item.variants || {}).size || null;
-        printDimensions = getPrintAreaDimensions(productName, productSize, 'front');
+        printDimensions = getPrintAreaDimensions(effectiveProductName, productSize, 'front');
       }
     }
 
@@ -994,7 +1070,7 @@ const Admin = () => {
                   (Master Admin)
                 </span>
               )}
-              {isOrderProcessingAdmin && !isFullAdmin && (
+              {isOrderProcessingAdmin && !isMasterAdmin && (
                 <span style={{ fontSize: '14px', color: '#999', marginLeft: '10px' }}>
                   (Order Processing Admin)
                 </span>
@@ -1008,7 +1084,7 @@ const Admin = () => {
 
       <div className="admin-content">
         <div className="admin-sidebar">
-          {isFullAdmin && (
+          {isMasterAdmin && (
             <>
               <button 
                 className={`admin-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
@@ -1042,7 +1118,7 @@ const Admin = () => {
               </button>
             </>
           )}
-          {(isFullAdmin || isOrderProcessingAdmin) && (
+          {(isMasterAdmin || isOrderProcessingAdmin) && (
             <button 
               className={`admin-tab ${activeTab === 'order-processing' ? 'active' : ''}`}
               onClick={() => setActiveTab('order-processing')}
@@ -1051,20 +1127,26 @@ const Admin = () => {
             </button>
           )}
           {isMasterAdmin && (
-            <button 
-              className={`admin-tab ${activeTab === 'admin-management' ? 'active' : ''}`}
-              onClick={() => setActiveTab('admin-management')}
-            >
-              👥 Admin Management
-            </button>
-          )}
-          {isFullAdmin && (
-            <button 
-              className={`admin-tab ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => setActiveTab('settings')}
-            >
-              System Settings
-            </button>
+            <>
+              <button 
+                className={`admin-tab ${activeTab === 'admin-management' ? 'active' : ''}`}
+                onClick={() => setActiveTab('admin-management')}
+              >
+                👥 Admin Management
+              </button>
+              <button 
+                className={`admin-tab ${activeTab === 'printful-editor' ? 'active' : ''}`}
+                onClick={() => setActiveTab('printful-editor')}
+              >
+                🎨 Printful Variable Editor
+              </button>
+              <button 
+                className={`admin-tab ${activeTab === 'settings' ? 'active' : ''}`}
+                onClick={() => setActiveTab('settings')}
+              >
+                System Settings
+              </button>
+            </>
           )}
         </div>
 
@@ -1949,6 +2031,10 @@ const Admin = () => {
             </div>
           )}
 
+          {activeTab === 'printful-editor' && isMasterAdmin && (
+            <PrintfulVariableEditor />
+          )}
+
           {activeTab === 'settings' && isMasterAdmin && (
             <div className="admin-settings">
               <h3>System Settings</h3>
@@ -2051,6 +2137,9 @@ const Admin = () => {
                         setSelectedCartItemIndex(idx);
                         setProcessedImage(null);
                         setOriginal300DpiImage(null);
+                        // Reset Fit to Print Area settings when selecting a new item
+                        setSelectedProductName('');
+                        setPrintAreaFit('none');
                         
                         // Load saved tool settings from this cart item if available
                         let savedSettings = {
@@ -2078,7 +2167,8 @@ const Admin = () => {
                             frame_enabled: item.toolSettings.frameEnabled || false,
                             frame_color: item.toolSettings.frameColor || '#FF0000',
                             frame_width: item.toolSettings.frameWidth || 10,
-                            double_frame: item.toolSettings.doubleFrame || false
+                            double_frame: item.toolSettings.doubleFrame || false,
+                            add_white_background: item.toolSettings.addWhiteBackground || false // Include white background setting
                           };
                           console.log('📦 Loaded saved tool settings from cart item:', savedSettings);
                         }
@@ -2232,6 +2322,63 @@ const Admin = () => {
                                 <option value={300}>300 DPI (Standard Print)</option>
                                 <option value={150}>150 DPI (Lower Quality)</option>
                               </select>
+                            </div>
+
+                            {/* Fit to Print Area - For adjusting full screenshots per product */}
+                            <div style={{ background: '#fff3cd', padding: '15px', borderRadius: '8px', margin: '20px 0', border: '2px solid #ffc107' }}>
+                              <h3 style={{ marginTop: 0, color: '#856404' }}>✂️ Fit to Print Area</h3>
+                              <p style={{ color: '#856404', fontSize: '13px', marginBottom: '12px' }}>
+                                Crop image to fit product print areas (useful when user bypassed tools page)
+                              </p>
+                              
+                              <div style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold' }}>
+                                  Select Product:
+                                </label>
+                                <select
+                                  value={selectedProductName}
+                                  onChange={(e) => {
+                                    setSelectedProductName(e.target.value);
+                                    // Auto-select product fit if product is selected
+                                    if (e.target.value) {
+                                      setPrintAreaFit('product');
+                                    }
+                                  }}
+                                  style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd', width: '100%', fontSize: '14px' }}
+                                >
+                                  <option value="">-- Select Product --</option>
+                                  {Object.keys(PRINT_AREA_CONFIG).sort().map(productName => (
+                                    <option key={productName} value={productName}>
+                                      {productName}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              
+                              <div style={{ marginBottom: '8px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold' }}>
+                                  Fit Type:
+                                </label>
+                                <select
+                                  value={printAreaFit}
+                                  onChange={(e) => setPrintAreaFit(e.target.value)}
+                                  style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd', width: '100%', fontSize: '14px' }}
+                                >
+                                  <option value="none">Original (No Fit)</option>
+                                  {selectedProductName && (
+                                    <option value="product">Product Specific ({selectedProductName})</option>
+                                  )}
+                                  <option value="horizontal">Horizontal (Wide - for standard shirts)</option>
+                                  <option value="square">Square (1:1 - for mugs, square items)</option>
+                                  <option value="vertical">Vertical (Tall - for tank tops, vertical shirts)</option>
+                                </select>
+                              </div>
+                              
+                              {printAreaFit !== 'none' && (
+                                <div style={{ fontSize: '12px', color: '#856404', marginTop: '8px', padding: '8px', background: '#fff', borderRadius: '4px' }}>
+                                  ✓ Image will be cropped to fit the selected print area when generating 300 DPI image
+                                </div>
+                              )}
                             </div>
 
                             {/* STEP 1: Create 300 DPI Image */}
@@ -2522,27 +2669,38 @@ const Admin = () => {
                             {processedImage && processedImage.success && (
                               <div style={{ marginTop: '20px', padding: '16px', background: '#d4edda', borderRadius: '4px', border: '1px solid #c3e6cb' }}>
                                 <p style={{ color: '#155724', fontWeight: 'bold', marginBottom: '12px' }}>✅ Image Processed Successfully!</p>
+                                {printQualitySettings.add_white_background && (
+                                  <p style={{ color: '#856404', backgroundColor: '#fff3cd', padding: '8px', borderRadius: '4px', marginBottom: '12px', fontSize: '13px' }}>
+                                    ⚠️ White background is enabled - image will have a solid white background when downloaded
+                                  </p>
+                                )}
                                 <div style={{ marginBottom: '12px' }}>
                                   {processedImage.screenshot ? (
-                                    <img 
-                                      src={processedImage.screenshot} 
-                                      alt="Processed"
-                                      onError={(e) => {
-                                        console.error('Image failed to load:', processedImage.screenshot?.substring(0, 100));
-                                        e.target.style.display = 'none';
-                                        alert('Error: Image failed to load. Please try again.');
-                                      }}
-                                      onLoad={() => {
-                                        console.log('Image loaded successfully');
-                                      }}
-                                      style={{
-                                        maxWidth: '400px',
-                                        maxHeight: '400px',
-                                        border: '1px solid #ddd',
-                                        borderRadius: '4px',
-                                        backgroundColor: '#f0f0f0'
-                                      }}
-                                    />
+                                    <div style={{ 
+                                      display: 'inline-block',
+                                      background: printQualitySettings.add_white_background ? 'white' : 'transparent',
+                                      padding: printQualitySettings.add_white_background ? '10px' : '0',
+                                      borderRadius: '4px',
+                                      border: '1px solid #ddd'
+                                    }}>
+                                      <img 
+                                        src={processedImage.screenshot} 
+                                        alt="Processed"
+                                        onError={(e) => {
+                                          console.error('Image failed to load:', processedImage.screenshot?.substring(0, 100));
+                                          e.target.style.display = 'none';
+                                          alert('Error: Image failed to load. Please try again.');
+                                        }}
+                                        onLoad={() => {
+                                          console.log('Image loaded successfully');
+                                        }}
+                                        style={{
+                                          maxWidth: '400px',
+                                          maxHeight: '400px',
+                                          display: 'block'
+                                        }}
+                                      />
+                                    </div>
                                   ) : (
                                     <div style={{ padding: '20px', textAlign: 'center', color: '#dc3545' }}>
                                       Error: No image data received
@@ -2596,16 +2754,23 @@ const Admin = () => {
                       <div key={idx} style={{ marginBottom: '20px', padding: '16px', background: 'white', borderRadius: '4px', border: '1px solid #28a745' }}>
                         <h4 style={{ marginTop: 0, color: '#28a745' }}>Item {idx + 1}: {item.product}</h4>
                         <div style={{ marginBottom: '12px' }}>
-                          <img 
-                            src={processedImages[idx].processedImage} 
-                            alt={`Processed ${item.product}`}
-                            style={{
-                              maxWidth: '300px',
-                              maxHeight: '300px',
-                              border: '1px solid #ddd',
-                              borderRadius: '4px'
-                            }}
-                          />
+                          <div style={{ 
+                            display: 'inline-block',
+                            background: 'transparent',
+                            padding: '0',
+                            borderRadius: '4px',
+                            border: '1px solid #ddd'
+                          }}>
+                            <img 
+                              src={processedImages[idx].processedImage} 
+                              alt={`Processed ${item.product}`}
+                              style={{
+                                maxWidth: '300px',
+                                maxHeight: '300px',
+                                display: 'block'
+                              }}
+                            />
+                          </div>
                         </div>
                         <button
                           onClick={() => {

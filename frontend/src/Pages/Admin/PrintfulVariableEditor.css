@@ -1,0 +1,460 @@
+.printful-variable-editor {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.editor-header {
+  margin-bottom: 2rem;
+}
+
+.editor-header h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.editor-header p {
+  margin: 0;
+  color: #666;
+}
+
+.unsaved-warning {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  color: #856404;
+  font-weight: 500;
+}
+
+.editor-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.product-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.product-selector label {
+  font-weight: 600;
+  color: #333;
+}
+
+.product-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  min-width: 250px;
+  background-color: white;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.save-button,
+.export-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.save-button {
+  background-color: #28a745;
+  color: white;
+}
+
+.save-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.save-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.export-button {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.export-button:hover {
+  background-color: #138496;
+}
+
+.save-status {
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.save-status.success {
+  background-color: #d4edda;
+  border: 2px solid #28a745;
+  color: #155724;
+  font-weight: 600;
+}
+
+.save-status.success .file-path {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+}
+
+.save-status.error {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+.save-instructions {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.save-instructions pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.code-snippet-container {
+  margin-top: 1rem;
+}
+
+.code-snippet-container label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.code-snippet {
+  width: 100%;
+  min-height: 200px;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  background-color: #f8f9fa;
+  resize: vertical;
+}
+
+.availability-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  color: white;
+}
+
+.availability-section .section-header {
+  margin-bottom: 0.5rem;
+}
+
+.availability-section .section-header:last-child {
+  margin-bottom: 0;
+}
+
+.availability-section h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.availability-section p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.95;
+}
+
+.availability-grid-container {
+  overflow-x: auto;
+  margin-bottom: 2rem;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  background-color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.availability-grid {
+  display: grid;
+  /* grid-template-columns is set dynamically via inline style based on number of sizes */
+  min-width: 100%;
+}
+
+.grid-header {
+  display: contents;
+}
+
+.grid-header .header-cell {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 700;
+  padding: 1rem;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-right: 2px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.grid-header .header-cell.corner-cell {
+  position: sticky;
+  left: 0;
+  z-index: 12;
+  background: linear-gradient(135deg, #4c63d2 0%, #5a3d8a 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.header-label {
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.header-label-secondary {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.grid-header .header-cell.size-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.size-label {
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  justify-content: center;
+}
+
+.bulk-btn {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bulk-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.bulk-btn.all-btn:hover {
+  background-color: rgba(40, 167, 69, 0.3);
+}
+
+.bulk-btn.none-btn:hover {
+  background-color: rgba(220, 53, 69, 0.3);
+}
+
+.grid-row {
+  display: contents;
+}
+
+.grid-cell {
+  padding: 0.75rem;
+  border-right: 1px solid #e9ecef;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-cell {
+  background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);
+  font-weight: 600;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  border-right: 3px solid #667eea;
+  justify-content: flex-start;
+  padding-left: 1rem;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.color-label {
+  font-size: 0.95rem;
+  color: #333;
+  text-transform: capitalize;
+}
+
+.availability-cell {
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+}
+
+.availability-cell:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: #667eea;
+  z-index: 2;
+  position: relative;
+}
+
+.cell-icon {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.availability-cell.available {
+  background-color: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
+.availability-cell.available:hover {
+  background-color: #c3e6cb;
+  border-color: #28a745;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.availability-cell.unavailable {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-color: #f5c6cb;
+}
+
+.availability-cell.unavailable:hover {
+  background-color: #f5c6cb;
+  border-color: #dc3545;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.editor-legend {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.legend-box.available {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.legend-box.unavailable {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.legend-note {
+  color: #6c757d;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .printful-variable-editor {
+    padding: 1rem;
+  }
+
+  .editor-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .product-select {
+    width: 100%;
+  }
+
+  .action-buttons {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .save-button,
+  .export-button {
+    width: 100%;
+  }
+
+  .availability-grid {
+    grid-template-columns: 150px repeat(auto-fit, minmax(80px, 1fr));
+  }
+
+  .grid-cell {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .bulk-actions {
+    flex-direction: column;
+  }
+
+  .bulk-btn {
+    width: 100%;
+  }
+}
+
