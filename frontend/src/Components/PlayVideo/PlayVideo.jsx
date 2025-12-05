@@ -42,6 +42,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const [video, setVideo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [videoError, setVideoError] = useState(null);
     const videoRef = propVideoRef || useRef(null);
     
     // Video container ref
@@ -216,6 +217,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         setLastAlertTime(0);
         // Reset screenshot function passed flag
         screenshotFunctionPassedRef.current = false;
+        // Clear video errors when video changes
+        setVideoError(null);
     }, [videoId, setScreenshots]);
 
 
@@ -570,15 +573,19 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Set canvas size to match video display size
-            const videoRect = videoElement.getBoundingClientRect();
-            canvas.width = videoRect.width;
-            canvas.height = videoRect.height;
+            // Use video's native dimensions to prevent squishing/stretching
+            // This ensures the screenshot maintains the correct aspect ratio
+            const videoWidth = videoElement.videoWidth || videoElement.clientWidth;
+            const videoHeight = videoElement.videoHeight || videoElement.clientHeight;
+            
+            // Set canvas size to match video's native dimensions
+            canvas.width = videoWidth;
+            canvas.height = videoHeight;
             
             // No waiting - instant capture for maximum speed
             
-            // Draw the current video frame to canvas
-            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            // Draw the current video frame to canvas using native dimensions
+            ctx.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
             
             // Convert to data URL with high quality
             const screenshotData = canvas.toDataURL('image/jpeg', 0.9);
@@ -934,23 +941,85 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             // Fallback to client-side screenshot capture if server failed
             if (!fullScreenshot) {
                 console.log('Using client-side screenshot capture as fallback');
-                const tempCanvas = document.createElement('canvas');
-                const tempCtx = tempCanvas.getContext('2d');
                 
-                // Get video dimensions
-                const videoWidth = videoElement.videoWidth || videoElement.clientWidth;
-                const videoHeight = videoElement.videoHeight || videoElement.clientHeight;
+                // Check if video has a poster/thumbnail that we should use
+                const posterUrl = videoElement.poster || video?.thumbnail || video?.poster;
+                const isPausedOrThumbnail = videoElement.paused && (videoElement.currentTime === 0 || !videoElement.readyState || videoElement.readyState < 2);
                 
-                // Set canvas to video dimensions
-                tempCanvas.width = videoWidth;
-                tempCanvas.height = videoHeight;
+                // If video is paused at start and has a poster, try to use it
+                if (isPausedOrThumbnail && posterUrl) {
+                    console.log('Video is paused/thumbnail, attempting to use poster image:', posterUrl);
+                    try {
+                        // Try to load the poster image directly
+                        const posterImg = new Image();
+                        posterImg.crossOrigin = 'anonymous';
+                        await new Promise((resolve, reject) => {
+                            posterImg.onload = resolve;
+                            posterImg.onerror = reject;
+                            posterImg.src = posterUrl;
+                        });
+                        
+                        const tempCanvas = document.createElement('canvas');
+                        const tempCtx = tempCanvas.getContext('2d');
+                        tempCanvas.width = posterImg.width;
+                        tempCanvas.height = posterImg.height;
+                        tempCtx.drawImage(posterImg, 0, 0);
+                        fullScreenshot = tempCanvas.toDataURL('image/png');
+                        useServerScreenshot = false;
+                        console.log('Successfully captured from poster image:', posterImg.width, 'x', posterImg.height);
+                    } catch (posterError) {
+                        console.warn('Failed to use poster image, falling back to video capture:', posterError);
+                    }
+                }
                 
-                // Draw current video frame to canvas
-                tempCtx.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
-                
-                // Convert to data URL
-                fullScreenshot = tempCanvas.toDataURL('image/png');
-                useServerScreenshot = false;
+                // If poster didn't work, try capturing from video element
+                if (!fullScreenshot) {
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+                    
+                    // Get video dimensions - prioritize native dimensions, fallback to display dimensions
+                    // For paused/thumbnail videos, videoWidth/videoHeight might be 0
+                    let videoWidth = videoElement.videoWidth;
+                    let videoHeight = videoElement.videoHeight;
+                    
+                    // If native dimensions are not available (video not loaded or paused), use display dimensions
+                    if (!videoWidth || !videoHeight || videoWidth === 0 || videoHeight === 0) {
+                        const displayRect = videoElement.getBoundingClientRect();
+                        videoWidth = displayRect.width || videoElement.clientWidth || 640;
+                        videoHeight = displayRect.height || videoElement.clientHeight || 360;
+                        console.log('Using display dimensions for screenshot:', videoWidth, 'x', videoHeight);
+                    }
+                    
+                    // Ensure we have valid dimensions
+                    if (videoWidth <= 0 || videoHeight <= 0) {
+                        throw new Error('Invalid video dimensions for screenshot capture');
+                    }
+                    
+                    // Set canvas to video dimensions
+                    tempCanvas.width = videoWidth;
+                    tempCanvas.height = videoHeight;
+                    
+                    // Draw current video frame to canvas (works even when paused/thumbnail)
+                    // For paused videos, this captures the current frame being displayed
+                    try {
+                        tempCtx.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
+                        fullScreenshot = tempCanvas.toDataURL('image/png');
+                        useServerScreenshot = false;
+                        console.log('Client-side screenshot captured successfully:', videoWidth, 'x', videoHeight);
+                    } catch (drawError) {
+                        console.error('Error drawing video to canvas:', drawError);
+                        // If drawImage fails, try with natural dimensions
+                        if (videoElement.naturalWidth && videoElement.naturalHeight) {
+                            tempCanvas.width = videoElement.naturalWidth;
+                            tempCanvas.height = videoElement.naturalHeight;
+                            tempCtx.drawImage(videoElement, 0, 0);
+                            fullScreenshot = tempCanvas.toDataURL('image/png');
+                            useServerScreenshot = false;
+                        } else {
+                            throw drawError;
+                        }
+                    }
+                }
             }
             
             // Create a new canvas to crop the screenshot
@@ -960,27 +1029,101 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             
             img.onload = () => {
                 try {
-                    // Get the display dimensions of the video
+                    // Get the display dimensions of the video container
                     const displayRect = videoElement.getBoundingClientRect();
                     const displayWidth = displayRect.width;
                     const displayHeight = displayRect.height;
                     
-                    // Calculate scale factors between screenshot and display
-                    // If using server screenshot, it might be scaled differently
-                    const scaleX = img.width / displayWidth;
-                    const scaleY = img.height / displayHeight;
+                    // Get video's native dimensions
+                    // If videoWidth/videoHeight are 0 or not available (paused/thumbnail), use screenshot dimensions
+                    let videoWidth = videoElement.videoWidth;
+                    let videoHeight = videoElement.videoHeight;
+                    
+                    // For paused/thumbnail videos, use screenshot dimensions as the reference
+                    if (!videoWidth || !videoHeight || videoWidth === 0 || videoHeight === 0) {
+                        // Video not loaded or paused - use screenshot dimensions as reference
+                        videoWidth = img.width;
+                        videoHeight = img.height;
+                        console.log('Using screenshot dimensions for crop calculation:', videoWidth, 'x', videoHeight);
+                    }
+                    
+                    // Calculate scale factors from display to screenshot dimensions
+                    // When video is paused/thumbnail, screenshot might be from poster image with different dimensions
+                    const screenshotAspect = img.width / img.height;
+                    const displayAspect = displayWidth / displayHeight;
+                    
+                    let scaleX, scaleY, offsetX = 0, offsetY = 0;
+                    
+                    // If screenshot dimensions match display dimensions (thumbnail/paused case with same size)
+                    if (Math.abs(img.width - displayWidth) < 10 && Math.abs(img.height - displayHeight) < 10) {
+                        // Screenshot is from display dimensions - direct mapping
+                        scaleX = 1;
+                        scaleY = 1;
+                        console.log('Screenshot matches display dimensions - using direct mapping');
+                    } else {
+                        // Screenshot dimensions don't match display - need to scale
+                        // This happens when poster image is used (e.g., 266x182 vs display size)
+                        // Calculate how the screenshot (poster) is displayed in the video container
+                        // The poster is likely displayed with object-fit: cover or contain
+                        
+                        // Calculate scale to fit display while maintaining aspect ratio
+                        const scaleToFitWidth = displayWidth / img.width;
+                        const scaleToFitHeight = displayHeight / img.height;
+                        
+                        // Use the smaller scale (cover behavior) or larger scale (contain behavior)
+                        // Assuming cover behavior (fits container, may crop)
+                        const scale = Math.max(scaleToFitWidth, scaleToFitHeight);
+                        
+                        // Calculate the scaled dimensions
+                        const scaledScreenshotWidth = img.width * scale;
+                        const scaledScreenshotHeight = img.height * scale;
+                        
+                        // Calculate offset (centering)
+                        if (scaledScreenshotWidth > displayWidth) {
+                            // Screenshot is wider - center horizontally
+                            offsetX = (scaledScreenshotWidth - displayWidth) / 2 / scale;
+                        }
+                        if (scaledScreenshotHeight > displayHeight) {
+                            // Screenshot is taller - center vertically
+                            offsetY = (scaledScreenshotHeight - displayHeight) / 2 / scale;
+                        }
+                        
+                        // Scale from display coordinates to screenshot coordinates
+                        scaleX = 1 / scale;
+                        scaleY = 1 / scale;
+                        
+                        console.log('Screenshot dimensions differ from display - scaling:', {
+                            screenshot: { width: img.width, height: img.height },
+                            display: { width: displayWidth, height: displayHeight },
+                            scale: scale,
+                            scaleX: scaleX,
+                            scaleY: scaleY,
+                            offsetX: offsetX,
+                            offsetY: offsetY
+                        });
+                    }
                     
                     // Convert display crop coordinates to screenshot coordinates
-                    const screenshotCropX = Math.round(cropArea.x * scaleX);
-                    const screenshotCropY = Math.round(cropArea.y * scaleY);
+                    const screenshotCropX = Math.round((cropArea.x * scaleX) - offsetX);
+                    const screenshotCropY = Math.round((cropArea.y * scaleY) - offsetY);
                     const screenshotCropWidth = Math.round(cropArea.width * scaleX);
                     const screenshotCropHeight = Math.round(cropArea.height * scaleY);
                     
                     // Ensure crop area is within image bounds
-                    const finalCropX = Math.max(0, Math.min(img.width - screenshotCropWidth, screenshotCropX));
-                    const finalCropY = Math.max(0, Math.min(img.height - screenshotCropHeight, screenshotCropY));
-                    const finalCropWidth = Math.min(screenshotCropWidth, img.width - finalCropX);
-                    const finalCropHeight = Math.min(screenshotCropHeight, img.height - finalCropY);
+                    const finalCropX = Math.max(0, Math.min(img.width - 1, Math.max(0, screenshotCropX)));
+                    const finalCropY = Math.max(0, Math.min(img.height - 1, Math.max(0, screenshotCropY)));
+                    const finalCropWidth = Math.max(1, Math.min(screenshotCropWidth, img.width - finalCropX));
+                    const finalCropHeight = Math.max(1, Math.min(screenshotCropHeight, img.height - finalCropY));
+                    
+                    console.log('Crop calculation:', {
+                        display: { width: displayWidth, height: displayHeight },
+                        video: { width: videoWidth, height: videoHeight },
+                        screenshot: { width: img.width, height: img.height },
+                        scale: { x: scaleX, y: scaleY },
+                        offset: { x: offsetX, y: offsetY },
+                        cropArea: cropArea,
+                        finalCrop: { x: finalCropX, y: finalCropY, width: finalCropWidth, height: finalCropHeight }
+                    });
                     
                     // console.log('Crop coordinates:', {
                     //     display: cropArea,
@@ -1268,51 +1411,224 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             // console.log('Video can play');
                             setLoading(false);
                         }}
+                        onLoadedMetadata={() => {
+                            // Video metadata loaded
+                        }}
                         onLoadedData={() => {
                             // console.log('Video data loaded');
+                            setLoading(false);
+                            setVideoError(null); // Clear any previous errors
+                        }}
+                        onError={(e) => {
+                            const videoElement = e.target;
+                            const errorCode = videoElement.error;
+                            let errorMessage = 'Video failed to load.';
+                            
+                            if (errorCode) {
+                                // MediaError code constants:
+                                // MEDIA_ERR_ABORTED = 1
+                                // MEDIA_ERR_NETWORK = 2
+                                // MEDIA_ERR_DECODE = 3
+                                // MEDIA_ERR_SRC_NOT_SUPPORTED = 4
+                                switch (errorCode.code) {
+                                    case 1: // MEDIA_ERR_ABORTED
+                                        errorMessage = 'Video loading was aborted.';
+                                        break;
+                                    case 2: // MEDIA_ERR_NETWORK
+                                        errorMessage = 'Network error while loading video. Please check your connection.';
+                                        break;
+                                    case 3: // MEDIA_ERR_DECODE
+                                        errorMessage = 'Video format not supported or file is corrupted.';
+                                        break;
+                                    case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+                                        errorMessage = 'Video format not supported or URL is invalid.';
+                                        break;
+                                    default:
+                                        errorMessage = `Video error (code: ${errorCode.code}). The video file may be corrupted or the URL is invalid.`;
+                                }
+                            }
+                            
+                            console.error('Video playback error:', {
+                                code: errorCode?.code,
+                                message: errorMessage,
+                                videoUrl: video?.video_url,
+                                videoId: videoId
+                            });
+                            
+                            setVideoError(errorMessage);
                             setLoading(false);
                         }}
                     />
                     
+                    {/* Video Error Display */}
+                    {videoError && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            background: 'rgba(220, 53, 69, 0.95)',
+                            color: 'white',
+                            padding: '16px 24px',
+                            borderRadius: '8px',
+                            zIndex: 100,
+                            maxWidth: '90%',
+                            textAlign: 'center',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                        }}>
+                            <h4 style={{ margin: '0 0 8px 0', fontSize: '16px' }}>⚠️ Video Playback Error</h4>
+                            <p style={{ margin: '0', fontSize: '14px' }}>{videoError}</p>
+                            {video?.video_url && (
+                                <p style={{ margin: '8px 0 0 0', fontSize: '12px', opacity: 0.9 }}>
+                                    URL: {video.video_url.length > 50 ? video.video_url.substring(0, 50) + '...' : video.video_url}
+                                </p>
+                            )}
+                        </div>
+                    )}
+                    
                                          {/* Crop Tool Icon - Top Left Corner */}
                      <button
                          onClick={handleToggleCropMode}
+                         type="button"
                          style={{
                              position: 'absolute',
                              top: '10px',
                              left: '10px',
-                             background: isCropMode ? 'rgba(0, 123, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)',
-                             border: 'none',
-                             borderRadius: '50%',
-                             width: '40px',
-                             height: '40px',
+                            background: 'rgba(255, 255, 255, 0.95)',
+                            border: '2px solid #764ba2',
+                            borderRadius: '50%',
+                            width: '50px',
+                            height: '50px',
                              cursor: 'pointer',
                              display: 'flex',
                              alignItems: 'center',
                              justifyContent: 'center',
-                             zIndex: 10,
-                             transition: 'all 0.2s ease'
+                            zIndex: 10,
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                            overflow: 'hidden',
+                            outline: 'none',
+                            WebkitAppearance: 'none',
+                            MozAppearance: 'none',
+                            appearance: 'none',
+                            borderStyle: 'solid'
+                         }}
+                         onFocus={(e) => {
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
+                         }}
+                         onBlur={(e) => {
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
+                         }}
+                         onMouseDown={(e) => {
+                             e.preventDefault();
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
+                         }}
+                         onMouseUp={(e) => {
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
                          }}
                          onMouseEnter={(e) => {
-                             e.target.style.background = isCropMode ? 'rgba(0, 123, 255, 1)' : 'rgba(0, 0, 0, 0.9)';
-                             e.target.style.transform = 'scale(1.1)';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.transform = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.border = '2px solid #764ba2';
                          }}
                          onMouseLeave={(e) => {
-                             e.target.style.background = isCropMode ? 'rgba(0, 123, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)';
-                             e.target.style.transform = 'scale(1)';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.transform = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.border = '2px solid #764ba2';
                          }}
-                                                   title={isCropMode ? "Exit Crop Mode" : "Crop Screenshot"}
-                     >
-                                                   <svg 
-                              width="20" 
-                              height="20" 
-                              viewBox="0 0 24 24" 
-                              fill="white"
-                          >
-                              {/* Crop icon - scissors */}
-                              <path d="M6 2L8 4L10 2L12 4L14 2L16 4L18 2V6L16 8L18 10L16 12L18 14L16 16L18 18H14L12 16L10 18L8 16L6 18H2V14L4 12L2 10L4 8L2 6V2H6Z"/>
-                          </svg>
-                     </button>
+                         onTouchStart={(e) => {
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
+                         }}
+                         onTouchEnd={(e) => {
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
+                         }}
+                         onContextMenu={(e) => e.preventDefault()}
+                         title={isCropMode ? "Exit Crop Mode" : "Crop Screenshot"}
+                    >
+                        {/* Scissors emoji layer (beneath text) */}
+                        <span style={{ 
+                            position: 'absolute',
+                            fontSize: '20px',
+                            lineHeight: '1',
+                            zIndex: 1,
+                            opacity: 1
+                        }}>✂️</span>
+                        
+                        <svg 
+                            width="50" 
+                            height="50" 
+                            viewBox="0 0 50 50"
+                            style={{ 
+                                position: 'absolute',
+                                top: '0',
+                                left: '0',
+                                pointerEvents: 'none',
+                                zIndex: 2
+                            }}
+                        >
+                            {/* Top curve path for "Pause" */}
+                            <path 
+                                id={`topCurve-${isCropMode}`}
+                                d="M 10 22 A 15 15 0 0 1 40 22" 
+                                fill="none" 
+                                stroke="none"
+                            />
+                            {/* Bottom curve path for "Crop" - moved up to add padding below, centered under icon */}
+                            <path 
+                                id={`bottomCurve-${isCropMode}`}
+                                d="M 10 26 A 15 15 0 0 0 40 26" 
+                                fill="none" 
+                                stroke="none"
+                            />
+                            {/* Pause text on top curve */}
+                            <text 
+                                fill="red"
+                                fontSize="7.5"
+                                fontWeight="700"
+                                fontFamily="Arial, sans-serif"
+                            >
+                                <textPath href={`#topCurve-${isCropMode}`} startOffset="50%" textAnchor="middle">
+                                    Pause
+                                </textPath>
+                            </text>
+                            {/* Crop text on bottom curve - adjusted for better centering */}
+                            <text 
+                                fill="red"
+                                fontSize="7.5"
+                                fontWeight="700"
+                                fontFamily="Arial, sans-serif"
+                            >
+                                <textPath href={`#bottomCurve-${isCropMode}`} startOffset="50%" textAnchor="middle" dominantBaseline="middle">
+                                    Crop
+                                </textPath>
+                            </text>
+                        </svg>
+                    </button>
 
                      {/* Inline Crop Overlay */}
                      {isCropMode && (
