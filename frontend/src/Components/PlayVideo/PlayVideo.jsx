@@ -1048,97 +1048,82 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     }
                     
                     // Calculate scale factors from display to screenshot dimensions
-                    // When video is paused/thumbnail, screenshot might be from poster image with different dimensions
+                    // Account for object-fit: cover behavior
                     const screenshotAspect = img.width / img.height;
                     const displayAspect = displayWidth / displayHeight;
                     
                     let scaleX, scaleY, offsetX = 0, offsetY = 0;
                     
-                    // If screenshot dimensions match display dimensions (thumbnail/paused case with same size)
-                    if (Math.abs(img.width - displayWidth) < 10 && Math.abs(img.height - displayHeight) < 10) {
-                        // Screenshot is from display dimensions - direct mapping
-                        scaleX = 1;
-                        scaleY = 1;
-                        console.log('Screenshot matches display dimensions - using direct mapping');
-                    } else {
-                        // Screenshot dimensions don't match display - need to scale
-                        // This happens when poster image is used (e.g., 266x182 vs display size)
-                        // Calculate how the screenshot (poster) is displayed in the video container
-                        // The poster is likely displayed with object-fit: cover or contain
-                        
-                        // Calculate scale to fit display while maintaining aspect ratio
-                        const scaleToFitWidth = displayWidth / img.width;
-                        const scaleToFitHeight = displayHeight / img.height;
-                        
-                        // Use the smaller scale (cover behavior) or larger scale (contain behavior)
-                        // Assuming cover behavior (fits container, may crop)
-                        const scale = Math.max(scaleToFitWidth, scaleToFitHeight);
-                        
-                        // Calculate the scaled dimensions
-                        const scaledScreenshotWidth = img.width * scale;
-                        const scaledScreenshotHeight = img.height * scale;
-                        
-                        // Calculate offset (centering)
-                        if (scaledScreenshotWidth > displayWidth) {
-                            // Screenshot is wider - center horizontally
-                            offsetX = (scaledScreenshotWidth - displayWidth) / 2 / scale;
-                        }
-                        if (scaledScreenshotHeight > displayHeight) {
-                            // Screenshot is taller - center vertically
-                            offsetY = (scaledScreenshotHeight - displayHeight) / 2 / scale;
-                        }
-                        
-                        // Scale from display coordinates to screenshot coordinates
-                        scaleX = 1 / scale;
-                        scaleY = 1 / scale;
-                        
-                        console.log('Screenshot dimensions differ from display - scaling:', {
-                            screenshot: { width: img.width, height: img.height },
-                            display: { width: displayWidth, height: displayHeight },
-                            scale: scale,
-                            scaleX: scaleX,
-                            scaleY: scaleY,
-                            offsetX: offsetX,
-                            offsetY: offsetY
-                        });
+                    // Calculate how the image is displayed with object-fit: cover
+                    // object-fit: cover scales the image to cover the container while maintaining aspect ratio
+                    const scaleToFitWidth = displayWidth / img.width;
+                    const scaleToFitHeight = displayHeight / img.height;
+                    
+                    // For object-fit: cover, use the larger scale (ensures container is covered)
+                    const coverScale = Math.max(scaleToFitWidth, scaleToFitHeight);
+                    
+                    // Calculate the actual displayed size of the image after scaling
+                    const scaledImageWidth = img.width * coverScale;
+                    const scaledImageHeight = img.height * coverScale;
+                    
+                    // Calculate the offset: where the visible portion starts in the original image
+                    // When the scaled image is larger than the container, it's centered, so we need to find
+                    // where the visible portion begins in the original image coordinates
+                    if (scaledImageWidth > displayWidth) {
+                        // Image is wider than container - left and right edges are cropped
+                        // The visible portion starts at this offset from the left of the original image
+                        offsetX = (scaledImageWidth - displayWidth) / 2 / coverScale;
+                    }
+                    if (scaledImageHeight > displayHeight) {
+                        // Image is taller than container - top and bottom edges are cropped
+                        // The visible portion starts at this offset from the top of the original image
+                        offsetY = (scaledImageHeight - displayHeight) / 2 / coverScale;
                     }
                     
-                    // Convert display crop coordinates to screenshot coordinates
-                    const screenshotCropX = Math.round((cropArea.x * scaleX) - offsetX);
-                    const screenshotCropY = Math.round((cropArea.y * scaleY) - offsetY);
+                    // Scale from display coordinates to original image coordinates
+                    scaleX = 1 / coverScale;
+                    scaleY = 1 / coverScale;
+                    
+                    console.log('Crop calculation with object-fit: cover:', {
+                        screenshot: { width: img.width, height: img.height },
+                        display: { width: displayWidth, height: displayHeight },
+                        coverScale: coverScale,
+                        scaledImage: { width: scaledImageWidth, height: scaledImageHeight },
+                        scale: { x: scaleX, y: scaleY },
+                        offset: { x: offsetX, y: offsetY },
+                        cropArea: cropArea
+                    });
+                    
+                    // Convert display crop coordinates to original image coordinates
+                    // The crop area is in display coordinates (0,0 to displayWidth, displayHeight)
+                    // We need to map it to original image coordinates (0,0 to img.width, img.height)
+                    // Formula: imageX = (displayX * scaleX) + offsetX
+                    const screenshotCropX = Math.round((cropArea.x * scaleX) + offsetX);
+                    const screenshotCropY = Math.round((cropArea.y * scaleY) + offsetY);
                     const screenshotCropWidth = Math.round(cropArea.width * scaleX);
                     const screenshotCropHeight = Math.round(cropArea.height * scaleY);
                     
                     // Ensure crop area is within image bounds
-                    const finalCropX = Math.max(0, Math.min(img.width - 1, Math.max(0, screenshotCropX)));
-                    const finalCropY = Math.max(0, Math.min(img.height - 1, Math.max(0, screenshotCropY)));
+                    const finalCropX = Math.max(0, Math.min(img.width - 1, screenshotCropX));
+                    const finalCropY = Math.max(0, Math.min(img.height - 1, screenshotCropY));
                     const finalCropWidth = Math.max(1, Math.min(screenshotCropWidth, img.width - finalCropX));
                     const finalCropHeight = Math.max(1, Math.min(screenshotCropHeight, img.height - finalCropY));
                     
-                    console.log('Crop calculation:', {
+                    console.log('Final crop coordinates:', {
                         display: { width: displayWidth, height: displayHeight },
                         video: { width: videoWidth, height: videoHeight },
                         screenshot: { width: img.width, height: img.height },
-                        scale: { x: scaleX, y: scaleY },
-                        offset: { x: offsetX, y: offsetY },
                         cropArea: cropArea,
                         finalCrop: { x: finalCropX, y: finalCropY, width: finalCropWidth, height: finalCropHeight }
                     });
-                    
-                    // console.log('Crop coordinates:', {
-                    //     display: cropArea,
-                    //     screenshot: { x: finalCropX, y: finalCropY, width: finalCropWidth, height: finalCropHeight },
-                    //     scale: { x: scaleX, y: scaleY },
-                    //     imageSize: { width: img.width, height: img.height },
-                    //     displaySize: { width: displayWidth, height: displayHeight }
-                    // });
                     
                     // Set canvas size to crop area
                     canvas.width = finalCropWidth;
                     canvas.height = finalCropHeight;
                     
-                    // Clear canvas
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    // Clear canvas with white background to prevent black bars
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
                     
                     // Draw the cropped portion from the screenshot
                     ctx.drawImage(
@@ -1497,13 +1482,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             background: 'rgba(255, 255, 255, 0.95)',
                             border: '2px solid #764ba2',
                             borderRadius: '50%',
-                            width: '50px',
-                            height: '50px',
+                            width: isMobile ? '45px' : '50px',
+                            height: isMobile ? '45px' : '50px',
                              cursor: 'pointer',
                              display: 'flex',
                              alignItems: 'center',
                              justifyContent: 'center',
-                            zIndex: 10,
+                            zIndex: 1000,
                             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
                             overflow: 'hidden',
                             outline: 'none',
@@ -1573,15 +1558,15 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         {/* Scissors emoji layer (beneath text) */}
                         <span style={{ 
                             position: 'absolute',
-                            fontSize: '20px',
+                            fontSize: isMobile ? '18px' : '20px',
                             lineHeight: '1',
                             zIndex: 1,
                             opacity: 1
                         }}>✂️</span>
                         
                         <svg 
-                            width="50" 
-                            height="50" 
+                            width={isMobile ? "45" : "50"} 
+                            height={isMobile ? "45" : "50"} 
                             viewBox="0 0 50 50"
                             style={{ 
                                 position: 'absolute',

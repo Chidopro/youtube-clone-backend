@@ -21,6 +21,19 @@
   border: 2px solid #764ba2 !important;
 }
 
+/* Ensure crop button is visible on mobile */
+@media (max-width: 768px) {
+  .play-video .video-container button[type="button"] {
+    z-index: 1000 !important;
+    position: absolute !important;
+    top: 10px !important;
+    left: 10px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: flex !important;
+  }
+}
+
 /* Ensure video controls are visible and clickable */
 .play-video video {
   pointer-events: auto !important;
