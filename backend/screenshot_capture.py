@@ -837,8 +837,15 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             mask = np.zeros((target_height, target_width), dtype=np.uint8)
             
             # Calculate corner radius (0-100% maps to 0-50% of smallest dimension)
+            # Match ToolsPage logic: maxCornerRadius = Math.min(canvas.width, canvas.height) / 2
+            # effectiveCornerRadius = isCircle ? maxCornerRadius : Math.round((cornerRadius / 100) * maxCornerRadius)
             max_radius = min(target_width, target_height) / 2
-            corner_radius = int((corner_radius_value / 100) * max_radius) if corner_radius_value < 100 else int(max_radius)
+            if corner_radius_value >= 100:
+                # Perfect circle (100% = full circle)
+                corner_radius = int(round(max_radius))
+            else:
+                # Rounded rectangle: percentage of max_radius, rounded to match ToolsPage
+                corner_radius = int(round((corner_radius_value / 100) * max_radius))
             
             logger.info(f"Using corner radius: {corner_radius} ({corner_radius_value}%) for high-res image")
             
@@ -862,11 +869,23 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             original_alpha = image[:, :, 3] if image.shape[2] == 4 else np.full((target_height, target_width), 255, dtype=np.uint8)
             image[:, :, 3] = np.where(mask > 0, original_alpha, 0).astype(np.uint8)
             
-            logger.info("Corner radius effect applied successfully to high-resolution image with transparency")
+            # CRITICAL: Also zero out RGB values where mask is 0 (outside rounded corners)
+            # This ensures the corner areas are truly transparent, not just with alpha=0 but RGB still visible
+            if image.shape[2] >= 3:
+                for c in range(3):  # BGR channels
+                    image[:, :, c] = np.where(mask > 0, image[:, :, c], 0).astype(np.uint8)
+            
+            logger.info("Corner radius effect applied successfully to high-resolution image with transparency and RGB zeroed in corners")
         
         # Apply feather effect to the HIGH-RESOLUTION print quality image (AFTER resize and corner radius)
         # Support both boolean (legacy) and numeric (0-100) values
-        feather_value = feather_edge_percent if isinstance(feather_edge_percent, (int, float)) and feather_edge_percent > 0 else (50 if edge_feather else 0)
+        # Use numeric value if provided, otherwise use boolean flag (default 50% if true)
+        if isinstance(feather_edge_percent, (int, float)) and feather_edge_percent > 0:
+            feather_value = feather_edge_percent
+        elif edge_feather:
+            feather_value = 50  # Default to 50% for boolean true
+        else:
+            feather_value = 0
         
         if feather_value > 0:
             logger.info(f"Applying feather effect to HIGH-RESOLUTION print quality image {target_width}x{target_height}")
@@ -883,8 +902,9 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             has_transparency = np.any(alpha_channel == 0)
             
             # Calculate feather radius (0-100% maps to 0-50% of smallest dimension)
+            # Match ToolsPage logic: featherSize = (featherEdge / 100) * (minDimension * 0.5)
             min_dimension = min(target_width, target_height)
-            feather_radius = int((feather_value / 100) * (min_dimension * 0.5))
+            feather_radius = int(round((feather_value / 100) * (min_dimension * 0.5)))
             
             # Removed verbose logging for performance
             
@@ -919,9 +939,24 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 normalized_dist = np.clip(dist_transform / feather_radius, 0.0, 1.0)
                 feather_factor = normalized_dist * normalized_dist * (3.0 - 2.0 * normalized_dist)
                 
-                # Apply feather to alpha channel
+                # CRITICAL FIX: Feather should ONLY affect alpha channel, NOT RGB values
+                # Feather creates transparency fade, not color darkening
+                # RGB values should remain unchanged - only alpha fades to transparent
                 alpha_float = alpha_channel.astype(np.float32)
                 final_alpha = (alpha_float * feather_factor).astype(np.uint8)
+                
+                # DO NOT modify RGB channels - feather is transparency only
+                # RGB values stay the same, only alpha fades to create transparent edge
+                # This prevents black edges - edges fade to transparent (showing background), not black
+                
+                # Update alpha channel only
+                image[:, :, 3] = final_alpha
+                
+                # Only zero out RGB where alpha is 0 (fully transparent areas)
+                zero_alpha_mask = final_alpha == 0
+                if np.any(zero_alpha_mask) and image.shape[2] >= 3:
+                    for i in range(3):
+                        image[zero_alpha_mask, i] = 0
                 
             else:
                 # Has corner radius - calculate distance to perimeter explicitly for uniform feathering
@@ -974,60 +1009,33 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 feather_factor = normalized_dist * normalized_dist * (3.0 - 2.0 * normalized_dist)
                 feather_factor = feather_factor.astype(np.float32)
                 
-                # Create new alpha channel that extends beyond the original shape
+                # CRITICAL FIX: Feather should ONLY fade edges to transparency, NOT extend outside
                 # Start with the original alpha channel
                 alpha_float = alpha_channel.astype(np.float32)
                 
                 # For pixels inside the original shape: apply feather based on distance from edge
-                # For pixels outside the original shape: create feather extension (fade from edge outward)
+                # Pixels outside the shape should remain fully transparent (alpha=0)
                 final_alpha = np.zeros((height, width), dtype=np.float32)
                 
-                # Inside shape: multiply original alpha by feather_factor
+                # Inside shape: multiply original alpha by feather_factor to create smooth fade
+                # This fades edges to transparency without extending beyond the shape
                 final_alpha[inside_shape] = alpha_float[inside_shape] * feather_factor[inside_shape]
                 
-                # Outside shape (within feather_radius): create fade from edge
-                # This extends the feather beyond the rounded corners - CRITICAL for visible feather in deleted areas
-                outside_within_feather = outside_shape & (dist_from_edge_outside <= feather_radius)
-                
-                if np.any(outside_within_feather):
-                    # For outside pixels, create a fade from the edge
-                    # Pixels at edge (dist=0) get full feather, pixels at feather_radius get 0
-                    outside_dist_feather = dist_from_edge_outside[outside_within_feather]
-                    outside_feather_factor = np.clip(1.0 - (outside_dist_feather / max(feather_radius, 1.0)), 0.0, 1.0)
-                    # Apply smoothstep to outside feather for smoother transition
-                    outside_feather_factor = outside_feather_factor * outside_feather_factor * (3.0 - 2.0 * outside_feather_factor)
-                    
-                    # CRITICAL: Copy RGB values from edge pixels to create visible feather extension
-                    # Find edge pixels (pixels inside shape that are adjacent to outside pixels)
-                    kernel = np.ones((3, 3), np.uint8)
-                    eroded = cv2.erode(binary_mask, kernel, iterations=1)
-                    edge_pixels = (binary_mask > 0) & (eroded == 0)
-                    
-                    if np.any(edge_pixels) and image.shape[2] >= 3:
-                        # Get average RGB values from edge pixels for feather extension
-                        edge_rgb = image[edge_pixels, :3].mean(axis=0)
-                        
-                        # For each outside feather pixel, use edge color scaled by feather factor
-                        # Don't blend with existing pixel values (which may be black) - just use edge color
-                        # This creates a visible feather that extends beyond the rounded corners
-                        # without adding black background
-                        for i in range(3):
-                            # Use edge RGB directly, scaled by feather factor
-                            # This ensures no black pixels are introduced
-                            image[outside_within_feather, i] = edge_rgb[i] * outside_feather_factor
-                    
-                    # Set alpha for outside feather pixels - make it stronger to be more visible
-                    # Use 0.9 multiplier to ensure feather is clearly visible in deleted corner areas
-                    final_alpha[outside_within_feather] = (255.0 * outside_feather_factor * 0.9).astype(np.uint8)
+                # CRITICAL: Pixels outside shape remain at 0 (fully transparent)
+                # Do NOT create feather extension outside - this causes black artifacts
                 
                 # Convert to uint8
                 final_alpha = np.clip(final_alpha, 0.0, 255.0).astype(np.uint8)
                 
-                # Update the image alpha channel to include the extended feather
+                # Update the image alpha channel - this creates the transparency fade
                 image[:, :, 3] = final_alpha
                 
-                # CRITICAL: Zero out RGB values where alpha is 0 to prevent black background artifacts
-                # This ensures transparent pixels don't show any color
+                # CRITICAL FIX: Feather is transparency only - DO NOT modify RGB values
+                # RGB values should remain unchanged so edges fade to transparent (showing background)
+                # NOT fade to black (which happens when RGB is scaled down)
+                
+                # Only zero out RGB where alpha is 0 (fully transparent areas)
+                # This prevents any color artifacts in completely transparent pixels
                 zero_alpha_mask = final_alpha == 0
                 if np.any(zero_alpha_mask) and image.shape[2] >= 3:
                     for i in range(3):
