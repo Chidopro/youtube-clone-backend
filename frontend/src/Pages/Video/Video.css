@@ -30,6 +30,58 @@
   animation: pulse 2s infinite;
 }
 
+/* Red effect for step 2 when video is selected */
+.step-number.step-red {
+  background: rgba(220, 53, 69, 0.9) !important;
+  border: 3px solid #dc3545 !important;
+  box-shadow: 0 0 20px rgba(220, 53, 69, 0.6), 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.step-number.step-red.pulse {
+  animation: pulseRed 2s infinite;
+}
+
+@keyframes pulseRed {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7), 0 4px 12px rgba(220, 53, 69, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 10px rgba(220, 53, 69, 0), 0 6px 16px rgba(220, 53, 69, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0), 0 4px 12px rgba(220, 53, 69, 0.4);
+  }
+}
+
+/* Green effect for step 3 when screenshot is selected */
+.step-number.step-green {
+  background: rgba(40, 167, 69, 0.9) !important;
+  border: 3px solid #28a745 !important;
+  box-shadow: 0 0 20px rgba(40, 167, 69, 0.6), 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+.step-number.step-green.pulse {
+  animation: pulseGreen 2s infinite;
+}
+
+@keyframes pulseGreen {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7), 0 4px 12px rgba(40, 167, 69, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 10px rgba(40, 167, 69, 0), 0 6px 16px rgba(40, 167, 69, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0), 0 4px 12px rgba(40, 167, 69, 0.4);
+  }
+}
+
 /* User Flow Section Styles - Matching Home Page - CACHE BUST 2025-01-27 */
 .user-flow-section {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

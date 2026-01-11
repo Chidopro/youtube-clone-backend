@@ -1,3 +1,24 @@
+/* Animation for play icon overlay */
+@keyframes pulsePlayIcon {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6), 0 0 0 0 rgba(102, 126, 234, 0.7);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 16px 50px rgba(102, 126, 234, 0.8), 0 0 0 20px rgba(102, 126, 234, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6), 0 0 0 0 rgba(102, 126, 234, 0);
+  }
+}
+
+/* Ensure play icon overlay animation works on both mobile and desktop */
+.play-icon-overlay {
+  animation: pulsePlayIcon 2s infinite !important;
+}
+
 /* Ensure video controls are visible and clickable */
 .play-video video {
   pointer-events: auto !important;
@@ -304,6 +325,41 @@
     margin-top: -15px !important;
   }
   
+  /* Ensure buttons have matching heights on mobile */
+  .screenmerch-actions .screenmerch-btn {
+    padding: 14px 24px !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    line-height: 1.2 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  .screenmerch-actions .screenmerch-btn.make-merch-btn,
+  .screenmerch-btn.make-merch-btn {
+    padding: 14px 24px !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    line-height: 1.2 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    margin-top: 0 !important;
+  }
+  
+  .screenmerch-actions .screenmerch-btn.screenshot-btn,
+  .screenmerch-btn.screenshot-btn {
+    padding: 14px 24px !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    line-height: 1.2 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
   /* Improved screenshot grid for mobile */
   .screenshots-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -368,19 +424,20 @@
     font-size: 16px;
     border-radius: 12px;
     margin-top: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #28a745 !important;
     color: white;
     border: none;
     cursor: pointer;
     transition: all 0.3s ease;
     touch-action: manipulation;
     font-weight: 600;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
   }
   
   .make-merch-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4);
+    background: #218838 !important;
   }
   
   .make-merch-btn:active {
@@ -658,7 +715,7 @@
   z-index: 1000 !important;
   background: rgba(255, 255, 255, 0.95) !important;
   color: black !important;
-  border: 2px solid rgba(0, 0, 0, 0.2) !important;
+  border: 2px solid #764ba2 !important;
   border-radius: 4px !important;
   padding: 8px !important;
   cursor: pointer !important;
@@ -968,6 +1025,36 @@
     background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+/* Select Screenshot button - Red */
+.screenmerch-btn.screenshot-btn {
+    background: #dc3545 !important;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.screenmerch-btn.screenshot-btn:hover:not(:disabled) {
+    background: #c82333 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(220, 53, 69, 0.4);
+}
+
+/* Make Merch button - Green */
+.screenmerch-btn.make-merch-btn {
+    background: #28a745 !important;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    padding: 14px 24px !important;
+    min-height: 44px !important;
+    line-height: 1.2 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.screenmerch-btn.make-merch-btn:hover {
+    background: #218838 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4);
 }
 
 .screenmerch-images {

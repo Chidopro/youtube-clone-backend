@@ -34,7 +34,7 @@ const useIsMobile = () => {
     return { isMobile, isMobilePortrait };
 };
 
-const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData, onScreenshotFunction }) => {
+const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData, onScreenshotFunction, onVideoPlayed, onMakeMerch }) => {
     // Use prop if provided, otherwise fallback to URL param
     const params = useParams();
     const videoId = propVideoId || params.videoId;
@@ -42,10 +42,14 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const [video, setVideo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [videoError, setVideoError] = useState(null);
     const videoRef = propVideoRef || useRef(null);
     
     // Video container ref
     const [videoContainerRef] = useState(useRef(null));
+    
+    // Track if video has been played
+    const [videoHasPlayed, setVideoHasPlayed] = useState(false);
     
     // Auth modal state
     const [showAuthModal, setShowAuthModal] = useState(false);
@@ -216,7 +220,35 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         setLastAlertTime(0);
         // Reset screenshot function passed flag
         screenshotFunctionPassedRef.current = false;
+        // Clear video errors when video changes
+        setVideoError(null);
+        // Reset video played state when video changes
+        setVideoHasPlayed(false);
     }, [videoId, setScreenshots]);
+
+    // Listen for video play event using addEventListener for reliability
+    useEffect(() => {
+        const videoElement = videoRef.current;
+        if (!videoElement) return;
+        
+        const handlePlay = () => {
+            if (!videoHasPlayed) {
+                console.log('Video play event detected - activating step 2 red pulse');
+                setVideoHasPlayed(true);
+                // Safely call onVideoPlayed if it exists (capture current value)
+                const callback = onVideoPlayed;
+                if (typeof callback === 'function') {
+                    callback();
+                }
+            }
+        };
+        
+        videoElement.addEventListener('play', handlePlay);
+        
+        return () => {
+            videoElement.removeEventListener('play', handlePlay);
+        };
+    }, [videoRef, videoHasPlayed, onVideoPlayed]);
 
 
 
@@ -1271,48 +1303,279 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         onLoadedData={() => {
                             // console.log('Video data loaded');
                             setLoading(false);
+                            setVideoError(null); // Clear any previous errors
+                        }}
+                        onError={(e) => {
+                            const videoElement = e.target;
+                            const errorCode = videoElement.error;
+                            let errorMessage = 'Video failed to load.';
+                            
+                            if (errorCode) {
+                                // MediaError code constants:
+                                // MEDIA_ERR_ABORTED = 1
+                                // MEDIA_ERR_NETWORK = 2
+                                // MEDIA_ERR_DECODE = 3
+                                // MEDIA_ERR_SRC_NOT_SUPPORTED = 4
+                                switch (errorCode.code) {
+                                    case 1: // MEDIA_ERR_ABORTED
+                                        errorMessage = 'Video loading was aborted.';
+                                        break;
+                                    case 2: // MEDIA_ERR_NETWORK
+                                        errorMessage = 'Network error while loading video. Please check your connection.';
+                                        break;
+                                    case 3: // MEDIA_ERR_DECODE
+                                        errorMessage = 'Video format not supported or file is corrupted.';
+                                        break;
+                                    case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+                                        errorMessage = 'Video format not supported or URL is invalid.';
+                                        break;
+                                    default:
+                                        errorMessage = `Video error (code: ${errorCode.code}). The video file may be corrupted or the URL is invalid.`;
+                                }
+                            }
+                            
+                            console.error('Video playback error:', {
+                                code: errorCode?.code,
+                                message: errorMessage,
+                                videoUrl: video?.video_url,
+                                videoId: videoId
+                            });
+                            
+                            setVideoError(errorMessage);
+                            setLoading(false);
+                        }}
+                        onPlay={() => {
+                            if (!videoHasPlayed) {
+                                setVideoHasPlayed(true);
+                                // Safely call onVideoPlayed if it exists
+                                if (typeof onVideoPlayed === 'function') {
+                                    onVideoPlayed();
+                                }
+                            }
                         }}
                     />
+                    
+                    {/* Play Video Overlay - Shows when video hasn't been played */}
+                    {!videoHasPlayed && !videoError && video && (
+                        <div 
+                            onClick={async () => {
+                                if (videoRef.current) {
+                                    try {
+                                        await videoRef.current.play();
+                                        // Manually trigger the play event callback
+                                        if (!videoHasPlayed) {
+                                            setVideoHasPlayed(true);
+                                            // Safely call onVideoPlayed if it exists
+                                            if (typeof onVideoPlayed === 'function') {
+                                                onVideoPlayed();
+                                            }
+                                        }
+                                    } catch (error) {
+                                        console.error('Error playing video:', error);
+                                    }
+                                }
+                            }}
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                width: '100%',
+                                height: '100%',
+                                zIndex: 50,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                pointerEvents: 'auto',
+                                background: 'rgba(0, 0, 0, 0.4)',
+                                borderRadius: '12px'
+                            }}
+                        >
+                            <div 
+                                className="play-icon-overlay"
+                                style={{
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    borderRadius: '50%',
+                                    width: isMobile ? '120px' : '150px',
+                                    height: isMobile ? '120px' : '150px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 12px 40px rgba(102, 126, 234, 0.6), 0 0 0 0 rgba(102, 126, 234, 0.7)',
+                                    animation: 'pulsePlayIcon 2s infinite',
+                                    border: '6px solid rgba(255, 255, 255, 0.95)',
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
+                                <span style={{
+                                    fontSize: isMobile ? '60px' : '80px',
+                                    color: 'white',
+                                    marginLeft: '8px', // Slight offset to center the play icon visually
+                                    textShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                                    lineHeight: '1'
+                                }}>▶</span>
+                            </div>
+                            <p style={{
+                                marginTop: '30px',
+                                color: 'white',
+                                fontSize: isMobile ? '20px' : '24px',
+                                fontWeight: '700',
+                                textShadow: '0 4px 12px rgba(0, 0, 0, 0.9)',
+                                textAlign: 'center',
+                                letterSpacing: '0.5px'
+                            }}>▶️ Play Video</p>
+                        </div>
+                    )}
+                    
+                    {/* Video Error Display */}
+                    {videoError && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            background: 'rgba(220, 53, 69, 0.95)',
+                            color: 'white',
+                            padding: '16px 24px',
+                            borderRadius: '8px',
+                            zIndex: 100,
+                            maxWidth: '90%',
+                            textAlign: 'center',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                        }}>
+                            <h4 style={{ margin: '0 0 8px 0', fontSize: '16px' }}>⚠️ Video Playback Error</h4>
+                            <p style={{ margin: '0', fontSize: '14px' }}>{videoError}</p>
+                            {video?.video_url && (
+                                <p style={{ margin: '8px 0 0 0', fontSize: '12px', opacity: 0.9 }}>
+                                    URL: {video.video_url.length > 50 ? video.video_url.substring(0, 50) + '...' : video.video_url}
+                                </p>
+                            )}
+                        </div>
+                    )}
                     
                                          {/* Crop Tool Icon - Top Left Corner */}
                      <button
                          onClick={handleToggleCropMode}
+                         type="button"
                          style={{
                              position: 'absolute',
                              top: '10px',
                              left: '10px',
-                             background: isCropMode ? 'rgba(0, 123, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)',
-                             border: 'none',
-                             borderRadius: '50%',
-                             width: '40px',
-                             height: '40px',
+                            background: 'rgba(255, 255, 255, 0.95)',
+                            border: '2px solid #764ba2',
+                            borderRadius: '6px',
+                            width: isMobile ? '47px' : '53px',
+                            height: isMobile ? '47px' : '53px',
                              cursor: 'pointer',
                              display: 'flex',
                              alignItems: 'center',
                              justifyContent: 'center',
-                             zIndex: 10,
-                             transition: 'all 0.2s ease'
+                            zIndex: 1000,
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                            overflow: 'hidden',
+                            outline: 'none',
+                            WebkitAppearance: 'none',
+                            MozAppearance: 'none',
+                            appearance: 'none',
+                            borderStyle: 'solid',
+                            padding: '4px'
+                         }}
+                         onFocus={(e) => {
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
+                         }}
+                         onBlur={(e) => {
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
+                         }}
+                         onMouseDown={(e) => {
+                             e.preventDefault();
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
+                         }}
+                         onMouseUp={(e) => {
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
                          }}
                          onMouseEnter={(e) => {
-                             e.target.style.background = isCropMode ? 'rgba(0, 123, 255, 1)' : 'rgba(0, 0, 0, 0.9)';
-                             e.target.style.transform = 'scale(1.1)';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.transform = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.border = '2px solid #764ba2';
                          }}
                          onMouseLeave={(e) => {
-                             e.target.style.background = isCropMode ? 'rgba(0, 123, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)';
-                             e.target.style.transform = 'scale(1)';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.transform = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.border = '2px solid #764ba2';
                          }}
-                                                   title={isCropMode ? "Exit Crop Mode" : "Crop Screenshot"}
-                     >
-                                                   <svg 
-                              width="20" 
-                              height="20" 
-                              viewBox="0 0 24 24" 
-                              fill="white"
-                          >
-                              {/* Crop icon - scissors */}
-                              <path d="M6 2L8 4L10 2L12 4L14 2L16 4L18 2V6L16 8L18 10L16 12L18 14L16 16L18 18H14L12 16L10 18L8 16L6 18H2V14L4 12L2 10L4 8L2 6V2H6Z"/>
-                          </svg>
-                     </button>
+                         onTouchStart={(e) => {
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
+                         }}
+                         onTouchEnd={(e) => {
+                             e.target.style.outline = 'none';
+                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                             e.target.style.transform = 'none';
+                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                             e.target.style.border = '2px solid #764ba2';
+                         }}
+                         onContextMenu={(e) => e.preventDefault()}
+                         title={isCropMode ? "Exit Crop Mode" : "Crop Screenshot"}
+                    >
+                        {/* Crop icon */}
+                        <svg 
+                            width={isMobile ? "20" : "22"} 
+                            height={isMobile ? "20" : "22"} 
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#764ba2"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={{ 
+                                position: 'absolute',
+                                top: '8px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                zIndex: 2
+                            }}
+                        >
+                            <path d="M6 2v4h4M18 2v4h-4M6 22v-4h4M18 22v-4h-4M2 6h4v4M22 6h-4v4M2 18h4v-4M22 18h-4v-4"/>
+                        </svg>
+                        
+                        {/* Crop Tool text */}
+                        <span style={{ 
+                            position: 'absolute',
+                            bottom: '6px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            fontSize: isMobile ? '8px' : '9px',
+                            fontWeight: '700',
+                            color: '#764ba2',
+                            zIndex: 2,
+                            whiteSpace: 'nowrap',
+                            lineHeight: '1'
+                        }}>Crop Tool</span>
+                    </button>
 
                      {/* Inline Crop Overlay */}
                      {isCropMode && (
@@ -1498,12 +1761,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             flexWrap: 'wrap'
         }}>
                 <button 
-                    className="screenmerch-btn" 
+                    className="screenmerch-btn screenshot-btn" 
                     onClick={handleGrabScreenshot}
                     disabled={isCapturingScreenshot || screenshots.length >= 6}
                     style={{
                         padding: '14px 24px',
-                        backgroundColor: (isCapturingScreenshot || screenshots.length >= 6) ? '#6c757d' : '#007bff',
+                        backgroundColor: (isCapturingScreenshot || screenshots.length >= 6) ? '#6c757d' : '#dc3545',
                         color: 'white',
                         border: 'none',
                         borderRadius: '5px',
@@ -1511,24 +1774,42 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         fontWeight: 'bold',
                         opacity: (isCapturingScreenshot || screenshots.length >= 6) ? 0.7 : 1,
                         textAlign: 'center',
-                        lineHeight: '1.2'
+                        lineHeight: '1.2',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: '44px'
                     }}
                 >
                     {isCapturingScreenshot ? 'Capturing...' : screenshots.length >= 6 ? 'Max Screenshots' : 'Select Screenshot'}
                 </button>
                 
                                  <button 
-                     className="screenmerch-btn" 
-                     onClick={handleMakeMerch}
+                     className="screenmerch-btn make-merch-btn" 
+                     onClick={(e) => {
+                         e.preventDefault();
+                         e.stopPropagation();
+                         if (onMakeMerch) {
+                             onMakeMerch();
+                         } else {
+                             handleMakeMerch();
+                         }
+                     }}
                      style={{
-                         padding: '10px 20px',
+                         padding: '14px 24px',
                          backgroundColor: '#28a745',
                          color: 'white',
                          border: 'none',
                          borderRadius: '5px',
                          cursor: 'pointer',
                          fontWeight: 'bold',
-                         touchAction: 'manipulation'
+                         touchAction: 'manipulation',
+                         minHeight: '44px',
+                         lineHeight: '1.2',
+                         textAlign: 'center',
+                         display: 'flex',
+                         alignItems: 'center',
+                         justifyContent: 'center'
                      }}
                  >
                      Make Merch

@@ -19,7 +19,8 @@ const Video = ({ sidebar }) => {
   const [videoData, setVideoData] = useState(null);
   const videoRef = useRef(null);
   const [screenshotCount, setScreenshotCount] = useState(0);
-  const [pulseStep2, setPulseStep2] = useState(true); // Start with step 2 pulsing
+  const [videoHasPlayed, setVideoHasPlayed] = useState(false); // Track if video has been played
+  const [pulseStep2, setPulseStep2] = useState(false); // Step 2 only pulses after video is played
   const [pulseStep3, setPulseStep3] = useState(false); // Step 3 starts not pulsing
   const [userHasTakenScreenshot, setUserHasTakenScreenshot] = useState(false); // Track if user manually took screenshot
 
@@ -135,12 +136,16 @@ const Video = ({ sidebar }) => {
       // If user has taken screenshots, stop pulsing step 2 and start pulsing step 3
       setPulseStep2(false);
       setPulseStep3(true);
-    } else {
-      // If no user screenshots yet, pulse step 2 and stop pulsing step 3
+    } else if (videoHasPlayed) {
+      // If video has been played but no screenshots yet, keep step 2 active
       setPulseStep2(true);
       setPulseStep3(false);
+    } else {
+      // If video hasn't been played yet, don't activate step 2
+      setPulseStep2(false);
+      setPulseStep3(false);
     }
-  }, [screenshots, userHasTakenScreenshot]);
+  }, [screenshots, userHasTakenScreenshot, videoHasPlayed]);
 
   // Reset screenshots when video changes and set thumbnail as first image
   useEffect(() => {
@@ -149,8 +154,27 @@ const Video = ({ sidebar }) => {
       setScreenshots([thumbnail]);
       // Reset user screenshot flag when video changes
       setUserHasTakenScreenshot(false);
+      // Reset video played state when video changes
+      setVideoHasPlayed(false);
+      setPulseStep2(false);
     }
   }, [videoId, thumbnail]);
+
+  // Handle video played callback
+  const handleVideoPlayed = () => {
+    console.log('Video played - activating step 2 red pulse');
+    setVideoHasPlayed(true);
+    setPulseStep2(true); // Activate step 2 red effect after video is played
+    setPulseStep3(false);
+  };
+
+  // Ensure step 2 pulses when video is played (backup effect)
+  useEffect(() => {
+    if (videoHasPlayed && !userHasTakenScreenshot && screenshots.length <= 1) {
+      setPulseStep2(true);
+      setPulseStep3(false);
+    }
+  }, [videoHasPlayed, userHasTakenScreenshot, screenshots.length]);
 
   const handleDeleteScreenshot = (idx) => {
     setScreenshots(screenshots => screenshots.filter((_, i) => i !== idx));
@@ -388,7 +412,7 @@ const Video = ({ sidebar }) => {
                WebkitTapHighlightColor: 'transparent'
              }}
            >
-             <div className={`step-number ${pulseStep2 ? 'pulse' : ''}`}>2</div>
+             <div className={`step-number ${pulseStep2 ? 'pulse step-red' : ''}`}>2</div>
              <div className="step-content">
                <h3>Select Screenshot</h3>
                <p>Select the perfect screenshot to capture</p>
@@ -404,7 +428,7 @@ const Video = ({ sidebar }) => {
                WebkitTapHighlightColor: 'transparent'
              }}
            >
-             <div className={`step-number ${pulseStep3 ? 'pulse' : ''}`}>3</div>
+             <div className={`step-number ${pulseStep3 ? 'pulse step-green' : ''}`}>3</div>
              <div className="step-content">
                <h3>Make Merchandise</h3>
                <p>Create custom products with your screenshot</p>
@@ -426,6 +450,8 @@ const Video = ({ sidebar }) => {
                setScreenshots={setScreenshots}
                videoRef={videoRef}
                onVideoData={setVideoData}
+               onVideoPlayed={handleVideoPlayed}
+               onMakeMerch={handleMakeMerch}
              />
            ) : (
              <div style={{padding: 24, color: 'red'}}>No video selected.</div>
