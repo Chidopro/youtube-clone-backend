@@ -264,8 +264,11 @@
 
 .tier-card.current {
     border-color: #667eea;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 255, 0.95) 100%);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 249, 255, 0.98) 100%);
     transform: scale(1.02);
+    border-width: 3px;
+    border-style: solid;
+    box-shadow: 0 20px 50px rgba(102, 126, 234, 0.25);
 }
 
 .tier-card.upgrade {
@@ -280,12 +283,142 @@
 
 .tier-card.breakdown-card {
     border-color: #ffc107;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 252, 235, 0.95) 100%);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 252, 235, 0.98) 100%);
+    border-width: 3px;
+    box-shadow: 0 20px 50px rgba(255, 193, 7, 0.25);
 }
 
 .tier-card.breakdown-card .tier-fee {
     background: linear-gradient(135deg, #ffc107, #ff8c00);
-    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);
+    box-shadow: 0 6px 20px rgba(255, 193, 7, 0.5);
+    padding: 12px 28px;
+    font-size: 1rem;
+    border-radius: 30px;
+}
+
+.tier-card.breakdown-card .tier-header.breakdown-header-aligned {
+    border-bottom: 3px solid #ffc107;
+    margin-bottom: 40px;
+    padding-bottom: 25px;
+    text-align: center;
+    position: relative;
+}
+
+.tier-card.breakdown-card .tier-header h5 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #495057;
+    margin-bottom: 20px;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.tier-card.breakdown-card .item-breakdown-container-vertical {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 25px;
+    margin-top: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.tier-card.breakdown-card .product-visual-centered {
+    text-align: center;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.tier-card.breakdown-card .product-image-centered {
+    width: 200px;
+    height: 200px;
+    border: 4px solid #ffc107;
+    box-shadow: 0 10px 30px rgba(255, 193, 7, 0.4);
+    border-radius: 12px;
+    object-fit: contain;
+    background: white;
+    padding: 15px;
+}
+
+.tier-card.breakdown-card .profit-highlight-box {
+    width: 100%;
+    max-width: 500px;
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    border: 3px solid #28a745;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+    text-align: center;
+    margin: 15px auto 15px;
+}
+
+.tier-card.breakdown-card .profit-highlight-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.tier-card.breakdown-card .profit-label {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #155724;
+}
+
+.tier-card.breakdown-card .profit-value {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #28a745;
+}
+
+.tier-card.breakdown-card .item-breakdown-vertical {
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 15px auto 0;
+}
+
+.tier-card.breakdown-card .item-breakdown-vertical .breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 2px solid #f0f0f0;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    width: 100%;
+}
+
+.tier-card.breakdown-card .item-breakdown-vertical .breakdown-row:last-child {
+    border-bottom: none;
+}
+
+.tier-card.breakdown-card .item-breakdown-vertical .breakdown-label {
+    font-size: 1.1rem;
+    color: #495057;
+    font-weight: 700;
+    text-align: left;
+}
+
+.tier-card.breakdown-card .item-breakdown-vertical .breakdown-value {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #333;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.tier-card.breakdown-card .item-breakdown-vertical .breakdown-value.cost {
+    color: #dc3545;
+    font-weight: 800;
+    font-size: 1.2rem;
 }
 
 .tier-card:hover {
@@ -295,24 +428,48 @@
 
 .tier-header {
     text-align: center;
-    margin-bottom: 25px;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.tier-card.current .tier-header {
+    border-bottom: 3px solid #667eea !important;
+    margin-bottom: 40px !important;
+    padding-bottom: 25px !important;
 }
 
 .tier-header h5 {
-    margin: 0 0 10px 0;
+    margin: 0 0 15px 0;
     color: #333;
     font-size: 1.4rem;
     font-weight: 700;
 }
 
+.tier-card.current .tier-header h5 {
+    font-size: 1.8rem !important;
+    margin-bottom: 20px !important;
+    color: #495057 !important;
+    font-weight: 800 !important;
+}
+
 .tier-fee {
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
-    padding: 8px 20px;
-    border-radius: 25px;
-    font-size: 0.9rem;
+    padding: 10px 24px;
+    border-radius: 30px;
+    font-size: 0.95rem;
     font-weight: 700;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 5px 18px rgba(102, 126, 234, 0.5);
+    display: inline-block;
+    letter-spacing: 0.3px;
+}
+
+.tier-card.current .tier-fee {
+    background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+    padding: 12px 28px;
+    font-size: 1rem;
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
 }
 
 .tier-card.upgrade .tier-fee {
@@ -327,7 +484,63 @@
 
 .tier-revenue {
     text-align: center;
-    margin-bottom: 25px;
+    margin-bottom: 30px;
+    padding: 20px 0;
+}
+
+.tier-card.current .tier-savings.earnings-top .savings-amount {
+    display: block;
+    font-size: 4rem !important;
+    font-weight: 900 !important;
+    color: #28a745 !important;
+    margin-bottom: 10px !important;
+    text-shadow: 2px 2px 6px rgba(40, 167, 69, 0.3) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -2px !important;
+}
+
+.tier-card.current .tier-savings.earnings-top .savings-label {
+    font-size: 1rem !important;
+    color: #28a745 !important;
+    font-weight: 600 !important;
+    display: block !important;
+}
+
+.tier-card.current .tier-revenue.earnings-bottom .revenue-amount {
+    display: block;
+    font-size: 4rem !important;
+    font-weight: 900 !important;
+    color: #28a745 !important;
+    margin-bottom: 12px !important;
+    text-shadow: 2px 2px 6px rgba(40, 167, 69, 0.3) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -2px !important;
+}
+
+.tier-card.current .tier-revenue.earnings-bottom .revenue-label {
+    font-size: 1.1rem !important;
+    color: #666 !important;
+    font-weight: 600 !important;
+    display: block !important;
+}
+
+.tier-card.current .tier-revenue .revenue-amount {
+    display: block;
+    font-size: 4rem !important;
+    font-weight: 900 !important;
+    color: #28a745 !important;
+    margin-bottom: 15px !important;
+    text-shadow: 2px 2px 6px rgba(40, 167, 69, 0.3) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -2px !important;
+}
+
+.tier-card.current .tier-revenue .revenue-label {
+    font-size: 1.2rem !important;
+    color: #495057 !important;
+    font-weight: 600 !important;
+    margin-top: 10px !important;
+    display: block !important;
 }
 
 .revenue-amount {
@@ -347,7 +560,23 @@
 
 .tier-cost {
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
+    padding: 15px 0;
+}
+
+.tier-card.current .tier-cost .cost-amount {
+    display: block;
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    color: #dc3545 !important;
+    margin-bottom: 10px !important;
+    text-shadow: 1px 1px 3px rgba(220, 53, 69, 0.3) !important;
+}
+
+.tier-card.current .tier-cost .cost-label {
+    font-size: 1.1rem !important;
+    color: #495057 !important;
+    font-weight: 600 !important;
 }
 
 .cost-amount {
@@ -364,13 +593,96 @@
     font-weight: 500;
 }
 
+.tier-content-centered {
+    text-align: center;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.tier-info-text {
+    font-size: 1.1rem;
+    color: #495057;
+    font-weight: 600;
+}
+
+.tier-icon-container {
+    width: 200px;
+    height: 200px;
+    border: 4px solid #28a745;
+    border-radius: 12px;
+    margin: 20px auto 0;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
+}
+
+.tier-icon-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 0;
+}
+
 .tier-savings {
     text-align: center;
     background: linear-gradient(135deg, #d4edda, #c3e6cb);
-    border-radius: 12px;
-    padding: 15px;
-    border: 2px solid #28a745;
-    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
+    border-radius: 16px;
+    padding: 20px;
+    border: 3px solid #28a745;
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+    margin-top: 20px;
+}
+
+.tier-savings.earnings-bottom {
+    margin-top: 30px !important;
+    margin-bottom: 20px !important;
+    background: linear-gradient(135deg, #d4edda, #c3e6cb) !important;
+    border: 3px solid #28a745 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3) !important;
+    padding: 25px 20px !important;
+}
+
+.tier-card.current .tier-savings .savings-amount {
+    display: block;
+    font-size: 4rem !important;
+    font-weight: 900 !important;
+    color: #28a745 !important;
+    margin-bottom: 10px !important;
+    text-shadow: 2px 2px 6px rgba(40, 167, 69, 0.3) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -2px !important;
+}
+
+.tier-card.current .tier-savings.earnings-bottom .savings-amount {
+    display: block;
+    font-size: 4rem !important;
+    font-weight: 900 !important;
+    color: #28a745 !important;
+    margin-bottom: 10px !important;
+    text-shadow: 2px 2px 6px rgba(40, 167, 69, 0.3) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -2px !important;
+}
+
+.tier-card.current .tier-savings .savings-label {
+    font-size: 1rem !important;
+    color: #28a745 !important;
+    font-weight: 600 !important;
+    display: block !important;
+}
+
+.tier-card.current .tier-savings.earnings-bottom .savings-label {
+    font-size: 1rem !important;
+    color: #28a745 !important;
+    font-weight: 600 !important;
+    display: block !important;
 }
 
 .savings-amount {
@@ -845,6 +1157,20 @@
     .metric-value {
         font-size: 2rem;
     }
+    
+    /* Mobile override for screenmerch-btn.make-merch-btn to match screenshot button height */
+    .screenmerch-actions .screenmerch-btn.make-merch-btn,
+    .screenmerch-btn.make-merch-btn {
+        padding: 14px 24px !important;
+        min-height: 44px !important;
+        height: 44px !important;
+        line-height: 1.2 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: auto !important;
+        margin-top: 0 !important;
+    }
 } 
 
 /* Profit Breakdown Styles */
@@ -1302,4 +1628,4 @@
     .breakdown-row.final-profit {
         font-size: 0.9rem;
     }
-} 
+}

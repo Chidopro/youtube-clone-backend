@@ -9,19 +9,18 @@ const SubscriptionTiers = () => {
     const navigate = useNavigate();
     const location = useLocation();
     
-    // Realistic earnings data based on actual ScreenMerch product prices and product overhead costs
-    // Average product price: $21.69 (from your actual t-shirt pricing)
-    // Product overhead cost: ~$11.69, Your profit: ~$7.00 per item after 30% house commission
-    // Based on ONE shirt design selling 50 units per week for a full year
+    // Realistic earnings data based on actual ScreenMerch mug pricing
+    // Mug selling price: $14.95, Product overhead cost: $4.95, House commission: $3.00, Your profit: $7.00 per mug
+    // Based on ONE mug design selling 50 units per week for a full year
     const hypotheticalData = {
-        totalRevenue: 56388, // $56,388 annual revenue (2,600 shirts × $21.69)
-        monthlyRevenue: 4699, // $4,699 average monthly revenue
+        totalRevenue: 18228, // $18,228 annual revenue
+        monthlyRevenue: 1519, // $1,519 average monthly revenue
         totalProductsSold: 2600, // 2,600 total products sold (50 weekly × 52 weeks)
         monthlyProductsSold: 217, // 217 average monthly products sold
-        averageProductPrice: 21.69, // Average t-shirt price from your product dashboard
-        productOverheadCost: 11.69, // Average product overhead cost
-        houseCommission: 3.00, // 30% of gross profit ($21.69 - $11.69 = $10.00, then 30% = $3.00)
-        yourProfitPerItem: 7.00 // $21.69 - $11.69 - $3.00 (30% commission)
+        averageProductPrice: 14.95, // Mug selling price
+        productOverheadCost: 4.95, // Product overhead cost
+        houseCommission: 3.00, // House commission per mug
+        yourProfitPerItem: 7.00 // $14.95 - $4.95 - $3.00 = $7.00 profit per mug
     };
 
     // Calculate earnings for free subscription
@@ -104,7 +103,7 @@ const SubscriptionTiers = () => {
         <div className="subscription-tiers">
             <div className="tiers-header">
                 <h1>💰 Creator Earnings Calculator</h1>
-                <p>See how much you could earn with ScreenMerch's completely free merch system - No monthly fees!</p>
+                <p>See how much you can earn from your content with one of dozens of products to choose from.</p>
                 {!currentUser && (
                     <button 
                         className="hero-signup-btn"
@@ -126,24 +125,20 @@ const SubscriptionTiers = () => {
             <div className="performance-metrics">
                 <div className="metrics-header">
                     <h3>📊 Example Creator Performance</h3>
-                    <p>Based on successful creators with engaged audiences</p>
+                    <p>Example earnings using coffee mugs, one of many available products.</p>
                 </div>
                 <div className="metrics-grid">
                     <div className="metric-card">
-                        <div className="metric-value">${hypotheticalData.totalRevenue.toLocaleString()}</div>
-                        <div className="metric-label">Total Revenue (Annual)</div>
+                        <div className="metric-value">{hypotheticalData.monthlyProductsSold}</div>
+                        <div className="metric-label">Monthly Products Sold</div>
                     </div>
                     <div className="metric-card">
                         <div className="metric-value">${hypotheticalData.monthlyRevenue.toLocaleString()}</div>
                         <div className="metric-label">Monthly Revenue</div>
                     </div>
                     <div className="metric-card">
-                        <div className="metric-value">{hypotheticalData.totalProductsSold.toLocaleString()}</div>
-                        <div className="metric-label">Products Sold (Annual)</div>
-                    </div>
-                    <div className="metric-card">
-                        <div className="metric-value">{hypotheticalData.monthlyProductsSold}</div>
-                        <div className="metric-label">Monthly Products Sold</div>
+                        <div className="metric-value">${hypotheticalData.totalRevenue.toLocaleString()}</div>
+                        <div className="metric-label">Total Revenue (Annual)</div>
                     </div>
                 </div>
             </div>
@@ -152,61 +147,68 @@ const SubscriptionTiers = () => {
             <div className="tier-calculator-section">
                 <div className="calculator-header">
                     <h4>🎯 ScreenMerch Free Plan</h4>
-                    <p>It's completely free to use ScreenMerch! No monthly fees, no recurring charges. You earn 70% of all sales, 30% house commission.</p>
+                    <p>It's completely free to use ScreenMerch! No monthly fees, no recurring charges.</p>
                 </div>
                 
                 <div className="tier-comparison-grid">
                     {/* Free Subscription (30% commission) */}
                     <div className="tier-card current">
+                        {/* Header: Plan Details */}
                         <div className="tier-header">
                             <h5>🎯 Free Plan</h5>
-                            <span className="tier-fee">30% House Commission</span>
+                            <span className="tier-fee">Your Profit 70% Net Sales</span>
                         </div>
-                        <div className="tier-revenue">
-                            <span className="revenue-amount">${freeSubscriptionEarnings.netEarnings.toLocaleString()}</span>
-                            <span className="revenue-label">You Keep (70% of Sales)</span>
+                        {/* Icon Section */}
+                        <div className="tier-icon-container">
+                            <img 
+                                src="/passive-icon.png" 
+                                alt="Passive Income Icon" 
+                                className="tier-icon-image"
+                            />
                         </div>
-                        <div className="tier-cost">
-                            <span className="cost-amount">Free</span>
-                            <span className="cost-label">Always Free</span>
+                        {/* Bottom: Net Annual Earnings */}
+                        <div className="tier-savings earnings-bottom">
+                            <span className="savings-amount">$18,228</span>
+                            <span className="savings-label">Net Annual Earnings 🔥</span>
                         </div>
-                        <div className="tier-savings">
-                            <span className="savings-amount">${freeSubscriptionEarnings.netEarnings.toLocaleString()}</span>
-                            <span className="savings-label">Net Annual Earnings 💰</span>
+                        {/* Plan Info Below Earnings */}
+                        <div className="tier-content-centered">
+                            <div className="tier-info-text">Free Membership 30% Service Fee</div>
                         </div>
                     </div>
 
                     {/* Per Item Breakdown */}
                     <div className="tier-card breakdown-card">
-                        <div className="tier-header">
+                        <div className="tier-header breakdown-header-aligned">
                             <h5>💰 Per Item Example</h5>
-                            <span className="tier-fee">$21.69 T-Shirt</span>
+                            <span className="tier-fee">$14.95 Mug</span>
                         </div>
-                        <div className="item-breakdown-container">
-                            <div className="product-visual">
+                        <div className="item-breakdown-container-vertical">
+                            <div className="product-visual-centered">
                                 <img 
-                                    src="/calculatorimage.png" 
-                                    alt="Calculator Example" 
-                                    className="product-image"
+                                    src="/mug.png" 
+                                    alt="Mug Example" 
+                                    className="product-image-centered"
                                 />
-                                <p className="product-caption">Just one T-Shirt 50 sales a week!</p>
                             </div>
-                            <div className="item-breakdown">
+                            <div className="profit-highlight-box">
+                                <div className="profit-highlight-row">
+                                    <span className="profit-label">Your Profit:</span>
+                                    <span className="profit-value">${hypotheticalData.yourProfitPerItem.toFixed(2)}</span>
+                                </div>
+                            </div>
+                            <div className="item-breakdown-vertical">
                                 <div className="breakdown-row">
                                     <span className="breakdown-label">Your Selling Price:</span>
-                                    <span className="breakdown-value">${hypotheticalData.averageProductPrice}</span>
+                                    <span className="breakdown-value">${hypotheticalData.averageProductPrice.toFixed(2)}</span>
                                 </div>
                                 <div className="breakdown-row">
                                     <span className="breakdown-label">Product Overhead:</span>
-                                    <span className="breakdown-value cost">-${hypotheticalData.productOverheadCost}</span>
+                                    <span className="breakdown-value cost">-${hypotheticalData.productOverheadCost.toFixed(2)}</span>
                                 </div>
                                 <div className="breakdown-row">
-                                    <span className="breakdown-label">House Commission (30%):</span>
-                                    <span className="breakdown-value cost">-${hypotheticalData.houseCommission}</span>
-                                </div>
-                                <div className="breakdown-row final-profit">
-                                    <span className="breakdown-label">Your Profit:</span>
-                                    <span className="breakdown-value profit">${hypotheticalData.yourProfitPerItem}</span>
+                                    <span className="breakdown-label">Service Fee (30%):</span>
+                                    <span className="breakdown-value cost">-${hypotheticalData.houseCommission.toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>
@@ -231,7 +233,7 @@ const SubscriptionTiers = () => {
                     <div className="value-item">
                         <div className="value-icon">🎨</div>
                         <h4>Easy Setup</h4>
-                        <p>Simple and intuitive platform to create and sell your merchandise</p>
+                        <p>Simple and intuitive platform to monetize your content</p>
                     </div>
                     <div className="value-item">
                         <div className="value-icon">🚀</div>
@@ -263,4 +265,4 @@ const SubscriptionTiers = () => {
     );
 };
 
-export default SubscriptionTiers; 
+export default SubscriptionTiers;
