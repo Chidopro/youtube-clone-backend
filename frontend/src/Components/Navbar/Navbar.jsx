@@ -6,13 +6,16 @@ import search_icon from '../../assets/search.png'
 import upload_icon from '../../assets/upload.png'
 import more_icon from '../../assets/more.png'
 import notification_icon from '../../assets/notification.png'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import SubscriptionModal from '../SubscriptionModal/SubscriptionModal'
+import CreatorSignupModal from '../CreatorSignupModal/CreatorSignupModal'
 import { supabase } from '../../supabaseClient'
 import { upsertUserProfile, deleteUserAccount } from '../../utils/userService'
+import { AdminService } from '../../utils/adminService'
 
 const Navbar = ({ setSidebar, resetCategory }) => {
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+    const [isCreatorSignupModalOpen, setIsCreatorSignupModalOpen] = useState(false);
     const [user, setUser] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
     const [customerUser, setCustomerUser] = useState(null);
@@ -20,8 +23,12 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [oauthProcessing, setOauthProcessing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    
+    const [isOrderProcessingAdmin, setIsOrderProcessingAdmin] = useState(false);
+    const [isFullAdmin, setIsFullAdmin] = useState(false);
+
     const navigate = useNavigate();
+    const location = useLocation();
+    const isOrderSuccessPage = location.pathname === '/success';
 
     useEffect(() => {
         let isMounted = true;
@@ -31,31 +38,174 @@ const Navbar = ({ setSidebar, resetCategory }) => {
             console.log('📡 Navbar received oauthSuccess event:', event.detail);
             console.log('📡 OAuth user picture:', event.detail?.picture);
             console.log('📡 OAuth user metadata picture:', event.detail?.user_metadata?.picture);
+            console.log('📡 OAuth user profile_image_url:', event.detail?.profile_image_url);
             if (isMounted) {
-                setUser(event.detail);
+                const googleUser = event.detail;
+                setUser(googleUser);
                 setLoading(false);
                 setOauthProcessing(false);
                 console.log('🔄 Navbar state updated from OAuth event');
-                
+
+                // CRITICAL: Set userProfile immediately with profile_image_url from backend
+                if (googleUser.profile_image_url || googleUser.picture || googleUser.user_metadata?.picture) {
+                    const imageUrl = googleUser.profile_image_url || googleUser.picture || googleUser.user_metadata?.picture;
+                    console.log('🖼️ Setting userProfile with image URL:', imageUrl);
+                    setUserProfile({
+                        profile_image_url: imageUrl,
+                        cover_image_url: googleUser.cover_image_url || '',
+                        display_name: googleUser.display_name,
+                        ...googleUser
+                    });
+                } else {
+                    // Fallback: still set userProfile even without image
+                    setUserProfile({
+                        profile_image_url: '',
+                        cover_image_url: googleUser.cover_image_url || '',
+                        display_name: googleUser.display_name,
+                        ...googleUser
+                    });
+                }
+
                 // Force multiple re-renders to ensure state updates
                 setTimeout(() => {
                     if (isMounted) {
                         console.log('🔄 Forcing Navbar re-render after OAuth (1st attempt)');
-                        setUser(prevUser => ({ ...prevUser, ...event.detail }));
+                        setUser(prevUser => ({ ...prevUser, ...googleUser }));
+                        if (googleUser.profile_image_url || googleUser.picture) {
+                            setUserProfile(prev => ({
+                                ...prev,
+                                profile_image_url: googleUser.profile_image_url || googleUser.picture || prev?.profile_image_url
+                            }));
+                        }
                     }
                 }, 50);
-                
+
                 setTimeout(() => {
                     if (isMounted) {
                         console.log('🔄 Forcing Navbar re-render after OAuth (2nd attempt)');
-                        setUser(event.detail);
+                        setUser(googleUser);
+                        if (googleUser.profile_image_url || googleUser.picture) {
+                            setUserProfile({
+                                profile_image_url: googleUser.profile_image_url || googleUser.picture || googleUser.user_metadata?.picture,
+                                cover_image_url: googleUser.cover_image_url || '',
+                                display_name: googleUser.display_name,
+                                ...googleUser
+                            });
+                        }
                     }
                 }, 200);
             }
         };
 
         window.addEventListener('oauthSuccess', handleOAuthSuccess);
-        
+
+        // Listen for email/password login success
+        const handleUserLoggedIn = async (event) => {
+            console.log('📡 Navbar received userLoggedIn event:', event.detail);
+            if (isMounted && event.detail?.user) {
+                const loggedInUser = event.detail.user;
+                console.log('🔐 [NAVBAR] Received user from login event:', loggedInUser);
+                console.log('🔐 [NAVBAR] Initial user role:', loggedInUser.role, 'status:', loggedInUser.status);
+                
+                // CRITICAL: Fetch profile from database FIRST before setting user state
+                // This ensures we have the correct role/status from the database
+                // Use ID if available, otherwise fallback to email
+                const userId = loggedInUser.id;
+                const userEmail = loggedInUser.email;
+                
+                if (userId || userEmail) {
+                    try {
+                        let profile = null;
+                        let profileError = null;
+                        
+                        if (userId) {
+                            console.log('🔐 [NAVBAR] Fetching profile from database for user ID:', userId);
+                            const result = await supabase
+                                .from('users')
+                                .select('*')
+                                .eq('id', userId)
+                                .single();
+                            profile = result.data;
+                            profileError = result.error;
+                        } else if (userEmail) {
+                            console.log('🔐 [NAVBAR] No ID found, fetching profile from database for user email:', userEmail);
+                            const result = await supabase
+                                .from('users')
+                                .select('*')
+                                .eq('email', userEmail)
+                                .single();
+                            profile = result.data;
+                            profileError = result.error;
+                        }
+                        
+                        if (profileError) {
+                            console.error('❌ [NAVBAR] Error fetching profile:', profileError);
+                        }
+                        
+                        if (profile && isMounted) {
+                            console.log('🔐 [NAVBAR] ✅ Found user profile from database:', profile);
+                            console.log('🔐 [NAVBAR] Database profile role:', profile.role, 'status:', profile.status);
+                            console.log('🔐 [NAVBAR] Backend response role:', loggedInUser.role, 'status:', loggedInUser.status);
+                            
+                            // CRITICAL: Database profile takes precedence for role and status
+                            const mergedProfile = {
+                                ...loggedInUser,
+                                ...profile,
+                                // Ensure ID is set from database if it was missing
+                                id: profile.id || loggedInUser.id,
+                                // PRIORITIZE database values - they are the source of truth
+                                role: profile.role !== null && profile.role !== undefined ? profile.role : (loggedInUser.role || 'customer'),
+                                status: profile.status !== null && profile.status !== undefined ? profile.status : (loggedInUser.status || 'active'),
+                                profile_image_url: profile.profile_image_url || loggedInUser.profile_image_url || loggedInUser.picture || loggedInUser.user_metadata?.picture,
+                                cover_image_url: profile.cover_image_url || loggedInUser.cover_image_url || '',
+                                display_name: profile.display_name || loggedInUser.display_name,
+                            };
+                            
+                            setUserProfile(mergedProfile);
+                            setUser(mergedProfile);
+                            
+                            // Update localStorage
+                            localStorage.setItem('user', JSON.stringify(mergedProfile));
+                            console.log('🔐 [NAVBAR] ✅ Final merged profile role:', mergedProfile.role, 'status:', mergedProfile.status, 'profile_image_url:', mergedProfile.profile_image_url);
+                            const willShowProfile = (mergedProfile.role === 'creator' || mergedProfile.role === 'admin') && (mergedProfile.status === 'active' || mergedProfile.status === undefined);
+                            console.log('🔐 [NAVBAR] ✅ Will show profile image?', willShowProfile);
+                            setLoading(false);
+                        } else {
+                            console.warn('⚠️ [NAVBAR] No profile found in database, using login data');
+                            // Fallback: use login data
+                            const fallbackProfile = {
+                                profile_image_url: loggedInUser.profile_image_url || loggedInUser.picture || loggedInUser.user_metadata?.picture,
+                                cover_image_url: loggedInUser.cover_image_url || '',
+                                display_name: loggedInUser.display_name,
+                                ...loggedInUser
+                            };
+                            setUserProfile(fallbackProfile);
+                            setUser(fallbackProfile);
+                            setLoading(false);
+                        }
+                    } catch (error) {
+                        console.error('❌ [NAVBAR] Error fetching user profile:', error);
+                        // Still set user even if profile fetch fails
+                        const fallbackProfile = {
+                            profile_image_url: loggedInUser.profile_image_url || loggedInUser.picture || loggedInUser.user_metadata?.picture,
+                            cover_image_url: loggedInUser.cover_image_url || '',
+                            display_name: loggedInUser.display_name,
+                            ...loggedInUser
+                        };
+                        setUserProfile(fallbackProfile);
+                        setUser(fallbackProfile);
+                        setLoading(false);
+                    }
+                } else {
+                    console.warn('⚠️ [NAVBAR] No user ID or email, cannot fetch profile');
+                    setUser(loggedInUser);
+                    setLoading(false);
+                }
+            }
+        };
+
+        window.addEventListener('userLoggedIn', handleUserLoggedIn);
+
         const fetchUser = async () => {
             try {
                 // Wait for OAuth processing to complete if it's in progress
@@ -73,49 +223,107 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     console.log('🔐 OAuth processing completed or timeout reached');
                     setOauthProcessing(false);
                 }
-                
+
                 // Additional wait to ensure localStorage is fully updated
                 await new Promise(resolve => setTimeout(resolve, 200));
-                
-                // Check for Google OAuth user (video creators) in localStorage first
+
+                // Check for authenticated user (OAuth or email/password) in localStorage
                 const isAuthenticated = localStorage.getItem('isAuthenticated');
                 const userData = localStorage.getItem('user');
-                
+
                 if (isAuthenticated === 'true' && userData) {
                     try {
-                        const googleUser = JSON.parse(userData);
-                        console.log('🔐 Found Google OAuth user (creator):', googleUser);
-                        console.log('🔐 User picture URL:', googleUser?.picture);
-                        console.log('🔐 Setting user state in Navbar...');
+                        const loggedInUser = JSON.parse(userData);
+                        console.log('🔐 [FETCHUSER] Found authenticated user:', loggedInUser);
+                        console.log('🔐 [FETCHUSER] Initial role from localStorage:', loggedInUser?.role, 'status:', loggedInUser?.status);
+                        
                         if (isMounted) {
-                            setUser(googleUser);
-                            console.log('🔐 User state set in Navbar:', googleUser);
-                            
-                            // Fetch user profile from database like Upload page does
-                            const { data: profile, error: profileError } = await supabase
-                                .from('users')
-                                .select('*')
-                                .eq('id', googleUser.id)
-                                .single();
-                            
-                            if (profile) {
-                                console.log('🔐 Found user profile:', profile);
-                                setUserProfile(profile);
+                            // CRITICAL: Fetch from database FIRST before setting user state
+                            // This ensures we have the correct role/status from database
+                            if (loggedInUser.id) {
+                                console.log('🔐 [FETCHUSER] Fetching latest user profile from database for user:', loggedInUser.id);
+                                const { data: profile, error: profileError } = await supabase
+                                    .from('users')
+                                    .select('*')
+                                    .eq('id', loggedInUser.id)
+                                    .single();
+
+                                if (profileError) {
+                                    console.error('❌ [FETCHUSER] Error fetching profile:', profileError);
+                                }
+
+                                if (profile && isMounted) {
+                                    console.log('🔐 [FETCHUSER] ✅ Found user profile from database:', profile);
+                                    console.log('🔐 [FETCHUSER] Database role:', profile.role, 'status:', profile.status);
+                                    console.log('🔐 [FETCHUSER] Database profile_image_url:', profile.profile_image_url);
+
+                                    // CRITICAL: Database profile takes precedence for role and status
+                                    const mergedProfile = {
+                                        ...loggedInUser,
+                                        ...profile,
+                                        // PRIORITIZE database values - they are the source of truth
+                                        role: profile.role !== null && profile.role !== undefined ? profile.role : (loggedInUser.role || 'customer'),
+                                        status: profile.status !== null && profile.status !== undefined ? profile.status : (loggedInUser.status || 'active'),
+                                        // Prioritize database profile_image_url
+                                        profile_image_url: profile.profile_image_url || loggedInUser.profile_image_url || loggedInUser.picture || loggedInUser.user_metadata?.picture,
+                                        // Prioritize database cover_image_url
+                                        cover_image_url: profile.cover_image_url || loggedInUser.cover_image_url || '',
+                                        // Update display_name from database if available
+                                        display_name: profile.display_name || loggedInUser.display_name,
+                                    };
+
+                                    setUserProfile(mergedProfile);
+
+                                    // Update localStorage with merged data so it's available on page refresh
+                                    const updatedUser = {
+                                        ...loggedInUser,
+                                        role: mergedProfile.role,
+                                        status: mergedProfile.status,
+                                        profile_image_url: mergedProfile.profile_image_url,
+                                        cover_image_url: mergedProfile.cover_image_url,
+                                        display_name: mergedProfile.display_name,
+                                    };
+                                    localStorage.setItem('user', JSON.stringify(updatedUser));
+                                    setUser(updatedUser);
+
+                                    console.log('🔐 [FETCHUSER] ✅ Final merged profile role:', mergedProfile.role, 'Status:', mergedProfile.status, 'profile_image_url:', mergedProfile.profile_image_url);
+                                    const willShowProfile = (mergedProfile.role === 'creator' || mergedProfile.role === 'admin') && (mergedProfile.status === 'active' || mergedProfile.status === undefined);
+                                    console.log('🔐 [FETCHUSER] ✅ Will show profile image?', willShowProfile);
+                                } else {
+                                    console.warn('⚠️ [FETCHUSER] No user profile found in database, using stored data:', profileError);
+                                    // Fallback: use stored data if database fetch fails
+                                    const fallbackProfile = {
+                                        profile_image_url: loggedInUser.profile_image_url || loggedInUser.picture || loggedInUser.user_metadata?.picture,
+                                        cover_image_url: loggedInUser.cover_image_url || '',
+                                        display_name: loggedInUser.display_name,
+                                        ...loggedInUser
+                                    };
+                                    setUserProfile(fallbackProfile);
+                                    setUser(fallbackProfile);
+                                }
                             } else {
-                                console.log('🔐 No user profile found:', profileError);
+                                console.warn('⚠️ [FETCHUSER] User has no ID, using stored data as-is');
+                                const fallbackProfile = {
+                                    profile_image_url: loggedInUser.profile_image_url || loggedInUser.picture || loggedInUser.user_metadata?.picture,
+                                    cover_image_url: loggedInUser.cover_image_url || '',
+                                    display_name: loggedInUser.display_name,
+                                    ...loggedInUser
+                                };
+                                setUserProfile(fallbackProfile);
+                                setUser(fallbackProfile);
                             }
                         }
                     } catch (error) {
-                        console.error('Error parsing Google OAuth user data:', error);
+                        console.error('Error parsing user data:', error);
                     }
                 } else {
-                    console.log('🔐 No Google OAuth user found. isAuthenticated:', isAuthenticated, 'userData:', userData);
+                    console.log('🔐 No authenticated user found. isAuthenticated:', isAuthenticated, 'userData:', userData);
                 }
-                
+
                 // Check for customer authentication (merchandise buyers)
                 const customerAuthenticated = localStorage.getItem('customer_authenticated');
                 const customerData = localStorage.getItem('customer_user');
-                
+
                 if (customerAuthenticated === 'true' && customerData) {
                     try {
                         const customer = JSON.parse(customerData);
@@ -127,28 +335,28 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         console.error('Error parsing customer user data:', error);
                     }
                 }
-                
+
                 // Set loading to false after checking both auth types
                 if (isMounted) {
                     setLoading(false);
                 }
-                
+
                 // Only check Supabase auth if we don't have a Google OAuth user
                 if (!isAuthenticated || !userData) {
                     console.log('🔐 No Google OAuth user found, checking Supabase auth...');
                     // Fallback to Supabase auth with timeout
                     const authPromise = supabase.auth.getUser();
-                    const timeoutPromise = new Promise((_, reject) => 
+                    const timeoutPromise = new Promise((_, reject) =>
                         setTimeout(() => reject(new Error('Auth timeout')), 5000)
                     );
-                    
+
                     const { data: { user } } = await Promise.race([authPromise, timeoutPromise]);
-                    
+
                     if (isMounted) {
                         console.log('🔐 Supabase auth result:', user);
                         setUser(user);
                         setLoading(false);
-                        
+
                         if (user) {
                             // Upsert user profile in users table (non-blocking)
                             const upsertPayload = {
@@ -158,7 +366,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 email: user.email
                             };
                             console.log('Upserting user profile with:', upsertPayload);
-                            upsertUserProfile(upsertPayload).catch(error => 
+                            upsertUserProfile(upsertPayload).catch(error =>
                                 console.error('Upsert error:', error)
                             );
                         }
@@ -174,7 +382,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                 }
             }
         };
-        
+
         fetchUser();
 
         // Listen for auth state changes with debouncing
@@ -188,9 +396,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     // Only refetch if we don't have a Google OAuth user
                     const isAuthenticated = localStorage.getItem('isAuthenticated');
                     const userData = localStorage.getItem('user');
-                    
+
                     console.log('🔄 Auth state change detected:', event, 'Google OAuth user exists:', !!(isAuthenticated && userData));
-                    
+
                     if (!isAuthenticated || !userData) {
                         console.log('🔄 No Google OAuth user, refetching from Supabase...');
                         fetchUser();
@@ -204,6 +412,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         return () => {
             isMounted = false;
             window.removeEventListener('oauthSuccess', handleOAuthSuccess);
+            window.removeEventListener('userLoggedIn', handleUserLoggedIn);
             if (authChangeTimeout) {
                 clearTimeout(authChangeTimeout);
             }
@@ -213,32 +422,107 @@ const Navbar = ({ setSidebar, resetCategory }) => {
 
     // Close dropdown when clicking outside
     useEffect(() => {
+        // Detect if mobile device
+        const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+
         const handleClickOutside = (event) => {
-            if (dropdownOpen && !event.target.closest('.user-profile-container')) {
-                setDropdownOpen(false);
+            if (isMobile) {
+                // Mobile: Use a small delay to allow the button click to process first
+                setTimeout(() => {
+                    // Check if click is outside the user profile container and dropdown
+                    const isClickInside = event.target.closest('.user-profile-container') ||
+                        event.target.closest('.user-dropdown');
+                    if (dropdownOpen && !isClickInside) {
+                        console.log('🔄 Closing dropdown - clicked outside (mobile)');
+                        setDropdownOpen(false);
+                    }
+                }, 10);
+            } else {
+                // Desktop: Use capture phase (original behavior)
+                const isClickInside = event.target.closest('.user-profile-container') ||
+                    event.target.closest('.user-dropdown');
+                if (dropdownOpen && !isClickInside) {
+                    console.log('🔄 Closing dropdown - clicked outside (desktop)');
+                    setDropdownOpen(false);
+                }
             }
         };
 
         const handleEscapeKey = (event) => {
             if (event.key === 'Escape' && dropdownOpen) {
+                console.log('🔄 Closing dropdown - Escape key');
                 setDropdownOpen(false);
             }
         };
 
-        document.addEventListener('click', handleClickOutside);
+        // Mobile: bubble phase, Desktop: capture phase (original)
+        document.addEventListener('click', handleClickOutside, !isMobile);
         document.addEventListener('keydown', handleEscapeKey);
-        
+
         return () => {
-            document.removeEventListener('click', handleClickOutside);
+            document.removeEventListener('click', handleClickOutside, !isMobile);
             document.removeEventListener('keydown', handleEscapeKey);
         };
     }, [dropdownOpen]);
 
+    // Check admin role when user changes
+    useEffect(() => {
+        const checkAdminRole = async () => {
+            if (user) {
+                try {
+                    const isOrderProcessing = await AdminService.isOrderProcessingAdmin();
+                    const isFull = await AdminService.isFullAdmin();
+                    setIsOrderProcessingAdmin(isOrderProcessing);
+                    setIsFullAdmin(isFull);
+                } catch (error) {
+                    // 406 errors are expected for non-admin users due to RLS - don't log as errors
+                    if (error?.code !== 'PGRST116' && !error?.message?.includes('406') && error?.status !== 406) {
+                        console.error('Error checking admin role:', error);
+                    }
+                    setIsOrderProcessingAdmin(false);
+                    setIsFullAdmin(false);
+                }
+            } else {
+                setIsOrderProcessingAdmin(false);
+                setIsFullAdmin(false);
+            }
+        };
+
+        checkAdminRole();
+    }, [user]);
+
     const handleLogin = () => {
-        // Simple direct redirect - this should work on all devices
+        // Navigate to login page
+        navigate('/login');
+    };
+
+    const handleSubscribeClick = () => {
+        // Navigate to subscription-tiers page (Product Calculator)
+        navigate('/subscription-tiers');
+    };
+
+    const handleCreatorSignup = async (email, location) => {
+        // Store email and location for later use if needed
+        localStorage.setItem('pending_creator_email', email);
+        localStorage.setItem('pending_creator_location', location);
+
+        // Store current subdomain info before OAuth redirect (for App.jsx fallback)
+        const currentHostname = window.location.hostname;
+        const currentPath = window.location.pathname;
+        if (currentHostname !== 'screenmerch.com' && currentHostname !== 'www.screenmerch.com') {
+            localStorage.setItem('oauth_original_subdomain', currentHostname);
+            localStorage.setItem('oauth_original_path', currentPath);
+            console.log('🔐 Storing subdomain info for OAuth redirect:', currentHostname, currentPath);
+        }
+
+        // Redirect to Google OAuth
         const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}`;
-        console.log('Redirecting to:', authUrl);
+        console.log('Redirecting to Google OAuth for creator signup:', authUrl);
         window.location.href = authUrl;
+    };
+
+    const handleCloseCreatorSignupModal = () => {
+        setIsCreatorSignupModalOpen(false);
     };
 
     const handleLogout = async () => {
@@ -251,16 +535,24 @@ const Navbar = ({ setSidebar, resetCategory }) => {
             localStorage.removeItem('customer_user');
             localStorage.removeItem('user_authenticated');
             localStorage.removeItem('user_email');
-            
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('pending_creator_email');
+            localStorage.removeItem('pending_creator_location');
+
             // Clear Supabase session
             await supabase.auth.signOut();
-            
+
             setUser(null);
             setCustomerUser(null);
+            setUserProfile(null);
             console.log('✅ Logged out successfully - all auth data cleared');
-            navigate('/');
+
+            // Force a full page reload to clear any cached state
+            window.location.href = '/';
         } catch (error) {
             console.error('Logout error:', error);
+            // Even if there's an error, still redirect to home
+            window.location.href = '/';
         }
     };
 
@@ -268,7 +560,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
             try {
                 const result = await deleteUserAccount();
-                
+
                 if (result.success) {
                     // Sign out and redirect
                     await supabase.auth.signOut();
@@ -287,10 +579,6 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         }
     };
 
-    const handleSubscribeClick = () => {
-        // Always redirect to tiers page for new user signups
-        navigate('/subscription-tiers');
-    };
 
     const handleSubscribeModalClick = () => {
         setIsSubscriptionModalOpen(true);
@@ -320,10 +608,10 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         <>
             <nav className='flex-div'>
                 <div className="nav-left flex-div">
-                    <img 
-                        src={menu_icon} 
-                        alt="Menu" 
-                        className="menu-icon" 
+                    <img
+                        src={menu_icon}
+                        alt="Menu"
+                        className="menu-icon"
                         onClick={() => setSidebar(prev => !prev)}
                         onTouchStart={(e) => {
                             e.preventDefault();
@@ -332,14 +620,14 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         }}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                     />
-                    <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}> <img src={logo} alt="" className="logo" /></Link>
+                    <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}> <img src={logo} alt="" className={`logo ${isOrderSuccessPage ? 'order-success-logo' : ''}`} /></Link>
                 </div>
                 <div className="nav-center-right flex-div">
                     <div className="nav-middle flex-div">
                         <div className="search-box flex-div">
-                            <input 
-                                type="text" 
-                                placeholder="Search channels" 
+                            <input
+                                type="text"
+                                placeholder="Search channels"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onKeyPress={handleSearchKeyPress}
@@ -348,162 +636,284 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         </div>
                     </div>
                     <div className="nav-right flex-div">
-                    {user ? (
-                        console.log('🎥 Rendering upload link for user:', user?.display_name, 'User object:', user) ||
-                        <Link to="/upload"><img src={upload_icon} alt="Upload" /></Link>
-                    ) : oauthProcessing ? (
-                        console.log('🎥 OAuth processing - hiding upload button') ||
-                        <div style={{ width: '24px', height: '24px' }}></div> // Placeholder to maintain layout
-                    ) : (
-                        console.log('🎥 Rendering upload link - no user, user state:', user, 'loading:', loading) ||
-                        <Link to="/upload">
-                            <img 
-                                src={upload_icon} 
-                                alt="Upload" 
-                                style={{ cursor: 'pointer' }}
-                                title="Upload videos"
-                            />
-                        </Link>
-                    )}
-                    {loading ? (
-                        <div className="loading-spinner-navbar"></div>
-                    ) : user ? (
-                        <>
-                        {console.log('🎨 Rendering user profile for:', user?.display_name || user?.user_metadata?.name)}
-                        {console.log('🔍 Full user object:', user)}
-                        <button 
-                            className="subscribe-btn"
-                            onClick={handleSubscribeClick}
-                        >
-                            Start Free
-                        </button>
-                        <div className="user-profile-container">
-                            <img 
-                                className='user-profile' 
-                                src={(() => {
-                                    // Use same logic as upload page for consistency
-                                    const imageUrl = userProfile?.profile_image_url || user?.user_metadata?.picture || '/default-avatar.svg';
-                                    console.log('🖼️ Profile image URL:', imageUrl);
-                                    console.log('🖼️ User metadata picture:', user?.user_metadata?.picture);
-                                    console.log('🖼️ User picture:', user?.picture);
-                                    console.log('🖼️ YouTube channel thumbnail:', user?.youtube_channel?.thumbnail);
-                                    console.log('🖼️ Avatar URL:', user?.avatar_url);
-                                    return imageUrl;
-                                })()} 
-                                alt={user?.user_metadata?.name || user?.display_name || user?.name || 'User'} 
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setDropdownOpen(!dropdownOpen);
-                                }}
-                                style={{ cursor: 'pointer' }}
-                                onError={(e) => {
-                                    if (!e.target.dataset.fallbackUsed) {
-                                        console.log('🖼️ Image failed to load!');
-                                        console.log('🖼️ Failed URL:', e.target.src);
-                                        
-                                        // Try YouTube thumbnail first, then default
-                                        if (e.target.src !== user?.youtube_channel?.thumbnail) {
-                                            console.log('🖼️ Trying YouTube thumbnail...');
-                                            e.target.dataset.fallbackUsed = 'true';
-                                            e.target.src = user?.youtube_channel?.thumbnail || '/default-avatar.svg';
-                                        } else {
-                                            console.log('🖼️ Using default avatar');
-                                            e.target.dataset.fallbackUsed = 'true';
-                                            e.target.src = '/default-avatar.svg';
-                                        }
-                                    }
-                                }}
-                                onLoad={(e) => {
-                                    console.log('🖼️ Profile image loaded successfully');
-                                    console.log('🖼️ Loaded image src:', e.target.src);
-                                }}
-                            />
-                            <div className={`user-dropdown ${dropdownOpen ? 'open' : ''}`}>
-                                <p>Signed in as <strong>{user?.user_metadata?.name || user?.display_name}</strong></p>
-                                <hr/>
-                                <button 
-                                    className="dropdown-item" 
+                        {user && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) ? (
+                            console.log('🎥 Rendering upload link for creator:', user?.display_name, 'User object:', user) ||
+                            <Link to="/upload"><img src={upload_icon} alt="Upload" /></Link>
+                        ) : oauthProcessing ? (
+                            console.log('🎥 OAuth processing - hiding upload button') ||
+                            <div style={{ width: '24px', height: '24px' }}></div> // Placeholder to maintain layout
+                        ) : (
+                            console.log('🎥 No creator user - hiding upload button. User:', user, 'Role:', user?.role, 'Status:', user?.status) ||
+                            <div style={{ width: '24px', height: '24px' }}></div> // Hide upload for regular users
+                        )}
+                        {loading ? (
+                            <div className="loading-spinner-navbar"></div>
+                        ) : (() => {
+                            const isCreatorOrAdmin = user && (user.role === 'creator' || user.role === 'admin');
+                            const isActive = user && (user.status === 'active' || user.status === undefined);
+                            const shouldShowProfile = isCreatorOrAdmin && isActive;
+                            console.log('🔍 Navbar render check:', {
+                                hasUser: !!user,
+                                role: user?.role,
+                                status: user?.status,
+                                isCreatorOrAdmin,
+                                isActive,
+                                shouldShowProfile
+                            });
+                            return shouldShowProfile;
+                        })() ? (
+                            <>
+                                {console.log('🎨 Rendering creator profile for:', user?.display_name || user?.user_metadata?.name)}
+                                {console.log('🔍 Full user object:', user)}
+                                {console.log('🔍 User role:', user?.role, 'User status:', user?.status)}
+                                <button
+                                    className="subscribe-btn"
+                                    onClick={handleSubscribeClick}
+                                >
+                                    Start Free
+                                </button>
+                                <button
+                                    className="user-profile-container"
+                                    type="button"
                                     onClick={(e) => {
+                                        console.log('🖱️ Container clicked, current dropdown state:', dropdownOpen);
+                                        e.stopPropagation();
+                                        const newState = !dropdownOpen;
+                                        console.log('🖱️ Setting dropdown to:', newState);
+                                        setDropdownOpen(newState);
+                                    }}
+                                    onTouchStart={(e) => {
+                                        // Mobile: use same pattern as menu icon
+                                        console.log('👆 Container touched, current dropdown state:', dropdownOpen);
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        console.log('🔗 Navigating to Dashboard');
-                                        setDropdownOpen(false);
-                                        navigate('/dashboard');
+                                        const newState = !dropdownOpen;
+                                        console.log('👆 Setting dropdown to:', newState);
+                                        setDropdownOpen(newState);
                                     }}
-                                    style={{ 
-                                        background: 'none', 
-                                        border: 'none', 
-                                        width: '100%', 
-                                        textAlign: 'left', 
-                                        padding: '8px 16px',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Dashboard
-                                </button>
-                                <button 
-                                    className="dropdown-item" 
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        console.log('🔗 Navigating to Admin Portal');
-                                        setDropdownOpen(false);
-                                        navigate('/admin');
-                                    }}
-                                    style={{ 
-                                        background: 'none', 
-                                        border: 'none', 
-                                        width: '100%', 
-                                        textAlign: 'left', 
-                                        padding: '8px 16px',
-                                        cursor: 'pointer'
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        padding: 0,
+                                        cursor: 'pointer',
+                                        touchAction: 'manipulation',
+                                        WebkitTapHighlightColor: 'transparent',
+                                        borderRadius: '50%',
+                                        WebkitBorderRadius: '50%',
+                                        overflow: 'visible', /* Allow dropdown to show */
+                                        outline: 'none'
                                     }}
                                 >
-                                    Admin Portal
+                                    <img
+                                        key={`profile-img-${user?.id || 'unknown'}-${userProfile?.profile_image_url || user?.profile_image_url || user?.picture || 'default'}`}
+                                        className='user-profile'
+                                        src={(() => {
+                                            // Prioritize profile_image_url from user object (sent by backend), then userProfile, then user_metadata
+                                            // Check all possible sources in order of priority
+                                            const imageUrl = user?.profile_image_url ||
+                                                user?.picture ||
+                                                userProfile?.profile_image_url ||
+                                                user?.user_metadata?.picture ||
+                                                '/default-avatar.svg';
+
+                                            // Debug logging
+                                            console.log('🖼️ [NAVBAR] Resolving profile image URL:', {
+                                                'user?.profile_image_url': user?.profile_image_url,
+                                                'user?.picture': user?.picture,
+                                                'userProfile?.profile_image_url': userProfile?.profile_image_url,
+                                                'user?.user_metadata?.picture': user?.user_metadata?.picture,
+                                                'final URL': imageUrl
+                                            });
+
+                                            return imageUrl;
+                                        })()}
+                                        alt={user?.user_metadata?.name || user?.display_name || user?.name || 'User'}
+                                        onClick={(e) => {
+                                            console.log('🖱️ Image clicked, current dropdown state:', dropdownOpen);
+                                            e.stopPropagation();
+                                            const newState = !dropdownOpen;
+                                            console.log('🖱️ Image: Setting dropdown to:', newState);
+                                            setDropdownOpen(newState);
+                                        }}
+                                        onTouchStart={(e) => {
+                                            // Mobile: use same pattern as menu icon
+                                            console.log('👆 Image touched, current dropdown state:', dropdownOpen);
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            const newState = !dropdownOpen;
+                                            console.log('👆 Image: Setting dropdown to:', newState);
+                                            setDropdownOpen(newState);
+                                        }}
+                                        style={{
+                                            cursor: 'pointer',
+                                            pointerEvents: 'auto',
+                                            userSelect: 'none',
+                                            WebkitUserSelect: 'none',
+                                            display: 'block',
+                                            borderRadius: '50%',
+                                            WebkitBorderRadius: '50%',
+                                            objectFit: 'cover',
+                                            WebkitAppearance: 'none',
+                                            width: '35px',
+                                            height: '35px',
+                                            backgroundColor: 'transparent', // Ensure no background color interferes
+                                            zIndex: 1, // Ensure image is above any background
+                                            position: 'relative' // Ensure proper stacking context
+                                        }}
+                                        onError={(e) => {
+                                            if (!e.target.dataset.fallbackUsed) {
+                                                console.log('🖼️ [NAVBAR] Image failed to load!');
+                                                console.log('🖼️ [NAVBAR] Failed URL:', e.target.src);
+                                                console.log('🖼️ [NAVBAR] User object:', user);
+                                                console.log('🖼️ [NAVBAR] UserProfile object:', userProfile);
+
+                                                // Try all fallback options in order
+                                                const fallbackUrl = user?.youtube_channel?.thumbnail ||
+                                                    userProfile?.profile_image_url ||
+                                                    user?.profile_image_url ||
+                                                    user?.picture ||
+                                                    user?.user_metadata?.picture ||
+                                                    '/default-avatar.svg';
+
+                                                if (e.target.src !== fallbackUrl && fallbackUrl !== '/default-avatar.svg') {
+                                                    console.log('🖼️ [NAVBAR] Trying fallback URL:', fallbackUrl);
+                                                    e.target.dataset.fallbackUsed = 'true';
+                                                    e.target.src = fallbackUrl;
+                                                } else {
+                                                    console.log('🖼️ [NAVBAR] Using default avatar');
+                                                    e.target.dataset.fallbackUsed = 'true';
+                                                    e.target.src = '/default-avatar.svg';
+                                                }
+                                            }
+                                        }}
+                                        onLoad={(e) => {
+                                            console.log('🖼️ [NAVBAR] Profile image loaded successfully');
+                                            console.log('🖼️ [NAVBAR] Loaded image src:', e.target.src);
+                                            console.log('🖼️ [NAVBAR] Image natural dimensions:', e.target.naturalWidth, 'x', e.target.naturalHeight);
+                                            // Ensure image is visible and properly displayed
+                                            e.target.style.display = 'block';
+                                            e.target.style.visibility = 'visible';
+                                            e.target.style.opacity = '1';
+                                            e.target.style.width = '35px';
+                                            e.target.style.height = '35px';
+                                            e.target.style.objectFit = 'cover';
+                                            e.target.style.borderRadius = '50%';
+                                            // Ensure image is above any background or text
+                                            e.target.style.position = 'relative';
+                                            e.target.style.zIndex = '10';
+                                            // Remove any text content that might be overlaying
+                                            if (e.target.parentElement) {
+                                                const parent = e.target.parentElement;
+                                                // Remove any text nodes or span elements that might show initials
+                                                Array.from(parent.childNodes).forEach(node => {
+                                                    if (node.nodeType === Node.TEXT_NODE || (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'IMG' && node.tagName !== 'DIV')) {
+                                                        if (node.textContent && node.textContent.trim().length === 1) {
+                                                            node.remove();
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                            // Remove any background that might be hiding the image
+                                            e.target.style.background = 'none';
+                                            e.target.style.backgroundColor = 'transparent';
+                                        }}
+                                    />
                                 </button>
-                                <button 
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setDropdownOpen(false);
-                                        handleDeleteAccount();
-                                    }} 
-                                    className="dropdown-item delete-account-btn"
-                                >
-                                    Delete Account
-                                </button>
-                                <button 
-                                    onClick={(e) => { 
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setDropdownOpen(false); 
-                                        handleLogout(); 
-                                    }}
-                                    style={{ 
-                                        background: 'none', 
-                                        border: 'none', 
-                                        width: '100%', 
-                                        textAlign: 'left', 
-                                        padding: '8px 16px',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Logout
-                                </button>
-                            </div>
-                        </div>
-                        </>
+                                {console.log('🔽 Dropdown state:', dropdownOpen, 'Class:', `user-dropdown ${dropdownOpen ? 'open' : ''}`)}
+                                <div className={`user-dropdown ${dropdownOpen ? 'open' : ''}`}>
+                                    <p>Signed in as <strong>{user?.user_metadata?.name || user?.display_name}</strong></p>
+                                    <hr />
+                                    {/* Only show Dashboard if NOT order processing admin (order processing admins should only see Admin Portal) */}
+                                    {!isOrderProcessingAdmin && (
+                                        <button
+                                            className="dropdown-item"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                console.log('🔗 Navigating to Dashboard');
+                                                setDropdownOpen(false);
+                                                navigate('/dashboard');
+                                            }}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                width: '100%',
+                                                textAlign: 'left',
+                                                padding: '8px 16px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Dashboard
+                                        </button>
+                                    )}
+                                    {/* Show Admin Portal for all admins (order processing admins and full admins) */}
+                                    {(isOrderProcessingAdmin || isFullAdmin) && (
+                                        <button
+                                            className="dropdown-item"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                console.log('🔗 Navigating to Admin Portal');
+                                                setDropdownOpen(false);
+                                                navigate('/admin');
+                                            }}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                width: '100%',
+                                                textAlign: 'left',
+                                                padding: '8px 16px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Admin Portal
+                                        </button>
+                                    )}
+                                    {/* Only show Delete Account if NOT order processing admin */}
+                                    {!isOrderProcessingAdmin && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setDropdownOpen(false);
+                                                handleDeleteAccount();
+                                            }}
+                                            className="dropdown-item delete-account-btn"
+                                        >
+                                            Delete Account
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setDropdownOpen(false);
+                                            handleLogout();
+                                        }}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            width: '100%',
+                                            textAlign: 'left',
+                                            padding: '8px 16px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            </>
                     ) : oauthProcessing ? (
                         <div className="sign-in-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
                             Processing...
                         </div>
                     ) : (
+                        // Not logged in or customer - show Sign In button
                         <>
                             <button 
                                 className="sign-in-btn" 
                                 onClick={handleLogin}
-                                title="Sign in with Google"
+                                title="Sign in"
                             >
                                 Sign In
                             </button>
@@ -518,10 +928,16 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     </div>
                 </div>
             </nav>
-            
-            <SubscriptionModal 
-                isOpen={isSubscriptionModalOpen} 
-                onClose={handleCloseModal} 
+
+            <SubscriptionModal
+                isOpen={isSubscriptionModalOpen}
+                onClose={handleCloseModal}
+            />
+
+            <CreatorSignupModal
+                isOpen={isCreatorSignupModalOpen}
+                onClose={handleCloseCreatorSignupModal}
+                onSignup={handleCreatorSignup}
             />
         </>
     )

@@ -27,6 +27,8 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState(null); // {type: 'error'|'success', text: string}
   const [isCreatorSignup, setIsCreatorSignup] = useState(false);
+  const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState(null);
 
   // Force signup view if routed to /signup
   // Check if coming from "Start Free" flow (payment-setup with flow=new_user)
@@ -52,32 +54,31 @@ const Login = () => {
     }
   }, [location.pathname, location.state]);
 
-  // Check if user is already authenticated and redirect them
+  // Check if user is already authenticated
+  // Only redirect if there's a returnTo parameter (coming from a protected route)
+  // Otherwise, allow access to login page so users can log out or switch accounts
   useEffect(() => {
     const isAuthenticated = localStorage.getItem('isAuthenticated');
     const userData = localStorage.getItem('user');
+    const returnTo = searchParams.get('returnTo');
     
-    if (isAuthenticated === 'true' && userData) {
+    // Only auto-redirect if there's a returnTo parameter (user was trying to access a protected route)
+    if (isAuthenticated === 'true' && userData && returnTo) {
       try {
         const user = JSON.parse(userData);
-        console.log('✅ User already authenticated, redirecting...', user);
+        console.log('✅ User already authenticated with returnTo, redirecting...', user);
         
         // Redirect based on user role and location
         const userRole = user.role || 'customer';
-        const returnTo = searchParams.get('returnTo');
         
         if (returnTo === 'merch') {
           navigate('/merchandise', { replace: true });
         } else if (returnTo === 'subscription-success') {
           navigate('/subscription-success', { replace: true });
         } else if (userRole === 'customer') {
-          // On subdomains, go to home page; on main domain, go to product browse
-          if (isSubdomain()) {
-            console.log('🔄 Already logged in on subdomain, redirecting to home');
-            navigate('/', { replace: true });
-          } else {
-            navigate('/product/browse', { replace: true });
-          }
+          // Always redirect to home page for customers
+          console.log('🔄 Already logged in as customer, redirecting to home');
+          navigate('/', { replace: true });
         } else {
           // Creators and admins go to dashboard
           navigate('/dashboard', { replace: true });
@@ -88,6 +89,20 @@ const Login = () => {
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('user');
       }
+    } else if (isAuthenticated === 'true' && userData) {
+      // User is authenticated but no returnTo - allow them to stay on login page
+      // They can log out or switch accounts if needed
+      try {
+        const user = JSON.parse(userData);
+        console.log('✅ User already authenticated, but allowing access to login page');
+        setIsAlreadyLoggedIn(true);
+        setLoggedInUser(user);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    } else {
+      setIsAlreadyLoggedIn(false);
+      setLoggedInUser(null);
     }
   }, [navigate, searchParams]);
 
@@ -111,30 +126,24 @@ const Login = () => {
       return;
     }
     
-    // For customer signups (not creators), only require email
-    const isCustomerSignup = !isLoginMode && !isCreatorSignup;
-    
-    if (!isCustomerSignup && !password) {
+    // Password is always required
+    if (!password) {
       setMessage({ type: 'error', text: 'Please enter your password.' });
       return;
     }
 
-    // For customer signups, use email-only endpoint
-    const endpoint = isLoginMode 
-      ? '/api/auth/login' 
-      : (isCustomerSignup ? '/api/auth/signup/email-only' : '/api/auth/signup');
+    // Use standard login/signup endpoints
+    const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
     const url = apiUrl(endpoint);
 
     try {
       setIsLoading(true);
 
-      const requestBody = isCustomerSignup
-        ? { email: email.trim() }
-        : {
-            email: email.trim(),
-            password: password,
-            is_creator: !isLoginMode && isCreatorSignup  // Pass is_creator flag for creator signups
-          };
+      const requestBody = {
+        email: email.trim(),
+        password: password,
+        is_creator: !isLoginMode && isCreatorSignup  // Pass is_creator flag for creator signups
+      };
 
       const response = await fetch(url, {
         method: 'POST',
@@ -198,17 +207,6 @@ const Login = () => {
 
       const data = await response.json();
 
-      // For customer email-only signup, show message and don't log in yet
-      if (isCustomerSignup) {
-        setMessage({ 
-          type: 'success', 
-          text: 'Please check your email to verify your account and set your password.' 
-        });
-        // Clear the form
-        setEmail('');
-        return;
-      }
-
       if (data?.token) localStorage.setItem('auth_token', data.token);
       if (data?.user) {
         // For email/password login, fetch full user profile from database
@@ -222,8 +220,13 @@ const Login = () => {
             
             if (profile) {
               // Merge profile data with user data - prioritize profile_image_url from database
+              // CRITICAL: Include role and status for Navbar to determine if user is creator
+              // PRIORITIZE database values over backend response
               const fullUser = {
                 ...data.user,
+                // CRITICAL: Database profile takes precedence for role and status
+                role: profile.role !== null && profile.role !== undefined ? profile.role : (data.user.role || 'customer'),
+                status: profile.status !== null && profile.status !== undefined ? profile.status : (data.user.status || 'active'),
                 profile_image_url: profile.profile_image_url || data.user.profile_image_url,
                 cover_image_url: profile.cover_image_url || data.user.cover_image_url,
                 display_name: profile.display_name || data.user.display_name,
@@ -235,8 +238,11 @@ const Login = () => {
                 }
               };
               localStorage.setItem('user', JSON.stringify(fullUser));
-              console.log('💾 Stored full user with profile_image_url:', fullUser.profile_image_url);
+              console.log('💾 [LOGIN] Database profile role:', profile.role, 'status:', profile.status);
+              console.log('💾 [LOGIN] Backend response role:', data.user.role, 'status:', data.user.status);
+              console.log('💾 [LOGIN] Final stored user role:', fullUser.role, 'status:', fullUser.status, 'profile_image_url:', fullUser.profile_image_url);
             } else {
+              console.warn('⚠️ [LOGIN] No profile found in database, using backend response only');
               localStorage.setItem('user', JSON.stringify(data.user));
             }
           } catch (error) {
@@ -269,9 +275,32 @@ const Login = () => {
       }
 
       // Dispatch custom event to notify Navbar and other components of login
-      window.dispatchEvent(new CustomEvent('userLoggedIn', { 
-        detail: { user: data.user } 
-      }));
+      // CRITICAL: Use the full user object from localStorage (which includes database profile data)
+      // Wait a moment to ensure localStorage is fully written before reading it
+      setTimeout(() => {
+        const userToDispatch = localStorage.getItem('user');
+        let userForEvent = data.user;
+        
+        if (userToDispatch) {
+          try {
+            const parsedUser = JSON.parse(userToDispatch);
+            // Use the localStorage user (which has database profile merged) if available
+            userForEvent = parsedUser;
+            console.log('💾 [LOGIN] Dispatching userLoggedIn event with user from localStorage:', userForEvent);
+            console.log('💾 [LOGIN] User ID:', userForEvent.id, 'Role:', userForEvent.role, 'Status:', userForEvent.status);
+          } catch (e) {
+            console.warn('⚠️ [LOGIN] Could not parse localStorage user, using data.user:', e);
+            console.log('💾 [LOGIN] Using data.user instead. ID:', data.user?.id, 'Role:', data.user?.role);
+          }
+        } else {
+          console.warn('⚠️ [LOGIN] No user in localStorage, using data.user');
+          console.log('💾 [LOGIN] data.user ID:', data.user?.id, 'Role:', data.user?.role);
+        }
+        
+        window.dispatchEvent(new CustomEvent('userLoggedIn', { 
+          detail: { user: userForEvent } 
+        }));
+      }, 100);
 
       setMessage({ type: 'success', text: data.message || 'Login successful! Redirecting…' });
 
@@ -315,24 +344,13 @@ const Login = () => {
             console.log('🔄 Redirecting to subscription success');
             navigate('/subscription-success', { replace: true });
           } else if (userRole === 'customer') {
-            // On subdomains, go to home page; on main domain, go to product browse
-            if (isSubdomain()) {
-              console.log('🔄 Subdomain detected, redirecting to home page');
-              navigate('/', { replace: true }); // Use replace to avoid back button issues
-            } else {
-              console.log('🔄 Main domain, redirecting to product browse');
-              navigate('/product/browse', { replace: true });
-            }
+            // Always redirect to home page for customers
+            console.log('🔄 Customer login, redirecting to home page');
+            navigate('/', { replace: true }); // Use replace to avoid back button issues
           } else {
-            // Creators and admins go to dashboard
-            console.log('🔄 Creator/Admin, redirecting to dashboard');
-            // On subdomains, stay on subdomain; on main domain, go to dashboard
-            if (isSubdomain()) {
-              console.log('🔄 Subdomain detected, staying on subdomain for dashboard');
-              navigate('/dashboard', { replace: true });
-            } else {
-              navigate('/dashboard', { replace: true });
-            }
+            // Creators and admins stay on homepage after login
+            console.log('🔄 Creator/Admin login, staying on homepage');
+            navigate('/', { replace: true });
           }
         }, 700);
       }
@@ -352,20 +370,29 @@ const Login = () => {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    // Store current subdomain info before OAuth redirect (for App.jsx fallback)
-    const currentHostname = window.location.hostname;
-    const currentPath = window.location.pathname;
-    if (currentHostname !== 'screenmerch.com' && currentHostname !== 'www.screenmerch.com') {
-      localStorage.setItem('oauth_original_subdomain', currentHostname);
-      localStorage.setItem('oauth_original_path', currentPath);
-      console.log('🔐 Storing subdomain info for OAuth redirect:', currentHostname, currentPath);
-    }
+  const handleLogout = () => {
+    // Clear all authentication data
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('user');
+    localStorage.removeItem('customer_authenticated');
+    localStorage.removeItem('customer_user');
+    localStorage.removeItem('user_authenticated');
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('email_login_subdomain');
     
-    // Open provider auth on API server (absolute URL) with return_url
-    const returnUrl = window.location.href;
-    window.location.href = `${BACKEND_URL}/api/auth/google/login?return_url=${encodeURIComponent(returnUrl)}`;
+    // Clear Supabase session
+    supabase.auth.signOut();
+    
+    // Reset state
+    setIsAlreadyLoggedIn(false);
+    setLoggedInUser(null);
+    setMessage({ type: 'success', text: 'You have been logged out. You can now sign in with a different account.' });
+    
+    // Clear form
+    setEmail('');
+    setPassword('');
   };
+
 
   return (
     <div className="login-page">
@@ -376,6 +403,25 @@ const Login = () => {
             ? 'Sign in to continue to ScreenMerch'
             : 'Join ScreenMerch and start creating merch from your content'}
         </p>
+
+        {isAlreadyLoggedIn && loggedInUser && (
+          <div className="login-alert login-alert-info" role="alert" style={{ backgroundColor: '#e3f2fd', color: '#1976d2', border: '1px solid #90caf9' }}>
+            <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
+              You are already signed in as {loggedInUser.email || loggedInUser.display_name || 'a user'}
+            </p>
+            <p style={{ margin: '0 0 12px 0', fontSize: '14px' }}>
+              To sign in with a different account, please log out first.
+            </p>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="login-submit-btn"
+              style={{ backgroundColor: '#f44336', marginTop: '8px' }}
+            >
+              Log Out
+            </button>
+          </div>
+        )}
 
         {message && (
           <div
@@ -402,37 +448,31 @@ const Login = () => {
             />
           </div>
 
-          {/* Only show password field for login or creator signup */}
-          {(() => {
-            const shouldShowPassword = isLoginMode || isCreatorSignup;
-            return shouldShowPassword ? (
-              <div className="login-field">
-                <label htmlFor="password" className="login-label">Password</label>
-                <div className="password-input-wrapper">
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    className="login-input"
-                    placeholder="••••••••"
-                    autoComplete={isLoginMode ? 'current-password' : 'new-password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle-btn"
-                    onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? '🙈' : '👁️'}
-                  </button>
-                </div>
-              </div>
-            ) : null;
-          })()}
+          <div className="login-field">
+            <label htmlFor="password" className="login-label">Password</label>
+            <div className="password-input-wrapper">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                className="login-input"
+                placeholder="••••••••"
+                autoComplete={isLoginMode ? 'current-password' : 'new-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
+          </div>
 
           <button type="submit" className="login-submit-btn" disabled={isLoading}>
             {isLoading ? (
@@ -452,28 +492,6 @@ const Login = () => {
             {isLoginMode ? 'Create one' : 'Sign in'}
           </button>
         </div>
-
-        {/* Only show Google OAuth on main domain (for new creator signups) */}
-        {!isSubdomain() && (
-          <>
-            <div className="login-divider">
-              <span>or</span>
-            </div>
-
-            <div className="login-social">
-              <button
-                type="button"
-                className="google-btn"
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-              >
-                <span role="img" aria-label="google">🔍</span>
-                Sign in with Google
-              </button>
-            </div>
-          </>
-        )}
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ from supabase import create_client, Client
 from pathlib import Path
 import sys
 from functools import wraps
+import bcrypt
 
 # Google OAuth imports
 from google.auth.transport.requests import Request
@@ -6250,20 +6251,37 @@ def auth_login():
                 if not has_password:
                     logger.warning(f"⚠️ [LOGIN] User {email} has no password set (likely OAuth account)")
                 
-                # Simple password verification (replace with bcrypt in production)
-                # Direct comparison - passwords should match exactly as stored
-                password_match = (password == stored_password) if stored_password else False
-                logger.info(f"🔑 [LOGIN] Password match result: {password_match}")
+                # Verify password using bcrypt
+                password_match = False
+                if stored_password:
+                    try:
+                        # Trim stored password to handle any whitespace issues
+                        stored_password_trimmed = stored_password.strip()
+                        
+                        # Check if stored password is a bcrypt hash (starts with $2b$ or $2a$)
+                        if stored_password_trimmed.startswith('$2b$') or stored_password_trimmed.startswith('$2a$'):
+                            # Verify using bcrypt
+                            password_match = bcrypt.checkpw(password.encode('utf-8'), stored_password_trimmed.encode('utf-8'))
+                            logger.info(f"🔑 [LOGIN] Bcrypt verification result: {password_match}")
+                        else:
+                            # Legacy plain text password - verify and upgrade to bcrypt
+                            # Compare trimmed versions to handle whitespace
+                            if password.strip() == stored_password_trimmed:
+                                password_match = True
+                                # Upgrade to bcrypt hash
+                                hashed = bcrypt.hashpw(password.strip().encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                                # Use the same client that was used for lookup
+                                client.table('users').update({'password_hash': hashed}).eq('id', user['id']).execute()
+                                logger.info(f"✅ [LOGIN] Upgraded password to bcrypt for user {email}")
+                            else:
+                                logger.warning(f"⚠️ [LOGIN] Plain text password mismatch for {email}")
+                    except Exception as hash_error:
+                        logger.error(f"❌ [LOGIN] Error verifying password: {str(hash_error)}")
+                        import traceback
+                        logger.error(f"❌ [LOGIN] Traceback: {traceback.format_exc()}")
+                        password_match = False
                 
-                # Also try comparing with stripped versions (in case of whitespace issues)
-                if stored_password and not password_match:
-                    stored_trimmed = stored_password.strip()
-                    provided_trimmed = password.strip()
-                    trimmed_match = (provided_trimmed == stored_trimmed)
-                    logger.info(f"🔑 [LOGIN] Trimmed password match: {trimmed_match}")
-                    if trimmed_match:
-                        logger.warning(f"⚠️ [LOGIN] Passwords match after trimming - there may be whitespace in stored password")
-                        password_match = True  # Use trimmed match
+                logger.info(f"🔑 [LOGIN] Password match result: {password_match}")
                 
                 if password_match:
                     logger.info(f"✅ [LOGIN] User {email} logged in successfully")
@@ -6276,6 +6294,7 @@ def auth_login():
                             "email": user.get('email'),
                             "display_name": user.get('display_name'),
                             "role": user.get('role', 'customer'),
+                            "status": user.get('status', 'active'),  # Include status for frontend role checking
                             "profile_image_url": user.get('profile_image_url'),
                             "cover_image_url": user.get('cover_image_url'),
                             "bio": user.get('bio'),
@@ -6293,12 +6312,25 @@ def auth_login():
                     if is_form:
                         resp = redirect(_return_url(), code=303)  # 303 so browser switches to GET cleanly
                     else:
-                        resp = make_response(jsonify(
-                            success=True,
-                            message="Login successful",
-                            user={"email": email, "role": "customer"},
-                            token=token
-                        ), 200)
+                        # Use the full user data that was already created above
+                        # Add token to the existing response
+                        response_data = {
+                            "success": True,
+                            "message": "Login successful",
+                            "user": {
+                                "id": user.get('id'),
+                                "email": user.get('email'),
+                                "display_name": user.get('display_name'),
+                                "role": user.get('role', 'customer'),
+                                "status": user.get('status', 'active'),
+                                "profile_image_url": user.get('profile_image_url'),
+                                "cover_image_url": user.get('cover_image_url'),
+                                "bio": user.get('bio'),
+                                "subdomain": user.get('subdomain')
+                            },
+                            "token": token
+                        }
+                        resp = make_response(jsonify(response_data), 200)
                     
                     # Add CORS headers for successful response
                     resp = _allow_origin(resp)
@@ -6390,14 +6422,17 @@ def auth_signup():
                 return jsonify({"success": False, "error": "An account with this email already exists"}), 409
             
             # Create new user
-            # For demo purposes, store password as-is (replace with bcrypt in production)
+            # Hash password using bcrypt for security
             # Set role and status based on whether it's a creator signup
             user_role = 'creator' if is_creator else 'customer'
             user_status = 'pending' if is_creator else 'active'  # Creators need approval
             
+            # Hash password with bcrypt
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            
             new_user = {
                 'email': email,
-                'password_hash': password,  # Replace with bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()) in production
+                'password_hash': password_hash,
                 'role': user_role,
                 'status': user_status,
                 'email_verified': False
@@ -6769,8 +6804,11 @@ def auth_verify_email():
                 return jsonify({"success": False, "error": "Email already verified. Please sign in."}), 400
             
             # Update user: set password, mark as verified, clear token
+            # Hash password with bcrypt
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            
             update_data = {
-                'password_hash': password,  # Replace with bcrypt in production
+                'password_hash': password_hash,
                 'email_verified': True,
                 'email_verification_token': None,
                 'token_expiry': None
@@ -8025,9 +8063,18 @@ def google_callback():
             update_data = {
                 'display_name': google_name
             }
-            # Update profile_image_url if available from Google
+            # Only update profile_image_url if user doesn't have a custom one
+            # Check if current profile_image_url is empty or still the Google default
+            current_profile_image = user.get('profile_image_url')
             if google_picture:
-                update_data['profile_image_url'] = google_picture
+                # Only update if:
+                # 1. No profile_image_url exists, OR
+                # 2. Current profile_image_url is the same as Google picture (user hasn't customized it)
+                if not current_profile_image or current_profile_image == google_picture:
+                    update_data['profile_image_url'] = google_picture
+                    logger.info(f"✅ [GOOGLE OAUTH] Updating profile_image_url to Google picture (no custom image)")
+                else:
+                    logger.info(f"✅ [GOOGLE OAUTH] Preserving custom profile_image_url: {current_profile_image}")
             
             logger.info(f"✅ [GOOGLE OAUTH] Updating existing user: {google_email}")
             update_result = update_client.table('users').update(update_data).eq('id', user['id']).execute()
@@ -8139,8 +8186,20 @@ def google_callback():
         session.pop('oauth_state', None)
         
         # Create user data for frontend
-        # Include profile_image_url from database (which was just updated) or fallback to google_picture
-        profile_image_url = user.get('profile_image_url') or google_picture
+        # ALWAYS use profile_image_url from database (same as cover_image_url)
+        # This ensures custom uploaded images persist and are never overwritten by OAuth
+        # Only use google_picture as fallback if database has no profile_image_url or it's empty
+        profile_image_url_from_db = user.get('profile_image_url')
+        # Use database value if it exists and is not empty, otherwise fallback to google_picture
+        # This matches how cover_image_url works - always from database, but with fallback for empty values
+        if profile_image_url_from_db and profile_image_url_from_db.strip():
+            profile_image_url = profile_image_url_from_db
+        else:
+            profile_image_url = google_picture
+        
+        logger.info(f"🔍 [GOOGLE OAUTH] Profile image URL from database: {profile_image_url_from_db}")
+        logger.info(f"🔍 [GOOGLE OAUTH] Google picture: {google_picture}")
+        logger.info(f"🔍 [GOOGLE OAUTH] Final profile_image_url being sent: {profile_image_url}")
         
         user_data = {
             "id": user.get('id'),
@@ -8148,13 +8207,13 @@ def google_callback():
             "display_name": user.get('display_name'),
             "role": user.get('role', 'creator'),
             "picture": google_picture,  # Keep for backward compatibility
-            "profile_image_url": profile_image_url,  # Include profile_image_url from database
-            "cover_image_url": user.get('cover_image_url'),  # Include cover_image_url
+            "profile_image_url": profile_image_url,  # ALWAYS from database (like cover_image_url)
+            "cover_image_url": user.get('cover_image_url'),  # Always from database
             "bio": user.get('bio'),  # Include bio
             "subdomain": user.get('subdomain'),  # Include subdomain - CRITICAL for subdomain redirect
             "user_metadata": {
                 "name": user.get('display_name'),
-                "picture": profile_image_url
+                "picture": profile_image_url  # Use database value
             },
             "youtube_channel": youtube_channel
         }

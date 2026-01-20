@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import './Dashboard.css';
 import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
+import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings';
 
 
 const Dashboard = ({ sidebar }) => {
@@ -27,8 +28,15 @@ const Dashboard = ({ sidebar }) => {
 
     const [isEditingCover, setIsEditingCover] = useState(false);
     const [isEditingAvatar, setIsEditingAvatar] = useState(false);
+    const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState('videos');
     const [currentUser, setCurrentUser] = useState(null);
+    const [payoutData, setPayoutData] = useState({
+        paypal_email: '',
+        tax_id: ''
+    });
+    const [payoutLoading, setPayoutLoading] = useState(false);
+    const [payoutMessage, setPayoutMessage] = useState('');
     const [favorites, setFavorites] = useState([]);
     const [uploadingFavorite, setUploadingFavorite] = useState(false);
     const [showFavoriteModal, setShowFavoriteModal] = useState(false);
@@ -111,14 +119,30 @@ const Dashboard = ({ sidebar }) => {
                         cover_image_url: profile.cover_image_url || '',
                         profile_image_url: profile.profile_image_url || ''
                     });
+                    // Load payout data if available
+                    setPayoutData({
+                        paypal_email: profile.paypal_email || '',
+                        tax_id: profile.tax_id || ''
+                    });
                 } else {
                     // For Google OAuth users, use the data from localStorage
-                    setUserProfile(user);
+                    // Prioritize profile_image_url from user object (sent by backend)
+                    const profileImageUrl = user.profile_image_url || user.picture || user.user_metadata?.picture;
+                    const coverImageUrl = user.cover_image_url || '';
+                    // Create userProfile object with all available data
+                    const userProfileData = {
+                        ...user,
+                        profile_image_url: profileImageUrl,
+                        cover_image_url: coverImageUrl,
+                        display_name: user.display_name || user.user_metadata?.name || '',
+                        bio: user.bio || ''
+                    };
+                    setUserProfile(userProfileData);
                     setEditForm({
-                        display_name: user.display_name || '',
-                        bio: user.bio || '',
-                        cover_image_url: user.cover_image_url || '',
-                        profile_image_url: user.picture || ''
+                        display_name: userProfileData.display_name,
+                        bio: userProfileData.bio,
+                        cover_image_url: userProfileData.cover_image_url,
+                        profile_image_url: userProfileData.profile_image_url || ''
                     });
                 }
 
@@ -265,29 +289,119 @@ const Dashboard = ({ sidebar }) => {
 
     const handleSaveProfile = async () => {
         try {
-            const { data, error } = await supabase
-                .from('users')
-                .update({
+            // Get user ID - support both Google OAuth and Supabase auth
+            let userId = user?.id;
+            
+            // If user doesn't have id but has email, look up user in database
+            if (!userId && user?.email) {
+                console.log('🔐 Dashboard: User missing id, looking up by email:', user.email);
+                try {
+                    const { data: profileData, error: lookupError } = await supabase
+                        .from('users')
+                        .select('id')
+                        .eq('email', user.email)
+                        .single();
+                    
+                    if (profileData && profileData.id) {
+                        userId = profileData.id;
+                        console.log('🔐 Dashboard: Found user id from database:', userId);
+                    }
+                } catch (lookupErr) {
+                    console.error('Error looking up user by email:', lookupErr);
+                }
+            }
+            
+            if (!userId) {
+                console.error('Error: No user ID available');
+                alert('Error: Unable to identify user. Please try logging in again.');
+                return;
+            }
+            
+            // Use backend API endpoint to bypass RLS
+            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://screenmerch.fly.dev';
+            console.log('💾 Dashboard: Saving profile for user:', userId);
+            console.log('💾 Dashboard: Profile data:', {
+                display_name: editForm.display_name,
+                bio: editForm.bio,
+                cover_image_url: editForm.cover_image_url,
+                profile_image_url: editForm.profile_image_url,
+            });
+            
+            const response = await fetch(`${BACKEND_URL}/api/users/${userId}/update-profile`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
                     display_name: editForm.display_name,
                     bio: editForm.bio,
                     cover_image_url: editForm.cover_image_url,
                     profile_image_url: editForm.profile_image_url,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', user.id);
+                }),
+            });
 
-            if (!error) {
-                setUserProfile({
-                    ...userProfile,
-                    ...editForm
-                });
-                setIsEditing(false);
-                setImagePreview({ cover: null, profile: null });
-            } else {
-                console.error('Error updating profile:', error);
+            console.log('💾 Dashboard: Response status:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                const contentType = response.headers.get('content-type');
+                let errorData;
+                if (contentType && contentType.includes('application/json')) {
+                    errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                } else {
+                    const text = await response.text();
+                    console.error('💾 Dashboard: Non-JSON error response:', text);
+                    errorData = { error: `Server error: ${response.status} - ${text.substring(0, 100)}` };
+                }
+                throw new Error(errorData.error || `Server error: ${response.status}`);
             }
+
+            const data = await response.json();
+            
+            // Update local state
+            const updatedProfile = {
+                ...userProfile,
+                display_name: editForm.display_name,
+                bio: editForm.bio,
+                cover_image_url: editForm.cover_image_url,
+                profile_image_url: editForm.profile_image_url,
+            };
+            setUserProfile(updatedProfile);
+            
+            // Update user object in localStorage if it exists
+            const userData = localStorage.getItem('user');
+            let updatedUser = null;
+            if (userData) {
+                try {
+                    const userObj = JSON.parse(userData);
+                    updatedUser = {
+                        ...userObj,
+                        profile_image_url: editForm.profile_image_url,
+                        cover_image_url: editForm.cover_image_url,
+                        display_name: editForm.display_name,
+                    };
+                    localStorage.setItem('user', JSON.stringify(updatedUser));
+                    setUser(updatedUser);
+                } catch (e) {
+                    console.error('Error updating localStorage user:', e);
+                }
+            }
+            
+            // Dispatch event to notify Navbar and other components of profile update
+            if (updatedUser) {
+                window.dispatchEvent(new CustomEvent('userLoggedIn', { 
+                    detail: { user: updatedUser } 
+                }));
+                console.log('📡 Dashboard: Dispatched userLoggedIn event with updated profile image');
+            }
+            
+            setIsEditing(false);
+            setImagePreview({ cover: null, profile: null });
+            
+            console.log('✅ Profile saved successfully via backend API');
         } catch (error) {
             console.error('Error saving profile:', error);
+            alert(`Failed to save profile: ${error.message || 'Unknown error'}`);
         }
     };
 
@@ -923,7 +1037,7 @@ const Dashboard = ({ sidebar }) => {
                                 <div className="edit-avatar-section">
                                     <img
                                         className="channel-avatar editing"
-                                        src={imagePreview.profile || editForm.profile_image_url || userProfile?.profile_image_url || user.user_metadata?.picture || '/default-avatar.jpg'}
+                                        src={imagePreview.profile || editForm.profile_image_url || userProfile?.profile_image_url || user?.profile_image_url || user?.user_metadata?.picture || user?.picture || '/default-avatar.jpg'}
                                         alt="Channel Avatar"
                                     />
                                     <div className="avatar-upload-section">
@@ -944,8 +1058,54 @@ const Dashboard = ({ sidebar }) => {
                                 <div className="avatar-with-edit">
                                     <img
                                         className="channel-avatar"
-                                        src={userProfile?.profile_image_url || user.user_metadata?.picture || '/default-avatar.jpg'}
+                                        src={(() => {
+                                            // Prioritize profile_image_url from userProfile, then user object, then user_metadata
+                                            const imageUrl = userProfile?.profile_image_url || 
+                                                           user?.profile_image_url || 
+                                                           user?.picture || 
+                                                           user?.user_metadata?.picture || 
+                                                           '/default-avatar.jpg';
+                                            
+                                            console.log('🖼️ [DASHBOARD] Resolving profile image URL:', {
+                                                'userProfile?.profile_image_url': userProfile?.profile_image_url,
+                                                'user?.profile_image_url': user?.profile_image_url,
+                                                'user?.picture': user?.picture,
+                                                'user?.user_metadata?.picture': user?.user_metadata?.picture,
+                                                'final URL': imageUrl
+                                            });
+                                            
+                                            return imageUrl;
+                                        })()}
                                         alt="Channel Avatar"
+                                        onError={(e) => {
+                                            if (!e.target.dataset.fallbackUsed) {
+                                                console.log('🖼️ [DASHBOARD] Avatar image failed to load, trying fallbacks');
+                                                console.log('🖼️ [DASHBOARD] Failed URL:', e.target.src);
+                                                console.log('🖼️ [DASHBOARD] User object:', user);
+                                                console.log('🖼️ [DASHBOARD] UserProfile object:', userProfile);
+                                                const fallbackUrl = user?.picture || 
+                                                                  user?.user_metadata?.picture || 
+                                                                  '/default-avatar.jpg';
+                                                if (e.target.src !== fallbackUrl && fallbackUrl !== '/default-avatar.jpg') {
+                                                    console.log('🖼️ [DASHBOARD] Trying fallback URL:', fallbackUrl);
+                                                    e.target.dataset.fallbackUsed = 'true';
+                                                    e.target.src = fallbackUrl;
+                                                } else {
+                                                    console.log('🖼️ [DASHBOARD] Using default avatar');
+                                                    e.target.dataset.fallbackUsed = 'true';
+                                                    e.target.src = '/default-avatar.jpg';
+                                                }
+                                            }
+                                        }}
+                                        onLoad={(e) => {
+                                            console.log('🖼️ [DASHBOARD] Avatar image loaded successfully:', e.target.src);
+                                            e.target.style.display = 'block';
+                                            e.target.style.visibility = 'visible';
+                                            e.target.style.opacity = '1';
+                                            // Ensure image is visible and not hidden
+                                            e.target.style.zIndex = '1';
+                                            e.target.style.position = 'relative';
+                                        }}
                                     />
                                     <button className="corner-edit-icon avatar-edit" onClick={() => setIsEditingAvatar(true)} title="Edit avatar">
                                         ✏️
@@ -1018,6 +1178,18 @@ const Dashboard = ({ sidebar }) => {
                     onClick={() => setActiveTab('analytics')}
                 >
                     📊 Analytics
+                </button>
+                <button 
+                    className={`tab-button ${activeTab === 'payout' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('payout')}
+                >
+                    💰 Payout Setup
+                </button>
+                <button 
+                    className={`tab-button ${activeTab === 'personalization' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('personalization')}
+                >
+                    🎨 Personalization
                 </button>
             </div>
 
@@ -1443,15 +1615,138 @@ const Dashboard = ({ sidebar }) => {
 
                                 
 
-                                
-
                             </div>
                         </div>
                     </div>
                 )}
 
+                {/* Personalization Tab */}
+                {activeTab === 'personalization' && (
+                    <div className="personalization-tab">
+                        <PersonalizationSettings />
+                    </div>
+                )}
 
+                {/* Payout Setup Tab */}
+                {activeTab === 'payout' && (
+                    <div className="payout-tab">
+                        <div className="payout-section">
+                            <div className="section-header">
+                                <p className="payout-main-description">Configure your payment information to receive earnings from your sales</p>
+                            </div>
 
+                            {payoutMessage && (
+                                <div className={`payout-message ${payoutMessage.includes('error') || payoutMessage.includes('Failed') ? 'error' : 'success'}`}>
+                                    {payoutMessage}
+                                </div>
+                            )}
+
+                            <form 
+                                className="payout-form"
+                                onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    setPayoutLoading(true);
+                                    setPayoutMessage('');
+
+                                    try {
+                                        if (!user || !user.id) {
+                                            throw new Error('User not found');
+                                        }
+
+                                        const updateData = {
+                                            paypal_email: payoutData.paypal_email.trim(),
+                                            tax_id: payoutData.tax_id.trim() || null
+                                        };
+
+                                        const { data, error } = await supabase
+                                            .from('users')
+                                            .update(updateData)
+                                            .eq('id', user.id)
+                                            .select()
+                                            .single();
+
+                                        if (error) throw error;
+
+                                        setPayoutMessage('Payout information saved successfully!');
+                                        setUserProfile({ ...userProfile, ...updateData });
+                                        
+                                        // Clear message after 3 seconds
+                                        setTimeout(() => setPayoutMessage(''), 3000);
+                                    } catch (error) {
+                                        console.error('Error saving payout info:', error);
+                                        setPayoutMessage(`Failed to save payout information: ${error.message}`);
+                                    } finally {
+                                        setPayoutLoading(false);
+                                    }
+                                }}
+                            >
+                                <div className="payout-form-group">
+                                    <label htmlFor="paypal-email" className="payout-label">
+                                        PayPal Email <span className="required">*</span>
+                                    </label>
+                                    <input
+                                        type="email"
+                                        id="paypal-email"
+                                        className="payout-input"
+                                        placeholder="your.email@example.com"
+                                        value={payoutData.paypal_email}
+                                        onChange={(e) => setPayoutData({ ...payoutData, paypal_email: e.target.value })}
+                                        disabled={payoutLoading}
+                                        required
+                                    />
+                                    <p className="payout-help-text">
+                                        This is where we'll send your earnings. Make sure it's a valid PayPal account.
+                                    </p>
+                                </div>
+
+                                <div className="payout-form-group">
+                                    <label htmlFor="tax-id" className="payout-label">
+                                        Tax ID / SSN (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="tax-id"
+                                        className="payout-input"
+                                        placeholder="Enter your Tax ID or SSN"
+                                        value={payoutData.tax_id}
+                                        onChange={(e) => setPayoutData({ ...payoutData, tax_id: e.target.value })}
+                                        disabled={payoutLoading}
+                                    />
+                                    <p className="payout-help-text">
+                                        Required for tax reporting in some jurisdictions. Your information is encrypted and secure.
+                                    </p>
+                                </div>
+
+                                <div className="payout-form-actions">
+                                    <button
+                                        type="submit"
+                                        className="payout-save-btn"
+                                        disabled={payoutLoading || !payoutData.paypal_email.trim()}
+                                    >
+                                        {payoutLoading ? (
+                                            <>
+                                                <span className="loading-spinner-small"></span>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            '💾 Save Payout Information'
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div className="payout-info-box">
+                                <h3>ℹ️ Important Information</h3>
+                                <ul>
+                                    <li>Your payout information is encrypted and stored securely</li>
+                                    <li>Payments are processed monthly after you reach the minimum payout threshold</li>
+                                    <li>You can update your payout information at any time</li>
+                                    <li>Make sure your PayPal email is correct to avoid payment delays</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
             </div>
 
