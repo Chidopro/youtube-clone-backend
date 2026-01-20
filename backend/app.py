@@ -285,9 +285,12 @@ def _allow_origin(resp):
     # Check exact match first
     origin_allowed = origin in allowed
     
-    # If not exact match, check if it's a Netlify subdomain
+    # If not exact match, check if it's a Netlify subdomain or screenmerch.com subdomain
     if not origin_allowed and origin:
         if origin.endswith('.netlify.app') and origin.startswith('https://'):
+            origin_allowed = True
+        # Allow subdomains of screenmerch.com (e.g., testcreator.screenmerch.com)
+        elif origin.endswith('.screenmerch.com') and origin.startswith('https://'):
             origin_allowed = True
     
     if origin_allowed:
@@ -525,6 +528,11 @@ def api_preflight(any_path):
         if allowed_origin == origin or (allowed_origin.startswith("https://*") and origin and origin.startswith(allowed_origin.replace("*", ""))):
             origin_allowed = True
             break
+    
+    # Also check if it's a subdomain of screenmerch.com (e.g., testcreator.screenmerch.com)
+    if not origin_allowed and origin:
+        if origin.endswith('.screenmerch.com') and origin.startswith('https://'):
+            origin_allowed = True
     
     if origin_allowed:
         response.headers.add('Access-Control-Allow-Origin', origin)
@@ -5379,12 +5387,26 @@ def ensure_user_exists():
         logger.error(f"Error ensuring user exists: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/users/<user_id>/update-profile", methods=["PUT", "POST"])
-@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+@app.route("/api/users/<user_id>/update-profile", methods=["PUT", "POST", "OPTIONS"])
 def update_user_profile(user_id):
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        return _allow_origin(response)
     """Update user profile (cover_image_url, profile_image_url, etc.) using service role to bypass RLS"""
     try:
-        data = request.get_json()
+        # Handle both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+        else:
+            # Try to parse as JSON from raw data
+            try:
+                data = json.loads(request.data) if request.data else {}
+            except:
+                data = request.form.to_dict() if request.form else {}
+        
+        if not data:
+            response = jsonify({"error": "No data provided"})
+            return _allow_origin(response), 400
         logger.info(f"Updating profile for user {user_id}: {data}")
         
         # Validate user_id
@@ -5415,7 +5437,8 @@ def update_user_profile(user_id):
         
         if result.data and len(result.data) > 0:
             logger.info(f"Successfully updated profile for user {user_id}")
-            return jsonify({"success": True, "user": result.data[0]})
+            response = jsonify({"success": True, "user": result.data[0]})
+            return _allow_origin(response), 200
         else:
             # User doesn't exist, try to create/upsert
             logger.info(f"User {user_id} doesn't exist, creating new profile")
@@ -5434,13 +5457,16 @@ def update_user_profile(user_id):
             
             if result.data and len(result.data) > 0:
                 logger.info(f"Successfully created/updated profile for user {user_id}")
-                return jsonify({"success": True, "user": result.data[0]})
+                response = jsonify({"success": True, "user": result.data[0]})
+                return _allow_origin(response), 200
             else:
-                return jsonify({"error": "Failed to update or create user profile"}), 500
+                response = jsonify({"error": "Failed to update or create user profile"})
+                return _allow_origin(response), 500
             
     except Exception as e:
         logger.error(f"Error updating user profile: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        response = jsonify({"error": str(e)})
+        return _allow_origin(response), 500
 
 @app.route("/api/admin/dashboard-stats", methods=["GET"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
@@ -5994,6 +6020,145 @@ def test_email_config():
             "error": f"Email configuration test failed: {str(e)}"
         }), 500
 
+# Subdomain API endpoint - public access to creator data
+@app.route("/api/subdomain/<subdomain>", methods=["GET", "OPTIONS"])
+@app.route("/api/subdomain/<subdomain>/", methods=["GET", "OPTIONS"])
+def get_subdomain_creator(subdomain):
+    """
+    Public API endpoint to look up a creator by subdomain.
+    This bypasses RLS so visitors to creator subdomains can see personalization.
+    """
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        return _allow_origin(response)
+    
+    try:
+        normalized = subdomain.lower().strip()
+        logger.info(f"🔍 [SUBDOMAIN API] Looking up subdomain: {normalized}")
+        
+        # Use admin client to bypass RLS
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            raise Exception("Supabase client not initialized")
+        
+        # Query for the creator with this subdomain - use exact match since we normalize to lowercase
+        result = client.table('users').select('*').eq('subdomain', normalized).execute()
+        
+        if result.data and len(result.data) > 0:
+            creator = result.data[0]
+            logger.info(f"✅ [SUBDOMAIN API] Found creator for subdomain {normalized}: {creator.get('display_name')}")
+            
+            response = jsonify({
+                "success": True,
+                "creator": {
+                    "id": creator.get('id'),
+                    "display_name": creator.get('display_name'),
+                    "subdomain": creator.get('subdomain'),
+                    "personalization_enabled": creator.get('personalization_enabled', False),
+                    "primary_color": creator.get('primary_color'),
+                    "secondary_color": creator.get('secondary_color'),
+                    "logo_url": creator.get('logo_url'),
+                    "banner_url": creator.get('banner_url'),
+                    "profile_image_url": creator.get('profile_image_url'),
+                    "custom_meta_title": creator.get('custom_meta_title'),
+                    "custom_meta_description": creator.get('custom_meta_description'),
+                    "hide_screenmerch_branding": creator.get('hide_screenmerch_branding', False)
+                }
+            })
+            return _allow_origin(response), 200
+        else:
+            logger.warning(f"⚠️ [SUBDOMAIN API] No creator found for subdomain: {normalized}")
+            
+            # Debug: List all subdomains for troubleshooting
+            try:
+                all_subs = client.table('users').select('subdomain, email').not_('subdomain', 'is', None).execute()
+                if all_subs.data:
+                    logger.info(f"📋 [SUBDOMAIN API] All subdomains in DB: {[s.get('subdomain') for s in all_subs.data]}")
+            except Exception as debug_error:
+                logger.error(f"❌ [SUBDOMAIN API] Error listing subdomains: {str(debug_error)}")
+            
+            response = jsonify({
+                "success": False,
+                "error": "Creator not found",
+                "subdomain_searched": normalized
+            })
+            return _allow_origin(response), 404
+            
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f"❌ [SUBDOMAIN API] Error looking up subdomain {subdomain}: {str(e)}")
+        logger.error(f"❌ [SUBDOMAIN API] Full traceback: {error_trace}")
+        response = jsonify({
+            "success": False,
+            "error": f"Internal server error: {str(e)}"
+        })
+        return _allow_origin(response), 500
+
+# Admin check API endpoints - bypass RLS to prevent 406 errors
+@app.route("/api/admin/check-status", methods=["GET", "OPTIONS"])
+def check_admin_status():
+    """Check if user is admin - bypasses RLS to prevent 406 errors"""
+    if request.method == "OPTIONS":
+        # Use api_preflight to handle CORS properly
+        return api_preflight('admin/check-status')
+    
+    try:
+        user_email = request.args.get('email') or request.headers.get('X-User-Email')
+        user_id = request.args.get('user_id')
+        
+        if not user_email and not user_id:
+            return _allow_origin(jsonify({
+                "success": False,
+                "error": "Email or user_id required"
+            })), 400
+        
+        # Use admin client to bypass RLS
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            raise Exception("Supabase client not initialized")
+        
+        # Query user
+        query = client.table('users').select('is_admin, admin_role')
+        if user_id:
+            query = query.eq('id', user_id)
+        else:
+            query = query.ilike('email', user_email.lower().strip())
+        
+        result = query.single().execute()
+        
+        if result.data:
+            user = result.data
+            return _allow_origin(jsonify({
+                "success": True,
+                "is_admin": user.get('is_admin', False),
+                "admin_role": user.get('admin_role'),
+                "is_full_admin": user.get('is_admin', False) and user.get('admin_role') == 'master_admin',
+                "is_order_processing_admin": user.get('is_admin', False) and (
+                    user.get('admin_role') in ['order_processing_admin', 'admin', 'master_admin'] or
+                    user.get('admin_role') is None  # Backward compatibility
+                )
+            })), 200
+        else:
+            return _allow_origin(jsonify({
+                "success": True,
+                "is_admin": False,
+                "admin_role": None,
+                "is_full_admin": False,
+                "is_order_processing_admin": False
+            })), 200
+            
+    except Exception as e:
+        logger.error(f"❌ Error checking admin status: {str(e)}")
+        return _allow_origin(jsonify({
+            "success": False,
+            "error": str(e),
+            "is_admin": False,
+            "admin_role": None,
+            "is_full_admin": False,
+            "is_order_processing_admin": False
+        })), 500
+
 # Authentication endpoints
 @app.route("/api/auth/login", methods=["POST", "OPTIONS"])
 @app.route("/api/auth/login/", methods=["POST", "OPTIONS"])
@@ -6006,9 +6171,12 @@ def auth_login():
         # Check exact match first
         origin_allowed = origin in allowed_origins
         
-        # If not exact match, check if it's a Netlify subdomain
+        # If not exact match, check if it's a Netlify subdomain or screenmerch.com subdomain
         if not origin_allowed and origin:
             if origin.endswith('.netlify.app') and origin.startswith('https://'):
+                origin_allowed = True
+            # Allow subdomains of screenmerch.com (e.g., testcreator.screenmerch.com)
+            elif origin.endswith('.screenmerch.com') and origin.startswith('https://'):
                 origin_allowed = True
         
         if origin_allowed:
@@ -6036,9 +6204,14 @@ def auth_login():
         if not re.match(email_pattern, email):
             return jsonify({"success": False, "error": "Please enter a valid email address"}), 400
         
-        # Check if user exists in database
+        # Check if user exists in database - use admin client to bypass RLS
         try:
-            result = supabase.table('users').select('*').eq('email', email).execute()
+            # Use admin client to bypass RLS for login lookups
+            client = supabase_admin if supabase_admin else supabase
+            if not client:
+                raise Exception("Supabase client not initialized")
+            
+            result = client.table('users').select('*').eq('email', email).execute()
             
             if result.data:
                 user = result.data[0]
@@ -6062,9 +6235,39 @@ def auth_login():
                 
                 stored_password = user.get('password_hash', '')
                 
+                # Debug logging for password verification
+                has_password = bool(stored_password and stored_password.strip())
+                logger.info(f"🔑 [LOGIN] Attempting login for {email}")
+                logger.info(f"🔑 [LOGIN] Origin: {request.headers.get('Origin', 'N/A')}")
+                logger.info(f"🔑 [LOGIN] Has stored password: {has_password}")
+                if stored_password:
+                    logger.info(f"🔑 [LOGIN] Stored password length: {len(stored_password)}")
+                    logger.info(f"🔑 [LOGIN] Stored password (first 5 chars): {stored_password[:5]}...")
+                    logger.info(f"🔑 [LOGIN] Stored password (last 5 chars): ...{stored_password[-5:]}")
+                logger.info(f"🔑 [LOGIN] Provided password length: {len(password)}")
+                logger.info(f"🔑 [LOGIN] Provided password (first 5 chars): {password[:5]}...")
+                logger.info(f"🔑 [LOGIN] Provided password (last 5 chars): ...{password[-5:]}")
+                if not has_password:
+                    logger.warning(f"⚠️ [LOGIN] User {email} has no password set (likely OAuth account)")
+                
                 # Simple password verification (replace with bcrypt in production)
-                if password == stored_password:  # Simple check for demo
-                    logger.info(f"User {email} logged in successfully")
+                # Direct comparison - passwords should match exactly as stored
+                password_match = (password == stored_password) if stored_password else False
+                logger.info(f"🔑 [LOGIN] Password match result: {password_match}")
+                
+                # Also try comparing with stripped versions (in case of whitespace issues)
+                if stored_password and not password_match:
+                    stored_trimmed = stored_password.strip()
+                    provided_trimmed = password.strip()
+                    trimmed_match = (provided_trimmed == stored_trimmed)
+                    logger.info(f"🔑 [LOGIN] Trimmed password match: {trimmed_match}")
+                    if trimmed_match:
+                        logger.warning(f"⚠️ [LOGIN] Passwords match after trimming - there may be whitespace in stored password")
+                        password_match = True  # Use trimmed match
+                
+                if password_match:
+                    logger.info(f"✅ [LOGIN] User {email} logged in successfully")
+                    # Include profile_image_url and other profile data in response
                     response = jsonify({
                         "success": True, 
                         "message": "Login successful",
@@ -6072,7 +6275,11 @@ def auth_login():
                             "id": user.get('id'),
                             "email": user.get('email'),
                             "display_name": user.get('display_name'),
-                            "role": user.get('role', 'customer')
+                            "role": user.get('role', 'customer'),
+                            "profile_image_url": user.get('profile_image_url'),
+                            "cover_image_url": user.get('cover_image_url'),
+                            "bio": user.get('bio'),
+                            "subdomain": user.get('subdomain')
                         }
                     })
                     
@@ -7641,6 +7848,18 @@ def google_login():
         )
         flow.redirect_uri = GOOGLE_REDIRECT_URI
         
+        # Get return_url (subdomain) BEFORE generating state - encode it in state parameter
+        return_url = request.args.get('return_url') or request.headers.get('Referer') or "https://screenmerch.com"
+        # Extract the full URL (including subdomain) from return_url
+        frontend_origin = "https://screenmerch.com"
+        if return_url and return_url.startswith('http'):
+            # Parse the URL to get the hostname
+            from urllib.parse import urlparse
+            parsed = urlparse(return_url)
+            # Store the full origin (protocol + hostname) to preserve subdomain
+            frontend_origin = f"{parsed.scheme}://{parsed.netloc}"
+            logger.info(f"🔍 [GOOGLE OAUTH] Extracted return_url: {frontend_origin} (from {return_url})")
+        
         # Generate authorization URL
         authorization_url, state = flow.authorization_url(
             access_type='offline',
@@ -7649,6 +7868,24 @@ def google_login():
         
         # Store state in session for security
         session['oauth_state'] = state
+        
+        # CRITICAL: Encode return_url in state parameter so it persists through OAuth flow
+        # This works because Google returns the state parameter unchanged
+        # Format: base64_encoded_json with state and return_url
+        import base64
+        import json
+        state_data = {
+            'state': state,
+            'return_url': frontend_origin
+        }
+        encoded_state = base64.urlsafe_b64encode(json.dumps(state_data).encode()).decode()
+        
+        # Replace state in authorization URL with our encoded version
+        authorization_url = authorization_url.replace(f'state={state}', f'state={encoded_state}')
+        
+        # Also store in session as fallback
+        session['oauth_return_url'] = frontend_origin
+        logger.info(f"🔍 [GOOGLE OAUTH] Encoded return_url in state: {frontend_origin}")
         
         # Redirect to Google OAuth instead of returning JSON
         return redirect(authorization_url, code=302)
@@ -7680,6 +7917,23 @@ def google_callback():
         
         if not code:
             return jsonify({"success": False, "error": "Authorization code not provided"}), 400
+        
+        # Decode return_url from state parameter (if encoded)
+        frontend_origin_from_state = None
+        if state:
+            try:
+                import base64
+                import json
+                decoded_state = base64.urlsafe_b64decode(state.encode()).decode()
+                state_data = json.loads(decoded_state)
+                if 'return_url' in state_data:
+                    frontend_origin_from_state = state_data['return_url']
+                    logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Decoded return_url from state: {frontend_origin_from_state}")
+                    # Use the original state for verification
+                    state = state_data.get('state', state)
+            except (ValueError, json.JSONDecodeError, Exception) as e:
+                # If decoding fails, state might be in old format - use as-is
+                logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] State not in encoded format, using as-is: {e}")
         
         # Verify state parameter (temporarily disabled for debugging)
         # if state != session.get('oauth_state'):
@@ -7729,8 +7983,14 @@ def google_callback():
         logger.info(f"🔍 Google user_info: {user_info}")
         logger.info(f"🔍 Google picture URL: {google_picture}")
         
-        # Check if user exists in database
-        result = supabase.table('users').select('*').eq('email', google_email).execute()
+        # Check if user exists in database - use admin client to bypass RLS
+        # This prevents "already exists" errors when RLS blocks the lookup
+        lookup_client = supabase_admin if supabase_admin else supabase
+        if not lookup_client:
+            raise Exception("Supabase client not initialized")
+        
+        logger.info(f"🔍 [GOOGLE OAUTH] Checking if user exists: {google_email}")
+        result = lookup_client.table('users').select('*').eq('email', google_email).execute()
         
         if result.data:
             # User exists, check their status
@@ -7739,24 +7999,43 @@ def google_callback():
             
             # Block login if user status is 'pending' (requires admin approval)
             if user_status == 'pending':
-                frontend_url = "https://screenmerch.com"
+                # Use session return_url to preserve subdomain
+                frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
+                if not frontend_url.startswith('http'):
+                    frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
                 error_message = "Your account is pending approval. Please wait for admin approval before signing in."
                 redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
-                logger.warning(f"⚠️ Blocked login attempt for pending user: {google_email}")
+                logger.warning(f"⚠️ Blocked login attempt for pending user: {google_email}, redirecting to: {frontend_url}")
                 return redirect(redirect_url)
             
             # Block login if user is suspended or banned
             if user_status in ['suspended', 'banned']:
-                frontend_url = "https://screenmerch.com"
+                # Use session return_url to preserve subdomain
+                frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
+                if not frontend_url.startswith('http'):
+                    frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
                 error_message = f"Your account has been {user_status}. Please contact support for assistance."
                 redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
-                logger.warning(f"⚠️ Blocked login attempt for {user_status} user: {google_email}")
+                logger.warning(f"⚠️ Blocked login attempt for {user_status} user: {google_email}, redirecting to: {frontend_url}")
                 return redirect(redirect_url)
             
             # User is active, update their Google info
-            supabase.table('users').update({
+            # Use admin client to bypass RLS for updates
+            update_client = supabase_admin if supabase_admin else supabase
+            update_data = {
                 'display_name': google_name
-            }).eq('id', user['id']).execute()
+            }
+            # Update profile_image_url if available from Google
+            if google_picture:
+                update_data['profile_image_url'] = google_picture
+            
+            logger.info(f"✅ [GOOGLE OAUTH] Updating existing user: {google_email}")
+            update_result = update_client.table('users').update(update_data).eq('id', user['id']).execute()
+            
+            # Update the user object with the latest data from database
+            if update_result.data and len(update_result.data) > 0:
+                user = update_result.data[0]
+                logger.info(f"✅ [GOOGLE OAUTH] User updated, profile_image_url: {user.get('profile_image_url')}")
         else:
             # Create new user - Google OAuth users are treated as creators
             # Check the 20 creator limit first
@@ -7767,11 +8046,13 @@ def google_callback():
                 current_creator_count = len(creator_result.data) if creator_result.data else 0
                 
                 if current_creator_count >= 20:
-                    # Redirect to frontend with error message
-                    frontend_url = "https://screenmerch.com"
+                    # Redirect to frontend with error message - use session return_url to preserve subdomain
+                    frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
+                    if not frontend_url.startswith('http'):
+                        frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
                     error_message = "We've reached our limit of 20 creator signups. Please check back later or contact support."
                     redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
-                    logger.warning(f"⚠️ Creator limit reached. Current count: {current_creator_count}")
+                    logger.warning(f"⚠️ Creator limit reached. Current count: {current_creator_count}, redirecting to: {frontend_url}")
                     return redirect(redirect_url)
             except Exception as limit_error:
                 logger.error(f"Error checking creator limit: {str(limit_error)}")
@@ -7834,11 +8115,13 @@ def google_callback():
                     # Don't fail signup if email fails
         
         if not user:
-            # Redirect to frontend with error message
-            frontend_url = "https://screenmerch.com"
+            # Redirect to frontend with error message - use session return_url to preserve subdomain
+            frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
+            if not frontend_url.startswith('http'):
+                frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
             error_message = "Failed to create or update user account"
             redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
-            logger.error("❌ Failed to create or update user in OAuth callback")
+            logger.error(f"❌ Failed to create or update user in OAuth callback, redirecting to: {frontend_url}")
             return redirect(redirect_url)
         
         # Get YouTube channel info if available
@@ -7856,12 +8139,23 @@ def google_callback():
         session.pop('oauth_state', None)
         
         # Create user data for frontend
+        # Include profile_image_url from database (which was just updated) or fallback to google_picture
+        profile_image_url = user.get('profile_image_url') or google_picture
+        
         user_data = {
             "id": user.get('id'),
             "email": user.get('email'),
             "display_name": user.get('display_name'),
             "role": user.get('role', 'creator'),
-            "picture": google_picture,
+            "picture": google_picture,  # Keep for backward compatibility
+            "profile_image_url": profile_image_url,  # Include profile_image_url from database
+            "cover_image_url": user.get('cover_image_url'),  # Include cover_image_url
+            "bio": user.get('bio'),  # Include bio
+            "subdomain": user.get('subdomain'),  # Include subdomain - CRITICAL for subdomain redirect
+            "user_metadata": {
+                "name": user.get('display_name'),
+                "picture": profile_image_url
+            },
             "youtube_channel": youtube_channel
         }
         
@@ -7872,11 +8166,97 @@ def google_callback():
         user_data_json = json.dumps(user_data)
         user_data_encoded = quote(user_data_json)
         
-        # Redirect to frontend with user data
-        frontend_url = "https://screenmerch.com"
+        # Get return_url - PRIORITY: from state parameter (most reliable), then session, then default
+        # Log session state for debugging
+        logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Session keys: {list(session.keys())}")
+        logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] oauth_return_url in session: {session.get('oauth_return_url')}")
+        logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] return_url from state: {frontend_origin_from_state}")
+        logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] User subdomain from database: {user.get('subdomain')}")
+        
+        # Use return_url from state parameter first (most reliable), then session, then default
+        frontend_url = frontend_origin_from_state or session.get('oauth_return_url') or "https://screenmerch.com"
+        session_return_url = frontend_url  # Keep for logging
+        
+        # Extract subdomain from session return_url if it exists
+        session_subdomain = None
+        if session_return_url and session_return_url != "https://screenmerch.com":
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(session_return_url)
+                hostname = parsed.netloc
+                # Check if it's a subdomain (e.g., testcreator.screenmerch.com)
+                if hostname and hostname != 'screenmerch.com' and hostname != 'www.screenmerch.com':
+                    if hostname.endswith('.screenmerch.com'):
+                        session_subdomain = hostname.replace('.screenmerch.com', '')
+                        logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Extracted subdomain from session return_url: {session_subdomain}")
+            except Exception as e:
+                logger.warning(f"⚠️ [GOOGLE OAUTH CALLBACK] Error extracting subdomain from return_url: {e}")
+        
+        # PRIORITY 1: Use subdomain from session return_url (user is signing in from a specific subdomain, stay there)
+        # This ensures users stay on the subdomain they signed in from
+        user_subdomain = user.get('subdomain')
+        frontend_url_set = False
+        
+        if session_subdomain:
+            frontend_url = f"https://{session_subdomain}.screenmerch.com"
+            frontend_url_set = True
+            logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Using subdomain from session return_url (PRIORITY 1): {frontend_url}")
+            # Update user's subdomain in database for future logins (if different)
+            if user_subdomain != session_subdomain:
+                try:
+                    update_client = supabase_admin if supabase_admin else supabase
+                    update_result = update_client.table('users').update({'subdomain': session_subdomain}).eq('id', user.get('id')).execute()
+                    if update_result.data:
+                        user['subdomain'] = session_subdomain  # Update local user object
+                        # Also update user_data to include the subdomain
+                        user_data['subdomain'] = session_subdomain
+                        # Re-encode user data with updated subdomain
+                        user_data_json = json.dumps(user_data)
+                        user_data_encoded = quote(user_data_json)
+                    logger.info(f"✅ [GOOGLE OAUTH CALLBACK] Updated user subdomain in database: {session_subdomain}")
+                except Exception as update_error:
+                    logger.warning(f"⚠️ [GOOGLE OAUTH CALLBACK] Failed to update user subdomain: {update_error}")
+                    # Still include subdomain in user_data even if DB update fails
+                    user_data['subdomain'] = session_subdomain
+                    user_data_json = json.dumps(user_data)
+                    user_data_encoded = quote(user_data_json)
+        
+        # PRIORITY 2: Use session return_url as-is if it's not the main domain (fallback if subdomain extraction failed)
+        if not frontend_url_set:
+            if session_return_url and session_return_url != "https://screenmerch.com":
+                frontend_url = session_return_url
+                frontend_url_set = True
+                logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Using session return_url as-is (PRIORITY 2): {frontend_url}")
+        
+        # PRIORITY 3: Check user's subdomain from database (if no session subdomain available)
+        if not frontend_url_set:
+            # Check if subdomain exists and is not empty (handle None, empty string, etc.)
+            if user_subdomain and str(user_subdomain).strip():
+                # Normalize subdomain (remove .screenmerch.com if present)
+                subdomain_clean = str(user_subdomain).replace('.screenmerch.com', '').strip()
+                if subdomain_clean:  # Make sure we have a valid subdomain after cleaning
+                    frontend_url = f"https://{subdomain_clean}.screenmerch.com"
+                    frontend_url_set = True
+                    logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Using user subdomain from database (PRIORITY 3): {frontend_url}")
+        
+        # PRIORITY 4: Default to main domain
+        if not frontend_url_set:
+            frontend_url = "https://screenmerch.com"
+            logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] No subdomain found, defaulting to main domain")
+            if session_return_url:
+                logger.warning(f"⚠️ [GOOGLE OAUTH CALLBACK] Session had return_url but couldn't extract subdomain: {session_return_url}")
+        
+        # Clean up session after we've used it
+        session.pop('oauth_return_url', None)
+        
+        # Ensure frontend_url is a full URL with protocol
+        if not frontend_url.startswith('http'):
+            frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
+        
+        # Construct redirect URL with login success and user data
         redirect_url = f"{frontend_url}?login=success&user={user_data_encoded}"
         
-        logger.info(f"✅ Redirecting to frontend: {redirect_url[:100]}...")
+        logger.info(f"✅ [GOOGLE OAUTH CALLBACK] Redirecting to frontend: {redirect_url[:150]}...")
         return redirect(redirect_url)
         
     except Exception as e:
@@ -7885,7 +8265,10 @@ def google_callback():
         logger.error(f"Full traceback: {traceback.format_exc()}")
         
         # Always redirect, even on error - never return JSON in OAuth callback
-        frontend_url = "https://screenmerch.com"
+        # Use session return_url to preserve subdomain, fallback to main domain
+        frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
+        if not frontend_url.startswith('http'):
+            frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
         error_message = str(e)[:100]  # Limit error message length
         redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
         
