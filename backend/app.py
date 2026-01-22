@@ -554,9 +554,13 @@ def api_preflight(any_path):
 def add_cors_headers(response):
     """Add CORS headers to all API responses"""
     if request.path.startswith('/api/'):
-        # Skip middleware override for image tool endpoints (they set their own CORS)
-        image_tool_paths = ['/api/process-thumbnail-print-quality']
-        if request.path in image_tool_paths or request.path.startswith('/api/get-order-screenshot/'):
+        # Skip middleware override for endpoints that set their own CORS
+        skip_paths = [
+            '/api/process-thumbnail-print-quality',
+            '/api/auth/login',
+            '/api/auth/login/'
+        ]
+        if request.path in skip_paths or request.path.startswith('/api/get-order-screenshot/'):
             existing_origin = response.headers.get('Access-Control-Allow-Origin')
             if existing_origin:
                 logger.info(f"🔍 [MIDDLEWARE] Skipping override for {request.path} - endpoint already set CORS: {existing_origin}")
@@ -2777,6 +2781,10 @@ def place_order():
             logger.warning(f"⚠️ Payload keys: {list(data.keys())}")
             logger.warning(f"⚠️ First cart item keys: {list(enriched_cart[0].keys()) if enriched_cart else 'No cart items'}")
         
+        # Track unique screenshots to avoid duplicates
+        unique_screenshots = {}  # Maps screenshot URL/data to CID
+        screenshot_used = False  # Track if we've added the screenshot to email
+        
         for idx, item in enumerate(enriched_cart):
             product_name = item.get('product', 'N/A')
             color = (item.get('variants') or {}).get('color', 'N/A')
@@ -2791,11 +2799,14 @@ def place_order():
             image_tag = ""
             print_quality_info = ""
             download_link = ""
-            if image_url:
+            
+            # CRITICAL: Only add image ONCE per order, not per cart item
+            # This ensures one image per order, not multiple images for multiple products
+            if image_url and not screenshot_used:
                 if image_url.startswith('data:image'):
                     # Send original screenshot as-is (no automatic 300 DPI upgrade)
                     # Admin will manually process through 300 DPI generator
-                    logger.info(f"📸 [EMAIL] Sending original screenshot for item {idx} (no auto-upgrade)")
+                    logger.info(f"📸 [EMAIL] Adding screenshot for order (one image total, not per item)")
                     
                     # Data URL - convert to attachment for email
                     try:
@@ -2804,23 +2815,20 @@ def place_order():
                         image_format = header.split('/')[1].split(';')[0]  # png, jpeg, etc.
                         image_data = data
                         
-                        # Generate CID for embedding
-                        cid = f"screenshot_{order_id}_{idx}"
-                        attachment_cids[idx] = cid
+                        # Generate CID for embedding (use order_id, not item index)
+                        cid = f"screenshot_{order_id}_0"
+                        attachment_cids[0] = cid
                         
                         # Add as attachment (Resend format: content should be base64 string)
-                        # image_data is already the base64 part from data URL
-                        # Only add once per unique screenshot (don't duplicate)
+                        # Only add once per order
                         if cid not in [att.get('cid') for att in email_attachments]:
                             email_attachments.append({
-                                "filename": f"screenshot_{idx}.{image_format}",
+                                "filename": f"screenshot.{image_format}",
                                 "content": image_data,  # Already base64 encoded from data URL
                                 "cid": cid
                             })
-                        else:
-                            # Reuse existing CID if screenshot already attached
-                            existing_cid = next(att.get('cid') for att in email_attachments if att.get('cid') == cid)
-                            cid = existing_cid
+                            screenshot_used = True  # Mark as used so we don't add again
+                            logger.info(f"✅ Added screenshot attachment with CID: {cid}")
                         
                         # Use CID attachment method (like thumbnails) - Gmail blocks base64 images in body
                         # CID embedding shows image in email body via attachment, matching thumbnail behavior
@@ -2828,23 +2836,34 @@ def place_order():
                         
                         # Use CID method to match how thumbnails (URLs) are displayed
                         image_tag = f"{cid_img_tag}"
-                        logger.info(f"✅ Converted data URL to attachment CID: {cid}, filename: screenshot_{idx}.{image_format}")
-                        logger.info(f"✅ Using CID embedding (matching thumbnail display method)")
+                        logger.info(f"✅ Converted data URL to attachment CID: {cid}")
                     except Exception as e:
                         logger.warning(f"⚠️ Failed to convert data URL to attachment: {str(e)}")
                         # Fallback: just provide a note
                         image_tag = "<p><em>Screenshot available in order details</em></p>"
+                        screenshot_used = True  # Mark as used even on error
                 else:
-                    # Regular URL - use directly
+                    # Regular URL - use directly (only once)
                     image_tag = f"<img src='{image_url}' alt='Product Image' style='max-width: 300px; border-radius: 6px;'>"
+                    screenshot_used = True  # Mark as used
             
+            # Only show image for the FIRST item to avoid duplicates
+            # All items share the same screenshot, so only display it once
+            if idx == 0:
+                html_body += f"""
+                    <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
+                        <h2>📸 Order Screenshot</h2>
+                        {image_tag if image_tag else "<p><em>Screenshot available in order details</em></p>"}
+                    </div>
+                """
+            
+            # Add product details for each item (but image only once above)
             html_body += f"""
                 <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
                     <h2>{product_name}</h2>
                     <p><strong>Color:</strong> {color}</p>
                     <p><strong>Size:</strong> {size}</p>
                     <p><strong>Note:</strong> {note}</p>
-                    {image_tag}
                     {print_quality_info}
                     {download_link}
                 </div>
@@ -3180,75 +3199,69 @@ def success():
                 email_attachments = []
                 attachment_cids = {}  # Track CIDs for each item
                 
+                # CRITICAL: Only add ONE screenshot attachment per order, not per cart item
+                screenshot_attachment_added = False
+                screenshot_cid = None
+                
+                # Get screenshot once from top-level or first cart item
+                order_screenshot = top_level_screenshot or (cart[0].get('selected_screenshot') if cart else None) or (cart[0].get('screenshot') if cart else None) or (cart[0].get('thumbnail') if cart else None) or (cart[0].get('img') if cart else None) or ''
+                
+                # Add screenshot as attachment ONCE if it's a base64 image
+                if order_screenshot and isinstance(order_screenshot, str) and order_screenshot.startswith('data:image'):
+                    try:
+                        # Parse data URL: data:image/png;base64,<data>
+                        header, data = order_screenshot.split(',', 1)
+                        image_format = header.split('/')[1].split(';')[0]  # png, jpeg, etc.
+                        image_data = data  # Already base64 encoded
+                        
+                        # Generate CID for embedding (use order_id, not item index)
+                        screenshot_cid = f"screenshot_{order_id}_0"
+                        attachment_cids[0] = screenshot_cid
+                        
+                        # Add as attachment ONCE (Resend format: content should be base64 string)
+                        email_attachments.append({
+                            "filename": f"screenshot.{image_format}",
+                            "content": image_data,  # Already base64 encoded from data URL
+                            "cid": screenshot_cid
+                        })
+                        screenshot_attachment_added = True
+                        logger.info(f"✅ [SUCCESS] Added ONE screenshot attachment with CID: {screenshot_cid} (for entire order, not per item)")
+                    except Exception as e:
+                        logger.warning(f"⚠️ [SUCCESS] Failed to convert data URL to attachment: {str(e)}")
+                
+                # Display screenshot once at the top
+                screenshot_html = ""
+                if screenshot_attachment_added and screenshot_cid:
+                    screenshot_html = f"""
+                        <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
+                            <h2>📸 Order Screenshot</h2>
+                            <img src='cid:{screenshot_cid}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>
+                        </div>
+                    """
+                elif order_screenshot and isinstance(order_screenshot, str) and (order_screenshot.startswith('http') or order_screenshot.startswith('https')):
+                    screenshot_html = f"""
+                        <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
+                            <h2>📸 Order Screenshot</h2>
+                            <img src='{order_screenshot}' alt='Product Image' style='max-width: 300px; border-radius: 6px;'>
+                        </div>
+                    """
+                
+                if screenshot_html:
+                    html_body += screenshot_html
+                
                 for idx, item in enumerate(cart):
                     product_name = item.get('product', 'N/A')
                     color = (item.get('variants') or {}).get('color', 'N/A')
                     size = (item.get('variants') or {}).get('size', 'N/A')
                     note = item.get('note', 'None')
                     
-                    # Use top-level screenshot for all items (same product, same screenshot)
-                    image_url = top_level_screenshot or item.get('screenshot') or item.get('selected_screenshot') or item.get('thumbnail') or item.get('img', '')
-                    
-                    image_tag = ""
-                    print_quality_info = ""
-                    download_link = ""
-                    if image_url:
-                        if image_url.startswith('data:image'):
-                            # Send original screenshot as-is (no automatic 300 DPI upgrade)
-                            # Admin will manually process through 300 DPI generator
-                            logger.info(f"📸 [SUCCESS] Sending original screenshot for item {idx} (no auto-upgrade)")
-                            
-                            # Data URL - convert to attachment for email (matching /api/place-order logic)
-                            try:
-                                # Parse data URL: data:image/png;base64,<data>
-                                header, data = image_url.split(',', 1)
-                                image_format = header.split('/')[1].split(';')[0]  # png, jpeg, etc.
-                                image_data = data
-                                
-                                # Generate CID for embedding
-                                cid = f"screenshot_{order_id}_{idx}"
-                                attachment_cids[idx] = cid
-                                
-                                # Add as attachment (Resend format: content should be base64 string)
-                                # image_data is already the base64 part from data URL
-                                # Only add once per unique screenshot (don't duplicate)
-                                if cid not in [att.get('cid') for att in email_attachments]:
-                                    email_attachments.append({
-                                        "filename": f"screenshot_{idx}.{image_format}",
-                                        "content": image_data,  # Already base64 encoded from data URL
-                                        "cid": cid
-                                    })
-                                else:
-                                    # Reuse existing CID if screenshot already attached
-                                    existing_cid = next(att.get('cid') for att in email_attachments if att.get('cid') == cid)
-                                    cid = existing_cid
-                                
-                                # Use CID attachment method (like thumbnails) - Gmail blocks base64 images in body
-                                # CID embedding shows image in email body via attachment, matching thumbnail behavior
-                                cid_img_tag = f"<img src='cid:{cid}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
-                                
-                                # Use CID method to match how thumbnails (URLs) are displayed
-                                image_tag = f"{cid_img_tag}"
-                                logger.info(f"✅ [SUCCESS] Converted data URL to attachment CID: {cid}, filename: screenshot_{idx}.{image_format}")
-                                logger.info(f"✅ [SUCCESS] Using CID embedding (matching thumbnail display method)")
-                            except Exception as e:
-                                logger.warning(f"⚠️ [SUCCESS] Failed to convert data URL to attachment: {str(e)}")
-                                # Fallback: just embed directly as base64
-                                image_tag = f"<img src='{image_url}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
-                                logger.info(f"📸 [SUCCESS] Embedded base64 screenshot for item {idx} (fallback mode)")
-                        else:
-                            # Regular URL - use directly
-                            image_tag = f"<img src='{image_url}' alt='Product Image' style='max-width: 300px; border-radius: 6px;'>"
-                    
+                    # Product details (no image - already shown above)
                     html_body += f"""
                         <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
                             <h3>{product_name}</h3>
                             <p><strong>Color:</strong> {color}</p>
                             <p><strong>Size:</strong> {size}</p>
                             <p><strong>Note:</strong> {note}</p>
-                            {image_tag}
-                            {print_quality_info}
-                            {download_link}
                         </div>
                     """
                 
@@ -3932,7 +3945,39 @@ def stripe_webhook():
                 screenshot_type = "base64" if isinstance(order_level_screenshot, str) and 'data:image' in order_level_screenshot else "URL"
                 logger.info(f"📸 [WEBHOOK] Found order-level screenshot (type: {screenshot_type}, length: {len(str(order_level_screenshot))} chars): {str(order_level_screenshot)[:100]}...")
             
-            # Generate print-quality images for each product
+            # CRITICAL: Only add ONE screenshot attachment per order, not per cart item
+            # All items share the same screenshot, so we only need one attachment
+            screenshot_attachment_added = False
+            screenshot_cid = None
+            screenshot_data = None
+            screenshot_format = None
+            
+            # Get the screenshot once from order-level or first cart item
+            order_screenshot = order_level_screenshot or (cart[0].get('selected_screenshot') if cart else None) or (cart[0].get('screenshot') if cart else None) or (cart[0].get('img') if cart else None) or (cart[0].get('thumbnail') if cart else None) or ''
+            
+            # Add screenshot as attachment ONCE if it's a base64 image
+            if order_screenshot and isinstance(order_screenshot, str) and 'data:image' in order_screenshot:
+                try:
+                    # Parse data URL: data:image/png;base64,<data>
+                    header, data = order_screenshot.split(',', 1)
+                    screenshot_format = header.split('/')[1].split(';')[0]  # png, jpeg, etc.
+                    screenshot_data = data  # Already base64 encoded from data URL
+                    
+                    # Generate CID for embedding (use order_id, not item index)
+                    screenshot_cid = f"screenshot_{order_id}_0"
+                    
+                    # Add as attachment ONCE (Resend format: content should be base64 string)
+                    email_attachments.append({
+                        "filename": f"screenshot.{screenshot_format}",
+                        "content": screenshot_data,  # Already base64 encoded
+                        "cid": screenshot_cid
+                    })
+                    screenshot_attachment_added = True
+                    logger.info(f"📎 [WEBHOOK] Added ONE screenshot attachment with CID: {screenshot_cid} (for entire order, not per item)")
+                except Exception as e:
+                    logger.error(f"⚠️ [WEBHOOK] Failed to convert base64 to attachment: {str(e)}")
+            
+            # Generate print-quality images for each product (but reuse same CID/attachment)
             print_quality_images = []
             for i, item in enumerate(cart):
                 try:
@@ -3940,46 +3985,24 @@ def stripe_webhook():
                     # Fallback to order-level screenshot if not in cart item
                     screenshot_url = item.get('selected_screenshot') or item.get('screenshot') or item.get('img') or item.get('thumbnail') or order_level_screenshot or ''
                     logger.info(f"📸 [WEBHOOK] Item {i} screenshot check: selected_screenshot={bool(item.get('selected_screenshot'))}, screenshot={bool(item.get('screenshot'))}, img={bool(item.get('img'))}, thumbnail={bool(item.get('thumbnail'))}, found={bool(screenshot_url)}")
+                    
                     if screenshot_url:
                         if isinstance(screenshot_url, str) and 'data:image' in screenshot_url:
-                            # Send original screenshot as-is (no automatic 300 DPI upgrade)
-                            # Admin will manually process through 300 DPI generator
-                            logger.info(f"📸 [WEBHOOK] Sending original screenshot for item {i} (no auto-upgrade)")
-                            
-                            # This is a base64 screenshot - convert to email attachment
-                            try:
-                                # Parse data URL: data:image/png;base64,<data>
-                                header, data = screenshot_url.split(',', 1)
-                                image_format = header.split('/')[1].split(';')[0]  # png, jpeg, etc.
-                                image_data = data  # Already base64 encoded from data URL
-                                
-                                # Generate CID for embedding
-                                cid = f"screenshot_{order_id}_{i}"
-                                attachment_cids[i] = cid
-                                
-                                # Add as attachment (Resend format: content should be base64 string)
-                                if cid not in [att.get('cid') for att in email_attachments]:
-                                    email_attachments.append({
-                                        "filename": f"screenshot_{i}.{image_format}",
-                                        "content": image_data,  # Already base64 encoded
-                                        "cid": cid
-                                    })
-                                    logger.info(f"📎 [WEBHOOK] Added screenshot attachment {i} with CID: {cid}")
-                                
-                                # Use CID method (like thumbnails) - Gmail blocks base64 images in body
-                                # CID embedding shows image in email body via attachment, matching thumbnail behavior
+                            # Use the same CID for all items (they share the same screenshot)
+                            if screenshot_attachment_added and screenshot_cid:
+                                # Reuse the CID we already created
                                 print_quality_images.append({
                                     'index': i,
-                                    'preview': f"cid:{cid}",  # Use CID to match thumbnail display method
-                                    'cid': f"cid:{cid}",
+                                    'preview': f"cid:{screenshot_cid}",  # Use same CID for all items
+                                    'cid': f"cid:{screenshot_cid}",
                                     'fallback_base64': screenshot_url,  # Keep as fallback if needed
                                     'note': 'User-selected screenshot (original, not upgraded)',
                                     'dimensions': {},
                                     'download_url': screenshot_url  # Store for download link
                                 })
-                            except Exception as e:
-                                logger.error(f"⚠️ [WEBHOOK] Failed to convert base64 to attachment for item {i}: {str(e)}")
-                                # Fallback: try direct base64 embedding
+                                logger.info(f"📸 [WEBHOOK] Item {i} using shared screenshot CID: {screenshot_cid}")
+                            else:
+                                # Fallback: try direct base64 embedding (shouldn't happen if attachment was added)
                                 print_quality_images.append({
                                     'index': i,
                                     'preview': screenshot_url,
@@ -4026,6 +4049,36 @@ def stripe_webhook():
                         'preview': item.get('selected_screenshot') or item.get('screenshot') or item.get('img', ''),
                         'note': 'Preview only'
                     })
+            
+            # CRITICAL: Only show ONE image per order, not per cart item
+            # Display the screenshot once at the top, then list all products below
+            screenshot_displayed = False
+            screenshot_cid = None
+            
+            # Display screenshot once if available
+            if print_quality_images and len(print_quality_images) > 0:
+                first_image = print_quality_images[0]
+                if first_image.get('preview'):
+                    preview = first_image.get('preview', '')
+                    if preview.startswith('cid:'):
+                        screenshot_cid = preview
+                        html_body += f"""
+                            <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
+                                <h2>📸 Order Screenshot</h2>
+                                <img src='{preview}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>
+                                <p><em>{first_image.get('note', 'User-selected screenshot')}</em></p>
+                            </div>
+                        """
+                        screenshot_displayed = True
+                    elif preview:
+                        html_body += f"""
+                            <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
+                                <h2>📸 Order Screenshot</h2>
+                                <img src='{preview}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>
+                                <p><em>{first_image.get('note', 'User-selected screenshot')}</em></p>
+                            </div>
+                        """
+                        screenshot_displayed = True
             
             for i, item in enumerate(cart):
                 # Determine category based on product name
@@ -4101,6 +4154,16 @@ def stripe_webhook():
                         </p>
                     """
                 
+                # Only show image in product listing if screenshot wasn't already displayed at top
+                # This prevents duplicate images when multiple products share the same screenshot
+                product_image_html = ""
+                if not screenshot_displayed and image_tag:
+                    # Only show image for first product if not already shown
+                    product_image_html = f"""
+                        <p><strong>📸 Screenshot Selected (Preview):</strong></p>
+                        {image_tag}
+                    """
+                
                 html_body += f"""
                     <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
                         <h3>{category} - {product_name}</h3>
@@ -4109,8 +4172,7 @@ def stripe_webhook():
                         <p><strong>Price:</strong> ${item.get('price', 0):.2f}</p>
                         <p><strong>Note:</strong> {item.get('note', 'None')}</p>
                         <p><strong>📅 Order Time:</strong> {timestamp_str}</p>
-                        <p><strong>📸 Screenshot Selected (Preview):</strong></p>
-                        {image_tag}
+                        {product_image_html}
                         {print_quality_info_html}
                         {download_link_html}
                     </div>
@@ -6169,6 +6231,7 @@ def check_admin_status():
 @app.route("/api/auth/login/", methods=["POST", "OPTIONS"])
 def auth_login():
     if request.method == "OPTIONS":
+        logger.info(f"🔵 [LOGIN] OPTIONS preflight from {request.headers.get('Origin', 'unknown')}")
         response = jsonify(success=True)
         origin = request.headers.get('Origin')
         allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "http://localhost:3000", "http://localhost:5173"]
@@ -6184,39 +6247,49 @@ def auth_login():
             elif origin.endswith('.screenmerch.com') and origin.startswith('https://'):
                 origin_allowed = True
         
+        # Use assignment instead of .add() to prevent duplicate headers
         if origin_allowed:
-            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers['Access-Control-Allow-Origin'] = origin
         else:
-            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
+            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
         
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Cache-Control,Pragma,Expires'
+        response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        logger.info(f"✅ [LOGIN] OPTIONS preflight response sent")
         return response
     """Handle user login with email and password validation"""
     try:
+        logger.info(f"🔵 [LOGIN] Request received from {request.headers.get('Origin', 'unknown')}")
+        
         # Handle both JSON (fetch) and form data (redirect)
         data = _data_from_request()
         email = (data.get("email") or "").strip().lower()
         password = data.get("password") or ""
         
         if not email or not password:
-            return jsonify({"success": False, "error": "Email and password are required"}), 400
+            response = jsonify({"success": False, "error": "Email and password are required"})
+            return _allow_origin(response), 400
         
         # Validate email format
         import re
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(email_pattern, email):
-            return jsonify({"success": False, "error": "Please enter a valid email address"}), 400
+            response = jsonify({"success": False, "error": "Please enter a valid email address"})
+            return _allow_origin(response), 400
         
         # Check if user exists in database - use admin client to bypass RLS
         try:
+            logger.info(f"🔵 [LOGIN] Querying database for user: {email}")
             # Use admin client to bypass RLS for login lookups
             client = supabase_admin if supabase_admin else supabase
             if not client:
-                raise Exception("Supabase client not initialized")
+                logger.error("❌ [LOGIN] Supabase client not initialized")
+                response = jsonify({"success": False, "error": "Authentication service unavailable"})
+                return _allow_origin(response), 500
             
             result = client.table('users').select('*').eq('email', email).execute()
+            logger.info(f"🔵 [LOGIN] Database query completed for: {email}")
             
             if result.data:
                 user = result.data[0]
@@ -6355,13 +6428,13 @@ def auth_login():
         except Exception as db_error:
             logger.error(f"Database error during login: {str(db_error)}")
             response = jsonify({"success": False, "error": "Authentication service unavailable"})
-            response.headers.add('Access-Control-Allow-Origin', '*')
+            response = _allow_origin(response)
             return response, 500
             
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
-        response.headers.add('Access-Control-Allow-Origin', '*')
+        response = _allow_origin(response)
         return response, 500
 
 @app.route("/api/auth/signup", methods=["POST", "OPTIONS"])

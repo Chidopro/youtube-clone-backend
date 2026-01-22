@@ -830,11 +830,10 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
         else:
             corner_radius_value = 0
         
+        # Store corner radius mask for final reapplication (to preserve transparency after all effects)
+        corner_radius_mask = None
         if corner_radius_value > 0:
             logger.info(f"Applying corner radius effect to HIGH-RESOLUTION print quality image {target_width}x{target_height}")
-            
-            # Create a mask for rounded corners
-            mask = np.zeros((target_height, target_width), dtype=np.uint8)
             
             # Calculate corner radius (0-100% maps to 0-50% of smallest dimension)
             max_radius = min(target_width, target_height) / 2
@@ -842,27 +841,30 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             
             logger.info(f"Using corner radius: {corner_radius} ({corner_radius_value}%) for high-res image")
             
-            # Create rounded rectangle mask using ellipses for smooth corners
-            # Top-left corner
-            cv2.ellipse(mask, (corner_radius, corner_radius), (corner_radius, corner_radius), 180, 0, 90, 255, -1)
-            # Top-right corner  
-            cv2.ellipse(mask, (target_width - corner_radius, corner_radius), (corner_radius, corner_radius), 270, 0, 90, 255, -1)
-            # Bottom-left corner
-            cv2.ellipse(mask, (corner_radius, target_height - corner_radius), (corner_radius, corner_radius), 90, 0, 90, 255, -1)
-            # Bottom-right corner
-            cv2.ellipse(mask, (target_width - corner_radius, target_height - corner_radius), (corner_radius, corner_radius), 0, 0, 90, 255, -1)
+            # Create a PROPER filled rounded rectangle mask using the helper function
+            # This ensures the entire mask is filled correctly without gaps
+            corner_radius_mask = np.zeros((target_height, target_width), dtype=np.uint8)
+            _draw_rounded_rect_filled(corner_radius_mask, 0, 0, target_width, target_height, corner_radius, 255)
             
-            # Fill the center rectangle
-            cv2.rectangle(mask, (corner_radius, 0), (target_width - corner_radius, target_height), 255, -1)
-            cv2.rectangle(mask, (0, corner_radius), (target_width, target_height - corner_radius), 255, -1)
+            # Apply mask to BOTH RGB and alpha channels to ensure entire canvas is rounded
+            # Where mask is 255 (inside rounded rect), keep original values
+            # Where mask is 0 (outside rounded rect), set to 0 (transparent/black)
             
-            # Apply mask to alpha channel to preserve transparency (not using bitwise_and which creates black)
-            # Where mask is 255 (inside rounded rect), keep original alpha
-            # Where mask is 0 (outside rounded rect), set alpha to 0 (transparent)
-            original_alpha = image[:, :, 3] if image.shape[2] == 4 else np.full((target_height, target_width), 255, dtype=np.uint8)
-            image[:, :, 3] = np.where(mask > 0, original_alpha, 0).astype(np.uint8)
+            # Ensure image has alpha channel before applying mask
+            if image.shape[2] == 3:
+                # Add alpha channel if missing
+                height, width = image.shape[:2]
+                alpha_channel = np.ones((height, width), dtype=np.uint8) * 255
+                image = np.dstack([image, alpha_channel])
             
-            logger.info("Corner radius effect applied successfully to high-resolution image with transparency")
+            # Apply mask to RGB channels - set to 0 where mask is 0
+            for channel in range(3):
+                image[:, :, channel] = np.where(corner_radius_mask > 0, image[:, :, channel], 0).astype(np.uint8)
+            
+            # Apply mask to alpha channel - set to 0 where mask is 0 (transparent)
+            image[:, :, 3] = np.where(corner_radius_mask > 0, image[:, :, 3], 0).astype(np.uint8)
+            
+            logger.info("Corner radius effect applied successfully to high-resolution image (RGB + alpha channels)")
         
         # Apply feather effect to the HIGH-RESOLUTION print quality image (AFTER resize and corner radius)
         # Support both boolean (legacy) and numeric (0-100) values
@@ -919,9 +921,21 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 normalized_dist = np.clip(dist_transform / feather_radius, 0.0, 1.0)
                 feather_factor = normalized_dist * normalized_dist * (3.0 - 2.0 * normalized_dist)
                 
+                # Apply feather to BOTH RGB and alpha channels when no transparency exists
+                # RGB channels fade to white (255) at edges, alpha fades to transparent (0)
+                for channel in range(3):
+                    rgb_float = image[:, :, channel].astype(np.float32)
+                    # Fade RGB to white (255) at edges
+                    final_rgb = (rgb_float + (255.0 - rgb_float) * (1.0 - feather_factor)).astype(np.uint8)
+                    image[:, :, channel] = final_rgb
+                
                 # Apply feather to alpha channel
                 alpha_float = alpha_channel.astype(np.float32)
                 final_alpha = (alpha_float * feather_factor).astype(np.uint8)
+                
+                # Update the image alpha channel
+                if image.shape[2] == 4:
+                    image[:, :, 3] = final_alpha
                 
             else:
                 # Has corner radius - calculate distance to perimeter explicitly for uniform feathering
@@ -1182,6 +1196,26 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                     image[:, :, 3] = np.where(inner_frame_mask > 0, 255, image[:, :, 3])
             
             logger.info("Frame border applied successfully")
+        
+        # CRITICAL: Reapply corner radius mask AFTER all effects to ensure transparency is preserved
+        # This ensures areas outside the rounded rectangle are fully transparent in the final image
+        if corner_radius_mask is not None:
+            logger.info("Reapplying corner radius mask to final image to preserve transparency")
+            
+            # Ensure image has alpha channel
+            if image.shape[2] == 3:
+                height, width = image.shape[:2]
+                alpha_channel = np.ones((height, width), dtype=np.uint8) * 255
+                image = np.dstack([image, alpha_channel])
+            
+            # Apply mask to RGB channels - set to 0 where mask is 0 (outside rounded rect)
+            for channel in range(3):
+                image[:, :, channel] = np.where(corner_radius_mask > 0, image[:, :, channel], 0).astype(np.uint8)
+            
+            # Apply mask to alpha channel - set to 0 where mask is 0 (fully transparent outside)
+            image[:, :, 3] = np.where(corner_radius_mask > 0, image[:, :, 3], 0).astype(np.uint8)
+            
+            logger.info("Corner radius mask reapplied - transparency preserved outside rounded rectangle")
         
         # Add white background if requested (for Printful compatibility)
         if add_white_background:

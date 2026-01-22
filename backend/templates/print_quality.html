@@ -1057,23 +1057,26 @@
                 return;
             }
             
-            // Reset corner radius settings
-            document.getElementById('softCorners').checked = false;
-            document.getElementById('cornerRadius').value = 0;
-            document.getElementById('cornerRadiusValue').textContent = '0px';
-            document.getElementById('cornerRadiusGroup').style.display = 'none';
-            document.getElementById('applyRadiusBtn').style.display = 'none';
-            resetBtn.style.display = 'none';
-            
-            // Re-apply all remaining effects
+            // Re-apply all remaining effects (with corner radius reset to 0)
             resetBtn.disabled = true;
             resetBtn.textContent = 'Resetting...';
             
             try {
+                // Reset corner radius settings BEFORE calling API
+                document.getElementById('softCorners').checked = false;
+                document.getElementById('cornerRadius').value = 0;
+                document.getElementById('cornerRadiusValue').textContent = '0px';
+                
+                // Call API to apply effects with corner radius = 0
                 const processedImage = await applyAllEffects();
                 
                 if (processedImage) {
                     orderScreenshot = processedImage;
+                    
+                    // Hide corner radius controls after successful reset
+                    document.getElementById('cornerRadiusGroup').style.display = 'none';
+                    document.getElementById('applyRadiusBtn').style.display = 'none';
+                    resetBtn.style.display = 'none';
                     
                     // Update preview
                     const featherValue = document.getElementById('edgeFeather').checked 
@@ -1100,10 +1103,16 @@
                         screenshot: processedImage,
                         effect: "corner_radius_reset"
                     }, 'Corner Radius Reset!');
+                } else {
+                    throw new Error('No image returned from API');
                 }
             } catch (error) {
                 console.error('Error resetting corner radius:', error);
                 displayError('Error resetting corner radius: ' + (error.message || error));
+                // Restore UI state on error
+                document.getElementById('softCorners').checked = true;
+                document.getElementById('applyRadiusBtn').style.display = 'inline-block';
+                resetBtn.style.display = 'inline-block';
             } finally {
                 resetBtn.disabled = false;
                 resetBtn.textContent = 'Reset Radius';
