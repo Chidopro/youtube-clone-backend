@@ -303,6 +303,10 @@ def _allow_origin(resp):
         resp.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
         resp.headers['Access-Control-Allow-Credentials'] = 'true'
     
+    # CRITICAL: Add methods and headers for CORS preflight (required for PUT requests)
+    resp.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
+    resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Cache-Control,Pragma,Expires'
+    
     return resp
 
 

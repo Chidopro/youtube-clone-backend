@@ -73,16 +73,16 @@ const Dashboard = ({ sidebar }) => {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                // Check for Google OAuth user first
+                // Check for authenticated user (email login or OAuth)
                 const isAuthenticated = localStorage.getItem('isAuthenticated');
                 const userData = localStorage.getItem('user');
                 
                 let user = null;
                 
                 if (isAuthenticated === 'true' && userData) {
-                    // Google OAuth user
+                    // User from localStorage (email login or OAuth)
                     user = JSON.parse(userData);
-                    console.log('🔐 Dashboard: Found Google OAuth user:', user);
+                    console.log('🔐 Dashboard: Found authenticated user from localStorage:', user);
                 } else {
                     // Fallback to Supabase auth
                     const { data: { user: supabaseUser }, error } = await supabase.auth.getUser();
@@ -100,34 +100,74 @@ const Dashboard = ({ sidebar }) => {
 
                 setUser(user);
 
-                // Fetch user profile from users table
+                // CRITICAL: Always fetch user profile from users table to get latest profile_image_url
                 let profile = null;
                 if (user.id) {
+                    console.log('🔍 [DASHBOARD] Fetching latest profile from database for user ID:', user.id);
                     const { data: profileData, error: profileError } = await supabase
                         .from('users')
                         .select('*')
                         .eq('id', user.id)
                         .single();
-                    profile = profileData;
+                    
+                    if (profileError) {
+                        console.error('❌ [DASHBOARD] Error fetching profile:', profileError);
+                    } else {
+                        profile = profileData;
+                        console.log('✅ [DASHBOARD] Fetched profile from database:', {
+                            profile_image_url: profile?.profile_image_url,
+                            cover_image_url: profile?.cover_image_url,
+                            display_name: profile?.display_name
+                        });
+                    }
                 }
 
                 if (profile) {
-                    setUserProfile(profile);
+                    // CRITICAL: Use database values directly (same as cover_image_url)
+                    // Don't override database values with fallbacks - let the image src handle fallbacks
+                    const finalProfileImageUrl = profile.profile_image_url || '';
+                    const finalCoverImageUrl = profile.cover_image_url || '';
+                    
+                    // Merge profile with user data - use database values directly
+                    const mergedProfile = {
+                        ...profile,
+                        profile_image_url: finalProfileImageUrl,
+                        cover_image_url: finalCoverImageUrl
+                    };
+                    
+                    setUserProfile(mergedProfile);
                     setEditForm({
                         display_name: profile.display_name || '',
                         bio: profile.bio || '',
-                        cover_image_url: profile.cover_image_url || '',
-                        profile_image_url: profile.profile_image_url || ''
+                        cover_image_url: finalCoverImageUrl,
+                        profile_image_url: finalProfileImageUrl
                     });
+                    
+                    // CRITICAL: Update localStorage with latest database values
+                    const updatedUser = {
+                        ...user,
+                        profile_image_url: finalProfileImageUrl,
+                        cover_image_url: finalCoverImageUrl,
+                        display_name: profile.display_name || user.display_name || user.user_metadata?.name || '',
+                        bio: profile.bio || user.bio || ''
+                    };
+                    localStorage.setItem('user', JSON.stringify(updatedUser));
+                    console.log('💾 [DASHBOARD] Updated localStorage with profile_image_url:', updatedUser.profile_image_url);
+                    
+                    // CRITICAL: Also update user state so image src resolution works immediately
+                    setUser(updatedUser);
+                    console.log('✅ [DASHBOARD] Updated user state with profile_image_url:', updatedUser.profile_image_url);
+                    
                     // Load payout data if available
                     setPayoutData({
                         paypal_email: profile.paypal_email || '',
                         tax_id: profile.tax_id || ''
                     });
                 } else {
-                    // For Google OAuth users, use the data from localStorage
-                    // Prioritize profile_image_url from user object (sent by backend)
-                    const profileImageUrl = user.profile_image_url || user.picture || user.user_metadata?.picture;
+                    // Fallback: For users without database profile, use localStorage data
+                    console.log('⚠️ [DASHBOARD] No database profile found, using localStorage data');
+                    // Priority: user.profile_image_url > user.picture > user.user_metadata?.picture
+                    const profileImageUrl = user.profile_image_url || user.picture || user.user_metadata?.picture || '';
                     const coverImageUrl = user.cover_image_url || '';
                     // Create userProfile object with all available data
                     const userProfileData = {
@@ -142,7 +182,7 @@ const Dashboard = ({ sidebar }) => {
                         display_name: userProfileData.display_name,
                         bio: userProfileData.bio,
                         cover_image_url: userProfileData.cover_image_url,
-                        profile_image_url: userProfileData.profile_image_url || ''
+                        profile_image_url: profileImageUrl
                     });
                 }
 
@@ -358,8 +398,13 @@ const Dashboard = ({ sidebar }) => {
 
             const data = await response.json();
             
-            // Update local state
-            const updatedProfile = {
+            // Backend returns the updated user with the latest profile_image_url from database
+            const backendUpdatedUser = data?.user;
+            console.log('💾 Dashboard: Backend returned updated user:', backendUpdatedUser);
+            console.log('💾 Dashboard: Updated profile_image_url from backend:', backendUpdatedUser?.profile_image_url);
+            
+            // Update local state with backend response (most up-to-date)
+            const updatedProfile = backendUpdatedUser || {
                 ...userProfile,
                 display_name: editForm.display_name,
                 bio: editForm.bio,
@@ -374,25 +419,46 @@ const Dashboard = ({ sidebar }) => {
             if (userData) {
                 try {
                     const userObj = JSON.parse(userData);
+                    // Use backend response if available, otherwise use form data
                     updatedUser = {
                         ...userObj,
-                        profile_image_url: editForm.profile_image_url,
-                        cover_image_url: editForm.cover_image_url,
-                        display_name: editForm.display_name,
+                        profile_image_url: backendUpdatedUser?.profile_image_url || editForm.profile_image_url,
+                        cover_image_url: backendUpdatedUser?.cover_image_url || editForm.cover_image_url,
+                        display_name: backendUpdatedUser?.display_name || editForm.display_name,
+                        bio: backendUpdatedUser?.bio || editForm.bio,
                     };
                     localStorage.setItem('user', JSON.stringify(updatedUser));
                     setUser(updatedUser);
+                    console.log('💾 Dashboard: Updated localStorage with profile_image_url:', updatedUser.profile_image_url);
                 } catch (e) {
                     console.error('Error updating localStorage user:', e);
                 }
             }
             
             // Dispatch event to notify Navbar and other components of profile update
-            if (updatedUser) {
-                window.dispatchEvent(new CustomEvent('userLoggedIn', { 
-                    detail: { user: updatedUser } 
+            // CRITICAL: Use backendUpdatedUser (from backend response) as it has the latest database values
+            // Merge with updatedUser to ensure we have all fields (id, role, etc.)
+            const userForEvent = backendUpdatedUser ? {
+                ...updatedUser,
+                ...backendUpdatedUser, // Backend response takes priority
+                profile_image_url: backendUpdatedUser.profile_image_url || updatedUser?.profile_image_url,
+                cover_image_url: backendUpdatedUser.cover_image_url || updatedUser?.cover_image_url,
+            } : updatedUser;
+            
+            if (userForEvent) {
+                console.log('📡 Dashboard: Preparing to dispatch events with profile_image_url:', userForEvent.profile_image_url);
+                
+                // Dispatch profileUpdated event IMMEDIATELY with backend response (no delay needed - backend already saved)
+                window.dispatchEvent(new CustomEvent('profileUpdated', { 
+                    detail: { user: userForEvent } 
                 }));
-                console.log('📡 Dashboard: Dispatched userLoggedIn event with updated profile image');
+                console.log('📡 Dashboard: ✅ Dispatched profileUpdated event IMMEDIATELY with profile_image_url:', userForEvent.profile_image_url);
+                
+                // Also dispatch userLoggedIn for compatibility
+                window.dispatchEvent(new CustomEvent('userLoggedIn', { 
+                    detail: { user: userForEvent } 
+                }));
+                console.log('📡 Dashboard: Dispatched userLoggedIn event with profile image:', userForEvent.profile_image_url);
             }
             
             setIsEditing(false);
@@ -1053,59 +1119,52 @@ const Dashboard = ({ sidebar }) => {
                                             {uploadingImage ? '⏳ Uploading...' : '📷 Change Avatar'}
                                         </label>
                                     </div>
+                                    <div className="avatar-edit-buttons">
+                                        <button 
+                                            onClick={async () => {
+                                                await handleSaveProfile();
+                                                setIsEditingAvatar(false);
+                                                setImagePreview(prev => ({ ...prev, profile: null }));
+                                            }} 
+                                            className="save-btn"
+                                            disabled={uploadingImage}
+                                        >
+                                            Save
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                setIsEditingAvatar(false);
+                                                setImagePreview(prev => ({ ...prev, profile: null }));
+                                                // Reset to original profile_image_url
+                                                setEditForm(prev => ({
+                                                    ...prev,
+                                                    profile_image_url: userProfile?.profile_image_url || ''
+                                                }));
+                                            }} 
+                                            className="cancel-btn"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="avatar-with-edit">
                                     <img
                                         className="channel-avatar"
                                         src={(() => {
-                                            // Prioritize profile_image_url from userProfile, then user object, then user_metadata
-                                            const imageUrl = userProfile?.profile_image_url || 
-                                                           user?.profile_image_url || 
-                                                           user?.picture || 
-                                                           user?.user_metadata?.picture || 
-                                                           '/default-avatar.jpg';
-                                            
-                                            console.log('🖼️ [DASHBOARD] Resolving profile image URL:', {
-                                                'userProfile?.profile_image_url': userProfile?.profile_image_url,
-                                                'user?.profile_image_url': user?.profile_image_url,
-                                                'user?.picture': user?.picture,
-                                                'user?.user_metadata?.picture': user?.user_metadata?.picture,
-                                                'final URL': imageUrl
-                                            });
-                                            
+                                            // Priority order for image URL:
+                                            // 1. userProfile.profile_image_url (from database)
+                                            // 2. user.profile_image_url (from localStorage)
+                                            // 3. user.picture or user.user_metadata?.picture (for Google OAuth users)
+                                            // 4. default avatar
+                                            const imageUrl = (userProfile?.profile_image_url && userProfile.profile_image_url.trim() !== '') 
+                                                ? userProfile.profile_image_url
+                                                : (user?.profile_image_url && user.profile_image_url.trim() !== '')
+                                                    ? user.profile_image_url
+                                                    : user?.user_metadata?.picture || user?.picture || '/default-avatar.jpg';
                                             return imageUrl;
                                         })()}
                                         alt="Channel Avatar"
-                                        onError={(e) => {
-                                            if (!e.target.dataset.fallbackUsed) {
-                                                console.log('🖼️ [DASHBOARD] Avatar image failed to load, trying fallbacks');
-                                                console.log('🖼️ [DASHBOARD] Failed URL:', e.target.src);
-                                                console.log('🖼️ [DASHBOARD] User object:', user);
-                                                console.log('🖼️ [DASHBOARD] UserProfile object:', userProfile);
-                                                const fallbackUrl = user?.picture || 
-                                                                  user?.user_metadata?.picture || 
-                                                                  '/default-avatar.jpg';
-                                                if (e.target.src !== fallbackUrl && fallbackUrl !== '/default-avatar.jpg') {
-                                                    console.log('🖼️ [DASHBOARD] Trying fallback URL:', fallbackUrl);
-                                                    e.target.dataset.fallbackUsed = 'true';
-                                                    e.target.src = fallbackUrl;
-                                                } else {
-                                                    console.log('🖼️ [DASHBOARD] Using default avatar');
-                                                    e.target.dataset.fallbackUsed = 'true';
-                                                    e.target.src = '/default-avatar.jpg';
-                                                }
-                                            }
-                                        }}
-                                        onLoad={(e) => {
-                                            console.log('🖼️ [DASHBOARD] Avatar image loaded successfully:', e.target.src);
-                                            e.target.style.display = 'block';
-                                            e.target.style.visibility = 'visible';
-                                            e.target.style.opacity = '1';
-                                            // Ensure image is visible and not hidden
-                                            e.target.style.zIndex = '1';
-                                            e.target.style.position = 'relative';
-                                        }}
                                     />
                                     <button className="corner-edit-icon avatar-edit" onClick={() => setIsEditingAvatar(true)} title="Edit avatar">
                                         ✏️
