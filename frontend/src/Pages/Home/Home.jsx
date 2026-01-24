@@ -3,6 +3,9 @@ import Feed from "../../Components/Feed/Feed";
 import { supabase } from '../../supabaseClient';
 import './Home.css'
 import { useNavigate } from 'react-router-dom';
+import { useCreator } from '../../contexts/CreatorContext';
+import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
+import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
 
 
 
@@ -10,7 +13,11 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const navigate = useNavigate();
+  const { creatorSettings, currentCreator } = useCreator();
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -39,7 +46,30 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     <>
       <div className={`container ${sidebar ? "" : " large-container"}`}>
         {/* User Flow Section */}
-        <div className="user-flow-section">
+        <div 
+          className="user-flow-section"
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+          style={{
+            position: 'relative',
+            background: creatorSettings?.primary_color && creatorSettings?.secondary_color
+              ? `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)`
+              : undefined
+          }}
+        >
+          {canEdit && (
+            <button
+              className="progress-bar-edit-btn"
+              onClick={() => setShowColorPicker(true)}
+              style={{
+                opacity: isHovering ? 1 : 0.7,
+                transition: 'opacity 0.2s ease'
+              }}
+              title="Edit colors"
+            >
+              ✏️
+            </button>
+          )}
           <div className="flow-steps">
             <div className="flow-step">
               <div className="step-number">1</div>
@@ -66,6 +96,18 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
             </div>
           </div>
         </div>
+
+        <ColorPickerModal
+          isOpen={showColorPicker}
+          onClose={() => setShowColorPicker(false)}
+          currentPrimaryColor={creatorSettings?.primary_color}
+          currentSecondaryColor={creatorSettings?.secondary_color}
+          onSave={(primary, secondary) => {
+            // Colors are already applied by the modal
+            // Just refresh the page or update state
+            window.location.reload();
+          }}
+        />
 
 
         {/* Videos Feed */}

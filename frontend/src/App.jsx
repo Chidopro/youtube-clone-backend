@@ -30,6 +30,7 @@ import PaymentSetup from "./Pages/PaymentSetup/PaymentSetup";
 import ToolsPage from "./Pages/ToolsPage/ToolsPage";
 import VerifyEmail from "./Pages/VerifyEmail/VerifyEmail";
 import { API_CONFIG } from "./config/apiConfig";
+import { CreatorProvider } from "./contexts/CreatorContext";
 
 const App = () => {
   // Sidebar starts closed by default for cleaner look
@@ -154,66 +155,68 @@ const App = () => {
   console.log('🚀 App.jsx rendering - current path:', location.pathname);
   
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <Navbar setSidebar={setSidebar} resetCategory={resetCategory} />
-      <div style={{ display: 'flex', flex: 1 }}>
-        {shouldShowSidebar && (
-        <Sidebar sidebar={sidebar} category={category} setCategory={setCategory} />
-        )}
-        {/* Mobile backdrop for sidebar */}
-        {sidebar && isMobile && (
-          <div 
-            className="mobile-sidebar-backdrop"
-            onClick={() => setSidebar(false)}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              zIndex: 999,
-              display: 'block'
-            }}
-          />
-        )}
-        <div className="main-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1 }}>
-            <Routes>
-              <Route path="/" element={<Home sidebar={sidebar} category={category} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />} />
-              <Route path="/video/:categoryId/:videoId" element={<Video sidebar={sidebar} />} />
-              <Route path="/upload" element={<Upload sidebar={sidebar} />} />
-              <Route path="/profile/:username" element={<Profile sidebar={sidebar} />} />
-              <Route path="/approve-subscription" element={<ApproveSubscription />} />
-              <Route path="/dashboard" element={<Dashboard sidebar={sidebar} />} />
-              <Route path="/subscription-tiers" element={<SubscriptionTiers />} />
-              <Route path="/subscription-success" element={<SubscriptionSuccess />} />
-              <Route path="/success" element={<OrderSuccess />} />
-              <Route path="/coming-soon" element={<ComingSoon />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/auth" element={<AuthForm />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Login />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-              <Route path="/terms-of-service" element={<TermsOfService />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/channel/:channelName" element={<Channel />} />
-              <Route path="/merchandise" element={<MerchandiseCategories sidebar={sidebar} />} />
-              <Route path="/product/browse" element={<ProductPage sidebar={sidebar} />} />
-              <Route path="/product/:productId" element={<ProductPage sidebar={sidebar} />} />
-              <Route path="/test-crop-tool" element={<TestCropTool />} />
-              <Route path="/payment-portal" element={<PaymentPortal />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/payment-setup" element={<PaymentSetup />} />
-              <Route path="/tools" element={<ToolsPage />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
-              {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
-            </Routes>
+    <CreatorProvider>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <Navbar setSidebar={setSidebar} resetCategory={resetCategory} />
+        <div style={{ display: 'flex', flex: 1 }}>
+          {shouldShowSidebar && (
+          <Sidebar sidebar={sidebar} category={category} setCategory={setCategory} />
+          )}
+          {/* Mobile backdrop for sidebar */}
+          {sidebar && isMobile && (
+            <div 
+              className="mobile-sidebar-backdrop"
+              onClick={() => setSidebar(false)}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                zIndex: 999,
+                display: 'block'
+              }}
+            />
+          )}
+          <div className="main-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1 }}>
+              <Routes>
+                <Route path="/" element={<Home sidebar={sidebar} category={category} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />} />
+                <Route path="/video/:categoryId/:videoId" element={<Video sidebar={sidebar} />} />
+                <Route path="/upload" element={<Upload sidebar={sidebar} />} />
+                <Route path="/profile/:username" element={<Profile sidebar={sidebar} />} />
+                <Route path="/approve-subscription" element={<ApproveSubscription />} />
+                <Route path="/dashboard" element={<Dashboard sidebar={sidebar} />} />
+                <Route path="/subscription-tiers" element={<SubscriptionTiers />} />
+                <Route path="/subscription-success" element={<SubscriptionSuccess />} />
+                <Route path="/success" element={<OrderSuccess />} />
+                <Route path="/coming-soon" element={<ComingSoon />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/auth" element={<AuthForm />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Login />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms-of-service" element={<TermsOfService />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/channel/:channelName" element={<Channel />} />
+                <Route path="/merchandise" element={<MerchandiseCategories sidebar={sidebar} />} />
+                <Route path="/product/browse" element={<ProductPage sidebar={sidebar} />} />
+                <Route path="/product/:productId" element={<ProductPage sidebar={sidebar} />} />
+                <Route path="/test-crop-tool" element={<TestCropTool />} />
+                <Route path="/payment-portal" element={<PaymentPortal />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/payment-setup" element={<PaymentSetup />} />
+                <Route path="/tools" element={<ToolsPage />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
+                {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
+              </Routes>
+            </div>
+            <Footer />
           </div>
-          <Footer />
         </div>
       </div>
-    </div>
+    </CreatorProvider>
   );
 };
 
