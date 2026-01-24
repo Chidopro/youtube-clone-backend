@@ -17,7 +17,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [canEdit, setCanEdit] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const navigate = useNavigate();
-  const { creatorSettings, currentCreator } = useCreator();
+  const { creatorSettings, currentCreator, refreshCreator } = useCreator();
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -97,6 +97,25 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     checkEditPermission();
   }, [currentCreator]);
 
+  // Apply colors from creatorSettings when they change
+  useEffect(() => {
+    if (creatorSettings?.primary_color && creatorSettings?.secondary_color) {
+      const progressBar = document.querySelector('.user-flow-section');
+      if (progressBar) {
+        // Use setProperty with important flag to override CSS !important rules
+        progressBar.style.setProperty(
+          'background', 
+          `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)`, 
+          'important'
+        );
+        console.log('🎨 [HOME] Applied colors from creatorSettings:', {
+          primary: creatorSettings.primary_color,
+          secondary: creatorSettings.secondary_color
+        });
+      }
+    }
+  }, [creatorSettings?.primary_color, creatorSettings?.secondary_color]);
+
   return (
     <>
       <div className={`container ${sidebar ? "" : " large-container"}`}>
@@ -108,7 +127,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           style={{
             position: 'relative',
             background: creatorSettings?.primary_color && creatorSettings?.secondary_color
-              ? `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)`
+              ? `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%) !important`
               : undefined
           }}
         >
@@ -157,10 +176,17 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           onClose={() => setShowColorPicker(false)}
           currentPrimaryColor={creatorSettings?.primary_color}
           currentSecondaryColor={creatorSettings?.secondary_color}
-          onSave={(primary, secondary) => {
-            // Colors are already applied by the modal
-            // Just refresh the page or update state
-            window.location.reload();
+          onSave={async (primary, secondary) => {
+            // Wait for CreatorContext to refresh
+            setTimeout(() => {
+              // Force refresh of creator settings
+              const { refreshCreator } = useCreator();
+              if (refreshCreator) {
+                refreshCreator();
+              }
+              // Also update local state to force re-render
+              window.dispatchEvent(new CustomEvent('creatorSettingsUpdated'));
+            }, 500);
           }}
         />
 

@@ -111,9 +111,12 @@ const ColorPickerModal = ({ isOpen, onClose, currentPrimaryColor, currentSeconda
       } else {
         console.log('✅ Colors saved successfully:', updateResult);
         
-        // Apply colors immediately via inline styles
+        // Apply colors immediately via inline styles with !important
         const progressBar = document.querySelector('.user-flow-section');
         if (progressBar) {
+          // Use setProperty with !important flag
+          progressBar.style.setProperty('background', `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`, 'important');
+          // Also set as regular style property as fallback
           progressBar.style.background = `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`;
         }
 
