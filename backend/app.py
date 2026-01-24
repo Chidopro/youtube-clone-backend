@@ -6124,9 +6124,11 @@ def get_subdomain_creator(subdomain):
                     "personalization_enabled": creator.get('personalization_enabled', False),
                     "primary_color": creator.get('primary_color'),
                     "secondary_color": creator.get('secondary_color'),
-                    "logo_url": creator.get('logo_url'),
+                    "logo_url": creator.get('custom_logo_url'),  # Use custom_logo_url from database
+                    "custom_logo_url": creator.get('custom_logo_url'),  # Also include as custom_logo_url for clarity
                     "banner_url": creator.get('banner_url'),
                     "profile_image_url": creator.get('profile_image_url'),
+                    "custom_favicon_url": creator.get('custom_favicon_url'),
                     "custom_meta_title": creator.get('custom_meta_title'),
                     "custom_meta_description": creator.get('custom_meta_description'),
                     "hide_screenmerch_branding": creator.get('hide_screenmerch_branding', False)

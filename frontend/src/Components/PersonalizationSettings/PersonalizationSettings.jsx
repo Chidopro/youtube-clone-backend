@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
 import './PersonalizationSettings.css';
 
 const PersonalizationSettings = () => {
@@ -28,7 +29,51 @@ const PersonalizationSettings = () => {
   const loadSettings = async () => {
     setLoading(true);
     try {
-      // Get user the same way Dashboard does (supports both Google OAuth and Supabase auth)
+      // First, check if we're on a subdomain - if so, load settings for that subdomain's user
+      const currentSubdomain = getSubdomain();
+      let targetUserId = null;
+      let targetUserEmail = null;
+      
+      if (currentSubdomain) {
+        console.log('🔍 PersonalizationSettings: Detected subdomain:', currentSubdomain);
+        // Load creator data for this subdomain via API
+        const creator = await getCreatorFromSubdomain(currentSubdomain);
+        if (creator && creator.id) {
+          targetUserId = creator.id;
+          console.log('✅ PersonalizationSettings: Found creator for subdomain:', creator.display_name, 'ID:', targetUserId);
+          
+          // Load settings from database using the creator's ID
+          const { data, error } = await supabase
+            .from('users')
+            .select('subdomain, custom_domain, custom_logo_url, primary_color, secondary_color, hide_screenmerch_branding, custom_favicon_url, custom_meta_title, custom_meta_description, personalization_enabled, email')
+            .eq('id', targetUserId)
+            .single();
+          
+          if (data && !error) {
+            console.log('✅ PersonalizationSettings: Loaded settings for subdomain user:', data);
+            setSettings({
+              subdomain: data.subdomain || '',
+              custom_domain: data.custom_domain || '',
+              custom_logo_url: data.custom_logo_url || '',
+              primary_color: data.primary_color || '#667eea',
+              secondary_color: data.secondary_color || '#764ba2',
+              hide_screenmerch_branding: data.hide_screenmerch_branding || false,
+              custom_favicon_url: data.custom_favicon_url || '',
+              custom_meta_title: data.custom_meta_title || '',
+              custom_meta_description: data.custom_meta_description || '',
+              personalization_enabled: data.personalization_enabled || false
+            });
+            setLoading(false);
+            return; // Successfully loaded from subdomain
+          } else {
+            console.error('❌ PersonalizationSettings: Error loading settings for subdomain user:', error);
+          }
+        } else {
+          console.warn('⚠️ PersonalizationSettings: No creator found for subdomain:', currentSubdomain);
+        }
+      }
+      
+      // Fallback: Get logged-in user (if not on subdomain or subdomain lookup failed)
       let user = null;
       let userId = null;
       
@@ -143,59 +188,117 @@ const PersonalizationSettings = () => {
     setMessageType('');
     
     try {
-      // Get user the same way Dashboard does (supports both Google OAuth and Supabase auth)
-      let user = null;
-      let userId = null;
+      // First, check if we're on a subdomain - if so, we need to save to that subdomain's user
+      const currentSubdomain = getSubdomain();
+      let targetUserId = null;
+      let targetUserEmail = null;
       
-      // Check for authenticated user first
-      const isAuthenticated = localStorage.getItem('isAuthenticated');
-      const userData = localStorage.getItem('user');
-      
-      if (isAuthenticated === 'true' && userData) {
-        try {
-          const authenticatedUser = JSON.parse(userData);
-          user = authenticatedUser;
-          userId = authenticatedUser.id;
+      if (currentSubdomain) {
+        console.log('🔍 PersonalizationSettings: Detected subdomain for save:', currentSubdomain);
+        // Get creator data for this subdomain via API
+        const creator = await getCreatorFromSubdomain(currentSubdomain);
+        if (creator && creator.id) {
+          targetUserId = creator.id;
+          console.log('✅ PersonalizationSettings: Will save to subdomain owner:', creator.display_name, 'ID:', targetUserId);
           
-          // If user doesn't have id but has email, look up user in database
-          if (!userId && authenticatedUser.email) {
-            console.log('🔐 PersonalizationSettings: User missing id, looking up by email:', authenticatedUser.email);
+          // Verify the logged-in user owns this subdomain (security check)
+          let loggedInUserId = null;
+          const isAuthenticated = localStorage.getItem('isAuthenticated');
+          const userData = localStorage.getItem('user');
+          
+          if (isAuthenticated === 'true' && userData) {
             try {
-              const { data: profileData, error: lookupError } = await supabase
-                .from('users')
-                .select('id')
-                .eq('email', authenticatedUser.email)
-                .single();
-              
-              if (profileData && profileData.id) {
-                userId = profileData.id;
-                user = { ...user, id: profileData.id };
-                console.log('🔐 PersonalizationSettings: Found user id from database:', userId);
+              const authenticatedUser = JSON.parse(userData);
+              loggedInUserId = authenticatedUser.id;
+              if (!loggedInUserId && authenticatedUser.email) {
+                const { data: profileData } = await supabase
+                  .from('users')
+                  .select('id')
+                  .eq('email', authenticatedUser.email)
+                  .single();
+                if (profileData) loggedInUserId = profileData.id;
               }
-            } catch (lookupErr) {
-              console.error('Error looking up user by email:', lookupErr);
-            }
+            } catch (e) {}
           }
-        } catch (error) {
-          console.error('Error parsing user data:', error);
+          
+          if (!loggedInUserId) {
+            const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+            if (supabaseUser) loggedInUserId = supabaseUser.id;
+          }
+          
+          // Security: Only allow saving if logged-in user owns the subdomain
+          if (loggedInUserId && loggedInUserId !== targetUserId) {
+            console.error('❌ PersonalizationSettings: Logged-in user does not own this subdomain');
+            setMessage('You can only edit settings for your own subdomain. Please log in as the owner of this subdomain.');
+            setMessageType('error');
+            setSaving(false);
+            return;
+          }
+          
+          // Use the subdomain owner's ID for saving
+          userId = targetUserId;
+        } else {
+          console.warn('⚠️ PersonalizationSettings: No creator found for subdomain:', currentSubdomain);
         }
       }
       
-      // Fallback to Supabase auth - this is the most reliable way to get the correct user ID
-      // The auth.uid() must match the users.id for RLS policies to work
-      try {
-        const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser();
-        if (supabaseUser && supabaseUser.id) {
-          // Always use the authenticated user's ID from Supabase auth
-          // This ensures RLS policies work correctly (auth.uid() = id)
-          userId = supabaseUser.id;
-          user = supabaseUser;
-          console.log('🔐 PersonalizationSettings: Using authenticated user ID from Supabase:', userId);
-        } else if (authError) {
-          console.error('Error getting Supabase user:', authError);
+      // If not on subdomain or subdomain lookup failed, get logged-in user
+      if (!userId) {
+        // Get user the same way Dashboard does (supports both Google OAuth and Supabase auth)
+        let user = null;
+        
+        // Check for authenticated user first
+        const isAuthenticated = localStorage.getItem('isAuthenticated');
+        const userData = localStorage.getItem('user');
+        
+        if (isAuthenticated === 'true' && userData) {
+          try {
+            const authenticatedUser = JSON.parse(userData);
+            user = authenticatedUser;
+            userId = authenticatedUser.id;
+            
+            // If user doesn't have id but has email, look up user in database
+            if (!userId && authenticatedUser.email) {
+              console.log('🔐 PersonalizationSettings: User missing id, looking up by email:', authenticatedUser.email);
+              try {
+                const { data: profileData, error: lookupError } = await supabase
+                  .from('users')
+                  .select('id')
+                  .eq('email', authenticatedUser.email)
+                  .single();
+                
+                if (profileData && profileData.id) {
+                  userId = profileData.id;
+                  user = { ...user, id: profileData.id };
+                  console.log('🔐 PersonalizationSettings: Found user id from database:', userId);
+                }
+              } catch (lookupErr) {
+                console.error('Error looking up user by email:', lookupErr);
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing user data:', error);
+          }
         }
-      } catch (error) {
-        console.error('Error getting Supabase user:', error);
+        
+        // Fallback to Supabase auth - this is the most reliable way to get the correct user ID
+        // The auth.uid() must match the users.id for RLS policies to work
+        if (!userId) {
+          try {
+            const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser();
+            if (supabaseUser && supabaseUser.id) {
+              // Always use the authenticated user's ID from Supabase auth
+              // This ensures RLS policies work correctly (auth.uid() = id)
+              userId = supabaseUser.id;
+              user = supabaseUser;
+              console.log('🔐 PersonalizationSettings: Using authenticated user ID from Supabase:', userId);
+            } else if (authError) {
+              console.error('Error getting Supabase user:', authError);
+            }
+          } catch (error) {
+            console.error('Error getting Supabase user:', error);
+          }
+        }
       }
       
       if (!userId) {

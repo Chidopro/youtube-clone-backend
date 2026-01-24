@@ -34,10 +34,11 @@ export const CreatorProvider = ({ children }) => {
         // The creator object from the API already contains all branding settings
         // Use those directly instead of making another Supabase query (which may be blocked by RLS)
         const userData = {
-          custom_logo_url: creator.logo_url,
+          custom_logo_url: creator.custom_logo_url || creator.logo_url,  // Prefer custom_logo_url, fallback to logo_url for backward compatibility
           primary_color: creator.primary_color,
           secondary_color: creator.secondary_color,
           hide_screenmerch_branding: creator.hide_screenmerch_branding,
+          custom_favicon_url: creator.custom_favicon_url,
           custom_meta_title: creator.custom_meta_title,
           custom_meta_description: creator.custom_meta_description,
           display_name: creator.display_name,
