@@ -4,7 +4,7 @@ import './Dashboard.css';
 import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
-import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings';
+import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 
 
 const Dashboard = ({ sidebar }) => {
