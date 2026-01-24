@@ -42,6 +42,61 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     fetchVideos();
   }, [category]);
 
+  // Check if user can edit colors (must be authenticated and own the subdomain)
+  useEffect(() => {
+    const checkEditPermission = async () => {
+      const currentSubdomain = getSubdomain();
+      if (!currentSubdomain || !currentCreator) {
+        console.log('🔒 [HOME] No subdomain or creator:', { currentSubdomain, currentCreator });
+        setCanEdit(false);
+        return;
+      }
+
+      // Get logged-in user
+      let loggedInUserId = null;
+      const isAuthenticated = localStorage.getItem('isAuthenticated');
+      const userData = localStorage.getItem('user');
+
+      if (isAuthenticated === 'true' && userData) {
+        try {
+          const authenticatedUser = JSON.parse(userData);
+          loggedInUserId = authenticatedUser.id;
+          if (!loggedInUserId && authenticatedUser.email) {
+            const { data: profileData } = await supabase
+              .from('users')
+              .select('id')
+              .eq('email', authenticatedUser.email)
+              .single();
+            if (profileData) loggedInUserId = profileData.id;
+          }
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+
+      if (!loggedInUserId) {
+        try {
+          const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+          if (supabaseUser) loggedInUserId = supabaseUser.id;
+        } catch (e) {
+          console.error('Error getting Supabase user:', e);
+        }
+      }
+
+      // Check if logged-in user owns this subdomain
+      const canEditColors = loggedInUserId && currentCreator && loggedInUserId === currentCreator.id;
+      console.log('🔒 [HOME] Edit permission check:', {
+        loggedInUserId,
+        creatorId: currentCreator?.id,
+        canEdit: canEditColors,
+        subdomain: currentSubdomain
+      });
+      setCanEdit(canEditColors);
+    };
+
+    checkEditPermission();
+  }, [currentCreator]);
+
   return (
     <>
       <div className={`container ${sidebar ? "" : " large-container"}`}>
