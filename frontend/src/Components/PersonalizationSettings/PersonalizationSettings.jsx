@@ -188,10 +188,13 @@ const PersonalizationSettings = () => {
     setMessageType('');
     
     try {
+      // Declare userId and user variables at the start
+      let userId = null;
+      let user = null;
+      
       // First, check if we're on a subdomain - if so, we need to save to that subdomain's user
       const currentSubdomain = getSubdomain();
       let targetUserId = null;
-      let targetUserEmail = null;
       
       if (currentSubdomain) {
         console.log('🔍 PersonalizationSettings: Detected subdomain for save:', currentSubdomain);
@@ -302,6 +305,8 @@ const PersonalizationSettings = () => {
       }
       
       if (!userId) {
+        const isAuthenticated = localStorage.getItem('isAuthenticated');
+        const userData = localStorage.getItem('user');
         console.error('🔐 PersonalizationSettings: No user id found. isAuthenticated:', isAuthenticated, 'userData:', userData);
         setMessage('Please log in to save settings');
         setMessageType('error');
