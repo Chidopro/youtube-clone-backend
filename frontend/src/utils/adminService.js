@@ -1,100 +1,159 @@
 import { supabase } from '../supabaseClient.js';
 import { API_CONFIG } from '../config/apiConfig.js';
 
+// Cache for admin status to avoid repeated API calls
+let adminStatusCache = null;
+let adminStatusCacheTime = 0;
+const CACHE_DURATION = 60000; // 1 minute cache
+
 export class AdminService {
+  /**
+   * Get current user info from Supabase auth or localStorage
+   * @returns {Object|null} User object with id and email
+   */
+  static async getCurrentUser() {
+    let user = null;
+    let userEmail = null;
+    let userId = null;
+    
+    // Try Supabase auth first
+    try {
+      const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser();
+      if (supabaseUser && !authError) {
+        user = supabaseUser;
+        userEmail = supabaseUser.email?.toLowerCase().trim();
+        userId = supabaseUser.id;
+      }
+    } catch (authErr) {
+      // No Supabase auth session - this is normal for email/password login
+    }
+    
+    // Fallback to localStorage (for email/password login and Google OAuth)
+    if (!user) {
+      const isAuthenticated = localStorage.getItem('isAuthenticated');
+      const userData = localStorage.getItem('user');
+      
+      if (isAuthenticated === 'true' && userData) {
+        try {
+          user = JSON.parse(userData);
+          userEmail = (user.email || user.user_metadata?.email || user.user?.email)?.toLowerCase().trim();
+          userId = user.id || user.user?.id;
+        } catch (parseErr) {
+          console.error('🔐 AdminService: Error parsing localStorage user:', parseErr);
+        }
+      }
+    }
+    
+    if (!user || (!userEmail && !userId)) {
+      return null;
+    }
+    
+    return { user, userId, userEmail };
+  }
+
+  /**
+   * Check admin status via backend API (bypasses RLS)
+   * @returns {Promise<Object>} Admin status object
+   */
+  static async checkAdminStatus() {
+    // Check cache first
+    const now = Date.now();
+    if (adminStatusCache && (now - adminStatusCacheTime) < CACHE_DURATION) {
+      console.log('🔐 AdminService: Using cached admin status');
+      return adminStatusCache;
+    }
+    
+    const currentUser = await this.getCurrentUser();
+    if (!currentUser) {
+      console.log('🔐 AdminService: No authenticated user found');
+      return {
+        isAdmin: false,
+        isFullAdmin: false,
+        isMasterAdmin: false,
+        isOrderProcessingAdmin: false,
+        adminRole: null
+      };
+    }
+    
+    const { userId, userEmail } = currentUser;
+    console.log('🔐 AdminService: Checking admin status via backend for:', { userId, userEmail });
+    
+    try {
+      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const response = await fetch(`${apiUrl}/api/auth/check-admin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          user_id: userId,
+          email: userEmail
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('🔐 AdminService: Backend check failed with status:', response.status);
+        return {
+          isAdmin: false,
+          isFullAdmin: false,
+          isMasterAdmin: false,
+          isOrderProcessingAdmin: false,
+          adminRole: null
+        };
+      }
+      
+      const result = await response.json();
+      console.log('🔐 AdminService: Backend admin check result:', result);
+      
+      if (result.success) {
+        // Cache the result
+        adminStatusCache = {
+          isAdmin: result.isAdmin || false,
+          isFullAdmin: result.isFullAdmin || false,
+          isMasterAdmin: result.isMasterAdmin || false,
+          isOrderProcessingAdmin: result.isOrderProcessingAdmin || false,
+          adminRole: result.adminRole || null
+        };
+        adminStatusCacheTime = now;
+        return adminStatusCache;
+      }
+      
+      return {
+        isAdmin: false,
+        isFullAdmin: false,
+        isMasterAdmin: false,
+        isOrderProcessingAdmin: false,
+        adminRole: null
+      };
+    } catch (error) {
+      console.error('🔐 AdminService: Error calling backend:', error);
+      return {
+        isAdmin: false,
+        isFullAdmin: false,
+        isMasterAdmin: false,
+        isOrderProcessingAdmin: false,
+        adminRole: null
+      };
+    }
+  }
+
+  /**
+   * Clear the admin status cache (call on login/logout)
+   */
+  static clearCache() {
+    adminStatusCache = null;
+    adminStatusCacheTime = 0;
+    console.log('🔐 AdminService: Cache cleared');
+  }
+
   /**
    * Check if current user is an admin
    * @returns {Promise<boolean>} True if user is admin
    */
   static async isAdmin() {
-    try {
-      // Check Supabase auth first (for email/password login)
-      let user = null;
-      let userEmail = null;
-      let userId = null;
-      
-      try {
-        const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser();
-        if (supabaseUser && !authError) {
-          user = supabaseUser;
-          userEmail = supabaseUser.email?.toLowerCase().trim();
-          userId = supabaseUser.id;
-          console.log('🔐 AdminService: Found Supabase auth user:', { userId, userEmail });
-        }
-      } catch (authErr) {
-        console.log('🔐 AdminService: No Supabase auth session:', authErr);
-      }
-      
-      // Fallback to localStorage (for Google OAuth)
-      if (!user) {
-        const isAuthenticated = localStorage.getItem('isAuthenticated');
-        const userData = localStorage.getItem('user');
-        
-        if (isAuthenticated === 'true' && userData) {
-          try {
-            user = JSON.parse(userData);
-            userEmail = (user.email || user.user_metadata?.email || user.user?.email)?.toLowerCase().trim();
-            userId = user.id || user.user?.id;
-            console.log('🔐 AdminService: Found localStorage user (Google OAuth):', { userId, userEmail });
-          } catch (parseErr) {
-            console.error('🔐 AdminService: Error parsing localStorage user:', parseErr);
-          }
-        }
-      }
-      
-      if (!user) {
-        console.log('🔐 AdminService: No authenticated user found');
-        return false;
-      }
-
-      // Ensure we have email or ID
-      if (!userEmail && !userId) {
-        console.error('🔐 AdminService: No user ID or email found');
-        return false;
-      }
-      
-      console.log('🔐 AdminService: Checking admin for user:', { userId, userEmail });
-
-      // Try querying by ID first, then fallback to email (case-insensitive)
-      let query = supabase.from('users').select('is_admin, admin_role');
-      
-      if (userId) {
-        query = query.eq('id', userId);
-      } else if (userEmail) {
-        // Use case-insensitive email matching
-        query = query.ilike('email', userEmail);
-      }
-
-      const { data, error } = await query.single();
-
-      if (error) {
-        console.error('Error checking admin status:', error);
-        // If query by ID failed, try by email (case-insensitive)
-        if (userId && userEmail) {
-          console.log('🔐 AdminService: Retrying query by email (case-insensitive)');
-          const { data: emailData, error: emailError } = await supabase
-            .from('users')
-            .select('is_admin, admin_role')
-            .ilike('email', userEmail)
-            .single();
-          
-          if (emailError) {
-            console.error('Error checking admin status by email:', emailError);
-            return false;
-          }
-          
-          console.log('🔐 AdminService: Admin check result (by email):', emailData?.is_admin, 'Role:', emailData?.admin_role);
-          return emailData?.is_admin || false;
-        }
-        return false;
-      }
-
-      console.log('🔐 AdminService: Admin check result:', data?.is_admin, 'Role:', data?.admin_role);
-      return data?.is_admin || false;
-    } catch (error) {
-      console.error('Error in isAdmin:', error);
-      return false;
-    }
+    const status = await this.checkAdminStatus();
+    return status.isAdmin;
   }
 
   /**
@@ -102,87 +161,8 @@ export class AdminService {
    * @returns {Promise<boolean>} True if user is master admin
    */
   static async isMasterAdmin() {
-    try {
-      // Check Supabase auth first (for email/password login)
-      let user = null;
-      let userEmail = null;
-      let userId = null;
-      
-      try {
-        const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser();
-        if (supabaseUser && !authError) {
-          user = supabaseUser;
-          userEmail = supabaseUser.email?.toLowerCase().trim();
-          userId = supabaseUser.id;
-        }
-      } catch (authErr) {
-        // No Supabase auth session
-      }
-      
-      // Fallback to localStorage (for Google OAuth)
-      if (!user) {
-        const isAuthenticated = localStorage.getItem('isAuthenticated');
-        const userData = localStorage.getItem('user');
-        
-        if (isAuthenticated === 'true' && userData) {
-          try {
-            user = JSON.parse(userData);
-            userEmail = (user.email || user.user_metadata?.email || user.user?.email)?.toLowerCase().trim();
-            userId = user.id || user.user?.id;
-          } catch (parseErr) {
-            // Error parsing
-          }
-        }
-      }
-      
-      if (!user || (!userEmail && !userId)) {
-        return false;
-      }
-
-      let query = supabase.from('users').select('is_admin, admin_role');
-      
-      if (userId) {
-        query = query.eq('id', userId);
-      } else if (userEmail) {
-        query = query.ilike('email', userEmail);
-      }
-
-      const { data, error } = await query.single();
-
-      if (error) {
-        console.error('❌ Error checking master admin status:', error);
-        // Try by email if ID failed
-        if (userId && userEmail) {
-          const { data: emailData, error: emailError } = await supabase
-            .from('users')
-            .select('is_admin, admin_role')
-            .ilike('email', userEmail)
-            .single();
-          
-          if (emailError) {
-            console.error('❌ Error checking master admin by email:', emailError);
-            return false;
-          }
-          
-          const isMasterAdmin = emailData?.is_admin && emailData?.admin_role === 'master_admin';
-          return isMasterAdmin;
-        }
-        return false;
-      }
-
-      const isMasterAdmin = data?.is_admin && data?.admin_role === 'master_admin';
-      console.log('✅ Master admin check result:', {
-        userId,
-        userEmail,
-        is_admin: data?.is_admin,
-        admin_role: data?.admin_role,
-        isMasterAdmin
-      });
-      return isMasterAdmin;
-    } catch (error) {
-      console.error('Error in isMasterAdmin:', error);
-      return false;
-    }
+    const status = await this.checkAdminStatus();
+    return status.isMasterAdmin;
   }
 
   /**
@@ -190,97 +170,8 @@ export class AdminService {
    * @returns {Promise<boolean>} True if user is full admin
    */
   static async isFullAdmin() {
-    try {
-      // Check Supabase auth first (for email/password login)
-      let user = null;
-      let userEmail = null;
-      let userId = null;
-      
-      try {
-        const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser();
-        if (supabaseUser && !authError) {
-          user = supabaseUser;
-          userEmail = supabaseUser.email?.toLowerCase().trim();
-          userId = supabaseUser.id;
-        }
-      } catch (authErr) {
-        // No Supabase auth session
-      }
-      
-      // Fallback to localStorage (for Google OAuth)
-      if (!user) {
-        const isAuthenticated = localStorage.getItem('isAuthenticated');
-        const userData = localStorage.getItem('user');
-        
-        if (isAuthenticated === 'true' && userData) {
-          try {
-            user = JSON.parse(userData);
-            userEmail = (user.email || user.user_metadata?.email || user.user?.email)?.toLowerCase().trim();
-            userId = user.id || user.user?.id;
-          } catch (parseErr) {
-            // Error parsing
-          }
-        }
-      }
-      
-      if (!user || (!userEmail && !userId)) {
-        return false;
-      }
-
-      let query = supabase.from('users').select('is_admin, admin_role');
-      
-      if (userId) {
-        query = query.eq('id', userId);
-      } else if (userEmail) {
-        query = query.ilike('email', userEmail);
-      }
-
-      const { data, error } = await query.single();
-
-      if (error) {
-        console.error('❌ Error checking full admin status:', error);
-        console.log('🔍 Retrying with email query...', { userId, userEmail });
-        // Try by email if ID failed
-        if (userId && userEmail) {
-          const { data: emailData, error: emailError } = await supabase
-            .from('users')
-            .select('is_admin, admin_role')
-            .ilike('email', userEmail)
-            .single();
-          
-          if (emailError) {
-            console.error('❌ Error checking full admin by email:', emailError);
-            return false;
-          }
-          
-          console.log('✅ Full admin check (by email):', {
-            email: userEmail,
-            is_admin: emailData?.is_admin,
-            admin_role: emailData?.admin_role,
-            result: emailData?.is_admin && (emailData?.admin_role === 'admin' || emailData?.admin_role === null)
-          });
-          
-          // Only Master Admin has full access now
-          const isFullAdmin = emailData?.is_admin && emailData?.admin_role === 'master_admin';
-          return isFullAdmin;
-        }
-        return false;
-      }
-
-      // Full admin: is_admin = true AND admin_role = 'master_admin' (only Master Admin has full access now)
-      const isFullAdmin = data?.is_admin && data?.admin_role === 'master_admin';
-      console.log('✅ Full admin check result:', {
-        userId,
-        userEmail,
-        is_admin: data?.is_admin,
-        admin_role: data?.admin_role,
-        isFullAdmin
-      });
-      return isFullAdmin;
-    } catch (error) {
-      console.error('Error in isFullAdmin:', error);
-      return false;
-    }
+    const status = await this.checkAdminStatus();
+    return status.isFullAdmin;
   }
 
   /**
@@ -288,91 +179,8 @@ export class AdminService {
    * @returns {Promise<boolean>} True if user can manage order processing
    */
   static async isOrderProcessingAdmin() {
-    try {
-      // Check Supabase auth first (for email/password login)
-      let user = null;
-      let userEmail = null;
-      let userId = null;
-      
-      try {
-        const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser();
-        if (supabaseUser && !authError) {
-          user = supabaseUser;
-          userEmail = supabaseUser.email?.toLowerCase().trim();
-          userId = supabaseUser.id;
-        }
-      } catch (authErr) {
-        // No Supabase auth session
-      }
-      
-      // Fallback to localStorage (for Google OAuth)
-      if (!user) {
-        const isAuthenticated = localStorage.getItem('isAuthenticated');
-        const userData = localStorage.getItem('user');
-        
-        if (isAuthenticated === 'true' && userData) {
-          try {
-            user = JSON.parse(userData);
-            userEmail = (user.email || user.user_metadata?.email || user.user?.email)?.toLowerCase().trim();
-            userId = user.id || user.user?.id;
-          } catch (parseErr) {
-            // Error parsing
-          }
-        }
-      }
-      
-      if (!user || (!userEmail && !userId)) {
-        return false;
-      }
-
-      let query = supabase.from('users').select('is_admin, admin_role');
-      
-      if (userId) {
-        query = query.eq('id', userId);
-      } else if (userEmail) {
-        query = query.ilike('email', userEmail);
-      }
-
-      const { data, error } = await query.single();
-
-      if (error) {
-        console.error('Error checking order processing admin status:', error);
-        // Try by email if ID failed
-        if (userId && userEmail) {
-          const { data: emailData, error: emailError } = await supabase
-            .from('users')
-            .select('is_admin, admin_role')
-            .ilike('email', userEmail)
-            .single();
-          
-          if (emailError) {
-            return false;
-          }
-          
-          const isOrderProcessingAdmin = emailData?.is_admin && (
-            emailData?.admin_role === 'order_processing_admin' || 
-            emailData?.admin_role === 'admin' ||
-            emailData?.admin_role === 'master_admin' ||
-            emailData?.admin_role === null
-          );
-          return isOrderProcessingAdmin;
-        }
-        return false;
-      }
-
-      // Order processing admin: is_admin = true AND (admin_role = 'order_processing_admin' OR admin_role = 'admin' OR admin_role = 'master_admin')
-      const isOrderProcessingAdmin = data?.is_admin && (
-        data?.admin_role === 'order_processing_admin' || 
-        data?.admin_role === 'admin' ||
-        data?.admin_role === 'master_admin' ||
-        data?.admin_role === null // Backward compatibility: treat null as full admin
-      );
-      console.log('🔐 AdminService: Order processing admin check result:', isOrderProcessingAdmin);
-      return isOrderProcessingAdmin;
-    } catch (error) {
-      console.error('Error in isOrderProcessingAdmin:', error);
-      return false;
-    }
+    const status = await this.checkAdminStatus();
+    return status.isOrderProcessingAdmin;
   }
 
   /**

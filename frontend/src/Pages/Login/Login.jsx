@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
 import { supabase } from '../../supabaseClient';
+import { AdminService } from '../../utils/adminService';
 import './Login.css';
 
 // Helper function to check if we're on a subdomain
@@ -273,6 +274,9 @@ const Login = () => {
       if (returnTo === 'subscription-success') {
         localStorage.setItem('justLoggedIn', 'true');
       }
+
+      // Clear admin cache to ensure fresh admin status is fetched after login
+      AdminService.clearCache();
 
       // Dispatch custom event to notify Navbar and other components of login
       // CRITICAL: Use the full user object from localStorage (which includes database profile data)

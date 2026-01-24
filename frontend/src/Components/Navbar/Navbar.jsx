@@ -539,6 +539,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
             localStorage.removeItem('pending_creator_email');
             localStorage.removeItem('pending_creator_location');
 
+            // Clear admin status cache
+            AdminService.clearCache();
+
             // Clear Supabase session
             await supabase.auth.signOut();
 

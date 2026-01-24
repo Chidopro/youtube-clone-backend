@@ -6437,6 +6437,97 @@ def auth_login():
         response = _allow_origin(response)
         return response, 500
 
+
+@app.route("/api/auth/check-admin", methods=["POST", "OPTIONS"])
+@app.route("/api/auth/check-admin/", methods=["POST", "OPTIONS"])
+def auth_check_admin():
+    """Check if a user has admin privileges - bypasses RLS using service role"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response = _allow_origin(response)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        data = _data_from_request()
+        user_id = data.get("user_id")
+        user_email = (data.get("email") or "").strip().lower()
+        
+        if not user_id and not user_email:
+            response = jsonify({"success": False, "error": "user_id or email is required"})
+            return _allow_origin(response), 400
+        
+        logger.info(f"🔐 [CHECK-ADMIN] Checking admin status for user_id={user_id}, email={user_email}")
+        
+        # Use admin client to bypass RLS
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            logger.error("❌ [CHECK-ADMIN] Supabase client not initialized")
+            response = jsonify({"success": False, "error": "Database service unavailable"})
+            return _allow_origin(response), 500
+        
+        # Query by ID first, then fallback to email
+        user_data = None
+        if user_id:
+            result = client.table('users').select('id, email, is_admin, admin_role').eq('id', user_id).execute()
+            if result.data:
+                user_data = result.data[0]
+                logger.info(f"🔐 [CHECK-ADMIN] Found user by ID: {user_id}")
+        
+        # Fallback to email if ID lookup failed
+        if not user_data and user_email:
+            result = client.table('users').select('id, email, is_admin, admin_role').ilike('email', user_email).execute()
+            if result.data:
+                user_data = result.data[0]
+                logger.info(f"🔐 [CHECK-ADMIN] Found user by email: {user_email}")
+        
+        if not user_data:
+            logger.warning(f"⚠️ [CHECK-ADMIN] User not found: user_id={user_id}, email={user_email}")
+            response = jsonify({
+                "success": True,
+                "isAdmin": False,
+                "isFullAdmin": False,
+                "isMasterAdmin": False,
+                "isOrderProcessingAdmin": False,
+                "adminRole": None
+            })
+            return _allow_origin(response), 200
+        
+        is_admin = user_data.get('is_admin', False) or False
+        admin_role = user_data.get('admin_role')
+        
+        # Calculate admin types based on role
+        is_master_admin = is_admin and admin_role == 'master_admin'
+        is_full_admin = is_admin and admin_role == 'master_admin'  # Only master_admin has full access
+        is_order_processing_admin = is_admin and (
+            admin_role == 'order_processing_admin' or 
+            admin_role == 'admin' or 
+            admin_role == 'master_admin' or 
+            admin_role is None  # Backward compatibility
+        )
+        
+        logger.info(f"✅ [CHECK-ADMIN] Admin check result: is_admin={is_admin}, admin_role={admin_role}, "
+                   f"isMasterAdmin={is_master_admin}, isFullAdmin={is_full_admin}, isOrderProcessingAdmin={is_order_processing_admin}")
+        
+        response = jsonify({
+            "success": True,
+            "isAdmin": is_admin,
+            "isFullAdmin": is_full_admin,
+            "isMasterAdmin": is_master_admin,
+            "isOrderProcessingAdmin": is_order_processing_admin,
+            "adminRole": admin_role
+        })
+        return _allow_origin(response), 200
+        
+    except Exception as e:
+        logger.error(f"❌ [CHECK-ADMIN] Error: {str(e)}")
+        import traceback
+        logger.error(f"❌ [CHECK-ADMIN] Traceback: {traceback.format_exc()}")
+        response = jsonify({"success": False, "error": "Internal server error"})
+        return _allow_origin(response), 500
+
+
 @app.route("/api/auth/signup", methods=["POST", "OPTIONS"])
 @app.route("/api/auth/signup/", methods=["POST", "OPTIONS"])
 def auth_signup():
