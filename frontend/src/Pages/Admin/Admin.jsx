@@ -5,6 +5,143 @@ import { AdminService } from '../../utils/adminService';
 import { getPrintAreaDimensions } from '../../config/printAreaConfig';
 import './Admin.css';
 
+// SubdomainRow component for rendering subdomain table rows
+const SubdomainRow = ({ 
+  subdomain, 
+  editingSubdomain, 
+  editSubdomainValue, 
+  onEditClick, 
+  onEditChange, 
+  onEditCancel, 
+  onEditSave, 
+  onValidate 
+}) => {
+  const isEditing = editingSubdomain === subdomain.user_id;
+  const [validating, setValidating] = useState(false);
+
+  const handleValidate = async () => {
+    setValidating(true);
+    try {
+      await onValidate(subdomain.subdomain);
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  return (
+    <tr>
+      <td>{subdomain.display_name || 'N/A'}</td>
+      <td>{subdomain.email}</td>
+      <td>
+        {isEditing ? (
+          <input
+            type="text"
+            value={editSubdomainValue}
+            onChange={(e) => onEditChange(e.target.value)}
+            style={{
+              padding: '5px',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              width: '150px'
+            }}
+            placeholder="subdomain"
+          />
+        ) : (
+          <strong>{subdomain.subdomain}</strong>
+        )}
+      </td>
+      <td>
+        <a 
+          href={subdomain.subdomain_url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ color: '#667eea', textDecoration: 'none' }}
+        >
+          {subdomain.subdomain_url}
+        </a>
+      </td>
+      <td>
+        <span style={{
+          padding: '4px 8px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          backgroundColor: subdomain.status === 'active' ? '#d4edda' : '#f8d7da',
+          color: subdomain.status === 'active' ? '#155724' : '#721c24'
+        }}>
+          {subdomain.status?.toUpperCase() || 'N/A'}
+        </span>
+      </td>
+      <td>
+        <button
+          onClick={handleValidate}
+          disabled={validating}
+          style={{
+            padding: '5px 10px',
+            fontSize: '12px',
+            backgroundColor: '#667eea',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: validating ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {validating ? 'Checking...' : '🔍 Validate'}
+        </button>
+      </td>
+      <td>{subdomain.created_at ? new Date(subdomain.created_at).toLocaleDateString() : 'N/A'}</td>
+      <td>
+        {isEditing ? (
+          <div style={{ display: 'flex', gap: '5px' }}>
+            <button
+              onClick={() => onEditSave(subdomain.user_id, editSubdomainValue)}
+              style={{
+                padding: '5px 10px',
+                fontSize: '12px',
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              ✓ Save
+            </button>
+            <button
+              onClick={onEditCancel}
+              style={{
+                padding: '5px 10px',
+                fontSize: '12px',
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              ✕ Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => onEditClick(subdomain)}
+            style={{
+              padding: '5px 10px',
+              fontSize: '12px',
+              backgroundColor: '#667eea',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            ✏️ Edit
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+};
+
 const Admin = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -31,6 +168,11 @@ const Admin = () => {
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [adminSignupRequests, setAdminSignupRequests] = useState([]);
   const [allAdmins, setAllAdmins] = useState([]);
+  const [subdomains, setSubdomains] = useState([]);
+  const [subdomainSearchTerm, setSubdomainSearchTerm] = useState('');
+  const [subdomainLoading, setSubdomainLoading] = useState(false);
+  const [editingSubdomain, setEditingSubdomain] = useState(null);
+  const [editSubdomainValue, setEditSubdomainValue] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedCartItemIndex, setSelectedCartItemIndex] = useState(null); // Track which cart item is being processed
   const [step1Processing, setStep1Processing] = useState(false);
@@ -94,6 +236,14 @@ const Admin = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, activeTab, queueStatusFilter, isMasterAdmin]);
+
+  // Reload subdomain management data when tab changes
+  useEffect(() => {
+    if (isMasterAdmin && activeTab === 'subdomain-management') {
+      loadSubdomains();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMasterAdmin, activeTab]);
 
   // Reload admin management data when tab changes
   useEffect(() => {
@@ -329,6 +479,18 @@ const Admin = () => {
       setWorkers(data);
     } catch (error) {
       console.error('Error loading workers:', error);
+    }
+  };
+
+  const loadSubdomains = async () => {
+    try {
+      setSubdomainLoading(true);
+      const data = await AdminService.getSubdomains();
+      setSubdomains(data);
+    } catch (error) {
+      console.error('Error loading subdomains:', error);
+    } finally {
+      setSubdomainLoading(false);
     }
   };
 
@@ -1056,6 +1218,14 @@ const Admin = () => {
               onClick={() => setActiveTab('admin-management')}
             >
               👥 Admin Management
+            </button>
+          )}
+          {isMasterAdmin && (
+            <button 
+              className={`admin-tab ${activeTab === 'subdomain-management' ? 'active' : ''}`}
+              onClick={() => setActiveTab('subdomain-management')}
+            >
+              🌐 Subdomain Management
             </button>
           )}
           {isFullAdmin && (
@@ -1945,6 +2115,114 @@ const Admin = () => {
                 <p style={{ marginTop: '15px', fontWeight: 'bold' }}>
                   Admin Signup Page: <a href="/admin-signup" target="_blank" rel="noopener noreferrer">/admin-signup</a>
                 </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'subdomain-management' && isMasterAdmin && (
+            <div className="admin-subdomain-management">
+              <h3>🌐 Subdomain Management</h3>
+              <p>View and manage creator subdomains. Track which subdomain is associated with each creator page.</p>
+
+              <div className="admin-section" style={{ marginTop: '30px' }}>
+                <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    placeholder="Search by creator name, email, or subdomain..."
+                    value={subdomainSearchTerm}
+                    onChange={(e) => setSubdomainSearchTerm(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <button
+                    onClick={loadSubdomains}
+                    disabled={subdomainLoading}
+                    className="admin-btn"
+                    style={{ padding: '10px 20px' }}
+                  >
+                    {subdomainLoading ? 'Loading...' : '🔄 Refresh'}
+                  </button>
+                </div>
+
+                {subdomainLoading ? (
+                  <p>Loading subdomains...</p>
+                ) : subdomains.length === 0 ? (
+                  <p>No subdomains found.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="admin-table" style={{ width: '100%', marginTop: '20px' }}>
+                      <thead>
+                        <tr>
+                          <th>Creator</th>
+                          <th>Email</th>
+                          <th>Subdomain</th>
+                          <th>Subdomain URL</th>
+                          <th>Status</th>
+                          <th>Validation</th>
+                          <th>Created</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subdomains
+                          .filter(sub => {
+                            if (!subdomainSearchTerm) return true;
+                            const search = subdomainSearchTerm.toLowerCase();
+                            return (
+                              (sub.display_name && sub.display_name.toLowerCase().includes(search)) ||
+                              (sub.email && sub.email.toLowerCase().includes(search)) ||
+                              (sub.subdomain && sub.subdomain.toLowerCase().includes(search))
+                            );
+                          })
+                          .map((sub) => (
+                            <SubdomainRow
+                              key={sub.user_id}
+                              subdomain={sub}
+                              editingSubdomain={editingSubdomain}
+                              editSubdomainValue={editSubdomainValue}
+                              onEditClick={(subdomain) => {
+                                setEditingSubdomain(subdomain.user_id);
+                                setEditSubdomainValue(subdomain.subdomain);
+                              }}
+                              onEditChange={(value) => setEditSubdomainValue(value)}
+                              onEditCancel={() => {
+                                setEditingSubdomain(null);
+                                setEditSubdomainValue('');
+                              }}
+                              onEditSave={async (userId, newSubdomain) => {
+                                const result = await AdminService.updateSubdomain(userId, newSubdomain);
+                                if (result.success) {
+                                  alert(result.message || 'Subdomain updated successfully!');
+                                  setEditingSubdomain(null);
+                                  setEditSubdomainValue('');
+                                  loadSubdomains();
+                                } else {
+                                  alert(`Error: ${result.error}`);
+                                }
+                              }}
+                              onValidate={async (subdomain) => {
+                                const result = await AdminService.validateSubdomain(subdomain);
+                                if (result.success) {
+                                  if (result.is_accessible) {
+                                    alert(`✅ Subdomain is accessible! Status: ${result.status_code || 'OK'}`);
+                                  } else {
+                                    alert(`❌ Subdomain is not accessible. ${result.error || 'Check DNS configuration.'}`);
+                                  }
+                                } else {
+                                  alert(`Error validating subdomain: ${result.error}`);
+                                }
+                              }}
+                            />
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}

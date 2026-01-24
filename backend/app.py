@@ -6528,6 +6528,214 @@ def auth_check_admin():
         return _allow_origin(response), 500
 
 
+@app.route("/api/admin/subdomains", methods=["GET", "OPTIONS"])
+@app.route("/api/admin/subdomains/", methods=["GET", "OPTIONS"])
+def admin_get_subdomains():
+    """Get all subdomains with creator info - Master Admin only"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response = _allow_origin(response)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        # Get admin email from header or request
+        admin_email = request.headers.get('X-User-Email') or request.args.get('email')
+        if not admin_email:
+            response = jsonify({"success": False, "error": "Admin email required"})
+            return _allow_origin(response), 401
+        
+        # Verify master admin
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            response = jsonify({"success": False, "error": "Database service unavailable"})
+            return _allow_origin(response), 500
+        
+        admin_result = client.table('users').select('is_admin, admin_role').ilike('email', admin_email).execute()
+        if not admin_result.data or len(admin_result.data) == 0:
+            response = jsonify({"success": False, "error": "Admin not found"})
+            return _allow_origin(response), 403
+        
+        admin_user = admin_result.data[0]
+        if not admin_user.get('is_admin') or admin_user.get('admin_role') != 'master_admin':
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            return _allow_origin(response), 403
+        
+        # Get all users with subdomains
+        result = client.table('users').select(
+            'id, email, display_name, subdomain, role, status, created_at, updated_at, personalization_enabled'
+        ).not_.is_('subdomain', 'null').order('created_at', desc=True).execute()
+        
+        subdomains = []
+        for user in result.data:
+            subdomain = user.get('subdomain')
+            if subdomain:
+                subdomains.append({
+                    'user_id': user.get('id'),
+                    'email': user.get('email'),
+                    'display_name': user.get('display_name'),
+                    'subdomain': subdomain,
+                    'subdomain_url': f'https://{subdomain}.screenmerch.com',
+                    'role': user.get('role'),
+                    'status': user.get('status'),
+                    'personalization_enabled': user.get('personalization_enabled', False),
+                    'created_at': user.get('created_at'),
+                    'updated_at': user.get('updated_at')
+                })
+        
+        logger.info(f"✅ [SUBDOMAIN-MGMT] Retrieved {len(subdomains)} subdomains")
+        response = jsonify({"success": True, "subdomains": subdomains})
+        return _allow_origin(response), 200
+        
+    except Exception as e:
+        logger.error(f"❌ [SUBDOMAIN-MGMT] Error: {str(e)}")
+        import traceback
+        logger.error(f"❌ [SUBDOMAIN-MGMT] Traceback: {traceback.format_exc()}")
+        response = jsonify({"success": False, "error": "Internal server error"})
+        return _allow_origin(response), 500
+
+
+@app.route("/api/admin/subdomains/<user_id>", methods=["PUT", "OPTIONS"])
+@app.route("/api/admin/subdomains/<user_id>/", methods=["PUT", "OPTIONS"])
+def admin_update_subdomain(user_id):
+    """Update subdomain for a user - Master Admin only"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response = _allow_origin(response)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        # Get admin email from header or request
+        admin_email = request.headers.get('X-User-Email') or request.json.get('admin_email')
+        if not admin_email:
+            response = jsonify({"success": False, "error": "Admin email required"})
+            return _allow_origin(response), 401
+        
+        # Verify master admin
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            response = jsonify({"success": False, "error": "Database service unavailable"})
+            return _allow_origin(response), 500
+        
+        admin_result = client.table('users').select('is_admin, admin_role').ilike('email', admin_email).execute()
+        if not admin_result.data or len(admin_result.data) == 0:
+            response = jsonify({"success": False, "error": "Admin not found"})
+            return _allow_origin(response), 403
+        
+        admin_user = admin_result.data[0]
+        if not admin_user.get('is_admin') or admin_user.get('admin_role') != 'master_admin':
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            return _allow_origin(response), 403
+        
+        # Get new subdomain from request
+        data = _data_from_request()
+        new_subdomain = (data.get('subdomain') or '').strip().lower()
+        
+        # Validate subdomain format
+        if new_subdomain:
+            # Basic validation: 3-63 chars, lowercase alphanumeric with hyphens
+            import re
+            if not re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', new_subdomain):
+                response = jsonify({"success": False, "error": "Invalid subdomain format. Must be 3-63 lowercase alphanumeric characters with hyphens."})
+                return _allow_origin(response), 400
+            
+            if len(new_subdomain) < 3 or len(new_subdomain) > 63:
+                response = jsonify({"success": False, "error": "Subdomain must be between 3 and 63 characters"})
+                return _allow_origin(response), 400
+            
+            # Check if subdomain is already taken
+            existing = client.table('users').select('id, email').eq('subdomain', new_subdomain).execute()
+            if existing.data and len(existing.data) > 0:
+                existing_user = existing.data[0]
+                if existing_user.get('id') != user_id:
+                    response = jsonify({"success": False, "error": f"Subdomain '{new_subdomain}' is already taken by {existing_user.get('email')}"})
+                    return _allow_origin(response), 400
+        
+        # Update user subdomain
+        # Note: updated_at is typically handled by database triggers
+        update_data = {'subdomain': new_subdomain if new_subdomain else None}
+        result = client.table('users').update(update_data).eq('id', user_id).execute()
+        
+        if not result.data or len(result.data) == 0:
+            response = jsonify({"success": False, "error": "User not found"})
+            return _allow_origin(response), 404
+        
+        logger.info(f"✅ [SUBDOMAIN-MGMT] Updated subdomain for user {user_id} to '{new_subdomain}'")
+        response = jsonify({
+            "success": True,
+            "user": result.data[0],
+            "message": f"Subdomain updated to '{new_subdomain}'" if new_subdomain else "Subdomain removed"
+        })
+        return _allow_origin(response), 200
+        
+    except Exception as e:
+        logger.error(f"❌ [SUBDOMAIN-MGMT] Error: {str(e)}")
+        import traceback
+        logger.error(f"❌ [SUBDOMAIN-MGMT] Traceback: {traceback.format_exc()}")
+        response = jsonify({"success": False, "error": "Internal server error"})
+        return _allow_origin(response), 500
+
+
+@app.route("/api/admin/subdomains/validate", methods=["POST", "OPTIONS"])
+@app.route("/api/admin/subdomains/validate/", methods=["POST", "OPTIONS"])
+def admin_validate_subdomain():
+    """Validate if a subdomain is accessible - Master Admin only"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        response = _allow_origin(response)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+    
+    try:
+        data = _data_from_request()
+        subdomain = (data.get('subdomain') or '').strip().lower()
+        
+        if not subdomain:
+            response = jsonify({"success": False, "error": "Subdomain required"})
+            return _allow_origin(response), 400
+        
+        # Check if subdomain is accessible by making a HEAD request
+        subdomain_url = f'https://{subdomain}.screenmerch.com'
+        is_accessible = False
+        status_code = None
+        error_message = None
+        
+        try:
+            import requests
+            response_check = requests.head(subdomain_url, timeout=5, allow_redirects=True)
+            status_code = response_check.status_code
+            is_accessible = status_code < 500  # Consider 2xx, 3xx, 4xx as accessible (4xx might be expected)
+        except requests.exceptions.Timeout:
+            error_message = "Timeout checking subdomain"
+        except requests.exceptions.ConnectionError:
+            error_message = "Connection error - subdomain may not be configured"
+        except Exception as e:
+            error_message = str(e)
+        
+        logger.info(f"🔍 [SUBDOMAIN-VALIDATE] Subdomain '{subdomain}': accessible={is_accessible}, status={status_code}, error={error_message}")
+        
+        response = jsonify({
+            "success": True,
+            "subdomain": subdomain,
+            "url": subdomain_url,
+            "is_accessible": is_accessible,
+            "status_code": status_code,
+            "error": error_message
+        })
+        return _allow_origin(response), 200
+        
+    except Exception as e:
+        logger.error(f"❌ [SUBDOMAIN-VALIDATE] Error: {str(e)}")
+        import traceback
+        logger.error(f"❌ [SUBDOMAIN-VALIDATE] Traceback: {traceback.format_exc()}")
+        response = jsonify({"success": False, "error": "Internal server error"})
+        return _allow_origin(response), 500
+
+
 @app.route("/api/auth/signup", methods=["POST", "OPTIONS"])
 @app.route("/api/auth/signup/", methods=["POST", "OPTIONS"])
 def auth_signup():

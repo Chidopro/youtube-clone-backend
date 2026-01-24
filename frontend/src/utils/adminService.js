@@ -1424,6 +1424,112 @@ export class AdminService {
   }
 
   /**
+   * Get all subdomains with creator info (master admin only)
+   * @returns {Promise<Array>} Array of subdomain objects
+   */
+  static async getSubdomains() {
+    try {
+      const userEmail = await this.getCurrentUserEmail();
+      if (!userEmail) {
+        return [];
+      }
+      
+      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const response = await fetch(`${apiUrl}/api/admin/subdomains`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': userEmail
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      if (result.success) {
+        return result.subdomains || [];
+      } else {
+        throw new Error(result.error || 'Failed to fetch subdomains');
+      }
+    } catch (error) {
+      console.error('Error fetching subdomains:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Update subdomain for a user (master admin only)
+   * @param {string} userId - User ID
+   * @param {string} subdomain - New subdomain (or empty string to remove)
+   * @returns {Promise<Object>} Result object
+   */
+  static async updateSubdomain(userId, subdomain) {
+    try {
+      const userEmail = await this.getCurrentUserEmail();
+      if (!userEmail) {
+        return { success: false, error: 'Not authenticated' };
+      }
+      
+      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const response = await fetch(`${apiUrl}/api/admin/subdomains/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': userEmail
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          subdomain: subdomain.trim().toLowerCase(),
+          admin_email: userEmail
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error updating subdomain:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Validate if a subdomain is accessible
+   * @param {string} subdomain - Subdomain to validate
+   * @returns {Promise<Object>} Validation result
+   */
+  static async validateSubdomain(subdomain) {
+    try {
+      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const response = await fetch(`${apiUrl}/api/admin/subdomains/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ subdomain: subdomain.trim().toLowerCase() })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error validating subdomain:', error);
+      return { success: false, is_accessible: false, error: error.message };
+    }
+  }
+
+  /**
    * Delete order from processing queue (master admin only)
    * @param {string} queueId - Queue item ID
    * @returns {Promise<Object>} Result object
