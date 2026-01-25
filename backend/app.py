@@ -103,20 +103,30 @@ def admin_required(f):
         if user_email:
             try:
                 user_email = user_email.strip().lower()
-                # Check if user is admin in database
-                result = supabase.table('users').select('role, email').eq('email', user_email).execute()
+                # Use admin client to bypass RLS for checking admin status
+                client = supabase_admin if supabase_admin else supabase
+                # Check if user is admin in database - check both is_admin and admin_role fields
+                result = client.table('users').select('is_admin, admin_role, role, email').eq('email', user_email).execute()
                 if result.data and len(result.data) > 0:
                     user = result.data[0]
-                    if user.get('role') == 'admin':
-                        logger.info(f"✅ Admin access granted via email: {user_email}")
+                    # Check for is_admin flag and admin_role (new system)
+                    is_admin = user.get('is_admin', False)
+                    admin_role = user.get('admin_role')
+                    # Also check legacy role == 'admin' for backward compatibility
+                    role = user.get('role')
+                    
+                    if is_admin or (role == 'admin') or (admin_role in ['master_admin', 'admin', 'order_processing_admin']):
+                        logger.info(f"✅ Admin access granted via email: {user_email} (is_admin={is_admin}, admin_role={admin_role}, role={role})")
                         return f(*args, **kwargs)
+                    
                     # Also check allowed emails list
                     allowed_emails = [
                         'chidopro@proton.me',
                         'alancraigdigital@gmail.com', 
                         'digitalavatartutorial@gmail.com',
                         'admin@screenmerch.com',
-                        'filialsons@gmail.com'  # Add current user
+                        'filialsons@gmail.com',
+                        'driveralan1@yahoo.com'  # Master admin email
                     ]
                     if user_email in allowed_emails:
                         logger.info(f"✅ Admin access granted via allowed email: {user_email}")
