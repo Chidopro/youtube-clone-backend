@@ -594,6 +594,12 @@ def add_cors_headers(response):
                 origin_allowed = True
                 break
         
+        # Also check if it's a subdomain of screenmerch.com (e.g., testcreator.screenmerch.com)
+        if not origin_allowed and origin:
+            if origin.endswith('.screenmerch.com') and origin.startswith('https://'):
+                origin_allowed = True
+                logger.info(f"🔍 [MIDDLEWARE] {request.path} - Allowing subdomain origin: {origin}")
+        
         # Use assignment instead of .add() to avoid duplicates
         if origin_allowed:
             response.headers['Access-Control-Allow-Origin'] = origin
@@ -1861,19 +1867,15 @@ def simple_merchandise_page(product_id):
 
 @app.route("/api/create-product", methods=["POST", "OPTIONS"])
 def create_product():
-    print("🔍 CREATE-PRODUCT ENDPOINT CALLED")
-    print(f"🔍 Request method: {request.method}")
-    print(f"🔍 Request headers: {dict(request.headers)}")
-    print(f"🔍 Request origin: {request.headers.get('Origin')}")
-    
     if request.method == "OPTIONS":
-        print("🔍 Handling OPTIONS preflight request")
-        return jsonify({"success": True})
+        response = jsonify({"success": True})
+        return _allow_origin(response)
 
     try:
         data = request.get_json()
         if not data:
-            return jsonify(success=False, error="No data received"), 400
+            response = jsonify(success=False, error="No data received")
+            return _allow_origin(response), 400
 
         product_id = str(uuid.uuid4())
         thumbnail = data.get("thumbnail", "")
@@ -1947,16 +1949,18 @@ def create_product():
         if is_authenticated and user_email:
             merchandise_url += f"?authenticated=true&email={user_email}"
         
-        return jsonify({
+        response = jsonify({
             "success": True,
             "product_id": product_id,
             "product_url": merchandise_url
         })
+        return _allow_origin(response), 200
     except Exception as e:
         logger.error(f"❌ Error in create-product: {str(e)}")
         logger.error(f"❌ Error type: {type(e).__name__}")
         logger.error(f"❌ Full error details: {repr(e)}")
-        return jsonify(success=False, error="Internal server error"), 500
+        response = jsonify(success=False, error="Internal server error")
+        return _allow_origin(response), 500
 
 @app.route("/product-new/<product_id>")
 def show_product_page_new(product_id):
