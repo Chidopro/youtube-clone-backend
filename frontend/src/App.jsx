@@ -191,6 +191,7 @@ const App = () => {
                 <Route path="/subscription-tiers" element={<SubscriptionTiers />} />
                 <Route path="/subscription-success" element={<SubscriptionSuccess />} />
                 <Route path="/success" element={<OrderSuccess />} />
+                <Route path="/order-success" element={<OrderSuccess />} />
                 <Route path="/coming-soon" element={<ComingSoon />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/auth" element={<AuthForm />} />
