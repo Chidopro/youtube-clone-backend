@@ -97,23 +97,42 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     checkEditPermission();
   }, [currentCreator]);
 
-  // Apply colors from creatorSettings when they change
+  // Apply colors from creatorSettings when they change or on mount
   useEffect(() => {
-    if (creatorSettings?.primary_color && creatorSettings?.secondary_color) {
-      const progressBar = document.querySelector('.user-flow-section');
-      if (progressBar) {
-        // Use setProperty with important flag to override CSS !important rules
-        progressBar.style.setProperty(
-          'background', 
-          `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)`, 
-          'important'
-        );
-        console.log('🎨 [HOME] Applied colors from creatorSettings:', {
-          primary: creatorSettings.primary_color,
-          secondary: creatorSettings.secondary_color
-        });
+    const applyColors = () => {
+      if (creatorSettings?.primary_color && creatorSettings?.secondary_color) {
+        // Wait a bit to ensure DOM is ready
+        setTimeout(() => {
+          const progressBar = document.querySelector('.user-flow-section');
+          if (progressBar) {
+            // Use setProperty with important flag to override CSS !important rules
+            progressBar.style.setProperty(
+              'background', 
+              `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)`, 
+              'important'
+            );
+            console.log('🎨 [HOME] Applied colors from creatorSettings:', {
+              primary: creatorSettings.primary_color,
+              secondary: creatorSettings.secondary_color
+            });
+          }
+        }, 100);
       }
-    }
+    };
+
+    // Apply immediately
+    applyColors();
+
+    // Also listen for creatorSettingsUpdated event to re-apply after refresh
+    const handleSettingsUpdate = () => {
+      setTimeout(applyColors, 200);
+    };
+    
+    window.addEventListener('creatorSettingsUpdated', handleSettingsUpdate);
+    
+    return () => {
+      window.removeEventListener('creatorSettingsUpdated', handleSettingsUpdate);
+    };
   }, [creatorSettings?.primary_color, creatorSettings?.secondary_color]);
 
   return (
@@ -177,16 +196,14 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           currentPrimaryColor={creatorSettings?.primary_color}
           currentSecondaryColor={creatorSettings?.secondary_color}
           onSave={async (primary, secondary) => {
-            // Wait for CreatorContext to refresh
+            // Wait for database to update, then refresh CreatorContext
             setTimeout(() => {
-              // Force refresh of creator settings
-              const { refreshCreator } = useCreator();
               if (refreshCreator) {
                 refreshCreator();
               }
-              // Also update local state to force re-render
+              // Also trigger the event for other listeners
               window.dispatchEvent(new CustomEvent('creatorSettingsUpdated'));
-            }, 500);
+            }, 800);
           }}
         />
 
