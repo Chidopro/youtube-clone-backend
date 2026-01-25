@@ -36,6 +36,11 @@ const Admin = () => {
   const [subdomainLoading, setSubdomainLoading] = useState(false);
   const [editingSubdomain, setEditingSubdomain] = useState(null);
   const [editSubdomainValue, setEditSubdomainValue] = useState('');
+  const [platformRevenue, setPlatformRevenue] = useState(null);
+  const [platformRevenueLoading, setPlatformRevenueLoading] = useState(false);
+  const [revenueStartDate, setRevenueStartDate] = useState('');
+  const [revenueEndDate, setRevenueEndDate] = useState('');
+  const [revenueCreatorFilter, setRevenueCreatorFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedCartItemIndex, setSelectedCartItemIndex] = useState(null); // Track which cart item is being processed
   const [step1Processing, setStep1Processing] = useState(false);
@@ -95,6 +100,10 @@ const Admin = () => {
       // Only load workers for Master Admins
       if (isMasterAdmin) {
         loadWorkers();
+        // Load platform revenue if on that tab
+        if (activeTab === 'platform-revenue') {
+          loadPlatformRevenue();
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -799,6 +808,28 @@ const Admin = () => {
     }
   };
 
+  const loadPlatformRevenue = async () => {
+    setPlatformRevenueLoading(true);
+    try {
+      const result = await AdminService.getPlatformRevenue(
+        revenueStartDate || null,
+        revenueEndDate || null,
+        revenueCreatorFilter || null
+      );
+      if (result.success) {
+        setPlatformRevenue(result);
+      } else {
+        console.error('Error loading platform revenue:', result.error);
+        alert(`Failed to load platform revenue: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error loading platform revenue:', error);
+      alert('Failed to load platform revenue');
+    } finally {
+      setPlatformRevenueLoading(false);
+    }
+  };
+
   const handleUserAction = async (userId, action) => {
     console.log('🎯 handleUserAction called with:', { userId, action });
     
@@ -1087,6 +1118,14 @@ const Admin = () => {
               onClick={() => setActiveTab('admin-management')}
             >
               👥 Admin Management
+            </button>
+          )}
+          {isMasterAdmin && (
+            <button 
+              className={`admin-tab ${activeTab === 'platform-revenue' ? 'active' : ''}`}
+              onClick={() => setActiveTab('platform-revenue')}
+            >
+              💵 Platform Revenue
             </button>
           )}
           {isFullAdmin && (
@@ -2153,6 +2192,277 @@ const Admin = () => {
                   Admin Signup Page: <a href="/admin-signup" target="_blank" rel="noopener noreferrer">/admin-signup</a>
                 </p>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'platform-revenue' && isMasterAdmin && (
+            <div className="platform-revenue">
+              <h3>💵 Platform Revenue Analytics</h3>
+              <p>Track ScreenMerch earnings from 30% commission on creator sales</p>
+
+              {/* Filters */}
+              <div className="revenue-filters" style={{ marginTop: '20px', marginBottom: '20px', display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500' }}>Start Date:</label>
+                  <input
+                    type="date"
+                    value={revenueStartDate}
+                    onChange={(e) => setRevenueStartDate(e.target.value)}
+                    style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500' }}>End Date:</label>
+                  <input
+                    type="date"
+                    value={revenueEndDate}
+                    onChange={(e) => setRevenueEndDate(e.target.value)}
+                    style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: '500' }}>Creator ID (optional):</label>
+                  <input
+                    type="text"
+                    value={revenueCreatorFilter}
+                    onChange={(e) => setRevenueCreatorFilter(e.target.value)}
+                    placeholder="Filter by creator ID"
+                    style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px', width: '200px' }}
+                  />
+                </div>
+                <button
+                  onClick={loadPlatformRevenue}
+                  disabled={platformRevenueLoading}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: platformRevenueLoading ? 'not-allowed' : 'pointer',
+                    opacity: platformRevenueLoading ? 0.6 : 1
+                  }}
+                >
+                  {platformRevenueLoading ? 'Loading...' : 'Apply Filters'}
+                </button>
+                <button
+                  onClick={() => {
+                    setRevenueStartDate('');
+                    setRevenueEndDate('');
+                    setRevenueCreatorFilter('');
+                    loadPlatformRevenue();
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear Filters
+                </button>
+              </div>
+
+              {platformRevenueLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <p>Loading platform revenue data...</p>
+                </div>
+              ) : platformRevenue && platformRevenue.summary ? (
+                <>
+                  {/* Summary Cards */}
+                  <div className="revenue-summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+                    <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Total Platform Revenue</h4>
+                      <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
+                        ${platformRevenue.summary.total_platform_revenue.toFixed(2)}
+                      </p>
+                      <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#999' }}>30% Commission</p>
+                    </div>
+                    <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Total Gross Revenue</h4>
+                      <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#007bff' }}>
+                        ${platformRevenue.summary.total_gross_revenue.toFixed(2)}
+                      </p>
+                      <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#999' }}>All Sales</p>
+                    </div>
+                    <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Creator Payouts</h4>
+                      <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#17a2b8' }}>
+                        ${platformRevenue.summary.total_creator_payouts.toFixed(2)}
+                      </p>
+                      <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#999' }}>70% to Creators</p>
+                    </div>
+                    <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Total Transactions</h4>
+                      <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#6c757d' }}>
+                        {platformRevenue.summary.total_transactions}
+                      </p>
+                      <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#999' }}>Sales Count</p>
+                    </div>
+                  </div>
+
+                  {/* Revenue by Creator */}
+                  <div style={{ marginBottom: '30px' }}>
+                    <h4>Revenue by Creator</h4>
+                    {platformRevenue.revenue_by_creator && platformRevenue.revenue_by_creator.length > 0 ? (
+                      <table className="admin-table" style={{ width: '100%' }}>
+                        <thead>
+                          <tr>
+                            <th>Creator</th>
+                            <th>Email</th>
+                            <th>Platform Revenue</th>
+                            <th>Gross Revenue</th>
+                            <th>Creator Payout</th>
+                            <th>Transactions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {platformRevenue.revenue_by_creator.map((creator, index) => (
+                            <tr key={creator.creator_id || index}>
+                              <td>{creator.creator_name}</td>
+                              <td>{creator.creator_email}</td>
+                              <td style={{ color: '#28a745', fontWeight: 'bold' }}>
+                                ${creator.platform_revenue.toFixed(2)}
+                              </td>
+                              <td>${creator.gross_revenue.toFixed(2)}</td>
+                              <td>${creator.creator_payouts.toFixed(2)}</td>
+                              <td>{creator.transaction_count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p>No revenue data available</p>
+                    )}
+                  </div>
+
+                  {/* Revenue by Date Chart */}
+                  <div style={{ marginBottom: '30px' }}>
+                    <h4>Revenue Over Time</h4>
+                    {platformRevenue.revenue_by_date && platformRevenue.revenue_by_date.length > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '200px', padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                        {platformRevenue.revenue_by_date.map((day, index) => {
+                          const maxRevenue = Math.max(...platformRevenue.revenue_by_date.map(d => d.platform_revenue), 1);
+                          const height = (day.platform_revenue / maxRevenue) * 160;
+                          return (
+                            <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <div
+                                style={{
+                                  width: '100%',
+                                  backgroundColor: '#28a745',
+                                  height: `${height}px`,
+                                  minHeight: day.platform_revenue > 0 ? '4px' : '0',
+                                  borderRadius: '4px 4px 0 0',
+                                  position: 'relative',
+                                  cursor: 'pointer'
+                                }}
+                                title={`${day.date}: $${day.platform_revenue.toFixed(2)}`}
+                              >
+                                {day.platform_revenue > 0 && (
+                                  <span style={{ position: 'absolute', top: '-20px', fontSize: '10px', whiteSpace: 'nowrap' }}>
+                                    ${day.platform_revenue.toFixed(0)}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '10px', marginTop: '5px', transform: 'rotate(-45deg)', whiteSpace: 'nowrap' }}>
+                                {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p>No date data available</p>
+                    )}
+                  </div>
+
+                  {/* Revenue by Product */}
+                  <div style={{ marginBottom: '30px' }}>
+                    <h4>Revenue by Product</h4>
+                    {platformRevenue.revenue_by_product && platformRevenue.revenue_by_product.length > 0 ? (
+                      <table className="admin-table" style={{ width: '100%' }}>
+                        <thead>
+                          <tr>
+                            <th>Product</th>
+                            <th>Platform Revenue</th>
+                            <th>Gross Revenue</th>
+                            <th>Transactions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {platformRevenue.revenue_by_product.map((product, index) => (
+                            <tr key={index}>
+                              <td>{product.product_name}</td>
+                              <td style={{ color: '#28a745', fontWeight: 'bold' }}>
+                                ${product.platform_revenue.toFixed(2)}
+                              </td>
+                              <td>${product.gross_revenue.toFixed(2)}</td>
+                              <td>{product.transaction_count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p>No product data available</p>
+                    )}
+                  </div>
+
+                  {/* Recent Transactions */}
+                  <div>
+                    <h4>Recent Transactions (Last 100)</h4>
+                    {platformRevenue.all_transactions && platformRevenue.all_transactions.length > 0 ? (
+                      <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        <table className="admin-table" style={{ width: '100%' }}>
+                          <thead>
+                            <tr>
+                              <th>Date</th>
+                              <th>Creator</th>
+                              <th>Product</th>
+                              <th>Sale Amount</th>
+                              <th>Platform Fee (30%)</th>
+                              <th>Creator Share (70%)</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {platformRevenue.all_transactions.map((transaction, index) => (
+                              <tr key={transaction.id || index}>
+                                <td>{new Date(transaction.created_at).toLocaleDateString()}</td>
+                                <td>{transaction.creator_name}</td>
+                                <td>{transaction.product_name}</td>
+                                <td>${transaction.sale_amount.toFixed(2)}</td>
+                                <td style={{ color: '#28a745', fontWeight: 'bold' }}>
+                                  ${transaction.platform_fee.toFixed(2)}
+                                </td>
+                                <td>${transaction.creator_share.toFixed(2)}</td>
+                                <td>
+                                  <span style={{
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    backgroundColor: transaction.status === 'paid' ? '#d4edda' : transaction.status === 'pending' ? '#fff3cd' : '#f8d7da',
+                                    color: transaction.status === 'paid' ? '#155724' : transaction.status === 'pending' ? '#856404' : '#721c24'
+                                  }}>
+                                    {transaction.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p>No transactions available</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <p>Click "Apply Filters" to load platform revenue data</p>
+                </div>
+              )}
             </div>
           )}
 

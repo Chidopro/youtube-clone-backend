@@ -8265,6 +8265,201 @@ def reset_sales():
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
 
+@app.route("/api/admin/platform-revenue", methods=["GET", "OPTIONS"])
+@admin_required
+def platform_revenue():
+    """Get platform revenue analytics (30% commission from all creator earnings) - Master admin only"""
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
+    try:
+        # Check if user is master admin
+        user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+        if not is_master_admin(user_email):
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            response.status_code = 403
+            origin = request.headers.get('Origin', '*')
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response
+        
+        # Get time frame filters
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        creator_id = request.args.get('creator_id')  # Optional: filter by specific creator
+        
+        # Use admin client to bypass RLS
+        client = supabase_admin if supabase_admin else supabase
+        
+        # Build query for creator_earnings
+        query = client.table('creator_earnings').select('*, users!inner(id, email, display_name, username)')
+        
+        # Apply date filters if provided
+        if start_date:
+            query = query.gte('created_at', start_date)
+        if end_date:
+            query = query.lte('created_at', end_date)
+        if creator_id:
+            query = query.eq('user_id', creator_id)
+        
+        # Get all earnings records
+        result = query.order('created_at', desc=True).execute()
+        earnings = result.data if result.data else []
+        
+        # Calculate totals
+        total_platform_revenue = sum(float(e.get('platform_fee', 0)) for e in earnings)
+        total_gross_revenue = sum(float(e.get('sale_amount', 0)) for e in earnings)
+        total_creator_payouts = sum(float(e.get('creator_share', 0)) for e in earnings)
+        total_transactions = len(earnings)
+        
+        # Group by creator
+        revenue_by_creator = {}
+        for earning in earnings:
+            user = earning.get('users', {})
+            creator_id_key = earning.get('user_id')
+            creator_name = user.get('display_name') or user.get('username') or user.get('email') or 'Unknown Creator'
+            creator_email = user.get('email', 'Unknown')
+            
+            if creator_id_key not in revenue_by_creator:
+                revenue_by_creator[creator_id_key] = {
+                    'creator_id': creator_id_key,
+                    'creator_name': creator_name,
+                    'creator_email': creator_email,
+                    'platform_revenue': 0,
+                    'gross_revenue': 0,
+                    'creator_payouts': 0,
+                    'transaction_count': 0,
+                    'transactions': []
+                }
+            
+            revenue_by_creator[creator_id_key]['platform_revenue'] += float(earning.get('platform_fee', 0))
+            revenue_by_creator[creator_id_key]['gross_revenue'] += float(earning.get('sale_amount', 0))
+            revenue_by_creator[creator_id_key]['creator_payouts'] += float(earning.get('creator_share', 0))
+            revenue_by_creator[creator_id_key]['transaction_count'] += 1
+            revenue_by_creator[creator_id_key]['transactions'].append({
+                'order_id': earning.get('order_id'),
+                'product_name': earning.get('product_name'),
+                'sale_amount': float(earning.get('sale_amount', 0)),
+                'platform_fee': float(earning.get('platform_fee', 0)),
+                'creator_share': float(earning.get('creator_share', 0)),
+                'created_at': earning.get('created_at'),
+                'status': earning.get('status')
+            })
+        
+        # Convert to sorted list (by platform revenue descending)
+        revenue_by_creator_list = sorted(
+            revenue_by_creator.values(),
+            key=lambda x: x['platform_revenue'],
+            reverse=True
+        )
+        
+        # Group by date (for daily/weekly/monthly charts)
+        from datetime import datetime, timedelta
+        revenue_by_date = {}
+        for earning in earnings:
+            try:
+                created_at = earning.get('created_at')
+                if created_at:
+                    if isinstance(created_at, str):
+                        date_obj = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    else:
+                        date_obj = created_at
+                    date_str = date_obj.strftime('%Y-%m-%d')
+                    
+                    if date_str not in revenue_by_date:
+                        revenue_by_date[date_str] = {
+                            'date': date_str,
+                            'platform_revenue': 0,
+                            'gross_revenue': 0,
+                            'transaction_count': 0
+                        }
+                    
+                    revenue_by_date[date_str]['platform_revenue'] += float(earning.get('platform_fee', 0))
+                    revenue_by_date[date_str]['gross_revenue'] += float(earning.get('sale_amount', 0))
+                    revenue_by_date[date_str]['transaction_count'] += 1
+            except Exception as e:
+                logger.warning(f"Error parsing date for earning: {str(e)}")
+                continue
+        
+        # Sort by date
+        revenue_by_date_list = sorted(revenue_by_date.values(), key=lambda x: x['date'])
+        
+        # Group by product
+        revenue_by_product = {}
+        for earning in earnings:
+            product_name = earning.get('product_name', 'Unknown Product')
+            if product_name not in revenue_by_product:
+                revenue_by_product[product_name] = {
+                    'product_name': product_name,
+                    'platform_revenue': 0,
+                    'gross_revenue': 0,
+                    'transaction_count': 0
+                }
+            
+            revenue_by_product[product_name]['platform_revenue'] += float(earning.get('platform_fee', 0))
+            revenue_by_product[product_name]['gross_revenue'] += float(earning.get('sale_amount', 0))
+            revenue_by_product[product_name]['transaction_count'] += 1
+        
+        # Convert to sorted list
+        revenue_by_product_list = sorted(
+            revenue_by_product.values(),
+            key=lambda x: x['platform_revenue'],
+            reverse=True
+        )
+        
+        response_data = {
+            "success": True,
+            "summary": {
+                "total_platform_revenue": round(total_platform_revenue, 2),
+                "total_gross_revenue": round(total_gross_revenue, 2),
+                "total_creator_payouts": round(total_creator_payouts, 2),
+                "total_transactions": total_transactions,
+                "commission_rate": 0.30  # 30%
+            },
+            "revenue_by_creator": revenue_by_creator_list,
+            "revenue_by_date": revenue_by_date_list,
+            "revenue_by_product": revenue_by_product_list,
+            "all_transactions": [
+                {
+                    'id': earning.get('id'),
+                    'order_id': earning.get('order_id'),
+                    'creator_id': earning.get('user_id'),
+                    'creator_name': (earning.get('users', {}).get('display_name') or 
+                                    earning.get('users', {}).get('username') or 
+                                    earning.get('users', {}).get('email') or 'Unknown'),
+                    'creator_email': earning.get('users', {}).get('email', 'Unknown'),
+                    'product_name': earning.get('product_name'),
+                    'sale_amount': round(float(earning.get('sale_amount', 0)), 2),
+                    'platform_fee': round(float(earning.get('platform_fee', 0)), 2),
+                    'creator_share': round(float(earning.get('creator_share', 0)), 2),
+                    'created_at': earning.get('created_at'),
+                    'status': earning.get('status')
+                }
+                for earning in earnings[:100]  # Limit to 100 most recent for performance
+            ]
+        }
+        
+        response = jsonify(response_data)
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error fetching platform revenue: {str(e)}")
+        response = jsonify({"success": False, "error": str(e)})
+        response.status_code = 500
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+
 @app.route("/api/admin/recent-orders", methods=["GET", "OPTIONS"])
 @admin_required
 def admin_recent_orders():

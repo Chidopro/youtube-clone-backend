@@ -1618,4 +1618,54 @@ export class AdminService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Get platform revenue analytics (master admin only)
+   * @param {string} startDate - Optional start date filter (YYYY-MM-DD)
+   * @param {string} endDate - Optional end date filter (YYYY-MM-DD)
+   * @param {string} creatorId - Optional creator ID filter
+   * @returns {Promise<Object>} Platform revenue data
+   */
+  static async getPlatformRevenue(startDate = null, endDate = null, creatorId = null) {
+    try {
+      // Get user email for authentication
+      const userEmail = await this.getCurrentUserEmail();
+      if (!userEmail) {
+        return { success: false, error: 'Not authenticated' };
+      }
+      
+      // Build query string
+      const params = new URLSearchParams();
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      if (creatorId) params.append('creator_id', creatorId);
+      
+      // Use API endpoint
+      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-User-Email': userEmail
+      };
+      
+      const queryString = params.toString();
+      const url = `${apiUrl}/api/admin/platform-revenue${queryString ? '?' + queryString : ''}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+        headers
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error fetching platform revenue:', error);
+      return { success: false, error: error.message };
+    }
+  }
 } 
