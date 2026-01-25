@@ -3,7 +3,7 @@ import { supabase } from '../../supabaseClient';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
 import './ColorPickerModal.css';
 
-// Reverted to working color save state - ready to debug persistence
+// Using backend API to bypass RLS for color persistence
 
 const ColorPickerModal = ({ isOpen, onClose, currentPrimaryColor, currentSecondaryColor, onSave }) => {
   const [primaryColor, setPrimaryColor] = useState(currentPrimaryColor || '#667eea');
