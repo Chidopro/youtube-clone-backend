@@ -5490,6 +5490,10 @@ def update_user_profile(user_id):
             update_data['display_name'] = data['display_name']
         if 'bio' in data:
             update_data['bio'] = data['bio']
+        if 'primary_color' in data:
+            update_data['primary_color'] = data['primary_color']
+        if 'secondary_color' in data:
+            update_data['secondary_color'] = data['secondary_color']
         
         update_data['updated_at'] = 'now()'
         

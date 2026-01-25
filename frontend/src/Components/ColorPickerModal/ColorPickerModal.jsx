@@ -94,24 +94,35 @@ const ColorPickerModal = ({ isOpen, onClose, currentPrimaryColor, currentSeconda
         return;
       }
 
-      // Save to database
+      // Save to database via backend API (bypasses RLS)
+      const BACKEND_URL = 
+        (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
+        "https://screenmerch.fly.dev";
+
       const updateData = {
         primary_color: primaryColor,
         secondary_color: secondaryColor
       };
 
-      const { data: updateResult, error: updateError } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', creator.id)
-        .select();
+      console.log('💾 [COLOR-PICKER] Saving colors via backend API:', { userId: creator.id, colors: updateData });
 
-      if (updateError) {
-        console.error('Error saving colors:', updateError);
-        setMessage(`Error: ${updateError.message || 'Failed to save colors'}`);
+      const response = await fetch(`${BACKEND_URL}/api/users/${creator.id}/update-profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error('❌ [COLOR-PICKER] Error saving colors:', result.error || 'Unknown error');
+        setMessage(`Error: ${result.error || 'Failed to save colors'}`);
         setMessageType('error');
       } else {
-        console.log('✅ Colors saved successfully:', updateResult);
+        console.log('✅ [COLOR-PICKER] Colors saved successfully via backend API:', result.user);
         
         // Apply colors immediately via inline styles with !important
         const progressBar = document.querySelector('.user-flow-section');
