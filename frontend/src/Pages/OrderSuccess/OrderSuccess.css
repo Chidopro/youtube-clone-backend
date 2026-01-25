@@ -55,33 +55,35 @@
 }
 
 .next-steps {
-  background: #f8f9ff;
-  border: 1px solid #e0e6ff;
-  border-radius: 12px;
-  padding: 25px;
-  margin: 30px 0;
-  text-align: left;
+  margin: 20px 0;
+  text-align: center;
 }
 
 .next-steps h3 {
   color: #3f51b5;
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   margin: 0 0 15px 0;
   text-align: center;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
 }
 
 .next-steps ul {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: inline-block;
+  text-align: center;
 }
 
 .next-steps li {
   color: #333;
-  font-size: 1rem;
-  margin: 12px 0;
-  padding-left: 20px;
+  font-size: 0.95rem;
+  margin: 10px 0;
+  padding-left: 24px;
   position: relative;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
 }
 
 .next-steps li:before {
@@ -89,6 +91,7 @@
   position: absolute;
   left: 0;
   top: 0;
+  font-size: 1rem;
 }
 
 .support-info {
