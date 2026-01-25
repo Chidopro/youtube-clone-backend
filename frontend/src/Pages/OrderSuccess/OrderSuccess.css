@@ -10,16 +10,16 @@
 .order-success-container {
   background: white;
   border-radius: 12px;
-  padding: 30px;
-  max-width: 450px;
+  padding: 25px 40px;
+  max-width: 600px;
   width: 100%;
   text-align: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .success-icon {
-  font-size: 4rem;
-  margin-bottom: 20px;
+  font-size: 3rem;
+  margin-bottom: 15px;
   animation: bounce 0.6s ease-in-out;
 }
 
@@ -94,13 +94,13 @@
   background: #fff3cd;
   border: 1px solid #ffeaa7;
   border-radius: 8px;
-  padding: 12px;
-  margin: 20px 0;
+  padding: 10px;
+  margin: 15px 0;
 }
 
 .support-info p {
   color: #856404;
-  font-size: 1rem;
+  font-size: 0.9rem;
   margin: 0;
 }
 
@@ -116,52 +116,35 @@
 
 .action-buttons {
   display: flex;
-  gap: 15px;
   justify-content: center;
-  margin-top: 30px;
-  flex-wrap: wrap;
+  margin-top: 20px;
 }
 
-.home-button, .dashboard-button {
-  padding: 12px 24px;
+.home-button {
+  padding: 12px 32px;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.home-button {
-  background: #3f51b5;
+  background: #667eea;
   color: white;
 }
 
 .home-button:hover {
-  background: #303f9f;
-  transform: translateY(-2px);
-}
-
-.dashboard-button {
-  background: #4CAF50;
-  color: white;
-}
-
-.dashboard-button:hover {
-  background: #45a049;
+  background: #5568d3;
   transform: translateY(-2px);
 }
 
 @media (max-width: 768px) {
   .order-success-container {
-    padding: 25px 20px;
+    padding: 20px 25px;
     max-width: 90%;
   }
   
   .success-title {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
   }
   
   .home-button {
