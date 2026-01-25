@@ -865,7 +865,7 @@ const Admin = () => {
       console.error('Error resetting analytics:', error);
       alert(`❌ Error resetting analytics: ${error.message}`);
     }
-  };
+  }; // Trigger Netlify rebuild
 
   const handleVideoAction = async (videoId, action) => {
     if (!confirm(`Are you sure you want to ${action} this video?`)) return;
