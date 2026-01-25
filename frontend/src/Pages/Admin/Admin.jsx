@@ -844,6 +844,29 @@ const Admin = () => {
     }
   };
 
+  const handleResetAnalytics = async (userId, userEmail) => {
+    if (!confirm('⚠️ WARNING: This will permanently delete all sales and analytics data for this creator. This action cannot be undone. Are you absolutely sure?')) {
+      return;
+    }
+    
+    if (!confirm('This is your final warning. All sales records and analytics will be deleted. Continue?')) {
+      return;
+    }
+
+    try {
+      const result = await AdminService.resetSales(userId);
+      
+      if (result.success) {
+        alert(`✅ Analytics reset successfully! Deleted ${result.deleted_count || 0} sales records for ${userEmail || 'this creator'}.`);
+      } else {
+        alert(`❌ Failed to reset analytics: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error resetting analytics:', error);
+      alert(`❌ Error resetting analytics: ${error.message}`);
+    }
+  };
+
   const handleVideoAction = async (videoId, action) => {
     if (!confirm(`Are you sure you want to ${action} this video?`)) return;
 
@@ -1403,6 +1426,27 @@ const Admin = () => {
                   >
                     Delete
                   </button>
+                            {isMasterAdmin && user.role === 'creator' && (
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleResetAnalytics(user.id, user.email);
+                                }}
+                                className="action-btn reset-analytics"
+                                style={{ 
+                                  backgroundColor: '#ff9800', 
+                                  color: 'white', 
+                                  padding: '8px 16px', 
+                                  fontSize: '14px', 
+                                  cursor: 'pointer',
+                                  marginLeft: '4px'
+                                }}
+                                title="Reset all sales and analytics data for this creator"
+                              >
+                                🔄 Reset Analytics
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

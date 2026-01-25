@@ -1570,4 +1570,52 @@ export class AdminService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Reset sales/analytics data for a creator (master admin only)
+   * @param {string} userId - User ID of the creator
+   * @returns {Promise<Object>} Result object
+   */
+  static async resetSales(userId) {
+    try {
+      // Get user email for authentication
+      const userEmail = await this.getCurrentUserEmail();
+      if (!userEmail) {
+        return { success: false, error: 'Not authenticated' };
+      }
+      
+      // Use API endpoint
+      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-User-Email': userEmail
+      };
+      
+      const response = await fetch(`${apiUrl}/api/admin/reset-sales`, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({
+          user_id: userId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      // Log admin action
+      await this.logAdminAction('reset_sales', 'user', userId, {
+        target_user_id: userId
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Error resetting sales:', error);
+      return { success: false, error: error.message };
+    }
+  }
 } 
