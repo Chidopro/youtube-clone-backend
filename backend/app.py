@@ -2511,12 +2511,25 @@ def send_order():
             if line_items:
                 # Ensure we're using test mode Stripe key
                 ensure_stripe_test_mode()
+                
+                # Detect the origin/subdomain from the request to preserve it
+                origin = request.headers.get('Origin', 'https://screenmerch.com')
+                # Extract the base URL (protocol + host) from origin
+                # If origin is a subdomain like https://testcreator.screenmerch.com, use it
+                # Otherwise default to https://screenmerch.com
+                if origin and origin.startswith('https://') and origin.endswith('.screenmerch.com'):
+                    # It's a subdomain, use it
+                    base_url = origin
+                else:
+                    # Default to main domain
+                    base_url = 'https://screenmerch.com'
+                
                 session = stripe.checkout.Session.create(
                     payment_method_types=["card"],
                     mode="payment",
                     line_items=line_items,
-                    success_url=f"https://screenmerch.fly.dev/success?order_id={order_id}",
-                    cancel_url=f"https://screenmerch.com/checkout",
+                    success_url=f"{base_url}/order-success?order_id={order_id}",
+                    cancel_url=f"{base_url}/checkout",
                     phone_number_collection={"enabled": True},
                     payment_intent_data={
                         "statement_descriptor": "ScreenMerch"
@@ -3733,13 +3746,25 @@ def create_checkout_session():
             logger.error("❌ No valid items in cart to check out")
             return jsonify({"error": "No valid items in cart to check out."}), 400
 
+        # Detect the origin/subdomain from the request to preserve it
+        origin = request.headers.get('Origin', 'https://screenmerch.com')
+        # Extract the base URL (protocol + host) from origin
+        # If origin is a subdomain like https://testcreator.screenmerch.com, use it
+        # Otherwise default to https://screenmerch.com
+        if origin and origin.startswith('https://') and origin.endswith('.screenmerch.com'):
+            # It's a subdomain, use it
+            base_url = origin
+        else:
+            # Default to main domain
+            base_url = 'https://screenmerch.com'
+        
         # Pre-populate customer email if available from frontend
         session_params = {
             "payment_method_types": ["card"],
             "mode": "payment",
             "line_items": line_items,
-            "success_url": f"https://screenmerch.fly.dev/success?order_id={order_id}",
-            "cancel_url": f"https://screenmerch.com/checkout/{product_id or ''}",
+            "success_url": f"{base_url}/order-success?order_id={order_id}",
+            "cancel_url": f"{base_url}/checkout/{product_id or ''}",
             # A2P 10DLC Compliance: Collect phone number for SMS notifications
             "phone_number_collection": {"enabled": True},
             "payment_intent_data": {

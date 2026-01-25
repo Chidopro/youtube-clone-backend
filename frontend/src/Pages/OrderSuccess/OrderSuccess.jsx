@@ -1,10 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getSubdomain } from '../../utils/subdomainService';
 import './OrderSuccess.css';
 
 const OrderSuccess = () => {
   const navigate = useNavigate();
   const [orderData, setOrderData] = useState(null);
+
+  // Helper function to get home URL preserving subdomain
+  const getHomeUrl = () => {
+    const subdomain = getSubdomain();
+    if (subdomain) {
+      return `https://${subdomain}.screenmerch.com/`;
+    }
+    return '/';
+  };
+
+  // Helper function to get dashboard URL preserving subdomain
+  const getDashboardUrl = () => {
+    const subdomain = getSubdomain();
+    if (subdomain) {
+      return `https://${subdomain}.screenmerch.com/dashboard`;
+    }
+    return '/dashboard';
+  };
 
   useEffect(() => {
     // Clear cart immediately and comprehensively after successful purchase - run first!
@@ -111,13 +130,27 @@ const OrderSuccess = () => {
         
         <div className="action-buttons">
           <button 
-            onClick={() => navigate('/')} 
+            onClick={() => {
+              const homeUrl = getHomeUrl();
+              if (homeUrl.startsWith('http')) {
+                window.location.href = homeUrl;
+              } else {
+                navigate(homeUrl);
+              }
+            }} 
             className="home-button"
           >
             Return to Home
           </button>
           <button 
-            onClick={() => navigate('/dashboard')} 
+            onClick={() => {
+              const dashboardUrl = getDashboardUrl();
+              if (dashboardUrl.startsWith('http')) {
+                window.location.href = dashboardUrl;
+              } else {
+                navigate(dashboardUrl);
+              }
+            }} 
             className="dashboard-button"
           >
             Go to Dashboard
