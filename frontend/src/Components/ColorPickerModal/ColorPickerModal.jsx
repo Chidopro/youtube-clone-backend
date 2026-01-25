@@ -3,6 +3,8 @@ import { supabase } from '../../supabaseClient';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
 import './ColorPickerModal.css';
 
+// Reverted to working color save state - ready to debug persistence
+
 const ColorPickerModal = ({ isOpen, onClose, currentPrimaryColor, currentSecondaryColor, onSave }) => {
   const [primaryColor, setPrimaryColor] = useState(currentPrimaryColor || '#667eea');
   const [secondaryColor, setSecondaryColor] = useState(currentSecondaryColor || '#764ba2');
