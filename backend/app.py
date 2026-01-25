@@ -7501,6 +7501,38 @@ def get_analytics():
             except:
                 pass
         
+        # Generate daily sales data for last 7 days (for daily chart)
+        daily_sales = []
+        now = datetime.now()
+        for i in range(6, -1, -1):  # Last 7 days, from 6 days ago to today
+            date = now - timedelta(days=i)
+            date_str = date.strftime('%Y-%m-%d')
+            date_display = date.strftime('%a, %b %d')
+            
+            # Count sales and calculate revenue for this day
+            day_sales_count = 0
+            day_revenue = 0
+            
+            for order in all_orders:
+                try:
+                    if order.get('created_at') and order.get('created_at') != 'N/A':
+                        order_date = datetime.fromisoformat(order.get('created_at').replace('Z', '+00:00'))
+                        order_date_str = order_date.strftime('%Y-%m-%d')
+                        
+                        if order_date_str == date_str:
+                            day_sales_count += len(order.get('cart', []))
+                            day_revenue += order.get('total_value', 0)
+                except:
+                    pass
+            
+            daily_sales.append({
+                'date': date_str,
+                'date_display': date_display,
+                'sales_count': day_sales_count,
+                'revenue': round(day_revenue, 2),
+                'net_revenue': round(day_revenue * 0.7, 2)  # After 30% fee
+            })
+        
         # Calculate actual revenue per product (not hardcoded $25)
         products_sold_list = []
         for product, quantity in products_sold.items():
@@ -7533,6 +7565,7 @@ def get_analytics():
             'products_sold_count': len(products_sold),
             'videos_with_sales_count': len(videos_with_sales),
             'sales_data': sales_data,
+            'daily_sales': daily_sales,  # Last 7 days with date, count, revenue
             'products_sold': products_sold_list,
             'videos_with_sales': [
                 {
