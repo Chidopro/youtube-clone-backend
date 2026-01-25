@@ -941,6 +941,52 @@ const Dashboard = ({ sidebar }) => {
         }
     };
 
+    // Fetch analytics data
+    const fetchAnalytics = async () => {
+        if (!user || !user.id) {
+            console.warn('Cannot fetch analytics: user not found');
+            return;
+        }
+
+        setAnalyticsLoading(true);
+        try {
+            const BACKEND_URL = 
+                (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
+                "https://screenmerch.fly.dev";
+
+            const response = await fetch(`${BACKEND_URL}/api/analytics?user_id=${user.id}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Analytics API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('📊 Analytics data received:', data);
+            
+            setAnalyticsData({
+                total_sales: data.total_sales || 0,
+                total_revenue: data.total_revenue || 0,
+                avg_order_value: data.avg_order_value || 0,
+                products_sold_count: data.products_sold_count || 0,
+                videos_with_sales_count: data.videos_with_sales_count || 0,
+                sales_data: data.sales_data || [],
+                products_sold: data.products_sold || [],
+                videos_with_sales: data.videos_with_sales || []
+            });
+        } catch (error) {
+            console.error('Error fetching analytics:', error);
+            // Don't show alert, just log - analytics might not be critical
+        } finally {
+            setAnalyticsLoading(false);
+        }
+    };
+
 
 
     // Check if user has proper role or needs to be created/updated
@@ -1234,7 +1280,10 @@ const Dashboard = ({ sidebar }) => {
                 </button>
                 <button 
                     className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('analytics')}
+                    onClick={() => {
+                        setActiveTab('analytics');
+                        fetchAnalytics();
+                    }}
                 >
                     📊 Analytics
                 </button>

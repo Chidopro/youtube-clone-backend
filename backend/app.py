@@ -2182,6 +2182,7 @@ def terms_of_service():
 
 def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=None):
     from datetime import datetime
+    from urllib.parse import urlparse
     
     # Get the correct price - try item price first, then look up in PRODUCTS
     item_price = item.get('price')
@@ -2194,11 +2195,34 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
         
         item_price = product_info["price"] if product_info else 0
     
-    # IMPORTANT: Look up creator's user_id if not provided but creator_name is available
-    # This ensures precise tracking for analytics
+    # IMPORTANT: Look up creator's user_id from subdomain if request is from a subdomain
+    # This ensures precise tracking for analytics when purchases are made on subdomains
     creator_user_id = user_id
     creator_name = item.get('creator_name', '')
     
+    # First, try to get user_id from subdomain in the request origin
+    if not creator_user_id:
+        try:
+            origin = request.headers.get('Origin', '')
+            if origin and origin.endswith('.screenmerch.com') and origin.startswith('https://'):
+                # Extract subdomain from origin (e.g., testcreator.screenmerch.com -> testcreator)
+                parsed = urlparse(origin)
+                hostname = parsed.netloc
+                subdomain = hostname.replace('.screenmerch.com', '').lower()
+                
+                if subdomain and subdomain != 'www':
+                    # Look up creator by subdomain
+                    creator_result = supabase_admin.table('users').select('id, display_name').eq('subdomain', subdomain).limit(1).execute()
+                    
+                    if creator_result.data and len(creator_result.data) > 0:
+                        creator_user_id = creator_result.data[0]['id']
+                        creator_name = creator_result.data[0].get('display_name', creator_name)
+                        logger.info(f"✅ Found creator user_id from subdomain '{subdomain}': {creator_user_id}")
+        except Exception as subdomain_error:
+            logger.warning(f"⚠️ Error looking up creator from subdomain: {subdomain_error}")
+    
+    # Fallback: Look up creator's user_id if not provided but creator_name is available
+    # This ensures precise tracking for analytics
     if not creator_user_id and creator_name and creator_name != 'Unknown Creator':
         try:
             # Try to find creator by display_name or username (case-insensitive)
