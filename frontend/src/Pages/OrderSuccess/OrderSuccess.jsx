@@ -95,7 +95,7 @@ const OrderSuccess = () => {
         </div>
         
         <div className="next-steps">
-          <h3>What happens next:</h3>
+          <h3>🚀 What happens next:</h3>
           <ul>
             <li>Your order is being processed automatically</li>
             <li>Products will be created and fulfilled by Printful</li>
