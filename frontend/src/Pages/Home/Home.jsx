@@ -97,42 +97,23 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     checkEditPermission();
   }, [currentCreator]);
 
-  // Apply colors from creatorSettings when they change or on mount
+  // Apply colors from creatorSettings when they change
   useEffect(() => {
-    const applyColors = () => {
-      if (creatorSettings?.primary_color && creatorSettings?.secondary_color) {
-        // Wait a bit to ensure DOM is ready
-        setTimeout(() => {
-          const progressBar = document.querySelector('.user-flow-section');
-          if (progressBar) {
-            // Use setProperty with important flag to override CSS !important rules
-            progressBar.style.setProperty(
-              'background', 
-              `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)`, 
-              'important'
-            );
-            console.log('🎨 [HOME] Applied colors from creatorSettings:', {
-              primary: creatorSettings.primary_color,
-              secondary: creatorSettings.secondary_color
-            });
-          }
-        }, 100);
+    if (creatorSettings?.primary_color && creatorSettings?.secondary_color) {
+      const progressBar = document.querySelector('.user-flow-section');
+      if (progressBar) {
+        // Use setProperty with important flag to override CSS !important rules
+        progressBar.style.setProperty(
+          'background', 
+          `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)`, 
+          'important'
+        );
+        console.log('🎨 [HOME] Applied colors from creatorSettings:', {
+          primary: creatorSettings.primary_color,
+          secondary: creatorSettings.secondary_color
+        });
       }
-    };
-
-    // Apply immediately
-    applyColors();
-
-    // Also listen for creatorSettingsUpdated event to re-apply after refresh
-    const handleSettingsUpdate = () => {
-      setTimeout(applyColors, 200);
-    };
-    
-    window.addEventListener('creatorSettingsUpdated', handleSettingsUpdate);
-    
-    return () => {
-      window.removeEventListener('creatorSettingsUpdated', handleSettingsUpdate);
-    };
+    }
   }, [creatorSettings?.primary_color, creatorSettings?.secondary_color]);
 
   return (
@@ -196,7 +177,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           currentPrimaryColor={creatorSettings?.primary_color}
           currentSecondaryColor={creatorSettings?.secondary_color}
           onSave={async (primary, secondary) => {
-            // Wait for database to update, then refresh CreatorContext
+            // Wait a moment for database to update, then refresh creator context
             setTimeout(() => {
               if (refreshCreator) {
                 refreshCreator();
