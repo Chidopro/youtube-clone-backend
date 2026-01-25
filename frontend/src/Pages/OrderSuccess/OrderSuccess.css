@@ -1,6 +1,6 @@
 .order-success-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9,13 +9,12 @@
 
 .order-success-container {
   background: white;
-  border-radius: 16px;
-  padding: 40px;
-  max-width: 600px;
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 450px;
   width: 100%;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e0e6ff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .success-icon {
@@ -38,19 +37,19 @@
 
 .success-title {
   color: #4CAF50;
-  font-size: 2.5rem;
-  margin: 0 0 20px 0;
+  font-size: 2rem;
+  margin: 0 0 15px 0;
   font-weight: 700;
 }
 
 .thank-you-message {
-  margin: 25px 0;
+  margin: 15px 0;
 }
 
 .thank-you-message p {
-  color: #333;
-  font-size: 1.2rem;
-  line-height: 1.6;
+  color: #666;
+  font-size: 1rem;
+  line-height: 1.5;
   margin: 0;
 }
 
@@ -91,44 +90,12 @@
   top: 0;
 }
 
-.order-details {
-  background: #e8f5e8;
-  border: 1px solid #4CAF50;
-  border-radius: 12px;
-  padding: 20px;
-  margin: 25px 0;
-  text-align: left;
-}
-
-.order-details h3 {
-  color: #2e7d32;
-  font-size: 1.2rem;
-  margin: 0 0 15px 0;
-  text-align: center;
-}
-
-.order-info p {
-  color: #333;
-  font-size: 1rem;
-  margin: 8px 0;
-}
-
-.order-info a {
-  color: #3f51b5;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.order-info a:hover {
-  text-decoration: underline;
-}
-
 .support-info {
   background: #fff3cd;
   border: 1px solid #ffeaa7;
   border-radius: 8px;
-  padding: 15px;
-  margin: 25px 0;
+  padding: 12px;
+  margin: 20px 0;
 }
 
 .support-info p {
@@ -189,20 +156,16 @@
 
 @media (max-width: 768px) {
   .order-success-container {
-    padding: 30px 20px;
+    padding: 25px 20px;
+    max-width: 90%;
   }
   
   .success-title {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
   
-  .action-buttons {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .home-button, .dashboard-button {
+  .home-button {
     width: 100%;
-    max-width: 200px;
+    max-width: 250px;
   }
 } 

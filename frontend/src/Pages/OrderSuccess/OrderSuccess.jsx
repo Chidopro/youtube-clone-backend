@@ -91,35 +91,16 @@ const OrderSuccess = () => {
         <h1 className="success-title">Order Successful!</h1>
         
         <div className="thank-you-message">
-          <p>Thank you for your order! Your custom merchandise is being created.</p>
+          <p>Thank you for your order. Your custom merchandise is being created.</p>
         </div>
         
         <div className="next-steps">
-          <h3>What happens next:</h3>
           <ul>
-            <li>✅ Your order is being processed automatically</li>
-            <li>✅ Products will be created and fulfilled by Printful</li>
-            <li>✅ You'll receive email updates with tracking information</li>
-            <li>✅ Your order will ship within 3-5 business days</li>
+            <li>Your order is being processed automatically</li>
+            <li>Products will be created and fulfilled by Printful</li>
+            <li>You'll receive tracking information once shipped</li>
           </ul>
         </div>
-
-        {orderData && (
-          <div className="order-details">
-            <h3>📦 Order Details</h3>
-            <div className="order-info">
-              <p><strong>Order ID:</strong> {orderData.order_id}</p>
-              {orderData.tracking_url && (
-                <p>
-                  <strong>Track your order:</strong>{' '}
-                  <a href={orderData.tracking_url} target="_blank" rel="noopener noreferrer">
-                    View Order Status →
-                  </a>
-                </p>
-              )}
-            </div>
-          </div>
-        )}
 
         <div className="support-info">
           <p>
@@ -141,19 +122,6 @@ const OrderSuccess = () => {
             className="home-button"
           >
             Return to Home
-          </button>
-          <button 
-            onClick={() => {
-              const dashboardUrl = getDashboardUrl();
-              if (dashboardUrl.startsWith('http')) {
-                window.location.href = dashboardUrl;
-              } else {
-                navigate(dashboardUrl);
-              }
-            }} 
-            className="dashboard-button"
-          >
-            Go to Dashboard
           </button>
         </div>
       </div>
