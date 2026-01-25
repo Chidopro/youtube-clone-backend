@@ -7410,6 +7410,13 @@ def get_analytics():
             for sale in sales_result.data:
                 logger.info(f"📦 Processing sale: {sale.get('product_name')} - ${sale.get('amount')}")
                 # Convert database sale to order format - preserve creator info for precise tracking
+                # Try to get created_at from sale record, fallback to current time if not available
+                sale_created_at = sale.get('created_at')
+                if not sale_created_at or sale_created_at == 'N/A':
+                    # Use current timestamp if created_at is missing
+                    from datetime import datetime
+                    sale_created_at = datetime.now().isoformat()
+                
                 order_data = {
                     'order_id': sale.get('id', 'db-' + str(sale.get('id'))),
                     'cart': [{
@@ -7418,17 +7425,18 @@ def get_analytics():
                         'note': '',
                         'img': sale.get('image_url', ''),
                         'video_title': sale.get('video_title', 'Unknown Video'),
-                        'creator_name': sale.get('creator_name', 'Unknown Creator')
+                        'creator_name': sale.get('creator_name', 'Unknown Creator'),
+                        'price': sale.get('amount', 0)  # Store price in cart item for revenue calculation
                     }],
                     'status': 'completed',
-                    'created_at': 'N/A',  # created_at column doesn't exist
+                    'created_at': sale_created_at,  # Use actual created_at from database
                     'total_value': sale.get('amount', 0),
                     'user_id': sale.get('user_id'),  # Preserve user_id for tracking
                     'channel_id': sale.get('channel_id'),
                     'creator_name': sale.get('creator_name', 'Unknown Creator')  # Preserve creator_name
                 }
                 all_orders.append(order_data)
-                logger.info(f"✅ Added sale to analytics: {sale.get('product_name')} - ${sale.get('amount')}")
+                logger.info(f"✅ Added sale to analytics: {sale.get('product_name')} - ${sale.get('amount')} - created_at: {sale_created_at}")
         except Exception as db_error:
             logger.error(f"Database error loading analytics: {str(db_error)}")
         
@@ -7483,6 +7491,31 @@ def get_analytics():
             except:
                 pass
         
+        # Calculate actual revenue per product (not hardcoded $25)
+        products_sold_list = []
+        for product, quantity in products_sold.items():
+            # Calculate actual revenue for this product from orders
+            product_revenue = 0
+            for order in all_orders:
+                for item in order.get('cart', []):
+                    if item.get('product', '') == product:
+                        # Get price from item or order total_value divided by items
+                        item_price = item.get('price', 0)
+                        if not item_price or item_price <= 0:
+                            # Try to get from order total divided by cart length
+                            cart_length = len(order.get('cart', []))
+                            if cart_length > 0:
+                                item_price = order.get('total_value', 0) / cart_length
+                        product_revenue += item_price
+            
+            products_sold_list.append({
+                'product': product,
+                'quantity': quantity,
+                'revenue': round(product_revenue, 2),
+                'video_source': 'Unknown Video',
+                'image': ''
+            })
+        
         analytics_data = {
             'total_sales': total_sales,
             'total_revenue': round(total_revenue, 2),
@@ -7490,23 +7523,28 @@ def get_analytics():
             'products_sold_count': len(products_sold),
             'videos_with_sales_count': len(videos_with_sales),
             'sales_data': sales_data,
-            'products_sold': [
-                {
-                    'product': product,
-                    'quantity': quantity,
-                    'revenue': quantity * 25.00,  # Assuming $25 per product
-                    'video_source': 'Unknown Video',
-                    'image': ''
-                }
-                for product, quantity in products_sold.items()
-            ],
+            'products_sold': products_sold_list,
             'videos_with_sales': [
                 {
                     'video_name': video_name,
                     'sales_count': video_data['sales_count'],
-                    'revenue': video_data['revenue']
+                    'revenue': round(video_data['revenue'], 2)
                 }
                 for video_name, video_data in videos_with_sales.items()
+            ],
+            'recent_sales': [
+                {
+                    'product': item.get('product', 'Unknown Product'),
+                    'amount': round(order.get('total_value', 0), 2),
+                    'net_amount': round(order.get('total_value', 0) * 0.7, 2),
+                    'created_at': order.get('created_at', 'N/A')
+                }
+                for order in sorted(all_orders, key=lambda x: (
+                    float(x.get('created_at', 0)) if isinstance(x.get('created_at'), (int, float)) 
+                    else (x.get('created_at') if isinstance(x.get('created_at'), str) and x.get('created_at') != 'N/A' 
+                          else '1970-01-01')
+                ), reverse=True)[:10]  # Get 10 most recent
+                for item in order.get('cart', [])
             ]
         }
         
@@ -8116,6 +8154,73 @@ def admin_workers():
         response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
+
+@app.route("/api/admin/reset-sales", methods=["POST", "OPTIONS"])
+@admin_required
+def reset_sales():
+    """Reset/clear all sales data for a specific user (master admin only)"""
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
+    try:
+        # Check if user is master admin
+        user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+        if not is_master_admin(user_email):
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            response.status_code = 403
+            origin = request.headers.get('Origin', '*')
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response
+        
+        data = request.get_json() or {}
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            response = jsonify({"success": False, "error": "user_id is required"})
+            response.status_code = 400
+            origin = request.headers.get('Origin', '*')
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response
+        
+        # Use admin client to bypass RLS
+        client = supabase_admin if supabase_admin else supabase
+        
+        # Delete all sales for this user
+        deleted_sales = client.table('sales').delete().eq('user_id', user_id).execute()
+        
+        # Also delete creator earnings for this user
+        try:
+            client.table('creator_earnings').delete().eq('user_id', user_id).execute()
+        except Exception as e:
+            logger.warning(f"Could not delete creator_earnings: {str(e)}")
+        
+        logger.info(f"✅ [MASTER ADMIN] Reset sales for user {user_id} by {user_email}. Deleted {len(deleted_sales.data) if deleted_sales.data else 0} sales records.")
+        
+        response = jsonify({
+            "success": True,
+            "message": f"Sales reset successfully. Deleted {len(deleted_sales.data) if deleted_sales.data else 0} sales records.",
+            "deleted_count": len(deleted_sales.data) if deleted_sales.data else 0
+        })
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error resetting sales: {str(e)}")
+        response = jsonify({"success": False, "error": str(e)})
+        response.status_code = 500
+        origin = request.headers.get('Origin', '*')
+        response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
 
 @app.route("/api/admin/recent-orders", methods=["GET", "OPTIONS"])
 @admin_required

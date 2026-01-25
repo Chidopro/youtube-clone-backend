@@ -52,7 +52,8 @@ const Dashboard = ({ sidebar }) => {
         products_sold_count: 0,
         videos_with_sales_count: 0,
         avg_order_value: 0,
-        products_sold: []
+        products_sold: [],
+        recent_sales: []
     });
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const [editingVideo, setEditingVideo] = useState(null);
@@ -1545,6 +1546,62 @@ const Dashboard = ({ sidebar }) => {
                                 <div className="analytics-summary">
                                     <span className="total-sales">Total Sales: {analyticsLoading ? 'Loading...' : analyticsData.total_sales}</span>
                                     <span className="total-revenue">Total Revenue: ${analyticsLoading ? '0.00' : analyticsData.total_revenue.toFixed(2)}</span>
+                                    <button 
+                                        onClick={async () => {
+                                            if (!window.confirm('⚠️ WARNING: This will permanently delete all your sales data. This action cannot be undone. Are you absolutely sure?')) {
+                                                return;
+                                            }
+                                            
+                                            if (!window.confirm('This is your final warning. All sales records will be deleted. Continue?')) {
+                                                return;
+                                            }
+                                            
+                                            try {
+                                                const BACKEND_URL = 
+                                                    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
+                                                    "https://screenmerch.fly.dev";
+                                                
+                                                const userEmail = user?.email || userProfile?.email;
+                                                
+                                                const response = await fetch(`${BACKEND_URL}/api/admin/reset-sales`, {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'X-User-Email': userEmail
+                                                    },
+                                                    body: JSON.stringify({
+                                                        user_id: user.id
+                                                    })
+                                                });
+                                                
+                                                const data = await response.json();
+                                                
+                                                if (data.success) {
+                                                    alert(`✅ Sales reset successfully! Deleted ${data.deleted_count || 0} sales records.`);
+                                                    // Refresh analytics
+                                                    fetchAnalytics();
+                                                } else {
+                                                    alert(`❌ Failed to reset sales: ${data.error || 'Unknown error'}`);
+                                                }
+                                            } catch (error) {
+                                                console.error('Error resetting sales:', error);
+                                                alert(`❌ Error resetting sales: ${error.message}`);
+                                            }
+                                        }}
+                                        style={{
+                                            marginLeft: '20px',
+                                            padding: '8px 16px',
+                                            backgroundColor: '#dc3545',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            fontSize: '14px'
+                                        }}
+                                        title="Reset all sales data (Master Admin only)"
+                                    >
+                                        🔄 Reset Sales
+                                    </button>
                                 </div>
                             </div>
                             
@@ -1648,30 +1705,54 @@ const Dashboard = ({ sidebar }) => {
                                     <div className="recent-activity">
                                         <h4>🕒 Recent Sales Activity</h4>
                                         <div className="activity-list">
-                                            <div className="activity-item">
-                                                <div className="activity-icon">💰</div>
-                                                <div className="activity-details">
-                                                    <div className="activity-title">New sale today!</div>
-                                                    <div className="activity-subtitle">Product: Custom T-Shirt | Net: $17.77</div>
+                                            {analyticsData.recent_sales && analyticsData.recent_sales.length > 0 ? (
+                                                analyticsData.recent_sales.slice(0, 5).map((sale, index) => {
+                                                    // Format time ago
+                                                    let timeAgo = 'Recently';
+                                                    try {
+                                                        if (sale.created_at && sale.created_at !== 'N/A') {
+                                                            const saleDate = new Date(sale.created_at);
+                                                            const now = new Date();
+                                                            const diffMs = now - saleDate;
+                                                            const diffMins = Math.floor(diffMs / 60000);
+                                                            const diffHours = Math.floor(diffMs / 3600000);
+                                                            const diffDays = Math.floor(diffMs / 86400000);
+                                                            
+                                                            if (diffMins < 1) {
+                                                                timeAgo = 'Just now';
+                                                            } else if (diffMins < 60) {
+                                                                timeAgo = `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+                                                            } else if (diffHours < 24) {
+                                                                timeAgo = `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+                                                            } else {
+                                                                timeAgo = `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+                                                            }
+                                                        }
+                                                    } catch (e) {
+                                                        timeAgo = 'Recently';
+                                                    }
+                                                    
+                                                    return (
+                                                        <div key={index} className="activity-item">
+                                                            <div className="activity-icon">💰</div>
+                                                            <div className="activity-details">
+                                                                <div className="activity-title">Sale completed</div>
+                                                                <div className="activity-subtitle">Product: {sale.product} | Net: ${sale.net_amount?.toFixed(2) || (sale.amount * 0.7).toFixed(2)}</div>
+                                                            </div>
+                                                            <div className="activity-time">{timeAgo}</div>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <div className="activity-item">
+                                                    <div className="activity-icon">📊</div>
+                                                    <div className="activity-details">
+                                                        <div className="activity-title">No recent sales</div>
+                                                        <div className="activity-subtitle">Start making sales to see activity here</div>
+                                                    </div>
+                                                    <div className="activity-time">—</div>
                                                 </div>
-                                                <div className="activity-time">Just now</div>
-                                            </div>
-                                            <div className="activity-item">
-                                                <div className="activity-icon">💰</div>
-                                                <div className="activity-details">
-                                                    <div className="activity-title">Sale completed</div>
-                                                    <div className="activity-subtitle">Product: Coffee Mug | Net: $14.00</div>
-                                                </div>
-                                                <div className="activity-time">2 hours ago</div>
-                                            </div>
-                                            <div className="activity-item">
-                                                <div className="activity-icon">📊</div>
-                                                <div className="activity-details">
-                                                    <div className="activity-title">Weekly summary</div>
-                                                    <div className="activity-subtitle">Total: 31 sales | Net: $551.04</div>
-                                                </div>
-                                                <div className="activity-time">Yesterday</div>
-                                            </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
