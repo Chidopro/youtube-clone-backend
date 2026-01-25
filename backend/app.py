@@ -1943,9 +1943,21 @@ def create_product():
         user_email = data.get("userEmail", "")
         category = data.get("category", "all")
         
+        # Detect the origin/subdomain from the request to preserve it
+        origin = request.headers.get('Origin', 'https://screenmerch.com')
+        # Extract the base URL (protocol + host) from origin
+        # If origin is a subdomain like https://testcreator.screenmerch.com, use it
+        # Otherwise default to https://screenmerch.com
+        if origin and origin.startswith('https://') and origin.endswith('.screenmerch.com'):
+            # It's a subdomain, use it
+            base_url = origin
+        else:
+            # Default to main domain
+            base_url = 'https://screenmerch.com'
+        
         # Build product URL with authentication parameters and category - redirect to frontend
         # Return merchandise categories page instead of specific product page
-        merchandise_url = f"https://screenmerch.com/merchandise"
+        merchandise_url = f"{base_url}/merchandise"
         if is_authenticated and user_email:
             merchandise_url += f"?authenticated=true&email={user_email}"
         
