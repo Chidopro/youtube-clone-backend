@@ -5,6 +5,7 @@ import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
+// Force Netlify rebuild
 
 
 const Dashboard = ({ sidebar }) => {
