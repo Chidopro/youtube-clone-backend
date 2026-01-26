@@ -2431,6 +2431,27 @@ def send_order():
             })
             enriched_cart.append(enriched_item)
         
+        # Extract subdomain from request origin to store with order
+        creator_user_id_from_subdomain = None
+        subdomain_from_request = None
+        try:
+            origin = request.headers.get('Origin', '')
+            if origin and origin.endswith('.screenmerch.com') and origin.startswith('https://'):
+                from urllib.parse import urlparse
+                parsed = urlparse(origin)
+                hostname = parsed.netloc
+                subdomain_from_request = hostname.replace('.screenmerch.com', '').lower()
+                
+                if subdomain_from_request and subdomain_from_request != 'www':
+                    # Look up creator by subdomain
+                    creator_result = supabase_admin.table('users').select('id, display_name').eq('subdomain', subdomain_from_request).limit(1).execute()
+                    
+                    if creator_result.data and len(creator_result.data) > 0:
+                        creator_user_id_from_subdomain = creator_result.data[0]['id']
+                        logger.info(f"✅ [SEND-ORDER] Found creator user_id from subdomain '{subdomain_from_request}': {creator_user_id_from_subdomain}")
+        except Exception as subdomain_error:
+            logger.warning(f"⚠️ [SEND-ORDER] Error looking up creator from subdomain: {subdomain_error}")
+        
         # Store order in order_store for admin dashboard
         order_store[order_id] = {
             "cart": enriched_cart,
@@ -2438,6 +2459,8 @@ def send_order():
             "order_id": order_id,
             "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
             "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+            "creator_user_id": creator_user_id_from_subdomain,  # Store creator user_id for webhook
+            "subdomain": subdomain_from_request,  # Store subdomain for reference
             "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
             "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
             "status": "pending",
@@ -2455,7 +2478,8 @@ def send_order():
                 item['creator_name'] = data['creator_name']
             if 'screenshot_timestamp' in data:
                 item['screenshot_timestamp'] = data['screenshot_timestamp']
-            record_sale(item, order_id=order_id)
+            # Pass creator_user_id if we found it from subdomain
+            record_sale(item, user_id=creator_user_id_from_subdomain, order_id=order_id)
         # --- Send Email with Resend ---
         email_data = {
             "from": RESEND_FROM,
@@ -2758,6 +2782,27 @@ def place_order():
             
         logger.info(f"✅ Stored screenshot in enriched_cart items: {bool(top_level_screenshot)}")
 
+        # Extract subdomain from request origin to store with order
+        creator_user_id_from_subdomain = None
+        subdomain_from_request = None
+        try:
+            origin = request.headers.get('Origin', '')
+            if origin and origin.endswith('.screenmerch.com') and origin.startswith('https://'):
+                from urllib.parse import urlparse
+                parsed = urlparse(origin)
+                hostname = parsed.netloc
+                subdomain_from_request = hostname.replace('.screenmerch.com', '').lower()
+                
+                if subdomain_from_request and subdomain_from_request != 'www':
+                    # Look up creator by subdomain
+                    creator_result = supabase_admin.table('users').select('id, display_name').eq('subdomain', subdomain_from_request).limit(1).execute()
+                    
+                    if creator_result.data and len(creator_result.data) > 0:
+                        creator_user_id_from_subdomain = creator_result.data[0]['id']
+                        logger.info(f"✅ [PLACE-ORDER] Found creator user_id from subdomain '{subdomain_from_request}': {creator_user_id_from_subdomain}")
+        except Exception as subdomain_error:
+            logger.warning(f"⚠️ [PLACE-ORDER] Error looking up creator from subdomain: {subdomain_error}")
+        
         # Prepare DB payload restricted to known columns
         # Also store screenshot at order level for easy retrieval
         user_email_from_data = data.get("user_email", "")
@@ -2770,6 +2815,8 @@ def place_order():
             "customer_email": data.get("user_email", data.get("customer_email", "")),
             "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
             "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+            "creator_user_id": creator_user_id_from_subdomain,  # Store creator user_id for webhook
+            "subdomain": subdomain_from_request,  # Store subdomain for reference
             "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
             "total_amount": total_amount,
             "shipping_cost": shipping_cost,
@@ -2797,6 +2844,8 @@ def place_order():
             "timestamp": data.get("timestamp"),
             "order_id": order_id,
             "video_title": order_data["video_title"],
+            "creator_user_id": creator_user_id_from_subdomain,  # Store creator user_id for webhook
+            "subdomain": subdomain_from_request,  # Store subdomain for reference
             "creator_name": order_data["creator_name"],
             "video_url": order_data["video_url"],
             "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
@@ -3217,9 +3266,23 @@ def success():
             
             logger.info(f"📧 [SUCCESS] Order status: {order_status}")
             
-            # Record each sale
+            # Get creator_user_id from order data if available
+            creator_user_id = order_data.get('creator_user_id')
+            if not creator_user_id:
+                # Try to look up from subdomain if stored
+                subdomain = order_data.get('subdomain')
+                if subdomain:
+                    try:
+                        creator_result = supabase_admin.table('users').select('id').eq('subdomain', subdomain).limit(1).execute()
+                        if creator_result.data and len(creator_result.data) > 0:
+                            creator_user_id = creator_result.data[0]['id']
+                            logger.info(f"✅ [SUCCESS] Found creator_user_id from stored subdomain '{subdomain}': {creator_user_id}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ [SUCCESS] Error looking up creator from subdomain: {str(e)}")
+            
+            # Record each sale with creator_user_id if available
             for item in cart:
-                record_sale(item, order_id=order_id)
+                record_sale(item, user_id=creator_user_id, order_id=order_id)
             
             # Only send email if order is still "pending" (webhook didn't fire)
             if order_status != 'paid':
@@ -3655,6 +3718,27 @@ def create_checkout_session():
         else:
             logger.warning(f"⚠️ [CHECKOUT] WARNING: No screenshot found to store in order!")
         
+        # Extract subdomain from request origin to store with order
+        creator_user_id_from_subdomain = None
+        subdomain_from_request = None
+        try:
+            origin = request.headers.get('Origin', '')
+            if origin and origin.endswith('.screenmerch.com') and origin.startswith('https://'):
+                from urllib.parse import urlparse
+                parsed = urlparse(origin)
+                hostname = parsed.netloc
+                subdomain_from_request = hostname.replace('.screenmerch.com', '').lower()
+                
+                if subdomain_from_request and subdomain_from_request != 'www':
+                    # Look up creator by subdomain
+                    creator_result = supabase_admin.table('users').select('id, display_name').eq('subdomain', subdomain_from_request).limit(1).execute()
+                    
+                    if creator_result.data and len(creator_result.data) > 0:
+                        creator_user_id_from_subdomain = creator_result.data[0]['id']
+                        logger.info(f"✅ [CHECKOUT] Found creator user_id from subdomain '{subdomain_from_request}': {creator_user_id_from_subdomain}")
+        except Exception as subdomain_error:
+            logger.warning(f"⚠️ [CHECKOUT] Error looking up creator from subdomain: {subdomain_error}")
+        
         # Store order in database instead of in-memory store
         # NOTE: selected_screenshot column doesn't exist in database, so we store it only in cart items
         order_data = {
@@ -3664,6 +3748,8 @@ def create_checkout_session():
             "customer_email": data.get("user_email", ""),
             "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
             "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+            "creator_user_id": creator_user_id_from_subdomain,  # Store creator user_id for webhook
+            "subdomain": subdomain_from_request,  # Store subdomain for reference
             "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
             "total_amount": total_amount,
             "shipping_cost": shipping_cost,
