@@ -142,6 +142,12 @@ def get_cookie_domain():
 
 def _allow_origin(resp):
     """Add CORS headers to response based on request origin"""
+    # Check if CORS headers already exist (from Flask-CORS or other middleware)
+    existing_origin = resp.headers.get('Access-Control-Allow-Origin')
+    if existing_origin:
+        # Headers already set, don't duplicate
+        return resp
+    
     origin = request.headers.get('Origin')
     allowed = {
         "https://screenmerch.com",
@@ -162,6 +168,7 @@ def _allow_origin(resp):
         elif origin.endswith('.screenmerch.com') and origin.startswith('https://'):
             origin_allowed = True
     
+    # Use assignment (not .add()) to prevent duplicates
     if origin_allowed:
         resp.headers['Access-Control-Allow-Origin'] = origin
         resp.headers['Vary'] = 'Origin'

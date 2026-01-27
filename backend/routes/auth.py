@@ -69,36 +69,9 @@ def auth_login():
     """Handle user login with email and password validation"""
     if request.method == "OPTIONS":
         logger.info(f"🔵 [LOGIN] OPTIONS preflight from {request.headers.get('Origin', 'unknown')}")
+        # Let Flask-CORS handle OPTIONS requests to avoid duplicate headers
+        # Flask-CORS is configured globally in app.py and will handle this automatically
         response = jsonify(success=True)
-        origin = request.headers.get('Origin')
-        allowed_origins = [
-            "https://screenmerch.com", "https://www.screenmerch.com", 
-            "https://screenmerch.fly.dev", 
-            "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", 
-            "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", 
-            "http://localhost:3000", "http://localhost:5173"
-        ]
-        
-        # Check exact match first
-        origin_allowed = origin in allowed_origins
-        
-        # If not exact match, check if it's a Netlify subdomain or screenmerch.com subdomain
-        if not origin_allowed and origin:
-            if origin.endswith('.netlify.app') and origin.startswith('https://'):
-                origin_allowed = True
-            elif origin.endswith('.screenmerch.com') and origin.startswith('https://'):
-                origin_allowed = True
-        
-        # Use assignment instead of .add() to prevent duplicate headers
-        if origin_allowed:
-            response.headers['Access-Control-Allow-Origin'] = origin
-        else:
-            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
-        
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Cache-Control,Pragma,Expires'
-        response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        logger.info(f"✅ [LOGIN] OPTIONS preflight response sent")
         return response
     
     try:

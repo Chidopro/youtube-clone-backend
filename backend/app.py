@@ -520,18 +520,38 @@ def get_product_price_range(product_name):
         return f"${min_price:.2f}-${max_price:.2f}"
 
 # Configure CORS for production - Netlify frontend to Fly.io backend
-CORS(app, resources={r"/api/*": {"origins": [
-    "https://screenmerch.com", 
-    "https://www.screenmerch.com", 
-    "https://screenmerch.fly.dev",
-    "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
-    "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",  # Previous preview URL
-    "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",  # Current preview URL
-    "https://*.netlify.app",  # All Netlify apps
-    "http://localhost:3000", 
-    "http://localhost:5173",
-    "chrome-extension://*"
-]}}, supports_credentials=True)
+# Use a function to handle subdomains dynamically
+def cors_origin_validator(origin, whitelist=None):
+    """Custom origin validator for Flask-CORS that supports subdomains"""
+    if not origin:
+        return False
+    
+    allowed_origins = [
+        "https://screenmerch.com", 
+        "https://www.screenmerch.com", 
+        "https://screenmerch.fly.dev",
+        "https://eloquent-crumble-37c09e.netlify.app",
+        "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",
+        "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",
+        "http://localhost:3000", 
+        "http://localhost:5173",
+    ]
+    
+    # Check exact match first
+    if origin in allowed_origins:
+        return True
+    
+    # Check if it's a Netlify subdomain
+    if origin.endswith('.netlify.app') and origin.startswith('https://'):
+        return True
+    
+    # Check if it's a screenmerch.com subdomain (e.g., testcreator.screenmerch.com)
+    if origin.endswith('.screenmerch.com') and origin.startswith('https://'):
+        return True
+    
+    return False
+
+CORS(app, resources={r"/api/*": {"origins": cors_origin_validator}}, supports_credentials=True)
 
 # Global preflight handler for all /api/* routes
 @app.route('/api/<path:any_path>', methods=['OPTIONS'])
