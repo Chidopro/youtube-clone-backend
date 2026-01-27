@@ -125,16 +125,30 @@ def _record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=N
     # Fallback: Look up by creator_name
     if not creator_user_id and creator_name and creator_name != 'Unknown Creator' and client:
         try:
-            creator_result = client.table('users').select('id').or_(
-                f"display_name.ilike.{creator_name},username.ilike.{creator_name}"
-            ).limit(1).execute()
+            # Try display_name first
+            creator_result = client.table('users').select('id').ilike('display_name', f'%{creator_name}%').limit(1).execute()
             if creator_result.data and len(creator_result.data) > 0:
                 creator_user_id = creator_result.data[0]['id']
-        except Exception:
-            pass
+            else:
+                # Try username if display_name didn't match
+                creator_result = client.table('users').select('id').ilike('username', f'%{creator_name}%').limit(1).execute()
+                if creator_result.data and len(creator_result.data) > 0:
+                    creator_user_id = creator_result.data[0]['id']
+        except Exception as lookup_error:
+            logger.warning(f"Error looking up creator user_id for '{creator_name}': {str(lookup_error)}")
+    
+    # Validate creator_user_id is a valid UUID before inserting
+    # If it's not a valid UUID (e.g., a subdomain string), set it to None
+    if creator_user_id:
+        try:
+            # Try to parse as UUID to validate
+            uuid.UUID(str(creator_user_id))
+        except (ValueError, TypeError, AttributeError):
+            logger.warning(f"Invalid creator_user_id format (not a UUID): {creator_user_id}. Setting to None.")
+            creator_user_id = None
     
     sale_data = {
-        "user_id": creator_user_id,
+        "user_id": creator_user_id,  # Will be None if invalid UUID
         "product_id": item.get('product_id', ''),
         "product_name": item.get('product', ''),
         "video_id": item.get('video_id', ''),
