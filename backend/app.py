@@ -46,6 +46,16 @@ import screenshot_capture as sc_module
 # NEW: Import security manager
 from security_config import security_manager, SECURITY_HEADERS, validate_file_upload
 
+# Import Blueprint registration functions
+from routes import (
+    register_auth_routes,
+    register_admin_routes,
+    register_products_routes,
+    register_orders_routes,
+    register_videos_routes,
+    register_analytics_routes
+)
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -269,8 +279,11 @@ app = Flask(__name__,
            template_folder='templates',
            static_folder='static')
 
-# Configure session secret key
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-secret-key-change-in-production")
+# Configure session secret key - REQUIRED for security
+secret_key = os.getenv("FLASK_SECRET_KEY")
+if not secret_key:
+    raise ValueError("FLASK_SECRET_KEY environment variable is required. Set it in your environment or .env file.")
+app.secret_key = secret_key
 
 # Session / cookie settings for cross-device friendly auth
 from datetime import timedelta
@@ -664,9 +677,9 @@ supabase: Client = create_client(supabase_url, supabase_key)
 supabase_admin: Client = None
 if supabase_service_key:
     supabase_admin = create_client(supabase_url, supabase_service_key)
-    print("✅ Service role client initialized")
+    print("[OK] Service role client initialized")
 else:
-    print("⚠️ Service role key not found - some admin operations may not work")
+    print("[WARNING] Service role key not found - some admin operations may not work")
 
 # NEW: Initialize Printful integration
 printful_integration = ScreenMerchPrintfulIntegration()
@@ -713,6 +726,52 @@ def ensure_stripe_test_mode():
 
 # NEW: Printful API Key (optional for now)
 PRINTFUL_API_KEY = os.getenv("PRINTFUL_API_KEY") or "dummy_key"
+
+# ============================================================================
+# Register Flask Blueprints
+# ============================================================================
+# Prepare configuration dictionary for Blueprints
+config = {
+    'STRIPE_SECRET_KEY': os.getenv("STRIPE_SECRET_KEY"),
+    'STRIPE_WEBHOOK_SECRET': STRIPE_WEBHOOK_SECRET,
+    'RESEND_API_KEY': RESEND_API_KEY,
+    'RESEND_FROM': RESEND_FROM,
+    'MAIL_TO': MAIL_TO,
+    'PRINTFUL_API_KEY': PRINTFUL_API_KEY,
+    'GOOGLE_CLIENT_ID': GOOGLE_CLIENT_ID,
+    'GOOGLE_CLIENT_SECRET': GOOGLE_CLIENT_SECRET,
+    'GOOGLE_REDIRECT_URI': GOOGLE_REDIRECT_URI,
+    'YOUTUBE_API_KEY': YOUTUBE_API_KEY
+}
+
+# Register Blueprints that don't depend on PRODUCTS
+print("[INFO] Registering Flask Blueprints...")
+try:
+    # Auth Blueprint
+    register_auth_routes(app, supabase, supabase_admin, config)
+    print("  [OK] Auth Blueprint registered")
+    
+    # Admin Blueprint
+    register_admin_routes(app, supabase, supabase_admin, order_store)
+    print("  [OK] Admin Blueprint registered")
+    
+    # Videos Blueprint
+    register_videos_routes(app, supabase, screenshot_capture, sc_module)
+    print("  [OK] Videos Blueprint registered")
+    
+    # Analytics Blueprint
+    register_analytics_routes(app, supabase, supabase_admin, order_store)
+    print("  [OK] Analytics Blueprint registered")
+    
+    # Products and Orders Blueprints will be registered after PRODUCTS is defined (see below)
+    print("  [INFO] Products and Orders Blueprints will be registered after PRODUCTS definition")
+    
+    print("[OK] Initial Blueprints registered successfully!")
+except Exception as e:
+    print(f"[ERROR] Error registering Blueprints: {str(e)}")
+    import traceback
+    traceback.print_exc()
+    # Don't exit - allow app to continue with old routes as fallback
 
 @app.route("/api/ping")
 def ping():
@@ -1805,6 +1864,20 @@ def filter_products_by_category(category):
     
     print(f"🔍 FILTER DEBUG: Returning {len(filtered_products)} filtered products out of {len(PRODUCTS)} total")
     return filtered_products
+
+# Register Products and Orders Blueprints now that PRODUCTS is defined
+try:
+    register_products_routes(app, supabase, PRODUCTS, product_data_store, printful_integration)
+    print("  [OK] Products Blueprint registered (after PRODUCTS definition)")
+    
+    # Register Orders Blueprint with PRODUCTS list
+    register_orders_routes(app, supabase, supabase_admin, order_store, PRODUCTS, config)
+    print("  [OK] Orders Blueprint registered (after PRODUCTS definition)")
+    print("[OK] All Blueprints registered successfully!")
+except Exception as e:
+    print(f"[ERROR] Error registering Products/Orders Blueprints: {str(e)}")
+    import traceback
+    traceback.print_exc()
 
 @app.route("/")
 def index():
@@ -7791,10 +7864,14 @@ def admin_setup():
     """Create admin user endpoint"""
     if request.method == "POST":
         try:
+            # Hash the admin password using bcrypt for security
+            admin_password = 'VieG369Bbk8!'
+            password_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            
             # Create admin user
             admin_user = {
                 'email': 'admin@screenmerch.com',
-                'password_hash': 'VieG369Bbk8!',
+                'password_hash': password_hash,  # Now properly hashed
                 'role': 'admin',
                 'display_name': 'Admin User',
                 'status': 'active'
@@ -7807,7 +7884,7 @@ def admin_setup():
                 # Update existing user to admin
                 result = supabase.table('users').update({
                     'role': 'admin',
-                    'password_hash': 'VieG369Bbk8!'
+                    'password_hash': password_hash  # Now properly hashed
                 }).eq('email', 'admin@screenmerch.com').execute()
                 message = "Admin user updated successfully!"
             else:
