@@ -553,68 +553,20 @@ def cors_origin_validator(origin, whitelist=None):
 
 CORS(app, resources={r"/api/*": {"origins": cors_origin_validator}}, supports_credentials=True)
 
-# Global preflight handler for all /api/* routes
-@app.route('/api/<path:any_path>', methods=['OPTIONS'])
-def api_preflight(any_path):
-    response = jsonify(success=True)
-    origin = request.headers.get('Origin')
-    allowed_origins = [
-        "https://screenmerch.com", 
-        "https://www.screenmerch.com", 
-        "https://screenmerch.fly.dev",
-        "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
-        "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",  # Previous preview URL
-    "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",  # Current preview URL
-        "https://*.netlify.app",  # All Netlify apps
-        "http://localhost:3000", 
-        "http://localhost:5173",
-        "chrome-extension://*"
-    ]
-    
-    # Check if origin matches any allowed pattern
-    origin_allowed = False
-    for allowed_origin in allowed_origins:
-        if allowed_origin == origin or (allowed_origin.startswith("https://*") and origin and origin.startswith(allowed_origin.replace("*", ""))):
-            origin_allowed = True
-            break
-    
-    # Also check if it's a subdomain of screenmerch.com (e.g., testcreator.screenmerch.com)
-    if not origin_allowed and origin:
-        if origin.endswith('.screenmerch.com') and origin.startswith('https://'):
-            origin_allowed = True
-    
-    if origin_allowed:
-        response.headers.add('Access-Control-Allow-Origin', origin)
-    else:
-        response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
-    
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
+# NOTE: Removed global preflight handler - Flask-CORS handles OPTIONS requests automatically
+# This prevents duplicate CORS headers that were causing "multiple values" errors
 
 # Add CORS headers to all API responses
+# NOTE: Flask-CORS handles most CORS automatically, this middleware only handles edge cases
 @app.after_request
 def add_cors_headers(response):
-    """Add CORS headers to all API responses"""
+    """Add CORS headers to all API responses - only if not already set by Flask-CORS"""
     if request.path.startswith('/api/'):
-        # Skip middleware override for endpoints that set their own CORS
-        skip_paths = [
-            '/api/process-thumbnail-print-quality',
-            '/api/auth/login',
-            '/api/auth/login/'
-        ]
-        if request.path in skip_paths or request.path.startswith('/api/get-order-screenshot/'):
-            existing_origin = response.headers.get('Access-Control-Allow-Origin')
-            if existing_origin:
-                logger.info(f"🔍 [MIDDLEWARE] Skipping override for {request.path} - endpoint already set CORS: {existing_origin}")
-                return response
-        
-        # Check if CORS headers were already set (by flask-cors or endpoint)
+        # CRITICAL: Check if CORS headers were already set by Flask-CORS or endpoint
+        # If they exist, don't add duplicates - this prevents "multiple values" errors
         existing_cors = response.headers.get('Access-Control-Allow-Origin')
         if existing_cors:
-            # Headers already set, don't add duplicates
-            logger.info(f"🔍 [MIDDLEWARE] {request.path} - CORS already set: {existing_cors}, skipping")
+            # Headers already set by Flask-CORS, don't add duplicates
             return response
         
         origin = request.headers.get('Origin')
