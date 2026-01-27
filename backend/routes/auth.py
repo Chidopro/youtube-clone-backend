@@ -84,13 +84,13 @@ def auth_login():
         
         if not email or not password:
             response = jsonify({"success": False, "error": "Email and password are required"})
-            return _allow_origin(response), 400
+            return response, 400
         
         # Validate email format
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(email_pattern, email):
             response = jsonify({"success": False, "error": "Please enter a valid email address"})
-            return _allow_origin(response), 400
+            return response, 400
         
         # Check if user exists in database - use admin client to bypass RLS
         try:
@@ -99,7 +99,7 @@ def auth_login():
             if not client:
                 logger.error("❌ [LOGIN] Supabase client not initialized")
                 response = jsonify({"success": False, "error": "Authentication service unavailable"})
-                return _allow_origin(response), 500
+                return response, 500
             
             result = client.table('users').select('*').eq('email', email).execute()
             logger.info(f"🔵 [LOGIN] Database query completed for: {email}")
@@ -114,7 +114,7 @@ def auth_login():
                         "success": False, 
                         "error": "Your account is pending approval. Please wait for admin approval before signing in."
                     })
-                    return _allow_origin(response), 403
+                    return response, 403
                 
                 # Block login if user is suspended or banned
                 if user_status in ['suspended', 'banned']:
@@ -122,7 +122,7 @@ def auth_login():
                         "success": False, 
                         "error": f"Your account has been {user_status}. Please contact support for assistance."
                     })
-                    return _allow_origin(response), 403
+                    return response, 403
                 
                 stored_password = user.get('password_hash', '')
                 
@@ -192,7 +192,7 @@ def auth_login():
                         }
                         resp = make_response(jsonify(response_data), 200)
                     
-                    resp = _allow_origin(resp)
+                    # Flask-CORS will handle CORS headers automatically
                     resp.set_cookie(
                         "sm_session", token,
                         domain=domain, path="/",
@@ -201,20 +201,20 @@ def auth_login():
                     return resp
                 else:
                     response = jsonify({"success": False, "error": "Invalid email or password"})
-                    return _allow_origin(response), 401
+                    return response, 401
             else:
                 response = jsonify({"success": False, "error": "Invalid email or password"})
-                return _allow_origin(response), 401
+                return response, 401
                 
         except Exception as db_error:
             logger.error(f"Database error during login: {str(db_error)}")
             response = jsonify({"success": False, "error": "Authentication service unavailable"})
-            return _allow_origin(response), 500
+            return response, 500
             
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
-        return _allow_origin(response), 500
+        return response, 500
 
 
 @auth_bp.route("/api/auth/check-admin", methods=["POST", "OPTIONS"])
@@ -223,9 +223,7 @@ def auth_check_admin():
     """Check if a user has admin privileges"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response = _allow_origin(response)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        # Flask-CORS handles CORS headers automatically
         return response
     
     try:
@@ -235,7 +233,7 @@ def auth_check_admin():
         
         if not user_id and not user_email:
             response = jsonify({"success": False, "error": "user_id or email is required"})
-            return _allow_origin(response), 400
+            return response, 400
         
         logger.info(f"🔐 [CHECK-ADMIN] Checking admin status for user_id={user_id}, email={user_email}")
         
@@ -243,7 +241,7 @@ def auth_check_admin():
         if not client:
             logger.error("❌ [CHECK-ADMIN] Supabase client not initialized")
             response = jsonify({"success": False, "error": "Database service unavailable"})
-            return _allow_origin(response), 500
+            return response, 500
         
         # Query by ID first, then fallback to email
         user_data = None
@@ -269,7 +267,7 @@ def auth_check_admin():
                 "isOrderProcessingAdmin": False,
                 "adminRole": None
             })
-            return _allow_origin(response), 200
+            return response, 200
         
         is_admin = user_data.get('is_admin', False) or False
         admin_role = user_data.get('admin_role')
@@ -294,12 +292,12 @@ def auth_check_admin():
             "isOrderProcessingAdmin": is_order_processing_admin,
             "adminRole": admin_role
         })
-        return _allow_origin(response), 200
+        return response, 200
         
     except Exception as e:
         logger.error(f"❌ [CHECK-ADMIN] Error: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
-        return _allow_origin(response), 500
+        return response, 500
 
 
 @auth_bp.route("/login")
@@ -516,7 +514,7 @@ def auth_signup():
                 return resp
             else:
                 response = jsonify({"success": False, "error": "Failed to create account"})
-                return _allow_origin(response), 500
+                return response, 500
                 
         except Exception as db_error:
             logger.error(f"Database error during signup: {str(db_error)}")
@@ -540,9 +538,7 @@ def auth_signup_email_only():
     """Handle customer signup with email only - sends verification email"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response = _allow_origin(response)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        # Flask-CORS handles CORS headers automatically
         return response
     
     try:
@@ -643,15 +639,15 @@ def auth_signup_email_only():
                 "success": True,
                 "message": "Please check your email to verify your account and set your password."
             })
-            return _allow_origin(response), 200
+            return response, 200
         else:
             response = jsonify({"success": False, "error": "Failed to create account"})
-            return _allow_origin(response), 500
+            return response, 500
             
     except Exception as e:
         logger.error(f"Email-only signup error: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
-        return _allow_origin(response), 500
+        return response, 500
 
 
 @auth_bp.route("/api/auth/verify-email", methods=["POST", "OPTIONS"])
@@ -659,9 +655,7 @@ def auth_verify_email():
     """Verify email token and set password"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response = _allow_origin(response)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        # Flask-CORS handles CORS headers automatically
         return response
     
     try:
@@ -727,15 +721,15 @@ def auth_verify_email():
                 },
                 "token": token
             })
-            return _allow_origin(response), 200
+            return response, 200
         else:
             response = jsonify({"success": False, "error": "Failed to verify email"})
-            return _allow_origin(response), 500
+            return response, 500
             
     except Exception as e:
         logger.error(f"Email verification error: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
-        return _allow_origin(response), 500
+        return response, 500
 
 
 @auth_bp.route("/api/auth/google/login", methods=["GET", "OPTIONS"])
