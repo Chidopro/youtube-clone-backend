@@ -16,6 +16,7 @@ from pathlib import Path
 import sys
 from functools import wraps
 import bcrypt
+import re
 
 # Google OAuth imports
 from google.auth.transport.requests import Request
@@ -2210,7 +2211,10 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
     creator_user_id = user_id
     creator_name = item.get('creator_name', '')
     
+    logger.info(f"🔍 [RECORD_SALE] Starting with user_id={user_id}, creator_name={creator_name}")
+    
     # First, try to get user_id from subdomain in the request origin
+    # NOTE: This only works for direct requests, not webhooks (webhooks don't have Origin header)
     if not creator_user_id:
         try:
             origin = request.headers.get('Origin', '')
@@ -2248,6 +2252,13 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
         except Exception as lookup_error:
             logger.error(f"Error looking up creator user_id for '{creator_name}': {lookup_error}")
     
+    # Log final creator_user_id before saving
+    if creator_user_id:
+        logger.info(f"✅ [RECORD_SALE] Recording sale with creator_user_id: {creator_user_id}, product: {item.get('product', 'N/A')}, amount: ${item_price}")
+    else:
+        logger.warning(f"⚠️ [RECORD_SALE] Recording sale WITHOUT creator_user_id! Product: {item.get('product', 'N/A')}, amount: ${item_price}")
+        logger.warning(f"⚠️ [RECORD_SALE] This sale will NOT appear in creator analytics dashboard!")
+    
     sale_data = {
         "user_id": creator_user_id,  # Use looked-up creator user_id for precise tracking
         "product_id": item.get('product_id', ''),
@@ -2260,7 +2271,7 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
         "image_url": item.get('img', ''),
         "amount": item_price,
         "friend_id": friend_id,
-        "channel_id": channel_id
+        "channel_id": channel_id  # Now that column is VARCHAR(255), string values work correctly
     }
     try:
         # Use service role client to bypass RLS for precise tracking
@@ -2832,11 +2843,16 @@ def place_order():
         # Try database first; fallback to in-memory store
         stored_in_db = False
         try:
+            # Log what we're trying to save for debugging
+            logger.info(f"💾 [PLACE-ORDER] Saving order to database with creator_user_id: {creator_user_id_from_subdomain}, subdomain: {subdomain_from_request}")
             supabase.table('orders').insert(order_data).execute()
             stored_in_db = True
-            logger.info(f"✅ Order {order_id} stored in database")
+            logger.info(f"✅ Order {order_id} stored in database with creator tracking")
         except Exception as db_error:
             logger.error(f"❌ Failed to store order in database: {str(db_error)}")
+            logger.error(f"❌ Order data keys being saved: {list(order_data.keys())}")
+            logger.error(f"❌ creator_user_id value: {creator_user_id_from_subdomain}")
+            logger.error(f"❌ subdomain value: {subdomain_from_request}")
 
         # Always keep an in-memory backup for admin dashboard/tools
         order_store[order_id] = {
@@ -2844,6 +2860,8 @@ def place_order():
             "timestamp": data.get("timestamp"),
             "order_id": order_id,
             "video_title": order_data["video_title"],
+            "creator_user_id": creator_user_id_from_subdomain,  # Store creator user_id for webhook
+            "subdomain": subdomain_from_request,  # Store subdomain for reference
             "creator_user_id": creator_user_id_from_subdomain,  # Store creator user_id for webhook
             "subdomain": subdomain_from_request,  # Store subdomain for reference
             "creator_name": order_data["creator_name"],
@@ -3801,6 +3819,8 @@ def create_checkout_session():
                 "order_id": order_id,
                 "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
                 "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                "creator_user_id": creator_user_id_from_subdomain,  # Store creator user_id for webhook
+                "subdomain": subdomain_from_request,  # Store subdomain for reference
                 "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
                 "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
                 "status": "pending",
@@ -4382,6 +4402,35 @@ def stripe_webhook():
                 </div>
             """
             
+            # Get creator_user_id from order data if available
+            creator_user_id = order_data.get('creator_user_id')
+            logger.info(f"🔍 [WEBHOOK] Initial creator_user_id from order_data: {creator_user_id}")
+            logger.info(f"🔍 [WEBHOOK] Order data keys: {list(order_data.keys())}")
+            
+            if not creator_user_id:
+                # Try to look up from subdomain if stored
+                subdomain = order_data.get('subdomain')
+                logger.info(f"🔍 [WEBHOOK] No creator_user_id found, trying subdomain lookup. Subdomain: {subdomain}")
+                if subdomain:
+                    try:
+                        creator_result = supabase_admin.table('users').select('id').eq('subdomain', subdomain).limit(1).execute()
+                        if creator_result.data and len(creator_result.data) > 0:
+                            creator_user_id = creator_result.data[0]['id']
+                            logger.info(f"✅ [WEBHOOK] Found creator_user_id from stored subdomain '{subdomain}': {creator_user_id}")
+                        else:
+                            logger.warning(f"⚠️ [WEBHOOK] No creator found for subdomain '{subdomain}'")
+                    except Exception as e:
+                        logger.warning(f"⚠️ [WEBHOOK] Error looking up creator from subdomain: {str(e)}")
+                else:
+                    logger.warning(f"⚠️ [WEBHOOK] No subdomain found in order_data, cannot look up creator")
+            
+            # Final check - if still no creator_user_id, log warning
+            if not creator_user_id:
+                logger.error(f"❌ [WEBHOOK] CRITICAL: No creator_user_id found for order {order_id}. Order will be recorded without creator tracking!")
+                logger.error(f"❌ [WEBHOOK] Order data: creator_name={order_data.get('creator_name')}, subdomain={order_data.get('subdomain')}")
+            else:
+                logger.info(f"✅ [WEBHOOK] Using creator_user_id: {creator_user_id} for order {order_id}")
+            
             # Record each sale with creator and video information
             for item in cart:
                 # Add creator and video information to each item
@@ -4389,9 +4438,9 @@ def stripe_webhook():
                 item['creator_name'] = order_data.get('creator_name', 'Unknown Creator')
                 
                 # Extract channel_id from the order data if available
-                # For Cheedo V, use 'cheedo_v' as channel_id
-                channel_id = order_data.get('channel_id') or item.get('channel_id') or 'cheedo_v'
-                record_sale(item, channel_id=channel_id, order_id=order_id)
+                # channel_id is now VARCHAR(255) in database, so string values work correctly
+                channel_id = order_data.get('channel_id') or item.get('channel_id') or None
+                record_sale(item, user_id=creator_user_id, channel_id=channel_id, order_id=order_id)
                 
             # Email notifications only - no SMS
             logger.info("📧 Order notifications will be sent via email")
@@ -8383,16 +8432,68 @@ def platform_revenue():
         # Use admin client to bypass RLS
         client = supabase_admin if supabase_admin else supabase
         
+        # If creator_id is provided, check if it's a subdomain and convert to UUID
+        creator_user_id = None
+        if creator_id:
+            # Check if creator_id is a subdomain (e.g., "testcreator.screenmerch.com" or "testcreator")
+            # Extract subdomain if it contains ".screenmerch.com"
+            subdomain = creator_id
+            if '.screenmerch.com' in creator_id:
+                subdomain = creator_id.replace('.screenmerch.com', '').replace('https://', '').replace('http://', '')
+            
+            # Check if it looks like a UUID (contains hyphens and is 36 chars) or is a subdomain string
+            uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+            
+            if uuid_pattern.match(creator_id):
+                # It's already a UUID, use it directly
+                creator_user_id = creator_id
+            else:
+                # It's a subdomain, look up the user_id
+                try:
+                    logger.info(f"🔍 [ADMIN] Looking up creator by subdomain: {subdomain}")
+                    creator_result = client.table('users').select('id').eq('subdomain', subdomain).limit(1).execute()
+                    if creator_result.data and len(creator_result.data) > 0:
+                        creator_user_id = creator_result.data[0]['id']
+                        logger.info(f"✅ [ADMIN] Found creator user_id: {creator_user_id} for subdomain: {subdomain}")
+                    else:
+                        logger.warning(f"⚠️ [ADMIN] No creator found for subdomain: {subdomain}")
+                        # Return empty results instead of error
+                        return jsonify({
+                            "success": True,
+                            "total_platform_revenue": 0,
+                            "total_gross_revenue": 0,
+                            "total_creator_payouts": 0,
+                            "total_transactions": 0,
+                            "revenue_by_creator": [],
+                            "revenue_over_time": [],
+                            "revenue_by_product": [],
+                            "recent_transactions": []
+                        })
+                except Exception as e:
+                    logger.error(f"❌ [ADMIN] Error looking up creator by subdomain: {str(e)}")
+                    # Return empty results instead of error
+                    return jsonify({
+                        "success": True,
+                        "total_platform_revenue": 0,
+                        "total_gross_revenue": 0,
+                        "total_creator_payouts": 0,
+                        "total_transactions": 0,
+                        "revenue_by_creator": [],
+                        "revenue_over_time": [],
+                        "revenue_by_product": [],
+                        "recent_transactions": []
+                    })
+        
         # Build query for creator_earnings
-        query = client.table('creator_earnings').select('*, users!inner(id, email, display_name, username)')
+        query = client.table('creator_earnings').select('*, users!inner(id, email, display_name, username, subdomain)')
         
         # Apply date filters if provided
         if start_date:
             query = query.gte('created_at', start_date)
         if end_date:
             query = query.lte('created_at', end_date)
-        if creator_id:
-            query = query.eq('user_id', creator_id)
+        if creator_user_id:
+            query = query.eq('user_id', creator_user_id)
         
         # Get all earnings records
         result = query.order('created_at', desc=True).execute()
@@ -8411,12 +8512,14 @@ def platform_revenue():
             creator_id_key = earning.get('user_id')
             creator_name = user.get('display_name') or user.get('username') or user.get('email') or 'Unknown Creator'
             creator_email = user.get('email', 'Unknown')
+            creator_subdomain = user.get('subdomain', '')
             
             if creator_id_key not in revenue_by_creator:
                 revenue_by_creator[creator_id_key] = {
                     'creator_id': creator_id_key,
                     'creator_name': creator_name,
                     'creator_email': creator_email,
+                    'creator_subdomain': creator_subdomain,
                     'platform_revenue': 0,
                     'gross_revenue': 0,
                     'creator_payouts': 0,
@@ -8520,6 +8623,7 @@ def platform_revenue():
                                     earning.get('users', {}).get('username') or 
                                     earning.get('users', {}).get('email') or 'Unknown'),
                     'creator_email': earning.get('users', {}).get('email', 'Unknown'),
+                    'creator_subdomain': earning.get('users', {}).get('subdomain', ''),
                     'product_name': earning.get('product_name'),
                     'sale_amount': round(float(earning.get('sale_amount', 0)), 2),
                     'platform_fee': round(float(earning.get('platform_fee', 0)), 2),

@@ -2311,6 +2311,7 @@ const Admin = () => {
                         <thead>
                           <tr>
                             <th>Creator</th>
+                            <th>Subdomain</th>
                             <th>Email</th>
                             <th>Platform Revenue</th>
                             <th>Gross Revenue</th>
@@ -2322,6 +2323,15 @@ const Admin = () => {
                           {platformRevenue.revenue_by_creator.map((creator, index) => (
                             <tr key={creator.creator_id || index}>
                               <td>{creator.creator_name}</td>
+                              <td>
+                                {creator.creator_subdomain ? (
+                                  <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#666' }}>
+                                    {creator.creator_subdomain}.screenmerch.com
+                                  </span>
+                                ) : (
+                                  <span style={{ color: '#999', fontStyle: 'italic' }}>No subdomain</span>
+                                )}
+                              </td>
                               <td>{creator.creator_email}</td>
                               <td style={{ color: '#28a745', fontWeight: 'bold' }}>
                                 ${creator.platform_revenue.toFixed(2)}
@@ -2342,32 +2352,87 @@ const Admin = () => {
                   <div style={{ marginBottom: '30px' }}>
                     <h4>Revenue Over Time</h4>
                     {platformRevenue.revenue_by_date && platformRevenue.revenue_by_date.length > 0 ? (
-                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '200px', padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'flex-end', 
+                        gap: '12px', 
+                        height: '250px', 
+                        padding: '20px 20px 40px 20px', 
+                        backgroundColor: '#f8f9fa', 
+                        borderRadius: '8px', 
+                        border: '1px solid #dee2e6',
+                        position: 'relative',
+                        justifyContent: 'flex-start',
+                        overflowX: 'auto'
+                      }}>
                         {platformRevenue.revenue_by_date.map((day, index) => {
                           const maxRevenue = Math.max(...platformRevenue.revenue_by_date.map(d => d.platform_revenue), 1);
-                          const height = (day.platform_revenue / maxRevenue) * 160;
+                          // Use a more reasonable max height (180px) and ensure minimum bar visibility
+                          const barHeight = maxRevenue > 0 ? Math.max((day.platform_revenue / maxRevenue) * 180, day.platform_revenue > 0 ? 8 : 0) : 0;
+                          const dateObj = new Date(day.date + 'T00:00:00');
+                          const dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                          
+                          // Fixed width for each bar (60px) - bars won't stretch to fill entire width
+                          const barWidth = 60;
+                          
                           return (
-                            <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div 
+                              key={index} 
+                              style={{ 
+                                width: `${barWidth}px`,
+                                flexShrink: 0,
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                alignItems: 'center',
+                                position: 'relative'
+                              }}
+                            >
+                              {day.platform_revenue > 0 && (
+                                <span style={{ 
+                                  position: 'absolute', 
+                                  top: '-20px', 
+                                  fontSize: '11px', 
+                                  fontWeight: 'bold',
+                                  color: '#28a745',
+                                  whiteSpace: 'nowrap',
+                                  textAlign: 'center',
+                                  width: '100%'
+                                }}>
+                                  ${day.platform_revenue.toFixed(2)}
+                                </span>
+                              )}
                               <div
                                 style={{
-                                  width: '100%',
-                                  backgroundColor: '#28a745',
-                                  height: `${height}px`,
-                                  minHeight: day.platform_revenue > 0 ? '4px' : '0',
+                                  width: `${barWidth}px`,
+                                  backgroundColor: day.platform_revenue > 0 ? '#28a745' : '#e9ecef',
+                                  height: `${barHeight}px`,
+                                  minHeight: day.platform_revenue > 0 ? '8px' : '2px',
                                   borderRadius: '4px 4px 0 0',
                                   position: 'relative',
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  transition: 'background-color 0.2s'
                                 }}
-                                title={`${day.date}: $${day.platform_revenue.toFixed(2)}`}
-                              >
-                                {day.platform_revenue > 0 && (
-                                  <span style={{ position: 'absolute', top: '-20px', fontSize: '10px', whiteSpace: 'nowrap' }}>
-                                    ${day.platform_revenue.toFixed(0)}
-                                  </span>
-                                )}
-                              </div>
-                              <div style={{ fontSize: '10px', marginTop: '5px', transform: 'rotate(-45deg)', whiteSpace: 'nowrap' }}>
-                                {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                onMouseEnter={(e) => {
+                                  if (day.platform_revenue > 0) {
+                                    e.currentTarget.style.backgroundColor = '#218838';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (day.platform_revenue > 0) {
+                                    e.currentTarget.style.backgroundColor = '#28a745';
+                                  }
+                                }}
+                                title={`${dateLabel}: $${day.platform_revenue.toFixed(2)} (${day.transaction_count} transaction${day.transaction_count !== 1 ? 's' : ''})`}
+                              />
+                              <div style={{ 
+                                fontSize: '11px', 
+                                marginTop: '8px', 
+                                textAlign: 'center',
+                                color: '#666',
+                                whiteSpace: 'nowrap',
+                                width: '100%'
+                              }}>
+                                {dateLabel}
                               </div>
                             </div>
                           );
@@ -2419,6 +2484,7 @@ const Admin = () => {
                             <tr>
                               <th>Date</th>
                               <th>Creator</th>
+                              <th>Subdomain</th>
                               <th>Product</th>
                               <th>Sale Amount</th>
                               <th>Platform Fee (30%)</th>
@@ -2431,6 +2497,15 @@ const Admin = () => {
                               <tr key={transaction.id || index}>
                                 <td>{new Date(transaction.created_at).toLocaleDateString()}</td>
                                 <td>{transaction.creator_name}</td>
+                                <td>
+                                  {transaction.creator_subdomain ? (
+                                    <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#666' }}>
+                                      {transaction.creator_subdomain}.screenmerch.com
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: '#999', fontStyle: 'italic', fontSize: '11px' }}>—</span>
+                                  )}
+                                </td>
                                 <td>{transaction.product_name}</td>
                                 <td>${transaction.sale_amount.toFixed(2)}</td>
                                 <td style={{ color: '#28a745', fontWeight: 'bold' }}>
@@ -2438,13 +2513,17 @@ const Admin = () => {
                                 </td>
                                 <td>${transaction.creator_share.toFixed(2)}</td>
                                 <td>
-                                  <span style={{
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                    fontSize: '12px',
-                                    backgroundColor: transaction.status === 'paid' ? '#d4edda' : transaction.status === 'pending' ? '#fff3cd' : '#f8d7da',
-                                    color: transaction.status === 'paid' ? '#155724' : transaction.status === 'pending' ? '#856404' : '#721c24'
-                                  }}>
+                                  <span 
+                                    style={{
+                                      padding: '4px 8px',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      backgroundColor: transaction.status === 'paid' ? '#d4edda' : transaction.status === 'pending' ? '#fff3cd' : '#f8d7da',
+                                      color: transaction.status === 'paid' ? '#155724' : transaction.status === 'pending' ? '#856404' : '#721c24',
+                                      cursor: transaction.status === 'pending' ? 'help' : 'default'
+                                    }}
+                                    title={transaction.status === 'pending' ? 'Pending payout to creator (customer payment already received)' : transaction.status === 'paid' ? 'Creator has been paid out' : 'Transaction cancelled'}
+                                  >
                                     {transaction.status}
                                   </span>
                                 </td>

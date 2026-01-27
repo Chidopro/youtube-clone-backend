@@ -11,7 +11,7 @@ publish = "C:\\Users\\suppo\\Desktop\\youtube-clone - Copy (5)\\frontend\\dist"
 publishOrigin = "config"
 commandOrigin = "config"
 base = "C:\\Users\\suppo\\Desktop\\youtube-clone - Copy (5)\\frontend"
-command = "npm install --legacy-peer-deps && npm run build"
+command = "npm ci --legacy-peer-deps && npm run build"
 
 [build.environment]
 NODE_VERSION = "18"
