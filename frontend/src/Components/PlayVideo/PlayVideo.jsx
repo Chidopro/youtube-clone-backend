@@ -1294,16 +1294,50 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         playsInline
                         webkit-playsinline="true"
                         x-webkit-airplay="allow"
-                        preload="metadata"
+                        preload={isMobile ? "auto" : "metadata"}
                         disablePictureInPicture
                         onCanPlay={() => {
                             // console.log('Video can play');
+                            setLoading(false);
+                            setIsBuffering(false);
+                        }}
+                        onCanPlayThrough={() => {
+                            // Video has buffered enough to play through without stopping
+                            setIsBuffering(false);
                             setLoading(false);
                         }}
                         onLoadedData={() => {
                             // console.log('Video data loaded');
                             setLoading(false);
                             setVideoError(null); // Clear any previous errors
+                        }}
+                        onWaiting={() => {
+                            // Video is waiting for more data (buffering)
+                            setIsBuffering(true);
+                        }}
+                        onStalled={() => {
+                            // Video download has stalled
+                            setIsBuffering(true);
+                        }}
+                        onProgress={() => {
+                            // Video is downloading - check if enough is buffered
+                            if (videoRef.current) {
+                                const video = videoRef.current;
+                                if (video.buffered.length > 0) {
+                                    const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+                                    const currentTime = video.currentTime;
+                                    const remaining = bufferedEnd - currentTime;
+                                    
+                                    // If we have more than 3 seconds buffered, we're good
+                                    if (remaining > 3) {
+                                        setIsBuffering(false);
+                                    }
+                                }
+                            }
+                        }}
+                        onPlaying={() => {
+                            // Video started playing
+                            setIsBuffering(false);
                         }}
                         onError={(e) => {
                             const videoElement = e.target;
