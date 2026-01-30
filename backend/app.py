@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, session, make_response
 import os
 import logging
+
+logger = logging.getLogger(__name__)
 import time
 from dotenv import load_dotenv
 from flask_cors import CORS, cross_origin
@@ -68,7 +70,9 @@ env_paths = [
 for env_path in env_paths:
     if env_path.exists():
         load_dotenv(dotenv_path=env_path)
-        print(f"Loaded .env from: {env_path}")
+        if os.getenv("FLASK_DEBUG"):
+            print(f"Loaded .env from: {env_path}")
+        break
 
 # Try VITE_ prefixed variables first, then fall back to non-prefixed
 supabase_url = os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL")
@@ -322,6 +326,17 @@ app.config.update(
 
 # Accept routes with or without trailing slashes
 app.url_map.strict_slashes = False
+
+# In-memory session token -> user_id for /api/users/me validation (single instance; cleared on restart)
+app.config.setdefault("session_token_store", {})
+
+# Rate limiting for auth and sensitive endpoints
+try:
+    from utils.limiter import limiter
+    limiter.init_app(app)
+except Exception as limiter_err:
+    logger.warning(f"Rate limiter not loaded: {limiter_err}")
+    limiter = None
 
 def _data_from_request():
     """
@@ -650,7 +665,7 @@ def ensure_stripe_test_mode():
     return stripe_key
 
 # NEW: Printful API Key (optional for now)
-PRINTFUL_API_KEY = os.getenv("PRINTFUL_API_KEY") or "dummy_key"
+PRINTFUL_API_KEY = os.getenv("PRINTFUL_API_KEY")
 
 # ============================================================================
 # Register Flask Blueprints
@@ -706,8 +721,7 @@ def ping():
 def get_browse_api():
     """API endpoint to get browse data for frontend"""
     if request.method == "OPTIONS":
-        # Let the global preflight handler handle OPTIONS to avoid duplicate CORS headers
-        return api_preflight('product/browse')
+        return ("", 204)
     
     try:
         # Get category parameter
@@ -3916,10 +3930,8 @@ def create_checkout_session():
         response.headers.add('Vary', 'Origin')
         return response
     except stripe.error.AuthenticationError as e:
-        # Handle Stripe authentication errors (invalid API key)
+        # Handle Stripe authentication errors (invalid API key) - do not log key material
         logger.error(f"❌ Stripe authentication error: {str(e)}")
-        logger.error(f"❌ Current API key preview: {stripe.api_key[:20] if stripe.api_key else 'None'}...{stripe.api_key[-4:] if stripe.api_key and len(stripe.api_key) > 24 else 'N/A'}")
-        logger.error(f"❌ Environment key preview: {os.getenv('STRIPE_SECRET_KEY', 'NOT_SET')[:20] if os.getenv('STRIPE_SECRET_KEY') else 'NOT_SET'}...{os.getenv('STRIPE_SECRET_KEY', '')[-4:] if os.getenv('STRIPE_SECRET_KEY') and len(os.getenv('STRIPE_SECRET_KEY', '')) > 24 else 'N/A'}")
         response = jsonify({
             "error": "Payment system configuration error",
             "details": "Invalid Stripe API key. Please verify STRIPE_SECRET_KEY is set correctly in Fly.io secrets."
@@ -5465,14 +5477,21 @@ USER_PROFILE_SAFE_FIELDS = [
 @app.route("/api/users/me", methods=["GET", "OPTIONS"])
 @app.route("/api/users/me/", methods=["GET", "OPTIONS"])
 def get_my_profile():
-    """Return current user's profile with only safe, necessary fields. Requires X-User-Id header."""
+    """Return current user's profile with only safe, necessary fields. Requires sm_session cookie and X-User-Id to match."""
     if request.method == "OPTIONS":
         return jsonify(success=True)
     try:
+        token = request.cookies.get("sm_session")
+        store = app.config.get("session_token_store") or {}
+        user_id_from_session = store.get(token) if token else None
+        if not user_id_from_session:
+            return jsonify({"error": "Authentication required (valid session cookie)"}), 401
         user_id = request.headers.get("X-User-Id") or request.args.get("user_id")
         if not user_id or not str(user_id).strip():
             return jsonify({"error": "X-User-Id header or user_id query is required"}), 401
         user_id = str(user_id).strip()
+        if str(user_id_from_session) != user_id:
+            return jsonify({"error": "Forbidden"}), 403
         client_to_use = supabase_admin if supabase_admin else supabase
         result = client_to_use.table("users").select(",".join(USER_PROFILE_SAFE_FIELDS)).eq("id", user_id).limit(1).execute()
         if not result.data or len(result.data) == 0:
@@ -6324,190 +6343,7 @@ def check_admin_status():
             "is_order_processing_admin": False
         }), 500
 
-# Authentication endpoints
-@app.route("/api/auth/login", methods=["POST", "OPTIONS"])
-@app.route("/api/auth/login/", methods=["POST", "OPTIONS"])
-def auth_login():
-    if request.method == "OPTIONS":
-        # Flask-CORS handles OPTIONS requests automatically - just return empty response
-        logger.info(f"🔵 [LOGIN] OPTIONS preflight from {request.headers.get('Origin', 'unknown')}")
-        return jsonify(success=True)
-    """Handle user login with email and password validation"""
-    try:
-        logger.info(f"🔵 [LOGIN] Request received from {request.headers.get('Origin', 'unknown')}")
-        
-        # Handle both JSON (fetch) and form data (redirect)
-        data = _data_from_request()
-        email = (data.get("email") or "").strip().lower()
-        password = data.get("password") or ""
-        
-        if not email or not password:
-            response = jsonify({"success": False, "error": "Email and password are required"})
-            return response, 400
-        
-        # Validate email format
-        import re
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_pattern, email):
-            response = jsonify({"success": False, "error": "Please enter a valid email address"})
-            return response, 400
-        
-        # Check if user exists in database - use admin client to bypass RLS
-        try:
-            logger.info(f"🔵 [LOGIN] Querying database for user: {email}")
-            # Use admin client to bypass RLS for login lookups
-            client = supabase_admin if supabase_admin else supabase
-            if not client:
-                logger.error("❌ [LOGIN] Supabase client not initialized")
-                response = jsonify({"success": False, "error": "Authentication service unavailable"})
-                return response, 500
-            
-            result = client.table('users').select('*').eq('email', email).execute()
-            logger.info(f"🔵 [LOGIN] Database query completed for: {email}")
-            
-            if result.data:
-                user = result.data[0]
-                user_status = user.get('status', 'active')
-                
-                # Block login if user status is 'pending' (requires admin approval)
-                if user_status == 'pending':
-                    response = jsonify({
-                        "success": False, 
-                        "error": "Your account is pending approval. Please wait for admin approval before signing in."
-                    })
-                    return response, 403
-                
-                # Block login if user is suspended or banned
-                if user_status in ['suspended', 'banned']:
-                    response = jsonify({
-                        "success": False, 
-                        "error": f"Your account has been {user_status}. Please contact support for assistance."
-                    })
-                    return response, 403
-                
-                stored_password = user.get('password_hash', '')
-                
-                # Debug logging for password verification
-                has_password = bool(stored_password and stored_password.strip())
-                logger.info(f"🔑 [LOGIN] Attempting login for {email}")
-                logger.info(f"🔑 [LOGIN] Origin: {request.headers.get('Origin', 'N/A')}")
-                logger.info(f"🔑 [LOGIN] Has stored password: {has_password}")
-                if stored_password:
-                    logger.info(f"🔑 [LOGIN] Stored password length: {len(stored_password)}")
-                    logger.info(f"🔑 [LOGIN] Stored password (first 5 chars): {stored_password[:5]}...")
-                    logger.info(f"🔑 [LOGIN] Stored password (last 5 chars): ...{stored_password[-5:]}")
-                logger.info(f"🔑 [LOGIN] Provided password length: {len(password)}")
-                logger.info(f"🔑 [LOGIN] Provided password (first 5 chars): {password[:5]}...")
-                logger.info(f"🔑 [LOGIN] Provided password (last 5 chars): ...{password[-5:]}")
-                if not has_password:
-                    logger.warning(f"⚠️ [LOGIN] User {email} has no password set (likely OAuth account)")
-                
-                # Verify password using bcrypt
-                password_match = False
-                if stored_password:
-                    try:
-                        # Trim stored password to handle any whitespace issues
-                        stored_password_trimmed = stored_password.strip()
-                        
-                        # Check if stored password is a bcrypt hash (starts with $2b$ or $2a$)
-                        if stored_password_trimmed.startswith('$2b$') or stored_password_trimmed.startswith('$2a$'):
-                            # Verify using bcrypt
-                            password_match = bcrypt.checkpw(password.encode('utf-8'), stored_password_trimmed.encode('utf-8'))
-                            logger.info(f"🔑 [LOGIN] Bcrypt verification result: {password_match}")
-                        else:
-                            # Legacy plain text password - verify and upgrade to bcrypt
-                            # Compare trimmed versions to handle whitespace
-                            if password.strip() == stored_password_trimmed:
-                                password_match = True
-                                # Upgrade to bcrypt hash
-                                hashed = bcrypt.hashpw(password.strip().encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                                # Use the same client that was used for lookup
-                                client.table('users').update({'password_hash': hashed}).eq('id', user['id']).execute()
-                                logger.info(f"✅ [LOGIN] Upgraded password to bcrypt for user {email}")
-                            else:
-                                logger.warning(f"⚠️ [LOGIN] Plain text password mismatch for {email}")
-                    except Exception as hash_error:
-                        logger.error(f"❌ [LOGIN] Error verifying password: {str(hash_error)}")
-                        import traceback
-                        logger.error(f"❌ [LOGIN] Traceback: {traceback.format_exc()}")
-                        password_match = False
-                
-                logger.info(f"🔑 [LOGIN] Password match result: {password_match}")
-                
-                if password_match:
-                    logger.info(f"✅ [LOGIN] User {email} logged in successfully")
-                    # Include profile_image_url and other profile data in response
-                    response = jsonify({
-                        "success": True, 
-                        "message": "Login successful",
-                        "user": {
-                            "id": user.get('id'),
-                            "email": user.get('email'),
-                            "display_name": user.get('display_name'),
-                            "role": user.get('role', 'customer'),
-                            "status": user.get('status', 'active'),  # Include status for frontend role checking
-                            "profile_image_url": user.get('profile_image_url'),
-                            "cover_image_url": user.get('cover_image_url'),
-                            "bio": user.get('bio'),
-                            "subdomain": user.get('subdomain')
-                        }
-                    })
-                    
-                    # Generate token
-                    import uuid
-                    token = str(uuid.uuid4())
-                    
-                    is_form = not request.is_json
-                    domain = _cookie_domain()
-                    
-                    if is_form:
-                        resp = redirect(_return_url(), code=303)  # 303 so browser switches to GET cleanly
-                    else:
-                        # Use the full user data that was already created above
-                        # Add token to the existing response
-                        response_data = {
-                            "success": True,
-                            "message": "Login successful",
-                            "user": {
-                                "id": user.get('id'),
-                                "email": user.get('email'),
-                                "display_name": user.get('display_name'),
-                                "role": user.get('role', 'customer'),
-                                "status": user.get('status', 'active'),
-                                "profile_image_url": user.get('profile_image_url'),
-                                "cover_image_url": user.get('cover_image_url'),
-                                "bio": user.get('bio'),
-                                "subdomain": user.get('subdomain')
-                            },
-                            "token": token
-                        }
-                        resp = make_response(jsonify(response_data), 200)
-                    
-                    # Flask-CORS handles CORS headers automatically
-                    resp.set_cookie(
-                        "sm_session", token,
-                        domain=domain, path="/",
-                        secure=True, httponly=True, samesite="None", max_age=7*24*3600
-                    )
-                    return resp
-                else:
-                    response = jsonify({"success": False, "error": "Invalid email or password"})
-                    return response, 401
-            else:
-                response = jsonify({"success": False, "error": "Invalid email or password"})
-                return response, 401
-                
-        except Exception as db_error:
-            logger.error(f"Database error during login: {str(db_error)}")
-            response = jsonify({"success": False, "error": "Authentication service unavailable"})
-            return response, 500
-            
-    except Exception as e:
-        logger.error(f"Login error: {str(e)}")
-        response = jsonify({"success": False, "error": "Internal server error"})
-        # Flask-CORS handles CORS headers automatically
-        return response, 500
-
+# Auth login is in routes/auth.py (auth_bp) - single source of truth
 
 @app.route("/api/auth/check-admin", methods=["POST", "OPTIONS"])
 @app.route("/api/auth/check-admin/", methods=["POST", "OPTIONS"])

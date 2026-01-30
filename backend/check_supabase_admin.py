@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+DEV/DEBUG ONLY. Do not run in production.
+May print sensitive user/password info. Use only in secure local environment.
 Check Supabase database for admin user
 """
 import os

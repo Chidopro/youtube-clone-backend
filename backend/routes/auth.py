@@ -1,5 +1,5 @@
 """Authentication routes Blueprint for ScreenMerch"""
-from flask import Blueprint, request, jsonify, render_template, redirect, url_for, session, make_response
+from flask import Blueprint, request, jsonify, render_template, redirect, url_for, session, make_response, current_app
 from flask_cors import cross_origin
 import logging
 import os
@@ -26,6 +26,15 @@ logger = logging.getLogger(__name__)
 
 # Create Blueprint
 auth_bp = Blueprint('auth', __name__)
+
+
+def _get_limiter():
+    """Lazy import limiter to avoid circular import; may be None if not loaded."""
+    try:
+        from utils.limiter import limiter
+        return limiter
+    except Exception:
+        return None
 
 
 def register_auth_routes(app, supabase, supabase_admin, config):
@@ -65,6 +74,7 @@ def _get_config(key, default=None):
 
 @auth_bp.route("/api/auth/login", methods=["POST", "OPTIONS"])
 @auth_bp.route("/api/auth/login/", methods=["POST", "OPTIONS"])
+@(_get_limiter().limit("10 per minute") if _get_limiter() else lambda f: f)
 def auth_login():
     """Handle user login with email and password validation"""
     if request.method == "OPTIONS":
@@ -198,6 +208,8 @@ def auth_login():
                         domain=domain, path="/",
                         secure=True, httponly=True, samesite="None", max_age=7*24*3600
                     )
+                    # Store token -> user_id for /api/users/me validation (in-memory; single instance)
+                    current_app.config.setdefault("session_token_store", {})[token] = user.get("id")
                     return resp
                 else:
                     response = jsonify({"success": False, "error": "Invalid email or password"})
@@ -357,6 +369,7 @@ def admin_login():
 
 @auth_bp.route("/api/auth/signup", methods=["POST", "OPTIONS"])
 @auth_bp.route("/api/auth/signup/", methods=["POST", "OPTIONS"])
+@(_get_limiter().limit("10 per minute") if _get_limiter() else lambda f: f)
 def auth_signup():
     """Handle user signup with email and password validation"""
     if request.method == "OPTIONS":

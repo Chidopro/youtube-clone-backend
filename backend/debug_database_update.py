@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+DEV/DEBUG ONLY. Do not run in production.
+May print sensitive user data. Use only in secure local environment.
 Debug database update issues
 """
 import os

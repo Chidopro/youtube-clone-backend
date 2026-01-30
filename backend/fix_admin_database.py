@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+DEV/ONE-OFF ONLY. Do not run in production.
+May print sensitive user data. Use only in secure local environment.
 Fix admin user in database directly
 """
 import os
