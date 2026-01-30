@@ -5477,11 +5477,17 @@ USER_PROFILE_SAFE_FIELDS = [
 @app.route("/api/users/me", methods=["GET", "OPTIONS"])
 @app.route("/api/users/me/", methods=["GET", "OPTIONS"])
 def get_my_profile():
-    """Return current user's profile with only safe, necessary fields. Requires sm_session cookie and X-User-Id to match."""
+    """Return current user's profile with only safe, necessary fields. Requires sm_session cookie (or X-Session-Token/Authorization) and X-User-Id to match."""
     if request.method == "OPTIONS":
         return jsonify(success=True)
     try:
         token = request.cookies.get("sm_session")
+        if not token and request.headers.get("X-Session-Token"):
+            token = request.headers.get("X-Session-Token").strip()
+        if not token and request.headers.get("Authorization"):
+            auth = request.headers.get("Authorization", "")
+            if auth.startswith("Bearer "):
+                token = auth[7:].strip()
         store = app.config.get("session_token_store") or {}
         user_id_from_session = store.get(token) if token else None
         if not user_id_from_session:

@@ -9,10 +9,13 @@ import { getBackendUrl } from '../config/apiConfig.js';
 export async function fetchMyProfileFromBackend(userId) {
   if (!userId) return null;
   try {
+    const headers = { 'X-User-Id': userId };
+    const token = typeof localStorage !== 'undefined' && localStorage.getItem('auth_token');
+    if (token) headers['X-Session-Token'] = token;
     const res = await fetch(`${getBackendUrl()}/api/users/me`, {
       method: 'GET',
       credentials: 'include',
-      headers: { 'X-User-Id': userId },
+      headers,
     });
     if (!res.ok) return null;
     return await res.json();
