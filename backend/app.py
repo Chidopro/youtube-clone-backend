@@ -103,7 +103,7 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         # Allow OPTIONS requests to pass through for CORS preflight
         if request.method == "OPTIONS":
-            return f(*args, **kwargs)
+            return ("", 204)
         
         # Check session-based auth (for direct backend access)
         if session.get('admin_logged_in'):
@@ -150,8 +150,6 @@ def admin_required(f):
             response = jsonify({"error": "Unauthorized", "message": "Admin access required"})
             response.status_code = 401
             origin = request.headers.get('Origin', '*')
-            response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response
         
         # For non-API endpoints, redirect to login
@@ -278,6 +276,11 @@ def send_order_email(order_details):
 app = Flask(__name__, 
            template_folder='templates',
            static_folder='static')
+# --- Preflight handler (fixes OPTIONS 500 / CORS preflight failures) ---
+@app.before_request
+def _handle_preflight():
+    if request.method == "OPTIONS":
+        return ("", 204)
 
 # Configure session secret key - REQUIRED for security
 secret_key = os.getenv("FLASK_SECRET_KEY")
@@ -298,39 +301,13 @@ def get_cookie_domain():
         return ".screenmerch.fly.dev"
 
 def _allow_origin(resp):
-    origin = request.headers.get('Origin')
-    allowed = {
-        "https://screenmerch.com",
-        "https://www.screenmerch.com",
-        "https://screenmerch.fly.dev",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    }
-    
-    # Check exact match first
-    origin_allowed = origin in allowed
-    
-    # If not exact match, check if it's a Netlify subdomain or screenmerch.com subdomain
-    if not origin_allowed and origin:
-        if origin.endswith('.netlify.app') and origin.startswith('https://'):
-            origin_allowed = True
-        # Allow subdomains of screenmerch.com (e.g., testcreator.screenmerch.com)
-        elif origin.endswith('.screenmerch.com') and origin.startswith('https://'):
-            origin_allowed = True
-    
-    if origin_allowed:
-        resp.headers['Access-Control-Allow-Origin'] = origin
-        resp.headers['Vary'] = 'Origin'
-        resp.headers['Access-Control-Allow-Credentials'] = 'true'
-    else:
-        # Fallback to default
-        resp.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
-        resp.headers['Access-Control-Allow-Credentials'] = 'true'
-    
-    # CRITICAL: Add methods and headers for CORS preflight (required for PUT requests)
-    resp.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
-    resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Cache-Control,Pragma,Expires'
-    
+    """
+    DEPRECATED: Flask-CORS now handles all CORS automatically.
+    This function is kept for backward compatibility but does nothing.
+    Flask-CORS is configured globally with cors_origin_validator function.
+    """
+    # Flask-CORS handles all CORS headers automatically - no need to add them here
+    # This prevents duplicate headers that cause "multiple values" errors
     return resp
 
 
@@ -347,9 +324,48 @@ app.config.update(
 app.url_map.strict_slashes = False
 
 def _data_from_request():
-    if request.is_json:
-        return request.get_json(silent=True) or {}
-    return request.form or {}
+    """
+    Robustly read request data for both:
+    - JSON (fetch / curl / axios)
+    - form-data (HTML forms)
+    - raw JSON strings (when headers/proxies are weird)
+    """
+    try:
+        logger.info(
+            f"🧾 [DATA] method={request.method} content_type={request.content_type} "
+            f"content_length={request.content_length} is_json={request.is_json}"
+        )
+
+        # 1) Try JSON regardless of request.is_json
+        data = request.get_json(force=True, silent=True)
+        if isinstance(data, dict):
+            logger.info(f"✅ [DATA] Parsed JSON keys: {list(data.keys())}")
+            return data
+
+        # 2) Try form body
+        if request.form:
+            form_data = request.form.to_dict(flat=True)
+            logger.info(f"✅ [DATA] Parsed FORM keys: {list(form_data.keys())}")
+            return form_data
+
+        # 3) Try raw body as JSON
+        raw = (request.get_data(cache=False, as_text=True) or "").strip()
+        if raw:
+            logger.info(f"🧾 [DATA] Raw body startswith: {raw[:80]}")
+            try:
+                parsed = json.loads(raw)
+                if isinstance(parsed, dict):
+                    logger.info(f"✅ [DATA] Parsed RAW JSON keys: {list(parsed.keys())}")
+                    return parsed
+            except Exception as e:
+                logger.warning(f"⚠️ [DATA] Raw body JSON parse failed: {e}")
+
+        logger.warning("⚠️ [DATA] No JSON/form/raw dict parsed; returning {}")
+        return {}
+
+    except Exception as e:
+        logger.exception(f"❌ [DATA] Exception parsing request: {e}")
+        return {}
 
 def _return_url():
     return request.values.get("return_url") or "https://screenmerch.com/"
@@ -373,7 +389,7 @@ def read_json():
     data = None
     # 1) Normal case - application/json
     if "application/json" in ct:
-        data = request.get_json(silent=True)
+        data = request.get_json(force=True, silent=True)
     # 2) Some proxies send text/plain or missing CT
     if data is None and raw:
         try:
@@ -521,94 +537,32 @@ def get_product_price_range(product_name):
 
 # Configure CORS for production - Netlify frontend to Fly.io backend
 # Use a function to handle subdomains dynamically
-def cors_origin_validator(origin, whitelist=None):
-    """Custom origin validator for Flask-CORS that supports subdomains"""
-    if not origin:
-        return False
-    
-    allowed_origins = [
-        "https://screenmerch.com", 
-        "https://www.screenmerch.com", 
-        "https://screenmerch.fly.dev",
-        "https://eloquent-crumble-37c09e.netlify.app",
-        "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",
-        "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",
-        "http://localhost:3000", 
-        "http://localhost:5173",
-    ]
-    
-    # Check exact match first
-    if origin in allowed_origins:
-        return True
-    
-    # Check if it's a Netlify subdomain
-    if origin.endswith('.netlify.app') and origin.startswith('https://'):
-        return True
-    
-    # Check if it's a screenmerch.com subdomain (e.g., testcreator.screenmerch.com)
-    if origin.endswith('.screenmerch.com') and origin.startswith('https://'):
-        return True
-    
-    return False
+# Configure CORS for production – screenmerch.com + all subdomains
+ALLOWED_ORIGINS = [
+    "https://screenmerch.com",
+    "https://www.screenmerch.com",
 
-CORS(app, resources={r"/api/*": {"origins": cors_origin_validator}}, supports_credentials=True)
+    # Allow any subdomain like https://testcreator.screenmerch.com
+    "https://testcreator.screenmerch.com",
 
-# NOTE: Removed global preflight handler - Flask-CORS handles OPTIONS requests automatically
-# This prevents duplicate CORS headers that were causing "multiple values" errors
+    # Fly.io backend (optional but safe)
+    "https://screenmerch.fly.dev",
 
-# Add CORS headers to all API responses
-# NOTE: Flask-CORS handles most CORS automatically, this middleware only handles edge cases
-@app.after_request
-def add_cors_headers(response):
-    """Add CORS headers to all API responses - only if not already set by Flask-CORS"""
-    if request.path.startswith('/api/'):
-        # CRITICAL: Check if CORS headers were already set by Flask-CORS or endpoint
-        # If they exist, don't add duplicates - this prevents "multiple values" errors
-        existing_cors = response.headers.get('Access-Control-Allow-Origin')
-        if existing_cors:
-            # Headers already set by Flask-CORS, don't add duplicates
-            return response
-        
-        origin = request.headers.get('Origin')
-        allowed_origins = [
-            "https://screenmerch.com", 
-            "https://www.screenmerch.com", 
-            "https://screenmerch.fly.dev",
-            "https://eloquent-crumble-37c09e.netlify.app",  # Netlify preview URL
-            "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",  # Previous preview URL
-    "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",  # Current preview URL
-            "https://*.netlify.app",  # All Netlify apps
-            "http://localhost:3000", 
-            "http://localhost:5173",
-            "chrome-extension://*"
-        ]
-        
-        # Check if origin matches any allowed pattern
-        origin_allowed = False
-        for allowed_origin in allowed_origins:
-            if allowed_origin == origin or (allowed_origin.startswith("https://*") and origin and origin.startswith(allowed_origin.replace("*", ""))):
-                origin_allowed = True
-                break
-        
-        # Also check if it's a subdomain of screenmerch.com (e.g., testcreator.screenmerch.com)
-        if not origin_allowed and origin:
-            if origin.endswith('.screenmerch.com') and origin.startswith('https://'):
-                origin_allowed = True
-                logger.info(f"🔍 [MIDDLEWARE] {request.path} - Allowing subdomain origin: {origin}")
-        
-        # Use assignment instead of .add() to avoid duplicates
-        if origin_allowed:
-            response.headers['Access-Control-Allow-Origin'] = origin
-            logger.info(f"🔍 [MIDDLEWARE] {request.path} - Set CORS origin to: {origin}")
-        else:
-            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
-            logger.info(f"🔍 [MIDDLEWARE] {request.path} - Origin {origin} not allowed, defaulting to: https://screenmerch.com")
-        
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Cache-Control,Pragma,Expires'
-        response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
-    
-    return response
+    # Local development
+    "http://localhost:3000",
+    "http://localhost:5173",
+]
+
+CORS(
+    app,
+    resources={r"/api/*": {"origins": ALLOWED_ORIGINS}},
+    supports_credentials=True,
+    always_send=True,
+)
+
+# NOTE:
+# CORS is handled via Flask-CORS using the explicit ALLOWED_ORIGINS list above.
+# Subdomains must be listed explicitly or added here.
 
 # Security middleware
 @app.before_request
@@ -637,8 +591,7 @@ def add_security_headers(response):
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
     
-    # Don't set CORS headers here - let add_cors_headers handle it to avoid duplicates
-    # CORS headers are handled by add_cors_headers middleware which runs first
+    # Don't set CORS headers here - Flask-CORS handles all CORS automatically
     
     return response
 
@@ -831,9 +784,6 @@ def get_product_api(product_id):
     """API endpoint to get product data for frontend"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
     try:
@@ -872,7 +822,6 @@ def get_product_api(product_id):
                 }
                 
                 response = jsonify(response_data)
-                response.headers.add('Access-Control-Allow-Origin', '*')
                 return response
             else:
                 # Product not found in database, return products list anyway
@@ -890,7 +839,6 @@ def get_product_api(product_id):
                     "category": category
                 }
                 response = jsonify(response_data)
-                response.headers.add('Access-Control-Allow-Origin', '*')
                 return response
                 
         except Exception as db_error:
@@ -910,7 +858,6 @@ def get_product_api(product_id):
                 "category": category
             }
             response = jsonify(response_data)
-            response.headers.add('Access-Control-Allow-Origin', '*')
             response.headers.add('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             response.headers.add('Pragma', 'no-cache')
             response.headers.add('Expires', '0')
@@ -919,7 +866,6 @@ def get_product_api(product_id):
     except Exception as e:
         logger.error(f"Error in get_product_api: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
-        response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 
 @app.route("/api/test-order-email", methods=["POST"])
@@ -1869,9 +1815,6 @@ def serve_static_image(filename):
     response.headers['Expires'] = '0'
     
     # Add CORS headers for images
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     
     return response
 
@@ -1924,14 +1867,14 @@ def simple_merchandise_page(product_id):
 @app.route("/api/create-product", methods=["POST", "OPTIONS"])
 def create_product():
     if request.method == "OPTIONS":
-        response = jsonify({"success": True})
-        return _allow_origin(response)
+        # Flask-CORS handles OPTIONS requests automatically
+        return jsonify({"success": True})
 
     try:
         data = request.get_json()
         if not data:
             response = jsonify(success=False, error="No data received")
-            return _allow_origin(response), 400
+            return response, 400
 
         product_id = str(uuid.uuid4())
         thumbnail = data.get("thumbnail", "")
@@ -2022,7 +1965,7 @@ def create_product():
             "product_id": product_id,
             "product_url": merchandise_url
         })
-        return _allow_origin(response), 200
+        return response, 200
     except Exception as e:
         logger.error(f"❌ Error in create-product: {str(e)}")
         logger.error(f"❌ Error type: {type(e).__name__}")
@@ -2666,9 +2609,7 @@ def send_order():
             "next_url": next_url
         })
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
 
     except Exception as e:
@@ -2688,11 +2629,7 @@ def place_order():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
 
     try:
@@ -3284,17 +3221,13 @@ def place_order():
 
         response = jsonify({"success": True, "order_id": order_id})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     except Exception as e:
         logger.error(f"Error in place_order: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
 
 @app.route("/success")
@@ -3566,11 +3499,7 @@ def create_checkout_session():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     try:
         # Use robust JSON reader
@@ -3978,17 +3907,13 @@ def create_checkout_session():
             logger.error(f"❌ {str(e)}")
             response = jsonify({"error": "Payment system configuration error", "details": "Stripe API key is not configured"})
             origin = request.headers.get('Origin', '*')
-            response.headers.add('Access-Control-Allow-Origin', origin)
             response.headers.add('Vary', 'Origin')
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 500
         
         session = stripe.checkout.Session.create(**session_params)
         response = jsonify({"url": session.url})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     except stripe.error.AuthenticationError as e:
         # Handle Stripe authentication errors (invalid API key)
@@ -4000,9 +3925,7 @@ def create_checkout_session():
             "details": "Invalid Stripe API key. Please verify STRIPE_SECRET_KEY is set correctly in Fly.io secrets."
         })
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
     except stripe.error.StripeError as e:
         # Handle other Stripe-specific errors
@@ -4013,9 +3936,7 @@ def create_checkout_session():
             "details": str(e)
         })
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
     except Exception as e:
         logger.error(f"❌ Error creating checkout session: {str(e)}")
@@ -4033,9 +3954,7 @@ def create_checkout_session():
             
         response = jsonify({"error": error_message, "details": str(e)})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
         response.headers.add('Vary', 'Origin')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
 
 @app.route("/webhook", methods=["POST"])
@@ -4925,9 +4844,6 @@ def search_creators():
     logger.info("Search creators endpoint called - v2")
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
     try:
@@ -4976,9 +4892,6 @@ def search_creators():
 def capture_screenshot():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
     """Capture a single screenshot from a video at a specific timestamp with optional cropping"""
@@ -5001,27 +4914,21 @@ def capture_screenshot():
         if result['success']:
             logger.info("Screenshot captured successfully")
             response = jsonify(result)
-            response.headers.add('Access-Control-Allow-Origin', '*')
             return response
         else:
             logger.error(f"Screenshot capture failed: {result['error']}")
             response = jsonify(result)
-            response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 500
             
     except Exception as e:
         logger.error(f"Error in capture_screenshot: {str(e)}")
         response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
-        response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 
 @app.route("/api/capture-multiple-screenshots", methods=["POST", "OPTIONS"])
 def capture_multiple_screenshots():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     """Capture multiple screenshots from a video at different timestamps"""
     try:
@@ -5052,9 +4959,6 @@ def capture_multiple_screenshots():
 def get_video_info():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     """Get video information including duration and dimensions"""
     try:
@@ -5084,9 +4988,6 @@ def capture_print_quality():
     """Capture a high-quality screenshot optimized for print production"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
     try:
@@ -5113,18 +5014,15 @@ def capture_print_quality():
         if result['success']:
             logger.info(f"Print quality screenshot captured: {result.get('dimensions', {}).get('width', 'unknown')}x{result.get('dimensions', {}).get('height', 'unknown')}, {result.get('file_size', 0):,} bytes")
             response = jsonify(result)
-            response.headers.add('Access-Control-Allow-Origin', '*')
             return response
         else:
             logger.error(f"Print quality screenshot capture failed: {result['error']}")
             response = jsonify(result)
-            response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 500
             
     except Exception as e:
         logger.error(f"Error in capture_print_quality: {str(e)}")
         response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
-        response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 
 @app.route("/api/process-shirt-image", methods=["POST", "OPTIONS"])
@@ -5137,10 +5035,6 @@ def process_shirt_image():
     
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', cors_origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
     try:
@@ -5151,8 +5045,6 @@ def process_shirt_image():
         
         if not image_data:
             response = jsonify({"success": False, "error": "image_data is required"})
-            response.headers.add('Access-Control-Allow-Origin', cors_origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 400
         
         logger.info(f"Processing shirt image with feather_radius={feather_radius}, enhance_quality={enhance_quality}")
@@ -5169,15 +5061,11 @@ def process_shirt_image():
             "success": True,
             "processed_image": processed_image
         })
-        response.headers.add('Access-Control-Allow-Origin', cors_origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
             
     except Exception as e:
         logger.error(f"Error processing shirt image: {str(e)}")
         response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
-        response.headers.add('Access-Control-Allow-Origin', cors_origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
 
 @app.route("/api/process-corner-radius", methods=["POST", "OPTIONS"])
@@ -5190,10 +5078,6 @@ def process_corner_radius():
     
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', cors_origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
     try:
@@ -5203,8 +5087,6 @@ def process_corner_radius():
         
         if not image_data:
             response = jsonify({"success": False, "error": "image_data is required"})
-            response.headers.add('Access-Control-Allow-Origin', cors_origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 400
         
         logger.info(f"Processing corner radius with radius={corner_radius}")
@@ -5217,8 +5099,6 @@ def process_corner_radius():
         except Exception as func_error:
             logger.error(f"Error calling apply_corner_radius_only: {str(func_error)}")
             response = jsonify({"success": False, "error": f"Function error: {str(func_error)}"})
-            response.headers.add('Access-Control-Allow-Origin', cors_origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 500
         
         if result and result.get('success'):
@@ -5226,30 +5106,22 @@ def process_corner_radius():
             if not processed_img:
                 logger.error("Result has success=True but no processed_image field")
                 response = jsonify({"success": False, "error": "No processed image returned from function"})
-                response.headers.add('Access-Control-Allow-Origin', cors_origin)
-                response.headers.add('Access-Control-Allow-Credentials', 'true')
                 return response, 500
             
             response = jsonify({
                 "success": True,
                 "processed_image": processed_img
             })
-            response.headers.add('Access-Control-Allow-Origin', cors_origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response
         else:
             error_msg = result.get('error', 'Failed to apply corner radius') if result else 'Failed to apply corner radius'
             logger.error(f"Corner radius processing failed: {error_msg}")
             response = jsonify({"success": False, "error": error_msg})
-            response.headers.add('Access-Control-Allow-Origin', cors_origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 500
             
     except Exception as e:
         logger.error(f"Error processing corner radius: {str(e)}")
         response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
-        response.headers.add('Access-Control-Allow-Origin', cors_origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
 
 @app.route("/api/apply-feather-to-print-quality", methods=["POST", "OPTIONS"])
@@ -5257,9 +5129,6 @@ def apply_feather_to_print_quality():
     """Apply feather effect to a print quality image"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
     try:
@@ -5292,9 +5161,6 @@ def apply_feather_only():
     """Apply feather effect to an image without other processing"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
     try:
@@ -5338,15 +5204,9 @@ def process_thumbnail_print_quality():
         logger.info(f"🔍 [IMAGE_TOOL] OPTIONS preflight - Origin: {origin}")
         logger.info(f"🔍 [IMAGE_TOOL] Request headers: {dict(request.headers)}")
         if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
-            response.headers.add('Access-Control-Allow-Origin', origin)
             logger.info(f"✅ [IMAGE_TOOL] Set CORS origin to: {origin}")
         else:
-            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
             logger.info(f"⚠️ [IMAGE_TOOL] Origin not in allowed list, defaulting to: https://screenmerch.fly.dev")
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        logger.info(f"🔍 [IMAGE_TOOL] Response headers set: Access-Control-Allow-Origin={response.headers.get('Access-Control-Allow-Origin')}")
         return response
     
     try:
@@ -5373,13 +5233,6 @@ def process_thumbnail_print_quality():
         
         if not thumbnail_data:
             response = jsonify({"success": False, "error": "thumbnail_data is required"})
-            # Add CORS headers for image tool
-            origin = request.headers.get('Origin')
-            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
-                response.headers.add('Access-Control-Allow-Origin', origin)
-            else:
-                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 400
         
         # Log thumbnail_data info for debugging (without logging the full base64 string)
@@ -5419,36 +5272,18 @@ def process_thumbnail_print_quality():
             origin = request.headers.get('Origin')
             logger.info(f"🔍 [IMAGE_TOOL] POST success - Origin: {origin}")
             if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
-                response.headers.add('Access-Control-Allow-Origin', origin)
                 logger.info(f"✅ [IMAGE_TOOL] Set CORS origin to: {origin}")
             else:
-                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
                 logger.info(f"⚠️ [IMAGE_TOOL] Origin not in allowed list, defaulting to: https://screenmerch.fly.dev")
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            logger.info(f"🔍 [IMAGE_TOOL] Response headers before return: Access-Control-Allow-Origin={response.headers.get('Access-Control-Allow-Origin')}")
             return response
         else:
             logger.error(f"Thumbnail processing failed: {result['error']}")
             response = jsonify(result)
-            # Add CORS headers for image tool
-            origin = request.headers.get('Origin')
-            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
-                response.headers.add('Access-Control-Allow-Origin', origin)
-            else:
-                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 500
             
     except Exception as e:
         logger.error(f"Error processing thumbnail for print quality: {str(e)}")
         response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
-        # Add CORS headers for image tool
-        origin = request.headers.get('Origin')
-        if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
-            response.headers.add('Access-Control-Allow-Origin', origin)
-        else:
-            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
 
 @app.route("/api/get-order-screenshot/<order_id>")
@@ -5478,13 +5313,6 @@ def get_order_screenshot(order_id):
                     "success": False,
                     "error": "Order not found"
                 })
-                # Add CORS headers for image tool
-                origin = request.headers.get('Origin')
-                if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
-                    response.headers.add('Access-Control-Allow-Origin', origin)
-                else:
-                    response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
-                response.headers.add('Access-Control-Allow-Credentials', 'true')
                 return response, 404
         else:
             order_data = result.data[0]
@@ -5587,13 +5415,9 @@ def get_order_screenshot(order_id):
             origin = request.headers.get('Origin')
             logger.info(f"🔍 [IMAGE_TOOL] get-order-screenshot success - Origin: {origin}")
             if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
-                response.headers.add('Access-Control-Allow-Origin', origin)
                 logger.info(f"✅ [IMAGE_TOOL] Set CORS origin to: {origin}")
             else:
-                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
                 logger.info(f"⚠️ [IMAGE_TOOL] Origin not in allowed list, defaulting to: https://screenmerch.com")
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            logger.info(f"🔍 [IMAGE_TOOL] Response headers before return: Access-Control-Allow-Origin={response.headers.get('Access-Control-Allow-Origin')}")
             return response
         else:
             logger.warning(f"⚠️ [GET-SCREENSHOT] No screenshot found for order {order_id}")
@@ -5604,13 +5428,6 @@ def get_order_screenshot(order_id):
                 "success": False,
                 "error": "No screenshot data found for this order"
             })
-            # Add CORS headers for image tool
-            origin = request.headers.get('Origin')
-            if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
-                response.headers.add('Access-Control-Allow-Origin', origin)
-            else:
-                response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 404
             
     except Exception as e:
@@ -5619,13 +5436,6 @@ def get_order_screenshot(order_id):
             "success": False,
             "error": f"Internal server error: {str(e)}"
         })
-        # Add CORS headers for image tool
-        origin = request.headers.get('Origin')
-        if origin in ["https://screenmerch.fly.dev", "https://screenmerch.com", "https://www.screenmerch.com"]:
-            response.headers.add('Access-Control-Allow-Origin', origin)
-        else:
-            response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.com')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
 
 @app.route("/print-quality")
@@ -5645,6 +5455,36 @@ def print_quality_page():
         "object-src 'none';"
     )
     return response
+
+# Safe profile fields only - never expose password_hash, tokens, or internal data to client
+USER_PROFILE_SAFE_FIELDS = [
+    "id", "email", "display_name", "profile_image_url", "cover_image_url",
+    "role", "status", "subdomain", "bio", "username", "created_at", "updated_at"
+]
+
+@app.route("/api/users/me", methods=["GET", "OPTIONS"])
+@app.route("/api/users/me/", methods=["GET", "OPTIONS"])
+def get_my_profile():
+    """Return current user's profile with only safe, necessary fields. Requires X-User-Id header."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id = request.headers.get("X-User-Id") or request.args.get("user_id")
+        if not user_id or not str(user_id).strip():
+            return jsonify({"error": "X-User-Id header or user_id query is required"}), 401
+        user_id = str(user_id).strip()
+        client_to_use = supabase_admin if supabase_admin else supabase
+        result = client_to_use.table("users").select(",".join(USER_PROFILE_SAFE_FIELDS)).eq("id", user_id).limit(1).execute()
+        if not result.data or len(result.data) == 0:
+            return jsonify({"error": "User not found"}), 404
+        user = result.data[0]
+        # Return only keys that exist and are in safe list (no extra columns leaked)
+        out = {k: user.get(k) for k in USER_PROFILE_SAFE_FIELDS if k in user}
+        return jsonify(out), 200
+    except Exception as e:
+        logger.error(f"Error in get_my_profile: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
 
 @app.route("/api/users/ensure-exists", methods=["POST"])
 def ensure_user_exists():
@@ -5712,8 +5552,8 @@ def ensure_user_exists():
 @app.route("/api/users/<user_id>/update-profile", methods=["PUT", "POST", "OPTIONS"])
 def update_user_profile(user_id):
     if request.method == "OPTIONS":
-        response = jsonify(success=True)
-        return _allow_origin(response)
+        # Flask-CORS handles OPTIONS requests automatically
+        return jsonify(success=True)
     """Update user profile (cover_image_url, profile_image_url, etc.) using service role to bypass RLS"""
     try:
         # Handle both JSON and form data
@@ -5728,7 +5568,7 @@ def update_user_profile(user_id):
         
         if not data:
             response = jsonify({"error": "No data provided"})
-            return _allow_origin(response), 400
+            return response, 400
         logger.info(f"Updating profile for user {user_id}: {data}")
         
         # Validate user_id
@@ -5764,7 +5604,7 @@ def update_user_profile(user_id):
         if result.data and len(result.data) > 0:
             logger.info(f"Successfully updated profile for user {user_id}")
             response = jsonify({"success": True, "user": result.data[0]})
-            return _allow_origin(response), 200
+            return response, 200
         else:
             # User doesn't exist, try to create/upsert
             logger.info(f"User {user_id} doesn't exist, creating new profile")
@@ -5784,7 +5624,7 @@ def update_user_profile(user_id):
             if result.data and len(result.data) > 0:
                 logger.info(f"Successfully created/updated profile for user {user_id}")
                 response = jsonify({"success": True, "user": result.data[0]})
-                return _allow_origin(response), 200
+                return response, 200
             else:
                 response = jsonify({"error": "Failed to update or create user profile"})
                 return _allow_origin(response), 500
@@ -6078,9 +5918,6 @@ def calculate_shipping():
     if request.method == "OPTIONS":
         logger.info("📦 Handling OPTIONS preflight request")
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     
     try:
@@ -6355,8 +6192,8 @@ def get_subdomain_creator(subdomain):
     This bypasses RLS so visitors to creator subdomains can see personalization.
     """
     if request.method == "OPTIONS":
-        response = jsonify(success=True)
-        return _allow_origin(response)
+        # Flask-CORS handles OPTIONS requests automatically
+        return jsonify(success=True)
     
     try:
         normalized = subdomain.lower().strip()
@@ -6393,7 +6230,7 @@ def get_subdomain_creator(subdomain):
                     "hide_screenmerch_branding": creator.get('hide_screenmerch_branding', False)
                 }
             })
-            return _allow_origin(response), 200
+            return response, 200
         else:
             logger.warning(f"⚠️ [SUBDOMAIN API] No creator found for subdomain: {normalized}")
             
@@ -6410,7 +6247,7 @@ def get_subdomain_creator(subdomain):
                 "error": "Creator not found",
                 "subdomain_searched": normalized
             })
-            return _allow_origin(response), 404
+            return response, 404
             
     except Exception as e:
         import traceback
@@ -6428,18 +6265,18 @@ def get_subdomain_creator(subdomain):
 def check_admin_status():
     """Check if user is admin - bypasses RLS to prevent 406 errors"""
     if request.method == "OPTIONS":
-        # Use api_preflight to handle CORS properly
-        return api_preflight('admin/check-status')
+        # Flask-CORS handles OPTIONS requests automatically
+        return jsonify(success=True)
     
     try:
         user_email = request.args.get('email') or request.headers.get('X-User-Email')
         user_id = request.args.get('user_id')
         
         if not user_email and not user_id:
-            return _allow_origin(jsonify({
+            return jsonify({
                 "success": False,
                 "error": "Email or user_id required"
-            })), 400
+            }), 400
         
         # Use admin client to bypass RLS
         client = supabase_admin if supabase_admin else supabase
@@ -6457,7 +6294,7 @@ def check_admin_status():
         
         if result.data:
             user = result.data
-            return _allow_origin(jsonify({
+            return jsonify({
                 "success": True,
                 "is_admin": user.get('is_admin', False),
                 "admin_role": user.get('admin_role'),
@@ -6466,59 +6303,35 @@ def check_admin_status():
                     user.get('admin_role') in ['order_processing_admin', 'admin', 'master_admin'] or
                     user.get('admin_role') is None  # Backward compatibility
                 )
-            })), 200
+            }), 200
         else:
-            return _allow_origin(jsonify({
+            return jsonify({
                 "success": True,
                 "is_admin": False,
                 "admin_role": None,
                 "is_full_admin": False,
                 "is_order_processing_admin": False
-            })), 200
+            }), 200
             
     except Exception as e:
         logger.error(f"❌ Error checking admin status: {str(e)}")
-        return _allow_origin(jsonify({
+        return jsonify({
             "success": False,
             "error": str(e),
             "is_admin": False,
             "admin_role": None,
             "is_full_admin": False,
             "is_order_processing_admin": False
-        })), 500
+        }), 500
 
 # Authentication endpoints
 @app.route("/api/auth/login", methods=["POST", "OPTIONS"])
 @app.route("/api/auth/login/", methods=["POST", "OPTIONS"])
 def auth_login():
     if request.method == "OPTIONS":
+        # Flask-CORS handles OPTIONS requests automatically - just return empty response
         logger.info(f"🔵 [LOGIN] OPTIONS preflight from {request.headers.get('Origin', 'unknown')}")
-        response = jsonify(success=True)
-        origin = request.headers.get('Origin')
-        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "http://localhost:3000", "http://localhost:5173"]
-        
-        # Check exact match first
-        origin_allowed = origin in allowed_origins
-        
-        # If not exact match, check if it's a Netlify subdomain or screenmerch.com subdomain
-        if not origin_allowed and origin:
-            if origin.endswith('.netlify.app') and origin.startswith('https://'):
-                origin_allowed = True
-            # Allow subdomains of screenmerch.com (e.g., testcreator.screenmerch.com)
-            elif origin.endswith('.screenmerch.com') and origin.startswith('https://'):
-                origin_allowed = True
-        
-        # Use assignment instead of .add() to prevent duplicate headers
-        if origin_allowed:
-            response.headers['Access-Control-Allow-Origin'] = origin
-        else:
-            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
-        
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Cache-Control,Pragma,Expires'
-        response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        logger.info(f"✅ [LOGIN] OPTIONS preflight response sent")
-        return response
+        return jsonify(success=True)
     """Handle user login with email and password validation"""
     try:
         logger.info(f"🔵 [LOGIN] Request received from {request.headers.get('Origin', 'unknown')}")
@@ -6530,14 +6343,14 @@ def auth_login():
         
         if not email or not password:
             response = jsonify({"success": False, "error": "Email and password are required"})
-            return _allow_origin(response), 400
+            return response, 400
         
         # Validate email format
         import re
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(email_pattern, email):
             response = jsonify({"success": False, "error": "Please enter a valid email address"})
-            return _allow_origin(response), 400
+            return response, 400
         
         # Check if user exists in database - use admin client to bypass RLS
         try:
@@ -6547,7 +6360,7 @@ def auth_login():
             if not client:
                 logger.error("❌ [LOGIN] Supabase client not initialized")
                 response = jsonify({"success": False, "error": "Authentication service unavailable"})
-                return _allow_origin(response), 500
+                return response, 500
             
             result = client.table('users').select('*').eq('email', email).execute()
             logger.info(f"🔵 [LOGIN] Database query completed for: {email}")
@@ -6562,7 +6375,7 @@ def auth_login():
                         "success": False, 
                         "error": "Your account is pending approval. Please wait for admin approval before signing in."
                     })
-                    return _allow_origin(response), 403
+                    return response, 403
                 
                 # Block login if user is suspended or banned
                 if user_status in ['suspended', 'banned']:
@@ -6570,7 +6383,7 @@ def auth_login():
                         "success": False, 
                         "error": f"Your account has been {user_status}. Please contact support for assistance."
                     })
-                    return _allow_origin(response), 403
+                    return response, 403
                 
                 stored_password = user.get('password_hash', '')
                 
@@ -6670,9 +6483,7 @@ def auth_login():
                         }
                         resp = make_response(jsonify(response_data), 200)
                     
-                    # Add CORS headers for successful response
-                    resp = _allow_origin(resp)
-                    
+                    # Flask-CORS handles CORS headers automatically
                     resp.set_cookie(
                         "sm_session", token,
                         domain=domain, path="/",
@@ -6681,21 +6492,20 @@ def auth_login():
                     return resp
                 else:
                     response = jsonify({"success": False, "error": "Invalid email or password"})
-                    return _allow_origin(response), 401
+                    return response, 401
             else:
                 response = jsonify({"success": False, "error": "Invalid email or password"})
-                return _allow_origin(response), 401
+                return response, 401
                 
         except Exception as db_error:
             logger.error(f"Database error during login: {str(db_error)}")
             response = jsonify({"success": False, "error": "Authentication service unavailable"})
-            response = _allow_origin(response)
             return response, 500
             
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
-        response = _allow_origin(response)
+        # Flask-CORS handles CORS headers automatically
         return response, 500
 
 
@@ -6704,11 +6514,8 @@ def auth_login():
 def auth_check_admin():
     """Check if a user has admin privileges - bypasses RLS using service role"""
     if request.method == "OPTIONS":
-        response = jsonify(success=True)
-        response = _allow_origin(response)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        return response
+        # Flask-CORS handles OPTIONS requests automatically
+        return jsonify(success=True)
     
     try:
         data = _data_from_request()
@@ -6717,7 +6524,7 @@ def auth_check_admin():
         
         if not user_id and not user_email:
             response = jsonify({"success": False, "error": "user_id or email is required"})
-            return _allow_origin(response), 400
+            return response, 400
         
         logger.info(f"🔐 [CHECK-ADMIN] Checking admin status for user_id={user_id}, email={user_email}")
         
@@ -6726,7 +6533,7 @@ def auth_check_admin():
         if not client:
             logger.error("❌ [CHECK-ADMIN] Supabase client not initialized")
             response = jsonify({"success": False, "error": "Database service unavailable"})
-            return _allow_origin(response), 500
+            return response, 500
         
         # Query by ID first, then fallback to email
         user_data = None
@@ -6753,7 +6560,7 @@ def auth_check_admin():
                 "isOrderProcessingAdmin": False,
                 "adminRole": None
             })
-            return _allow_origin(response), 200
+            return response, 200
         
         is_admin = user_data.get('is_admin', False) or False
         admin_role = user_data.get('admin_role')
@@ -6779,7 +6586,7 @@ def auth_check_admin():
             "isOrderProcessingAdmin": is_order_processing_admin,
             "adminRole": admin_role
         })
-        return _allow_origin(response), 200
+        return response, 200
         
     except Exception as e:
         logger.error(f"❌ [CHECK-ADMIN] Error: {str(e)}")
@@ -6794,18 +6601,15 @@ def auth_check_admin():
 def admin_get_subdomains():
     """Get all subdomains with creator info - Master Admin only"""
     if request.method == "OPTIONS":
-        response = jsonify(success=True)
-        response = _allow_origin(response)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        return response
+        # Flask-CORS handles OPTIONS requests automatically
+        return jsonify(success=True)
     
     try:
         # Get admin email from header or request
         admin_email = request.headers.get('X-User-Email') or request.args.get('email')
         if not admin_email:
             response = jsonify({"success": False, "error": "Admin email required"})
-            return _allow_origin(response), 401
+            return response, 401
         
         # Verify master admin
         client = supabase_admin if supabase_admin else supabase
@@ -6847,7 +6651,7 @@ def admin_get_subdomains():
         
         logger.info(f"✅ [SUBDOMAIN-MGMT] Retrieved {len(subdomains)} subdomains")
         response = jsonify({"success": True, "subdomains": subdomains})
-        return _allow_origin(response), 200
+        return response, 200
         
     except Exception as e:
         logger.error(f"❌ [SUBDOMAIN-MGMT] Error: {str(e)}")
@@ -6863,9 +6667,7 @@ def admin_update_subdomain(user_id):
     """Update subdomain for a user - Master Admin only"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response = _allow_origin(response)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        # Flask-CORS handles CORS headers automatically
         return response
     
     try:
@@ -6873,7 +6675,7 @@ def admin_update_subdomain(user_id):
         admin_email = request.headers.get('X-User-Email') or request.json.get('admin_email')
         if not admin_email:
             response = jsonify({"success": False, "error": "Admin email required"})
-            return _allow_origin(response), 401
+            return response, 401
         
         # Verify master admin
         client = supabase_admin if supabase_admin else supabase
@@ -6901,11 +6703,11 @@ def admin_update_subdomain(user_id):
             import re
             if not re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', new_subdomain):
                 response = jsonify({"success": False, "error": "Invalid subdomain format. Must be 3-63 lowercase alphanumeric characters with hyphens."})
-                return _allow_origin(response), 400
+                return response, 400
             
             if len(new_subdomain) < 3 or len(new_subdomain) > 63:
                 response = jsonify({"success": False, "error": "Subdomain must be between 3 and 63 characters"})
-                return _allow_origin(response), 400
+                return response, 400
             
             # Check if subdomain is already taken
             existing = client.table('users').select('id, email').eq('subdomain', new_subdomain).execute()
@@ -6913,7 +6715,7 @@ def admin_update_subdomain(user_id):
                 existing_user = existing.data[0]
                 if existing_user.get('id') != user_id:
                     response = jsonify({"success": False, "error": f"Subdomain '{new_subdomain}' is already taken by {existing_user.get('email')}"})
-                    return _allow_origin(response), 400
+                    return response, 400
         
         # Update user subdomain
         # Note: updated_at is typically handled by database triggers
@@ -6922,7 +6724,7 @@ def admin_update_subdomain(user_id):
         
         if not result.data or len(result.data) == 0:
             response = jsonify({"success": False, "error": "User not found"})
-            return _allow_origin(response), 404
+            return response, 404
         
         logger.info(f"✅ [SUBDOMAIN-MGMT] Updated subdomain for user {user_id} to '{new_subdomain}'")
         response = jsonify({
@@ -6930,7 +6732,7 @@ def admin_update_subdomain(user_id):
             "user": result.data[0],
             "message": f"Subdomain updated to '{new_subdomain}'" if new_subdomain else "Subdomain removed"
         })
-        return _allow_origin(response), 200
+        return response, 200
         
     except Exception as e:
         logger.error(f"❌ [SUBDOMAIN-MGMT] Error: {str(e)}")
@@ -6946,9 +6748,7 @@ def admin_validate_subdomain():
     """Validate if a subdomain is accessible - Master Admin only"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response = _allow_origin(response)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        # Flask-CORS handles CORS headers automatically
         return response
     
     try:
@@ -6957,7 +6757,7 @@ def admin_validate_subdomain():
         
         if not subdomain:
             response = jsonify({"success": False, "error": "Subdomain required"})
-            return _allow_origin(response), 400
+            return response, 400
         
         # Check if subdomain is accessible by making a HEAD request
         subdomain_url = f'https://{subdomain}.screenmerch.com'
@@ -6987,7 +6787,7 @@ def admin_validate_subdomain():
             "status_code": status_code,
             "error": error_message
         })
-        return _allow_origin(response), 200
+        return response, 200
         
     except Exception as e:
         logger.error(f"❌ [SUBDOMAIN-VALIDATE] Error: {str(e)}")
@@ -7002,9 +6802,6 @@ def admin_validate_subdomain():
 def auth_signup():
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
     """Handle user signup with email and password validation"""
     try:
@@ -7045,7 +6842,6 @@ def auth_signup():
                         "success": False, 
                         "error": "We've reached our limit of 20 creator signups. Please check back later or contact support."
                     })
-                    response.headers.add('Access-Control-Allow-Origin', '*')
                     return response, 403
             except Exception as limit_error:
                 logger.error(f"Error checking creator limit: {str(limit_error)}")
@@ -7170,16 +6966,13 @@ def auth_signup():
             logger.error(f"Database error during signup: {str(db_error)}")
             if "duplicate key" in str(db_error).lower():
                 response = jsonify({"success": False, "error": "An account with this email already exists"})
-                response.headers.add('Access-Control-Allow-Origin', '*')
                 return response, 409
             response = jsonify({"success": False, "error": "Account creation failed"})
-            response.headers.add('Access-Control-Allow-Origin', '*')
             return response, 500
             
     except Exception as e:
         logger.error(f"Signup error: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
-        response.headers.add('Access-Control-Allow-Origin', '*')
         return response, 500
 
 @app.route("/api/auth/signup/email-only", methods=["POST", "OPTIONS"])
@@ -7191,9 +6984,7 @@ def auth_signup_email_only():
     if request.method == "OPTIONS":
         logger.info("🔵 [EMAIL-ONLY-SIGNUP] Handling OPTIONS preflight")
         response = jsonify(success=True)
-        response = _allow_origin(response)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        # Flask-CORS handles CORS headers automatically
         return response
     
     try:
@@ -7354,12 +7145,12 @@ def auth_signup_email_only():
                     "success": True,
                     "message": "Please check your email to verify your account and set your password."
                 })
-                response = _allow_origin(response)
+                # Flask-CORS handles CORS headers automatically
                 return response, 200
             else:
                 logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Failed to create account - no data returned from database")
                 response = jsonify({"success": False, "error": "Failed to create account"})
-                response = _allow_origin(response)
+                # Flask-CORS handles CORS headers automatically
                 return response, 500
                 
         except Exception as db_error:
@@ -7370,17 +7161,17 @@ def auth_signup_email_only():
             logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Traceback: {traceback.format_exc()}")
             if "duplicate key" in error_msg.lower() or "already exists" in error_msg.lower():
                 response = jsonify({"success": False, "error": "An account with this email already exists. Please sign in instead."})
-                response = _allow_origin(response)
+                # Flask-CORS handles CORS headers automatically
                 return response, 409
             # Return more detailed error for debugging (remove in production)
             response = jsonify({"success": False, "error": f"Account creation failed: {error_msg}"})
-            response = _allow_origin(response)
+            # Flask-CORS handles CORS headers automatically
             return response, 500
             
     except Exception as e:
         logger.error(f"Email-only signup error: {str(e)}")
         response = jsonify({"success": False, "error": "Internal server error"})
-        response = _allow_origin(response)
+        # Flask-CORS handles CORS headers automatically
         return response, 500
 
 @app.route("/api/auth/verify-email", methods=["POST", "OPTIONS"])
@@ -7392,9 +7183,7 @@ def auth_verify_email():
     if request.method == "OPTIONS":
         logger.info("🔵 [VERIFY-EMAIL] Handling OPTIONS preflight")
         response = jsonify(success=True)
-        response = _allow_origin(response)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        # Flask-CORS handles CORS headers automatically
         return response
     
     try:
@@ -7477,11 +7266,11 @@ def auth_verify_email():
                     },
                     "token": token
                 })
-                response = _allow_origin(response)
+                # Flask-CORS handles CORS headers automatically
                 return response, 200
             else:
                 response = jsonify({"success": False, "error": "Failed to verify email"})
-                response = _allow_origin(response)
+                # Flask-CORS handles CORS headers automatically
                 return response, 500
                 
         except Exception as db_error:
@@ -7490,7 +7279,7 @@ def auth_verify_email():
             import traceback
             logger.error(f"🔵 [VERIFY-EMAIL] ❌ Traceback: {traceback.format_exc()}")
             response = jsonify({"success": False, "error": "Verification failed"})
-            response = _allow_origin(response)
+            # Flask-CORS handles CORS headers automatically
             return response, 500
             
     except Exception as e:
@@ -7499,7 +7288,7 @@ def auth_verify_email():
         import traceback
         logger.error(f"🔵 [VERIFY-EMAIL] ❌ Traceback: {traceback.format_exc()}")
         response = jsonify({"success": False, "error": "Internal server error"})
-        response = _allow_origin(response)
+        # Flask-CORS handles CORS headers automatically
         return response, 500
 
 @app.route("/api/analytics", methods=["GET"])
@@ -8118,10 +7907,6 @@ def admin_processing_queue():
     if request.method == "OPTIONS":
         response = jsonify({})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     
     try:
@@ -8170,15 +7955,11 @@ def admin_processing_queue():
             "data": enriched_data
         })
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     except Exception as e:
         logger.error(f"❌ [ADMIN] Error fetching processing queue: {str(e)}")
         response = jsonify({"success": False, "error": str(e)})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
 
 @app.route("/api/admin/processing-history", methods=["GET", "OPTIONS"])
@@ -8188,10 +7969,6 @@ def admin_processing_history():
     if request.method == "OPTIONS":
         response = jsonify({})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     
     try:
@@ -8209,15 +7986,11 @@ def admin_processing_history():
             "data": result.data or []
         })
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     except Exception as e:
         logger.error(f"❌ [ADMIN] Error fetching processing history: {str(e)}")
         response = jsonify({"success": False, "error": str(e)})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
 
 def is_master_admin(user_email):
@@ -8243,10 +8016,6 @@ def delete_order(queue_id):
     if request.method == "OPTIONS":
         response = jsonify({})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Methods', 'DELETE, OPTIONS')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     
     try:
@@ -8256,8 +8025,6 @@ def delete_order(queue_id):
             response = jsonify({"success": False, "error": "Master admin access required"})
             response.status_code = 403
             origin = request.headers.get('Origin', '*')
-            response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response
         
         # Use admin client to bypass RLS
@@ -8269,8 +8036,6 @@ def delete_order(queue_id):
             response = jsonify({"success": False, "error": "Order not found in queue"})
             response.status_code = 404
             origin = request.headers.get('Origin', '*')
-            response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response
         
         order_id = queue_result.data[0].get('order_id')
@@ -8288,16 +8053,12 @@ def delete_order(queue_id):
             "message": "Order deleted successfully"
         })
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     except Exception as e:
         logger.error(f"❌ [ADMIN] Error deleting order: {str(e)}")
         response = jsonify({"success": False, "error": str(e)})
         response.status_code = 500
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
 
 @app.route("/api/admin/workers", methods=["GET", "OPTIONS"])
@@ -8307,10 +8068,6 @@ def admin_workers():
     if request.method == "OPTIONS":
         response = jsonify({})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     
     try:
@@ -8371,15 +8128,11 @@ def admin_workers():
             "data": workers_list
         })
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     except Exception as e:
         logger.error(f"❌ [ADMIN] Error fetching workers: {str(e)}")
         response = jsonify({"success": False, "error": str(e)})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
 
 @app.route("/api/admin/reset-sales", methods=["POST", "OPTIONS"])
@@ -8389,10 +8142,6 @@ def reset_sales():
     if request.method == "OPTIONS":
         response = jsonify({})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     
     try:
@@ -8402,8 +8151,6 @@ def reset_sales():
             response = jsonify({"success": False, "error": "Master admin access required"})
             response.status_code = 403
             origin = request.headers.get('Origin', '*')
-            response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response
         
         data = request.get_json() or {}
@@ -8413,8 +8160,6 @@ def reset_sales():
             response = jsonify({"success": False, "error": "user_id is required"})
             response.status_code = 400
             origin = request.headers.get('Origin', '*')
-            response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response
         
         # Use admin client to bypass RLS
@@ -8437,16 +8182,12 @@ def reset_sales():
             "deleted_count": len(deleted_sales.data) if deleted_sales.data else 0
         })
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     except Exception as e:
         logger.error(f"❌ [ADMIN] Error resetting sales: {str(e)}")
         response = jsonify({"success": False, "error": str(e)})
         response.status_code = 500
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
 
 @app.route("/api/admin/platform-revenue", methods=["GET", "OPTIONS"])
@@ -8456,10 +8197,6 @@ def platform_revenue():
     if request.method == "OPTIONS":
         response = jsonify({})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     
     try:
@@ -8469,8 +8206,6 @@ def platform_revenue():
             response = jsonify({"success": False, "error": "Master admin access required"})
             response.status_code = 403
             origin = request.headers.get('Origin', '*')
-            response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response
         
         # Get time frame filters
@@ -8686,8 +8421,6 @@ def platform_revenue():
         
         response = jsonify(response_data)
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
         
     except Exception as e:
@@ -8695,8 +8428,6 @@ def platform_revenue():
         response = jsonify({"success": False, "error": str(e)})
         response.status_code = 500
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
 
 @app.route("/api/admin/recent-orders", methods=["GET", "OPTIONS"])
@@ -8706,10 +8437,6 @@ def admin_recent_orders():
     if request.method == "OPTIONS":
         response = jsonify({})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     
     try:
@@ -8740,15 +8467,11 @@ def admin_recent_orders():
             "total": len(enriched_orders)
         })
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     except Exception as e:
         logger.error(f"❌ [ADMIN] Error fetching recent orders: {str(e)}")
         response = jsonify({"success": False, "error": str(e)})
         origin = request.headers.get('Origin', '*')
-        response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
 
 @app.route("/api/supabase-webhook", methods=["POST"])
@@ -8884,11 +8607,6 @@ def google_login():
         origin = request.headers.get('Origin')
         allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
         
-        if origin in allowed_origins:
-            response.headers['Access-Control-Allow-Origin'] = origin
-        else:
-            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
         return response
     
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
@@ -8962,20 +8680,11 @@ def google_login():
         return jsonify({"success": False, "error": "Failed to initiate Google login"}), 500
 
 @app.route("/api/auth/google/callback", methods=["GET", "OPTIONS"])
-@cross_origin(origins=[], supports_credentials=True)  # Disable Flask-CORS for this endpoint
 def google_callback():
     """Handle Google OAuth callback"""
     if request.method == "OPTIONS":
-        response = jsonify(success=True)
-        origin = request.headers.get('Origin')
-        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
-        
-        if origin in allowed_origins:
-            response.headers['Access-Control-Allow-Origin'] = origin
-        else:
-            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        return response
+        # Flask-CORS handles OPTIONS requests automatically
+        return jsonify(success=True)
     
     try:
         # Get authorization code from callback

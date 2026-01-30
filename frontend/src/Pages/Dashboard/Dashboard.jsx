@@ -4,6 +4,7 @@ import './Dashboard.css';
 import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
+import { fetchMyProfileFromBackend } from '../../utils/userService';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 // Force Netlify rebuild
 
@@ -103,21 +104,13 @@ const Dashboard = ({ sidebar }) => {
 
                 setUser(user);
 
-                // CRITICAL: Always fetch user profile from users table to get latest profile_image_url
+                // CRITICAL: Fetch user profile from backend (safe fields only)
                 let profile = null;
                 if (user.id) {
-                    console.log('🔍 [DASHBOARD] Fetching latest profile from database for user ID:', user.id);
-                    const { data: profileData, error: profileError } = await supabase
-                        .from('users')
-                        .select('*')
-                        .eq('id', user.id)
-                        .maybeSingle();
-                    
-                    if (profileError) {
-                        console.error('❌ [DASHBOARD] Error fetching profile:', profileError);
-                    } else {
-                        profile = profileData;
-                        console.log('✅ [DASHBOARD] Fetched profile from database:', {
+                    console.log('🔍 [DASHBOARD] Fetching latest profile from backend for user ID:', user.id);
+                    profile = await fetchMyProfileFromBackend(user.id);
+                    if (profile) {
+                        console.log('✅ [DASHBOARD] Fetched profile from backend:', {
                             profile_image_url: profile?.profile_image_url,
                             cover_image_url: profile?.cover_image_url,
                             display_name: profile?.display_name

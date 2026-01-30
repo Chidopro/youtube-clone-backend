@@ -1,12 +1,44 @@
 import { supabase } from '../supabaseClient.js';
 
+const BACKEND_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
+  (typeof process !== 'undefined' && process.env && process.env.REACT_APP_BACKEND_URL) ||
+  'https://screenmerch.fly.dev';
+
+/**
+ * Fetch current user's profile from backend (safe fields only). Use this instead of reading from Supabase directly.
+ * @param {string} userId - Current user id (e.g. from login response / localStorage)
+ * @returns {Promise<Object|null>} User profile or null if not found / error
+ */
+export async function fetchMyProfileFromBackend(userId) {
+  if (!userId) return null;
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/users/me`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'X-User-Id': userId },
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching profile from backend:', err);
+    return null;
+  }
+}
+
 export class UserService {
   /**
-   * Get current user's profile
+   * Get current user's profile (tries backend /api/users/me first if userId available, else Supabase)
    * @returns {Promise<Object|null>} User profile or null if not found
    */
   static async getCurrentUserProfile() {
     try {
+      const stored = typeof localStorage !== 'undefined' && localStorage.getItem('user');
+      const userId = stored ? (JSON.parse(stored)?.id) : null;
+      if (userId) {
+        const profile = await fetchMyProfileFromBackend(userId);
+        if (profile) return profile;
+      }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 

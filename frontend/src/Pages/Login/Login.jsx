@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
 import { supabase } from '../../supabaseClient';
 import { AdminService } from '../../utils/adminService';
+import { fetchMyProfileFromBackend } from '../../utils/userService';
 import './Login.css';
 
 // Helper function to check if we're on a subdomain
@@ -210,14 +211,10 @@ const Login = () => {
 
       if (data?.token) localStorage.setItem('auth_token', data.token);
       if (data?.user) {
-        // For email/password login, fetch full user profile from database
+        // For email/password login, fetch full user profile from backend (safe fields only)
         if (data.user.id && !data.user.user_metadata) {
           try {
-            const { data: profile, error: profileError } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', data.user.id)
-              .maybeSingle();
+            const profile = await fetchMyProfileFromBackend(data.user.id);
             
             if (profile) {
               // Merge profile data with user data - prioritize profile_image_url from database

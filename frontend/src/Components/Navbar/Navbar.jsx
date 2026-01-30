@@ -10,7 +10,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import SubscriptionModal from '../SubscriptionModal/SubscriptionModal'
 import CreatorSignupModal from '../CreatorSignupModal/CreatorSignupModal'
 import { supabase } from '../../supabaseClient'
-import { upsertUserProfile, deleteUserAccount } from '../../utils/userService'
+import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from '../../utils/userService'
 import { AdminService } from '../../utils/adminService'
 
 const Navbar = ({ setSidebar, resetCategory }) => {
@@ -119,23 +119,13 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         let profileError = null;
                         
                         if (userId) {
-                            console.log('🔐 [NAVBAR] Fetching profile from database for user ID:', userId);
-                            const result = await supabase
-                                .from('users')
-                                .select('*')
-                                .eq('id', userId)
-                                .maybeSingle();
-                            profile = result.data;
-                            profileError = result.error;
+                            console.log('🔐 [NAVBAR] Fetching profile from backend for user ID:', userId);
+                            profile = await fetchMyProfileFromBackend(userId);
+                            profileError = profile ? null : new Error('No profile returned');
                         } else if (userEmail) {
-                            console.log('🔐 [NAVBAR] No ID found, fetching profile from database for user email:', userEmail);
-                            const result = await supabase
-                                .from('users')
-                                .select('*')
-                                .eq('email', userEmail)
-                                .maybeSingle();
-                            profile = result.data;
-                            profileError = result.error;
+                            console.log('🔐 [NAVBAR] No ID found, using login data');
+                            profile = null;
+                            profileError = null;
                         }
                         
                         if (profileError) {
@@ -241,12 +231,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             // CRITICAL: Fetch from database FIRST before setting user state
                             // This ensures we have the correct role/status from database
                             if (loggedInUser.id) {
-                                console.log('🔐 [FETCHUSER] Fetching latest user profile from database for user:', loggedInUser.id);
-                                const { data: profile, error: profileError } = await supabase
-                                    .from('users')
-                                    .select('*')
-                                    .eq('id', loggedInUser.id)
-                                    .maybeSingle();
+                                console.log('🔐 [FETCHUSER] Fetching latest user profile from backend for user:', loggedInUser.id);
+                                const profile = await fetchMyProfileFromBackend(loggedInUser.id);
+                                const profileError = profile ? null : new Error('No profile returned');
 
                                 if (profileError) {
                                     console.error('❌ [FETCHUSER] Error fetching profile:', profileError);
