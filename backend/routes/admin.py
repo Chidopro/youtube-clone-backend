@@ -236,6 +236,95 @@ def check_admin_status():
         return _allow_origin(jsonify({"success": False, "error": str(e)})), 500
 
 
+# Admin signup requests list (Master Admin only, bypasses RLS)
+@admin_bp.route("/api/admin/signup-requests", methods=["GET", "OPTIONS"])
+@admin_bp.route("/api/admin/signup-requests/", methods=["GET", "OPTIONS"])
+def admin_get_signup_requests():
+    """Get admin signup requests for Admin Management - uses service role to bypass RLS."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin_email = request.headers.get('X-User-Email') or request.args.get('email')
+        if not admin_email:
+            response = jsonify({"success": False, "error": "Admin email required"})
+            return _allow_origin(response), 401
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": False, "error": "Database service unavailable"})
+            return _allow_origin(response), 500
+        admin_result = client.table('users').select('is_admin, admin_role').ilike('email', admin_email).execute()
+        if not admin_result.data or len(admin_result.data) == 0:
+            response = jsonify({"success": False, "error": "Admin not found"})
+            return _allow_origin(response), 403
+        admin_user = admin_result.data[0]
+        if not admin_user.get('is_admin') or admin_user.get('admin_role') != 'master_admin':
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            return _allow_origin(response), 403
+        result = client.table('admin_signup_requests').select('*').order('requested_at', desc=True).execute()
+        response = jsonify({"success": True, "requests": result.data or []})
+        return _allow_origin(response), 200
+    except Exception as e:
+        if '42P01' in str(e) or 'does not exist' in str(e).lower():
+            response = jsonify({"success": True, "requests": []})
+            return _allow_origin(response), 200
+        logger.error(f"Error in admin_get_signup_requests: {str(e)}")
+        response = jsonify({"success": False, "error": "Internal server error"})
+        return _allow_origin(response), 500
+
+
+# User list for User Management (Master Admin only, bypasses RLS)
+@admin_bp.route("/api/admin/users", methods=["GET", "OPTIONS"])
+@admin_bp.route("/api/admin/users/", methods=["GET", "OPTIONS"])
+def admin_get_users():
+    """Get users list for admin User Management - uses service role to bypass RLS."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin_email = request.headers.get('X-User-Email') or request.args.get('email')
+        if not admin_email:
+            response = jsonify({"success": False, "error": "Admin email required"})
+            return _allow_origin(response), 401
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": False, "error": "Database service unavailable"})
+            return _allow_origin(response), 500
+        admin_result = client.table('users').select('is_admin, admin_role').ilike('email', admin_email).execute()
+        if not admin_result.data or len(admin_result.data) == 0:
+            response = jsonify({"success": False, "error": "Admin not found"})
+            return _allow_origin(response), 403
+        admin_user = admin_result.data[0]
+        if not admin_user.get('is_admin') or admin_user.get('admin_role') != 'master_admin':
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            return _allow_origin(response), 403
+        search = (request.args.get('search') or '').strip()
+        status = request.args.get('status') or 'all'
+        role = request.args.get('role') or 'all'
+        page = max(0, int(request.args.get('page', 0)))
+        limit = min(100, max(1, int(request.args.get('limit', 100))))
+        query = client.table('users').select('*', count='exact')
+        if search:
+            query = query.or_(f"display_name.ilike.%{search}%,email.ilike.%{search}%")
+        if status != 'all':
+            query = query.eq('status', status)
+        if role != 'all':
+            query = query.eq('role', role)
+        result = query.order('created_at', desc=True).range(page * limit, (page + 1) * limit - 1).execute()
+        total = result.count if hasattr(result, 'count') and result.count is not None else (len(result.data) if result.data else 0)
+        response = jsonify({
+            "success": True,
+            "users": result.data or [],
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "totalPages": max(0, (total + limit - 1) // limit)
+        })
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.error(f"Error in admin_get_users: {str(e)}")
+        response = jsonify({"success": False, "error": "Internal server error"})
+        return _allow_origin(response), 500
+
+
 # Subdomain management routes (Master Admin only)
 @admin_bp.route("/api/admin/subdomains", methods=["GET", "OPTIONS"])
 @admin_bp.route("/api/admin/subdomains/", methods=["GET", "OPTIONS"])

@@ -332,9 +332,10 @@ def admin_login():
         # Email whitelist validation
         allowed_emails = [
             'chidopro@proton.me',
-            'alancraigdigital@gmail.com', 
+            'alancraigdigital@gmail.com',
             'digitalavatartutorial@gmail.com',
-            'admin@screenmerch.com'
+            'admin@screenmerch.com',
+            'driveralan1@yahoo.com'
         ]
         if email not in allowed_emails:
             return render_template('admin_login.html', error="Access restricted to authorized users only")
@@ -347,9 +348,13 @@ def admin_login():
                 user = result.data[0]
                 stored_password = user.get('password_hash', '')
                 user_role = user.get('role', 'customer')
+                is_admin = user.get('is_admin', False)
+                admin_role = user.get('admin_role')
                 
-                # Check password and admin role
-                if password == stored_password and user_role == 'admin':
+                # Check password and admin access (role=='admin' OR is_admin flag)
+                if password != stored_password:
+                    return render_template('admin_login.html', error="Invalid credentials or insufficient privileges")
+                if user_role == 'admin' or is_admin or admin_role in ('master_admin', 'admin', 'order_processing_admin'):
                     session['admin_logged_in'] = True
                     session['admin_email'] = email
                     session['admin_id'] = user.get('id')

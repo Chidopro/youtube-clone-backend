@@ -249,6 +249,32 @@ export class AdminService {
    */
   static async getUsers(page = 0, limit = 20, search = '', status = 'all', role = 'all') {
     try {
+      const currentUser = await this.getCurrentUser();
+      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      if (currentUser?.userEmail) {
+        const params = new URLSearchParams({ page: String(page), limit: String(limit), status, role });
+        if (search) params.set('search', search);
+        const res = await fetch(`${apiUrl}/api/admin/users?${params}`, {
+          method: 'GET',
+          headers: { 'X-User-Email': currentUser.userEmail },
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.users)) {
+            console.log('👥 Fetching users from database...');
+            console.log('👥 Users fetched:', json.users.length, 'users');
+            console.log('👥 Total count:', json.total ?? json.users.length);
+            return {
+              users: json.users,
+              total: json.total ?? 0,
+              page: json.page ?? page,
+              limit: json.limit ?? limit,
+              totalPages: json.totalPages ?? 1
+            };
+          }
+        }
+      }
       console.log('👥 Fetching users from database...');
       let query = supabase
         .from('users')
@@ -262,7 +288,6 @@ export class AdminService {
         query = query.eq('status', status);
       }
 
-      // Filter by role - default to showing creators in admin panel
       if (role !== 'all') {
         query = query.eq('role', role);
       }
@@ -1213,6 +1238,19 @@ export class AdminService {
    */
   static async getAdminSignupRequests() {
     try {
+      const currentUser = await this.getCurrentUser();
+      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      if (currentUser?.userEmail) {
+        const res = await fetch(`${apiUrl}/api/admin/signup-requests`, {
+          method: 'GET',
+          headers: { 'X-User-Email': currentUser.userEmail },
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.requests)) return json.requests;
+        }
+      }
       const { data, error } = await supabase
         .from('admin_signup_requests')
         .select('*')
@@ -1221,6 +1259,10 @@ export class AdminService {
       if (error) throw error;
       return data || [];
     } catch (error) {
+      if (error?.code === '42P01') {
+        console.warn('Admin signup requests table does not exist yet; returning empty list.');
+        return [];
+      }
       console.error('Error fetching admin signup requests:', error);
       return [];
     }

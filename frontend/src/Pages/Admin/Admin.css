@@ -614,4 +614,189 @@ tr:hover {
   th, td {
     padding: 0.5rem;
   }
+}
+
+/* ========== Admin Management tab (user-friendly layout) ========== */
+.admin-management-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.admin-mgmt-header {
+  margin-bottom: 2rem;
+}
+
+.admin-mgmt-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin: 0 0 0.5rem 0;
+}
+
+.admin-mgmt-subtitle {
+  font-size: 1rem;
+  color: #6c757d;
+  margin: 0;
+}
+
+.admin-mgmt-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .admin-mgmt-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .admin-mgmt-instructions {
+    grid-column: 1 / -1;
+  }
+}
+
+.admin-mgmt-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e9ecef;
+  padding: 1.5rem;
+  transition: box-shadow 0.2s ease;
+}
+
+.admin-mgmt-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.admin-mgmt-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.admin-mgmt-card-icon {
+  font-size: 1.25rem;
+}
+
+.admin-mgmt-badge {
+  margin-left: auto;
+  background: #e3f2fd;
+  color: #1976d2;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+}
+
+.admin-mgmt-empty {
+  color: #6c757d;
+  font-size: 0.95rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.admin-mgmt-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.admin-mgmt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-mgmt-table thead {
+  background: #f8f9fa;
+}
+
+.admin-mgmt-table th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.admin-mgmt-table td {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.admin-mgmt-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.admin-mgmt-select {
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  font-size: 0.9rem;
+  margin-right: 0.5rem;
+  background: #fff;
+}
+
+.admin-mgmt-btn {
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.15s ease;
+}
+
+.admin-mgmt-btn-reject {
+  background: #fff5f5;
+  color: #c53030;
+}
+
+.admin-mgmt-btn-reject:hover {
+  background: #fed7d7;
+}
+
+.admin-mgmt-btn-remove {
+  background: #f8f9fa;
+  color: #495057;
+}
+
+.admin-mgmt-btn-remove:hover {
+  background: #e9ecef;
+}
+
+.admin-mgmt-instructions {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-color: #dee2e6;
+}
+
+.admin-mgmt-steps {
+  margin: 0 0 1rem 0;
+  padding-left: 1.25rem;
+  line-height: 1.7;
+  color: #495057;
+  font-size: 0.95rem;
+}
+
+.admin-mgmt-steps li {
+  margin-bottom: 0.5rem;
+}
+
+.admin-mgmt-link {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.admin-mgmt-link a {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+.admin-mgmt-link a:hover {
+  text-decoration: underline;
 } 

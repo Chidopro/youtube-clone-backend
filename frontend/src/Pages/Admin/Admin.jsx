@@ -1193,6 +1193,7 @@ const Admin = () => {
                   placeholder="Search users..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') loadUsers(); }}
                   className="admin-search"
                 />
                 <select 
@@ -2080,117 +2081,126 @@ const Admin = () => {
           )}
 
           {activeTab === 'admin-management' && isMasterAdmin && (
-            <div className="admin-management">
-              <h3>👥 Admin Management</h3>
-              <p>Manage admin accounts and approve signup requests</p>
+            <div className="admin-management-page">
+              <header className="admin-mgmt-header">
+                <h2 className="admin-mgmt-title">Admin Management</h2>
+                <p className="admin-mgmt-subtitle">Approve signup requests and manage admin roles</p>
+              </header>
 
-              <div className="admin-section" style={{ marginTop: '30px' }}>
-                <h4>Pending Admin Signup Requests</h4>
-                {adminSignupRequests.filter(r => r.status === 'pending').length === 0 ? (
-                  <p>No pending signup requests</p>
-                ) : (
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Email</th>
-                        <th>Requested At</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {adminSignupRequests.filter(r => r.status === 'pending').map(request => (
-                        <tr key={request.id}>
-                          <td>{request.email}</td>
-                          <td>{new Date(request.requested_at).toLocaleString()}</td>
-                          <td>
-                            <select 
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  handleApproveAdminRequest(request.id, e.target.value);
-                                  e.target.value = ''; // Reset
-                                }
-                              }}
-                              defaultValue=""
-                              style={{ marginRight: '10px', padding: '6px 12px', borderRadius: '4px' }}
-                            >
-                              <option value="">Approve as...</option>
-                              <option value="master_admin">Master Admin</option>
-                              <option value="order_processing_admin">Order Processing Admin</option>
-                            </select>
-                            <button 
-                              onClick={() => handleRejectAdminRequest(request.id)}
-                              className="reject-btn"
-                            >
-                              Reject
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+              <div className="admin-mgmt-grid">
+                <section className="admin-mgmt-card admin-mgmt-card-pending">
+                  <h3 className="admin-mgmt-card-title">
+                    <span className="admin-mgmt-card-icon">📋</span>
+                    Pending Signup Requests
+                    <span className="admin-mgmt-badge">{adminSignupRequests.filter(r => r.status === 'pending').length}</span>
+                  </h3>
+                  {adminSignupRequests.filter(r => r.status === 'pending').length === 0 ? (
+                    <p className="admin-mgmt-empty">No pending requests. New admins can request access at the signup page.</p>
+                  ) : (
+                    <div className="admin-mgmt-table-wrap">
+                      <table className="admin-table admin-mgmt-table">
+                        <thead>
+                          <tr>
+                            <th>Email</th>
+                            <th>Requested</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {adminSignupRequests.filter(r => r.status === 'pending').map(request => (
+                            <tr key={request.id}>
+                              <td>{request.email}</td>
+                              <td>{request.requested_at ? new Date(request.requested_at).toLocaleString() : '—'}</td>
+                              <td>
+                                <select
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      handleApproveAdminRequest(request.id, e.target.value);
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                  defaultValue=""
+                                  className="admin-mgmt-select"
+                                >
+                                  <option value="">Approve as...</option>
+                                  <option value="master_admin">Master Admin</option>
+                                  <option value="order_processing_admin">Order Processing Admin</option>
+                                </select>
+                                <button type="button" onClick={() => handleRejectAdminRequest(request.id)} className="admin-mgmt-btn admin-mgmt-btn-reject">Reject</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
 
-              <div className="admin-section" style={{ marginTop: '40px' }}>
-                <h4>All Admins ({allAdmins.length})</h4>
-                {allAdmins.length === 0 ? (
-                  <p>No admins found</p>
-                ) : (
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Email</th>
-                        <th>Display Name</th>
-                        <th>Role</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allAdmins.map(admin => (
-                        <tr key={admin.id}>
-                          <td>{admin.email}</td>
-                          <td>{admin.display_name || 'N/A'}</td>
-                          <td>
-                            <select 
-                              value={admin.admin_role || 'admin'} 
-                              onChange={(e) => handleUpdateAdminRole(admin.id, e.target.value)}
-                              disabled={admin.admin_role === 'master_admin' && admin.id !== user?.id}
-                            >
-                              <option value="master_admin">Master Admin</option>
-                              <option value="order_processing_admin">Order Processing Admin</option>
-                            </select>
-                          </td>
-                          <td>{new Date(admin.created_at).toLocaleDateString()}</td>
-                          <td>
-                            {admin.admin_role !== 'master_admin' && (
-                              <button 
-                                onClick={() => handleRemoveAdminAccess(admin.id)}
-                                className="remove-btn"
-                              >
-                                Remove Access
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+                <section className="admin-mgmt-card admin-mgmt-card-admins">
+                  <h3 className="admin-mgmt-card-title">
+                    <span className="admin-mgmt-card-icon">👤</span>
+                    All Admins
+                    <span className="admin-mgmt-badge">{allAdmins.length}</span>
+                  </h3>
+                  {allAdmins.length === 0 ? (
+                    <p className="admin-mgmt-empty">No admins in the system yet. Approve a signup request above or add via Supabase.</p>
+                  ) : (
+                    <div className="admin-mgmt-table-wrap">
+                      <table className="admin-table admin-mgmt-table">
+                        <thead>
+                          <tr>
+                            <th>Email</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {allAdmins.map(admin => (
+                            <tr key={admin.id}>
+                              <td>{admin.email}</td>
+                              <td>{admin.display_name || '—'}</td>
+                              <td>
+                                <select
+                                  value={admin.admin_role || 'admin'}
+                                  onChange={(e) => handleUpdateAdminRole(admin.id, e.target.value)}
+                                  disabled={admin.admin_role === 'master_admin' && admin.id !== user?.id}
+                                  className="admin-mgmt-select"
+                                >
+                                  <option value="master_admin">Master Admin</option>
+                                  <option value="order_processing_admin">Order Processing Admin</option>
+                                </select>
+                              </td>
+                              <td>{admin.created_at ? new Date(admin.created_at).toLocaleDateString() : '—'}</td>
+                              <td>
+                                {admin.admin_role !== 'master_admin' && (
+                                  <button type="button" onClick={() => handleRemoveAdminAccess(admin.id)} className="admin-mgmt-btn admin-mgmt-btn-remove">Remove</button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
 
-              <div className="admin-section" style={{ marginTop: '40px', padding: '20px', background: '#f5f5f5', borderRadius: '8px' }}>
-                <h4>Instructions for Setting Up New Admins</h4>
-                <ol style={{ lineHeight: '1.8' }}>
-                  <li>When you approve a signup request, the user will be created in the users table</li>
-                  <li>Go to Supabase Dashboard → Authentication → Users</li>
-                  <li>Click "Add User" and enter the approved email address</li>
-                  <li>Set a secure password and provide it to the admin</li>
-                  <li>The admin can then log in using their email and password</li>
-                </ol>
-                <p style={{ marginTop: '15px', fontWeight: 'bold' }}>
-                  Admin Signup Page: <a href="/admin-signup" target="_blank" rel="noopener noreferrer">/admin-signup</a>
-                </p>
+                <section className="admin-mgmt-card admin-mgmt-instructions">
+                  <h3 className="admin-mgmt-card-title">
+                    <span className="admin-mgmt-card-icon">📖</span>
+                    How to add new admins
+                  </h3>
+                  <ol className="admin-mgmt-steps">
+                    <li>Approve a signup request above (user is created in the users table).</li>
+                    <li>In Supabase Dashboard → Authentication → Users, click “Add user” and enter the approved email.</li>
+                    <li>Set a secure password and share it with the admin.</li>
+                    <li>They can sign in at the admin login with that email and password.</li>
+                  </ol>
+                  <p className="admin-mgmt-link">
+                    Request form: <a href="/admin-signup" target="_blank" rel="noopener noreferrer">/admin-signup</a>
+                  </p>
+                </section>
               </div>
             </div>
           )}
