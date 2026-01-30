@@ -1,9 +1,5 @@
 import { supabase } from '../supabaseClient.js';
-
-const BACKEND_URL =
-  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
-  (typeof process !== 'undefined' && process.env && process.env.REACT_APP_BACKEND_URL) ||
-  'https://screenmerch.fly.dev';
+import { getBackendUrl } from '../config/apiConfig.js';
 
 /**
  * Fetch current user's profile from backend (safe fields only). Use this instead of reading from Supabase directly.
@@ -13,7 +9,7 @@ const BACKEND_URL =
 export async function fetchMyProfileFromBackend(userId) {
   if (!userId) return null;
   try {
-    const res = await fetch(`${BACKEND_URL}/api/users/me`, {
+    const res = await fetch(`${getBackendUrl()}/api/users/me`, {
       method: 'GET',
       credentials: 'include',
       headers: { 'X-User-Id': userId },
@@ -240,7 +236,7 @@ export class UserService {
       }
 
       // Call the server endpoint to handle complete account deletion
-      const response = await fetch(`https://screenmerch.fly.dev/api/users/${user.id}/delete-account`, {
+      const response = await fetch(`${getBackendUrl()}/api/users/${user.id}/delete-account`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

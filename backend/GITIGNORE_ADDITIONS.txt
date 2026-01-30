@@ -1,0 +1,6 @@
+# Add these lines to backend/.gitignore to ignore backup and legacy files:
+# Backup and legacy files
+*.bak
+*_backup_*
+*backup*.py
+*.backup

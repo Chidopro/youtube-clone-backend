@@ -1,20 +1,25 @@
-// API Configuration for different environments
+// API Configuration for different environments - single source for backend URL and Supabase
 const isDevelopment = import.meta.env.MODE === 'development';
+const env = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {};
+
+const BACKEND_URL_FALLBACK = 'https://screenmerch.fly.dev';
+const SUPABASE_URL_FALLBACK = 'https://sojxbydpcdcdzfdtbypd.supabase.co';
+const SUPABASE_ANON_KEY_FALLBACK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no';
 
 const config = {
   development: {
-    API_BASE_URL: 'http://127.0.0.1:5000',
+    API_BASE_URL: (env.VITE_BACKEND_URL || env.VITE_API_BASE_URL || 'http://127.0.0.1:5000').replace(/\/$/, ''),
     EMAIL_API_URL: 'http://localhost:3001',
     SUBSCRIPTION_API_URL: 'http://localhost:3002',
-    SUPABASE_URL: 'https://sojxbydpcdcdzfdtbypd.supabase.co',
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no'
+    SUPABASE_URL: (env.VITE_SUPABASE_URL || SUPABASE_URL_FALLBACK).replace(/\/$/, ''),
+    SUPABASE_ANON_KEY: env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY_FALLBACK
   },
   production: {
-    API_BASE_URL: 'https://screenmerch.fly.dev',
-    EMAIL_API_URL: 'https://screenmerch.fly.dev',
-    SUBSCRIPTION_API_URL: 'https://screenmerch.fly.dev',
-    SUPABASE_URL: 'https://sojxbydpcdcdzfdtbypd.supabase.co',
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no'
+    API_BASE_URL: (env.VITE_BACKEND_URL || env.VITE_API_BASE_URL || BACKEND_URL_FALLBACK).replace(/\/$/, ''),
+    EMAIL_API_URL: (env.VITE_BACKEND_URL || env.VITE_API_BASE_URL || BACKEND_URL_FALLBACK).replace(/\/$/, ''),
+    SUBSCRIPTION_API_URL: (env.VITE_BACKEND_URL || env.VITE_API_BASE_URL || BACKEND_URL_FALLBACK).replace(/\/$/, ''),
+    SUPABASE_URL: (env.VITE_SUPABASE_URL || SUPABASE_URL_FALLBACK).replace(/\/$/, ''),
+    SUPABASE_ANON_KEY: env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY_FALLBACK
   }
 };
 
@@ -50,6 +55,11 @@ export const API_CONFIG = {
     VIDEO_INFO: `${currentConfig.API_BASE_URL}/api/video-info`
   }
 };
+
+/** Single source for backend base URL - use this instead of hardcoding screenmerch.fly.dev */
+export function getBackendUrl() {
+  return API_CONFIG.BASE_URL;
+}
 
 export const getEndpoint = (endpoint, params = {}) => {
   let url = API_CONFIG.ENDPOINTS[endpoint];

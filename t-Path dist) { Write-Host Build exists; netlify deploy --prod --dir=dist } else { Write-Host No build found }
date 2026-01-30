@@ -1,0 +1,1071 @@
+[1mdiff --git a/frontend/src/data/products.js b/frontend/src/data/products.js[m
+[1mindex 88ab3eda2..22770a93e 100644[m
+[1m--- a/frontend/src/data/products.js[m
+[1m+++ b/frontend/src/data/products.js[m
+[36m@@ -670,6 +670,7 @@[m [mexport const products = {[m
+     "category": "tank-tops",[m
+     "variables": {[m
+       "sizes": [[m
+[32m+[m[32m        "XS",[m
+         "S",[m
+         "M",[m
+         "L",[m
+[36m@@ -685,6 +686,14 @@[m [mexport const products = {[m
+         "Athletic Heather"[m
+       ],[m
+       "availability": {[m
+[32m+[m[32m        "XS": {[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "White": true,[m
+[32m+[m[32m          "True Royal": true,[m
+[32m+[m[32m          "Navy": true,[m
+[32m+[m[32m          "Red": true,[m
+[32m+[m[32m          "Athletic Heather": true[m
+[32m+[m[32m        },[m
+         "S": {[m
+           "Black": true,[m
+           "White": true,[m
+[36m@@ -944,9 +953,9 @@[m [mexport const products = {[m
+         },[m
+         "XL": {[m
+           "Black": false,[m
+[31m-          "Military Green": true,[m
+[32m+[m[32m          "Military Green": false,[m
+           "Storm": true,[m
+[31m-          "Peach": true[m
+[32m+[m[32m          "Peach": false[m
+         },[m
+         "XXL": {[m
+           "Black": false,[m
+[36m@@ -1384,6 +1393,203 @@[m [mexport const products = {[m
+       }[m
+     }[m
+   },[m
+[32m+[m[32m  "unisexheavyweighttshirt": {[m
+[32m+[m[32m    "name": "Unisex Heavyweight T-Shirt",[m
+[32m+[m[32m    "price": 22.19,[m
+[32m+[m[32m    "description": "The Comfort Colors 1717 Heavyweight T-Shirt combines a structured fit with garment-dyed softness that feels lived-in from day one. Made from 100% cotton, it's durable enough for repeat wear and comfortable enough to style for any occasion. Perfect for custom designs that call for a structured, yet relaxed look.",[m
+[32m+[m[32m    "image": "/static/images/womenshdshirt.png",[m
+[32m+[m[32m    "preview": "/static/images/womenshdshirtpreview.png",[m
+[32m+[m[32m    "category": "t-shirts",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "S",[m
+[32m+[m[32m        "M",[m
+[32m+[m[32m        "L",[m
+[32m+[m[32m        "XL",[m
+[32m+[m[32m        "XXL",[m
+[32m+[m[32m        "XXXL",[m
+[32m+[m[32m        "XXXXL"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "Berry",[m
+[32m+[m[32m        "Blue Jean",[m
+[32m+[m[32m        "Grey",[m
+[32m+[m[32m        "Violet",[m
+[32m+[m[32m        "White",[m
+[32m+[m[32m        "Black",[m
+[32m+[m[32m        "True Navy",[m
+[32m+[m[32m        "Brick",[m
+[32m+[m[32m        "Moss",[m
+[32m+[m[32m        "Lagoon Blue",[m
+[32m+[m[32m        "Blue Spruce",[m
+[32m+[m[32m        "Flo Blue",[m
+[32m+[m[32m        "Butter",[m
+[32m+[m[32m        "Pepper",[m
+[32m+[m[32m        "Bay",[m
+[32m+[m[32m        "Ivory",[m
+[32m+[m[32m        "Paprika",[m
+[32m+[m[32m        "Sage",[m
+[32m+[m[32m        "Midnight",[m
+[32m+[m[32m        "Grape"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "S": {[m
+[32m+[m[32m          "Berry": true,[m
+[32m+[m[32m          "Blue Jean": true,[m
+[32m+[m[32m          "Grey": true,[m
+[32m+[m[32m          "Violet": true,[m
+[32m+[m[32m          "White": true,[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "True Navy": true,[m
+[32m+[m[32m          "Brick": true,[m
+[32m+[m[32m          "Moss": true,[m
+[32m+[m[32m          "Lagoon Blue": true,[m
+[32m+[m[32m          "Blue Spruce": true,[m
+[32m+[m[32m          "Flo Blue": true,[m
+[32m+[m[32m          "Butter": true,[m
+[32m+[m[32m          "Pepper": true,[m
+[32m+[m[32m          "Bay": true,[m
+[32m+[m[32m          "Ivory": true,[m
+[32m+[m[32m          "Paprika": true,[m
+[32m+[m[32m          "Sage": true,[m
+[32m+[m[32m          "Midnight": true,[m
+[32m+[m[32m          "Grape": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "M": {[m
+[32m+[m[32m          "Berry": true,[m
+[32m+[m[32m          "Blue Jean": true,[m
+[32m+[m[32m          "Grey": true,[m
+[32m+[m[32m          "Violet": true,[m
+[32m+[m[32m          "White": true,[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "True Navy": true,[m
+[32m+[m[32m          "Brick": true,[m
+[32m+[m[32m          "Moss": true,[m
+[32m+[m[32m          "Lagoon Blue": true,[m
+[32m+[m[32m          "Blue Spruce": true,[m
+[32m+[m[32m          "Flo Blue": true,[m
+[32m+[m[32m          "Butter": true,[m
+[32m+[m[32m          "Pepper": true,[m
+[32m+[m[32m          "Bay": true,[m
+[32m+[m[32m          "Ivory": true,[m
+[32m+[m[32m          "Paprika": true,[m
+[32m+[m[32m          "Sage": true,[m
+[32m+[m[32m          "Midnight": true,[m
+[32m+[m[32m          "Grape": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "L": {[m
+[32m+[m[32m          "Berry": true,[m
+[32m+[m[32m          "Blue Jean": true,[m
+[32m+[m[32m          "Grey": true,[m
+[32m+[m[32m          "Violet": true,[m
+[32m+[m[32m          "White": true,[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "True Navy": true,[m
+[32m+[m[32m          "Brick": true,[m
+[32m+[m[32m          "Moss": true,[m
+[32m+[m[32m          "Lagoon Blue": true,[m
+[32m+[m[32m          "Blue Spruce": true,[m
+[32m+[m[32m          "Flo Blue": true,[m
+[32m+[m[32m          "Butter": true,[m
+[32m+[m[32m          "Pepper": true,[m
+[32m+[m[32m          "Bay": true,[m
+[32m+[m[32m          "Ivory": true,[m
+[32m+[m[32m          "Paprika": true,[m
+[32m+[m[32m          "Sage": true,[m
+[32m+[m[32m          "Midnight": true,[m
+[32m+[m[32m          "Grape": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "XL": {[m
+[32m+[m[32m          "Berry": true,[m
+[32m+[m[32m          "Blue Jean": true,[m
+[32m+[m[32m          "Grey": true,[m
+[32m+[m[32m          "Violet": true,[m
+[32m+[m[32m          "White": true,[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "True Navy": true,[m
+[32m+[m[32m          "Brick": true,[m
+[32m+[m[32m          "Moss": true,[m
+[32m+[m[32m          "Lagoon Blue": true,[m
+[32m+[m[32m          "Blue Spruce": true,[m
+[32m+[m[32m          "Flo Blue": true,[m
+[32m+[m[32m          "Butter": true,[m
+[32m+[m[32m          "Pepper": true,[m
+[32m+[m[32m          "Bay": true,[m
+[32m+[m[32m          "Ivory": true,[m
+[32m+[m[32m          "Paprika": true,[m
+[32m+[m[32m          "Sage": true,[m
+[32m+[m[32m          "Midnight": true,[m
+[32m+[m[32m          "Grape": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "XXL": {[m
+[32m+[m[32m          "Berry": true,[m
+[32m+[m[32m          "Blue Jean": true,[m
+[32m+[m[32m          "Grey": true,[m
+[32m+[m[32m          "Violet": true,[m
+[32m+[m[32m          "White": true,[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "True Navy": true,[m
+[32m+[m[32m          "Brick": true,[m
+[32m+[m[32m          "Moss": true,[m
+[32m+[m[32m          "Lagoon Blue": true,[m
+[32m+[m[32m          "Blue Spruce": true,[m
+[32m+[m[32m          "Flo Blue": true,[m
+[32m+[m[32m          "Butter": true,[m
+[32m+[m[32m          "Pepper": true,[m
+[32m+[m[32m          "Bay": true,[m
+[32m+[m[32m          "Ivory": true,[m
+[32m+[m[32m          "Paprika": true,[m
+[32m+[m[32m          "Sage": true,[m
+[32m+[m[32m          "Midnight": true,[m
+[32m+[m[32m          "Grape": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "XXXL": {[m
+[32m+[m[32m          "Berry": true,[m
+[32m+[m[32m          "Blue Jean": true,[m
+[32m+[m[32m          "Grey": true,[m
+[32m+[m[32m          "Violet": true,[m
+[32m+[m[32m          "White": true,[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "True Navy": true,[m
+[32m+[m[32m          "Brick": true,[m
+[32m+[m[32m          "Moss": true,[m
+[32m+[m[32m          "Lagoon Blue": true,[m
+[32m+[m[32m          "Blue Spruce": true,[m
+[32m+[m[32m          "Flo Blue": true,[m
+[32m+[m[32m          "Butter": true,[m
+[32m+[m[32m          "Pepper": true,[m
+[32m+[m[32m          "Bay": true,[m
+[32m+[m[32m          "Ivory": true,[m
+[32m+[m[32m          "Paprika": true,[m
+[32m+[m[32m          "Sage": true,[m
+[32m+[m[32m          "Midnight": true,[m
+[32m+[m[32m          "Grape": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "XXXXL": {[m
+[32m+[m[32m          "Berry": true,[m
+[32m+[m[32m          "Blue Jean": true,[m
+[32m+[m[32m          "Grey": true,[m
+[32m+[m[32m          "Violet": true,[m
+[32m+[m[32m          "White": true,[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "True Navy": true,[m
+[32m+[m[32m          "Brick": true,[m
+[32m+[m[32m          "Moss": true,[m
+[32m+[m[32m          "Lagoon Blue": true,[m
+[32m+[m[32m          "Blue Spruce": true,[m
+[32m+[m[32m          "Flo Blue": true,[m
+[32m+[m[32m          "Butter": true,[m
+[32m+[m[32m          "Pepper": true,[m
+[32m+[m[32m          "Bay": true,[m
+[32m+[m[32m          "Ivory": true,[m
+[32m+[m[32m          "Paprika": true,[m
+[32m+[m[32m          "Sage": true,[m
+[32m+[m[32m          "Midnight": true,[m
+[32m+[m[32m          "Grape": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+   "kidsshirt": {[m
+     "name": "Kids Shirt",[m
+     "price": 29.99,[m
+[36m@@ -2098,68 +2304,6 @@[m [mexport const products = {[m
+       }[m
+     }[m
+   },[m
+[31m-  "greetingcard": {[m
+[31m-    "name": "Greeting Card",[m
+[31m-    "price": 32.99,[m
+[31m-    "description": "Beautiful greeting card",[m
+[31m-    "image": "/static/images/greetingcard.png",[m
+[31m-    "preview": "/static/images/greetingcardpreview.png",[m
+[31m-    "category": "stationery",[m
+[31m-    "variables": {[m
+[31m-      "sizes": [],[m
+[31m-      "colors": [[m
+[31m-        "White",[m
+[31m-        "Cream"[m
+[31m-      ],[m
+[31m-      "availability": {}[m
+[31m-    }[m
+[31m-  },[m
+[31m-  "notebook": {[m
+[31m-    "name": "Notebook",[m
+[31m-    "price": 24.99,[m
+[31m-    "description": "Hardcover notebook",[m
+[31m-    "image": "/static/images/hardcovernotebook.png",[m
+[31m-    "preview": "/static/images/hardcovernotebookpreview.png",[m
+[31m-    "category": "stationery",[m
+[31m-    "variables": {[m
+[31m-      "sizes": [],[m
+[31m-      "colors": [[m
+[31m-        "Black",[m
+[31m-        "Blue"[m
+[31m-      ],[m
+[31m-      "availability": {}[m
+[31m-    }[m
+[31m-  },[m
+[31m-  "coasters": {[m
+[31m-    "name": "Coasters",[m
+[31m-    "price": 23.99,[m
+[31m-    "description": "Set of custom coasters",[m
+[31m-    "image": "/static/images/coaster.png",[m
+[31m-    "preview": "/static/images/coasterpreview.jpg",[m
+[31m-    "category": "home-&-living",[m
+[31m-    "variables": {[m
+[31m-      "sizes": [],[m
+[31m-      "colors": [[m
+[31m-        "Wood",[m
+[31m-        "Cork",[m
+[31m-        "Black"[m
+[31m-      ],[m
+[31m-      "availability": {}[m
+[31m-    }[m
+[31m-  },[m
+[31m-  "stickerpack": {[m
+[31m-    "name": "Sticker Pack",[m
+[31m-    "price": 18.99,[m
+[31m-    "description": "Set of custom stickers",[m
+[31m-    "image": "/static/images/stickers.png",[m
+[31m-    "preview": "/static/images/stickerspreview.png",[m
+[31m-    "category": "accessories",[m
+[31m-    "variables": {[m
+[31m-      "sizes": [],[m
+[31m-      "colors": [],[m
+[31m-      "availability": {}[m
+[31m-    }[m
+[31m-  },[m
+   "dogbowl": {[m
+     "name": "Dog Bowl",[m
+     "price": 22.99,[m
+[36m@@ -2540,18 +2684,24 @@[m [mexport const products = {[m
+     "preview": "/static/images/distresseddadhatpreview.jpg",[m
+     "category": "hats",[m
+     "variables": {[m
+[31m-  "sizes": [[m
+[31m-    "One size"[m
+[31m-  ],[m
+[31m-  "colors": [[m
+[31m-    "Khaki"[m
+[31m-  ],[m
+[31m-  "availability": {[m
+[31m-    "One size": {[m
+[31m-      "Khaki": true[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "One size"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "Charcoal",[m
+[32m+[m[32m        "Black",[m
+[32m+[m[32m        "Navy",[m
+[32m+[m[32m        "Khaki"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "One size": {[m
+[32m+[m[32m          "Charcoal": true,[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "Navy": true,[m
+[32m+[m[32m          "Khaki": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+     }[m
+[31m-  }[m
+[31m-}[m
+   },[m
+   "closedbackcap": {[m
+     "name": "Closed Back Cap",[m
+[36m@@ -2561,38 +2711,52 @@[m [mexport const products = {[m
+     "preview": "/static/images/hatsclosedbackcappreview.png",[m
+     "category": "hats",[m
+     "variables": {[m
+[31m-  "sizes": [[m
+[31m-    "One size"[m
+[31m-  ],[m
+[31m-  "colors": [[m
+[31m-    "Dark Navy",[m
+[31m-    "Black",[m
+[31m-    "Royal Blue",[m
+[31m-    "Red",[m
+[31m-    "Grey",[m
+[31m-    "White",[m
+[31m-    "Dark Grey",[m
+[31m-    "Multicam Black",[m
+[31m-    "Olive",[m
+[31m-    "Multicam Green",[m
+[31m-    "Khaki"[m
+[31m-  ],[m
+[31m-  "availability": {[m
+[31m-    "One size": {[m
+[31m-      "Dark Navy": true,[m
+[31m-      "Black": true,[m
+[31m-      "Royal Blue": true,[m
+[31m-      "Red": true,[m
+[31m-      "Grey": true,[m
+[31m-      "White": true,[m
+[31m-      "Dark Grey": true,[m
+[31m-      "Multicam Black": true,[m
+[31m-      "Olive": true,[m
+[31m-      "Multicam Green": true,[m
+[31m-      "Khaki": true[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "S/M",[m
+[32m+[m[32m        "L/XL"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "Dark Navy",[m
+[32m+[m[32m        "Black",[m
+[32m+[m[32m        "Royal Blue",[m
+[32m+[m[32m        "Red",[m
+[32m+[m[32m        "Grey",[m
+[32m+[m[32m        "White",[m
+[32m+[m[32m        "Dark Grey",[m
+[32m+[m[32m        "Multicam Black",[m
+[32m+[m[32m        "Olive",[m
+[32m+[m[32m        "Multicam Green",[m
+[32m+[m[32m        "Khaki"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "S/M": {[m
+[32m+[m[32m          "Dark Navy": true,[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "Royal Blue": true,[m
+[32m+[m[32m          "Red": true,[m
+[32m+[m[32m          "Grey": true,[m
+[32m+[m[32m          "White": true,[m
+[32m+[m[32m          "Dark Grey": true,[m
+[32m+[m[32m          "Multicam Black": true,[m
+[32m+[m[32m          "Olive": true,[m
+[32m+[m[32m          "Multicam Green": true,[m
+[32m+[m[32m          "Khaki": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "L/XL": {[m
+[32m+[m[32m          "Dark Navy": true,[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "Royal Blue": true,[m
+[32m+[m[32m          "Red": true,[m
+[32m+[m[32m          "Grey": true,[m
+[32m+[m[32m          "White": true,[m
+[32m+[m[32m          "Dark Grey": true,[m
+[32m+[m[32m          "Multicam Black": true,[m
+[32m+[m[32m          "Olive": true,[m
+[32m+[m[32m          "Multicam Green": true,[m
+[32m+[m[32m          "Khaki": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+     }[m
+[31m-  }[m
+[31m-}[m
+   },[m
+   "fivepaneltruckerhat": {[m
+     "name": "Five Panel Trucker Hat",[m
+[36m@@ -2607,14 +2771,34 @@[m [mexport const products = {[m
+       ],[m
+       "colors": [[m
+         "Black",[m
+[32m+[m[32m        "Black/ White",[m
+[32m+[m[32m        "Charcoal",[m
+[32m+[m[32m        "Black/ White/ Black",[m
+[32m+[m[32m        "Red/ White/ Red",[m
+[32m+[m[32m        "Navy/ White/ Navy",[m
+[32m+[m[32m        "Royal/ White/ Royal",[m
+         "White",[m
+[31m-        "Navy"[m
+[32m+[m[32m        "Navy",[m
+[32m+[m[32m        "Kelly/ White/ Kelly",[m
+[32m+[m[32m        "Navy/ White",[m
+[32m+[m[32m        "Charcoal/ White",[m
+[32m+[m[32m        "Silver/ Black"[m
+       ],[m
+       "availability": {[m
+         "One Size": {[m
+           "Black": true,[m
+[32m+[m[32m          "Black/ White": true,[m
+[32m+[m[32m          "Charcoal": true,[m
+[32m+[m[32m          "Black/ White/ Black": true,[m
+[32m+[m[32m          "Red/ White/ Red": true,[m
+[32m+[m[32m          "Navy/ White/ Navy": true,[m
+[32m+[m[32m          "Royal/ White/ Royal": true,[m
+           "White": true,[m
+[31m-          "Navy": true[m
+[32m+[m[32m          "Navy": true,[m
+[32m+[m[32m          "Kelly/ White/ Kelly": true,[m
+[32m+[m[32m          "Navy/ White": true,[m
+[32m+[m[32m          "Charcoal/ White": true,[m
+[32m+[m[32m          "Silver/ Black": true[m
+         }[m
+       }[m
+     }[m
+[36m@@ -2684,6 +2868,82 @@[m [mexport const products = {[m
+       "availability": {}[m
+     }[m
+   },[m
+[32m+[m[32m  "microribtanktop": {[m
+[32m+[m[32m    "name": "Micro-Rib Tank Top",[m
+[32m+[m[32m    "price": 23.31,[m
+[32m+[m[32m    "description": "This women's tank top redefines the classic tank with its flattering 1 × 1 micro-rib texture, thick straps, and mid-length cut. The tank's soft, stretchy fabric ensures all-day comfort. It pairs well with high-waisted jeans or under a blazer for a polished look.",[m
+[32m+[m[32m    "image": "/static/images/womenstee.png",[m
+[32m+[m[32m    "preview": "/static/images/womensmicroribtanktoppreview.png",[m
+[32m+[m[32m    "category": "tank-tops",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "XS",[m
+[32m+[m[32m        "S",[m
+[32m+[m[32m        "M",[m
+[32m+[m[32m        "L",[m
+[32m+[m[32m        "XL",[m
+[32m+[m[32m        "XXL"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "Solid Black Blend",[m
+[32m+[m[32m        "Solid Navy Blend",[m
+[32m+[m[32m        "Athletic Heather",[m
+[32m+[m[32m        "Solid Baby Blue Blend",[m
+[32m+[m[32m        "Solid Pink Blend",[m
+[32m+[m[32m        "Solid White Blend"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "XS": {[m
+[32m+[m[32m          "Solid Black Blend": true,[m
+[32m+[m[32m          "Solid Navy Blend": true,[m
+[32m+[m[32m          "Athletic Heather": true,[m
+[32m+[m[32m          "Solid Baby Blue Blend": true,[m
+[32m+[m[32m          "Solid Pink Blend": true,[m
+[32m+[m[32m          "Solid White Blend": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "S": {[m
+[32m+[m[32m          "Solid Black Blend": true,[m
+[32m+[m[32m          "Solid Navy Blend": true,[m
+[32m+[m[32m          "Athletic Heather": true,[m
+[32m+[m[32m          "Solid Baby Blue Blend": true,[m
+[32m+[m[32m          "Solid Pink Blend": true,[m
+[32m+[m[32m          "Solid White Blend": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "M": {[m
+[32m+[m[32m          "Solid Black Blend": true,[m
+[32m+[m[32m          "Solid Navy Blend": true,[m
+[32m+[m[32m          "Athletic Heather": true,[m
+[32m+[m[32m          "Solid Baby Blue Blend": true,[m
+[32m+[m[32m          "Solid Pink Blend": true,[m
+[32m+[m[32m          "Solid White Blend": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "L": {[m
+[32m+[m[32m          "Solid Black Blend": true,[m
+[32m+[m[32m          "Solid Navy Blend": true,[m
+[32m+[m[32m          "Athletic Heather": true,[m
+[32m+[m[32m          "Solid Baby Blue Blend": true,[m
+[32m+[m[32m          "Solid Pink Blend": true,[m
+[32m+[m[32m          "Solid White Blend": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "XL": {[m
+[32m+[m[32m          "Solid Black Blend": true,[m
+[32m+[m[32m          "Solid Navy Blend": true,[m
+[32m+[m[32m          "Athletic Heather": true,[m
+[32m+[m[32m          "Solid Baby Blue Blend": true,[m
+[32m+[m[32m          "Solid Pink Blend": true,[m
+[32m+[m[32m          "Solid White Blend": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "XXL": {[m
+[32m+[m[32m          "Solid Black Blend": true,[m
+[32m+[m[32m          "Solid Navy Blend": true,[m
+[32m+[m[32m          "Athletic Heather": true,[m
+[32m+[m[32m          "Solid Baby Blue Blend": true,[m
+[32m+[m[32m          "Solid Pink Blend": true,[m
+[32m+[m[32m          "Solid White Blend": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+   "womenscroptop": {[m
+     "name": "Women's Crop Top",[m
+     "price": 26.01,[m
+[36m@@ -2719,7 +2979,7 @@[m [mexport const products = {[m
+           "Orchid": true,[m
+           "Ecru": true,[m
+           "White": true,[m
+[31m-          "Bubblegum": false,[m
+[32m+[m[32m          "Bubblegum": true,[m
+           "Bone": true,[m
+           "Mineral": true,[m
+           "Natural": true[m
+[36m@@ -2731,7 +2991,7 @@[m [mexport const products = {[m
+           "Orchid": true,[m
+           "Ecru": true,[m
+           "White": true,[m
+[31m-          "Bubblegum": false,[m
+[32m+[m[32m          "Bubblegum": true,[m
+           "Bone": true,[m
+           "Mineral": true,[m
+           "Natural": true[m
+[36m@@ -2743,7 +3003,7 @@[m [mexport const products = {[m
+           "Orchid": true,[m
+           "Ecru": true,[m
+           "White": true,[m
+[31m-          "Bubblegum": false,[m
+[32m+[m[32m          "Bubblegum": true,[m
+           "Bone": true,[m
+           "Mineral": true,[m
+           "Natural": true[m
+[36m@@ -2755,7 +3015,7 @@[m [mexport const products = {[m
+           "Orchid": true,[m
+           "Ecru": true,[m
+           "White": true,[m
+[31m-          "Bubblegum": false,[m
+[32m+[m[32m          "Bubblegum": true,[m
+           "Bone": true,[m
+           "Mineral": true,[m
+           "Natural": true[m
+[36m@@ -2767,12 +3027,481 @@[m [mexport const products = {[m
+           "Orchid": true,[m
+           "Ecru": true,[m
+           "White": true,[m
+[31m-          "Bubblegum": false,[m
+[32m+[m[32m          "Bubblegum": true,[m
+           "Bone": true,[m
+           "Mineral": true,[m
+           "Natural": true[m
+         }[m
+       }[m
+     }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "whiteglossymug": {[m
+[32m+[m[32m    "name": "White Glossy Mug",[m
+[32m+[m[32m    "price": 14.95,[m
+[32m+[m[32m    "description": "This sturdy mug is perfect for your morning coffee, afternoon tea, or whatever hot beverage you enjoy. It's glossy white and yields vivid prints that retain their quality when dish-washed and microwaved.",[m
+[32m+[m[32m    "image": "/static/images/mug1.png",[m
+[32m+[m[32m    "preview": "/static/images/mugwhiteglossymugpreview.png",[m
+[32m+[m[32m    "category": "mugs",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "11 oz",[m
+[32m+[m[32m        "15 oz",[m
+[32m+[m[32m        "20 oz"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "11 oz": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "15 oz": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "20 oz": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "travelmug": {[m
+[32m+[m[32m    "name": "Travel Mug",[m
+[32m+[m[32m    "price": 28.48,[m
+[32m+[m[32m    "description": "Enjoy your favorite beverage on the go with a premium-quality travel mug. It's made with stainless steel and keeps hot drinks hot for up to 6 h, and cold drinks cold for up to 8 h.",[m
+[32m+[m[32m    "image": "/static/images/travelmug.png",[m
+[32m+[m[32m    "preview": "/static/images/mugtravelmugpreview.png",[m
+[32m+[m[32m    "category": "mugs",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "25 oz",[m
+[32m+[m[32m        "40 oz"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "25 oz": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "40 oz": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "enamelmug": {[m
+[32m+[m[32m    "name": "Enamel Mug",[m
+[32m+[m[32m    "price": 19.82,[m
+[32m+[m[32m    "description": "Lightweight and durable, our Enamel Mug is a must-have for every devoted camper. Use it for your favorite beverage or a hot meal, and attach it to your bag for easy access on a hike.",[m
+[32m+[m[32m    "image": "/static/images/enamalmug.png",[m
+[32m+[m[32m    "preview": "/static/images/mugenamelmugpreview.png",[m
+[32m+[m[32m    "category": "mugs",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "12 oz"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White",[m
+[32m+[m[32m        "Black",[m
+[32m+[m[32m        "Navy",[m
+[32m+[m[32m        "Red"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "12 oz": {[m
+[32m+[m[32m          "White": true,[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "Navy": true,[m
+[32m+[m[32m          "Red": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "coloredmug": {[m
+[32m+[m[32m    "name": "Colored Mug",[m
+[32m+[m[32m    "price": 16.49,[m
+[32m+[m[32m    "description": "This sturdy White Ceramic Mug has a colorful inside and a white print area all around the mug. Choose between vibrant color options, create your own unique designs, and start selling the mug to your customers!",[m
+[32m+[m[32m    "image": "/static/images/coloredmug.png",[m
+[32m+[m[32m    "preview": "/static/images/mugcoloredmugpreview.png",[m
+[32m+[m[32m    "category": "mugs",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "11 oz",[m
+[32m+[m[32m        "15 oz"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "Black",[m
+[32m+[m[32m        "Red",[m
+[32m+[m[32m        "Blue",[m
+[32m+[m[32m        "Yellow",[m
+[32m+[m[32m        "Pink",[m
+[32m+[m[32m        "Orange",[m
+[32m+[m[32m        "Dark Green",[m
+[32m+[m[32m        "Dark Blue",[m
+[32m+[m[32m        "Golden Yellow",[m
+[32m+[m[32m        "Green"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "11 oz": {[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "Red": true,[m
+[32m+[m[32m          "Blue": true,[m
+[32m+[m[32m          "Yellow": true,[m
+[32m+[m[32m          "Pink": true,[m
+[32m+[m[32m          "Orange": true,[m
+[32m+[m[32m          "Dark Green": true,[m
+[32m+[m[32m          "Dark Blue": true,[m
+[32m+[m[32m          "Golden Yellow": true,[m
+[32m+[m[32m          "Green": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "15 oz": {[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "Red": true,[m
+[32m+[m[32m          "Blue": true,[m
+[32m+[m[32m          "Yellow": false,[m
+[32m+[m[32m          "Pink": false,[m
+[32m+[m[32m          "Orange": false,[m
+[32m+[m[32m          "Dark Green": true,[m
+[32m+[m[32m          "Dark Blue": false,[m
+[32m+[m[32m          "Golden Yellow": false,[m
+[32m+[m[32m          "Green": false[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "petbowlalloverprint": {[m
+[32m+[m[32m    "name": "Pet Bowl All-Over Print",[m
+[32m+[m[32m    "price": 29.65,[m
+[32m+[m[32m    "description": "Whether you're looking for a new addition to your store or the perfect gift for a pet lover, this Pet Bowl is an excellent choice. It works for dogs, cats or any other type of pet.",[m
+[32m+[m[32m    "image": "/static/images/dogbowl.png",[m
+[32m+[m[32m    "preview": "/static/images/petspetbowlalloverprintpreview.png",[m
+[32m+[m[32m    "category": "pets",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "18 oz",[m
+[32m+[m[32m        "32 oz"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "18 oz": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "32 oz": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "petbandanacollar": {[m
+[32m+[m[32m    "name": "Pet Bandana Collar",[m
+[32m+[m[32m    "price": 21.78,[m
+[32m+[m[32m    "description": "Add personality to your pet's wardrobe with this fun and functional bandana collar. Whether you're snapping pics for social media or just out for a walk, this collar brings a playful twist that pet lovers will adore.",[m
+[32m+[m[32m    "image": "/static/images/scarfcollar.png",[m
+[32m+[m[32m    "preview": "/static/images/petspetbandanacollarpreview.png",[m
+[32m+[m[32m    "category": "pets",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "Small",[m
+[32m+[m[32m        "Medium",[m
+[32m+[m[32m        "Large",[m
+[32m+[m[32m        "XL"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "Black"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "Small": {[m
+[32m+[m[32m          "Black": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "Medium": {[m
+[32m+[m[32m          "Black": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "Large": {[m
+[32m+[m[32m          "Black": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "XL": {[m
+[32m+[m[32m          "Black": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "alloverprintcollar": {[m
+[32m+[m[32m    "name": "All Over Print Collar",[m
+[32m+[m[32m    "price": 25.81,[m
+[32m+[m[32m    "description": "Expand your pet accessory range with custom collars. The all-over print sublimation technique allows for vibrant, long-lasting prints. The premium quality collar features black padding on the inside to ensure comfort for pets.",[m
+[32m+[m[32m    "image": "/static/images/collar.png",[m
+[32m+[m[32m    "preview": "/static/images/petsalloverprintcollarpreview.png",[m
+[32m+[m[32m    "category": "pets",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "Small",[m
+[32m+[m[32m        "Medium",[m
+[32m+[m[32m        "Large"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "Small": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "Medium": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "Large": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "alloverprintleash": {[m
+[32m+[m[32m    "name": "All Over Print Leash",[m
+[32m+[m[32m    "price": 28.15,[m
+[32m+[m[32m    "description": "Design custom pet collar and leash sets for yourself or sell them to pet owners online. With all-over print sublimation, designs stay vibrant and last long. The padded collar inside and leash handle offer comfort to the pet and its owner.",[m
+[32m+[m[32m    "image": "/static/images/leash.png",[m
+[32m+[m[32m    "preview": "/static/images/petsalloverprintleash.png",[m
+[32m+[m[32m    "category": "pets",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "6 feet"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "6 feet": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "greetingcard": {[m
+[32m+[m[32m    "name": "Greeting Card",[m
+[32m+[m[32m    "price": 4.75,[m
+[32m+[m[32m    "description": "A well-designed greeting card has the power to help people express gratitude or sympathy, as well as inform attendees and set the mood for any given occasion.",[m
+[32m+[m[32m    "image": "/static/images/greetingcard.png",[m
+[32m+[m[32m    "preview": "/static/images/miscellaneousgreetingcardpreview.png",[m
+[32m+[m[32m    "category": "misc",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "4″ × 6″ (101 × 152 mm)"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "4″ × 6″ (101 × 152 mm)": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "hardcoverboundnotebook": {[m
+[32m+[m[32m    "name": "Hardcover Bound Notebook",[m
+[32m+[m[32m    "price": 21.05,[m
+[32m+[m[32m    "description": "Whether crafting a masterpiece or brainstorming the next big idea, the Hardcover Bound Notebook will inspire your inner wordsmith.",[m
+[32m+[m[32m    "image": "/static/images/hardcovernotebook.png",[m
+[32m+[m[32m    "preview": "/static/images/miscellaneoushardcovernotebookpreview.png",[m
+[32m+[m[32m    "category": "misc",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "5.5\" × 8.5\" (13.97 cm × 21.59 cm)"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "Black",[m
+[32m+[m[32m        "Navy",[m
+[32m+[m[32m        "Red",[m
+[32m+[m[32m        "Blue",[m
+[32m+[m[32m        "Turquoise",[m
+[32m+[m[32m        "Orange",[m
+[32m+[m[32m        "Silver",[m
+[32m+[m[32m        "Lime",[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "5.5\" × 8.5\" (13.97 cm × 21.59 cm)": {[m
+[32m+[m[32m          "Black": true,[m
+[32m+[m[32m          "Navy": true,[m
+[32m+[m[32m          "Red": true,[m
+[32m+[m[32m          "Blue": true,[m
+[32m+[m[32m          "Turquoise": true,[m
+[32m+[m[32m          "Orange": true,[m
+[32m+[m[32m          "Silver": true,[m
+[32m+[m[32m          "Lime": true,[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "coasters": {[m
+[32m+[m[32m    "name": "Coasters",[m
+[32m+[m[32m    "price": 7.50,[m
+[32m+[m[32m    "description": "Hello beverage coaster, goodbye mug stain! Introducing the long-awaited Cork-Back Coaster that's designed to protect your countertops and furniture from spills and scratches.",[m
+[32m+[m[32m    "image": "/static/images/coaster.png",[m
+[32m+[m[32m    "preview": "/static/images/miscellaneouscoasterspreview.png",[m
+[32m+[m[32m    "category": "misc",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "3.74″ × 3.74″ × 0.16″ (95 × 95 × 4 mm)"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "3.74″ × 3.74″ × 0.16″ (95 × 95 × 4 mm)": {}[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "alloverprintapron": {[m
+[32m+[m[32m    "name": "All Over Print Apron",[m
+[32m+[m[32m    "price": 26.85,[m
+[32m+[m[32m    "description": "This apron is a canvas for bold, custom designs, perfect for pros behind the grill or home chefs mastering pasta night.",[m
+[32m+[m[32m    "image": "/static/images/apron.png",[m
+[32m+[m[32m    "preview": "/static/images/miscellaneousapronpreview.png",[m
+[32m+[m[32m    "category": "misc",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "One size fits all"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "One size fits all": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "kisscutstickers": {[m
+[32m+[m[32m    "name": "Kiss-Cut Stickers",[m
+[32m+[m[32m    "price": 4.00,[m
+[32m+[m[32m    "description": "These Kiss-Cut Stickers can be cut in any shape you want, while also leaving a wide enough border around your design for smooth peeling.",[m
+[32m+[m[32m    "image": "/static/images/stickers.png",[m
+[32m+[m[32m    "preview": "/static/images/miscellaneouskisscutstickerspreview.png",[m
+[32m+[m[32m    "category": "misc",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "3″×3″",[m
+[32m+[m[32m        "4″×4″",[m
+[32m+[m[32m        "5.5″×5.5″",[m
+[32m+[m[32m        "15″×3.75″"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "3″×3″": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "4″×4″": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "5.5″×5.5″": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "15″×3.75″": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "alloverprintbandana": {[m
+[32m+[m[32m    "name": "All-Over Print Bandana",[m
+[32m+[m[32m    "price": 12.99,[m
+[32m+[m[32m    "description": "A headband, armband, necktie, bag accessory, or even a scarf for a beloved pet—that's the All-Over Print Bandana!",[m
+[32m+[m[32m    "image": "/static/images/bandana.png",[m
+[32m+[m[32m    "preview": "/static/images/miscellaneousbandanapreview.png",[m
+[32m+[m[32m    "category": "misc",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "Small",[m
+[32m+[m[32m        "Medium",[m
+[32m+[m[32m        "Large"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "Small": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "Medium": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "Large": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "jigsawpuzzlewithtin": {[m
+[32m+[m[32m    "name": "Jigsaw Puzzle with Tin",[m
+[32m+[m[32m    "price": 23.40,[m
+[32m+[m[32m    "description": "Make quality time more fun with a custom jigsaw puzzle that's both a challenge and a keepsake.",[m
+[32m+[m[32m    "image": "/static/images/jigsawpuzzle.png",[m
+[32m+[m[32m    "preview": "/static/images/miscellaneousjigsawpuzzlewithtinpreview.png",[m
+[32m+[m[32m    "category": "misc",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)",[m
+[32m+[m[32m        "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)",[m
+[32m+[m[32m        "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)",[m
+[32m+[m[32m        "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)",[m
+[32m+[m[32m        "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)",[m
+[32m+[m[32m        "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  },[m
+[32m+[m[32m  "diecutmagnets": {[m
+[32m+[m[32m    "name": "Die-Cut Magnets",[m
+[32m+[m[32m    "price": 7.75,[m
+[32m+[m[32m    "description": "Make jokes, memories, or original drawings last forever with our Die-Cut Magnets. Featuring a sleek, professional matte finish, these magnets come in three sizes and can be cut into any defined shape.",[m
+[32m+[m[32m    "image": "/static/images/magnet.png",[m
+[32m+[m[32m    "preview": "/static/images/miscellaneousdiecutmagnetspreview.png",[m
+[32m+[m[32m    "category": "misc",[m
+[32m+[m[32m    "variables": {[m
+[32m+[m[32m      "sizes": [[m
+[32m+[m[32m        "3″ × 3″ (8 × 8 cm)",[m
+[32m+[m[32m        "4″ × 4″ (10 × 10 cm)",[m
+[32m+[m[32m        "6″ × 6″ (15 × 15 cm)"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "colors": [[m
+[32m+[m[32m        "White"[m
+[32m+[m[32m      ],[m
+[32m+[m[32m      "availability": {[m
+[32m+[m[32m        "3″ × 3″ (8 × 8 cm)": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "4″ × 4″ (10 × 10 cm)": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        },[m
+[32m+[m[32m        "6″ × 6″ (15 × 15 cm)": {[m
+[32m+[m[32m          "White": true[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+   }[m
+ };[m
