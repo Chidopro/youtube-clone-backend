@@ -169,7 +169,7 @@ def auth_login():
                     token = str(uuid.uuid4())
                     
                     is_form = not request.is_json
-                    domain = _cookie_domain()
+                    domain = get_cookie_domain()
                     
                     if is_form:
                         resp = redirect(_return_url(), code=303)

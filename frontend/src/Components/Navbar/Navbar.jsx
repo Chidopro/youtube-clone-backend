@@ -124,7 +124,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 .from('users')
                                 .select('*')
                                 .eq('id', userId)
-                                .single();
+                                .maybeSingle();
                             profile = result.data;
                             profileError = result.error;
                         } else if (userEmail) {
@@ -133,7 +133,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 .from('users')
                                 .select('*')
                                 .eq('email', userEmail)
-                                .single();
+                                .maybeSingle();
                             profile = result.data;
                             profileError = result.error;
                         }
@@ -246,7 +246,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                     .from('users')
                                     .select('*')
                                     .eq('id', loggedInUser.id)
-                                    .single();
+                                    .maybeSingle();
 
                                 if (profileError) {
                                     console.error('❌ [FETCHUSER] Error fetching profile:', profileError);

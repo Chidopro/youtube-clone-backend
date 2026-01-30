@@ -111,7 +111,7 @@ const Dashboard = ({ sidebar }) => {
                         .from('users')
                         .select('*')
                         .eq('id', user.id)
-                        .single();
+                        .maybeSingle();
                     
                     if (profileError) {
                         console.error('❌ [DASHBOARD] Error fetching profile:', profileError);

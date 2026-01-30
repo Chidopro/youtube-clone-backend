@@ -14,7 +14,7 @@ export class UserService {
         .from('users')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching user profile:', error);
@@ -39,6 +39,8 @@ export class UserService {
       if (!user) {
         throw new Error('No authenticated user');
       }
+      console.log('[UPSERT] running for user:', user.id, user.email);
+
 
       const profileToUpsert = {
         id: user.id,
@@ -55,7 +57,9 @@ export class UserService {
           ignoreDuplicates: false 
         })
         .select()
-        .single();
+        .maybeSingle();
+        console.log('[UPSERT] result:', { data, error });
+
 
       if (error) {
         console.error('Error upserting user profile:', error);
@@ -111,7 +115,7 @@ export class UserService {
         .from('users')
         .select('id, display_name, profile_image_url, cover_image_url, bio, created_at')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching user profile by ID:', error);
@@ -257,7 +261,7 @@ export class UserService {
         .from('users')
         .select('role')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error checking creator status:', error);

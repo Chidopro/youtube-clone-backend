@@ -217,7 +217,7 @@ const Login = () => {
               .from('users')
               .select('*')
               .eq('id', data.user.id)
-              .single();
+              .maybeSingle();
             
             if (profile) {
               // Merge profile data with user data - prioritize profile_image_url from database
