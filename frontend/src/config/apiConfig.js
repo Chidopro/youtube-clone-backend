@@ -23,13 +23,16 @@ const config = {
   }
 };
 
-const currentConfig = isDevelopment ? config.development : config.production;
+let currentConfig = isDevelopment ? config.development : config.production;
 
-// In production, use the full backend URL since frontend and backend are on different domains
-// Frontend: Netlify (screenmerch.com)
-// Backend: Fly.io (screenmerch.fly.dev)
+// In production, force HTTPS for backend URL to avoid Mixed Content (HTTPS page loading HTTP images)
+// Frontend: Netlify (screenmerch.com), Backend: Fly.io (screenmerch.fly.dev)
 if (!isDevelopment) {
-  // Keep the production URLs - don't override with empty strings
+  if (currentConfig.API_BASE_URL && currentConfig.API_BASE_URL.startsWith('http://')) {
+    currentConfig = { ...currentConfig, API_BASE_URL: currentConfig.API_BASE_URL.replace(/^http:\/\//i, 'https://') };
+    currentConfig.EMAIL_API_URL = currentConfig.API_BASE_URL;
+    currentConfig.SUBSCRIPTION_API_URL = currentConfig.API_BASE_URL;
+  }
   console.log('🔧 USING PRODUCTION API BASE URL:', currentConfig.API_BASE_URL);
   console.log('🔧 Backend URL:', currentConfig.API_BASE_URL);
 }

@@ -9,6 +9,12 @@ import './ProductPage.css';
 
 const getImgBase = () => `${getBackendUrl().replace(/\/$/, '')}/static/images`;
 
+// Ensure HTTPS to avoid Mixed Content on https://screenmerch.com
+const ensureHttps = (url) => {
+  if (!url || typeof url !== 'string') return url;
+  return url.replace(/^http:\/\//i, 'https://');
+};
+
 // Prefer full URL from API (main_image_url / preview_image_url) when present
 const getProductImageUrl = (product, preferPreview = true) => {
   if (!product) return `${getImgBase()}/placeholder.png`;
@@ -16,7 +22,7 @@ const getProductImageUrl = (product, preferPreview = true) => {
     ? (product.preview_image_url || product.preview_image)
     : (product.main_image_url || product.main_image);
   if (!url) return `${getImgBase()}/placeholder.png`;
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http')) return ensureHttps(url);
   return `${getImgBase()}/${url}`;
 };
 
@@ -746,14 +752,15 @@ const ProductPage = ({ sidebar }) => {
       productData.products.forEach((product, index) => {
         if (!product || !product.options) return;
         
-        const selectedColor = selectedColors[index] || product.options?.color?.[0];
-        if (!selectedColor) return;
+        // Bags "All Over Print Tote Pocket" has handle_color but no color
+        const selectedColor = selectedColors[index] || product.options?.color?.[0] || product.options?.handle_color?.[0];
+        if (!selectedColor && (!product.options?.size?.length)) return;
         
         const availableSizes = getAvailableSizes(product, selectedColor);
         if (availableSizes.length === 0) {
           // If no available sizes found, use first size from product options as fallback
           if (product.options?.size?.[0] && !prevSizes[index]) {
-            newSelectedSizes[index] = product.options.size[0];
+            newSelectedSizes[index] = product.options?.size[0];
             hasChanges = true;
           }
           return;
@@ -1210,16 +1217,17 @@ const ProductPage = ({ sidebar }) => {
                       </span>
                     )}
                   </h3>
+                  {/* Reserved: product price from API - do not edit price or color variables */}
                   <p className="product-price">${calculatePrice(product, index).toFixed(2)}</p>
                   
                   <div className="product-options">
-                    {/* Color Options */}
+                    {/* Color Options - reserved: use product.options.color / selectedColors only */}
                     {product.options && product.options.color && product.options.color.length > 0 && (
                       <div className="option-group">
                         <label>Color:</label>
                         <select 
                           className="color-select"
-                          value={selectedColors[index] || product.options.color[0]}
+                          value={selectedColors[index] || product.options?.color?.[0] || ''}
                           onChange={(e) => {
                             const newSelectedColors = { ...selectedColors };
                             const newColor = e.target.value;
@@ -1228,7 +1236,7 @@ const ProductPage = ({ sidebar }) => {
                             
                             // Check if current size is available for new color, if not reset to first available
                             const availableSizes = getAvailableSizes(product, newColor);
-                            const currentSize = selectedSizes[index] || product.options.size[0];
+                            const currentSize = selectedSizes[index] || product.options?.size?.[0];
                             if (availableSizes.length > 0 && !availableSizes.includes(currentSize)) {
                               const newSelectedSizes = { ...selectedSizes };
                               newSelectedSizes[index] = availableSizes[0];
@@ -1236,7 +1244,7 @@ const ProductPage = ({ sidebar }) => {
                             }
                           }}
                         >
-                          {product.options.color.map((color, colorIndex) => (
+                          {(product.options?.color || []).map((color, colorIndex) => (
                             <option key={colorIndex} value={color}>
                               {color}
                             </option>
@@ -1269,7 +1277,8 @@ const ProductPage = ({ sidebar }) => {
                     
                     {/* Size Options */}
                     {product.options && product.options.size && product.options.size.length > 0 && (() => {
-                      const selectedColor = selectedColors[index] || product.options.color[0];
+                      // Bags "All Over Print Tote Pocket" has handle_color but no color - use optional chaining
+                      const selectedColor = selectedColors[index] || product.options?.color?.[0] || product.options?.handle_color?.[0];
                       const availableSizes = getAvailableSizes(product, selectedColor);
                       const currentSize = selectedSizes[index];
                       
@@ -1280,7 +1289,7 @@ const ProductPage = ({ sidebar }) => {
                       } else if (availableSizes.length > 0) {
                         displaySize = availableSizes[0];
                       } else {
-                        displaySize = product.options.size[0];
+                        displaySize = product.options?.size?.[0];
                       }
                       
                       return (
