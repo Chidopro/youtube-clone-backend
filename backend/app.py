@@ -736,10 +736,17 @@ def get_browse_api():
         # Filter products by category
         filtered_products = filter_products_by_category(category)
         
-        # Ensure all products have a description field (even if empty)
+        # Ensure all products have a description field and full image URLs for cross-origin display
+        image_base = (os.environ.get('BACKEND_PUBLIC_URL') or request.url_root or '').rstrip('/')
         for product in filtered_products:
             if 'description' not in product:
                 product['description'] = ""
+            # Attach full image URLs so frontend can load from this backend regardless of config
+            if image_base:
+                main_fn = product.get('main_image') or ''
+                preview_fn = product.get('preview_image') or ''
+                product['main_image_url'] = f"{image_base}/static/images/{main_fn}" if main_fn else ''
+                product['preview_image_url'] = f"{image_base}/static/images/{preview_fn}" if preview_fn else ''
         
         # Log product details for mobile debugging
         if is_mobile:
@@ -1141,8 +1148,8 @@ PRODUCTS = [
     {
         "name": "Kids Shirt",
         "price": 19.79,
-        "filename": "kidshirtpreview.png",
-        "main_image": "kidshirtpreview.png",
+        "filename": "kidsshirtpreview.png",
+        "main_image": "kidsshirtpreview.png",
         "preview_image": "kidsshirtpreview.png",
         "description": "This Youth Staple Tee is light, comfy, and has just the right amount of stretch youngsters need for an active lifestyle. Both your print and embroidery designs will look great on this soft cotton tee. Add your artistry and make this crowd favorite into something special! 100% Airlume combed and ring-spun cotton. Heather colors are 52% combed and ring-spun cotton, 48% polyester. Athletic Heather is 90% combed and ring-spun cotton, 10% polyester. Fabric weight: 4.2 oz/yd² (142 g/m²). Pre-shrunk fabric. 32 singles. Relaxed unisex fit. Side-seamed construction. Blank product sourced from Nicaragua, the US, Guatemala, or Honduras. Disclaimer: The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions. Take a look at our Bella + Canvas 3001 unisex, toddler, and baby tees as well! This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy", "Maroon", "Forest", "Red", "Dark Grey Heather", "True Royal", "Berry", "Heather Forest", "Kelly", "Heather Columbia Blue", "Athletic Heather", "Mustard", "Pink", "Heather Dust", "Natural", "White"], "size": ["XS", "S", "M", "L", "XL"]},
@@ -1817,18 +1824,22 @@ def index():
 
 @app.route("/static/images/<filename>")
 def serve_static_image(filename):
-    """Serve static images with proper headers"""
-    # Remove query parameters from filename for file lookup
+    """Serve static images with proper headers and CORS for cross-origin img tags"""
+    # Use __file__ so path is correct whether run from repo root or backend/
     clean_filename = filename.split('?')[0]
-    static_dir = os.path.join(app.root_path, 'static', 'images')
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'images')
     response = send_from_directory(static_dir, clean_filename)
     
     # Add cache-busting headers for mobile compatibility
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
-    
-    # Add CORS headers for images
+    # Allow cross-origin so screenmerch.com can load images from this backend
+    origin = request.headers.get('Origin')
+    if origin:
+        response.headers['Access-Control-Allow-Origin'] = origin
+    else:
+        response.headers['Access-Control-Allow-Origin'] = '*'
     
     return response
 

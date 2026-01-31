@@ -3,10 +3,22 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import ToolsPage from '../ToolsPage/ToolsPage';
 import { supabase } from '../../supabaseClient';
 import { UserService } from '../../utils/userService';
+import { getBackendUrl } from '../../config/apiConfig';
 import { products } from '../../data/products';
 import './ProductPage.css';
 
-const IMG_BASE = 'https://screenmerch.fly.dev/static/images';
+const getImgBase = () => `${getBackendUrl().replace(/\/$/, '')}/static/images`;
+
+// Prefer full URL from API (main_image_url / preview_image_url) when present
+const getProductImageUrl = (product, preferPreview = true) => {
+  if (!product) return `${getImgBase()}/placeholder.png`;
+  const url = preferPreview
+    ? (product.preview_image_url || product.preview_image)
+    : (product.main_image_url || product.main_image);
+  if (!url) return `${getImgBase()}/placeholder.png`;
+  if (url.startsWith('http')) return url;
+  return `${getImgBase()}/${url}`;
+};
 
 // Generate a unique cache-busting parameter
 const getCacheBuster = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -263,8 +275,8 @@ const ProductPage = ({ sidebar }) => {
       return {
         name: productName,
         price: productData.price,
-        main_image: `${IMG_BASE}/${productData.filename}`,
-        preview_image: `${IMG_BASE}/${productData.preview}`,
+        main_image: `${getImgBase()}/${productData.filename}`,
+        preview_image: `${getImgBase()}/${productData.preview}`,
         options: { color: ["Black", "White", "Hazy Pink", "Pale Pink", "Orchid", "Ecru", "White", "Bubblegum", "Bone", "Mineral", "Natural"], size: ["XS", "S", "M", "L", "XL"] }
       };
     });
@@ -484,9 +496,7 @@ const ProductPage = ({ sidebar }) => {
     const item = {
       name: product?.name || 'Product',
       price: calculatePrice(product, index),
-      image: product?.preview_image
-        ? (product.preview_image.startsWith('http') ? product.preview_image : `${IMG_BASE}/${product.preview_image}`)
-        : (product?.main_image ? (product.main_image.startsWith('http') ? product.main_image : `${IMG_BASE}/${product.main_image}`) : ''),
+      image: getProductImageUrl(product, true),
       color: chosenColor,
       size: chosenSize,
       screenshot: screenshotUrl,
@@ -560,9 +570,10 @@ const ProductPage = ({ sidebar }) => {
         const actualProductId = productId || 'browse';
         const isBrowseMode = !productId || productId === 'browse' || productId === 'dynamic';
         
+        const apiBase = getBackendUrl().replace(/\/$/, '');
         const url = isBrowseMode
-          ? `https://screenmerch.fly.dev/api/product/browse?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}&mobile=${Date.now()}&cache=${Math.random()}`
-          : `https://screenmerch.fly.dev/api/product/${actualProductId}?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}&mobile=${Date.now()}&cache=${Math.random()}`;
+          ? `${apiBase}/api/product/browse?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}&mobile=${Date.now()}&cache=${Math.random()}`
+          : `${apiBase}/api/product/${actualProductId}?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}&mobile=${Date.now()}&cache=${Math.random()}`;
 
         // Enable debug for mobile
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -786,8 +797,9 @@ const ProductPage = ({ sidebar }) => {
               try {
                 // Handle browse mode - use 'browse' when productId is undefined
                 const actualProductId = productId || 'browse';
+                const apiBase = getBackendUrl().replace(/\/$/, '');
                 const url =
-                  `https://screenmerch.fly.dev/api/product/${actualProductId}` +
+                  `${apiBase}/api/product/${actualProductId}` +
                   `?category=${encodeURIComponent(category)}` +
                   `&authenticated=${authenticated}` +
                   `&email=${encodeURIComponent(email || '')}`;
@@ -985,17 +997,11 @@ const ProductPage = ({ sidebar }) => {
                         </div>
                         <div className="info-col-image">
                           <img 
-                            src={
-                              (product.preview_image || product.main_image)
-                                ? ((product.preview_image || product.main_image).startsWith('http') 
-                                    ? (product.preview_image || product.main_image)
-                                    : `${IMG_BASE}/${product.preview_image || product.main_image}`)
-                                : `${IMG_BASE}/placeholder.png`
-                            }
+                            src={getProductImageUrl(product, true)}
                             alt={product.name}
                             className="info-product-image"
                             onError={(e) => {
-                              e.currentTarget.src = `${IMG_BASE}/placeholder.png`;
+                              e.currentTarget.src = `${getImgBase()}/placeholder.png`;
                             }}
                           />
                         </div>
@@ -1180,27 +1186,14 @@ const ProductPage = ({ sidebar }) => {
                         <div className="product-image-wrapper">
                           <img
                             className={isApparelCategory ? "product-image-clear" : "product-image-normal"}
-                            src={
-                              product.preview_image
-                                ? (product.preview_image.startsWith('http') 
-                                    ? (product.preview_image.includes('?') ? `${product.preview_image}&v=${getCacheBuster()}` : `${product.preview_image}?v=${getCacheBuster()}`)
-                                    : (product.preview_image.includes('?') ? `${IMG_BASE}/${product.preview_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.preview_image}?v=${getCacheBuster()}`))
-                                : (product.main_image.startsWith('http') 
-                                    ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
-                                    : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
-                            }
+                            src={`${getProductImageUrl(product, true)}${getProductImageUrl(product, true).includes('?') ? '&' : '?'}v=${getCacheBuster()}`}
                             alt={product.name}
                             loading="lazy"
                             referrerPolicy="no-referrer"
                             onError={(e) => {
-                              // Fallback to main_image if preview fails
-                              const fallback = product.main_image
-                                ? (product.main_image.startsWith('http') 
-                                    ? (product.main_image.includes('?') ? `${product.main_image}&v=${getCacheBuster()}` : `${product.main_image}?v=${getCacheBuster()}`)
-                                    : (product.main_image.includes('?') ? `${IMG_BASE}/${product.main_image}&v=${getCacheBuster()}` : `${IMG_BASE}/${product.main_image}?v=${getCacheBuster()}`))
-                                : '';
+                              const fallback = getProductImageUrl(product, false);
                               if (fallback && e.currentTarget.src !== fallback) {
-                                e.currentTarget.src = fallback;
+                                e.currentTarget.src = `${fallback}${fallback.includes('?') ? '&' : '?'}v=${getCacheBuster()}`;
                               }
                             }}
                           />
