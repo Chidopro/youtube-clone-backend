@@ -338,6 +338,12 @@ except Exception as limiter_err:
     logger.warning(f"Rate limiter not loaded: {limiter_err}")
     limiter = None
 
+def _exempt_rate_limit(f):
+    """Exempt read-only product APIs from default 50/hour so category browsing isn't denied."""
+    if limiter is not None:
+        return limiter.exempt(f)
+    return f
+
 def _data_from_request():
     """
     Robustly read request data for both:
@@ -804,6 +810,7 @@ def get_browse_api():
         }), 500
 
 @app.route("/api/product/<product_id>", methods=["GET", "OPTIONS"])
+@_exempt_rate_limit
 def get_product_api(product_id):
     """API endpoint to get product data for frontend"""
     if request.method == "OPTIONS":

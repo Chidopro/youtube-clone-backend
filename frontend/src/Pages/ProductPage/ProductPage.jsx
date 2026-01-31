@@ -651,6 +651,9 @@ const ProductPage = ({ sidebar }) => {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('❌ API Error Response:', errorText);
+          if (response.status === 429) {
+            throw new Error('Too many requests. Please wait a moment and try again.');
+          }
           throw new Error(`Failed to fetch product data: ${response.status} - ${errorText}`);
         }
         
