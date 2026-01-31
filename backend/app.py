@@ -737,8 +737,8 @@ def get_browse_api():
         filtered_products = filter_products_by_category(category)
         
         # Ensure all products have a description field and full image URLs for cross-origin display
-        # Force HTTPS to avoid Mixed Content when frontend is on https://screenmerch.com
-        image_base = (os.environ.get('BACKEND_PUBLIC_URL') or request.url_root or '').rstrip('/')
+        # Force HTTPS and always set image_base so images persist across category switches
+        image_base = (os.environ.get('BACKEND_PUBLIC_URL') or request.url_root or 'https://screenmerch.fly.dev').rstrip('/')
         if image_base.startswith('http://'):
             image_base = 'https://' + image_base[7:]
         for product in filtered_products:

@@ -18,6 +18,8 @@ const ensureHttps = (url) => {
 // Prefer full URL from API (main_image_url / preview_image_url) when present
 const getProductImageUrl = (product, preferPreview = true) => {
   if (!product) return `${getImgBase()}/placeholder.png`;
+  // Use normalized URL from setProductData so images persist across category switches
+  if (product._displayImageUrl) return product._displayImageUrl;
   const url = preferPreview
     ? (product.preview_image_url || product.preview_image)
     : (product.main_image_url || product.main_image);
@@ -688,7 +690,16 @@ const ProductPage = ({ sidebar }) => {
           setLoading(false);
           return;
         }
-        setProductData(data);
+        // Normalize products with stable image URLs so they persist across re-renders/category switches
+        const base = getBackendUrl().replace(/\/$/, '');
+        const imgBase = `${base}/static/images`;
+        const productsWithUrls = (data.products || []).map((p) => {
+          if (!p) return p;
+          const previewUrl = p.preview_image_url || (p.preview_image ? (p.preview_image.startsWith('/') ? base + p.preview_image : (p.preview_image.startsWith('http') ? ensureHttps(p.preview_image) : `${imgBase}/${p.preview_image}`)) : '');
+          const mainUrl = p.main_image_url || (p.main_image ? (p.main_image.startsWith('/') ? base + p.main_image : (p.main_image.startsWith('http') ? ensureHttps(p.main_image) : `${imgBase}/${p.main_image}`)) : '');
+          return { ...p, _displayImageUrl: previewUrl || mainUrl || `${imgBase}/placeholder.png` };
+        });
+        setProductData({ ...data, products: productsWithUrls });
       } catch (err) {
         if (err?.name === 'AbortError') return;
         console.error('Error fetching product data:', err);
@@ -740,7 +751,8 @@ const ProductPage = ({ sidebar }) => {
     });
   }, [productData, selectedColors]);
 
-  if (loading) {
+  // Only show full-screen loading on initial load (no productData yet). When switching category, keep showing current products so images persist.
+  if (loading && !productData) {
     return (
       <div className={`container ${sidebar ? "" : " large-container"}`}>
         <div style={{ padding: '2rem', textAlign: 'center' }}>
