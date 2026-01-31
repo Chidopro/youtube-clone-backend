@@ -23,6 +23,8 @@ const getProductImageUrl = (product, preferPreview = true) => {
     : (product.main_image_url || product.main_image);
   if (!url) return `${getImgBase()}/placeholder.png`;
   if (url.startsWith('http')) return ensureHttps(url);
+  // Backend may return relative path (e.g. /static/images/x.png) when image_base is empty
+  if (url.startsWith('/')) return `${getBackendUrl().replace(/\/$/, '')}${url}`;
   return `${getImgBase()}/${url}`;
 };
 
@@ -563,19 +565,23 @@ const ProductPage = ({ sidebar }) => {
   }, [productId, creatorMode, category]);
 
   useEffect(() => {
+    const wantedCategory = category;
+    const wantedProductId = productId || 'browse';
+    const controller = new AbortController();
+
     if (window.__DEBUG__) {
     console.log('🔄 useEffect triggered with:', { productId, category, authenticated, email });
     }
-    
+
     const fetchProductData = async () => {
       try {
         setLoading(true);
         setError(null); // Clear any previous errors
-        
+
         // Handle browse mode - use 'browse' when productId is undefined or 'dynamic'
         const actualProductId = productId || 'browse';
         const isBrowseMode = !productId || productId === 'browse' || productId === 'dynamic';
-        
+
         const apiBase = getBackendUrl().replace(/\/$/, '');
         const url = isBrowseMode
           ? `${apiBase}/api/product/browse?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}&mobile=${Date.now()}&cache=${Math.random()}`
@@ -600,13 +606,14 @@ const ProductPage = ({ sidebar }) => {
 
         // Fetch product data from backend API with mobile-friendly settings
         let response;
+        let timeoutId;
         try {
           if (window.__DEBUG__ || isMobile) {
             console.log('🚀 Starting fetch request...');
             console.log('📱 Mobile detection:', isMobile);
             console.log('📱 URL:', url);
           }
-          
+          timeoutId = setTimeout(() => controller.abort(), 30000);
           response = await fetch(url, {
           method: 'GET',
             cache: 'no-cache',
@@ -615,24 +622,31 @@ const ProductPage = ({ sidebar }) => {
               'Pragma': 'no-cache',
               'Expires': '0'
             },
-            // Longer timeout for mobile networks
-          signal: AbortSignal.timeout(30000) // 30 second timeout
+            signal: controller.signal
         });
-        
+          clearTimeout(timeoutId);
+        } catch (e) {
+          if (timeoutId) clearTimeout(timeoutId);
+          throw e;
+        }
+
           if (window.__DEBUG__ || isMobile) {
             console.log('✅ Fetch completed, status:', response.status);
             console.log('✅ Response headers:', Object.fromEntries(response.headers.entries()));
           }
         } catch (fetchError) {
+          if (fetchError?.name === 'AbortError') {
+            return; // Category changed or timeout - don't update state
+          }
           console.error('❌ Fetch failed:', fetchError);
           console.error('❌ Error name:', fetchError.name);
           console.error('❌ Error message:', fetchError.message);
-          
+
           // Mobile debugging (console only)
           if (isMobile) {
             console.log(`Fetch Failed!\nError: ${fetchError.message}\nURL: ${url}`);
           }
-          
+
           // Only use mobile fallback if the API call actually failed
           if (isMobile) {
             console.log('📱 API call failed, using mobile fallback with static data');
@@ -727,9 +741,15 @@ const ProductPage = ({ sidebar }) => {
           console.log('✅ First product preview:', data.products?.[0]?.preview_image);
           console.log('✅ Mobile fallback should NOT be used - API succeeded');
         }
-        
+
+        // Ignore stale response if user already switched category
+        if (data.category !== wantedCategory) {
+          setLoading(false);
+          return;
+        }
         setProductData(data);
       } catch (err) {
+        if (err?.name === 'AbortError') return;
         console.error('Error fetching product data:', err);
         setError(err.message);
       } finally {
@@ -737,8 +757,8 @@ const ProductPage = ({ sidebar }) => {
       }
     };
 
-    // Call fetchProductData for both specific products and browse mode
     fetchProductData();
+    return () => controller.abort();
   }, [productId, category, authenticated, email]);
 
   // Validate and reset sizes when products or colors change
