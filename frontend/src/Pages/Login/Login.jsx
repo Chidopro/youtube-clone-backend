@@ -398,12 +398,19 @@ const Login = () => {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h2 className="login-title">{isLoginMode ? 'Welcome back' : 'Create your account'}</h2>
-        <p className="login-subtitle">
-          {isLoginMode
-            ? 'Sign in to continue to ScreenMerch'
-            : 'Join ScreenMerch and start creating merch from your content'}
-        </p>
+        <div className="login-card-header">
+          <div className="login-logo">🎯</div>
+          <h2 className="login-title">{isLoginMode ? 'ScreenMerch Login' : 'ScreenMerch Sign Up'}</h2>
+        </div>
+
+        <div className="login-info">
+          <strong>{isLoginMode ? 'Login Required' : 'Create Account'}</strong>
+          <p>
+            {isLoginMode
+              ? 'To create merchandise, please log in or create an account with your email address.'
+              : 'Join ScreenMerch and start creating merch from your content.'}
+          </p>
+        </div>
 
         {isAlreadyLoggedIn && loggedInUser && (
           <div className="login-alert login-alert-info" role="alert" style={{ backgroundColor: '#e3f2fd', color: '#1976d2', border: '1px solid #90caf9' }}>
@@ -435,7 +442,7 @@ const Login = () => {
 
         <form className="login-form" onSubmit={handleSubmit} noValidate>
           <div className="login-field">
-            <label htmlFor="email" className="login-label">Email</label>
+            <label htmlFor="email" className="login-label">Email Address</label>
             <input
               id="email"
               type="email"
@@ -490,7 +497,7 @@ const Login = () => {
         <div className="login-toggle">
           <span>{isLoginMode ? "Don't have an account?" : "Already have an account?"}</span>
           <button className="login-toggle-btn" onClick={handleToggleMode} disabled={isLoading}>
-            {isLoginMode ? 'Create one' : 'Sign in'}
+            {isLoginMode ? 'Sign Up' : 'Sign in'}
           </button>
         </div>
       </div>

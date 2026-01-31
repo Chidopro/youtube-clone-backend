@@ -1588,6 +1588,9 @@ const Admin = () => {
           {activeTab === 'subscriptions' && isMasterAdmin && (
             <div className="admin-subscriptions">
               <h3>Subscription Management</h3>
+              <p className="admin-note" style={{ marginBottom: '12px', fontSize: '13px', color: '#666' }}>
+                To fully delete a user and reuse their email, you must also delete them in Supabase: <strong>Authentication → Users</strong> (and optionally the row in Table Editor → users).
+              </p>
               <div className="admin-filters">
                 <select 
                   value={subscriptionStatusFilter} 
@@ -1604,6 +1607,7 @@ const Admin = () => {
                   <thead>
                     <tr>
                       <th>User</th>
+                      <th>User email</th>
                       <th>Tier</th>
                       <th>Status</th>
                       <th>Start Date</th>
@@ -1614,7 +1618,8 @@ const Admin = () => {
                   <tbody>
                     {subscriptions.map(sub => (
                       <tr key={sub.id}>
-                        <td>{sub.users?.display_name || sub.users?.email}</td>
+                        <td>{sub.users?.display_name || '—'}</td>
+                        <td>{sub.users?.email || sub.email || '—'}</td>
                         <td>
                           <span className={`tier-badge ${sub.tier}`}>
                             {sub.tier}
