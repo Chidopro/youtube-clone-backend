@@ -634,65 +634,6 @@ const ProductPage = ({ sidebar }) => {
             console.log('✅ Fetch completed, status:', response.status);
             console.log('✅ Response headers:', Object.fromEntries(response.headers.entries()));
           }
-        } catch (fetchError) {
-          if (fetchError?.name === 'AbortError') {
-            return; // Category changed or timeout - don't update state
-          }
-          console.error('❌ Fetch failed:', fetchError);
-          console.error('❌ Error name:', fetchError.name);
-          console.error('❌ Error message:', fetchError.message);
-
-          // Mobile debugging (console only)
-          if (isMobile) {
-            console.log(`Fetch Failed!\nError: ${fetchError.message}\nURL: ${url}`);
-          }
-
-          // Only use mobile fallback if the API call actually failed
-          if (isMobile) {
-            console.log('📱 API call failed, using mobile fallback with static data');
-            console.log('📱 This should NOT happen if API call succeeded');
-            console.log('📱 Error details:', fetchError.message);
-            const staticProducts = getStaticProductsForCategory(category);
-            console.log('📱 Static products:', staticProducts);
-            
-            const staticData = {
-              success: true,
-              product: {
-                thumbnail_url: '',
-                screenshots: []
-              },
-              products: staticProducts,
-              category: category
-            };
-            
-            console.log('📱 Setting static data:', staticData);
-            setProductData(staticData);
-            setLoading(false);
-            setError(null);
-            
-            // Mobile debugging (console only)
-            console.log(`Mobile Fallback Active!\nProducts: ${staticProducts.length}\nCategory: ${category}`);
-            return; // Skip the rest of the error handling
-          }
-          
-          // For non-mobile, try a simpler fetch as fallback
-          if (window.__DEBUG__) {
-            console.log('🔄 Trying fallback fetch...');
-          }
-          
-          try {
-            response = await fetch(url, {
-              method: 'GET',
-              cache: 'no-cache'
-            });
-            if (window.__DEBUG__) {
-              console.log('✅ Fallback fetch succeeded, status:', response.status);
-            }
-          } catch (fallbackError) {
-            console.error('❌ Fallback fetch also failed:', fallbackError);
-            throw new Error(`Network error: ${fetchError.message} | Fallback: ${fallbackError.message}`);
-          }
-        }
 
         if (window.__DEBUG__) {
         console.log('📡 Response status:', response.status);
