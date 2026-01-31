@@ -7,7 +7,12 @@ import { getBackendUrl } from '../../config/apiConfig';
 import { products } from '../../data/products';
 import './ProductPage.css';
 
-const getImgBase = () => `${getBackendUrl().replace(/\/$/, '')}/static/images`;
+const IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
+const getImgBase = () => {
+  const base = getBackendUrl();
+  if (!base || typeof base !== 'string') return IMG_BASE_FALLBACK;
+  return `${base.replace(/\/$/, '')}/static/images`;
+};
 
 // Ensure HTTPS to avoid Mixed Content on https://screenmerch.com
 const ensureHttps = (url) => {
@@ -30,8 +35,9 @@ const getProductImageUrl = (product, preferPreview = true) => {
   return `${getImgBase()}/${url}`;
 };
 
-// Generate a unique cache-busting parameter
+// Stable cache key per productData so img src doesn't change every render (prevents images never loading)
 const getCacheBuster = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+const getStableImageQuery = (productData) => productData?.timestamp ? `v=${productData.timestamp}` : `v=0`;
 
 const ProductPage = ({ sidebar }) => {
   const { productId } = useParams();
@@ -1158,22 +1164,27 @@ const ProductPage = ({ sidebar }) => {
             <div className="products-grid">
               {productData.products && productData.products.map((product, index) => (
                 <div key={index} className="product-card">
-                  {/* Product Image */}
-                  {(product.preview_image || product.main_image) && (() => {
+                  {/* Product Image - always show; stable URL so images load despite re-renders */}
+                  {(() => {
                     const isApparelCategory = category === 'womens' || category === 'mens' || category === 'kids';
+                    const imgUrl = getProductImageUrl(product, true);
+                    const safeUrl = (imgUrl && typeof imgUrl === 'string') ? imgUrl : `${getImgBase()}/placeholder.png`;
                     return (
                       <div className="product-image">
                         <div className="product-image-wrapper">
                           <img
                             className={isApparelCategory ? "product-image-clear" : "product-image-normal"}
-                            src={`${getProductImageUrl(product, true)}${getProductImageUrl(product, true).includes('?') ? '&' : '?'}v=${getCacheBuster()}`}
+                            src={safeUrl + (safeUrl.includes('?') ? '&' : '?') + getStableImageQuery(productData)}
                             alt={product.name}
                             loading="lazy"
                             referrerPolicy="no-referrer"
                             onError={(e) => {
                               const fallback = getProductImageUrl(product, false);
                               if (fallback && e.currentTarget.src !== fallback) {
-                                e.currentTarget.src = `${fallback}${fallback.includes('?') ? '&' : '?'}v=${getCacheBuster()}`;
+                                const q = getStableImageQuery(productData);
+                                e.currentTarget.src = fallback + (fallback.includes('?') ? '&' : '?') + q;
+                              } else {
+                                e.currentTarget.src = `${getImgBase()}/placeholder.png`;
                               }
                             }}
                           />
