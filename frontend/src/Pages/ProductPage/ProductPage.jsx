@@ -1163,7 +1163,7 @@ const ProductPage = ({ sidebar }) => {
 
             <div className="products-grid">
               {productData.products && productData.products.map((product, index) => (
-                <div key={index} className="product-card">
+                <div key={product?.name ? `${product.name}-${index}` : index} className="product-card">
                   {/* Product Image - always show; stable URL so images load despite re-renders */}
                   {(() => {
                     const isApparelCategory = category === 'womens' || category === 'mens' || category === 'kids';

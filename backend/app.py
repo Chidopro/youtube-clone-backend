@@ -1014,8 +1014,8 @@ PRODUCTS = [
     {
         "name": "Men's Tank Top",
         "price": 21.87,
-        "filename": "random.png",
-        "main_image": "random.png",
+        "filename": "menstanktoppreview.png",
+        "main_image": "menstanktoppreview.png",
         "preview_image": "menstanktoppreview.png",
         "description": "The Men's Staple Tank Top is made of high-quality durable materials. Wear it on a sunny day out or offer it to your customers on your online store. 100% combed and ring-spun cotton. Tri-blends are 50% polyester, 25% combed, 25% ring-spun cotton, and rayon. Athletic Heather is 90% airlume combed and ring-spun cotton, 10% polyester. All the other Heather colors are 52% airlume combed and ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/yd² (142.40 g/m²), triblends: 3.8 oz/yd² (90.07 g/m²). 30 singles. Regular fit. Side-seamed construction. Blank product sourced from Nicaragua, Honduras, or the US. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "True Royal", "Athletic Heather", "Red", "Oatmeal Triblend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
