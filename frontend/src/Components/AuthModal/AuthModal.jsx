@@ -58,9 +58,9 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
             password: password
           };
       
-      // Add timeout to prevent hanging requests on mobile
+      // Add timeout to prevent hanging requests on mobile (45s allows Fly.io cold start)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
       
       const response = await fetch(url, {
         method: 'POST',
