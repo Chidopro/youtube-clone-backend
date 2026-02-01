@@ -2740,7 +2740,17 @@ def place_order():
 
         if not cart:
             return jsonify({"success": False, "error": "Cart is empty"}), 400
-        
+
+        # Capture screenshot from payload BEFORE normalization (so we don't lose it if sent only in cart)
+        top_level_screenshot = data.get("selected_screenshot") or data.get("thumbnail") or data.get("screenshot")
+        if not top_level_screenshot and cart:
+            for item in cart:
+                s = item.get("selected_screenshot") or item.get("screenshot") or item.get("thumbnail") or item.get("img")
+                if s:
+                    top_level_screenshot = s
+                    logger.info(f"📸 Screenshot taken from cart item (not at top-level)")
+                    break
+
         # Validate color-size availability for each cart item
         for item in cart:
             product_name = item.get('product', '')
@@ -2854,11 +2864,8 @@ def place_order():
             normalized_cart.append(normalized_item)
             logger.info(f"✅ Cleaned cart item: removed base64 images, kept only essential fields")
 
-        # Get screenshot from top-level payload BEFORE enriching cart
-        # This is the selected screenshot for the product that should be stored
-        top_level_screenshot = data.get("selected_screenshot") or data.get("thumbnail") or data.get("screenshot")
-        
-        # Enrich cart items with video metadata when provided
+        # top_level_screenshot already set above (from data or first cart item before normalization)
+        # Enrich cart items with video metadata when provided; keep screenshot from normalized item or top-level
         enriched_cart = []
         for item in normalized_cart:
             enriched_item = item.copy()
@@ -2866,12 +2873,13 @@ def place_order():
                 "videoName": data.get("videoTitle", data.get("video_title", "Unknown Video")),
                 "creatorName": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
                 "timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
-                # Store screenshot at cart item level so it can be retrieved later
-                "selected_screenshot": top_level_screenshot or data.get("selected_screenshot") or data.get("thumbnail")
+                # Store screenshot at cart item level (from top-level or preserved in normalized item)
+                "selected_screenshot": top_level_screenshot or item.get("selected_screenshot") or data.get("selected_screenshot") or data.get("thumbnail")
             })
             enriched_cart.append(enriched_item)
-            
-        logger.info(f"✅ Stored screenshot in enriched_cart items: {bool(top_level_screenshot)}")
+
+        if top_level_screenshot or any(e.get("selected_screenshot") for e in enriched_cart):
+            logger.info(f"✅ Stored screenshot in enriched_cart items for email and get-order-screenshot")
 
         # Extract subdomain from request origin to store with order
         creator_user_id_from_subdomain = None
@@ -2934,14 +2942,12 @@ def place_order():
             logger.error(f"❌ creator_user_id value: {creator_user_id_from_subdomain}")
             logger.error(f"❌ subdomain value: {subdomain_from_request}")
 
-        # Always keep an in-memory backup for admin dashboard/tools
+        # Always keep an in-memory backup for admin dashboard/tools and get-order-screenshot
         order_store[order_id] = {
             "cart": enriched_cart,
             "timestamp": data.get("timestamp"),
             "order_id": order_id,
             "video_title": order_data["video_title"],
-            "creator_user_id": creator_user_id_from_subdomain,  # Store creator user_id for webhook
-            "subdomain": subdomain_from_request,  # Store subdomain for reference
             "creator_user_id": creator_user_id_from_subdomain,  # Store creator user_id for webhook
             "subdomain": subdomain_from_request,  # Store subdomain for reference
             "creator_name": order_data["creator_name"],
@@ -2950,6 +2956,10 @@ def place_order():
             "status": "pending",
             "created_at": data.get("created_at", "Recent"),
         }
+        # Include screenshot so get-order-screenshot and email fallbacks can find it
+        if top_level_screenshot or order_data.get("selected_screenshot"):
+            order_store[order_id]["selected_screenshot"] = top_level_screenshot or order_data.get("selected_screenshot")
+            logger.info(f"✅ Stored selected_screenshot in order_store for get-order-screenshot")
 
         # Build email body
         html_body = f"<h1>New ScreenMerch Order #{order_number}</h1>"
@@ -2962,11 +2972,8 @@ def place_order():
         email_attachments = []
         attachment_cids = {}
         
-        # Get screenshot from top-level payload (not from cart items, which are cleaned)
-        # This is the selected screenshot for the product
-        top_level_screenshot = data.get("selected_screenshot") or data.get("thumbnail") or data.get("screenshot")
-        
-        # Also check enriched_cart items for screenshot (might be stored there)
+        # Use screenshot captured before normalization (from data or first cart item)
+        # Fallback to enriched_cart only if still missing (e.g. edge cases)
         if not top_level_screenshot and enriched_cart:
             for item in enriched_cart:
                 if item.get("selected_screenshot"):
@@ -3029,13 +3036,15 @@ def place_order():
                         cid = f"screenshot_{order_id}_0"
                         attachment_cids[0] = cid
                         
-                        # Add as attachment (Resend format: content should be base64 string)
+                        # Add as attachment (Resend format: content base64, contentId for inline)
                         # Only add once per order
+                        content_type = f"image/{'jpeg' if image_format.lower() in ('jpg', 'jpeg') else image_format}"
                         if cid not in [att.get('cid') for att in email_attachments]:
                             email_attachments.append({
                                 "filename": f"screenshot.{image_format}",
                                 "content": image_data,  # Already base64 encoded from data URL
-                                "cid": cid
+                                "cid": cid,
+                                "content_type": content_type,
                             })
                             screenshot_used = True  # Mark as used so we don't add again
                             logger.info(f"✅ Added screenshot attachment with CID: {cid}")
@@ -3139,18 +3148,19 @@ def place_order():
             # Add attachments if any (for base64 screenshots)
             # Resend format: attachments array with filename, content (base64 string), and optional path/contentId
             if email_attachments:
-                # Convert to Resend format: need to ensure contentId matches CID
+                # Convert to Resend format: contentId for inline images, content_type for rendering
                 resend_attachments = []
                 for att in email_attachments:
                     resend_att = {
                         "filename": att.get("filename", "screenshot.png"),
                         "content": att.get("content", ""),
                     }
-                    # Add contentId if CID exists (for inline images)
+                    if att.get("content_type"):
+                        resend_att["contentType"] = att["content_type"]
                     if att.get("cid"):
                         resend_att["contentId"] = att.get("cid")
                     resend_attachments.append(resend_att)
-                
+
                 email_data["attachments"] = resend_attachments
                 logger.info(f"📎 Adding {len(resend_attachments)} image attachments to email")
                 logger.info(f"📎 Attachment CIDs: {[att.get('contentId') for att in resend_attachments]}")
@@ -3438,11 +3448,13 @@ def success():
                         screenshot_cid = f"screenshot_{order_id}_0"
                         attachment_cids[0] = screenshot_cid
                         
-                        # Add as attachment ONCE (Resend format: content should be base64 string)
+                        # Add as attachment ONCE (Resend format: content base64, contentId for inline)
+                        content_type = f"image/{'jpeg' if image_format.lower() in ('jpg', 'jpeg') else image_format}"
                         email_attachments.append({
                             "filename": f"screenshot.{image_format}",
                             "content": image_data,  # Already base64 encoded from data URL
-                            "cid": screenshot_cid
+                            "cid": screenshot_cid,
+                            "content_type": content_type,
                         })
                         screenshot_attachment_added = True
                         logger.info(f"✅ [SUCCESS] Added ONE screenshot attachment with CID: {screenshot_cid} (for entire order, not per item)")
@@ -3518,14 +3530,15 @@ def success():
                     
                     # Add attachments if any (for base64 screenshots)
                     if email_attachments:
-                        # Convert to Resend format
+                        # Convert to Resend format (contentId for inline, contentType for rendering)
                         resend_attachments = []
                         for att in email_attachments:
                             resend_att = {
                                 "filename": att.get("filename", "screenshot.png"),
                                 "content": att.get("content", ""),
                             }
-                            # Add contentId if CID exists (for inline images)
+                            if att.get("content_type"):
+                                resend_att["contentType"] = att["content_type"]
                             if att.get("cid"):
                                 resend_att["contentId"] = att.get("cid")
                             resend_attachments.append(resend_att)
@@ -4207,11 +4220,13 @@ def stripe_webhook():
                     # Generate CID for embedding (use order_id, not item index)
                     screenshot_cid = f"screenshot_{order_id}_0"
                     
-                    # Add as attachment ONCE (Resend format: content should be base64 string)
+                    # Add as attachment ONCE (Resend format: content base64, contentId for inline)
+                    content_type = f"image/{'jpeg' if screenshot_format.lower() in ('jpg', 'jpeg') else screenshot_format}"
                     email_attachments.append({
                         "filename": f"screenshot.{screenshot_format}",
                         "content": screenshot_data,  # Already base64 encoded
-                        "cid": screenshot_cid
+                        "cid": screenshot_cid,
+                        "content_type": content_type,
                     })
                     screenshot_attachment_added = True
                     logger.info(f"📎 [WEBHOOK] Added ONE screenshot attachment with CID: {screenshot_cid} (for entire order, not per item)")
@@ -4518,14 +4533,15 @@ def stripe_webhook():
                 
                 # Add attachments if any (for base64 screenshots)
                 if email_attachments:
-                    # Convert to Resend format
+                    # Convert to Resend format (contentId for inline, contentType for rendering)
                     resend_attachments = []
                     for att in email_attachments:
                         resend_att = {
                             "filename": att.get("filename", "screenshot.png"),
                             "content": att.get("content", ""),
                         }
-                        # Add contentId if CID exists (for inline images)
+                        if att.get("content_type"):
+                            resend_att["contentType"] = att["content_type"]
                         if att.get("cid"):
                             resend_att["contentId"] = att.get("cid")
                         resend_attachments.append(resend_att)
