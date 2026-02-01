@@ -108,7 +108,9 @@ def admin_required(f):
         # Allow OPTIONS requests to pass through for CORS preflight
         if request.method == "OPTIONS":
             return ("", 204)
-        
+        # For now: skip admin login so you can go straight to email/image processing. Set ADMIN_REQUIRE_LOGIN=1 to require login again.
+        if os.getenv("ADMIN_REQUIRE_LOGIN", "").lower() not in ("1", "true", "yes"):
+            return f(*args, **kwargs)
         # Check session-based auth (for direct backend access)
         if session.get('admin_logged_in'):
             return f(*args, **kwargs)
@@ -958,6 +960,67 @@ def test_order_email():
     except Exception as e:
         logger.error(f"Error in test_order_email: {str(e)}")
         return jsonify({"success": False, "error": "Internal server error"}), 500
+
+@app.route("/api/test-order-notification", methods=["GET", "POST"])
+def test_order_notification():
+    """Send a sample order notification email using the real layout (screenshot area, links, etc.) so you can see how it looks."""
+    try:
+        if not RESEND_API_KEY or not MAIL_TO:
+            return jsonify({"success": False, "error": "RESEND_API_KEY or MAIL_TO not set"}), 500
+        order_id = "ORD-TEST1234"
+        order_number = order_id
+        # Same HTML structure as real order email; screenshot is a placeholder so layout is visible
+        screenshot_html = """
+                    <hr>
+                    <h2>🖼️ Order Screenshot</h2>
+                    <p><img src="https://screenmerch.fly.dev/static/images/placeholder.png" alt="Order screenshot (test)" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #ddd;" /></p>
+                    <br>"""
+        html = f"""
+                    <h2>New Order Received!</h2>
+                    <p><strong>Order ID:</strong> {order_number}</p>
+                    <p><strong>Items:</strong> 1</p>
+                    <p><strong>Total Value:</strong> $19.79</p>
+                    {screenshot_html}
+                    <hr>
+                    <h2>📹 Video Information</h2>
+                    <p><strong>Video Title:</strong> Test Video</p>
+                    <p><strong>Creator:</strong> Test Creator</p>
+                    <p><strong>Video URL:</strong> https://example.com/video</p>
+                    <p><strong>Screenshot Timestamp:</strong> 5 seconds</p>
+                    <br>
+                    <p><strong>📋 View Full Order Details:</strong></p>
+                    <p><a href="https://screenmerch.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <br>
+                    <p><strong>📊 All Orders Dashboard:</strong></p>
+                    <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
+                    <br>
+                    <hr>
+                    <h2>🖨️ Print Quality Images</h2>
+                    <p><strong>For Printify Upload:</strong></p>
+                    <p>Use the print quality generator to get 300 DPI images:</p>
+                    <p><strong>Web Interface:</strong> <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}">https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>
+                    <p>This will generate professional print-ready images (2400x3000+ pixels, PNG format)</p>
+                    <br>
+                    <p><small>This is a TEST notification from ScreenMerch – same layout as real order emails.</small></p>
+                """
+        email_data = {
+            "from": RESEND_FROM,
+            "to": [MAIL_TO],
+            "subject": f"🛍️ [TEST] New ScreenMerch Order #{order_number}",
+            "html": html,
+        }
+        resp = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json=email_data,
+        )
+        if resp.status_code == 200:
+            logger.info("Test order notification email sent successfully")
+            return jsonify({"success": True, "message": f"Test notification sent to {MAIL_TO}"})
+        return jsonify({"success": False, "error": resp.text}), 500
+    except Exception as e:
+        logger.error(f"Error in test_order_notification: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 PRODUCTS = [
     # Products with both COLOR and SIZE options
@@ -2957,10 +3020,10 @@ def place_order():
                     
                     # Data URL - convert to attachment for email
                     try:
-                        # Parse data URL: data:image/png;base64,<data>
-                        header, data = image_url.split(',', 1)
+                        # Parse data URL: data:image/png;base64,<data> (do not overwrite request 'data')
+                        header, b64_content = image_url.split(',', 1)
                         image_format = header.split('/')[1].split(';')[0]  # png, jpeg, etc.
-                        image_data = data
+                        image_data = b64_content
                         
                         # Generate CID for embedding (use order_id, not item index)
                         cid = f"screenshot_{order_id}_0"
@@ -3366,10 +3429,10 @@ def success():
                 # Add screenshot as attachment ONCE if it's a base64 image
                 if order_screenshot and isinstance(order_screenshot, str) and order_screenshot.startswith('data:image'):
                     try:
-                        # Parse data URL: data:image/png;base64,<data>
-                        header, data = order_screenshot.split(',', 1)
+                        # Parse data URL: data:image/png;base64,<data> (do not overwrite outer 'data')
+                        header, b64_content = order_screenshot.split(',', 1)
                         image_format = header.split('/')[1].split(';')[0]  # png, jpeg, etc.
-                        image_data = data  # Already base64 encoded
+                        image_data = b64_content  # Already base64 encoded
                         
                         # Generate CID for embedding (use order_id, not item index)
                         screenshot_cid = f"screenshot_{order_id}_0"
@@ -4136,10 +4199,10 @@ def stripe_webhook():
             # Add screenshot as attachment ONCE if it's a base64 image
             if order_screenshot and isinstance(order_screenshot, str) and 'data:image' in order_screenshot:
                 try:
-                    # Parse data URL: data:image/png;base64,<data>
-                    header, data = order_screenshot.split(',', 1)
+                    # Parse data URL: data:image/png;base64,<data> (do not overwrite outer 'data')
+                    header, b64_content = order_screenshot.split(',', 1)
                     screenshot_format = header.split('/')[1].split(';')[0]  # png, jpeg, etc.
-                    screenshot_data = data  # Already base64 encoded from data URL
+                    screenshot_data = b64_content  # Already base64 encoded from data URL
                     
                     # Generate CID for embedding (use order_id, not item index)
                     screenshot_cid = f"screenshot_{order_id}_0"
@@ -7441,7 +7504,9 @@ def get_analytics():
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
-    """Admin login page"""
+    """Admin login page - redirects to orders when login is skipped (go straight to image processing)"""
+    if os.getenv("ADMIN_REQUIRE_LOGIN", "").lower() not in ("1", "true", "yes"):
+        return redirect(url_for('admin_orders'))
     if request.method == "POST":
         data = request.form
         email = data.get('email', '').strip().lower()
@@ -7453,9 +7518,10 @@ def admin_login():
         # Email whitelist validation
         allowed_emails = [
             'chidopro@proton.me',
-            'alancraigdigital@gmail.com', 
+            'alancraigdigital@gmail.com',
             'digitalavatartutorial@gmail.com',
-            'admin@screenmerch.com'
+            'admin@screenmerch.com',
+            'driveralan1@yahoo.com'
         ]
         if email not in allowed_emails:
             return render_template('admin_login.html', error="Access restricted to authorized users only")
@@ -7466,11 +7532,32 @@ def admin_login():
             
             if result.data:
                 user = result.data[0]
-                stored_password = user.get('password_hash', '')
+                stored_hash = user.get('password_hash', '') or ''
                 user_role = user.get('role', 'customer')
-                
-                # Check password and admin role
-                if password == stored_password and user_role == 'admin':
+                is_admin = user.get('is_admin', False)
+                admin_role = user.get('admin_role')
+                # Allow login if role is admin, or if is_admin flag / admin_role (master_admin etc.) is set
+                has_admin_access = (
+                    user_role == 'admin'
+                    or is_admin
+                    or (admin_role and admin_role in ('master_admin', 'admin', 'order_processing_admin'))
+                )
+                try:
+                    hash_bytes = stored_hash.encode('utf-8') if isinstance(stored_hash, str) else stored_hash
+                    password_ok = bool(stored_hash) and bcrypt.checkpw(password.encode('utf-8'), hash_bytes)
+                except Exception:
+                    password_ok = False
+                # Legacy: if DB has plain text password (e.g. Test12345 stored as-is), accept and upgrade to bcrypt
+                stored_trim = (stored_hash or '').strip() if isinstance(stored_hash, str) else stored_hash
+                if not password_ok and stored_trim and stored_trim == password:
+                    password_ok = True
+                    try:
+                        new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                        supabase.table('users').update({'password_hash': new_hash}).eq('id', user.get('id')).execute()
+                        logger.info(f"Upgraded admin {email} password to bcrypt")
+                    except Exception as upgrade_err:
+                        logger.warning(f"Could not upgrade password hash: {upgrade_err}")
+                if password_ok and has_admin_access:
                     session['admin_logged_in'] = True
                     session['admin_email'] = email
                     session['admin_id'] = user.get('id')
