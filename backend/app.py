@@ -6928,8 +6928,9 @@ def auth_signup_email_only():
                 logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] RESEND_API_KEY present: {bool(RESEND_API_KEY)}")
                 logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] RESEND_FROM: {RESEND_FROM}")
                 try:
-                    frontend_url = os.getenv("FRONTEND_URL", "https://screenmerch.com")
-                    verification_link = f"{frontend_url}/verify-email?token={verification_token}&email={email}"
+                    frontend_url = (os.getenv("FRONTEND_URL", "https://screenmerch.com")).rstrip("/")
+                    # URL-encode token and email so the link is valid and clickable in all email clients
+                    verification_link = f"{frontend_url}/verify-email?token={quote(verification_token, safe='')}&email={quote(email, safe='')}"
                     logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] Verification link: {verification_link}")
                     
                     email_html = f"""
@@ -6950,7 +6951,7 @@ def auth_signup_email_only():
                             <div style="text-align: center; margin: 30px 0;">
                                 <a href="{verification_link}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Verify Email & Set Password</a>
                             </div>
-                            <p style="font-size: 12px; color: #666;">Or copy and paste this link into your browser:</p>
+                            <p style="font-size: 12px; color: #666;">Or copy and paste this link into your browser (one line):</p>
                             <p style="font-size: 12px; color: #667eea; word-break: break-all;">{verification_link}</p>
                             <p style="font-size: 12px; color: #666; margin-top: 30px;">This link will expire in 24 hours.</p>
                             <p style="font-size: 12px; color: #666;">If you didn't create an account, you can safely ignore this email.</p>
@@ -6958,23 +6959,32 @@ def auth_signup_email_only():
                     </body>
                     </html>
                     """
+                    # Plain-text fallback so link is clickable when HTML is stripped (many clients auto-linkify URLs)
+                    email_text = (
+                        "Welcome to ScreenMerch!\n\n"
+                        "Thank you for signing up. Verify your email and set your password by opening this link in your browser:\n\n"
+                        f"{verification_link}\n\n"
+                        "This link expires in 24 hours. If you didn't create an account, you can ignore this email."
+                    )
                     
                     if RESEND_API_KEY:
                         logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] 📧 Attempting to send verification email to {email}")
                         logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] 📧 Using RESEND_FROM: {RESEND_FROM}")
                         logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] 📧 Making request to Resend API...")
+                        email_payload = {
+                            "from": RESEND_FROM,
+                            "to": email,
+                            "subject": "Verify Your Email - ScreenMerch",
+                            "html": email_html,
+                            "text": email_text
+                        }
                         email_response = requests.post(
                             "https://api.resend.com/emails",
                             headers={
                                 "Authorization": f"Bearer {RESEND_API_KEY}",
                                 "Content-Type": "application/json"
                             },
-                            json={
-                                "from": RESEND_FROM,
-                                "to": email,
-                                "subject": "Verify Your Email - ScreenMerch",
-                                "html": email_html
-                            },
+                            json=email_payload,
                             timeout=30
                         )
                         
