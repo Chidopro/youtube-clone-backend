@@ -269,29 +269,34 @@ export class UserService {
    */
   static async isCreator() {
     try {
-      // Check for Google OAuth user first
       const isAuthenticated = localStorage.getItem('isAuthenticated');
       const userData = localStorage.getItem('user');
-      
-      let user = null;
-      
+
       if (isAuthenticated === 'true' && userData) {
-        // Google OAuth user - assume creator for now
-        return true;
-      } else {
-        // Fallback to Supabase auth
-        const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-        if (!supabaseUser) {
-          return false;
-        }
-        user = supabaseUser;
+        try {
+          const user = JSON.parse(userData);
+          if (user?.role === 'creator') return true;
+          if (user?.role === 'customer') return false;
+        } catch (_) {}
       }
 
-      // Check user role in database
+      let userId = null;
+      try {
+        if (userData) {
+          const parsed = JSON.parse(userData);
+          userId = parsed?.id;
+        }
+      } catch (_) {}
+      if (!userId) {
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+        if (!supabaseUser) return false;
+        userId = supabaseUser.id;
+      }
+
       const { data, error } = await supabase
         .from('users')
         .select('role')
-        .eq('id', user.id)
+        .eq('id', userId)
         .maybeSingle();
 
       if (error) {
