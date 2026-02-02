@@ -3778,6 +3778,20 @@ def stripe_webhook():
             # Calculate total amount
             total_amount = sum(item.get('price', 0) for item in cart)
             
+            # If DB order has no screenshot, try order_store (same Fly instance may have it from create_checkout_session)
+            has_screenshot = order_data.get("selected_screenshot") or (cart and (cart[0].get("selected_screenshot") or cart[0].get("screenshot") or cart[0].get("img") or cart[0].get("thumbnail")))
+            if not has_screenshot and order_id in order_store:
+                stored = order_store[order_id]
+                if stored.get("selected_screenshot"):
+                    order_data = dict(order_data)
+                    order_data["selected_screenshot"] = stored["selected_screenshot"]
+                    logger.info(f"📸 [WEBHOOK] Using screenshot from order_store for email")
+                if not cart or not (cart[0].get("selected_screenshot") or cart[0].get("screenshot")):
+                    stored_cart = stored.get("cart", [])
+                    if stored_cart and (stored_cart[0].get("selected_screenshot") or stored_cart[0].get("screenshot")):
+                        cart = stored_cart
+                        logger.info(f"📸 [WEBHOOK] Using cart from order_store for email")
+            
             # Build admin email via order_email module (single source of truth)
             order_number = order_id[-8:].upper() if len(order_id) >= 8 else order_id
             html_body, email_attachments = build_admin_order_email(order_id, order_data, cart, order_number, total_amount)
