@@ -291,8 +291,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                 return newScreenshots;
             });
             setScreenshotTimestamps(prev => {
-                const newTimestamps = prev.length < 6 ? [...prev, currentTime] : newTimestamps;
-                return newTimestamps;
+                return prev.length < 6 ? [...prev, currentTime] : prev;
             });
             
             // Step 2: Upgrade to print quality in the background (non-blocking)
@@ -645,11 +644,13 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         });
         
         if (!isLoggedIn) {
-            // Store screenshot data for after login
+            // Store screenshot data for after login (include timestamp for email/order)
+            const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : (screenshotTimestamps[0] ?? 0);
             const merchData = {
                 thumbnail,
                 videoUrl: video?.video_url || window.location.href,
                 screenshots: screenshots.slice(0, 6),
+                screenshot_timestamp: screenshotTimestamps[0] ?? currentTime,
                 videoTitle: video?.title || 'Unknown Video',
                 creatorName: video?.channelTitle || 'Unknown Creator'
             };
@@ -665,10 +666,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         
         if (isCreator) {
             // For creators, navigate directly to screenshot selection page (skip category selection)
+            const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : (screenshotTimestamps[0] ?? 0);
             const merchData = {
                 thumbnail,
                 videoUrl: video?.video_url || window.location.href,
                 screenshots: screenshots.slice(0, 6),
+                screenshot_timestamp: screenshotTimestamps[0] ?? currentTime,
                 videoTitle: video?.title || 'Unknown Video',
                 creatorName: video?.channelTitle || 'Unknown Creator'
             };
@@ -681,10 +684,12 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         
         // console.log('✅ Authenticated - proceeding with merch creation');
         // User is authenticated but not creator, use regular flow
+        const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : (screenshotTimestamps[0] ?? 0);
         const merchData = {
             thumbnail,
             videoUrl: video?.video_url || window.location.href,
             screenshots: screenshots.slice(0, 6),
+            screenshot_timestamp: screenshotTimestamps[0] ?? currentTime,
             videoTitle: video?.title || 'Unknown Video',
             creatorName: video?.channelTitle || 'Unknown Creator'
         };

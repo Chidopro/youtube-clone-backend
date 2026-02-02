@@ -492,22 +492,23 @@ const Checkout = () => {
                     }
                   }
                   
-                  // Also check localStorage for screenshot data
-                  if (!selectedScreenshot) {
-                    try {
-                      const merchData = localStorage.getItem('pending_merch_data');
-                      if (merchData) {
-                        const parsed = JSON.parse(merchData);
-                        // Check screenshots array - use first one if available
+                  // Also check localStorage for screenshot data and timestamp
+                  let screenshotTimestampFromStorage = null;
+                  try {
+                    const merchData = localStorage.getItem('pending_merch_data');
+                    if (merchData) {
+                      const parsed = JSON.parse(merchData);
+                      screenshotTimestampFromStorage = parsed.screenshot_timestamp ?? parsed.timestamp ?? null;
+                      if (!selectedScreenshot) {
                         if (parsed.screenshots && Array.isArray(parsed.screenshots) && parsed.screenshots.length > 0) {
                           selectedScreenshot = parsed.screenshots[0];
                         } else if (parsed.thumbnail) {
                           selectedScreenshot = parsed.thumbnail;
                         }
                       }
-                    } catch (e) {
-                      console.warn('Could not load screenshot from localStorage:', e);
                     }
+                  } catch (e) {
+                    console.warn('Could not load screenshot from localStorage:', e);
                   }
                   
                   console.log('📸 Selected screenshot found:', selectedScreenshot ? 'Yes' : 'No');
@@ -556,24 +557,21 @@ const Checkout = () => {
                     videoTitle: items[0]?.video_title || null,
                     creatorName: items[0]?.creator_name || null,
                     user_email: userEmail,  // Add user email to payload
+                    screenshot_timestamp: items[0]?.screenshot_timestamp ?? screenshotTimestampFromStorage ?? null,
+                    timestamp: items[0]?.screenshot_timestamp ?? screenshotTimestampFromStorage ?? null,
                   };
                   
-                  // Add selected screenshot ONLY if it's a URL (never include base64 images in payload)
-                  // Base64 images are too large and cause payload/email size issues
-                  // Screenshot is stored in cart items above, so backend can extract it from there
+                  // Include selected_screenshot at top level so backend always receives it (create-checkout-session and place-order).
+                  // Cart items already have selected_screenshot; top-level ensures backend gets it even if cart is normalized elsewhere.
                   if (selectedScreenshot) {
                     const screenshotStr = String(selectedScreenshot);
-                    // Only include if it's a URL (not base64)
-                    if (screenshotStr.startsWith('http') || screenshotStr.startsWith('https')) {
-                      // URL - always safe to include
-                      payload.selected_screenshot = selectedScreenshot;
+                    payload.selected_screenshot = selectedScreenshot;
+                    if (screenshotStr.startsWith('data:image')) {
+                      console.log(`📸 Added screenshot (base64, ${Math.round(screenshotStr.length/1024)}KB) to payload`);
+                    } else if (screenshotStr.startsWith('http') || screenshotStr.startsWith('https')) {
                       console.log('📸 Added screenshot URL to payload');
-                    } else if (screenshotStr.startsWith('data:image')) {
-                      // Base64 image - DO NOT include in payload (too large, causes issues)
-                      // Screenshot is stored in cart items (selected_screenshot field), backend will extract it from there
-                      console.warn(`⚠️ Screenshot is base64 (${Math.round(screenshotStr.length/1024)}KB), excluding from payload. Backend will extract from cart items.`);
                     } else {
-                      console.warn(`⚠️ Screenshot format unknown, excluding from payload: ${screenshotStr.substring(0, 50)}...`);
+                      console.log('📸 Added screenshot (other format) to payload');
                     }
                   }
                   

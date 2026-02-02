@@ -228,12 +228,13 @@ const Video = ({ sidebar }) => {
       isLoggedIn: isLoggedIn
     });
     
-    // Always persist the current merch data so the product page can render
+    // Always persist the current merch data so the product page can render (screenshot_timestamp for email)
     try {
       const merchData = {
         thumbnail,
         videoUrl: window.location.href,
         screenshots: screenshots.slice(0, 6),
+        screenshot_timestamp: 0,
         videoTitle: videoData?.title || 'Unknown Video',
         creatorName: videoData?.channelTitle || 'Unknown Creator'
       };

@@ -489,7 +489,7 @@ const ProductPage = ({ sidebar }) => {
     const chosenSize = selectedSizes[index] || (product?.options?.size?.[0] || 'One Size');
     const screenshotUrl = getSelectedScreenshotUrl();
 
-    // Get video metadata from localStorage
+    // Get video metadata from localStorage (including screenshot_timestamp for email/order)
     let videoMetadata = {};
     try {
       const raw = localStorage.getItem('pending_merch_data');
@@ -501,7 +501,8 @@ const ProductPage = ({ sidebar }) => {
           video_url: merchData.videoUrl,
           video_title: merchData.videoTitle,
           creator_name: merchData.creatorName,
-          thumbnail: merchData.thumbnail
+          thumbnail: merchData.thumbnail,
+          screenshot_timestamp: merchData.screenshot_timestamp
         };
         console.log('🔍 Video metadata extracted:', videoMetadata);
       }
@@ -516,8 +517,9 @@ const ProductPage = ({ sidebar }) => {
       color: chosenColor,
       size: chosenSize,
       screenshot: screenshotUrl,
+      selected_screenshot: screenshotUrl,
       qty: 1,
-      // Include video metadata in cart item
+      // Include video metadata in cart item (screenshot_timestamp for email/Print Quality)
       ...videoMetadata
     };
     const next = [...cartItems, item];
