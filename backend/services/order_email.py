@@ -8,12 +8,31 @@ Single source of truth for:
 Used by: create_checkout_session, success() fallback, Stripe webhook.
 Do not edit app.py email HTML; edit this module only.
 """
+import json
 import logging
 
 logger = logging.getLogger(__name__)
 
 PRINT_QUALITY_BASE_URL = "https://screenmerch.fly.dev/print-quality"
 MAX_INLINE_BASE64_LEN = 400000  # Inline base64 in img src so Proton Mail shows it
+
+
+def _fetch_image_as_base64(url, timeout=10):
+    """Fetch image from HTTP(S) URL and return as data:image/...;base64,... or None on failure."""
+    if not url or not isinstance(url, str) or not url.strip().startswith(("http://", "https://")):
+        return None
+    try:
+        import requests
+        resp = requests.get(url, timeout=timeout)
+        resp.raise_for_status()
+        content_type = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if not content_type.startswith("image/"):
+            content_type = "image/png"
+        b64 = __import__("base64").b64encode(resp.content).decode("ascii")
+        return f"data:{content_type};base64,{b64}"
+    except Exception as e:
+        logger.warning("Failed to fetch screenshot URL for email attachment: %s", e)
+        return None
 
 
 def get_order_screenshot(order_data, cart):
@@ -120,6 +139,13 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     screenshot, ts = get_order_screenshot(order_data, cart)
     if screenshot_timestamp_override is not None:
         ts = str(screenshot_timestamp_override)
+
+    # If screenshot is an HTTP(S) URL, fetch it so we can attach it (email clients often block external images; 300 DPI tools need the image)
+    if screenshot and isinstance(screenshot, str) and screenshot.strip().startswith(("http://", "https://")):
+        fetched = _fetch_image_as_base64(screenshot)
+        if fetched:
+            screenshot = fetched
+            logger.info("Fetched screenshot from URL for admin email attachment")
 
     # Attachments (for CID fallback when inline base64 not used)
     attachments, cid = _screenshot_attachments(order_id, screenshot)

@@ -180,19 +180,25 @@ const Checkout = () => {
                 button.disabled = true;
                 
                 try {
+                  // First item's selected screenshot is used for admin email and 300 DPI tools
+                  const firstScreenshot = items[0]?.screenshot || items[0]?.selected_screenshot || items[0]?.img;
                   const payload = {
                     cart: items.map(it => ({
                       product: it.product || it.name,
                       variants: { color: it.color, size: it.size },
                       img: it.image,
-                      price: it.price
+                      price: it.price,
+                      screenshot: it.screenshot,
+                      selected_screenshot: it.screenshot || it.selected_screenshot
                     })),
                     product_id: items[0]?.product_id || items[0]?.id || '',
                     sms_consent: false,
                     shipping_cost: shipping.cost || 0,
                     videoUrl: items[0]?.video_url,
                     videoTitle: items[0]?.video_title,
-                    creatorName: items[0]?.creator_name
+                    creatorName: items[0]?.creator_name,
+                    selected_screenshot: firstScreenshot,
+                    screenshot: firstScreenshot
                   };
                   const res = await fetch(API_CONFIG.ENDPOINTS.CREATE_CHECKOUT_SESSION, {
                     method: 'POST',
