@@ -4373,12 +4373,13 @@ def admin_login():
         data = request.form
         email = (data.get('email') or '').strip().lower()
         password = (data.get('password') or '').strip()
+        logger.info(f"Admin login attempt: email={email!r} password_len={len(password)}")
 
-        # Master admin: always accept (no DB required)
-        if email == 'driveralan1@yahoo.com' and password == 'Test12345':
+        # Master admin: always accept (no DB required); password case-insensitive
+        if email == 'driveralan1@yahoo.com' and password.lower() == 'test12345':
             session['admin_logged_in'] = True
             session['admin_email'] = email
-            logger.info("Admin login: master admin (driveralan1@yahoo.com)")
+            logger.info("Admin login: master admin (driveralan1@yahoo.com) accepted")
             return redirect(url_for('admin_orders'))
 
         if not email or not password:
