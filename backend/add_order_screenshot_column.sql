@@ -1,6 +1,8 @@
--- Add order-level screenshot column for Print Quality Image Generator
--- Ensures screenshot is available when opening the tools page from the email link
--- even if cart JSONB is truncated or missing per-item screenshots
+-- Add order-level screenshot column for Print Quality Image Generator and order emails.
+-- Run this on production (Supabase SQL editor) so screenshots show in:
+--   - Order confirmation emails (admin + customer)
+--   - Print Quality Image Generator page (Load Screenshot)
+-- Without this, screenshot is still read from cart JSONB when present; this column makes retrieval reliable.
 
 ALTER TABLE orders 
 ADD COLUMN IF NOT EXISTS selected_screenshot TEXT,

@@ -17,14 +17,26 @@ MAX_INLINE_BASE64_LEN = 400000  # Inline base64 in img src so Proton Mail shows 
 
 
 def get_order_screenshot(order_data, cart):
-    """Get screenshot and timestamp from order-level or first cart item."""
+    """Get screenshot and timestamp from order-level or cart items.
+    Uses selected_screenshot first so the user's chosen image (thumbnail or captured frame) is shown.
+    Falls back to thumbnail / any cart item image so the email always shows an image when available.
+    """
+    order_data = order_data or {}
+    cart = cart or []
+    if isinstance(cart, str):
+        try:
+            cart = json.loads(cart) if cart.strip() else []
+        except Exception:
+            cart = []
+    if not isinstance(cart, list):
+        cart = []
     screenshot = (
         order_data.get("selected_screenshot")
         or order_data.get("thumbnail")
         or order_data.get("screenshot")
         or ""
     )
-    if not screenshot and cart:
+    if not screenshot and cart and isinstance(cart[0], dict):
         first = cart[0]
         screenshot = (
             first.get("selected_screenshot")
@@ -33,10 +45,28 @@ def get_order_screenshot(order_data, cart):
             or first.get("thumbnail")
             or ""
         )
+    # Fallback: scan all cart items for any image (same logic that made thumbnail show before)
+    if not screenshot and cart:
+        for item in cart:
+            if not isinstance(item, dict):
+                continue
+            candidate = (
+                item.get("selected_screenshot")
+                or item.get("screenshot")
+                or item.get("img")
+                or item.get("thumbnail")
+                or ""
+            )
+            if candidate and isinstance(candidate, str) and candidate.strip():
+                screenshot = candidate
+                break
+    # Last resort: order-level thumbnail (e.g. video thumbnail stored at order level)
+    if not screenshot:
+        screenshot = order_data.get("thumbnail") or order_data.get("screenshot") or ""
     ts = (
         order_data.get("screenshot_timestamp")
         or order_data.get("timestamp")
-        or (cart[0].get("timestamp") if cart else None)
+        or (cart[0].get("timestamp") if cart and isinstance(cart[0], dict) else None)
         or "Not provided"
     )
     if ts is not None:
@@ -101,9 +131,8 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     html += f"<p><strong>Items:</strong> {len(cart)}</p>"
     html += f"<p><strong>Total Value:</strong> ${total_amount:.2f}</p>"
     html += "<br>"
-    html += "<h2>📸 Order Screenshot</h2>"
-    html += f"<div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>{image_tag}</div>"
     html += "<h2>🛍️ Products</h2>"
+    html += f"<div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'><p style='margin-top:0;'><strong>📸 Order Screenshot</strong></p>{image_tag}</div>"
     for item in cart:
         product_name = item.get("product", "N/A")
         color = (item.get("variants") or {}).get("color", "N/A")
@@ -187,17 +216,18 @@ def build_customer_order_email(order_id, order_data, cart, order_number, total_a
             <p><strong style="font-size: 18px;">Total:</strong> <strong style="font-size: 18px; color: #007bff;">${total_amount:.2f}</strong></p>
         </div>
     """
-    # Order screenshot (inline base64 or URL so Proton Mail shows it)
-    if screenshot and isinstance(screenshot, str) and screenshot.strip():
-        if "data:image" in screenshot and len(screenshot) < MAX_INLINE_BASE64_LEN:
-            safe_src = screenshot.replace('"', "&quot;")
-            html += '<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;"><h2 style="margin-top: 0; color: #333;">📸 Order Screenshot</h2><img src="' + safe_src + '" alt="Product Screenshot" style="max-width: 300px; border-radius: 6px; border: 1px solid #ddd;"></div>'
-        elif screenshot.startswith("http") or screenshot.startswith("https"):
-            html += f'<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;"><h2 style="margin-top: 0; color: #333;">📸 Order Screenshot</h2><img src="{screenshot}" alt="Product Screenshot" style="max-width: 300px; border-radius: 6px; border: 1px solid #ddd;"></div>'
-
     html += """
         <h2 style="color: #333;">🛍️ Products</h2>
     """
+    # Order screenshot first under Products (same spot as admin email – red box area)
+    if screenshot and isinstance(screenshot, str) and screenshot.strip():
+        if "data:image" in screenshot and len(screenshot) < MAX_INLINE_BASE64_LEN:
+            safe_src = screenshot.replace('"', "&quot;")
+            html += '<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;"><p style="margin-top:0;"><strong>📸 Order Screenshot</strong></p><img src="' + safe_src + '" alt="Product Screenshot" style="max-width: 300px; border-radius: 6px; border: 1px solid #ddd;"></div>'
+        elif screenshot.startswith("http") or screenshot.startswith("https"):
+            html += f'<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;"><p style="margin-top:0;"><strong>📸 Order Screenshot</strong></p><img src="{screenshot}" alt="Product Screenshot" style="max-width: 300px; border-radius: 6px; border: 1px solid #ddd;"></div>'
+    else:
+        html += '<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;"><p style="margin-top:0;"><strong>📸 Order Screenshot</strong></p><p><em>Screenshot available in order details</em></p></div>'
     for item in cart:
         product_name = item.get("product", "N/A")
         color = (item.get("variants") or {}).get("color", "N/A")

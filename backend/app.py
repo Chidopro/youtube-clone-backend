@@ -60,6 +60,7 @@ from routes import (
 from services.order_email import (
     build_admin_order_email,
     build_customer_order_email,
+    get_order_screenshot as get_order_screenshot_for_email,
     resend_attachments_from_builder,
 )
 
@@ -4682,30 +4683,43 @@ def get_order_screenshot(order_id):
         
         # Extract screenshot data from cart items - return all products with their images
         cart = order_data.get('cart', [])
-        
+        # Normalize cart: Supabase/DB may return JSONB as string; parse so we can read item.selected_screenshot
+        if isinstance(cart, str):
+            try:
+                cart = json.loads(cart) if cart.strip() else []
+            except Exception:
+                cart = []
+        if not isinstance(cart, list):
+            cart = []
+
         logger.info(f"🔍 [GET-SCREENSHOT] Looking for screenshots in order {order_id}")
         logger.info(f"🔍 [GET-SCREENSHOT] Order data keys: {list(order_data.keys())}")
         logger.info(f"🔍 [GET-SCREENSHOT] Cart has {len(cart)} items")
-        
-        # Check for order-level screenshot (column added by add_order_screenshot_column.sql).
-        # When migration not run, order-level is missing but screenshot is still in cart JSONB.
-        order_level_screenshot = None
-        if order_data.get('selected_screenshot'):
-            order_level_screenshot = order_data.get('selected_screenshot')
-        elif order_data.get('thumbnail'):
-            order_level_screenshot = order_data.get('thumbnail')
-        elif order_data.get('screenshot'):
-            order_level_screenshot = order_data.get('screenshot')
-        elif order_data.get('image_url'):
-            order_level_screenshot = order_data.get('image_url')
-        elif order_data.get('screenshot_data'):
-            order_level_screenshot = order_data.get('screenshot_data')
-        elif order_data.get('thumbnail_data'):
-            order_level_screenshot = order_data.get('thumbnail_data')
-        
+
+        # Use same logic as order email: order-level first, then first item, then scan all cart items (fixes "No screenshot" when column missing)
+        screenshot_str, _ts = get_order_screenshot_for_email(order_data, cart)
+        order_level_screenshot = screenshot_str if (screenshot_str and str(screenshot_str).strip()) else None
+        if not order_level_screenshot:
+            if order_data.get('selected_screenshot'):
+                order_level_screenshot = order_data.get('selected_screenshot')
+            elif order_data.get('thumbnail'):
+                order_level_screenshot = order_data.get('thumbnail')
+            elif order_data.get('screenshot'):
+                order_level_screenshot = order_data.get('screenshot')
+            elif order_data.get('image_url'):
+                order_level_screenshot = order_data.get('image_url')
+            elif order_data.get('screenshot_data'):
+                order_level_screenshot = order_data.get('screenshot_data')
+            elif order_data.get('thumbnail_data'):
+                order_level_screenshot = order_data.get('thumbnail_data')
+        if order_level_screenshot:
+            logger.info(f"✅ [GET-SCREENSHOT] Using screenshot (order-level or from cart fallback), len={len(str(order_level_screenshot))}")
+
         # Build products list with their screenshots - include ALL products even if they share screenshots
         products = []
         for idx, item in enumerate(cart):
+            if not isinstance(item, dict):
+                continue
             product_name = item.get('product', f'Product {idx + 1}')
             color = (item.get('variants') or {}).get('color', 'N/A')
             size = (item.get('variants') or {}).get('size', 'N/A')
