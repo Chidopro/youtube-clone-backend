@@ -1882,9 +1882,7 @@ def send_order():
                     <p><strong>Video URL:</strong> {data.get("videoUrl", data.get("video_url", "Not provided"))}</p>
                     <p><strong>Screenshot Timestamp:</strong> {data.get("screenshot_timestamp", data.get("timestamp", "Not provided"))} seconds</p>
                     <br>
-                    <p><strong>📋 View Full Order Details:</strong></p>
-                    <p><a href="https://screenmerch.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
-                    <br>
+                    <!-- View Order Details button removed for email image testing - restore later -->
                     <p><strong>📊 All Orders Dashboard:</strong></p>
                     <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
                     <br>
@@ -2119,9 +2117,7 @@ def place_order():
         html_body += f"<p><strong>Video URL:</strong> {order_data['video_url']}</p>"
         html_body += f"<p><strong>Screenshot Timestamp:</strong> {order_store[order_id]['screenshot_timestamp']} seconds</p>"
         html_body += "<br>"
-        html_body += "<p><strong>📋 View Full Order Details:</strong></p>"
-        html_body += f"<p><a href='https://screenmerch.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
-        html_body += "<br>"
+        # View Order Details button removed for email image testing - restore later
         html_body += "<p><strong>📊 All Orders Dashboard:</strong></p>"
         html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
         html_body += "<br>"
@@ -2216,9 +2212,7 @@ def success():
             
             html_body += f"<p><strong>Total Value:</strong> ${total_value:.2f}</p>"
             html_body += f"<br>"
-            html_body += f"<p><strong>📋 View Full Order Details:</strong></p>"
-            html_body += f"<p><a href='https://screenmerch.fly.dev/admin/order/{order_id}' style='background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
-            html_body += f"<br>"
+            # View Order Details button removed for email image testing - restore later
             html_body += f"<p><strong>📊 All Orders Dashboard:</strong></p>"
             html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
             html_body += f"<br>"
@@ -2592,9 +2586,7 @@ def stripe_webhook():
                         <td align="center">
                             <table cellpadding="0" cellspacing="0">
                                 <tr>
-                                    <td style="padding: 10px;">
-                                        <a href="https://screenmerch.fly.dev/admin/order/{order_id}" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
-                                    </td>
+                                    <!-- View Order Details button removed for email image testing - restore later -->
                                     <td style="padding: 10px;">
                                         <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
                                     </td>
@@ -2609,7 +2601,6 @@ def stripe_webhook():
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                     <h3>📝 Quick Instructions:</h3>
                     <ol>
-                        <li><strong>View Order:</strong> Click "View Order Details" to see full order information</li>
                         <li><strong>Print Quality (Auto):</strong> Click "Generate Print Quality Images" to auto-load from order</li>
                         <li><strong>Standalone Tool (Recommended):</strong> Click "Standalone Image Enhancer" for reliable processing:
                             <ul style="margin-top: 10px; padding-left: 20px;">

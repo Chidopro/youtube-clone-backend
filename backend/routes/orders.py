@@ -422,7 +422,7 @@ def place_order():
                     <p><strong>Video Title:</strong> {order_data['video_title']}</p>
                     <p><strong>Creator:</strong> {order_data['creator_name']}</p>
                     <p><strong>Video URL:</strong> {order_data['video_url']}</p>
-                    <p><a href="https://screenmerch.fly.dev/admin/order/{order_id}">View Order Details</a></p>
+                    <!-- View Order Details button removed for email image testing - restore later -->
                 """
                 
                 email_data = {
@@ -1034,7 +1034,7 @@ def stripe_webhook():
                             <p><strong>Video Title:</strong> {order_data.get('video_title', 'Unknown Video')}</p>
                             <p><strong>Creator:</strong> {order_data.get('creator_name', 'Unknown Creator')}</p>
                             <p><strong>Video URL:</strong> {order_data.get('video_url', 'Not provided')}</p>
-                            <p><a href="https://screenmerch.fly.dev/admin/order/{order_id}">View Order Details</a></p>
+                            <!-- View Order Details button removed for email image testing - restore later -->
                         """
                         
                         email_data = {
