@@ -7728,9 +7728,54 @@ def admin_orders():
         logger.error(f"Error loading admin orders: {str(e)}")
         return jsonify({"error": "Failed to load orders"}), 500
 
+@app.route("/order/<order_id>")
+def public_order_detail(order_id):
+    """Public order details page - no login required (green button in email)."""
+    try:
+        order_data = order_store.get(order_id)
+        if not order_data:
+            try:
+                db_result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
+                if db_result.data:
+                    db_order = db_result.data[0]
+                    order_data = {
+                        'cart': db_order.get('cart', []),
+                        'status': db_order.get('status', 'pending'),
+                        'created_at': db_order.get('created_at', 'N/A'),
+                        'video_title': db_order.get('video_title', 'Unknown Video'),
+                        'creator_name': db_order.get('creator_name', 'Unknown Creator'),
+                        'video_url': db_order.get('video_url', 'Not provided'),
+                        'shipping_cost': db_order.get('shipping_cost', 0)
+                    }
+                else:
+                    return "Order not found", 404
+            except Exception as db_error:
+                logger.error(f"Database error loading order {order_id}: {str(db_error)}")
+                return "Error loading order from database", 500
+        if (order_data.get('video_title') == 'Unknown Video' or
+            order_data.get('creator_name') == 'Unknown Creator' or
+            order_data.get('video_url') == 'Not provided'):
+            video_url = order_data.get('video_url', '')
+            if video_url and video_url != 'Not provided' and 'screenmerch.com/video/' in video_url:
+                try:
+                    video_id = video_url.split('/')[-1]
+                    video_result = supabase.table('videos2').select('*').eq('id', video_id).execute()
+                    if video_result.data:
+                        video_info = video_result.data[0]
+                        order_data['video_title'] = (video_info.get('title') or video_info.get('video_title') or video_info.get('name') or 'Unknown Video')
+                        order_data['creator_name'] = (video_info.get('channelTitle') or video_info.get('channel_title') or video_info.get('creator_name') or video_info.get('author') or 'Unknown Creator')
+                        order_data['video_url'] = video_info.get('video_url', 'Not provided')
+                except Exception:
+                    pass
+        return render_template('admin_order_detail.html', order=order_data, order_id=order_id, admin_email=None)
+    except Exception as e:
+        logger.error(f"Error loading public order detail: {str(e)}")
+        return "Error loading order", 500
+
 @app.route("/admin/order/<order_id>")
+@admin_required
 def admin_order_detail(order_id):
-    """Detailed view of a specific order (login not required for testing)"""
+    """Detailed view of a specific order (admin login required)"""
     try:
         # First try to get order from in-memory store
         order_data = order_store.get(order_id)
