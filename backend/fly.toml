@@ -4,9 +4,9 @@ app = "screenmerch"
 primary_region = "sjc"
 
 [build]
-  # Use the root-level Dockerfile and context so Flask app at backend/app.py is built
-  dockerfile = "../Dockerfile"
-  context = ".."
+  # Use this directory's Dockerfile and context (works when repo root is backend or when run from backend/)
+  dockerfile = "Dockerfile"
+  context = "."
 
 [http_service]
   internal_port = 8080
