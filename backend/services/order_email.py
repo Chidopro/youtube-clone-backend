@@ -14,7 +14,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 PRINT_QUALITY_BASE_URL = "https://screenmerch.fly.dev/print-quality"
-MAX_INLINE_BASE64_LEN = 400000  # Inline base64 in img src so Proton Mail shows it
+# Inline base64 shows IN the email body (e.g. Proton); CID shows as attachment only. Prefer inline when small so body shows the image.
+MAX_INLINE_BASE64_LEN = 100000  # Inline in body when under ~100KB; over that use cid (attachment)
 
 
 def _fetch_image_as_base64(url, timeout=10):
@@ -32,6 +33,37 @@ def _fetch_image_as_base64(url, timeout=10):
         return f"data:{content_type};base64,{b64}"
     except Exception as e:
         logger.warning("Failed to fetch screenshot URL for email attachment: %s", e)
+        return None
+
+
+def _compress_for_inline(data_url, max_bytes=95000, max_width=600):
+    """Compress base64 image to fit under max_bytes so it can be inlined in email body (e.g. Proton). Returns data:image/jpeg;base64,... or None."""
+    if not data_url or "data:image" not in data_url or "," not in data_url:
+        return None
+    try:
+        import base64
+        from io import BytesIO
+        header, b64 = data_url.split(",", 1)
+        raw = base64.b64decode(b64)
+        from PIL import Image
+        img = Image.open(BytesIO(raw)).convert("RGB")
+        w, h = img.size
+        if w > max_width:
+            ratio = max_width / w
+            img = img.resize((max_width, int(h * ratio)), Image.Resampling.LANCZOS)
+        out = BytesIO()
+        quality = 85
+        while quality >= 50:
+            out.seek(0)
+            out.truncate(0)
+            img.save(out, "JPEG", quality=quality, optimize=True)
+            if out.tell() <= max_bytes:
+                break
+            quality -= 10
+        b64_out = base64.b64encode(out.getvalue()).decode("ascii")
+        return f"data:image/jpeg;base64,{b64_out}"
+    except Exception as e:
+        logger.warning("Failed to compress screenshot for inline: %s", e)
         return None
 
 
@@ -96,21 +128,22 @@ def get_order_screenshot(order_data, cart):
 
 
 def _screenshot_img_html(screenshot_str, cid=None):
-    """Build the single 'Order Screenshot' block. Prefer inline base64 so Proton Mail shows it."""
+    """Build the single 'Order Screenshot' block. Prefer CID (attachment) so Proton Mail and strict clients display the image."""
     if not screenshot_str or not isinstance(screenshot_str, str) or not screenshot_str.strip():
         return "<p><em>Screenshot available in order details</em></p>"
+    # Use CID first when we have an attachment (Proton and many clients strip inline data: images)
+    if cid:
+        return f"<img src='cid:{cid}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
     if screenshot_str.startswith("data:image") and len(screenshot_str) < MAX_INLINE_BASE64_LEN:
         safe_src = screenshot_str.replace('"', "&quot;")
         return '<img src="' + safe_src + '" alt="Product Screenshot" style="max-width: 300px; border-radius: 6px; border: 1px solid #ddd;">'
-    if cid:
-        return f"<img src='cid:{cid}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
     if screenshot_str.startswith("http"):
         return f"<img src='{screenshot_str}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px; border: 1px solid #ddd;'>"
     return "<p><em>Screenshot available in order details</em></p>"
 
 
 def _screenshot_attachments(order_id, screenshot_str):
-    """Build Resend attachments list (one screenshot) and optional CID. Returns (attachments, cid_or_none)."""
+    """Build Resend attachments list: exactly ONE screenshot for this order only. Returns (attachments, cid_or_none)."""
     attachments = []
     cid = None
     if not screenshot_str or not isinstance(screenshot_str, str) or "data:image" not in screenshot_str:
@@ -118,10 +151,14 @@ def _screenshot_attachments(order_id, screenshot_str):
     try:
         header, b64_content = screenshot_str.split(",", 1)
         image_format = header.split("/")[1].split(";")[0]
+        ext = "jpeg" if image_format.lower() in ("jpg", "jpeg") else image_format
         content_type = f"image/{'jpeg' if image_format.lower() in ('jpg', 'jpeg') else image_format}"
+        # Unique filename per order so admin never sees "screenshot.jpeg" from other orders
+        safe_id = "".join(c if c.isalnum() or c in "-_" else "_" for c in str(order_id))
+        filename = f"screenshot_{safe_id}.{ext}"
         cid = f"screenshot_{order_id}_0"
         attachments.append({
-            "filename": f"screenshot.{image_format}",
+            "filename": filename,
             "content": b64_content,
             "cid": cid,
             "content_type": content_type,
@@ -147,9 +184,18 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
             screenshot = fetched
             logger.info("Fetched screenshot from URL for admin email attachment")
 
-    # Attachments (for CID fallback when inline base64 not used)
+    # Attachments: exactly one screenshot for this order only (no lingering images from other orders)
     attachments, cid = _screenshot_attachments(order_id, screenshot)
-    image_tag = _screenshot_img_html(screenshot, cid=cid if (screenshot and len(screenshot) >= MAX_INLINE_BASE64_LEN) else None)
+    attachments = attachments[:1]  # Cap to one so email never has more than this order's screenshot
+    # Prefer inline in body so Proton shows image IN the email: use small/compressed base64 when possible, cid only when too large
+    screenshot_for_body = screenshot
+    if cid and len(screenshot) >= MAX_INLINE_BASE64_LEN:
+        compressed = _compress_for_inline(screenshot, max_bytes=95000)
+        if compressed and len(compressed) < MAX_INLINE_BASE64_LEN:
+            screenshot_for_body = compressed
+            cid = None  # use inline so body shows the image
+    use_cid_in_body = cid is not None and len(screenshot_for_body) >= MAX_INLINE_BASE64_LEN
+    image_tag = _screenshot_img_html(screenshot_for_body, cid=cid if use_cid_in_body else None)
 
     print_url = f"{PRINT_QUALITY_BASE_URL}?order_id={order_id}"
     html = f"<h1>🛍️ New ScreenMerch Order #{order_number}</h1>"

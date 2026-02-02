@@ -63,6 +63,7 @@ from services.order_email import (
     get_order_screenshot as get_order_screenshot_for_email,
     resend_attachments_from_builder,
 )
+from services.order_email import _fetch_image_as_base64 as fetch_screenshot_url
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -4712,6 +4713,34 @@ def get_order_screenshot(order_id):
                 order_level_screenshot = order_data.get('screenshot_data')
             elif order_data.get('thumbnail_data'):
                 order_level_screenshot = order_data.get('thumbnail_data')
+        # Fallback: if we have a URL but no base64, fetch it so the tool can display it
+        if order_level_screenshot and isinstance(order_level_screenshot, str) and order_level_screenshot.strip().startswith(("http://", "https://")):
+            fetched = fetch_screenshot_url(order_level_screenshot)
+            if fetched:
+                order_level_screenshot = fetched
+                logger.info("Fetched screenshot from URL for Print Quality tool")
+        # Fallback: if still no screenshot, scan order_data and cart for any image URL (e.g. stored under different key)
+        if not order_level_screenshot or not str(order_level_screenshot).strip():
+            for key in ("selected_screenshot", "screenshot", "thumbnail", "image_url", "img"):
+                val = order_data.get(key)
+                if val and isinstance(val, str) and val.strip().startswith(("http://", "https://")):
+                    order_level_screenshot = fetch_screenshot_url(val) or val
+                    if order_level_screenshot:
+                        logger.info(f"Found screenshot URL in order_data.{key} for Print Quality tool")
+                        break
+            if not order_level_screenshot and cart:
+                for item in cart:
+                    if not isinstance(item, dict):
+                        continue
+                    for key in ("selected_screenshot", "screenshot", "img", "thumbnail"):
+                        val = item.get(key)
+                        if val and isinstance(val, str) and val.strip().startswith(("http://", "https://")):
+                            order_level_screenshot = fetch_screenshot_url(val) or val
+                            if order_level_screenshot:
+                                logger.info(f"Found screenshot URL in cart item.{key} for Print Quality tool")
+                                break
+                    if order_level_screenshot:
+                        break
         if order_level_screenshot:
             logger.info(f"✅ [GET-SCREENSHOT] Using screenshot (order-level or from cart fallback), len={len(str(order_level_screenshot))}")
 
