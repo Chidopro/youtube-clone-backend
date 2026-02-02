@@ -7520,11 +7520,72 @@ def get_analytics():
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
-    """Straight through to admin orders - no login form (testing access)"""
-    session['admin_logged_in'] = True
-    session['admin_email'] = 'admin'
-    logger.info("Admin access: straight through to orders (no login)")
-    return redirect(url_for('admin_orders'))
+    """Admin login - master admin driveralan1@yahoo.com / Test12345 always accepted"""
+    if request.method == "POST":
+        data = request.form
+        email = (data.get('email') or '').strip().lower()
+        password = (data.get('password') or '').strip()
+
+        # Master admin: always accept these credentials (no DB required)
+        if email == 'driveralan1@yahoo.com' and password == 'Test12345':
+            session['admin_logged_in'] = True
+            session['admin_email'] = email
+            logger.info("Admin login: master admin (driveralan1@yahoo.com)")
+            return redirect(url_for('admin_orders'))
+
+        if not email or not password:
+            return render_template('admin_login.html', error="Email and password are required")
+
+        allowed_emails = [
+            'chidopro@proton.me',
+            'alancraigdigital@gmail.com',
+            'digitalavatartutorial@gmail.com',
+            'admin@screenmerch.com',
+            'driveralan1@yahoo.com',
+        ]
+        if email not in allowed_emails:
+            return render_template('admin_login.html', error="Access restricted to authorized users only")
+
+        try:
+            result = supabase.table('users').select('*').eq('email', email).execute()
+            if result.data:
+                user = result.data[0]
+                stored_hash = user.get('password_hash', '') or ''
+                user_role = user.get('role', 'customer')
+                is_admin = user.get('is_admin', False)
+                admin_role = user.get('admin_role')
+                has_admin_access = (
+                    user_role == 'admin'
+                    or is_admin
+                    or (admin_role and admin_role in ('master_admin', 'admin', 'order_processing_admin'))
+                )
+                password_ok = False
+                try:
+                    if stored_hash:
+                        hash_bytes = stored_hash.encode('utf-8') if isinstance(stored_hash, str) else stored_hash
+                        password_ok = bcrypt.checkpw(password.encode('utf-8'), hash_bytes)
+                except Exception:
+                    pass
+                if not password_ok and stored_hash and isinstance(stored_hash, str) and stored_hash.strip() == password:
+                    password_ok = True
+                    try:
+                        new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                        supabase.table('users').update({'password_hash': new_hash}).eq('id', user.get('id')).execute()
+                        logger.info(f"Upgraded admin {email} password to bcrypt")
+                    except Exception:
+                        pass
+                if password_ok and has_admin_access:
+                    session['admin_logged_in'] = True
+                    session['admin_email'] = email
+                    session['admin_id'] = user.get('id')
+                    logger.info(f"Admin {email} logged in successfully")
+                    return redirect(url_for('admin_orders'))
+            return render_template('admin_login.html', error="Invalid credentials or insufficient privileges")
+        except Exception as e:
+            logger.error(f"Admin login error: {str(e)}")
+            return render_template('admin_login.html', error="Authentication service unavailable")
+
+    return render_template('admin_login.html')
 
 @app.route("/admin/logout")
 def admin_logout():
@@ -7592,6 +7653,7 @@ def admin_setup():
     return redirect(url_for('admin_login'))
 
 @app.route("/admin/orders")
+@admin_required
 def admin_orders():
     """Internal order management page for fulfillment"""
     try:
