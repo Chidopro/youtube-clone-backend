@@ -1893,8 +1893,8 @@ def send_order():
                     <p><strong>Video URL:</strong> {data.get("videoUrl", data.get("video_url", "Not provided"))}</p>
                     <p><strong>Screenshot Timestamp:</strong> {data.get("screenshot_timestamp", data.get("timestamp", "Not provided"))} seconds</p>
                     <br>
-                    <p><strong>📋 View Order (no login):</strong></p>
-                    <p><a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <p><strong>🖨️ Open tools (feather edge, corner radius, frame, 300 DPI):</strong></p>
+                    <p><a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Open Print & Image Tools</a></p>
                     <br>
                     <p><strong>📊 All Orders Dashboard:</strong></p>
                     <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
@@ -2130,8 +2130,8 @@ def place_order():
         html_body += f"<p><strong>Video URL:</strong> {order_data['video_url']}</p>"
         html_body += f"<p><strong>Screenshot Timestamp:</strong> {order_store[order_id]['screenshot_timestamp']} seconds</p>"
         html_body += "<br>"
-        html_body += "<p><strong>📋 View Order (no login):</strong></p>"
-        html_body += f"<p><a href='https://screenmerch.fly.dev/order/{order_id}' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
+        html_body += "<p><strong>🖨️ Open tools (feather edge, corner radius, frame, 300 DPI):</strong></p>"
+        html_body += f"<p><a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Open Print & Image Tools</a></p>"
         html_body += "<br>"
         html_body += "<p><strong>📊 All Orders Dashboard:</strong></p>"
         html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
@@ -2227,8 +2227,8 @@ def success():
             
             html_body += f"<p><strong>Total Value:</strong> ${total_value:.2f}</p>"
             html_body += f"<br>"
-            html_body += f"<p><strong>📋 View Order (no login):</strong></p>"
-            html_body += f"<p><a href='https://screenmerch.fly.dev/order/{order_id}' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
+            html_body += f"<p><strong>🖨️ Open tools (feather edge, corner radius, frame, 300 DPI):</strong></p>"
+            html_body += f"<p><a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Open Print & Image Tools</a></p>"
             html_body += f"<br>"
             html_body += f"<p><strong>📊 All Orders Dashboard:</strong></p>"
             html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
@@ -2604,10 +2604,7 @@ def stripe_webhook():
                             <table cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td style="padding: 10px;">
-                                        <a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
-                                    </td>
-                                    <td style="padding: 10px;">
-                                        <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #17a2b8; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
+                                        <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Open Print & Image Tools</a>
                                     </td>
                                     <td style="padding: 10px;">
                                         <a href="https://screenmerch.fly.dev/image-enhancer" target="_blank" style="background: #6f42c1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖼️ Standalone Image Enhancer</a>

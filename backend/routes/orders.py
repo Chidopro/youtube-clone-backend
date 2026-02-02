@@ -422,7 +422,7 @@ def place_order():
                     <p><strong>Video Title:</strong> {order_data['video_title']}</p>
                     <p><strong>Creator:</strong> {order_data['creator_name']}</p>
                     <p><strong>Video URL:</strong> {order_data['video_url']}</p>
-                    <p><a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <p><a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Open Print & Image Tools</a></p>
                 """
                 
                 email_data = {
@@ -1034,7 +1034,7 @@ def stripe_webhook():
                             <p><strong>Video Title:</strong> {order_data.get('video_title', 'Unknown Video')}</p>
                             <p><strong>Creator:</strong> {order_data.get('creator_name', 'Unknown Creator')}</p>
                             <p><strong>Video URL:</strong> {order_data.get('video_url', 'Not provided')}</p>
-                            <p><a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                            <p><a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Open Print & Image Tools</a></p>
                         """
                         
                         email_data = {

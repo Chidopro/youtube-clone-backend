@@ -988,8 +988,8 @@ def test_order_notification():
                     <p><strong>Video URL:</strong> https://example.com/video</p>
                     <p><strong>Screenshot Timestamp:</strong> 5 seconds</p>
                     <br>
-                    <p><strong>📋 View Order (no login):</strong></p>
-                    <p><a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <p><strong>🖨️ Open tools (feather edge, corner radius, frame, 300 DPI):</strong></p>
+                    <p><a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Open Print & Image Tools</a></p>
                     <br>
                     <p><strong>📊 All Orders Dashboard:</strong></p>
                     <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
@@ -2595,8 +2595,8 @@ def send_order():
                     <p><strong>Video URL:</strong> {data.get("videoUrl", data.get("video_url", "Not provided"))}</p>
                     <p><strong>Screenshot Timestamp:</strong> {data.get("screenshot_timestamp", data.get("timestamp", "Not provided"))} seconds</p>
                     <br>
-                    <p><strong>📋 View Order (no login):</strong></p>
-                    <p><a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <p><strong>🖨️ Open tools (feather edge, corner radius, frame, 300 DPI):</strong></p>
+                    <p><a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Open Print & Image Tools</a></p>
                     <br>
                     <p><strong>📊 All Orders Dashboard:</strong></p>
                     <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
@@ -3106,14 +3106,11 @@ def place_order():
                         <table cellpadding="0" cellspacing="0">
                             <tr>
                                 <td style="padding: 10px;">
-                                    <a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
-                                </td>
-                                <td style="padding: 10px;">
-                                    <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #17a2b8; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
+                                    <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Open Print & Image Tools</a>
                                 </td>
                             </tr>
                             <tr>
-                                <td colspan="2" style="padding: 10px; text-align: center;">
+                                <td style="padding: 10px; text-align: center;">
                                     <a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📊 View All Orders</a>
                                 </td>
                             </tr>
@@ -3124,6 +3121,7 @@ def place_order():
             <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h3>📝 Quick Instructions:</h3>
                 <ol>
+                    <li><strong>Tools:</strong> Click the green "Open Print & Image Tools" button for feather edge, corner radius, frame, and 300 DPI — no login required</li>
                     <li><strong>Print Quality:</strong> Use "Generate Print Quality Images" to process images to 300 DPI and apply additional processing (edge feather, corner radius, etc.)</li>
                     <li><strong>Video URL:</strong> The print quality tool will automatically load the order details, or you can copy the video URL from order details</li>
                     <li><strong>Timestamp:</strong> The screenshot timestamp is shown above and will be used in the print quality tool</li>
@@ -3503,8 +3501,8 @@ def success():
                 html_body += f"<p><strong>Creator:</strong> {order_data.get('creator_name', 'Unknown Creator')}</p>"
                 html_body += f"<p><strong>Video URL:</strong> {order_data.get('video_url', 'Not provided')}</p>"
                 html_body += "<br>"
-                html_body += "<p><strong>📋 View Order (no login):</strong></p>"
-                html_body += f"<p><a href='https://screenmerch.fly.dev/order/{order_id}' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
+                html_body += "<p><strong>🖨️ Open tools (feather edge, corner radius, frame, 300 DPI):</strong></p>"
+                html_body += f"<p><a href='https://screenmerch.fly.dev/print-quality?order_id={order_id}' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Open Print & Image Tools</a></p>"
                 html_body += "<br>"
                 html_body += "<p><strong>📊 All Orders Dashboard:</strong></p>"
                 html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
@@ -4455,10 +4453,7 @@ def stripe_webhook():
                             <table cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td style="padding: 10px;">
-                                        <a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
-                                    </td>
-                                    <td style="padding: 10px;">
-                                        <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #17a2b8; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
+                                        <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Open Print & Image Tools</a>
                                     </td>
                                 </tr>
                             </table>
@@ -4468,7 +4463,7 @@ def stripe_webhook():
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                     <h3>📝 Quick Instructions:</h3>
                     <ol>
-                        <li><strong>View Order:</strong> Click "View Order Details" (green) to see full order info — no login required</li>
+                        <li><strong>Tools:</strong> Click the green "Open Print & Image Tools" button for feather edge, corner radius, frame, and 300 DPI — no login required</li>
                         <li><strong>Print Quality:</strong> Use the generator to process images to 300 DPI and apply additional processing (edge feather, corner radius)</li>
                         <li><strong>Video URL:</strong> Copy the video URL from order details and paste it into the print quality tool</li>
                         <li><strong>Timestamp:</strong> Use the timestamp shown above in the print quality tool</li>
