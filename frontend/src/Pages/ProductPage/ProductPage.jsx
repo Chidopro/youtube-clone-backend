@@ -47,6 +47,8 @@ const ProductPage = ({ sidebar }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedScreenshot, setSelectedScreenshot] = useState(null);
+  /** Actual URL/data of the selected screenshot (set on click). Used for add-to-cart so the exact chosen image is sent, not a fallback. */
+  const [selectedScreenshotUrl, setSelectedScreenshotUrl] = useState(null);
   const [selectedColors, setSelectedColors] = useState({});
   const [selectedSizes, setSelectedSizes] = useState({});
   const [cartItems, setCartItems] = useState(() => {
@@ -487,7 +489,8 @@ const ProductPage = ({ sidebar }) => {
   const handleAddToCart = (product, index) => {
     const chosenColor = selectedColors[index] || (product?.options?.color?.[0] || 'Default');
     const chosenSize = selectedSizes[index] || (product?.options?.size?.[0] || 'One Size');
-    const screenshotUrl = getSelectedScreenshotUrl();
+    // Use the URL stored when user clicked a screenshot so we send the exact image they selected (not thumbnail by mistake)
+    const screenshotUrl = selectedScreenshotUrl || getSelectedScreenshotUrl();
 
     // Get video metadata from localStorage (including screenshot_timestamp for email/order)
     let videoMetadata = {};
@@ -536,7 +539,7 @@ const ProductPage = ({ sidebar }) => {
       
       // If in creator mode, set initial selected screenshot
       if (creatorMode && creatorStatus) {
-        // Set thumbnail as default selection
+        // Set thumbnail as default selection (URL will be set when fallbackImages load)
         setSelectedScreenshot('thumbnail');
         setSelectedScreenshotForFavorite('thumbnail');
       }
@@ -557,6 +560,7 @@ const ProductPage = ({ sidebar }) => {
         
         // In creator mode, if we have video data, set up productData structure
         if (creatorMode && d?.thumbnail) {
+          setSelectedScreenshotUrl((prev) => prev ?? d.thumbnail);
           // Create a minimal productData structure for screenshot selection
           setProductData({
             success: true,
@@ -1075,6 +1079,7 @@ const ProductPage = ({ sidebar }) => {
                       >
                         <div onClick={() => {
                           setSelectedScreenshot(originalIndex);
+                          setSelectedScreenshotUrl(screenshot);
                           if (creatorMode) setSelectedScreenshotForFavorite(originalIndex);
                         }} style={{ cursor: 'pointer' }}>
                           <img 
@@ -1125,13 +1130,13 @@ const ProductPage = ({ sidebar }) => {
               <button 
                 className="tools-page-btn"
                 onClick={() => {
-                  // Save the selected screenshot URL before navigating to tools
-                  const selectedScreenshotUrl = getSelectedScreenshotUrl();
-                  if (selectedScreenshotUrl) {
+                  // Save the selected screenshot URL before navigating to tools (use stored URL so it matches what would be sent to cart)
+                  const urlToSave = selectedScreenshotUrl || getSelectedScreenshotUrl();
+                  if (urlToSave) {
                     try {
                       const raw = localStorage.getItem('pending_merch_data');
                       const data = raw ? JSON.parse(raw) : {};
-                      data.selected_screenshot = selectedScreenshotUrl;
+                      data.selected_screenshot = urlToSave;
                       localStorage.setItem('pending_merch_data', JSON.stringify(data));
                     } catch (e) {
                       console.warn('Could not save selected screenshot:', e);
