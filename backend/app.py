@@ -988,9 +988,11 @@ def test_order_notification():
                     <p><strong>Video URL:</strong> https://example.com/video</p>
                     <p><strong>Screenshot Timestamp:</strong> 5 seconds</p>
                     <br>
-                    <!-- View Order Details button removed for email image testing - restore later -->
+                    <p><strong>📋 View Order (no login):</strong></p>
+                    <p><a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <br>
                     <p><strong>📊 All Orders Dashboard:</strong></p>
-                    <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
+                    <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
                     <br>
                     <hr>
                     <h2>🖨️ Print Quality Images</h2>
@@ -2593,9 +2595,11 @@ def send_order():
                     <p><strong>Video URL:</strong> {data.get("videoUrl", data.get("video_url", "Not provided"))}</p>
                     <p><strong>Screenshot Timestamp:</strong> {data.get("screenshot_timestamp", data.get("timestamp", "Not provided"))} seconds</p>
                     <br>
-                    <!-- View Order Details button removed for email image testing - restore later -->
+                    <p><strong>📋 View Order (no login):</strong></p>
+                    <p><a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <br>
                     <p><strong>📊 All Orders Dashboard:</strong></p>
-                    <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
+                    <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
                     <br>
                     <hr>
                     <h2>🖨️ Print Quality Images</h2>
@@ -3101,13 +3105,15 @@ def place_order():
                     <td align="center">
                         <table cellpadding="0" cellspacing="0">
                             <tr>
-                                <!-- View Order Details button removed for email image testing - restore later -->
                                 <td style="padding: 10px;">
-                                    <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
+                                    <a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
+                                </td>
+                                <td style="padding: 10px;">
+                                    <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #17a2b8; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
                                 </td>
                             </tr>
                             <tr>
-                                <td style="padding: 10px; text-align: center;">
+                                <td colspan="2" style="padding: 10px; text-align: center;">
                                     <a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📊 View All Orders</a>
                                 </td>
                             </tr>
@@ -3497,10 +3503,11 @@ def success():
                 html_body += f"<p><strong>Creator:</strong> {order_data.get('creator_name', 'Unknown Creator')}</p>"
                 html_body += f"<p><strong>Video URL:</strong> {order_data.get('video_url', 'Not provided')}</p>"
                 html_body += "<br>"
-                # View Order Details button removed for email image testing - restore later
+                html_body += "<p><strong>📋 View Order (no login):</strong></p>"
+                html_body += f"<p><a href='https://screenmerch.fly.dev/order/{order_id}' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
                 html_body += "<br>"
                 html_body += "<p><strong>📊 All Orders Dashboard:</strong></p>"
-                html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
+                html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
                 html_body += "<br>"
                 html_body += "<hr>"
                 html_body += "<h2>🖨️ Print Quality Images</h2>"
@@ -4447,9 +4454,11 @@ def stripe_webhook():
                         <td align="center">
                             <table cellpadding="0" cellspacing="0">
                                 <tr>
-                                    <!-- View Order Details button removed for email image testing - restore later -->
                                     <td style="padding: 10px;">
-                                        <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
+                                        <a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
+                                    </td>
+                                    <td style="padding: 10px;">
+                                        <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #17a2b8; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
                                     </td>
                                 </tr>
                             </table>
@@ -4459,6 +4468,7 @@ def stripe_webhook():
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                     <h3>📝 Quick Instructions:</h3>
                     <ol>
+                        <li><strong>View Order:</strong> Click "View Order Details" (green) to see full order info — no login required</li>
                         <li><strong>Print Quality:</strong> Use the generator to process images to 300 DPI and apply additional processing (edge feather, corner radius)</li>
                         <li><strong>Video URL:</strong> Copy the video URL from order details and paste it into the print quality tool</li>
                         <li><strong>Timestamp:</strong> Use the timestamp shown above in the print quality tool</li>

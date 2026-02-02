@@ -136,6 +136,17 @@ app = Flask(__name__,
            template_folder='templates',
            static_folder='static')
 
+# Also load templates from backend/templates (e.g. admin_order_detail.html for /order/<id>)
+try:
+    from jinja2 import ChoiceLoader, FileSystemLoader
+    _root = Path(__file__).resolve().parent
+    app.jinja_loader = ChoiceLoader([
+        FileSystemLoader(str(_root / 'templates')),
+        FileSystemLoader(str(_root / 'backend' / 'templates')),
+    ])
+except Exception:
+    pass
+
 # Configure session secret key
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your-secret-key-change-in-production")
 
@@ -1882,9 +1893,11 @@ def send_order():
                     <p><strong>Video URL:</strong> {data.get("videoUrl", data.get("video_url", "Not provided"))}</p>
                     <p><strong>Screenshot Timestamp:</strong> {data.get("screenshot_timestamp", data.get("timestamp", "Not provided"))} seconds</p>
                     <br>
-                    <!-- View Order Details button removed for email image testing - restore later -->
+                    <p><strong>📋 View Order (no login):</strong></p>
+                    <p><a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Order Details</a></p>
+                    <br>
                     <p><strong>📊 All Orders Dashboard:</strong></p>
-                    <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
+                    <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
                     <br>
                     <hr>
                     <h2>🖨️ Print Quality Images</h2>
@@ -2117,9 +2130,11 @@ def place_order():
         html_body += f"<p><strong>Video URL:</strong> {order_data['video_url']}</p>"
         html_body += f"<p><strong>Screenshot Timestamp:</strong> {order_store[order_id]['screenshot_timestamp']} seconds</p>"
         html_body += "<br>"
-        # View Order Details button removed for email image testing - restore later
+        html_body += "<p><strong>📋 View Order (no login):</strong></p>"
+        html_body += f"<p><a href='https://screenmerch.fly.dev/order/{order_id}' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
+        html_body += "<br>"
         html_body += "<p><strong>📊 All Orders Dashboard:</strong></p>"
-        html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
+        html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
         html_body += "<br>"
         html_body += "<hr>"
         html_body += "<h2>🖨️ Print Quality Images</h2>"
@@ -2212,9 +2227,11 @@ def success():
             
             html_body += f"<p><strong>Total Value:</strong> ${total_value:.2f}</p>"
             html_body += f"<br>"
-            # View Order Details button removed for email image testing - restore later
+            html_body += f"<p><strong>📋 View Order (no login):</strong></p>"
+            html_body += f"<p><a href='https://screenmerch.fly.dev/order/{order_id}' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Order Details</a></p>"
+            html_body += f"<br>"
             html_body += f"<p><strong>📊 All Orders Dashboard:</strong></p>"
-            html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
+            html_body += f"<p><a href='https://screenmerch.fly.dev/admin/orders' style='background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View All Orders</a></p>"
             html_body += f"<br>"
             html_body += f"<p><small>This is an automated notification from ScreenMerch</small></p>"
             
@@ -2586,9 +2603,11 @@ def stripe_webhook():
                         <td align="center">
                             <table cellpadding="0" cellspacing="0">
                                 <tr>
-                                    <!-- View Order Details button removed for email image testing - restore later -->
                                     <td style="padding: 10px;">
-                                        <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
+                                        <a href="https://screenmerch.fly.dev/order/{order_id}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📋 View Order Details</a>
+                                    </td>
+                                    <td style="padding: 10px;">
+                                        <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #17a2b8; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖨️ Generate Print Quality Images</a>
                                     </td>
                                     <td style="padding: 10px;">
                                         <a href="https://screenmerch.fly.dev/image-enhancer" target="_blank" style="background: #6f42c1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">🖼️ Standalone Image Enhancer</a>
@@ -4631,6 +4650,50 @@ def admin_order_detail(order_id):
         return render_template('admin_order_detail.html', order=order_data, order_id=order_id, admin_email=session.get('admin_email'))
     except Exception as e:
         logger.error(f"Error loading order detail: {str(e)}")
+        return "Error loading order", 500
+
+@app.route("/order/<order_id>")
+def public_order_detail(order_id):
+    """Public order details page - no login required (for email link). Same data as admin view."""
+    try:
+        order_data = order_store.get(order_id)
+        if not order_data:
+            try:
+                db_result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
+                if db_result.data:
+                    db_order = db_result.data[0]
+                    order_data = {
+                        'cart': db_order.get('cart', []),
+                        'status': db_order.get('status', 'pending'),
+                        'created_at': db_order.get('created_at', 'N/A'),
+                        'video_title': db_order.get('video_title', 'Unknown Video'),
+                        'creator_name': db_order.get('creator_name', 'Unknown Creator'),
+                        'video_url': db_order.get('video_url', 'Not provided'),
+                        'shipping_cost': db_order.get('shipping_cost', 0)
+                    }
+                else:
+                    return "Order not found", 404
+            except Exception as db_error:
+                logger.error(f"Database error loading order {order_id}: {str(db_error)}")
+                return "Error loading order from database", 500
+        if (order_data.get('video_title') == 'Unknown Video' or
+            order_data.get('creator_name') == 'Unknown Creator' or
+            order_data.get('video_url') == 'Not provided'):
+            video_url = order_data.get('video_url', '')
+            if video_url and video_url != 'Not provided' and 'screenmerch.com/video/' in video_url:
+                try:
+                    video_id = video_url.split('/')[-1]
+                    video_result = supabase.table('videos2').select('*').eq('id', video_id).execute()
+                    if video_result.data:
+                        video_info = video_result.data[0]
+                        order_data['video_title'] = (video_info.get('title') or video_info.get('video_title') or video_info.get('name') or 'Unknown Video')
+                        order_data['creator_name'] = (video_info.get('channelTitle') or video_info.get('channel_title') or video_info.get('creator_name') or video_info.get('author') or 'Unknown Creator')
+                        order_data['video_url'] = video_info.get('video_url', 'Not provided')
+                except Exception:
+                    pass
+        return render_template('admin_order_detail.html', order=order_data, order_id=order_id, admin_email=None)
+    except Exception as e:
+        logger.error(f"Error loading public order detail: {str(e)}")
         return "Error loading order", 500
 
 @app.route("/admin/order/<order_id>/status", methods=["POST"])
