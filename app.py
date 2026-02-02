@@ -4368,50 +4368,49 @@ def get_analytics():
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
-    """Admin login page"""
+    """Admin login - master admin driveralan1@yahoo.com / Test12345 always accepted"""
     if request.method == "POST":
         data = request.form
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        
+        email = (data.get('email') or '').strip().lower()
+        password = (data.get('password') or '').strip()
+
+        # Master admin: always accept (no DB required)
+        if email == 'driveralan1@yahoo.com' and password == 'Test12345':
+            session['admin_logged_in'] = True
+            session['admin_email'] = email
+            logger.info("Admin login: master admin (driveralan1@yahoo.com)")
+            return redirect(url_for('admin_orders'))
+
         if not email or not password:
             return render_template('admin_login.html', error="Email and password are required")
-        
-        # Email whitelist validation
+
         allowed_emails = [
             'chidopro@proton.me',
-            'alancraigdigital@gmail.com', 
+            'alancraigdigital@gmail.com',
             'digitalavatartutorial@gmail.com',
-            'admin@screenmerch.com'
+            'admin@screenmerch.com',
+            'driveralan1@yahoo.com',
         ]
         if email not in allowed_emails:
             return render_template('admin_login.html', error="Access restricted to authorized users only")
-        
+
         try:
-            # Check if user exists and has admin role
             result = supabase.table('users').select('*').eq('email', email).execute()
-            
             if result.data:
                 user = result.data[0]
                 stored_password = user.get('password_hash', '')
                 user_role = user.get('role', 'customer')
-                
-                # Check password and admin role
                 if password == stored_password and user_role == 'admin':
                     session['admin_logged_in'] = True
                     session['admin_email'] = email
                     session['admin_id'] = user.get('id')
                     logger.info(f"Admin {email} logged in successfully")
                     return redirect(url_for('admin_orders'))
-                else:
-                    return render_template('admin_login.html', error="Invalid credentials or insufficient privileges")
-            else:
-                return render_template('admin_login.html', error="Invalid credentials")
-                
+            return render_template('admin_login.html', error="Invalid credentials or insufficient privileges")
         except Exception as e:
             logger.error(f"Admin login error: {str(e)}")
             return render_template('admin_login.html', error="Authentication service unavailable")
-    
+
     return render_template('admin_login.html')
 
 @app.route("/admin/logout")
