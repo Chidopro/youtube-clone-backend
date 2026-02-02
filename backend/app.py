@@ -7520,75 +7520,11 @@ def get_analytics():
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
-    """Admin login page - redirects to orders when login is skipped (go straight to image processing)"""
-    if os.getenv("ADMIN_REQUIRE_LOGIN", "").lower() not in ("1", "true", "yes"):
-        return redirect(url_for('admin_orders'))
-    if request.method == "POST":
-        data = request.form
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        
-        if not email or not password:
-            return render_template('admin_login.html', error="Email and password are required")
-        
-        # Email whitelist validation
-        allowed_emails = [
-            'chidopro@proton.me',
-            'alancraigdigital@gmail.com',
-            'digitalavatartutorial@gmail.com',
-            'admin@screenmerch.com',
-            'driveralan1@yahoo.com'
-        ]
-        if email not in allowed_emails:
-            return render_template('admin_login.html', error="Access restricted to authorized users only")
-        
-        try:
-            # Check if user exists and has admin role
-            result = supabase.table('users').select('*').eq('email', email).execute()
-            
-            if result.data:
-                user = result.data[0]
-                stored_hash = user.get('password_hash', '') or ''
-                user_role = user.get('role', 'customer')
-                is_admin = user.get('is_admin', False)
-                admin_role = user.get('admin_role')
-                # Allow login if role is admin, or if is_admin flag / admin_role (master_admin etc.) is set
-                has_admin_access = (
-                    user_role == 'admin'
-                    or is_admin
-                    or (admin_role and admin_role in ('master_admin', 'admin', 'order_processing_admin'))
-                )
-                try:
-                    hash_bytes = stored_hash.encode('utf-8') if isinstance(stored_hash, str) else stored_hash
-                    password_ok = bool(stored_hash) and bcrypt.checkpw(password.encode('utf-8'), hash_bytes)
-                except Exception:
-                    password_ok = False
-                # Legacy: if DB has plain text password (e.g. Test12345 stored as-is), accept and upgrade to bcrypt
-                stored_trim = (stored_hash or '').strip() if isinstance(stored_hash, str) else stored_hash
-                if not password_ok and stored_trim and stored_trim == password:
-                    password_ok = True
-                    try:
-                        new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                        supabase.table('users').update({'password_hash': new_hash}).eq('id', user.get('id')).execute()
-                        logger.info(f"Upgraded admin {email} password to bcrypt")
-                    except Exception as upgrade_err:
-                        logger.warning(f"Could not upgrade password hash: {upgrade_err}")
-                if password_ok and has_admin_access:
-                    session['admin_logged_in'] = True
-                    session['admin_email'] = email
-                    session['admin_id'] = user.get('id')
-                    logger.info(f"Admin {email} logged in successfully")
-                    return redirect(url_for('admin_orders'))
-                else:
-                    return render_template('admin_login.html', error="Invalid credentials or insufficient privileges")
-            else:
-                return render_template('admin_login.html', error="Invalid credentials")
-                
-        except Exception as e:
-            logger.error(f"Admin login error: {str(e)}")
-            return render_template('admin_login.html', error="Authentication service unavailable")
-    
-    return render_template('admin_login.html')
+    """Straight through to admin orders - no login form (testing access)"""
+    session['admin_logged_in'] = True
+    session['admin_email'] = 'admin'
+    logger.info("Admin access: straight through to orders (no login)")
+    return redirect(url_for('admin_orders'))
 
 @app.route("/admin/logout")
 def admin_logout():
@@ -7656,7 +7592,6 @@ def admin_setup():
     return redirect(url_for('admin_login'))
 
 @app.route("/admin/orders")
-@admin_required
 def admin_orders():
     """Internal order management page for fulfillment"""
     try:
@@ -7733,9 +7668,8 @@ def admin_orders():
         return jsonify({"error": "Failed to load orders"}), 500
 
 @app.route("/admin/order/<order_id>")
-@admin_required
 def admin_order_detail(order_id):
-    """Detailed view of a specific order"""
+    """Detailed view of a specific order (login not required for testing)"""
     try:
         # First try to get order from in-memory store
         order_data = order_store.get(order_id)
