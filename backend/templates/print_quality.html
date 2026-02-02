@@ -542,18 +542,23 @@
                             // Hide product info if no product data available
                             document.getElementById('productInfoDisplay').style.display = 'none';
                         }
-                    } else {
-                        document.getElementById('screenshotPreview').innerHTML = '<p style="color: orange;">⚠️ No screenshot found in order</p>';
-                        document.getElementById('productSelectorGroup').style.display = 'none';
-                    }
                 } else {
-                    document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">❌ Failed to load order screenshot</p>';
+                    document.getElementById('screenshotPreview').innerHTML = '<p style="color: orange;">⚠️ No screenshot found in order</p><small style="display:block;margin-top:8px;">The order was found but no image was saved. This can happen if the screenshot was not captured during checkout. You can still use the tools below with a video URL or by uploading an image.</small>';
                     document.getElementById('productSelectorGroup').style.display = 'none';
                 }
-            } catch (error) {
-                document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">❌ Error loading screenshot: ' + error.message + '</p>';
+            } else {
+                let errMsg = 'Failed to load order screenshot';
+                try {
+                    const errData = await response.json();
+                    if (errData && errData.error) errMsg = errData.error;
+                } catch (e) {}
+                document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">❌ ' + errMsg + '</p><small style="display:block;margin-top:8px;">If the order was just placed, wait a moment and click "Load Screenshot" again. Check that the order ID matches the one in your email.</small>';
                 document.getElementById('productSelectorGroup').style.display = 'none';
             }
+        } catch (error) {
+            document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">❌ Error loading screenshot: ' + error.message + '</p><small style="display:block;margin-top:8px;">Check your connection and ensure the order ID is correct (e.g. ORD-187ABD7E from your email link).</small>';
+            document.getElementById('productSelectorGroup').style.display = 'none';
+        }
         }
 
         // Handle mode switching

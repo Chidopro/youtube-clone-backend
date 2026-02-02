@@ -3840,10 +3840,10 @@ def create_checkout_session():
             logger.warning(f"⚠️ [CHECKOUT] Error looking up creator from subdomain: {subdomain_error}")
         
         # Store order in database instead of in-memory store
-        # NOTE: selected_screenshot column doesn't exist in database, so we store it only in cart items
+        # Store screenshot at order level (selected_screenshot column) so Print Quality tool page can load it
         order_data = {
             "order_id": order_id,
-            "cart": enriched_cart,  # Screenshot is stored in cart items (selected_screenshot field)
+            "cart": enriched_cart,  # Screenshot also in cart items (selected_screenshot field)
             "sms_consent": sms_consent,
             "customer_email": data.get("user_email", ""),
             "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
@@ -3856,10 +3856,10 @@ def create_checkout_session():
             "shipping_address": shipping_address,  # Store shipping address for future reference
             "status": "pending"
         }
-        
-        # Screenshot is stored in enriched_cart items (selected_screenshot field in each cart item)
-        # We don't store it at order level because the database column doesn't exist
+        # Order-level screenshot so get-order-screenshot and Print Quality page can find it
         if checkout_screenshot:
+            order_data["selected_screenshot"] = checkout_screenshot
+            logger.info(f"✅ Stored selected_screenshot at order level for Print Quality tool")
             logger.info(f"✅ Screenshot stored in enriched_cart items (selected_screenshot field): {bool(checkout_screenshot)}")
             logger.info(f"✅ Screenshot will be retrievable from cart items for email: {bool(checkout_screenshot)}")
         
@@ -3873,11 +3873,23 @@ def create_checkout_session():
                 else:
                     logger.warning(f"   ⚠️ Item {idx} has NO screenshot - selected_screenshot={screenshot_val}")
             
-            # Store in database
-            supabase.table('orders').insert(order_data).execute()
-            logger.info(f"✅ Order {order_id} stored in database")
+            # Store in database (retry without selected_screenshot if column does not exist yet)
+            try:
+                supabase.table('orders').insert(order_data).execute()
+                logger.info(f"✅ Order {order_id} stored in database")
+            except Exception as insert_err:
+                err_str = str(insert_err).lower()
+                if 'selected_screenshot' in err_str or 'column' in err_str:
+                    order_data_fallback = {k: v for k, v in order_data.items() if k != 'selected_screenshot'}
+                    try:
+                        supabase.table('orders').insert(order_data_fallback).execute()
+                        logger.info(f"✅ Order {order_id} stored in database (without order-level screenshot; run add_order_screenshot_column.sql to enable)")
+                    except Exception as retry_err:
+                        raise retry_err
+                else:
+                    raise insert_err
             
-            # Keep in-memory store as backup for admin dashboard
+            # Keep in-memory store as backup for admin dashboard and get-order-screenshot
             order_store[order_id] = {
                 "cart": enriched_cart,
                 "sms_consent": sms_consent,
@@ -3890,6 +3902,8 @@ def create_checkout_session():
                 "status": "pending",
                 "created_at": data.get("created_at", "Recent")
             }
+            if checkout_screenshot:
+                order_store[order_id]["selected_screenshot"] = checkout_screenshot
             logger.info(f"✅ Order {order_id} also stored in in-memory store")
         except Exception as db_error:
             logger.error(f"❌ Failed to store order in database: {str(db_error)}")
@@ -3908,6 +3922,8 @@ def create_checkout_session():
                 "status": "pending",
                 "created_at": data.get("created_at", "Recent")
             }
+            if checkout_screenshot:
+                order_store[order_id]["selected_screenshot"] = checkout_screenshot
 
         line_items = []
         for item in cart:
