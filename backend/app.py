@@ -3695,8 +3695,25 @@ def stripe_webhook():
                 if db_result.data:
                     order_data = db_result.data[0]
                     cart = order_data.get("cart", [])
+                    if isinstance(cart, str):
+                        try:
+                            cart = json.loads(cart) if cart.strip() else []
+                        except Exception:
+                            cart = []
+                    if not isinstance(cart, list):
+                        cart = []
                     sms_consent = order_data.get("sms_consent", False)
                     logger.info(f"✅ Retrieved order {order_id} from database")
+                    # If DB has no order-level screenshot but cart items do, set it so email gets exactly one correct screenshot
+                    if not (order_data.get("selected_screenshot") or order_data.get("screenshot") or order_data.get("thumbnail")):
+                        for item in cart:
+                            if isinstance(item, dict):
+                                s = item.get("selected_screenshot") or item.get("screenshot") or item.get("img") or item.get("thumbnail")
+                                if s and isinstance(s, str) and s.strip():
+                                    order_data = dict(order_data)
+                                    order_data["selected_screenshot"] = s
+                                    logger.info(f"📸 [WEBHOOK] Set order selected_screenshot from cart item for email")
+                                    break
                     # Log order data to debug screenshot retrieval
                     logger.info(f"📸 [WEBHOOK] Order data keys: {list(order_data.keys())}")
                     logger.info(f"📸 [WEBHOOK] Order-level screenshot fields: selected_screenshot={bool(order_data.get('selected_screenshot'))}, thumbnail={bool(order_data.get('thumbnail'))}, screenshot={bool(order_data.get('screenshot'))}")
@@ -4706,6 +4723,16 @@ def get_order_screenshot(order_id):
                 cart = []
         if not isinstance(cart, list):
             cart = []
+        # If order has no order-level screenshot but cart items do, set it so Print Quality gets the correct image
+        if from_db and not (order_data.get("selected_screenshot") or order_data.get("screenshot") or order_data.get("thumbnail")):
+            for item in cart:
+                if isinstance(item, dict):
+                    s = item.get("selected_screenshot") or item.get("screenshot") or item.get("img") or item.get("thumbnail")
+                    if s and isinstance(s, str) and s.strip():
+                        order_data = dict(order_data)
+                        order_data["selected_screenshot"] = s
+                        logger.info(f"📸 [GET-SCREENSHOT] Set order selected_screenshot from cart for Print Quality")
+                        break
 
         logger.info(f"🔍 [GET-SCREENSHOT] Looking for screenshots in order {order_id}")
         logger.info(f"🔍 [GET-SCREENSHOT] Order data keys: {list(order_data.keys())}")

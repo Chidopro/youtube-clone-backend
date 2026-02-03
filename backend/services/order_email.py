@@ -114,11 +114,15 @@ def get_order_screenshot(order_data, cart):
     # Last resort: order-level thumbnail (e.g. video thumbnail stored at order level)
     if not screenshot:
         screenshot = order_data.get("thumbnail") or order_data.get("screenshot") or ""
-    # Final fallback: scan order_data and cart for any value that looks like base64 image (different key names)
+    # Final fallback: only check known screenshot keys (avoid picking wrong image from other fields)
+    known_keys = ("selected_screenshot", "screenshot", "img", "thumbnail")
     if not (screenshot and str(screenshot).strip()):
         for d in [order_data] + [x for x in cart if isinstance(x, dict)]:
-            for v in (d or {}).values():
-                if isinstance(v, str) and v.strip().startswith("data:image"):
+            for key in known_keys:
+                v = (d or {}).get(key)
+                if isinstance(v, str) and v.strip() and (
+                    v.strip().startswith("data:image") or v.strip().startswith(("http://", "https://"))
+                ):
                     screenshot = v
                     break
             if screenshot:
