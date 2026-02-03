@@ -4788,6 +4788,41 @@ def get_order_screenshot(order_id):
                                 break
                     if order_level_screenshot:
                         break
+        # Last resort: deep scan any value in order_data and cart for data:image or http (same source as email; handles odd DB shapes)
+        if not order_level_screenshot or not str(order_level_screenshot).strip():
+            def _find_image_in_val(val):
+                if isinstance(val, str) and val.strip():
+                    if val.strip().startswith("data:image"):
+                        return val
+                    if val.strip().startswith(("http://", "https://")):
+                        return fetch_screenshot_url(val) or val
+                    # DB may return cart as JSON string; parse and recurse so we find screenshot inside
+                    if (val.strip().startswith("[") or val.strip().startswith("{")) and len(val) > 10:
+                        try:
+                            parsed = json.loads(val)
+                            return _find_image_in_val(parsed)
+                        except Exception:
+                            pass
+                if isinstance(val, dict):
+                    for v in val.values():
+                        out = _find_image_in_val(v)
+                        if out:
+                            return out
+                if isinstance(val, list):
+                    for x in val:
+                        out = _find_image_in_val(x)
+                        if out:
+                            return out
+                return None
+            order_level_screenshot = _find_image_in_val(order_data)
+            if order_level_screenshot:
+                logger.info("Found screenshot via deep scan in order_data for Print Quality tool")
+            if not order_level_screenshot and cart:
+                for item in cart:
+                    order_level_screenshot = _find_image_in_val(item) if isinstance(item, dict) else None
+                    if order_level_screenshot:
+                        logger.info("Found screenshot via deep scan in cart for Print Quality tool")
+                        break
         if order_level_screenshot:
             logger.info(f"✅ [GET-SCREENSHOT] Using screenshot (order-level or from cart fallback), len={len(str(order_level_screenshot))}")
 
