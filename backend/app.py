@@ -4652,37 +4652,51 @@ def process_thumbnail_print_quality():
 
 @app.route("/api/get-order-screenshot/<order_id>")
 def get_order_screenshot(order_id):
-    """Get screenshot data for a specific order"""
+    """Get screenshot data for a specific order. Prefer order_store so screenshot from checkout is always available."""
     try:
-        # First try to get order from database using order_id field
-        result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
-        
-        # If not found, try common alternative keys
-        if not result.data:
-            alt_result = supabase.table('orders').select('*').eq('id', order_id).execute()
-            if alt_result.data:
-                result = alt_result
-            else:
-                alt2_result = supabase.table('orders').select('*').eq('order_number', order_id).execute()
-                if alt2_result.data:
-                    result = alt2_result
-        
-        if not result.data:
-            # Fallback: try to get from in-memory order_store
-            if order_id in order_store:
-                order_data = order_store[order_id]
-                logger.info(f"✅ Retrieved order {order_id} from in-memory store")
-            else:
+        order_data = None
+        cart = []
+        from_db = False
+        # Prefer in-memory order_store first (screenshot is always stored there at checkout)
+        if order_id in order_store:
+            order_data = dict(order_store[order_id])
+            cart = order_data.get('cart', [])
+            logger.info(f"✅ Retrieved order {order_id} from in-memory store (screenshot available)")
+        # Else load from database
+        if not order_data:
+            result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
+            if not result.data:
+                alt_result = supabase.table('orders').select('*').eq('id', order_id).execute()
+                if alt_result.data:
+                    result = alt_result
+                else:
+                    alt2_result = supabase.table('orders').select('*').eq('order_number', order_id).execute()
+                    if alt2_result.data:
+                        result = alt2_result
+            if not result.data:
                 response = jsonify({
                     "success": False,
                     "error": "Order not found"
                 })
                 return response, 404
-        else:
             order_data = result.data[0]
+            from_db = True
             logger.info(f"✅ Retrieved order {order_id} from database")
+        # If we loaded from DB but order is also in order_store, merge screenshot from store (same instance may have it)
+        if from_db and order_id in order_store:
+            stored = order_store[order_id]
+            if stored.get("selected_screenshot"):
+                order_data = dict(order_data)
+                order_data["selected_screenshot"] = stored["selected_screenshot"]
+                logger.info(f"✅ Merged screenshot from order_store for Print Quality")
+            if not (order_data.get("selected_screenshot") or (cart and (cart[0].get("selected_screenshot") or cart[0].get("screenshot")))):
+                stored_cart = stored.get("cart", [])
+                if stored_cart and (stored_cart[0].get("selected_screenshot") or stored_cart[0].get("screenshot")):
+                    cart = stored_cart
+                    order_data = dict(order_data)
+                    order_data["cart"] = cart
+                    logger.info(f"✅ Merged cart with screenshot from order_store")
         
-        # Extract screenshot data from cart items - return all products with their images
         cart = order_data.get('cart', [])
         # Normalize cart: Supabase/DB may return JSONB as string; parse so we can read item.selected_screenshot
         if isinstance(cart, str):
@@ -4719,25 +4733,31 @@ def get_order_screenshot(order_id):
             if fetched:
                 order_level_screenshot = fetched
                 logger.info("Fetched screenshot from URL for Print Quality tool")
-        # Fallback: if still no screenshot, scan order_data and cart for any image URL (e.g. stored under different key)
+        # Fallback: if still no screenshot, scan order_data and cart for any image URL or base64 (stored under any key)
         if not order_level_screenshot or not str(order_level_screenshot).strip():
             for key in ("selected_screenshot", "screenshot", "thumbnail", "image_url", "img"):
                 val = order_data.get(key)
-                if val and isinstance(val, str) and val.strip().startswith(("http://", "https://")):
-                    order_level_screenshot = fetch_screenshot_url(val) or val
+                if val and isinstance(val, str) and val.strip():
+                    if val.strip().startswith(("http://", "https://")):
+                        order_level_screenshot = fetch_screenshot_url(val) or val
+                    elif val.strip().startswith("data:image"):
+                        order_level_screenshot = val
                     if order_level_screenshot:
-                        logger.info(f"Found screenshot URL in order_data.{key} for Print Quality tool")
+                        logger.info(f"Found screenshot in order_data.{key} for Print Quality tool")
                         break
             if not order_level_screenshot and cart:
                 for item in cart:
                     if not isinstance(item, dict):
                         continue
-                    for key in ("selected_screenshot", "screenshot", "img", "thumbnail"):
+                    for key in ("selected_screenshot", "screenshot", "img", "thumbnail", "image"):
                         val = item.get(key)
-                        if val and isinstance(val, str) and val.strip().startswith(("http://", "https://")):
-                            order_level_screenshot = fetch_screenshot_url(val) or val
+                        if val and isinstance(val, str) and val.strip():
+                            if val.strip().startswith(("http://", "https://")):
+                                order_level_screenshot = fetch_screenshot_url(val) or val
+                            elif val.strip().startswith("data:image"):
+                                order_level_screenshot = val
                             if order_level_screenshot:
-                                logger.info(f"Found screenshot URL in cart item.{key} for Print Quality tool")
+                                logger.info(f"Found screenshot in cart item.{key} for Print Quality tool")
                                 break
                     if order_level_screenshot:
                         break
