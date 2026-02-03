@@ -2989,8 +2989,8 @@ def place_order():
                 "html": html_body,
             }
             if resend_attachments:
-                email_data["attachments"] = resend_attachments
-                logger.info(f"📎 Adding {len(resend_attachments)} image attachments to email")
+                email_data["attachments"] = resend_attachments[:1]  # Exactly one screenshot per order
+                logger.info(f"📎 Adding {len(email_data['attachments'])} image attachment(s) to email")
             else:
                 logger.warning(f"⚠️ No email attachments created - screenshot might be missing")
             logger.info(f"📧 Attempting to send email to {MAIL_TO} from {RESEND_FROM}")
@@ -3145,8 +3145,8 @@ def success():
                         "html": html_body,
                     }
                     if resend_attachments:
-                        email_data["attachments"] = resend_attachments
-                        logger.info(f"📎 [SUCCESS] Adding {len(resend_attachments)} image attachments to email")
+                        email_data["attachments"] = resend_attachments[:1]  # Exactly one screenshot per order
+                        logger.info(f"📎 [SUCCESS] Adding {len(email_data['attachments'])} image attachment(s) to email")
                     else:
                         logger.warning(f"⚠️ [SUCCESS] No email attachments created - screenshots might be missing")
                     logger.info(f"📧 [SUCCESS] Attempting to send email to {MAIL_TO} from {RESEND_FROM}")
@@ -3870,8 +3870,8 @@ def stripe_webhook():
                     "html": html_body
                 }
                 if resend_attachments:
-                    email_data["attachments"] = resend_attachments
-                    logger.info(f"📎 [WEBHOOK] Adding {len(resend_attachments)} image attachments to email")
+                    email_data["attachments"] = resend_attachments[:1]  # Exactly one screenshot per order
+                    logger.info(f"📎 [WEBHOOK] Adding {len(email_data['attachments'])} image attachment(s) to email")
                 else:
                     logger.warning(f"⚠️ [WEBHOOK] No email attachments created - screenshots might be missing")
                 

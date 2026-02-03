@@ -14,6 +14,7 @@ from utils.helpers import (
     require_shipping_address, _parse_zip
 )
 from services.email_service import send_order_email
+from services.order_email import build_admin_order_email, resend_attachments_from_builder
 
 logger = logging.getLogger(__name__)
 
@@ -790,6 +791,9 @@ def create_checkout_session():
         
         if checkout_screenshot:
             order_data["selected_screenshot"] = checkout_screenshot
+        order_ts = data.get("screenshot_timestamp") or data.get("timestamp")
+        if order_ts is not None and str(order_ts).strip():
+            order_data["screenshot_timestamp"] = str(order_ts)
         
         client = _get_supabase_client()
         order_store = _get_order_store()
@@ -797,10 +801,11 @@ def create_checkout_session():
         try:
             if client:
                 client.table('orders').insert(order_data).execute()
-        except Exception:
-            pass
+                logger.info("Order %s stored in database (with screenshot: %s)", order_id, bool(checkout_screenshot))
+        except Exception as e:
+            logger.error("Failed to store order %s in database: %s", order_id, e)
         
-        # Keep in-memory backup
+        # Keep in-memory backup (include selected_screenshot so webhook/get-order-screenshot can use it)
         order_store[order_id] = {
             "cart": enriched_cart,
             "sms_consent": sms_consent,
@@ -813,6 +818,8 @@ def create_checkout_session():
             "status": "pending",
             "created_at": data.get("created_at", "Recent")
         }
+        if checkout_screenshot:
+            order_store[order_id]["selected_screenshot"] = checkout_screenshot
         
         # Build Stripe line items
         products = _get_products_list()
@@ -931,6 +938,22 @@ def stripe_webhook():
                     if db_result.data:
                         order_data = db_result.data[0]
                         cart = order_data.get("cart", [])
+                        if isinstance(cart, str):
+                            try:
+                                cart = json.loads(cart) if cart.strip() else []
+                            except Exception:
+                                cart = []
+                        if not isinstance(cart, list):
+                            cart = []
+                        # If DB has no order-level screenshot, set from first cart item (so email gets one correct screenshot)
+                        if not (order_data.get("selected_screenshot") or order_data.get("screenshot") or order_data.get("thumbnail")):
+                            for item in cart:
+                                if isinstance(item, dict):
+                                    s = item.get("selected_screenshot") or item.get("screenshot") or item.get("img") or item.get("thumbnail")
+                                    if s and isinstance(s, str) and s.strip():
+                                        order_data = dict(order_data)
+                                        order_data["selected_screenshot"] = s
+                                        break
                     elif order_id in order_store:
                         order_data = order_store[order_id]
                         cart = order_data.get("cart", [])
@@ -943,7 +966,14 @@ def stripe_webhook():
                         cart = order_data.get("cart", [])
                     else:
                         return "", 200
-                
+                if isinstance(cart, str):
+                    try:
+                        cart = json.loads(cart) if cart.strip() else []
+                    except Exception:
+                        cart = []
+                if not isinstance(cart, list):
+                    cart = []
+
                 # Get customer details from Stripe
                 customer_details = session.get("customer_details", {})
                 customer_name = customer_details.get("name", "Not provided")
@@ -982,68 +1012,28 @@ def stripe_webhook():
                     item['creator_name'] = order_data.get('creator_name', 'Unknown Creator')
                     _record_sale(item, user_id=creator_user_id, order_id=order_id)
                 
-                # Send admin notification email
+                # Send admin notification email (single source: build_admin_order_email — one screenshot, Print Quality link, no admin login)
                 resend_api_key = _get_config('RESEND_API_KEY')
                 resend_from = _get_config('RESEND_FROM', 'noreply@screenmerch.com')
                 mail_to = _get_config('MAIL_TO')
                 
                 if resend_api_key and mail_to:
                     try:
-                        html_body = f"<h1>🎯 New ScreenMerch Order #{order_id}</h1>"
-                        html_body += f"<p><strong>Items:</strong> {len(cart)}</p>"
-                        html_body += f"<p><strong>Total Amount:</strong> ${total_amount:.2f}</p>"
-                        html_body += f"<hr>"
-                        html_body += f"<h2>🛍️ Products</h2>"
-                        
-                        # Get screenshot
-                        order_level_screenshot = (order_data.get('selected_screenshot') or 
-                                                order_data.get('thumbnail') or 
-                                                order_data.get('screenshot'))
-                        
-                        # Display screenshot once if available
-                        if order_level_screenshot and cart:
-                            item_screenshot = (cart[0].get('selected_screenshot') or 
-                                             cart[0].get('screenshot') or 
-                                             cart[0].get('img') or 
-                                             cart[0].get('thumbnail') or 
-                                             order_level_screenshot)
-                            if item_screenshot:
-                                if item_screenshot.startswith('data:image'):
-                                    html_body += f"<p><em>Screenshot available in order details</em></p>"
-                                else:
-                                    html_body += f"<img src='{item_screenshot}' alt='Product Screenshot' style='max-width: 300px; border-radius: 6px;'>"
-                        
-                        # Add product details
-                        for item in cart:
-                            product_name = item.get('product', 'N/A')
-                            color = item.get('variants', {}).get('color', 'N/A')
-                            size = item.get('variants', {}).get('size', 'N/A')
-                            
-                            html_body += f"""
-                                <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
-                                    <h3>{product_name}</h3>
-                                    <p><strong>Color:</strong> {color}</p>
-                                    <p><strong>Size:</strong> {size}</p>
-                                    <p><strong>Price:</strong> ${item.get('price', 0):.2f}</p>
-                                </div>
-                            """
-                        
-                        html_body += f"""
-                            <hr>
-                            <h2>📹 Video Information</h2>
-                            <p><strong>Video Title:</strong> {order_data.get('video_title', 'Unknown Video')}</p>
-                            <p><strong>Creator:</strong> {order_data.get('creator_name', 'Unknown Creator')}</p>
-                            <p><strong>Video URL:</strong> {order_data.get('video_url', 'Not provided')}</p>
-                            <p><a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Open Print & Image Tools</a></p>
-                        """
-                        
+                        order_number = order_id[-8:].upper() if len(order_id) >= 8 else order_id
+                        html_body, email_attachments = build_admin_order_email(
+                            order_id, order_data, cart, order_number, total_amount
+                        )
+                        resend_attachments = resend_attachments_from_builder(email_attachments)
+                        # Exactly one screenshot attachment per order (no multiple/lingering images)
+                        resend_attachments = resend_attachments[:1] if resend_attachments else []
                         email_data = {
                             "from": resend_from,
                             "to": [mail_to],
                             "subject": f"🛍️ New ScreenMerch Order - {len(cart)} Item(s) - ${total_amount:.2f} - {customer_name}",
                             "html": html_body
                         }
-                        
+                        if resend_attachments:
+                            email_data["attachments"] = resend_attachments
                         requests.post(
                             "https://api.resend.com/emails",
                             headers={
@@ -1053,8 +1043,8 @@ def stripe_webhook():
                             json=email_data,
                             timeout=30
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.exception("Webhook admin email failed: %s", e)
                 
                 # Send customer confirmation email
                 if customer_email and customer_email != "Not provided" and resend_api_key:

@@ -241,25 +241,27 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     if video_url and str(video_url).strip().startswith('http'):
         html += f"<p><strong>Video URL:</strong> <a href=\"{video_url}\">View video</a></p>"
     html += f"<p><strong>Screenshot Timestamp:</strong> {ts}</p>"
+    # Direct link to Print Quality page (no login) — works even if buttons are stripped by email clients
+    html += f"<p><strong>Open order &amp; tools (no login):</strong> <a href=\"{print_url}\">{print_url}</a></p>"
     html += "<br>"
     html += f"""
         <hr>
-        <h2>🚀 Order Management & Print Quality</h2>
+        <h2>🚀 Order Management &amp; Print Quality</h2>
         <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
             <tr>
                 <td align="center">
                     <table cellpadding="0" cellspacing="0">
                         <tr>
                             <td style="padding: 10px;">
-                                <a href="{print_url}" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">View Order Details</a>
+                                <a href="{print_url}" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Open Print &amp; Image Tools (no login)</a>
                             </td>
                             <td style="padding: 10px;">
-                                <a href="{print_url}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Generate Print Quality Images</a>
+                                <a href="{print_url}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Generate 300 DPI Image</a>
                             </td>
                         </tr>
                         <tr>
                             <td colspan="2" style="padding: 10px; text-align: center;">
-                                <a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📊 View All Orders</a>
+                                <a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📊 View All Orders (admin login required)</a>
                             </td>
                         </tr>
                     </table>
@@ -269,9 +271,9 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3>📝 Quick Instructions:</h3>
             <ol>
-                <li><strong>View Order Details:</strong> Click the blue button to see order info and tools.</li>
-                <li><strong>Generate Print Quality Images:</strong> Click the green button for 300 DPI, feather edge, corner radius, and frame — no login required.</li>
-                <li><strong>Timestamp:</strong> The screenshot timestamp is shown above and will be used in the print quality tool</li>
+                <li><strong>Blue or green button above</strong> opens the order and print/image tools — <strong>no login</strong>. You can also use the link under Video Information.</li>
+                <li><strong>Gray button</strong> (View All Orders) goes to the admin dashboard and requires admin sign-in.</li>
+                <li><strong>Timestamp</strong> above is used in the print quality tool.</li>
             </ol>
         </div>
         <hr>
@@ -343,16 +345,16 @@ def build_customer_order_email(order_id, order_data, cart, order_number, total_a
             {video_url_line}
         </div>
     """
-    # Blue View Order Details + green Generate Print Quality Images
+    # Open Print & Image Tools (no login) + Generate 300 DPI
     print_url = f"{PRINT_QUALITY_BASE_URL}?order_id={order_id}"
     html += f"""
         <div style="margin: 25px 0; padding: 20px 0; border-top: 1px solid #ddd;">
             <p style="margin-bottom: 15px;"><strong>Next steps:</strong></p>
             <p style="margin: 10px 0;">
-                <a href="{print_url}" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin-right: 10px;">View Order Details</a>
-                <a href="{print_url}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Generate Print Quality Images</a>
+                <a href="{print_url}" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin-right: 10px;">Open Print & Image Tools (no login)</a>
+                <a href="{print_url}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Generate 300 DPI Image</a>
             </p>
-            <p style="color: #666; font-size: 14px;">Use the green button to create 300 DPI images for your order (no login required).</p>
+            <p style="color: #666; font-size: 14px;">Use either button to open your order and create 300 DPI images — no login required.</p>
         </div>
     """
     if shipping_address:

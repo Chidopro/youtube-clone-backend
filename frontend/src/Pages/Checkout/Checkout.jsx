@@ -492,7 +492,7 @@ const Checkout = () => {
                     }
                   }
                   
-                  // Also check localStorage for screenshot data and timestamp
+                  // Also check localStorage for screenshot data and timestamp (Tools page saves edited_screenshot here)
                   let screenshotTimestampFromStorage = null;
                   try {
                     const merchData = localStorage.getItem('pending_merch_data');
@@ -500,11 +500,11 @@ const Checkout = () => {
                       const parsed = JSON.parse(merchData);
                       screenshotTimestampFromStorage = parsed.screenshot_timestamp ?? parsed.timestamp ?? null;
                       if (!selectedScreenshot) {
-                        if (parsed.screenshots && Array.isArray(parsed.screenshots) && parsed.screenshots.length > 0) {
-                          selectedScreenshot = parsed.screenshots[0];
-                        } else if (parsed.thumbnail) {
-                          selectedScreenshot = parsed.thumbnail;
-                        }
+                        // Prefer Tools-edited image, then selected_screenshot, then screenshots array, then thumbnail
+                        selectedScreenshot = parsed.edited_screenshot || parsed.selected_screenshot ||
+                          (parsed.screenshots && Array.isArray(parsed.screenshots) && parsed.screenshots.length > 0 ? parsed.screenshots[0] : null) ||
+                          parsed.thumbnail || null;
+                        if (selectedScreenshot) console.log('📸 Using screenshot from pending_merch_data (edited_screenshot/selected_screenshot)');
                       }
                     }
                   } catch (e) {
