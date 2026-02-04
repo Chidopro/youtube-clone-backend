@@ -8040,14 +8040,15 @@ def google_login():
         # Store state in session for security
         session['oauth_state'] = state
         
-        # CRITICAL: Encode return_url in state parameter so it persists through OAuth flow
-        # This works because Google returns the state parameter unchanged
-        # Format: base64_encoded_json with state and return_url
+        # CRITICAL: Encode return_url and flow in state so they persist through OAuth
+        # flow=creator_signup means "always redirect to Thank You page" (subscription-tiers / Start Free)
         import base64
         import json
+        flow = request.args.get('flow') or ''
         state_data = {
             'state': state,
-            'return_url': frontend_origin
+            'return_url': frontend_origin,
+            'flow': flow
         }
         encoded_state = base64.urlsafe_b64encode(json.dumps(state_data).encode()).decode()
         
@@ -8056,7 +8057,11 @@ def google_login():
         
         # Also store in session as fallback
         session['oauth_return_url'] = frontend_origin
-        logger.info(f"🔍 [GOOGLE OAUTH] Encoded return_url in state: {frontend_origin}")
+        # Remember if login started from main domain (creator signup from screenmerch.com) so callback can force main domain
+        from urllib.parse import urlparse
+        _origin_host = (urlparse(frontend_origin).netloc or "").lower().strip()
+        session['oauth_origin_main_domain'] = _origin_host in ("screenmerch.com", "www.screenmerch.com")
+        logger.info(f"🔍 [GOOGLE OAUTH] Encoded return_url in state: {frontend_origin}, oauth_origin_main_domain={session.get('oauth_origin_main_domain')}")
         
         # Redirect to Google OAuth instead of returning JSON
         return redirect(authorization_url, code=302)
@@ -8080,8 +8085,9 @@ def google_callback():
         if not code:
             return jsonify({"success": False, "error": "Authorization code not provided"}), 400
         
-        # Decode return_url from state parameter (if encoded)
+        # Decode return_url and flow from state parameter (if encoded)
         frontend_origin_from_state = None
+        flow_from_state = None
         if state:
             try:
                 import base64
@@ -8091,8 +8097,11 @@ def google_callback():
                 if 'return_url' in state_data:
                     frontend_origin_from_state = state_data['return_url']
                     logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Decoded return_url from state: {frontend_origin_from_state}")
-                    # Use the original state for verification
-                    state = state_data.get('state', state)
+                flow_from_state = state_data.get('flow') if isinstance(state_data, dict) else None
+                if flow_from_state:
+                    logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Decoded flow from state: {flow_from_state}")
+                # Use the original state for verification
+                state = state_data.get('state', state) if isinstance(state_data, dict) else state
             except (ValueError, json.JSONDecodeError, Exception) as e:
                 # If decoding fails, state might be in old format - use as-is
                 logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] State not in encoded format, using as-is: {e}")
@@ -8243,16 +8252,21 @@ def google_callback():
                 logger.warning("⚠️ Admin client not available - OAuth signup may fail due to RLS")
             
             username = google_name.replace(' ', '').lower() if google_name else google_email.split('@')[0]
+            # Email from OAuth (can be Yahoo, Gmail, etc. — whatever the chosen account uses)
             new_user = {
                 'email': google_email,
                 'display_name': google_name,
                 'role': 'creator',
                 'status': 'pending'  # Creators need admin approval
             }
-            result = client_to_use.table('users').insert(new_user).execute()
-            user = result.data[0] if result.data else None
-            if not user:
-                logger.error(f"❌ [GOOGLE OAUTH] User insert failed for {google_email} - no row created. Check RLS and use service-role client (SUPABASE_SERVICE_ROLE_KEY). result.data={getattr(result, 'data', None)}")
+            user = None
+            try:
+                result = client_to_use.table('users').insert(new_user).execute()
+                user = result.data[0] if result.data else None
+                if not user:
+                    logger.error(f"❌ [OAUTH CREATOR SIGNUP] Insert returned no row for {google_email}. Check RLS and SUPABASE_SERVICE_ROLE_KEY. result.data={getattr(result, 'data', None)}")
+            except Exception as insert_err:
+                logger.error(f"❌ [OAUTH CREATOR SIGNUP] Insert failed for {google_email}: {insert_err!r}. Check: 1) users table has columns role, status 2) SUPABASE_SERVICE_ROLE_KEY is set 3) RLS or use service-role client.")
             
             # Send admin notification email for new creator signup (same MAIL_TO as order notifications, e.g. chidopro@proton.me)
             if user and MAIL_TO:
@@ -8293,6 +8307,34 @@ def google_callback():
                 except Exception as email_error:
                     logger.error(f"❌ Error sending admin notification: {str(email_error)}")
                     # Don't fail signup if email fails
+                
+                # Send confirmation email to the new creator so they have a record and know not to sign up again
+                if user and RESEND_API_KEY and google_email:
+                    try:
+                        creator_confirm_data = {
+                            "from": RESEND_FROM,
+                            "to": [google_email],
+                            "subject": "ScreenMerch Creator Signup Received",
+                            "html": f"""
+                            <h1>Thanks for signing up as a ScreenMerch creator!</h1>
+                            <p>We've received your application. Your account is <strong>pending approval</strong>.</p>
+                            <p>We'll email you once you're approved. You don't need to sign up again&mdash;if you sign in again with the same account, you'll see your pending status.</p>
+                            <p>If you have questions, reply to this email or contact support.</p>
+                            <p><small>ScreenMerch</small></p>
+                            """
+                        }
+                        creator_resp = requests.post(
+                            "https://api.resend.com/emails",
+                            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+                            json=creator_confirm_data,
+                            timeout=15
+                        )
+                        if creator_resp.status_code == 200:
+                            logger.info(f"✅ Creator confirmation email sent to {google_email}")
+                        else:
+                            logger.warning(f"⚠️ Creator confirmation email failed: {creator_resp.text}")
+                    except Exception as creator_email_err:
+                        logger.warning(f"⚠️ Creator confirmation email error: {creator_email_err}")
         
         if not user:
             # Redirect to frontend with error message - use session return_url to preserve subdomain
@@ -8395,15 +8437,15 @@ def google_callback():
         frontend_url = session_return_url
         frontend_url_set = False
         
-        # If user signed in from main domain (screenmerch.com), keep them there
+        # If user signed in from main domain (screenmerch.com), send to Thank You page (creator signup flow)
         if not frontend_url_set and session_return_url:
             from urllib.parse import urlparse
             _parsed = urlparse(session_return_url)
             _host = (_parsed.netloc or "").lower().strip()
             if _host in ("screenmerch.com", "www.screenmerch.com"):
-                frontend_url = session_return_url if session_return_url.startswith("http") else "https://screenmerch.com"
+                frontend_url = "https://screenmerch.com/creator-thank-you"
                 frontend_url_set = True
-                logger.info(f"✅ [GOOGLE OAUTH CALLBACK] Sign-in from main domain → staying on screenmerch.com (not user subdomain)")
+                logger.info(f"✅ [GOOGLE OAUTH CALLBACK] Sign-in from main domain → redirecting to Thank You page")
         
         # Extract subdomain from session return_url if it exists (skip if we already set thank-you URL or main-domain)
         session_subdomain = None
@@ -8475,8 +8517,21 @@ def google_callback():
             if session_return_url:
                 logger.warning(f"⚠️ [GOOGLE OAUTH CALLBACK] Session had return_url but couldn't extract subdomain: {session_return_url}")
         
+        # FINAL SAFEGUARD: Never redirect to a subdomain — send to Thank You page on main domain.
+        from urllib.parse import urlparse
+        _final_host = (urlparse(frontend_url).netloc or "").lower().strip()
+        if _final_host and _final_host not in ("screenmerch.com", "www.screenmerch.com"):
+            frontend_url = "https://screenmerch.com/creator-thank-you"
+            logger.info(f"✅ [GOOGLE OAUTH CALLBACK] Redirect forced to Thank You page (was subdomain: {_final_host})")
+        
+        # Creator signup flow (Sign Up Now on subscription-tiers): always send to Thank You page
+        if flow_from_state == 'creator_signup':
+            frontend_url = "https://screenmerch.com/creator-thank-you"
+            logger.info(f"✅ [GOOGLE OAUTH CALLBACK] flow=creator_signup → redirecting to Thank You page")
+        
         # Clean up session after we've used it
         session.pop('oauth_return_url', None)
+        session.pop('oauth_origin_main_domain', None)
         
         # SECURITY: Never redirect with a user that doesn't match the authenticated email
         user_email = (user.get('email') or "").strip().lower()

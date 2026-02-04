@@ -82,7 +82,7 @@ const SubscriptionTiers = () => {
         localStorage.setItem('pending_creator_location', location);
         // Creator signup always returns to main domain so we never land on a subdomain (e.g. testcreator) with another user's session
         const creatorSignupReturnUrl = 'https://screenmerch.com';
-        const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}`;
+        const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup`;
         console.log('Redirecting to Google OAuth for creator signup (return to main domain):', authUrl);
         // Prefer direct navigation so server can send 302; fallback if server returns JSON with auth_url
         try {

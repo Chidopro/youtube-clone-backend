@@ -95,8 +95,10 @@ const App = () => {
 
         window.dispatchEvent(new CustomEvent('oauthSuccess', { detail: user }));
 
-        const currentPath = location.pathname;
-        navigate(currentPath, { replace: true });
+        // Creator signup (pending) or any OAuth that landed on main domain: show Thank You page so we never end up on testcreator home
+        const isPendingCreator = user.status === 'pending';
+        const goTo = isPendingCreator ? '/creator-thank-you' : (location.pathname || '/');
+        navigate(goTo, { replace: true });
       } catch (error) {
         console.error('Error parsing user data:', error);
         alert('Login successful but there was an error processing your data. Please sign in again.');
