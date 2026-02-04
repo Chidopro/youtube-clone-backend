@@ -8242,7 +8242,7 @@ def google_callback():
             result = client_to_use.table('users').insert(new_user).execute()
             user = result.data[0] if result.data else None
             
-            # Send admin notification email for new creator signup
+            # Send admin notification email for new creator signup (same MAIL_TO as order notifications, e.g. chidopro@proton.me)
             if user and MAIL_TO:
                 try:
                     admin_email_data = {
@@ -8357,9 +8357,18 @@ def google_callback():
         frontend_url = frontend_origin_from_state or session.get('oauth_return_url') or "https://screenmerch.com"
         session_return_url = frontend_url  # Keep for logging
         
-        # Extract subdomain from session return_url if it exists
+        # Pending creators (just signed up): always stay on main domain and show thank-you page
+        if user.get('status') == 'pending':
+            frontend_url = "https://screenmerch.com/creator-thank-you"
+            session_subdomain = None
+            frontend_url_set = True
+            logger.info(f"✅ [GOOGLE OAUTH CALLBACK] Pending creator signup → redirecting to thank-you page on screenmerch.com")
+        else:
+            frontend_url_set = False
+        
+        # Extract subdomain from session return_url if it exists (skip if we already set thank-you URL)
         session_subdomain = None
-        if session_return_url and session_return_url != "https://screenmerch.com":
+        if not frontend_url_set and session_return_url and session_return_url != "https://screenmerch.com":
             try:
                 from urllib.parse import urlparse
                 parsed = urlparse(session_return_url)

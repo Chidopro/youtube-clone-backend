@@ -227,6 +227,7 @@ export class AdminService {
         total_users: 0,
         active_users: 0,
         suspended_users: 0,
+        pending_users: 0,
         total_videos: 0,
         pending_videos: 0,
         approved_videos: 0,
