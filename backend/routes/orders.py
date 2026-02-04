@@ -14,7 +14,12 @@ from utils.helpers import (
     require_shipping_address, _parse_zip
 )
 from services.email_service import send_order_email
-from services.order_email import build_admin_order_email, resend_attachments_from_builder
+from services.order_email import (
+    build_admin_order_email,
+    resend_attachments_from_builder,
+    get_order_screenshot as get_screenshot_for_order,
+    _compress_for_inline,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -945,6 +950,19 @@ def stripe_webhook():
                                 cart = []
                         if not isinstance(cart, list):
                             cart = []
+                        # Prefer in-memory cart when available so email and Print Quality get per-product screenshots (DB cart may be truncated)
+                        if order_id in order_store:
+                            store_cart = order_store[order_id].get("cart", [])
+                            if isinstance(store_cart, list) and len(store_cart) == len(cart):
+                                has_screenshots = any(
+                                    isinstance(it, dict) and (it.get("selected_screenshot") or it.get("screenshot") or it.get("img") or it.get("thumbnail"))
+                                    for it in store_cart
+                                )
+                                if has_screenshots:
+                                    cart = store_cart
+                                    order_data = dict(order_data)
+                                    order_data["cart"] = cart
+                                    logger.info("Using order_store cart for email (per-product screenshots)")
                         # If DB has no order-level screenshot, set from first cart item (so email gets one correct screenshot)
                         if not (order_data.get("selected_screenshot") or order_data.get("screenshot") or order_data.get("thumbnail")):
                             for item in cart:
@@ -1043,6 +1061,23 @@ def stripe_webhook():
                             json=email_data,
                             timeout=30
                         )
+                        # Persist screenshot to DB so Print Quality page can load it later (same as in email)
+                        try:
+                            screenshot_for_db, _ = get_screenshot_for_order(order_data, cart)
+                            if screenshot_for_db and isinstance(screenshot_for_db, str) and screenshot_for_db.strip().startswith("data:image"):
+                                max_size = 800000
+                                to_store = screenshot_for_db
+                                if len(screenshot_for_db) > max_size:
+                                    to_store = _compress_for_inline(screenshot_for_db, max_bytes=750000, max_width=800)
+                                if to_store and len(to_store) <= max_size:
+                                    client = _get_supabase_client()
+                                    if client:
+                                        client.table('orders').update({'selected_screenshot': to_store}).eq('order_id', order_id).execute()
+                                        logger.info("Persisted screenshot to order for Print Quality page")
+                                elif not to_store:
+                                    logger.warning("Screenshot too large and compression failed, Print Quality may not load it")
+                        except Exception as persist_err:
+                            logger.warning("Could not persist screenshot to order: %s", persist_err)
                     except Exception as e:
                         logger.exception("Webhook admin email failed: %s", e)
                 

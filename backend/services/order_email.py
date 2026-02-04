@@ -155,8 +155,8 @@ def _screenshot_img_html(screenshot_str, cid=None):
     return "<p><em>Screenshot available in order details</em></p>"
 
 
-def _screenshot_attachments(order_id, screenshot_str):
-    """Build Resend attachments list: exactly ONE screenshot for this order only. Returns (attachments, cid_or_none)."""
+def _screenshot_attachments(order_id, screenshot_str, index=0):
+    """Build Resend attachments list for one screenshot. Returns (attachments, cid_or_none)."""
     attachments = []
     cid = None
     if not screenshot_str or not isinstance(screenshot_str, str) or "data:image" not in screenshot_str:
@@ -166,10 +166,9 @@ def _screenshot_attachments(order_id, screenshot_str):
         image_format = header.split("/")[1].split(";")[0]
         ext = "jpeg" if image_format.lower() in ("jpg", "jpeg") else image_format
         content_type = f"image/{'jpeg' if image_format.lower() in ('jpg', 'jpeg') else image_format}"
-        # Unique filename per order so admin never sees "screenshot.jpeg" from other orders
         safe_id = "".join(c if c.isalnum() or c in "-_" else "_" for c in str(order_id))
-        filename = f"screenshot_{safe_id}.{ext}"
-        cid = f"screenshot_{order_id}_0"
+        filename = f"screenshot_{safe_id}_{index}.{ext}"
+        cid = f"screenshot_{order_id}_{index}"
         attachments.append({
             "filename": filename,
             "content": b64_content,
@@ -181,35 +180,38 @@ def _screenshot_attachments(order_id, screenshot_str):
     return (attachments, cid)
 
 
+def _get_item_screenshot(item, fallback=None):
+    """Get screenshot from a cart item (selected_screenshot, screenshot, img, thumbnail)."""
+    if not item or not isinstance(item, dict):
+        return fallback or ""
+    return (
+        item.get("selected_screenshot")
+        or item.get("screenshot")
+        or item.get("img")
+        or item.get("thumbnail")
+        or ""
+    ) or (fallback or "")
+
+
 def build_admin_order_email(order_id, order_data, cart, order_number, total_amount, screenshot_timestamp_override=None):
     """
     Build admin order notification HTML and optional attachments.
-    Returns (html_body, attachments) where attachments is a list of dicts for Resend.
+    Shows one screenshot per product in the email body. Returns (html_body, attachments).
     """
-    screenshot, ts = get_order_screenshot(order_data, cart)
+    order_screenshot, ts = get_order_screenshot(order_data, cart)
     if screenshot_timestamp_override is not None:
         ts = str(screenshot_timestamp_override)
 
-    # If screenshot is an HTTP(S) URL, fetch it so we can attach it (email clients often block external images; 300 DPI tools need the image)
-    if screenshot and isinstance(screenshot, str) and screenshot.strip().startswith(("http://", "https://")):
-        fetched = _fetch_image_as_base64(screenshot)
-        if fetched:
-            screenshot = fetched
-            logger.info("Fetched screenshot from URL for admin email attachment")
+    # Fetch URL screenshots to base64 for email
+    def _ensure_base64(img):
+        if not img or not isinstance(img, str) or not img.strip():
+            return img
+        if img.strip().startswith(("http://", "https://")):
+            return _fetch_image_as_base64(img) or img
+        return img
 
-    # Attachments: exactly one screenshot for this order only (no lingering images from other orders)
-    attachments, cid = _screenshot_attachments(order_id, screenshot)
-    attachments = attachments[:1]  # Cap to one so email never has more than this order's screenshot
-    # Prefer inline in body so Proton shows image IN the email: use small/compressed base64 when possible, cid only when too large
-    screenshot_for_body = screenshot
-    if cid and len(screenshot) >= MAX_INLINE_BASE64_LEN:
-        compressed = _compress_for_inline(screenshot, max_bytes=95000)
-        if compressed and len(compressed) < MAX_INLINE_BASE64_LEN:
-            screenshot_for_body = compressed
-            cid = None  # use inline so body shows the image
-    use_cid_in_body = cid is not None and len(screenshot_for_body) >= MAX_INLINE_BASE64_LEN
-    image_tag = _screenshot_img_html(screenshot_for_body, cid=cid if use_cid_in_body else None)
-
+    # Build per-product screenshot HTML and optional attachments (first screenshot as main attachment for compatibility)
+    attachments = []
     print_url = f"{PRINT_QUALITY_BASE_URL}?order_id={order_id}"
     html = f"<h1>🛍️ New ScreenMerch Order #{order_number}</h1>"
     html += f"<p><strong>Order ID:</strong> {order_id}</p>"
@@ -217,22 +219,47 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     html += f"<p><strong>Total Value:</strong> ${total_amount:.2f}</p>"
     html += "<br>"
     html += "<h2>🛍️ Products</h2>"
-    html += f"<div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'><p style='margin-top:0;'><strong>📸 Order Screenshot</strong></p>{image_tag}</div>"
-    for item in cart:
+
+    fallback_screenshot = order_screenshot
+    if fallback_screenshot and isinstance(fallback_screenshot, str) and fallback_screenshot.strip().startswith(("http://", "https://")):
+        fallback_screenshot = _fetch_image_as_base64(fallback_screenshot) or fallback_screenshot
+
+    for idx, item in enumerate(cart):
         product_name = item.get("product", "N/A")
         color = (item.get("variants") or {}).get("color", "N/A")
         size = (item.get("variants") or {}).get("size", "N/A")
         note = item.get("note", "None")
         price = item.get("price", 0)
+        # Per-product screenshot (item's selected_screenshot or fallback to order/first)
+        item_img = _get_item_screenshot(item, fallback=fallback_screenshot)
+        item_img = _ensure_base64(item_img)
+        # Compress for inline so each product's screenshot shows in body
+        screenshot_for_body = item_img
+        if item_img and isinstance(item_img, str) and "data:image" in item_img:
+            for max_bytes, max_width in [(95000, 600), (80000, 500), (60000, 400), (45000, 320), (35000, 280)]:
+                compressed = _compress_for_inline(item_img, max_bytes=max_bytes, max_width=max_width)
+                if compressed and len(compressed) < MAX_INLINE_BASE64_LEN:
+                    screenshot_for_body = compressed
+                    break
+        product_img_tag = _screenshot_img_html(screenshot_for_body, cid=None)
+        # One attachment for first product only (so email has at least one attachment for clients that strip inline)
+        if idx == 0 and item_img and "data:image" in str(item_img):
+            atts, _ = _screenshot_attachments(order_id, item_img, index=0)
+            if atts:
+                attachments.extend(atts[:1])
         html += f"""
             <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
-                <h2>{product_name}</h2>
+                <p style='margin-top:0;'><strong>📸 {product_name} — Screenshot</strong></p>
+                {product_img_tag}
                 <p><strong>Color:</strong> {color}</p>
                 <p><strong>Size:</strong> {size}</p>
                 <p><strong>Note:</strong> {note}</p>
                 <p><strong>Price:</strong> ${price:.2f}</p>
             </div>
         """
+        # Next item's fallback can be this item's image if we only had one so far
+        if item_img and not fallback_screenshot:
+            fallback_screenshot = item_img
     html += "<hr>"
     html += "<h2>📹 Video Information</h2>"
     html += f"<p><strong>Video Title:</strong> {order_data.get('video_title', 'Unknown Video')}</p>"
@@ -279,6 +306,8 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
         <hr>
         <p><small>This is an automated notification from ScreenMerch</small></p>
     """
+    # Cap to one attachment so email size stays reasonable; body already shows all product screenshots inline
+    attachments = attachments[:1]
     return (html, attachments)
 
 

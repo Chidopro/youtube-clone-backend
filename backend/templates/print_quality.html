@@ -155,6 +155,65 @@
             margin-top: 0;
             color: #0066cc;
         }
+        /* Screenshot queue: multiple images at top (same source as email body) */
+        .screenshot-queue {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 12px 0;
+        }
+        .screenshot-queue-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            width: 140px;
+            text-align: center;
+            background: #f9f9f9;
+            transition: all 0.2s ease;
+        }
+        .screenshot-queue-card:hover {
+            border-color: #007bff;
+            background: #f0f7ff;
+        }
+        .screenshot-queue-card.selected {
+            border-color: #007bff;
+            background: #e7f3ff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.3);
+        }
+        .screenshot-queue-card img {
+            width: 120px;
+            height: 90px;
+            object-fit: contain;
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto 6px;
+        }
+        .screenshot-queue-card .card-label {
+            font-size: 12px;
+            color: #333;
+            line-height: 1.3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        #screenshotQueueContainer {
+            margin-bottom: 20px;
+        }
+        #screenshotQueueContainer h3 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            color: #555;
+        }
+        #activeImageContainer {
+            margin-top: 16px;
+        }
+        #activeImageContainer label {
+            font-weight: bold;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -176,24 +235,22 @@
             <div id="imageModeFields">
                 <div class="form-group">
                     <label for="orderIdInput">📸 Order ID:</label>
-                    <input type="text" id="orderIdInput" placeholder="Enter order ID (e.g., 4253de79-0689-4062-9b4f-d3656df0d616)" style="width: 100%; padding: 8px; margin-bottom: 10px;">
-                    <button type="button" onclick="loadOrderScreenshot()" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Load Screenshot</button>
+                    <input type="text" id="orderIdInput" placeholder="Enter order ID (e.g. ORD-5D1495E2 from your email)" style="width: 100%; padding: 8px; margin-bottom: 10px;">
+                    <button type="button" onclick="loadOrderScreenshot()" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Load Screenshots from Order</button>
                 </div>
                 
-                <!-- Product Selector (only shown if multiple products) -->
-                <div class="form-group" id="productSelectorGroup" style="display: none; background: #fff3cd; padding: 15px; border-radius: 8px; border: 2px solid #ffc107; margin-bottom: 20px;">
-                    <label for="productSelector" style="font-weight: bold; color: #856404; font-size: 16px; margin-bottom: 10px;">🛍️ Select Product from Cart:</label>
-                    <select id="productSelector" name="productSelector" style="width: 100%; padding: 12px; border: 2px solid #ffc107; border-radius: 5px; font-size: 16px; background: white; font-weight: bold;">
-                        <option value="">-- Select Product --</option>
-                    </select>
+                <!-- Screenshot queue: same images as in order email body; click one to edit -->
+                <div id="screenshotQueueContainer" style="display: none;" class="form-group">
+                    <h3>📸 Screenshot queue (from your order — same as in email)</h3>
+                    <div id="screenshotQueue" class="screenshot-queue"></div>
                 </div>
                 
-                <div class="form-group">
-                    <label>📸 Order Screenshot:</label>
-                    <div id="screenshotPreview" style="margin: 10px 0; padding: 10px; border: 2px dashed #ccc; text-align: center; background: #f9f9f9;">
-                        <p>Loading screenshot from order...</p>
+                <div class="form-group" id="activeImageContainer">
+                    <label>🖼️ Active image for editing</label>
+                    <div id="screenshotPreview" style="margin: 10px 0; padding: 10px; border: 2px dashed #ccc; text-align: center; background: #f9f9f9; min-height: 80px;">
+                        <p style="color: #666;">Load screenshots with Order ID above, or use video/upload below. Click a screenshot in the queue to edit it.</p>
                     </div>
-                    <small>Automatically using the screenshot from your order</small>
+                    <small>Select an image from the queue above; then use the tools below (300 DPI, feather, etc.).</small>
                 </div>
             </div>
             
@@ -386,10 +443,10 @@
     </div>
 
     <script>
-        // Get order ID from template variable or URL parameters
-        const templateOrderId = '{{ order_id }}';
+        // Get order ID from URL first (email links), then template (server-rendered)
         const urlOrderId = new URLSearchParams(window.location.search).get('order_id');
-        const orderId = templateOrderId && templateOrderId !== 'None' && templateOrderId !== '' && templateOrderId !== 'null' ? templateOrderId : urlOrderId;
+        const templateOrderId = '{{ order_id or "" }}'.trim();
+        const orderId = (urlOrderId && urlOrderId !== 'None' && urlOrderId !== '') ? urlOrderId : (templateOrderId && templateOrderId !== 'None' && templateOrderId !== '' ? templateOrderId : null);
         let orderScreenshot = null;
         let originalScreenshot = null;  // Store original image for independent effect application
         let original300DpiImage = null;  // Store original 300 DPI image for effect application
@@ -427,45 +484,68 @@
             }
         }
         
-        // Function to update screenshot based on selected product
-        function updateScreenshotForProduct(productIndex) {
-            if (allProducts && allProducts.length > 0 && productIndex !== null && productIndex !== undefined) {
-                const selectedProduct = allProducts[productIndex];
-                if (selectedProduct) {
-                    // Update product info display
-                    updateProductInfoDisplay(selectedProduct);
-                    
-                    if (selectedProduct.screenshot && selectedProduct.screenshot.trim() !== '') {
-                        orderScreenshot = selectedProduct.screenshot;
-                        originalScreenshot = selectedProduct.screenshot;  // Store original
-                        currentFeatherValue = 0;  // Reset effect values
-                        currentCornerRadiusValue = 0;
-                        document.getElementById('screenshotPreview').innerHTML = `
-                            <img src="${selectedProduct.screenshot}" alt="Order Screenshot" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
-                            <p style="margin-top: 10px; color: green;">✅ Screenshot loaded from order ${orderId || 'N/A'}</p>
-                        `;
-                    } else {
-                        // No screenshot for this product
-                        orderScreenshot = null;
-                        originalScreenshot = null;
-                        document.getElementById('screenshotPreview').innerHTML = `
-                            <p style="color: orange; padding: 20px; border: 2px dashed #ccc; border-radius: 5px;">
-                                ⚠️ No screenshot available for this product.<br>
-                                You can still process images manually using the image upload option above.
-                            </p>
-                        `;
-                    }
-                }
+        // Select a screenshot from the queue for editing (same data source as email body)
+        function selectQueueIndex(productIndex) {
+            if (!allProducts || allProducts.length === 0 || productIndex == null || productIndex === undefined) return;
+            const selectedProduct = allProducts[productIndex];
+            if (!selectedProduct) return;
+            // Update active image and editor state
+            updateProductInfoDisplay(selectedProduct);
+            currentFeatherValue = 0;
+            currentCornerRadiusValue = 0;
+            if (selectedProduct.screenshot && selectedProduct.screenshot.trim() !== '') {
+                orderScreenshot = selectedProduct.screenshot;
+                originalScreenshot = selectedProduct.screenshot;
+                document.getElementById('screenshotPreview').innerHTML = `
+                    <img src="${selectedProduct.screenshot}" alt="Active screenshot" style="max-width: 100%; max-height: 280px; border-radius: 5px;">
+                    <p style="margin-top: 10px; color: green;">✅ Editing: ${(selectedProduct.product || 'Product')} ${selectedProduct.color && selectedProduct.color !== 'N/A' ? ' — ' + selectedProduct.color : ''} ${selectedProduct.size && selectedProduct.size !== 'N/A' ? ' (' + selectedProduct.size + ')' : ''}</p>
+                `;
+            } else {
+                orderScreenshot = null;
+                originalScreenshot = null;
+                document.getElementById('screenshotPreview').innerHTML = `
+                    <p style="color: orange;">⚠️ No image for this item. Use video/upload below or select another from the queue.</p>
+                `;
             }
+            // Update selected state on queue cards
+            document.querySelectorAll('.screenshot-queue-card').forEach((el, i) => {
+                el.classList.toggle('selected', i === productIndex);
+            });
+        }
+        
+        // Build screenshot queue at top (same screenshots as in order email)
+        function renderScreenshotQueue() {
+            const container = document.getElementById('screenshotQueue');
+            const queueContainer = document.getElementById('screenshotQueueContainer');
+            if (!container || !allProducts || allProducts.length === 0) {
+                if (queueContainer) queueContainer.style.display = 'none';
+                return;
+            }
+            container.innerHTML = '';
+            allProducts.forEach((product, index) => {
+                const card = document.createElement('div');
+                card.className = 'screenshot-queue-card' + (index === 0 ? ' selected' : '');
+                card.setAttribute('data-index', index);
+                const label = [product.product, product.color && product.color !== 'N/A' ? product.color : '', product.size && product.size !== 'N/A' ? product.size : ''].filter(Boolean).join(' · ');
+                if (product.screenshot && product.screenshot.trim() !== '') {
+                    card.innerHTML = `<img src="${product.screenshot}" alt="${(product.product || 'Product')}"><span class="card-label">${(product.product || 'Product ' + (index + 1))}${product.color && product.color !== 'N/A' ? ' — ' + product.color : ''}${product.size && product.size !== 'N/A' ? ' (' + product.size + ')' : ''}</span>`;
+                } else {
+                    card.innerHTML = `<div style="width:120px;height:90px;background:#eee;border-radius:4px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;color:#999;">No image</div><span class="card-label">${product.product || 'Product ' + (index + 1)}</span>`;
+                }
+                card.onclick = function() { selectQueueIndex(index); };
+                container.appendChild(card);
+            });
+            queueContainer.style.display = 'block';
         }
 
-        // Load order screenshot automatically
+        // Load order screenshots (same API as email — screenshots in email body come from here)
         async function loadOrderScreenshot() {
-            // Use order ID from URL or manual input
             const currentOrderId = orderId || document.getElementById('orderIdInput').value;
+            const queueContainer = document.getElementById('screenshotQueueContainer');
             
             if (!currentOrderId) {
-                document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">No order ID provided. Please enter an order ID above or access this page from an order.</p>';
+                document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">No order ID provided. Enter an order ID above or open the link from your order email.</p>';
+                if (queueContainer) queueContainer.style.display = 'none';
                 return;
             }
 
@@ -473,92 +553,36 @@
                 const response = await fetch(`/api/get-order-screenshot/${currentOrderId}`);
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.success && data.screenshot) {
-                        // Store all products if available
+                    if (data.success && (data.products?.length > 0 || data.screenshot)) {
+                        // Same data source as email body: products[] with per-product screenshots
                         if (data.products && data.products.length > 0) {
                             allProducts = data.products;
-                            console.log(`📦 Found ${allProducts.length} product(s) in order`);
-                            
-                            // Populate product selector if multiple products
-                            const productSelector = document.getElementById('productSelector');
-                            const productSelectorGroup = document.getElementById('productSelectorGroup');
-                            
-                            if (allProducts.length > 1) {
-                                // Show product selector and populate it
-                                console.log('🛍️ Showing product selector dropdown for multiple products');
-                                productSelectorGroup.style.display = 'block';
-                                productSelector.innerHTML = '<option value="">-- Select Product --</option>';
-                                
-                                allProducts.forEach((product, index) => {
-                                    const option = document.createElement('option');
-                                    option.value = index;
-                                    const displayText = `${product.product}${product.color && product.color !== 'N/A' ? ` - ${product.color}` : ''}${product.size && product.size !== 'N/A' ? ` (${product.size})` : ''}`;
-                                    option.textContent = displayText;
-                                    productSelector.appendChild(option);
-                                    console.log(`  - Product ${index + 1}: ${displayText}`);
-                                });
-                                
-                                // Auto-select first product
-                                productSelector.value = '0';
-                                updateScreenshotForProduct(0);
-                                
-                                // Add change listener (remove old one first to avoid duplicates)
-                                productSelector.onchange = function() {
-                                    const selectedIndex = parseInt(this.value);
-                                    if (!isNaN(selectedIndex)) {
-                                        console.log(`🔄 Product changed to index ${selectedIndex}`);
-                                        updateScreenshotForProduct(selectedIndex);
-                                    }
-                                };
-                            } else {
-                                // Single product - hide selector but still set screenshot
-                                console.log('📦 Single product in order, hiding selector');
-                                productSelectorGroup.style.display = 'none';
-                                orderScreenshot = data.screenshot;
-                                originalScreenshot = data.screenshot;  // Store original
-                                currentFeatherValue = 0;  // Reset effect values
-                                currentCornerRadiusValue = 0;
-                                document.getElementById('screenshotPreview').innerHTML = `
-                                    <img src="${data.screenshot}" alt="Order Screenshot" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
-                                    <p style="margin-top: 10px; color: green;">✅ Screenshot loaded from order ${currentOrderId}</p>
-                                `;
-                                
-                                // Update product info display for single product
-                                if (allProducts.length === 1) {
-                                    updateProductInfoDisplay(allProducts[0]);
-                                }
-                            }
                         } else {
-                            // Fallback to single screenshot (backward compatibility)
-                            orderScreenshot = data.screenshot;
-                            originalScreenshot = data.screenshot;  // Store original
-                            currentFeatherValue = 0;  // Reset effect values
-                            currentCornerRadiusValue = 0;
-                            document.getElementById('screenshotPreview').innerHTML = `
-                                <img src="${data.screenshot}" alt="Order Screenshot" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
-                                <p style="margin-top: 10px; color: green;">✅ Screenshot loaded from order ${currentOrderId}</p>
-                            `;
-                            document.getElementById('productSelectorGroup').style.display = 'none';
-                            // Hide product info if no product data available
-                            document.getElementById('productInfoDisplay').style.display = 'none';
+                            allProducts = [{ product: 'Order Screenshot', screenshot: data.screenshot, color: 'N/A', size: 'N/A' }];
                         }
+                        console.log(`📦 Loaded ${allProducts.length} screenshot(s) from order (same as email)`);
+                        renderScreenshotQueue();
+                        selectQueueIndex(0);
+                    } else {
+                        allProducts = [];
+                        if (queueContainer) queueContainer.style.display = 'none';
+                        document.getElementById('screenshotPreview').innerHTML = '<p style="color: orange;">⚠️ No screenshot found in order</p><small style="display:block;margin-top:8px;">The order was found but no image was saved. You can still use the tools below with a video URL or by uploading an image.</small>';
+                    }
                 } else {
-                    document.getElementById('screenshotPreview').innerHTML = '<p style="color: orange;">⚠️ No screenshot found in order</p><small style="display:block;margin-top:8px;">The order was found but no image was saved. This can happen if the screenshot was not captured during checkout. You can still use the tools below with a video URL or by uploading an image.</small>';
-                    document.getElementById('productSelectorGroup').style.display = 'none';
+                    allProducts = [];
+                    if (queueContainer) queueContainer.style.display = 'none';
+                    let errMsg = 'Failed to load order screenshots';
+                    try {
+                        const errData = await response.json();
+                        if (errData && errData.error) errMsg = errData.error;
+                    } catch (e) {}
+                    document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">❌ ' + errMsg + '</p><small style="display:block;margin-top:8px;">If the order was just placed, wait a moment and try again. Use the order ID from your email link.</small>';
                 }
-            } else {
-                let errMsg = 'Failed to load order screenshot';
-                try {
-                    const errData = await response.json();
-                    if (errData && errData.error) errMsg = errData.error;
-                } catch (e) {}
-                document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">❌ ' + errMsg + '</p><small style="display:block;margin-top:8px;">If the order was just placed, wait a moment and click "Load Screenshot" again. Check that the order ID matches the one in your email.</small>';
-                document.getElementById('productSelectorGroup').style.display = 'none';
+            } catch (error) {
+                allProducts = [];
+                if (queueContainer) queueContainer.style.display = 'none';
+                document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">❌ Error: ' + error.message + '</p><small style="display:block;margin-top:8px;">Check your connection and the order ID (e.g. from your email).</small>';
             }
-        } catch (error) {
-            document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">❌ Error loading screenshot: ' + error.message + '</p><small style="display:block;margin-top:8px;">Check your connection and ensure the order ID is correct (e.g. ORD-187ABD7E from your email link).</small>';
-            document.getElementById('productSelectorGroup').style.display = 'none';
-        }
         }
 
         // Handle mode switching
@@ -580,14 +604,19 @@
             });
         });
 
-        // Auto-populate order ID input if available
+        // Auto-load screenshots when order_id is in URL (e.g. from email link) — same images as in email body
+        const orderIdInput = document.getElementById('orderIdInput');
+        const generate300dpiBtn = document.getElementById('generate300dpiBtn');
         if (orderId && orderId !== 'None' && orderId !== '' && orderId !== 'null') {
-            document.getElementById('orderIdInput').value = orderId;
-            // Automatically load the screenshot when order ID is available
-            loadOrderScreenshot();
-        } else {
-            // Show message if no order ID is provided
-            document.getElementById('screenshotPreview').innerHTML = '<p style="color: orange;">⚠️ No order ID provided. Please enter an order ID above or access this page from an order.</p>';
+            orderIdInput.value = orderId;
+            if (generate300dpiBtn) generate300dpiBtn.disabled = true;
+            document.getElementById('screenshotPreview').innerHTML = '<p style="color: #0066cc;">⏳ Loading screenshots from order (same as in your email)...</p>';
+            document.getElementById('screenshotQueueContainer').style.display = 'none';
+            loadOrderScreenshot().then(function() {
+                if (generate300dpiBtn) generate300dpiBtn.disabled = false;
+            }).catch(function() {
+                if (generate300dpiBtn) generate300dpiBtn.disabled = false;
+            });
         }
 
         // STEP 1: Generate 300 DPI Image (Standalone)
