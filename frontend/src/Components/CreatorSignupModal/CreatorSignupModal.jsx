@@ -73,11 +73,6 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup }) => {
             Join ScreenMerch as a creator and start selling merchandise from your content
           </p>
 
-          <div className="creator-limit-notice">
-            <strong>⚠️ Limited Availability:</strong> We currently have a limit of 20 creators on our platform. 
-            Your application will be reviewed and approved by our admin team.
-          </div>
-
           <form onSubmit={handleSubmit} className="creator-signup-form">
             <div className="creator-signup-field">
               <label htmlFor="creator-email" className="creator-signup-label">
@@ -143,11 +138,6 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup }) => {
                     <strong>User Responsibility:</strong> You assume all responsibility and liability for the 
                     content you upload, the products you create, and any interactions with customers through 
                     the ScreenMerch platform.
-                  </li>
-                  <li>
-                    <strong>Creator Limit:</strong> ScreenMerch maintains a limit of 20 active creators. 
-                    Your application is subject to admin approval, and we reserve the right to accept or 
-                    reject applications at our discretion.
                   </li>
                 </ul>
               </div>
