@@ -4907,10 +4907,20 @@ def get_order_screenshot(order_id):
                 logger.info(f"⚠️ [IMAGE_TOOL] Origin not in allowed list, defaulting to: https://screenmerch.com")
             return response
 
-        logger.warning(f"⚠️ [GET-SCREENSHOT] No screenshot found for order {order_id}")
-        logger.warning(f"⚠️ [GET-SCREENSHOT] Order keys: {list(order_data.keys())}")
-        logger.warning(f"⚠️ [GET-SCREENSHOT] selected_screenshot present: {bool(order_data.get('selected_screenshot'))}, len: {len(str(order_data.get('selected_screenshot') or ''))}")
-        logger.warning(f"⚠️ [GET-SCREENSHOT] First cart item (if exists): {cart[0] if cart else 'No cart items'}")
+        # Diagnostic logging when no screenshot found (for backend log inspection)
+        ss_raw = order_data.get("selected_screenshot")
+        ss_preview = (str(ss_raw)[:80] + "...") if ss_raw and len(str(ss_raw)) > 80 else str(ss_raw) if ss_raw else "(none)"
+        first_item = cart[0] if cart else None
+        first_item_keys = list(first_item.keys()) if isinstance(first_item, dict) else type(first_item).__name__
+        logger.warning(
+            f"⚠️ [GET-SCREENSHOT] No screenshot found for order {order_id} | from_db={from_db} | "
+            f"order keys={list(order_data.keys())} | selected_screenshot in keys={'selected_screenshot' in order_data} | "
+            f"selected_screenshot len={len(str(ss_raw or ''))} preview={ss_preview}"
+        )
+        logger.warning(
+            f"⚠️ [GET-SCREENSHOT] Cart len={len(cart)} | first item keys={first_item_keys} | "
+            f"first item has image key={bool(first_item and isinstance(first_item, dict) and any(first_item.get(k) for k in ('selected_screenshot', 'screenshot', 'img', 'thumbnail')))}"
+        )
         response = jsonify({
             "success": False,
             "error": "No screenshot data found for this order. The screenshot may not have been captured or sent during checkout."
@@ -7106,47 +7116,28 @@ def admin_orders():
 
 @app.route("/order/<order_id>")
 def public_order_detail(order_id):
-    """Public order details page - no login required (green button in email)."""
+    """Public order link from email — redirect to Print Quality page (no login, order tools)."""
     try:
+        # Try to confirm order exists so we can redirect; if not found, still send to print-quality so user can try Load Screenshot
         order_data = order_store.get(order_id)
         if not order_data:
             try:
-                db_result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
-                if db_result.data:
-                    db_order = db_result.data[0]
-                    order_data = {
-                        'cart': db_order.get('cart', []),
-                        'status': db_order.get('status', 'pending'),
-                        'created_at': db_order.get('created_at', 'N/A'),
-                        'video_title': db_order.get('video_title', 'Unknown Video'),
-                        'creator_name': db_order.get('creator_name', 'Unknown Creator'),
-                        'video_url': db_order.get('video_url', 'Not provided'),
-                        'shipping_cost': db_order.get('shipping_cost', 0)
-                    }
-                else:
-                    return "Order not found", 404
+                db_result = supabase.table('orders').select('order_id').eq('order_id', order_id).limit(1).execute()
+                if not db_result.data:
+                    db_result = supabase.table('orders').select('order_id').eq('order_number', order_id).limit(1).execute()
+                if not db_result.data and order_id.replace('-', '').isdigit():
+                    alt = order_id.replace('ORD-', '')
+                    db_result = supabase.table('orders').select('order_id').ilike('order_id', f'%{alt}%').limit(1).execute()
             except Exception as db_error:
-                logger.error(f"Database error loading order {order_id}: {str(db_error)}")
-                return "Error loading order from database", 500
-        if (order_data.get('video_title') == 'Unknown Video' or
-            order_data.get('creator_name') == 'Unknown Creator' or
-            order_data.get('video_url') == 'Not provided'):
-            video_url = order_data.get('video_url', '')
-            if video_url and video_url != 'Not provided' and 'screenmerch.com/video/' in video_url:
-                try:
-                    video_id = video_url.split('/')[-1]
-                    video_result = supabase.table('videos2').select('*').eq('id', video_id).execute()
-                    if video_result.data:
-                        video_info = video_result.data[0]
-                        order_data['video_title'] = (video_info.get('title') or video_info.get('video_title') or video_info.get('name') or 'Unknown Video')
-                        order_data['creator_name'] = (video_info.get('channelTitle') or video_info.get('channel_title') or video_info.get('creator_name') or video_info.get('author') or 'Unknown Creator')
-                        order_data['video_url'] = video_info.get('video_url', 'Not provided')
-                except Exception:
-                    pass
-        return render_template('admin_order_detail.html', order=order_data, order_id=order_id, admin_email=None)
+                logger.warning(f"Order lookup for {order_id}: {db_error}")
+        # Always redirect to print-quality so "View Order Details" in email works (no login)
+        print_quality_url = url_for('print_quality_page', order_id=order_id, _external=True)
+        if not print_quality_url.startswith('http'):
+            print_quality_url = f"https://screenmerch.fly.dev/print-quality?order_id={order_id}"
+        return redirect(print_quality_url)
     except Exception as e:
-        logger.error(f"Error loading public order detail: {str(e)}")
-        return "Error loading order", 500
+        logger.error(f"Error in public order redirect: {str(e)}")
+        return redirect(f"https://screenmerch.fly.dev/print-quality?order_id={order_id}")
 
 @app.route("/admin/order/<order_id>")
 @admin_required
