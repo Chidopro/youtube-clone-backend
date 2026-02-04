@@ -63,36 +63,43 @@ const App = () => {
     const userData = urlParams.get('user');
     const errorMessage = urlParams.get('message');
     
-    if (loginStatus === 'success' && userData) {
+    if (loginStatus === 'success') {
+      // SECURITY: Always clear previous auth before applying OAuth result — never show a different user than the one just authenticated
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('oauth_confirmation_pending');
+      localStorage.removeItem('customer_authenticated');
+      localStorage.removeItem('customer_user');
+      localStorage.removeItem('user_authenticated');
+      localStorage.removeItem('user_email');
+
+      if (!userData) {
+        console.error('OAuth success but no user data in URL');
+        alert('Login successful but session data was missing. Please sign in again.');
+        navigate('/', { replace: true });
+        return;
+      }
       try {
         const user = JSON.parse(decodeURIComponent(userData));
-        console.log('🎉 Google OAuth successful! User:', user);
-        
-        // Set a flag to indicate OAuth confirmation is pending
-        localStorage.setItem('oauth_confirmation_pending', 'true');
-        
-        // Auto-sign in without confirmation dialog for better UX
-        console.log('🔔 Auto-signing in user:', user.display_name);
-        
-        // Store user data in localStorage
+        if (!user || !user.email) {
+          console.error('OAuth user data invalid:', user);
+          alert('Login successful but your data was invalid. Please sign in again.');
+          navigate('/', { replace: true });
+          return;
+        }
+        console.log('🎉 Google OAuth successful! User:', user.email, user.display_name);
+
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('isAuthenticated', 'true');
         console.log('✅ User auto-signed in via OAuth');
 
-        // Clear the pending flag
-        localStorage.removeItem('oauth_confirmation_pending');
-
-        // Dispatch custom event to notify Navbar of OAuth success
         window.dispatchEvent(new CustomEvent('oauthSuccess', { detail: user }));
-        console.log('📡 Dispatched oauthSuccess event to Navbar');
 
-        // Clean up URL parameters but stay on current page
         const currentPath = location.pathname;
         navigate(currentPath, { replace: true });
       } catch (error) {
         console.error('Error parsing user data:', error);
-        localStorage.removeItem('oauth_confirmation_pending');
-        alert('Login successful but there was an error processing your data. Please try again.');
+        alert('Login successful but there was an error processing your data. Please sign in again.');
         navigate('/', { replace: true });
       }
     } else if (loginStatus === 'error') {

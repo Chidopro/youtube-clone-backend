@@ -80,10 +80,22 @@ const SubscriptionTiers = () => {
         // Store email and location for later use if needed
         localStorage.setItem('pending_creator_email', email);
         localStorage.setItem('pending_creator_location', location);
-        
-        // Redirect to Google OAuth
-        const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}`;
-        console.log('Redirecting to Google OAuth for creator signup:', authUrl);
+        // Creator signup always returns to main domain so we never land on a subdomain (e.g. testcreator) with another user's session
+        const creatorSignupReturnUrl = 'https://screenmerch.com';
+        const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}`;
+        console.log('Redirecting to Google OAuth for creator signup (return to main domain):', authUrl);
+        // Prefer direct navigation so server can send 302; fallback if server returns JSON with auth_url
+        try {
+            const res = await fetch(authUrl, { method: 'GET', credentials: 'include', redirect: 'manual' });
+            if (res.type === 'opaqueredirect' || res.status === 302) {
+                const loc = res.headers.get('Location');
+                if (loc) { window.location.href = loc; return; }
+            }
+            if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+                const data = await res.json();
+                if (data.auth_url) { window.location.href = data.auth_url; return; }
+            }
+        } catch (_) { /* ignore */ }
         window.location.href = authUrl;
     };
 

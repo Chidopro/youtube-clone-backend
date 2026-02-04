@@ -6127,10 +6127,12 @@ def admin_validate_subdomain():
 @app.route("/api/auth/signup", methods=["POST", "OPTIONS"])
 @app.route("/api/auth/signup/", methods=["POST", "OPTIONS"])
 def auth_signup():
+    """Handle user signup with email and password. Used by Login page (/signup).
+    Role: creator only when is_creator=True (e.g. from payment-setup flow); otherwise customer.
+    Consumer signup uses /api/auth/signup/email-only (always customer)."""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         return response
-    """Handle user signup with email and password validation"""
     try:
         # Handle both JSON (fetch) and form data (redirect)
         data = _data_from_request()
@@ -6304,7 +6306,8 @@ def auth_signup():
 
 @app.route("/api/auth/signup/email-only", methods=["POST", "OPTIONS"])
 def auth_signup_email_only():
-    """Handle customer signup with email only - sends verification email"""
+    """Handle consumer/customer signup with email only (no password until verification).
+    Always creates role=customer, status=active. Used by AuthModal for easier testing — not for creators."""
     logger.info("🔵 [EMAIL-ONLY-SIGNUP] Endpoint called")
     logger.info(f"🔵 [EMAIL-ONLY-SIGNUP] Request method: {request.method}")
     
@@ -6358,7 +6361,7 @@ def auth_signup_email_only():
             verification_token = str(uuid.uuid4())
             token_expiry = (datetime.datetime.now() + datetime.timedelta(hours=24)).isoformat()
             
-            # Create new user without password (will be set after email verification)
+            # Create new user without password (will be set after email verification). Always customer — never creator.
             new_user = {
                 'email': email,
                 'role': 'customer',
@@ -8152,19 +8155,26 @@ def google_callback():
         result = lookup_client.table('users').select('*').eq('email', google_email).execute()
         
         if result.data:
-            # User exists, check their status
+            # User exists (e.g. signed up with email/password or email-only as customer). Keep existing role.
+            # We do not convert customer -> creator here; to test new creator signup use a Google account not already in DB.
             user = result.data[0]
             user_status = user.get('status', 'active')
             
-            # Block login if user status is 'pending' (requires admin approval)
+            # Pending creators: send to thank-you page on main domain (same as new signup)
             if user_status == 'pending':
-                # Use session return_url to preserve subdomain
-                frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
-                if not frontend_url.startswith('http'):
-                    frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
-                error_message = "Your account is pending approval. Please wait for admin approval before signing in."
-                redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
-                logger.warning(f"⚠️ Blocked login attempt for pending user: {google_email}, redirecting to: {frontend_url}")
+                frontend_url = "https://screenmerch.com/creator-thank-you"
+                user_data = {
+                    "id": user.get('id'),
+                    "email": user.get('email', google_email),
+                    "display_name": user.get('display_name', google_name),
+                    "role": user.get('role', 'creator'),
+                    "status": "pending",
+                    "subdomain": user.get('subdomain'),
+                    "profile_image_url": user.get('profile_image_url') or google_picture,
+                }
+                user_data_encoded = quote(json.dumps(user_data))
+                redirect_url = f"{frontend_url}?login=success&user={user_data_encoded}"
+                logger.info(f"✅ [GOOGLE OAUTH] Existing pending creator → redirecting to thank-you on screenmerch.com")
                 return redirect(redirect_url)
             
             # Block login if user is suspended or banned
@@ -8241,6 +8251,8 @@ def google_callback():
             }
             result = client_to_use.table('users').insert(new_user).execute()
             user = result.data[0] if result.data else None
+            if not user:
+                logger.error(f"❌ [GOOGLE OAUTH] User insert failed for {google_email} - no row created. Check RLS and use service-role client (SUPABASE_SERVICE_ROLE_KEY). result.data={getattr(result, 'data', None)}")
             
             # Send admin notification email for new creator signup (same MAIL_TO as order notifications, e.g. chidopro@proton.me)
             if user and MAIL_TO:
@@ -8346,6 +8358,17 @@ def google_callback():
         user_data_json = json.dumps(user_data)
         user_data_encoded = quote(user_data_json)
         
+        # NEW CREATOR SIGNUP: Always redirect to thank-you on main domain and exit before any subdomain logic.
+        # User started on screenmerch.com → must land on screenmerch.com/creator-thank-you, never testcreator.
+        if user.get('status') == 'pending':
+            user_email_check = (user.get('email') or "").strip().lower()
+            if user_email_check != (google_email or "").strip().lower():
+                logger.error(f"❌ [GOOGLE OAUTH CALLBACK] SECURITY: pending user email mismatch — authenticated={google_email!r} vs user={user_email_check!r}")
+                return redirect(f"https://screenmerch.com?login=error&message={quote('Authentication error. Please try again.')}")
+            thank_you_url = f"https://screenmerch.com/creator-thank-you?login=success&user={user_data_encoded}"
+            logger.info(f"✅ [GOOGLE OAUTH CALLBACK] New creator signup → redirecting to thank-you page (screenmerch.com), skipping subdomain logic")
+            return redirect(thank_you_url)
+        
         # Get return_url - PRIORITY: from state parameter (most reliable), then session, then default
         # Log session state for debugging
         logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Session keys: {list(session.keys())}")
@@ -8353,20 +8376,36 @@ def google_callback():
         logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] return_url from state: {frontend_origin_from_state}")
         logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] User subdomain from database: {user.get('subdomain')}")
         
-        # Use return_url from state parameter first (most reliable), then session, then default
-        frontend_url = frontend_origin_from_state or session.get('oauth_return_url') or "https://screenmerch.com"
-        session_return_url = frontend_url  # Keep for logging
-        
-        # Pending creators (just signed up): always stay on main domain and show thank-you page
-        if user.get('status') == 'pending':
-            frontend_url = "https://screenmerch.com/creator-thank-you"
-            session_subdomain = None
-            frontend_url_set = True
-            logger.info(f"✅ [GOOGLE OAUTH CALLBACK] Pending creator signup → redirecting to thank-you page on screenmerch.com")
+        # Use return_url from state parameter first (most reliable). If state is missing, only trust
+        # session when it's the main domain — never use a stale session subdomain (e.g. testcreator).
+        _session_return = session.get('oauth_return_url')
+        if frontend_origin_from_state:
+            session_return_url = frontend_origin_from_state
+        elif _session_return:
+            from urllib.parse import urlparse
+            _p = urlparse(_session_return)
+            _h = (_p.netloc or "").lower().strip()
+            if _h in ("screenmerch.com", "www.screenmerch.com"):
+                session_return_url = _session_return if _session_return.startswith("http") else "https://screenmerch.com"
+            else:
+                session_return_url = "https://screenmerch.com"
+                logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Ignoring stale session subdomain, defaulting to main domain (state was missing)")
         else:
-            frontend_url_set = False
+            session_return_url = "https://screenmerch.com"
+        frontend_url = session_return_url
+        frontend_url_set = False
         
-        # Extract subdomain from session return_url if it exists (skip if we already set thank-you URL)
+        # If user signed in from main domain (screenmerch.com), keep them there
+        if not frontend_url_set and session_return_url:
+            from urllib.parse import urlparse
+            _parsed = urlparse(session_return_url)
+            _host = (_parsed.netloc or "").lower().strip()
+            if _host in ("screenmerch.com", "www.screenmerch.com"):
+                frontend_url = session_return_url if session_return_url.startswith("http") else "https://screenmerch.com"
+                frontend_url_set = True
+                logger.info(f"✅ [GOOGLE OAUTH CALLBACK] Sign-in from main domain → staying on screenmerch.com (not user subdomain)")
+        
+        # Extract subdomain from session return_url if it exists (skip if we already set thank-you URL or main-domain)
         session_subdomain = None
         if not frontend_url_set and session_return_url and session_return_url != "https://screenmerch.com":
             try:
@@ -8382,9 +8421,10 @@ def google_callback():
                 logger.warning(f"⚠️ [GOOGLE OAUTH CALLBACK] Error extracting subdomain from return_url: {e}")
         
         # PRIORITY 1: Use subdomain from session return_url (user is signing in from a specific subdomain, stay there)
-        # This ensures users stay on the subdomain they signed in from
+        # This ensures users stay on the subdomain they signed in from (do not overwrite pending thank-you redirect)
         user_subdomain = user.get('subdomain')
-        frontend_url_set = False
+        if not frontend_url_set:
+            frontend_url_set = False  # only reset when we didn't already set thank-you for pending
         
         if session_subdomain:
             frontend_url = f"https://{session_subdomain}.screenmerch.com"
@@ -8437,6 +8477,13 @@ def google_callback():
         
         # Clean up session after we've used it
         session.pop('oauth_return_url', None)
+        
+        # SECURITY: Never redirect with a user that doesn't match the authenticated email
+        user_email = (user.get('email') or "").strip().lower()
+        if user_email != (google_email or "").strip().lower():
+            logger.error(f"❌ [GOOGLE OAUTH CALLBACK] SECURITY: user email mismatch — authenticated={google_email!r} vs redirect user={user_email!r}. Refusing to redirect with wrong user.")
+            redirect_url_err = f"https://screenmerch.com?login=error&message={quote('Authentication error. Please try again.')}"
+            return redirect(redirect_url_err)
         
         # Ensure frontend_url is a full URL with protocol
         if not frontend_url.startswith('http'):
