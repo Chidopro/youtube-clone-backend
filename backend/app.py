@@ -8189,6 +8189,7 @@ def google_callback():
             # User exists - do not create duplicate. Record only once in admin dashboard.
             user = result.data[0]
             user_status = user.get('status', 'active')
+            logger.info(f"🔍 [GOOGLE OAUTH] User already exists: {google_email} status={user_status} (no new insert, no admin email)")
             
             # Pending creators: send to thank-you with existing_pending=1 so frontend shows "awaiting approval" popup
             if user_status == 'pending':
@@ -8302,8 +8303,9 @@ def google_callback():
                 return redirect(redirect_url)
             
             # Send admin notification email for new creator signup (same MAIL_TO as order notifications, e.g. chidopro@proton.me)
-            if user and MAIL_TO:
+            if user and MAIL_TO and RESEND_API_KEY:
                 try:
+                    logger.info(f"📧 [OAUTH CREATOR] Sending admin notification to {MAIL_TO} for new creator {google_email}")
                     admin_email_data = {
                         "from": RESEND_FROM,
                         "to": [MAIL_TO],
@@ -8334,40 +8336,43 @@ def google_callback():
                         json=admin_email_data
                     )
                     if email_response.status_code == 200:
-                        logger.info(f"✅ Admin notification sent for new creator signup: {google_email}")
+                        logger.info(f"✅ Admin notification sent to {MAIL_TO} for new creator signup: {google_email}")
                     else:
                         logger.error(f"❌ Failed to send admin notification: {email_response.text}")
                 except Exception as email_error:
                     logger.error(f"❌ Error sending admin notification: {str(email_error)}")
                     # Don't fail signup if email fails
-                
-                # Send confirmation email to the new creator so they have a record and know not to sign up again
-                if user and RESEND_API_KEY and google_email:
-                    try:
-                        creator_confirm_data = {
-                            "from": RESEND_FROM,
-                            "to": [google_email],
-                            "subject": "ScreenMerch Creator Signup Received",
-                            "html": f"""
-                            <h1>Thanks for signing up as a ScreenMerch creator!</h1>
-                            <p>We've received your application. Your account is <strong>pending approval</strong>.</p>
-                            <p>We'll email you once you're approved. You don't need to sign up again&mdash;if you sign in again with the same account, you'll see your pending status.</p>
-                            <p>If you have questions, reply to this email or contact support.</p>
-                            <p><small>ScreenMerch</small></p>
-                            """
-                        }
-                        creator_resp = requests.post(
-                            "https://api.resend.com/emails",
-                            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
-                            json=creator_confirm_data,
-                            timeout=15
-                        )
-                        if creator_resp.status_code == 200:
-                            logger.info(f"✅ Creator confirmation email sent to {google_email}")
-                        else:
-                            logger.warning(f"⚠️ Creator confirmation email failed: {creator_resp.text}")
-                    except Exception as creator_email_err:
-                        logger.warning(f"⚠️ Creator confirmation email error: {creator_email_err}")
+            else:
+                if user and (not MAIL_TO or not RESEND_API_KEY):
+                    logger.warning(f"⚠️ [OAUTH CREATOR] Admin email not sent: MAIL_TO={'SET' if MAIL_TO else 'NOT SET'}, RESEND_API_KEY={'SET' if RESEND_API_KEY else 'NOT SET'}. Set both in Fly.io Secrets to receive new creator signup notifications.")
+            
+            # Send confirmation email to the new creator (runs whenever RESEND is set, regardless of MAIL_TO)
+            if user and RESEND_API_KEY and google_email:
+                try:
+                    creator_confirm_data = {
+                        "from": RESEND_FROM,
+                        "to": [google_email],
+                        "subject": "ScreenMerch Creator Signup Received",
+                        "html": f"""
+                        <h1>Thanks for signing up as a ScreenMerch creator!</h1>
+                        <p>We've received your application. Your account is <strong>pending approval</strong>.</p>
+                        <p>We'll email you once you're approved. You don't need to sign up again&mdash;if you sign in again with the same account, you'll see your pending status.</p>
+                        <p>If you have questions, reply to this email or contact support.</p>
+                        <p><small>ScreenMerch</small></p>
+                        """
+                    }
+                    creator_resp = requests.post(
+                        "https://api.resend.com/emails",
+                        headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+                        json=creator_confirm_data,
+                        timeout=15
+                    )
+                    if creator_resp.status_code == 200:
+                        logger.info(f"✅ Creator confirmation email sent to {google_email}")
+                    else:
+                        logger.warning(f"⚠️ Creator confirmation email failed: {creator_resp.text}")
+                except Exception as creator_email_err:
+                    logger.warning(f"⚠️ Creator confirmation email error: {creator_email_err}")
         
         if not user:
             # Redirect to frontend with error message - use session return_url to preserve subdomain
