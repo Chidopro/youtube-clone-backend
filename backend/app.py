@@ -8167,7 +8167,8 @@ def google_callback():
             mine=True
         ).execute()
         
-        google_email = user_info.get('email')
+        google_email_raw = user_info.get('email')
+        google_email = (google_email_raw or '').strip().lower()
         google_name = user_info.get('name')
         google_id = user_info.get('id')
         google_picture = user_info.get('picture')
@@ -8177,26 +8178,24 @@ def google_callback():
         logger.info(f"🔍 Google picture URL: {google_picture}")
         
         # Check if user exists in database - use admin client to bypass RLS
-        # This prevents "already exists" errors when RLS blocks the lookup
+        # Normalize email to lowercase so we never create duplicates (same email, different case)
         lookup_client = supabase_admin if supabase_admin else supabase
         if not lookup_client:
             raise Exception("Supabase client not initialized")
         
-        logger.info(f"🔍 [GOOGLE OAUTH] Checking if user exists: {google_email}")
+        logger.info(f"🔍 [GOOGLE OAUTH] Checking if user exists (normalized): {google_email}")
         result = lookup_client.table('users').select('*').eq('email', google_email).execute()
-        
         if result.data:
-            # User exists (e.g. signed up with email/password or email-only as customer). Keep existing role.
-            # We do not convert customer -> creator here; to test new creator signup use a Google account not already in DB.
+            # User exists - do not create duplicate. Record only once in admin dashboard.
             user = result.data[0]
             user_status = user.get('status', 'active')
             
-            # Pending creators: send to thank-you page on main domain (same as new signup)
+            # Pending creators: send to thank-you with existing_pending=1 so frontend shows "awaiting approval" popup
             if user_status == 'pending':
                 frontend_url = "https://screenmerch.com/creator-thank-you"
                 user_data = {
                     "id": user.get('id'),
-                    "email": user.get('email', google_email),
+                    "email": user.get('email', google_email_raw or google_email),
                     "display_name": user.get('display_name', google_name),
                     "role": user.get('role', 'creator'),
                     "status": "pending",
@@ -8204,8 +8203,8 @@ def google_callback():
                     "profile_image_url": user.get('profile_image_url') or google_picture,
                 }
                 user_data_encoded = quote(json.dumps(user_data))
-                redirect_url = f"{frontend_url}?login=success&user={user_data_encoded}"
-                logger.info(f"✅ [GOOGLE OAUTH] Existing pending creator → redirecting to thank-you on screenmerch.com")
+                redirect_url = f"{frontend_url}?login=success&user={user_data_encoded}&existing_pending=1"
+                logger.info(f"✅ [GOOGLE OAUTH] Existing pending creator (no duplicate) → redirecting to thank-you with existing_pending=1")
                 return _oauth_redirect_with_session(redirect_url, user.get('id'))
             
             # Block login if user is suspended or banned
@@ -8274,7 +8273,7 @@ def google_callback():
                 logger.warning("⚠️ Admin client not available - OAuth signup may fail due to RLS")
             
             username = google_name.replace(' ', '').lower() if google_name else google_email.split('@')[0]
-            # Email from OAuth (can be Yahoo, Gmail, etc. — whatever the chosen account uses)
+            # Email from OAuth - store normalized (lowercase) so same email cannot sign up twice
             # Explicit created_at so admin dashboard analytics and Recent Activity show the signup
             new_user = {
                 'email': google_email,

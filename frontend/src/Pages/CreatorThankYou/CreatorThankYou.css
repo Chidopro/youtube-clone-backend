@@ -78,3 +78,57 @@
 .creator-thank-you-link:hover {
   text-decoration: underline;
 }
+
+/* Awaiting approval modal - same email already registered */
+.creator-thank-you-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.creator-thank-you-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 28px 32px;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2);
+}
+
+.creator-thank-you-modal-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.creator-thank-you-modal h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+  color: #1e293b;
+}
+
+.creator-thank-you-modal p {
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.creator-thank-you-modal-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.creator-thank-you-modal-btn:hover {
+  opacity: 0.95;
+}
