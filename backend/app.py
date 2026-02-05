@@ -410,6 +410,23 @@ def _cookie_domain():
         return "screenmerch.fly.dev"
     return None
 
+def _oauth_redirect_with_session(redirect_url, user_id):
+    """Build redirect response and set sm_session cookie so /api/users/me works after OAuth.
+    Cookie is set for backend domain (screenmerch.fly.dev) so it is sent on API calls from any frontend origin."""
+    token = str(uuid.uuid4())
+    store = app.config.get("session_token_store") or {}
+    store[token] = str(user_id)
+    app.config["session_token_store"] = store
+    domain = _cookie_domain()
+    resp = redirect(redirect_url, code=303)
+    resp.set_cookie(
+        "sm_session", token,
+        domain=domain, path="/",
+        secure=True, httponly=True, samesite="None", max_age=7 * 24 * 3600
+    )
+    logger.info(f"✅ [OAUTH] Set sm_session cookie for user {user_id} (domain={domain})")
+    return resp
+
 def read_json():
     """Robust JSON reader with detailed diagnostics for proxied requests."""
     ct = (request.headers.get("Content-Type") or "").lower()
@@ -8184,7 +8201,7 @@ def google_callback():
                 user_data_encoded = quote(json.dumps(user_data))
                 redirect_url = f"{frontend_url}?login=success&user={user_data_encoded}"
                 logger.info(f"✅ [GOOGLE OAUTH] Existing pending creator → redirecting to thank-you on screenmerch.com")
-                return redirect(redirect_url)
+                return _oauth_redirect_with_session(redirect_url, user.get('id'))
             
             # Block login if user is suspended or banned
             if user_status in ['suspended', 'banned']:
@@ -8548,7 +8565,7 @@ def google_callback():
         redirect_url = f"{frontend_url}?login=success&user={user_data_encoded}"
         
         logger.info(f"✅ [GOOGLE OAUTH CALLBACK] Redirecting to frontend: {redirect_url[:150]}...")
-        return redirect(redirect_url)
+        return _oauth_redirect_with_session(redirect_url, user.get('id'))
         
     except Exception as e:
         logger.error(f"❌ Google OAuth callback error: {str(e)}")

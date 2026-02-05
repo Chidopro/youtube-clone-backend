@@ -6,6 +6,16 @@ import { getBackendUrl } from '../config/apiConfig.js';
  * @param {string} userId - Current user id (e.g. from login response / localStorage)
  * @returns {Promise<Object|null>} User profile or null if not found / error
  */
+/**
+ * True if current origin is a subdomain of screenmerch.com (e.g. testcreator.screenmerch.com).
+ * Used to redirect to main domain when session is invalid to avoid cookie/subdomain issues.
+ */
+function isSubdomainOfScreenMerch() {
+  if (typeof window === 'undefined') return false;
+  const host = (window.location.hostname || '').toLowerCase();
+  return host.endsWith('.screenmerch.com') && host !== 'screenmerch.com' && host !== 'www.screenmerch.com';
+}
+
 export async function fetchMyProfileFromBackend(userId) {
   if (!userId) return null;
   try {
@@ -17,6 +27,15 @@ export async function fetchMyProfileFromBackend(userId) {
       credentials: 'include',
       headers,
     });
+    if (res.status === 401 && isSubdomainOfScreenMerch()) {
+      console.warn('[FETCHUSER] 401 on subdomain — clearing auth and redirecting to main domain to fix cookie/session.');
+      try {
+        localStorage.removeItem('user');
+        localStorage.removeItem('auth_token');
+      } catch (_) {}
+      window.location.replace('https://screenmerch.com');
+      return null;
+    }
     if (!res.ok) return null;
     return await res.json();
   } catch (err) {
