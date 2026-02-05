@@ -11,6 +11,7 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [users, setUsers] = useState([]);
+  const [recentActivityUsers, setRecentActivityUsers] = useState([]); // 5 most recent signups (all roles) for dashboard
   const [videos, setVideos] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [stats, setStats] = useState({});
@@ -75,6 +76,14 @@ const Admin = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, filterStatus, filterRole, isAdmin, activeTab]);
+
+  // Reload recent activity when viewing dashboard so new creator sign-ups appear
+  useEffect(() => {
+    if (isAdmin && isMasterAdmin && activeTab === 'dashboard') {
+      loadRecentActivityUsers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, isMasterAdmin, activeTab]);
 
   // Reload subscriptions when filter changes
   useEffect(() => {
@@ -244,10 +253,21 @@ const Admin = () => {
   const loadAdminData = async () => {
     await Promise.all([
       loadUsers(),
+      loadRecentActivityUsers(),
       loadVideos(),
       loadSubscriptions(),
       loadStats()
     ]);
+  };
+
+  /** Load 5 most recent users (all roles) for dashboard Recent Activity - ensures new creator sign-ups appear */
+  const loadRecentActivityUsers = async () => {
+    try {
+      const result = await AdminService.getUsers(0, 5, '', 'all', 'all');
+      setRecentActivityUsers(result.users || []);
+    } catch (error) {
+      console.error('Error loading recent activity users:', error);
+    }
   };
 
   const loadUsers = async () => {
@@ -1174,10 +1194,10 @@ const Admin = () => {
               <div className="recent-activity">
                 <h3>Recent Activity</h3>
                 <div className="activity-list">
-                  {users.slice(0, 5).map(user => (
+                  {recentActivityUsers.map(user => (
                     <div key={user.id} className="activity-item">
                       <span>New user: {user.display_name || user.email}</span>
-                      <span>{new Date(user.created_at).toLocaleDateString()}</span>
+                      <span>{user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}</span>
                     </div>
                   ))}
                 </div>

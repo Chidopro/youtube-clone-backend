@@ -304,7 +304,7 @@ if not secret_key:
 app.secret_key = secret_key
 
 # Session / cookie settings for cross-device friendly auth
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 def get_cookie_domain():
     host = request.host.lower()
@@ -5177,7 +5177,12 @@ def admin_dashboard_stats():
         try:
             result = client_to_use.table('admin_dashboard_stats').select('*').execute()
             if result.data and len(result.data) > 0:
-                return jsonify(result.data[0])
+                stats_row = dict(result.data[0])
+                # Ensure pending_users is always set (view may not have it before migration)
+                if stats_row.get('pending_users') is None:
+                    pending_res = client_to_use.table('users').select('id').eq('status', 'pending').execute()
+                    stats_row['pending_users'] = len(pending_res.data) if pending_res.data else 0
+                return jsonify(stats_row)
         except Exception as view_error:
             logger.warning(f"Could not use admin_dashboard_stats view: {view_error}, calculating manually")
         
@@ -8270,11 +8275,13 @@ def google_callback():
             
             username = google_name.replace(' ', '').lower() if google_name else google_email.split('@')[0]
             # Email from OAuth (can be Yahoo, Gmail, etc. — whatever the chosen account uses)
+            # Explicit created_at so admin dashboard analytics and Recent Activity show the signup
             new_user = {
                 'email': google_email,
                 'display_name': google_name,
                 'role': 'creator',
-                'status': 'pending'  # Creators need admin approval
+                'status': 'pending',  # Creators need admin approval
+                'created_at': datetime.utcnow().isoformat()
             }
             user = None
             try:
