@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Navbar from "./Components/Navbar/Navbar";
 import Footer from "./Components/Footer/Footer";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
@@ -43,7 +43,8 @@ const App = () => {
   const resetCategory = () => setSelectedCategory('All');
   const location = useLocation();
   const navigate = useNavigate();
-  
+  const oauthSuccessProcessedRef = useRef(false);
+
   // Detect mobile screen size
   useEffect(() => {
     const checkMobile = () => {
@@ -56,14 +57,29 @@ const App = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Handle Google OAuth redirect
+  // Handle Google OAuth redirect (only process success once per load so we don't clear auth on effect re-run)
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const loginStatus = urlParams.get('login');
     const userData = urlParams.get('user');
     const errorMessage = urlParams.get('message');
-    
+
     if (loginStatus === 'success') {
+      if (oauthSuccessProcessedRef.current) {
+        // Already processed this OAuth callback (e.g. effect re-ran); just ensure we stay on thank-you if creator
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          try {
+            const user = JSON.parse(stored);
+            const isCreatorSignup = user?.role === 'creator' && (user?.status === 'pending' || user?.status === undefined);
+            if (isCreatorSignup && location.pathname !== '/creator-thank-you') {
+              navigate('/creator-thank-you', { replace: true });
+            }
+          } catch (_) {}
+        }
+        return;
+      }
+
       // SECURITY: Always clear previous auth before applying OAuth result — never show a different user than the one just authenticated
       localStorage.removeItem('user');
       localStorage.removeItem('isAuthenticated');
@@ -89,6 +105,7 @@ const App = () => {
         }
         console.log('🎉 Google OAuth successful! User:', user.email, user.display_name);
 
+        oauthSuccessProcessedRef.current = true;
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('isAuthenticated', 'true');
         console.log('✅ User auto-signed in via OAuth');
