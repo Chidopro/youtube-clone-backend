@@ -160,6 +160,12 @@ const App = () => {
     if (location.pathname !== '/') return;
     if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('creator_thank_you_go_home')) {
       sessionStorage.removeItem('creator_thank_you_go_home');
+      // User explicitly chose "Go to Homepage" from thank-you: do not keep them signed in as creator
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('oauth_confirmation_pending');
+      oauthSuccessProcessedRef.current = false;
+      window.dispatchEvent(new CustomEvent('creatorThankYouSignOut'));
       return;
     }
     const raw = localStorage.getItem('user');

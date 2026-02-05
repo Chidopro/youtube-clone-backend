@@ -99,6 +99,18 @@ const Navbar = ({ setSidebar, resetCategory }) => {
 
         window.addEventListener('oauthSuccess', handleOAuthSuccess);
 
+        // "Go to Homepage" from thank-you: clear creator session so they land as visitor
+        const handleCreatorThankYouSignOut = async () => {
+            if (isMounted) {
+                await supabase.auth.signOut();
+                setUser(null);
+                setUserProfile(null);
+                setCustomerUser(null);
+                setLoading(false);
+            }
+        };
+        window.addEventListener('creatorThankYouSignOut', handleCreatorThankYouSignOut);
+
         // Listen for email/password login success
         const handleUserLoggedIn = async (event) => {
             console.log('📡 Navbar received userLoggedIn event:', event.detail);
@@ -399,6 +411,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         return () => {
             isMounted = false;
             window.removeEventListener('oauthSuccess', handleOAuthSuccess);
+            window.removeEventListener('creatorThankYouSignOut', handleCreatorThankYouSignOut);
             window.removeEventListener('userLoggedIn', handleUserLoggedIn);
             if (authChangeTimeout) {
                 clearTimeout(authChangeTimeout);
