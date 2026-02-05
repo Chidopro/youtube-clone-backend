@@ -8426,7 +8426,7 @@ def google_callback():
                 return redirect(f"https://screenmerch.com?login=error&message={quote('Authentication error. Please try again.')}")
             thank_you_url = f"https://screenmerch.com/creator-thank-you?login=success&user={user_data_encoded}"
             logger.info(f"✅ [GOOGLE OAUTH CALLBACK] New creator signup → redirecting to thank-you page (screenmerch.com), skipping subdomain logic")
-            return redirect(thank_you_url)
+            return _oauth_redirect_with_session(thank_you_url, user.get('id'))
         
         # Get return_url - PRIORITY: from state parameter (most reliable), then session, then default
         # Log session state for debugging

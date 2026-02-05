@@ -95,9 +95,12 @@ const App = () => {
 
         window.dispatchEvent(new CustomEvent('oauthSuccess', { detail: user }));
 
-        // Creator signup (pending) or any OAuth that landed on main domain: show Thank You page so we never end up on testcreator home
-        const isPendingCreator = user.status === 'pending';
-        const goTo = isPendingCreator ? '/creator-thank-you' : (location.pathname || '/');
+        // Creator signup: show Thank You page (pending, or role=creator with no status so we don't land on home)
+        const isCreatorSignup = user.role === 'creator' && (user.status === 'pending' || user.status === undefined);
+        const alreadyOnThankYou = location.pathname === '/creator-thank-you';
+        const goTo = isCreatorSignup && !alreadyOnThankYou
+          ? '/creator-thank-you'
+          : (location.pathname || '/');
         navigate(goTo, { replace: true });
       } catch (error) {
         console.error('Error parsing user data:', error);
