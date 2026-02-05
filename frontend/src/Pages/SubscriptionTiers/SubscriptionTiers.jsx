@@ -84,18 +84,7 @@ const SubscriptionTiers = () => {
         const creatorSignupReturnUrl = 'https://screenmerch.com';
         const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup`;
         console.log('Redirecting to Google OAuth for creator signup (return to main domain):', authUrl);
-        // Prefer direct navigation so server can send 302; fallback if server returns JSON with auth_url
-        try {
-            const res = await fetch(authUrl, { method: 'GET', credentials: 'include', redirect: 'manual' });
-            if (res.type === 'opaqueredirect' || res.status === 302) {
-                const loc = res.headers.get('Location');
-                if (loc) { window.location.href = loc; return; }
-            }
-            if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
-                const data = await res.json();
-                if (data.auth_url) { window.location.href = data.auth_url; return; }
-            }
-        } catch (_) { /* ignore */ }
+        // Full-page redirect only; fetch() would hit CORS (backend returns 302 to Google)
         window.location.href = authUrl;
     };
 

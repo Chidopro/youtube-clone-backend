@@ -64,15 +64,18 @@ const App = () => {
     const userData = urlParams.get('user');
     const errorMessage = urlParams.get('message');
 
+    console.log('[THANKYOU] OAuth effect run', { pathname: location.pathname, search: location.search?.slice(0, 80), loginStatus, hasUserData: !!userData, alreadyProcessed: oauthSuccessProcessedRef.current });
+
     if (loginStatus === 'success') {
       if (oauthSuccessProcessedRef.current) {
-        // Already processed this OAuth callback (e.g. effect re-ran); just ensure we stay on thank-you if creator
+        console.log('[THANKYOU] Already processed — checking if we need to send back to thank-you');
         const stored = localStorage.getItem('user');
         if (stored) {
           try {
             const user = JSON.parse(stored);
             const isCreatorSignup = user?.role === 'creator' && (user?.status === 'pending' || user?.status === undefined);
             if (isCreatorSignup && location.pathname !== '/creator-thank-you') {
+              console.log('[THANKYOU] Redirecting to /creator-thank-you (already-processed path)');
               navigate('/creator-thank-you', { replace: true });
             }
           } catch (_) {}
@@ -120,13 +123,12 @@ const App = () => {
           : (location.pathname || '/');
         navigate(goTo, { replace: true });
       } catch (error) {
-        console.error('Error parsing user data:', error);
+        console.error('[THANKYOU] Error parsing user data -> navigate(/)', error);
         alert('Login successful but there was an error processing your data. Please sign in again.');
         navigate('/', { replace: true });
       }
     } else if (loginStatus === 'error') {
-      // Handle OAuth error - show user-friendly message
-      console.error('❌ Google OAuth error:', errorMessage);
+      console.error('[THANKYOU] OAuth error -> navigate(/)', errorMessage);
       localStorage.removeItem('oauth_confirmation_pending');
       alert(`Login failed: ${errorMessage || 'An unknown error occurred. Please try again.'}`);
       navigate('/', { replace: true });
@@ -148,10 +150,27 @@ const App = () => {
         window.supabase.auth.signOut();
       }
       
-      console.log('🧹 Cleared all login data for testing');
+      console.log('[THANKYOU] clear=true -> navigate(/)');
       navigate('/', { replace: true });
     }
   }, [location.search, navigate]);
+
+  // Keep creator signups on thank-you: if we're on home but have a pending/creator user in storage, send back to thank-you (safety net for any redirect to /)
+  useEffect(() => {
+    if (location.pathname !== '/') return;
+    const raw = localStorage.getItem('user');
+    const isAuth = localStorage.getItem('isAuthenticated') === 'true';
+    console.log('[THANKYOU] On path / — safety net check', { hasUser: !!raw, isAuth });
+    if (!isAuth || !raw) return;
+    try {
+      const user = JSON.parse(raw);
+      const isCreatorSignup = user?.role === 'creator' && (user?.status === 'pending' || user?.status === undefined);
+      if (isCreatorSignup) {
+        console.log('[THANKYOU] Safety net: redirecting / -> /creator-thank-you');
+        navigate('/creator-thank-you', { replace: true });
+      }
+    } catch (_) {}
+  }, [location.pathname, navigate]);
   
   // Check if current route is a profile page and fetch subscription data
   useEffect(() => {

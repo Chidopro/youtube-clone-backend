@@ -28,8 +28,25 @@ export async function fetchMyProfileFromBackend(userId) {
       headers,
     });
     if (res.status === 401 && isSubdomainOfScreenMerch()) {
-      console.warn('[FETCHUSER] 401 on subdomain — clearing auth and redirecting to main domain to fix cookie/session.');
+      const path = typeof window !== 'undefined' ? window.location.pathname || '' : '';
+      const rawUser = localStorage.getItem('user');
+      const isOnThankYou = path === '/creator-thank-you';
+      let userRole = null;
+      if (rawUser) try { userRole = JSON.parse(rawUser)?.role; } catch (_) {}
+      console.warn('[THANKYOU] 401 on subdomain', { path, isOnThankYou, hasUser: !!rawUser, userRole });
       try {
+        if (isOnThankYou && rawUser) {
+          try {
+            const user = JSON.parse(rawUser);
+            if (user?.role === 'creator') {
+              console.log('[THANKYOU] Redirecting to main domain WITH thank-you + user (preserve page)');
+              const encoded = encodeURIComponent(rawUser);
+              window.location.replace(`https://screenmerch.com/creator-thank-you?login=success&user=${encoded}`);
+              return null;
+            }
+          } catch (_) {}
+        }
+        console.log('[THANKYOU] Redirecting to main domain HOME (no thank-you user)');
         localStorage.removeItem('user');
         localStorage.removeItem('auth_token');
       } catch (_) {}
