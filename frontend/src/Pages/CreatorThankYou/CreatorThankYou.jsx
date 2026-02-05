@@ -20,7 +20,15 @@ const CreatorThankYou = () => {
         <Link to="/subscription-tiers" className="creator-thank-you-btn">
           Back to Creator Calculator
         </Link>
-        <Link to="/" className="creator-thank-you-link">
+        <Link
+          to="/"
+          className="creator-thank-you-link"
+          onClick={() => {
+            try {
+              sessionStorage.setItem('creator_thank_you_go_home', '1');
+            } catch (_) {}
+          }}
+        >
           Go to Homepage
         </Link>
       </div>

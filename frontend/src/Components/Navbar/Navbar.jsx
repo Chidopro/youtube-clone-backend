@@ -618,7 +618,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         </div>
                     </div>
                     <div className="nav-right flex-div">
-                        {user && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && location.pathname !== '/creator-thank-you' ? (
+                        {user && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && location.pathname !== '/creator-thank-you' && !(location.pathname === '/subscription-tiers' && (user?.status === 'pending' || user?.status === undefined)) ? (
                             console.log('🎥 Rendering upload link for creator:', user?.display_name, 'User object:', user) ||
                             <Link to="/upload"><img src={upload_icon} alt="Upload" /></Link>
                         ) : oauthProcessing ? (
@@ -642,6 +642,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 isCreatorOrAdmin,
                                 isActive,
                                 isThankYouPage,
+                                isCalculatorAsPending,
                                 shouldShowProfile
                             });
                             return shouldShowProfile;

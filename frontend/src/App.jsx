@@ -158,6 +158,10 @@ const App = () => {
   // Keep creator signups on thank-you: if we're on home but have a pending/creator user in storage, send back to thank-you (safety net for any redirect to /)
   useEffect(() => {
     if (location.pathname !== '/') return;
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('creator_thank_you_go_home')) {
+      sessionStorage.removeItem('creator_thank_you_go_home');
+      return;
+    }
     const raw = localStorage.getItem('user');
     const isAuth = localStorage.getItem('isAuthenticated') === 'true';
     console.log('[THANKYOU] On path / — safety net check', { hasUser: !!raw, isAuth });
