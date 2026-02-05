@@ -8246,15 +8246,22 @@ def google_callback():
                 logger.info(f"✅ [GOOGLE OAUTH] User updated, profile_image_url: {user.get('profile_image_url')}")
         else:
             # Create new user - Google OAuth users are treated as creators
-            # Check the 20 creator limit first
+            # Require admin client so insert is recorded in DB and shows in master admin pending list
+            if not supabase_admin:
+                logger.error("❌ [OAUTH CREATOR SIGNUP] SUPABASE_SERVICE_ROLE_KEY not set - new creator signups cannot be recorded. Set SUPABASE_SERVICE_ROLE_KEY on the server.")
+                frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
+                if not frontend_url.startswith('http'):
+                    frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
+                error_message = "Creator sign-up could not be completed. Please try again later or contact support."
+                redirect_url = f"{frontend_url}?login=error&message={quote(error_message)}"
+                return redirect(redirect_url)
+
+            # Check the 20 creator limit (use admin client for accurate count)
             current_creator_count = 0
             try:
-                # Count existing creators (both active and pending)
-                creator_result = supabase.table('users').select('id').in_('status', ['active', 'pending']).eq('role', 'creator').execute()
+                creator_result = supabase_admin.table('users').select('id').in_('status', ['active', 'pending']).eq('role', 'creator').execute()
                 current_creator_count = len(creator_result.data) if creator_result.data else 0
-                
                 if current_creator_count >= 20:
-                    # Redirect to frontend with error message - use session return_url to preserve subdomain
                     frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
                     if not frontend_url.startswith('http'):
                         frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
@@ -8265,16 +8272,8 @@ def google_callback():
             except Exception as limit_error:
                 logger.error(f"Error checking creator limit: {str(limit_error)}")
                 # Continue with signup if limit check fails (fail open for now)
-            
-            # Create new user with creator role and pending status
-            # Use admin client to bypass RLS policies
-            client_to_use = supabase_admin if supabase_admin else supabase
-            if not supabase_admin:
-                logger.warning("⚠️ Admin client not available - OAuth signup may fail due to RLS")
-            
-            username = google_name.replace(' ', '').lower() if google_name else google_email.split('@')[0]
-            # Email from OAuth - store normalized (lowercase) so same email cannot sign up twice
-            # Explicit created_at so admin dashboard analytics and Recent Activity show the signup
+
+            # Create new user with creator role and pending status (admin client required - ensures record appears in master admin pending list)
             new_user = {
                 'email': google_email,
                 'display_name': google_name,
@@ -8284,12 +8283,23 @@ def google_callback():
             }
             user = None
             try:
-                result = client_to_use.table('users').insert(new_user).execute()
+                result = supabase_admin.table('users').insert(new_user).execute()
                 user = result.data[0] if result.data else None
                 if not user:
-                    logger.error(f"❌ [OAUTH CREATOR SIGNUP] Insert returned no row for {google_email}. Check RLS and SUPABASE_SERVICE_ROLE_KEY. result.data={getattr(result, 'data', None)}")
+                    logger.error(f"❌ [OAUTH CREATOR SIGNUP] Insert returned no row for {google_email}. result.data={getattr(result, 'data', None)}")
+                    frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
+                    if not frontend_url.startswith('http'):
+                        frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
+                    redirect_url = f"{frontend_url}?login=error&message={quote('Sign-up could not be saved. Please contact support.')}"
+                    return redirect(redirect_url)
+                logger.info(f"✅ [OAUTH CREATOR SIGNUP] New creator recorded for admin pending list: {google_email} id={user.get('id')}")
             except Exception as insert_err:
-                logger.error(f"❌ [OAUTH CREATOR SIGNUP] Insert failed for {google_email}: {insert_err!r}. Check: 1) users table has columns role, status 2) SUPABASE_SERVICE_ROLE_KEY is set 3) RLS or use service-role client.")
+                logger.error(f"❌ [OAUTH CREATOR SIGNUP] Insert failed for {google_email}: {insert_err!r}")
+                frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
+                if not frontend_url.startswith('http'):
+                    frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
+                redirect_url = f"{frontend_url}?login=error&message={quote('Sign-up could not be saved. Please try again or contact support.')}"
+                return redirect(redirect_url)
             
             # Send admin notification email for new creator signup (same MAIL_TO as order notifications, e.g. chidopro@proton.me)
             if user and MAIL_TO:
