@@ -634,7 +634,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             const isCreatorOrAdmin = user && (user.role === 'creator' || user.role === 'admin');
                             const isActive = user && (user.status === 'active' || user.status === undefined);
                             const isThankYouPage = location.pathname === '/creator-thank-you';
-                            const shouldShowProfile = isCreatorOrAdmin && isActive && !isThankYouPage;
+                            const isCalculatorAsPending = location.pathname === '/subscription-tiers' && (user?.status === 'pending' || user?.status === undefined);
+                            const shouldShowProfile = isCreatorOrAdmin && isActive && !isThankYouPage && !isCalculatorAsPending;
                             console.log('🔍 Navbar render check:', {
                                 hasUser: !!user,
                                 role: user?.role,
