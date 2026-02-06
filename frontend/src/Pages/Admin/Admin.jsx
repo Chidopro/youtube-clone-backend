@@ -22,6 +22,8 @@ const Admin = () => {
   const [pendingPayouts, setPendingPayouts] = useState([]);
   const [payoutHistory, setPayoutHistory] = useState([]);
   const [payoutLoading, setPayoutLoading] = useState(false);
+  const [pendingApprovalUsers, setPendingApprovalUsers] = useState([]);
+  const [pendingApprovalLoading, setPendingApprovalLoading] = useState(false);
   const [processingQueue, setProcessingQueue] = useState([]);
   const [processingHistory, setProcessingHistory] = useState([]);
   const [workers, setWorkers] = useState([]);
@@ -100,6 +102,14 @@ const Admin = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, activeTab]);
+
+  // Reload pending approval list when tab changes
+  useEffect(() => {
+    if (isAdmin && isMasterAdmin && activeTab === 'pending-approval') {
+      loadPendingApprovalUsers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, isMasterAdmin, activeTab]);
 
   // Reload processing queue when tab changes
   useEffect(() => {
@@ -311,6 +321,39 @@ const Admin = () => {
       console.error('Error loading payouts:', error);
     } finally {
       setPayoutLoading(false);
+    }
+  };
+
+  const loadPendingApprovalUsers = async () => {
+    setPendingApprovalLoading(true);
+    try {
+      const list = await AdminService.getPendingCreators();
+      setPendingApprovalUsers(list);
+    } catch (error) {
+      console.error('Error loading pending approval:', error);
+    } finally {
+      setPendingApprovalLoading(false);
+    }
+  };
+
+  const handleApproveCreator = async (userId) => {
+    const result = await AdminService.approveCreator(userId);
+    if (result.success) {
+      await loadPendingApprovalUsers();
+      loadStats();
+    } else {
+      alert(result.error || 'Failed to approve');
+    }
+  };
+
+  const handleDisapproveCreator = async (userId) => {
+    if (!window.confirm('Disapprove this creator? They will not be able to use the platform.')) return;
+    const result = await AdminService.disapproveCreator(userId);
+    if (result.success) {
+      await loadPendingApprovalUsers();
+      loadStats();
+    } else {
+      alert(result.error || 'Failed to disapprove');
     }
   };
 
@@ -1128,6 +1171,14 @@ const Admin = () => {
               >
                 💰 Payouts
               </button>
+              {isMasterAdmin && (
+                <button 
+                  className={`admin-tab ${activeTab === 'pending-approval' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('pending-approval')}
+                >
+                  ⏳ Pending Approval
+                </button>
+              )}
             </>
           )}
           {(isFullAdmin || isOrderProcessingAdmin) && (
@@ -1833,6 +1884,89 @@ const Admin = () => {
                     )}
                   </div>
                 </>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'pending-approval' && isMasterAdmin && (
+            <div className="admin-pending-approval">
+              <div className="payouts-header">
+                <h3>⏳ Pending Approval</h3>
+                <p>Review and approve or disapprove new creator sign-ups</p>
+              </div>
+
+              {pendingApprovalLoading ? (
+                <div className="admin-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading pending creators...</p>
+                </div>
+              ) : pendingApprovalUsers.length === 0 ? (
+                <div className="no-payouts">
+                  <p>No pending sign-ups. New creators will appear here after they register.</p>
+                </div>
+              ) : (
+                <div className="payouts-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Email</th>
+                        <th>Display Name</th>
+                        <th>Signed Up</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingApprovalUsers.map(user => (
+                        <tr key={user.id}>
+                          <td>{user.email}</td>
+                          <td>{user.display_name || '—'}</td>
+                          <td>
+                            {user.created_at
+                              ? new Date(user.created_at).toLocaleDateString(undefined, {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : '—'}
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => handleApproveCreator(user.id)}
+                              className="action-btn approve"
+                              style={{
+                                backgroundColor: '#28a745',
+                                color: 'white',
+                                marginRight: '8px',
+                                padding: '6px 12px',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleDisapproveCreator(user.id)}
+                              className="action-btn disapprove"
+                              style={{
+                                backgroundColor: '#dc3545',
+                                color: 'white',
+                                padding: '6px 12px',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Disapprove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}

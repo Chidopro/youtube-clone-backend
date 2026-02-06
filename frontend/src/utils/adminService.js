@@ -905,6 +905,79 @@ export class AdminService {
   }
 
   /**
+   * Get pending creators (new sign-ups awaiting approval). Master Admin only.
+   * @returns {Promise<Array>} List of { id, email, display_name, created_at, profile_image_url }
+   */
+  static async getPendingCreators() {
+    try {
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) throw new Error('Not authenticated');
+      const base = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const res = await fetch(`${base}/api/admin/pending-creators`, {
+        method: 'GET',
+        headers: { 'X-User-Email': currentUser.userEmail },
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      return data.pending_creators || [];
+    } catch (error) {
+      console.error('Error fetching pending creators:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Approve a pending creator (set status to active). Master Admin only.
+   * @param {string} userId - User UUID
+   * @returns {Promise<{ success: boolean, error?: string }>}
+   */
+  static async approveCreator(userId) {
+    try {
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) throw new Error('Not authenticated');
+      const base = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const res = await fetch(`${base}/api/admin/approve-creator/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },
+        credentials: 'include',
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.error || res.statusText };
+      return { success: true };
+    } catch (error) {
+      console.error('Error approving creator:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Disapprove a pending creator (set status to suspended). Master Admin only.
+   * @param {string} userId - User UUID
+   * @returns {Promise<{ success: boolean, error?: string }>}
+   */
+  static async disapproveCreator(userId) {
+    try {
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) throw new Error('Not authenticated');
+      const base = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const res = await fetch(`${base}/api/admin/disapprove-creator/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },
+        credentials: 'include',
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.error || res.statusText };
+      return { success: true };
+    } catch (error) {
+      console.error('Error disapproving creator:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Get payout history
    * @returns {Promise<Array>} Payout history
    */

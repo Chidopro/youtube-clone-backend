@@ -482,6 +482,103 @@ def admin_update_subdomain(user_id):
         return _allow_origin(response), 500
 
 
+@admin_bp.route("/api/admin/pending-creators", methods=["GET", "OPTIONS"])
+def admin_pending_creators():
+    """List creators with status=pending (new sign-ups awaiting approval). Master Admin only."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin_email = request.headers.get('X-User-Email') or request.args.get('email')
+        if not admin_email:
+            response = jsonify({"error": "X-User-Email required"})
+            return _allow_origin(response), 401
+        if not _is_master_admin(admin_email):
+            response = jsonify({"error": "Master admin required"})
+            return _allow_origin(response), 403
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"error": "Database unavailable"})
+            return _allow_origin(response), 500
+        result = client.table('users').select(
+            'id, email, display_name, created_at, profile_image_url'
+        ).eq('status', 'pending').eq('role', 'creator').order('created_at', desc=True).execute()
+        creators = result.data or []
+        response = jsonify({"success": True, "pending_creators": creators})
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.error(f"pending-creators error: {e}")
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
+@admin_bp.route("/api/admin/approve-creator/<user_id>", methods=["POST", "OPTIONS"])
+@admin_bp.route("/api/admin/approve-creator/<user_id>/", methods=["POST", "OPTIONS"])
+def admin_approve_creator(user_id):
+    """Set creator status to active. Master Admin only."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin_email = request.headers.get('X-User-Email') or (_data_from_request() or {}).get('admin_email')
+        if not admin_email:
+            response = jsonify({"success": False, "error": "X-User-Email required"})
+            return _allow_origin(response), 401
+        if not _is_master_admin(admin_email):
+            response = jsonify({"success": False, "error": "Master admin required"})
+            return _allow_origin(response), 403
+        if not _is_valid_uuid(user_id):
+            response = jsonify({"success": False, "error": "Invalid user ID"})
+            return _allow_origin(response), 400
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": False, "error": "Database unavailable"})
+            return _allow_origin(response), 500
+        result = client.table('users').update({'status': 'active'}).eq('id', user_id).eq('status', 'pending').eq('role', 'creator').execute()
+        if not result.data or len(result.data) == 0:
+            response = jsonify({"success": False, "error": "User not found or not pending creator"})
+            return _allow_origin(response), 404
+        logger.info(f"Creator approved: {user_id} by {admin_email}")
+        response = jsonify({"success": True, "message": "Creator approved"})
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.error(f"approve-creator error: {e}")
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
+@admin_bp.route("/api/admin/disapprove-creator/<user_id>", methods=["POST", "OPTIONS"])
+@admin_bp.route("/api/admin/disapprove-creator/<user_id>/", methods=["POST", "OPTIONS"])
+def admin_disapprove_creator(user_id):
+    """Set creator status to rejected (disapprove sign-up). Master Admin only."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin_email = request.headers.get('X-User-Email') or (_data_from_request() or {}).get('admin_email')
+        if not admin_email:
+            response = jsonify({"success": False, "error": "X-User-Email required"})
+            return _allow_origin(response), 401
+        if not _is_master_admin(admin_email):
+            response = jsonify({"success": False, "error": "Master admin required"})
+            return _allow_origin(response), 403
+        if not _is_valid_uuid(user_id):
+            response = jsonify({"success": False, "error": "Invalid user ID"})
+            return _allow_origin(response), 400
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": False, "error": "Database unavailable"})
+            return _allow_origin(response), 500
+        result = client.table('users').update({'status': 'suspended'}).eq('id', user_id).eq('status', 'pending').eq('role', 'creator').execute()
+        if not result.data or len(result.data) == 0:
+            response = jsonify({"success": False, "error": "User not found or not pending creator"})
+            return _allow_origin(response), 404
+        logger.info(f"Creator disapproved (suspended): {user_id} by {admin_email}")
+        response = jsonify({"success": True, "message": "Creator disapproved"})
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.error(f"disapprove-creator error: {e}")
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
 @admin_bp.route("/api/admin/subdomains/validate", methods=["POST", "OPTIONS"])
 @admin_bp.route("/api/admin/subdomains/validate/", methods=["POST", "OPTIONS"])
 def admin_validate_subdomain():
