@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify, render_template, redirect, url_fo
 from flask_cors import cross_origin
 import logging
 import re
+import uuid
 import bcrypt
 import requests
 from datetime import datetime, timedelta
@@ -74,14 +75,34 @@ def _handle_cors_preflight():
     return response
 
 
+def _is_valid_uuid(value):
+    """Validate that value is a valid UUID string (for dashboard-stats and creator lookups)."""
+    if not value or value == "undefined" or value == "null":
+        return False
+    try:
+        uuid.UUID(str(value))
+        return True
+    except (ValueError, TypeError, AttributeError):
+        return False
+
+
 @admin_bp.route("/api/admin/dashboard-stats", methods=["GET"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def admin_dashboard_stats():
-    """Get admin dashboard statistics"""
+    """Get admin dashboard statistics. Accepts user_id (UUID) or X-User-Email for admin verification."""
     try:
         user_id = request.args.get('user_id')
-        if not user_id:
-            return jsonify({"error": "User ID is required"}), 400
+        admin_email = request.headers.get('X-User-Email') or request.args.get('email')
+        # Resolve UUID validation: allow stats if valid user_id OR if admin verified by email (so dashboard still loads)
+        if not _is_valid_uuid(user_id) and not admin_email:
+            return jsonify({"error": "User ID (valid UUID) or X-User-Email required"}), 400
+        if not _is_valid_uuid(user_id) and admin_email:
+            # Verify requester is admin so we don't leak stats
+            if not _is_master_admin(admin_email):
+                return jsonify({"error": "Unauthorized"}), 401
+            logger.info(f"[ADMIN DASHBOARD] Dashboard stats requested by email (no valid user_id): {admin_email[:20]}...")
+        elif user_id and not _is_valid_uuid(user_id):
+            logger.warning(f"[ADMIN DASHBOARD] Invalid user_id format (not UUID): {user_id!r}")
         
         client = _get_supabase_client()
         
@@ -89,7 +110,12 @@ def admin_dashboard_stats():
         try:
             result = client.table('admin_dashboard_stats').select('*').execute()
             if result.data and len(result.data) > 0:
-                return jsonify(result.data[0])
+                stats_row = dict(result.data[0])
+                # Ensure pending_users is always set (view may not have it before migration)
+                if stats_row.get('pending_users') is None:
+                    pending_res = client.table('users').select('id').eq('status', 'pending').execute()
+                    stats_row['pending_users'] = len(pending_res.data) if pending_res.data else 0
+                return jsonify(stats_row)
         except Exception:
             logger.warning("Could not use admin_dashboard_stats view, calculating manually")
         

@@ -204,12 +204,16 @@ export class AdminService {
       if (!user) {
         throw new Error('No authenticated user');
       }
-      
-      // Call backend API
-      const response = await fetch(`https://screenmerch.fly.dev/api/admin/dashboard-stats?user_id=${user.id}`, {
+      const userId = user.id || user.user?.id;
+      const userEmail = (user.email || user.user_metadata?.email || user.user?.email || '').trim().toLowerCase();
+      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const params = new URLSearchParams();
+      if (userId) params.set('user_id', userId);
+      const response = await fetch(`${apiUrl}/api/admin/dashboard-stats?${params.toString()}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...(userEmail ? { 'X-User-Email': userEmail } : {}),
         },
         credentials: 'include'
       });
