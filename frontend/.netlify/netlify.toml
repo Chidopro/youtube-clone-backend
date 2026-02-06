@@ -47,7 +47,7 @@ Expires = "0"
 for = "/*"
 
 [headers.values]
-Content-Security-Policy = "default-src 'self';\r\n      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com;\r\n      style-src 'self' 'unsafe-inline';\r\n      img-src 'self' https: data: blob:;\r\n      font-src 'self' data:;\r\n      media-src 'self' https: data: blob:;\r\n      connect-src 'self'\r\n        https://api.stripe.com\r\n        https://js.stripe.com\r\n        https://checkout.stripe.com\r\n        https://api.printful.com\r\n        https://sojxbydpcdcdzfdtbypd.supabase.co\r\n        wss://sojxbydpcdcdzfdtbypd.supabase.co\r\n        https://screenmerch.fly.dev;\r\n      frame-src 'self' https://js.stripe.com https://checkout.stripe.com;\r\n      object-src 'none';\r\n      base-uri 'self';\r\n      form-action 'self';"
+Content-Security-Policy = "default-src 'self';\r\n      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://checkout.stripe.com;\r\n      style-src 'self' 'unsafe-inline';\r\n      img-src 'self' https: data: blob:;\r\n      font-src 'self' data:;\r\n      media-src 'self' https: data: blob:;\r\n      connect-src 'self'\r\n        https://api.stripe.com\r\n        https://js.stripe.com\r\n        https://checkout.stripe.com\r\n        https://api.printful.com\r\n        https://sojxbydpcdcdzfdtbypd.supabase.co\r\n        wss://sojxbydpcdcdzfdtbypd.supabase.co\r\n        https://screenmerch.fly.dev\r\n        https://accounts.google.com\r\n        https://oauth2.googleapis.com;\r\n      frame-src 'self' https://js.stripe.com https://checkout.stripe.com;\r\n      object-src 'none';\r\n      base-uri 'self';\r\n      form-action 'self';"
 
 [[headers]]
 for = "/assets/*"
