@@ -8005,16 +8005,26 @@ def fix_database_schema():
         logger.error(f"❌ Error fixing database schema: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-# Google OAuth endpoints
+# Google OAuth endpoints - CORS must allow frontend origin for fetch() (format=json) requests
+GOOGLE_LOGIN_ALLOWED_ORIGINS = [
+    "https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev",
+    "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",
+    "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",
+    "http://localhost:3000", "http://localhost:5173",
+]
 @app.route("/api/auth/google/login", methods=["GET", "OPTIONS"])
-@cross_origin(origins=[], supports_credentials=True)  # Disable Flask-CORS for this endpoint
+@cross_origin(origins=GOOGLE_LOGIN_ALLOWED_ORIGINS, supports_credentials=True)
 def google_login():
     """Initiate Google OAuth login"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         origin = request.headers.get('Origin')
-        allowed_origins = ["https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev", "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", "https://*.netlify.app", "http://localhost:3000", "http://localhost:5173"]
-        
+        allowed_origins = GOOGLE_LOGIN_ALLOWED_ORIGINS
+        if origin and origin.rstrip('/') in [o.rstrip('/') for o in allowed_origins]:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        elif allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = allowed_origins[0]
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
         return response
     
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
