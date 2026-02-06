@@ -4,7 +4,7 @@
 -- Add admin and status columns to users table
 ALTER TABLE users 
 ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'banned'));
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'banned', 'pending'));
 
 -- Create admin_logs table for tracking admin actions
 CREATE TABLE IF NOT EXISTS admin_logs (
@@ -259,6 +259,7 @@ SELECT
     (SELECT COUNT(*) FROM users) as total_users,
     (SELECT COUNT(*) FROM users WHERE status = 'active') as active_users,
     (SELECT COUNT(*) FROM users WHERE status = 'suspended') as suspended_users,
+    (SELECT COUNT(*) FROM users WHERE status = 'pending') as pending_users,
     (SELECT COUNT(*) FROM videos2) as total_videos,
     (SELECT COUNT(*) FROM videos2 WHERE verification_status = 'pending') as pending_videos,
     (SELECT COUNT(*) FROM videos2 WHERE verification_status = 'approved') as approved_videos,

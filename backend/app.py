@@ -651,9 +651,9 @@ supabase: Client = create_client(supabase_url, supabase_key)
 supabase_admin: Client = None
 if supabase_service_key:
     supabase_admin = create_client(supabase_url, supabase_service_key)
-    print("[OK] Service role client initialized")
+    print("[OK] Service role client initialized - new creator signups WILL be recorded in admin dashboard")
 else:
-    print("[WARNING] Service role key not found - some admin operations may not work")
+    print("[WARNING] SUPABASE_SERVICE_ROLE_KEY not set - new creator signups will NOT be recorded. Set it in Fly.io Secrets.")
 
 # NEW: Initialize Printful integration
 printful_integration = ScreenMerchPrintfulIntegration()
@@ -8173,6 +8173,8 @@ def google_callback():
         google_id = user_info.get('id')
         google_picture = user_info.get('picture')
         
+        # So we can see in Fly logs that the callback ran and for which email
+        logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Processing sign-in for email: {google_email} (supabase_admin={'SET' if supabase_admin else 'NOT SET'})")
         # Debug: Log the user_info to see what Google is returning
         logger.info(f"🔍 Google user_info: {user_info}")
         logger.info(f"🔍 Google picture URL: {google_picture}")
@@ -8189,7 +8191,7 @@ def google_callback():
             # User exists - do not create duplicate. Record only once in admin dashboard.
             user = result.data[0]
             user_status = user.get('status', 'active')
-            logger.info(f"🔍 [GOOGLE OAUTH] User already exists: {google_email} status={user_status} (no new insert, no admin email)")
+            logger.info(f"🔍 [GOOGLE OAUTH] User already exists: {google_email} status={user_status} id={user.get('id')} (no new insert; they already count in dashboard)")
             
             # Pending creators: send to thank-you with existing_pending=1 so frontend shows "awaiting approval" popup
             if user_status == 'pending':
@@ -8247,6 +8249,7 @@ def google_callback():
                 logger.info(f"✅ [GOOGLE OAUTH] User updated, profile_image_url: {user.get('profile_image_url')}")
         else:
             # Create new user - Google OAuth users are treated as creators
+            logger.info(f"📝 [GOOGLE OAUTH] New creator signup (email not in DB): {google_email} - will insert if SUPABASE_SERVICE_ROLE_KEY is set")
             # Require admin client so insert is recorded in DB and shows in master admin pending list
             if not supabase_admin:
                 logger.error("❌ [OAUTH CREATOR SIGNUP] SUPABASE_SERVICE_ROLE_KEY not set - new creator signups cannot be recorded. Set SUPABASE_SERVICE_ROLE_KEY on the server.")
