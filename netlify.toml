@@ -62,7 +62,9 @@
         https://api.printful.com
         https://sojxbydpcdcdzfdtbypd.supabase.co
         wss://sojxbydpcdcdzfdtbypd.supabase.co
-        https://screenmerch.fly.dev;
+        https://screenmerch.fly.dev
+        https://accounts.google.com
+        https://oauth2.googleapis.com;
       frame-src 'self' https://js.stripe.com https://checkout.stripe.com;
       object-src 'none';
       base-uri 'self';
