@@ -77,11 +77,13 @@ const SubscriptionTiers = () => {
     };
 
     const handleCreatorSignup = async (email, location) => {
-        // Store email and location for later use if needed
         localStorage.setItem('pending_creator_email', email);
         localStorage.setItem('pending_creator_location', location);
         const creatorSignupReturnUrl = 'https://screenmerch.com';
-        const loginApiUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup&format=json`;
+        // Use same-origin /api/... on production so Netlify proxies to Fly - avoids CORS
+        const o = typeof window !== 'undefined' ? window.location.origin : '';
+        const apiBase = (o === 'https://screenmerch.com' || o === 'https://www.screenmerch.com') ? '' : 'https://screenmerch.fly.dev';
+        const loginApiUrl = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup&format=json`;
         setActionLoading(true);
         try {
             const res = await fetch(loginApiUrl, { credentials: 'include', headers: { Accept: 'application/json' } });

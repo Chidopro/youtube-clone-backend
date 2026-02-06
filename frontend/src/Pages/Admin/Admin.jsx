@@ -1035,7 +1035,8 @@ const Admin = () => {
           <p>Please sign in with your Google account to access the admin panel.</p>
           <button 
             onClick={async () => {
-              const url = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}&format=json`;
+              const apiBase = (window.location.origin === 'https://screenmerch.com' || window.location.origin === 'https://www.screenmerch.com') ? '' : 'https://screenmerch.fly.dev';
+              const url = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}&format=json`;
               try {
                 const res = await fetch(url, { credentials: 'include', headers: { Accept: 'application/json' } });
                 const data = await res.json().catch(() => ({}));

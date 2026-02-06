@@ -505,7 +505,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         localStorage.setItem('pending_creator_email', email);
         localStorage.setItem('pending_creator_location', location);
         const creatorSignupReturnUrl = 'https://screenmerch.com';
-        const loginApiUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup&format=json`;
+        const apiBase = (window.location.origin === 'https://screenmerch.com' || window.location.origin === 'https://www.screenmerch.com') ? '' : 'https://screenmerch.fly.dev';
+        const loginApiUrl = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup&format=json`;
         try {
             const res = await fetch(loginApiUrl, { credentials: 'include', headers: { Accept: 'application/json' } });
             const data = await res.json().catch(() => ({}));
