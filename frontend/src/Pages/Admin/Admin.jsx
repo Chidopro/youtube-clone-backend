@@ -1034,9 +1034,14 @@ const Admin = () => {
           <h2>Admin Portal Login</h2>
           <p>Please sign in with your Google account to access the admin panel.</p>
           <button 
-            onClick={() => {
-              // Redirect to Google OAuth login with return URL
-              window.location.href = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}`;
+            onClick={async () => {
+              const url = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}&format=json`;
+              try {
+                const res = await fetch(url, { credentials: 'include', headers: { Accept: 'application/json' } });
+                const data = await res.json().catch(() => ({}));
+                if (data.auth_url) { window.location.href = data.auth_url; return; }
+              } catch (_) {}
+              window.location.href = url.replace('&format=json', '');
             }}
             className="admin-login-btn"
           >

@@ -321,12 +321,14 @@ const Upload = ({ sidebar }) => {
                 <p>You must sign in with Google to upload videos.</p>
                 <button 
                     className="sign-in-btn" 
-                    onClick={() => {
-                        // Direct redirect - no more CORS issues
-                        alert('Upload page Google button clicked!');
-                        const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}`;
-                        console.log('Upload page redirecting to:', authUrl);
-                        window.location.href = authUrl;
+                    onClick={async () => {
+                        const url = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}&format=json`;
+                        try {
+                            const res = await fetch(url, { credentials: 'include', headers: { Accept: 'application/json' } });
+                            const data = await res.json().catch(() => ({}));
+                            if (data.auth_url) { window.location.href = data.auth_url; return; }
+                        } catch (_) {}
+                        window.location.href = url.replace('&format=json', '');
                     }}
                 >
                     Sign In with Google

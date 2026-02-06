@@ -8085,7 +8085,13 @@ def google_login():
         session['oauth_origin_main_domain'] = _origin_host in ("screenmerch.com", "www.screenmerch.com")
         logger.info(f"🔍 [GOOGLE OAUTH] Encoded return_url in state: {frontend_origin}, oauth_origin_main_domain={session.get('oauth_origin_main_domain')}")
         
-        # Redirect to Google OAuth instead of returning JSON
+        # If client asks for JSON (e.g. frontend fetch), return auth_url so frontend can redirect; otherwise 302
+        wants_json = (
+            request.args.get('format') == 'json'
+            or 'application/json' in (request.headers.get('Accept') or '')
+        )
+        if wants_json:
+            return jsonify({"success": True, "auth_url": authorization_url})
         return redirect(authorization_url, code=302)
         
     except Exception as e:

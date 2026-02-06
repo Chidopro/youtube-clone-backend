@@ -80,12 +80,22 @@ const SubscriptionTiers = () => {
         // Store email and location for later use if needed
         localStorage.setItem('pending_creator_email', email);
         localStorage.setItem('pending_creator_location', location);
-        // Creator signup always returns to main domain so we never land on a subdomain (e.g. testcreator) with another user's session
         const creatorSignupReturnUrl = 'https://screenmerch.com';
-        const authUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup`;
-        console.log('Redirecting to Google OAuth for creator signup (return to main domain):', authUrl);
-        // Full-page redirect only; fetch() would hit CORS (backend returns 302 to Google)
-        window.location.href = authUrl;
+        const loginApiUrl = `https://screenmerch.fly.dev/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup&format=json`;
+        setActionLoading(true);
+        try {
+            const res = await fetch(loginApiUrl, { credentials: 'include', headers: { Accept: 'application/json' } });
+            const data = await res.json().catch(() => ({}));
+            if (data.auth_url) {
+                window.location.href = data.auth_url;
+                return;
+            }
+            setMessage(data.error || 'Could not start sign-in. Please try again.');
+        } catch (e) {
+            setMessage('Network error. Please try again.');
+        } finally {
+            setActionLoading(false);
+        }
     };
 
     const handleCloseCreatorSignupModal = () => {
