@@ -5273,6 +5273,85 @@ def admin_dashboard_stats():
         logger.error(f"Error in admin dashboard stats endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+
+def _require_master_admin():
+    """Require X-User-Email header and that user is master_admin. Returns (None, None) if ok, else (response, status_code)."""
+    user_email = request.headers.get("X-User-Email")
+    if not user_email or not str(user_email).strip():
+        return jsonify({"error": "X-User-Email required"}), 401
+    client = supabase_admin if supabase_admin else supabase
+    if not client:
+        return jsonify({"error": "Server configuration error"}), 500
+    try:
+        r = client.table("users").select("id, is_admin, admin_role").ilike("email", user_email.strip().lower()).limit(1).execute()
+        if not r.data or len(r.data) == 0:
+            return jsonify({"error": "User not found"}), 403
+        u = r.data[0]
+        if not u.get("is_admin") or u.get("admin_role") != "master_admin":
+            return jsonify({"error": "Master admin only"}), 403
+        return None, None
+    except Exception as e:
+        logger.error(f"Master admin check error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/pending-creators", methods=["GET", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_pending_creators():
+    """List pending creators (status=pending, role=creator). Master Admin only."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    err, code = _require_master_admin()
+    if err is not None:
+        return err, code
+    client = supabase_admin if supabase_admin else supabase
+    try:
+        r = client.table("users").select("id, email, display_name, created_at, profile_image_url").eq("status", "pending").eq("role", "creator").order("created_at", desc=True).execute()
+        pending = r.data if r.data else []
+        return jsonify({"pending_creators": pending})
+    except Exception as e:
+        logger.error(f"Error fetching pending creators: {str(e)}")
+        return jsonify({"error": str(e), "pending_creators": []}), 500
+
+
+@app.route("/api/admin/approve-creator/<user_id>", methods=["POST", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_approve_creator(user_id):
+    """Set creator status to active. Master Admin only."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    err, code = _require_master_admin()
+    if err is not None:
+        return err, code
+    client = supabase_admin if supabase_admin else supabase
+    try:
+        client.table("users").update({"status": "active", "updated_at": "now()"}).eq("id", user_id).execute()
+        logger.info(f"Creator approved: {user_id}")
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Error approving creator: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/admin/disapprove-creator/<user_id>", methods=["POST", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_disapprove_creator(user_id):
+    """Set creator status to suspended. Master Admin only."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    err, code = _require_master_admin()
+    if err is not None:
+        return err, code
+    client = supabase_admin if supabase_admin else supabase
+    try:
+        client.table("users").update({"status": "suspended", "updated_at": "now()"}).eq("id", user_id).execute()
+        logger.info(f"Creator disapproved: {user_id}")
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Error disapproving creator: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/users/<user_id>/delete-account", methods=["DELETE"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def delete_user_account(user_id):
@@ -8005,27 +8084,13 @@ def fix_database_schema():
         logger.error(f"❌ Error fixing database schema: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-# Google OAuth endpoints - CORS must allow frontend origin for fetch() (format=json) requests
-GOOGLE_LOGIN_ALLOWED_ORIGINS = [
-    "https://screenmerch.com", "https://www.screenmerch.com", "https://screenmerch.fly.dev",
-    "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app",
-    "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app",
-    "http://localhost:3000", "http://localhost:5173",
-]
+# Google OAuth login: always return 302 redirect (no JSON) so frontend uses window.location.href and avoids CORS
 @app.route("/api/auth/google/login", methods=["GET", "OPTIONS"])
-@cross_origin(origins=GOOGLE_LOGIN_ALLOWED_ORIGINS, supports_credentials=True)
+@cross_origin(origins=[], supports_credentials=True)  # Rely on redirect-only; no fetch() response
 def google_login():
-    """Initiate Google OAuth login"""
+    """Initiate Google OAuth login - always redirect to Google (no JSON response to avoid CORS)."""
     if request.method == "OPTIONS":
-        response = jsonify(success=True)
-        origin = request.headers.get('Origin')
-        allowed_origins = GOOGLE_LOGIN_ALLOWED_ORIGINS
-        if origin and origin.rstrip('/') in [o.rstrip('/') for o in allowed_origins]:
-            response.headers['Access-Control-Allow-Origin'] = origin
-        elif allowed_origins:
-            response.headers['Access-Control-Allow-Origin'] = allowed_origins[0]
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        return response
+        return jsonify(success=True)
     
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         return jsonify({"success": False, "error": "Google OAuth not configured"}), 500
@@ -8095,13 +8160,7 @@ def google_login():
         session['oauth_origin_main_domain'] = _origin_host in ("screenmerch.com", "www.screenmerch.com")
         logger.info(f"🔍 [GOOGLE OAUTH] Encoded return_url in state: {frontend_origin}, oauth_origin_main_domain={session.get('oauth_origin_main_domain')}")
         
-        # If client asks for JSON (e.g. frontend fetch), return auth_url so frontend can redirect; otherwise 302
-        wants_json = (
-            request.args.get('format') == 'json'
-            or 'application/json' in (request.headers.get('Accept') or '')
-        )
-        if wants_json:
-            return jsonify({"success": True, "auth_url": authorization_url})
+        # Always redirect to Google (no JSON) - frontend must use window.location.href to avoid CORS
         return redirect(authorization_url, code=302)
         
     except Exception as e:
@@ -8206,7 +8265,19 @@ def google_callback():
         if result.data:
             # User exists - do not create duplicate. Record only once in admin dashboard.
             user = result.data[0]
-            user_status = user.get('status', 'active')
+            user_status = user.get('status') if user.get('status') not in (None, '') else 'active'
+            # Creator signup flow: if existing creator has no status (null/empty), set to pending so they show in Pending Approval
+            if flow_from_state == 'creator_signup' and (user.get('role') == 'creator' or not user.get('role')):
+                current_status = user.get('status')
+                if current_status in (None, ''):
+                    try:
+                        update_client = supabase_admin if supabase_admin else supabase
+                        update_client.table('users').update({'status': 'pending', 'updated_at': 'now()'}).eq('id', user['id']).execute()
+                        user_status = 'pending'
+                        user['status'] = 'pending'
+                        logger.info(f"✅ [GOOGLE OAUTH] Existing creator had no status → set to pending so they appear in Pending Approval: {google_email}")
+                    except Exception as e:
+                        logger.warning(f"Could not set existing creator to pending: {e}")
             logger.info(f"🔍 [GOOGLE OAUTH] User already exists: {google_email} status={user_status} id={user.get('id')} (no new insert; they already count in dashboard)")
             
             # Pending creators: send to thank-you with existing_pending=1 so frontend shows "awaiting approval" popup
