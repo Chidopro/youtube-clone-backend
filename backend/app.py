@@ -8366,6 +8366,7 @@ def google_callback():
 
             # Create new user with creator role and pending status (admin client required - ensures record appears in master admin pending list)
             new_user = {
+                'id': str(uuid.uuid4()),
                 'email': google_email,
                 'display_name': google_name,
                 'role': 'creator',
@@ -8385,12 +8386,30 @@ def google_callback():
                     return redirect(redirect_url)
                 logger.info(f"✅ [OAUTH CREATOR SIGNUP] New creator recorded for admin pending list: {google_email} id={user.get('id')}")
             except Exception as insert_err:
-                logger.error(f"❌ [OAUTH CREATOR SIGNUP] Insert failed for {google_email}: {insert_err!r}")
-                frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
-                if not frontend_url.startswith('http'):
-                    frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
-                redirect_url = f"{frontend_url}?login=error&message={quote('Sign-up could not be saved. Please try again or contact support.')}"
-                return redirect(redirect_url)
+                err_str = str(insert_err).lower()
+                # If email already exists (e.g. from another flow), set existing user to pending so they show in Pending Approval
+                if 'duplicate' in err_str or 'unique' in err_str or 'already exists' in err_str:
+                    try:
+                        existing = supabase_admin.table('users').select('*').eq('email', google_email).limit(1).execute()
+                        if existing.data and len(existing.data) > 0:
+                            existing_user = existing.data[0]
+                            if existing_user.get('role') == 'creator' and existing_user.get('status') not in ('active', 'pending'):
+                                supabase_admin.table('users').update({'status': 'pending', 'updated_at': 'now()'}).eq('id', existing_user['id']).execute()
+                                existing_user['status'] = 'pending'
+                                user = existing_user
+                                logger.info(f"✅ [OAUTH CREATOR SIGNUP] Existing creator updated to pending for admin list: {google_email}")
+                            elif existing_user.get('status') == 'pending':
+                                user = existing_user
+                                logger.info(f"✅ [OAUTH CREATOR SIGNUP] Existing pending creator (no change): {google_email}")
+                    except Exception as fallback_err:
+                        logger.warning(f"Fallback update to pending failed: {fallback_err}")
+                if not user:
+                    logger.error(f"❌ [OAUTH CREATOR SIGNUP] Insert failed for {google_email}: {insert_err!r}")
+                    frontend_url = session.get('oauth_return_url') or "https://screenmerch.com"
+                    if not frontend_url.startswith('http'):
+                        frontend_url = f"https://{frontend_url}" if not frontend_url.startswith('//') else f"https:{frontend_url}"
+                    redirect_url = f"{frontend_url}?login=error&message={quote('Sign-up could not be saved. Please try again or contact support.')}"
+                    return redirect(redirect_url)
             
             # Send admin notification email for new creator signup (same MAIL_TO as order notifications, e.g. chidopro@proton.me)
             if user and MAIL_TO and RESEND_API_KEY:
