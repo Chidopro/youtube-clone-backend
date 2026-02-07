@@ -40,10 +40,25 @@ export const mobileAuthDebug = {
   testAuthFlow: async () => {
     console.log('🧪 Testing authentication flow...');
     mobileAuthDebug.logAuthState();
-    // Google OAuth must use window.location.href (full-page redirect), not fetch(), to avoid CORS.
-    // Do not fetch /api/auth/google/login — the server returns 302 to accounts.google.com.
-    console.log('Google OAuth: use window.location.href to /api/auth/google/login (no fetch).');
-
+    
+    // Test Google OAuth endpoint
+    try {
+      const response = await fetch('https://screenmerch.fly.dev/api/auth/google/login', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': navigator.userAgent
+        },
+        credentials: 'include'
+      });
+      
+      console.log('Google OAuth Test Response:', response.status);
+      const data = await response.json();
+      console.log('Google OAuth Test Data:', data);
+    } catch (error) {
+      console.error('Google OAuth Test Error:', error);
+    }
+    
     // Test email/password API endpoint
     try {
       const response = await fetch('https://screenmerch.fly.dev/api/auth/login', {

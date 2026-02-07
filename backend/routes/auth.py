@@ -750,10 +750,93 @@ def auth_verify_email():
         return response, 500
 
 
-# Google OAuth login is defined in app.py (not here) so there is a single source of truth.
-# app.py encodes flow=creator_signup in state and the callback redirects to /creator-thank-you.
-# Do not add /api/auth/google/login to auth_bp or the blueprint route would take precedence
-# and the callback would never see flow=creator_signup.
+@auth_bp.route("/api/auth/google/login", methods=["GET", "OPTIONS"])
+@cross_origin(origins=[], supports_credentials=True)
+def google_login():
+    """Initiate Google OAuth login"""
+    if request.method == "OPTIONS":
+        response = jsonify(success=True)
+        origin = request.headers.get('Origin')
+        allowed_origins = [
+            "https://screenmerch.com", "https://www.screenmerch.com", 
+            "https://screenmerch.fly.dev", 
+            "https://68e94d7278d7ced80877724f--eloquent-crumble-37c09e.netlify.app", 
+            "https://68e9564fa66cd5f4794e5748--eloquent-crumble-37c09e.netlify.app", 
+            "http://localhost:3000", "http://localhost:5173"
+        ]
+        
+        if origin in allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        else:
+            response.headers['Access-Control-Allow-Origin'] = 'https://screenmerch.com'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+    
+    google_client_id = _get_config('GOOGLE_CLIENT_ID')
+    google_client_secret = _get_config('GOOGLE_CLIENT_SECRET')
+    google_redirect_uri = _get_config('GOOGLE_REDIRECT_URI')
+    
+    if not google_client_id or not google_client_secret:
+        return jsonify({"success": False, "error": "Google OAuth not configured"}), 500
+    
+    try:
+        # Create OAuth flow
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": google_client_id,
+                    "client_secret": google_client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [google_redirect_uri]
+                }
+            },
+            scopes=[
+                'openid',
+                'https://www.googleapis.com/auth/userinfo.profile',
+                'https://www.googleapis.com/auth/userinfo.email',
+                'https://www.googleapis.com/auth/youtube.readonly'
+            ]
+        )
+        flow.redirect_uri = google_redirect_uri
+        
+        # Get return_url (subdomain) - encode it in state parameter
+        return_url = request.args.get('return_url') or request.headers.get('Referer') or "https://screenmerch.com"
+        frontend_origin = "https://screenmerch.com"
+        if return_url and return_url.startswith('http'):
+            from urllib.parse import urlparse
+            parsed = urlparse(return_url)
+            frontend_origin = f"{parsed.scheme}://{parsed.netloc}"
+            logger.info(f"🔍 [GOOGLE OAUTH] Extracted return_url: {frontend_origin}")
+        
+        # Generate authorization URL
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true'
+        )
+        
+        # Store state in session
+        session['oauth_state'] = state
+        
+        # Encode return_url in state parameter
+        state_data = {
+            'state': state,
+            'return_url': frontend_origin
+        }
+        encoded_state = base64.urlsafe_b64encode(json.dumps(state_data).encode()).decode()
+        
+        # Replace state in authorization URL
+        authorization_url = authorization_url.replace(f'state={state}', f'state={encoded_state}')
+        
+        # Store in session as fallback
+        session['oauth_return_url'] = frontend_origin
+        logger.info(f"🔍 [GOOGLE OAUTH] Encoded return_url in state: {frontend_origin}")
+        
+        return redirect(authorization_url, code=302)
+        
+    except Exception as e:
+        logger.error(f"Google OAuth login error: {str(e)}")
+        return jsonify({"success": False, "error": "Failed to initiate Google login"}), 500
 
 
 # Google OAuth callback is handled in app.py (single source of truth).

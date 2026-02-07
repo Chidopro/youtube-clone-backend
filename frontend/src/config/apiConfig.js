@@ -25,18 +25,6 @@ const config = {
 
 let currentConfig = isDevelopment ? config.development : config.production;
 
-// Normalize backend URL: fix common typo (screenmercn -> screenmerch) so env typos don't break OAuth/API
-function normalizeBackendUrl(url) {
-  if (!url || typeof url !== 'string') return url;
-  if (url.includes('screenmercn')) {
-    return url.replace(/screenmercn/g, 'screenmerch');
-  }
-  return url;
-}
-currentConfig.API_BASE_URL = normalizeBackendUrl(currentConfig.API_BASE_URL);
-currentConfig.EMAIL_API_URL = normalizeBackendUrl(currentConfig.EMAIL_API_URL);
-currentConfig.SUBSCRIPTION_API_URL = normalizeBackendUrl(currentConfig.SUBSCRIPTION_API_URL);
-
 // In production, force HTTPS for backend URL to avoid Mixed Content (HTTPS page loading HTTP images)
 // Frontend: Netlify (screenmerch.com), Backend: Fly.io (screenmerch.fly.dev)
 if (!isDevelopment) {
