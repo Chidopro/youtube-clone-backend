@@ -1918,7 +1918,7 @@ const Admin = () => {
               </div>
 
               <div className="pending-approval-add-section">
-                <label htmlFor="add-to-pending-email" className="pending-approval-add-label">Add existing creator to Pending list (by email)</label>
+                <label htmlFor="add-to-pending-email" className="pending-approval-add-label">Recovery only: add existing creator to Pending by email (e.g. if a sign-up did not appear automatically)</label>
                 <div className="pending-approval-add-row">
                   <input
                     id="add-to-pending-email"
@@ -1949,7 +1949,7 @@ const Admin = () => {
               ) : pendingApprovalUsers.length === 0 ? (
                 <div className="pending-approval-empty">
                   <p>No pending sign-ups. New creators will appear here after they register.</p>
-                  <p className="pending-approval-empty-hint">When there are sign-ups, a table will show with each creator and <strong>Activate</strong> / <strong>Deny</strong> buttons. Use &quot;Add to Pending&quot; above to add an existing creator by email, or click &quot;Refresh list&quot; to check again.</p>
+                  <p className="pending-approval-empty-hint">New sign-ups are added automatically when they use Start Free → creator signup → Google. When there are any, a table will show with each creator and <strong>Activate</strong> / <strong>Deny</strong> buttons. Click &quot;Refresh list&quot; to check again.</p>
                 </div>
               ) : (
                 <div className="pending-approval-table-wrap">
