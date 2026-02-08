@@ -63,6 +63,22 @@ npm run build
 # Netlify auto-deploys from this directory
 ```
 
+## ⚠️ AVOID REVERTING TO OLD BUILD (Manual deploy)
+
+If you deploy **manually** (e.g. drag-and-drop or CLI), the live app can revert to an old unworking version if you don’t use the **current** build:
+
+1. **Frontend**
+   - Always run `npm run build` **inside `frontend/`** so the new build is made from **current** `frontend/src/` (e.g. current ProductPage, apiConfig, etc.).
+   - Deploy the **newly created** `frontend/dist/` (from this repo), not an old backup or another folder.
+   - If Netlify builds from Git: push your latest commits so the build uses the fixed code.
+
+2. **Backend**
+   - Run `fly deploy` from the **`backend/`** folder that has your current `app.py` and code.
+   - Don’t run deploy from a copy of the repo that has old files.
+
+3. **Quick check**
+   - After deploy, test the product page and API (e.g. images, cart, login). If something that was fixed is broken again, the live site is likely serving an old frontend build — rebuild from `frontend/` and redeploy the new `dist/`.
+
 ## ⚠️ IMPORTANT NOTES
 
 1. **Always check the directory** before editing files
