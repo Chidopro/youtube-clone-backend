@@ -799,4 +799,156 @@ tr:hover {
 
 .admin-mgmt-link a:hover {
   text-decoration: underline;
+}
+
+/* ========== Pending Approval page (single spot under Payouts) ========== */
+.admin-pending-approval {
+  max-width: 900px;
+}
+
+.pending-approval-header {
+  margin-bottom: 1.5rem;
+}
+
+.pending-approval-header h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.pending-approval-header p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+.pending-approval-empty {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e9ecef;
+  padding: 2rem;
+  text-align: center;
+}
+
+.pending-approval-empty p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 1rem;
+}
+
+.pending-approval-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .pending-approval-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+.pending-approval-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e9ecef;
+  padding: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  transition: box-shadow 0.2s ease;
+}
+
+.pending-approval-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.pending-approval-card-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e9ecef;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pending-approval-card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pending-approval-card-initial {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.pending-approval-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pending-approval-card-name {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.pending-approval-card-email {
+  font-size: 0.9rem;
+  color: #495057;
+  margin-bottom: 0.2rem;
+}
+
+.pending-approval-card-date {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.pending-approval-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.pending-approval-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.pending-approval-btn:active {
+  transform: scale(0.98);
+}
+
+.pending-approval-btn-approve {
+  background: #28a745;
+  color: #fff;
+}
+
+.pending-approval-btn-approve:hover {
+  background: #218838;
+}
+
+.pending-approval-btn-deny {
+  background: #dc3545;
+  color: #fff;
+}
+
+.pending-approval-btn-deny:hover {
+  background: #c82333;
 } 

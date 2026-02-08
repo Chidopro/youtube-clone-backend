@@ -6,6 +6,15 @@ let adminStatusCache = null;
 let adminStatusCacheTime = 0;
 const CACHE_DURATION = 60000; // 1 minute cache
 
+/** When on screenmerch.com, use same-origin /api so Netlify proxies to Fly and avoids CORS/403. */
+function getAdminApiBase() {
+  if (typeof window !== 'undefined') {
+    const o = (window.location?.origin || '').toLowerCase();
+    if (o === 'https://screenmerch.com' || o === 'https://www.screenmerch.com') return '';
+  }
+  return API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+}
+
 export class AdminService {
   /**
    * Get current user info from Supabase auth or localStorage
@@ -79,7 +88,7 @@ export class AdminService {
     console.log('🔐 AdminService: Checking admin status via backend for:', { userId, userEmail });
     
     try {
-      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const apiUrl = getAdminApiBase();
       const response = await fetch(`${apiUrl}/api/auth/check-admin`, {
         method: 'POST',
         headers: {
@@ -206,7 +215,7 @@ export class AdminService {
       }
       const userId = user.id || user.user?.id;
       const userEmail = (user.email || user.user_metadata?.email || user.user?.email || '').trim().toLowerCase();
-      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const apiUrl = getAdminApiBase();
       const params = new URLSearchParams();
       if (userId) params.set('user_id', userId);
       const response = await fetch(`${apiUrl}/api/admin/dashboard-stats?${params.toString()}`, {
@@ -912,7 +921,7 @@ export class AdminService {
     try {
       const currentUser = await this.getCurrentUser();
       if (!currentUser?.userEmail) throw new Error('Not authenticated');
-      const base = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const base = getAdminApiBase();
       const res = await fetch(`${base}/api/admin/pending-creators`, {
         method: 'GET',
         headers: { 'X-User-Email': currentUser.userEmail },
@@ -936,7 +945,7 @@ export class AdminService {
     try {
       const currentUser = await this.getCurrentUser();
       if (!currentUser?.userEmail) throw new Error('Not authenticated');
-      const base = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const base = getAdminApiBase();
       const res = await fetch(`${base}/api/admin/approve-creator/${userId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },
@@ -961,7 +970,7 @@ export class AdminService {
     try {
       const currentUser = await this.getCurrentUser();
       if (!currentUser?.userEmail) throw new Error('Not authenticated');
-      const base = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const base = getAdminApiBase();
       const res = await fetch(`${base}/api/admin/disapprove-creator/${userId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },

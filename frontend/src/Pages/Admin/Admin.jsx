@@ -1236,13 +1236,6 @@ const Admin = () => {
                   <p className="stat-number">{stats.totalVideos}</p>
                 </div>
                 <div className="stat-card">
-                  <h3>Pending Approvals</h3>
-                  <p className="stat-number">{(stats.pendingVideos || 0) + (stats.pendingUsers || 0)}</p>
-                  <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                    {stats.pendingUsers || 0} users, {stats.pendingVideos || 0} videos
-                  </p>
-                </div>
-                <div className="stat-card">
                   <h3>Active Subscriptions</h3>
                   <p className="stat-number">{stats.totalSubscriptions}</p>
                 </div>
@@ -1890,9 +1883,9 @@ const Admin = () => {
 
           {activeTab === 'pending-approval' && isMasterAdmin && (
             <div className="admin-pending-approval">
-              <div className="payouts-header">
+              <div className="pending-approval-header">
                 <h3>⏳ Pending Approval</h3>
-                <p>Review and approve or disapprove new creator sign-ups</p>
+                <p>Review and approve or deny new creator sign-ups. Use the sidebar link under Payouts to open this page.</p>
               </div>
 
               {pendingApprovalLoading ? (
@@ -1901,71 +1894,55 @@ const Admin = () => {
                   <p>Loading pending creators...</p>
                 </div>
               ) : pendingApprovalUsers.length === 0 ? (
-                <div className="no-payouts">
+                <div className="pending-approval-empty">
                   <p>No pending sign-ups. New creators will appear here after they register.</p>
                 </div>
               ) : (
-                <div className="payouts-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Email</th>
-                        <th>Display Name</th>
-                        <th>Signed Up</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pendingApprovalUsers.map(user => (
-                        <tr key={user.id}>
-                          <td>{user.email}</td>
-                          <td>{user.display_name || '—'}</td>
-                          <td>
-                            {user.created_at
-                              ? new Date(user.created_at).toLocaleDateString(undefined, {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })
-                              : '—'}
-                          </td>
-                          <td>
-                            <button
-                              onClick={() => handleApproveCreator(user.id)}
-                              className="action-btn approve"
-                              style={{
-                                backgroundColor: '#28a745',
-                                color: 'white',
-                                marginRight: '8px',
-                                padding: '6px 12px',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleDisapproveCreator(user.id)}
-                              className="action-btn disapprove"
-                              style={{
-                                backgroundColor: '#dc3545',
-                                color: 'white',
-                                padding: '6px 12px',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Disapprove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="pending-approval-grid">
+                  {pendingApprovalUsers.map(creator => (
+                    <div key={creator.id} className="pending-approval-card">
+                      <div className="pending-approval-card-avatar">
+                        {creator.profile_image_url ? (
+                          <img src={creator.profile_image_url} alt="" />
+                        ) : (
+                          <span className="pending-approval-card-initial">
+                            {(creator.display_name || creator.email || '?').charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="pending-approval-card-info">
+                        <div className="pending-approval-card-name">{creator.display_name || '—'}</div>
+                        <div className="pending-approval-card-email">{creator.email}</div>
+                        <div className="pending-approval-card-date">
+                          Signed up: {creator.created_at
+                            ? new Date(creator.created_at).toLocaleDateString(undefined, {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : '—'}
+                        </div>
+                      </div>
+                      <div className="pending-approval-card-actions">
+                        <button
+                          type="button"
+                          onClick={() => handleApproveCreator(creator.id)}
+                          className="pending-approval-btn pending-approval-btn-approve"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDisapproveCreator(creator.id)}
+                          className="pending-approval-btn pending-approval-btn-deny"
+                        >
+                          Deny
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
