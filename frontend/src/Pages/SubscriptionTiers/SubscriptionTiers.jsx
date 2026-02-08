@@ -83,21 +83,10 @@ const SubscriptionTiers = () => {
         // Use same-origin /api/... on production so Netlify proxies to Fly - avoids CORS
         const o = typeof window !== 'undefined' ? window.location.origin : '';
         const apiBase = (o === 'https://screenmerch.com' || o === 'https://www.screenmerch.com') ? '' : 'https://screenmerch.fly.dev';
-        const loginApiUrl = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup&format=json`;
+        // Direct redirect: backend always returns 302 to Google. Using fetch() would follow that redirect and hit CORS.
+        const loginUrl = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup`;
         setActionLoading(true);
-        try {
-            const res = await fetch(loginApiUrl, { credentials: 'include', headers: { Accept: 'application/json' } });
-            const data = await res.json().catch(() => ({}));
-            if (data.auth_url) {
-                window.location.href = data.auth_url;
-                return;
-            }
-            setMessage(data.error || 'Could not start sign-in. Please try again.');
-        } catch (e) {
-            setMessage('Network error. Please try again.');
-        } finally {
-            setActionLoading(false);
-        }
+        window.location.href = loginUrl;
     };
 
     const handleCloseCreatorSignupModal = () => {
