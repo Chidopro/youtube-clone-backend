@@ -497,7 +497,12 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     };
 
     const handleSubscribeClick = () => {
-        // Navigate to subscription-tiers page (Product Calculator)
+        // If not logged in, open creator signup modal so sign-up uses flow=creator_signup and records in Pending Approval
+        if (!user) {
+            setIsCreatorSignupModalOpen(true);
+            return;
+        }
+        // Logged in: go to subscription-tiers (calculator / payout setup)
         navigate('/subscription-tiers');
     };
 
@@ -506,16 +511,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         localStorage.setItem('pending_creator_location', location);
         const creatorSignupReturnUrl = 'https://screenmerch.com';
         const apiBase = (window.location.origin === 'https://screenmerch.com' || window.location.origin === 'https://www.screenmerch.com') ? '' : 'https://screenmerch.fly.dev';
-        const loginApiUrl = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup&format=json`;
-        try {
-            const res = await fetch(loginApiUrl, { credentials: 'include', headers: { Accept: 'application/json' } });
-            const data = await res.json().catch(() => ({}));
-            if (data.auth_url) {
-                window.location.href = data.auth_url;
-                return;
-            }
-        } catch (_) {}
-        window.location.href = loginApiUrl.replace('&format=json', '');
+        // Direct redirect (no fetch) so backend 302 to Google doesn't hit CORS; flow=creator_signup ensures callback records in Pending Approval
+        const loginUrl = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup`;
+        window.location.href = loginUrl;
     };
 
     const handleCloseCreatorSignupModal = () => {
