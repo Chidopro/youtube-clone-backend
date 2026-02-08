@@ -100,8 +100,8 @@ const VerifyEmail = () => {
       setMessage({ type: 'success', text: 'Email verified and password set successfully! Redirecting...' });
 
       setTimeout(() => {
-        // Redirect to category page (Choose a Product Category) for new customers
-        navigate('/merchandise');
+        // Redirect to home page after setting password (e.g. creator set-password flow)
+        navigate('/');
       }, 2000);
     } catch (err) {
       setMessage({ type: 'error', text: err?.message || 'Verification failed. Please try again.' });

@@ -694,7 +694,7 @@ def auth_request_set_password():
         link = f"{frontend_url}/verify-email?token={verification_token}&email={quote(email)}"
         if resend_api_key:
             try:
-                requests.post(
+                r = requests.post(
                     "https://api.resend.com/emails",
                     headers={"Authorization": f"Bearer {resend_api_key}", "Content-Type": "application/json"},
                     json={
@@ -709,8 +709,14 @@ def auth_request_set_password():
                     },
                     timeout=30
                 )
+                if r.status_code == 200:
+                    logger.info(f"request-set-password: email sent to {email}")
+                else:
+                    logger.error(f"request-set-password: Resend failed status={r.status_code} body={r.text[:500]}")
             except Exception as e:
                 logger.error(f"request-set-password email error: {e}")
+        else:
+            logger.warning("request-set-password: RESEND_API_KEY not set - set-password email not sent. Set RESEND_API_KEY and RESEND_FROM in Fly.io secrets.")
         return jsonify({"success": True, "message": "If an account exists with that email, we sent a link to set your password."}), 200
     except Exception as e:
         logger.error(f"request-set-password error: {e}")
