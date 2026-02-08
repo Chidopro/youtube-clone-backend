@@ -847,6 +847,77 @@ tr:hover {
   cursor: not-allowed;
 }
 
+.pending-approval-add-section {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.pending-approval-add-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #495057;
+  margin-bottom: 0.5rem;
+}
+
+.pending-approval-add-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pending-approval-add-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.pending-approval-add-input:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+.pending-approval-add-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #fff;
+  background: #1976d2;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pending-approval-add-btn:hover:not(:disabled) {
+  background: #1565c0;
+}
+
+.pending-approval-add-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.pending-approval-add-message {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.9rem;
+}
+
+.pending-approval-add-message.success {
+  color: #155724;
+}
+
+.pending-approval-add-message.error {
+  color: #721c24;
+}
+
 .pending-approval-empty {
   background: #fff;
   border-radius: 12px;

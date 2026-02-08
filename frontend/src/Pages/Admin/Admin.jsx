@@ -24,6 +24,9 @@ const Admin = () => {
   const [payoutLoading, setPayoutLoading] = useState(false);
   const [pendingApprovalUsers, setPendingApprovalUsers] = useState([]);
   const [pendingApprovalLoading, setPendingApprovalLoading] = useState(false);
+  const [addToPendingEmail, setAddToPendingEmail] = useState('');
+  const [addToPendingMessage, setAddToPendingMessage] = useState('');
+  const [addToPendingLoading, setAddToPendingLoading] = useState(false);
   const [processingQueue, setProcessingQueue] = useState([]);
   const [processingHistory, setProcessingHistory] = useState([]);
   const [workers, setWorkers] = useState([]);
@@ -354,6 +357,29 @@ const Admin = () => {
       loadStats();
     } else {
       alert(result.error || 'Failed to disapprove');
+    }
+  };
+
+  const handleAddToPending = async () => {
+    const email = addToPendingEmail.trim().toLowerCase();
+    if (!email) {
+      setAddToPendingMessage('Please enter an email address.');
+      return;
+    }
+    setAddToPendingMessage('');
+    setAddToPendingLoading(true);
+    try {
+      const result = await AdminService.setCreatorPending(email);
+      if (result.success) {
+        setAddToPendingEmail('');
+        setAddToPendingMessage(result.message || 'Creator added to Pending Approval list.');
+        await loadPendingApprovalUsers();
+        loadStats();
+      } else {
+        setAddToPendingMessage(result.error || 'Failed to add to pending');
+      }
+    } finally {
+      setAddToPendingLoading(false);
     }
   };
 
@@ -1891,6 +1917,30 @@ const Admin = () => {
                 </button>
               </div>
 
+              <div className="pending-approval-add-section">
+                <label htmlFor="add-to-pending-email" className="pending-approval-add-label">Add existing creator to Pending list (by email)</label>
+                <div className="pending-approval-add-row">
+                  <input
+                    id="add-to-pending-email"
+                    type="email"
+                    placeholder="e.g. creator@example.com"
+                    value={addToPendingEmail}
+                    onChange={(e) => { setAddToPendingEmail(e.target.value); setAddToPendingMessage(''); }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddToPending()}
+                    className="pending-approval-add-input"
+                    disabled={addToPendingLoading}
+                  />
+                  <button type="button" onClick={handleAddToPending} disabled={addToPendingLoading} className="pending-approval-add-btn">
+                    {addToPendingLoading ? 'Adding…' : 'Add to Pending'}
+                  </button>
+                </div>
+                {addToPendingMessage && (
+                  <p className={`pending-approval-add-message ${addToPendingMessage.includes('added') || addToPendingMessage.includes('Creator') ? 'success' : 'error'}`}>
+                    {addToPendingMessage}
+                  </p>
+                )}
+              </div>
+
               {pendingApprovalLoading ? (
                 <div className="admin-loading">
                   <div className="loading-spinner"></div>
@@ -1899,7 +1949,7 @@ const Admin = () => {
               ) : pendingApprovalUsers.length === 0 ? (
                 <div className="pending-approval-empty">
                   <p>No pending sign-ups. New creators will appear here after they register.</p>
-                  <p className="pending-approval-empty-hint">Click &quot;Refresh list&quot; to check again.</p>
+                  <p className="pending-approval-empty-hint">When there are sign-ups, a table will show with each creator and <strong>Activate</strong> / <strong>Deny</strong> buttons. Use &quot;Add to Pending&quot; above to add an existing creator by email, or click &quot;Refresh list&quot; to check again.</p>
                 </div>
               ) : (
                 <div className="pending-approval-table-wrap">

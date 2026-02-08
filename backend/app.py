@@ -5333,6 +5333,35 @@ def admin_approve_creator(user_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/admin/set-creator-pending", methods=["POST", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_set_creator_pending():
+    """Set an existing creator (by email) to status=pending so they appear in Pending Approval. Master Admin only."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    err, code = _require_master_admin()
+    if err is not None:
+        return err, code
+    try:
+        data = request.get_json() or {}
+        email = (data.get("email") or "").strip().lower()
+        if not email:
+            return jsonify({"success": False, "error": "email required"}), 400
+        client = supabase_admin if supabase_admin else supabase
+        r = client.table("users").select("id, role, status").eq("email", email).execute()
+        if not r.data or len(r.data) == 0:
+            return jsonify({"success": False, "error": "No user found with that email"}), 404
+        user = r.data[0]
+        if user.get("role") != "creator":
+            return jsonify({"success": False, "error": "User is not a creator. Only creators can be added to Pending Approval."}), 400
+        client.table("users").update({"status": "pending", "updated_at": "now()"}).eq("id", user["id"]).execute()
+        logger.info(f"Creator set to pending by admin: {email}")
+        return jsonify({"success": True, "message": "Creator added to Pending Approval list"})
+    except Exception as e:
+        logger.error(f"set-creator-pending error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/admin/disapprove-creator/<user_id>", methods=["POST", "OPTIONS"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def admin_disapprove_creator(user_id):
@@ -8293,7 +8322,7 @@ def google_callback():
                             created_dt = created_dt.replace(tzinfo=timezone.utc)
                         if created_dt:
                             now = datetime.now(timezone.utc)
-                            is_recent = (now - created_dt) < timedelta(minutes=30)
+                            is_recent = (now - created_dt) < timedelta(hours=24)
                     except Exception:
                         pass
                 if current_status in (None, '') or (current_status == 'active' and is_recent):

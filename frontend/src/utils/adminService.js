@@ -987,6 +987,31 @@ export class AdminService {
   }
 
   /**
+   * Set an existing creator (by email) to pending so they appear in Pending Approval. Master Admin only.
+   * @param {string} email - Creator email
+   * @returns {Promise<{ success: boolean, error?: string, message?: string }>}
+   */
+  static async setCreatorPending(email) {
+    try {
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) throw new Error('Not authenticated');
+      const base = getAdminApiBase();
+      const res = await fetch(`${base}/api/admin/set-creator-pending`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },
+        credentials: 'include',
+        body: JSON.stringify({ email: (email || '').trim().toLowerCase() })
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.error || res.statusText };
+      return { success: true, message: data.message };
+    } catch (error) {
+      console.error('Error setting creator to pending:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Get payout history
    * @returns {Promise<Array>} Payout history
    */
