@@ -1886,6 +1886,9 @@ const Admin = () => {
               <div className="pending-approval-header">
                 <h3>⏳ Pending Approval</h3>
                 <p>Review and approve or deny new creator sign-ups. Use the sidebar link under Payouts to open this page.</p>
+                <button type="button" onClick={loadPendingApprovalUsers} disabled={pendingApprovalLoading} className="pending-approval-refresh-btn">
+                  {pendingApprovalLoading ? 'Loading…' : 'Refresh list'}
+                </button>
               </div>
 
               {pendingApprovalLoading ? (
@@ -1896,53 +1899,70 @@ const Admin = () => {
               ) : pendingApprovalUsers.length === 0 ? (
                 <div className="pending-approval-empty">
                   <p>No pending sign-ups. New creators will appear here after they register.</p>
+                  <p className="pending-approval-empty-hint">Click &quot;Refresh list&quot; to check again.</p>
                 </div>
               ) : (
-                <div className="pending-approval-grid">
-                  {pendingApprovalUsers.map(creator => (
-                    <div key={creator.id} className="pending-approval-card">
-                      <div className="pending-approval-card-avatar">
-                        {creator.profile_image_url ? (
-                          <img src={creator.profile_image_url} alt="" />
-                        ) : (
-                          <span className="pending-approval-card-initial">
-                            {(creator.display_name || creator.email || '?').charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      <div className="pending-approval-card-info">
-                        <div className="pending-approval-card-name">{creator.display_name || '—'}</div>
-                        <div className="pending-approval-card-email">{creator.email}</div>
-                        <div className="pending-approval-card-date">
-                          Signed up: {creator.created_at
-                            ? new Date(creator.created_at).toLocaleDateString(undefined, {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
-                            : '—'}
-                        </div>
-                      </div>
-                      <div className="pending-approval-card-actions">
-                        <button
-                          type="button"
-                          onClick={() => handleApproveCreator(creator.id)}
-                          className="pending-approval-btn pending-approval-btn-approve"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDisapproveCreator(creator.id)}
-                          className="pending-approval-btn pending-approval-btn-deny"
-                        >
-                          Deny
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="pending-approval-table-wrap">
+                  <table className="pending-approval-table">
+                    <thead>
+                      <tr>
+                        <th>Creator</th>
+                        <th>Email</th>
+                        <th>Signed up</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingApprovalUsers.map(creator => (
+                        <tr key={creator.id} className="pending-approval-row">
+                          <td>
+                            <div className="pending-approval-creator-cell">
+                              <div className="pending-approval-avatar">
+                                {creator.profile_image_url ? (
+                                  <img src={creator.profile_image_url} alt="" />
+                                ) : (
+                                  <span className="pending-approval-initial">
+                                    {(creator.display_name || creator.email || '?').charAt(0).toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="pending-approval-name">{creator.display_name || '—'}</span>
+                            </div>
+                          </td>
+                          <td className="pending-approval-email-cell">{creator.email}</td>
+                          <td className="pending-approval-date-cell">
+                            {creator.created_at
+                              ? new Date(creator.created_at).toLocaleDateString(undefined, {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : '—'}
+                          </td>
+                          <td>
+                            <div className="pending-approval-actions">
+                              <button
+                                type="button"
+                                onClick={() => handleApproveCreator(creator.id)}
+                                className="pending-approval-btn pending-approval-btn-activate"
+                              >
+                                Activate
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDisapproveCreator(creator.id)}
+                                className="pending-approval-btn pending-approval-btn-deny"
+                              >
+                                Deny
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
