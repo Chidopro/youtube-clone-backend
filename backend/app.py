@@ -8169,7 +8169,18 @@ def google_login():
 
 @app.route("/api/auth/google/callback", methods=["GET", "OPTIONS"])
 def google_callback():
-    """Handle Google OAuth callback"""
+    """Handle Google OAuth callback.
+
+    How creator sign-up is logged for Master Admin Pending list:
+    - Start Free -> Sign Up Now -> email -> Google: flow=creator_signup is in OAuth state.
+    - Callback looks up user by email (admin client to bypass RLS).
+    - If user does NOT exist: insert with supabase_admin into users (role=creator, status=pending).
+      Requires SUPABASE_SERVICE_ROLE_KEY so insert is visible to admin; record then appears in
+      GET /api/admin/pending-creators (same admin client, status=pending, role=creator).
+    - If user EXISTS and flow=creator_signup: set status to pending when status was null/empty,
+      or when status is 'active' but user was created in the last 30 minutes (e.g. created by
+      another flow with default active). Ensures they show in Pending Approval.
+    """
     if request.method == "OPTIONS":
         # Flask-CORS handles OPTIONS requests automatically
         return jsonify(success=True)
@@ -8266,16 +8277,37 @@ def google_callback():
             # User exists - do not create duplicate. Record only once in admin dashboard.
             user = result.data[0]
             user_status = user.get('status') if user.get('status') not in (None, '') else 'active'
-            # Creator signup flow: if existing creator has no status (null/empty), set to pending so they show in Pending Approval
+            # Creator signup flow: ensure existing creator shows in Pending Approval when appropriate
+            # Set to pending if: (1) status is null/empty, or (2) status is 'active' but user was created very recently
+            # (e.g. by another flow/trigger that defaulted to active - so they still need to appear in pending list)
             if flow_from_state == 'creator_signup' and (user.get('role') == 'creator' or not user.get('role')):
                 current_status = user.get('status')
-                if current_status in (None, ''):
+                created_at_raw = user.get('created_at')
+                is_recent = False
+                if created_at_raw:
+                    try:
+                        from datetime import datetime, timezone, timedelta
+                        s = (created_at_raw or '').replace('Z', '+00:00').replace('z', '+00:00')
+                        created_dt = datetime.fromisoformat(s) if s else None
+                        if created_dt and created_dt.tzinfo is None:
+                            created_dt = created_dt.replace(tzinfo=timezone.utc)
+                        if created_dt:
+                            now = datetime.now(timezone.utc)
+                            is_recent = (now - created_dt) < timedelta(minutes=30)
+                    except Exception:
+                        pass
+                if current_status in (None, '') or (current_status == 'active' and is_recent):
                     try:
                         update_client = supabase_admin if supabase_admin else supabase
-                        update_client.table('users').update({'status': 'pending', 'updated_at': 'now()'}).eq('id', user['id']).execute()
+                        update_client.table('users').update({
+                            'status': 'pending',
+                            'updated_at': 'now()',
+                            'role': user.get('role') or 'creator'  # ensure role is set for pending list
+                        }).eq('id', user['id']).execute()
                         user_status = 'pending'
                         user['status'] = 'pending'
-                        logger.info(f"✅ [GOOGLE OAUTH] Existing creator had no status → set to pending so they appear in Pending Approval: {google_email}")
+                        user['role'] = user.get('role') or 'creator'
+                        logger.info(f"✅ [GOOGLE OAUTH] Existing creator set to pending for Pending Approval list: {google_email} (status was {current_status!r}, recent={is_recent})")
                     except Exception as e:
                         logger.warning(f"Could not set existing creator to pending: {e}")
             logger.info(f"🔍 [GOOGLE OAUTH] User already exists: {google_email} status={user_status} id={user.get('id')} (no new insert; they already count in dashboard)")
@@ -8371,7 +8403,8 @@ def google_callback():
                 'display_name': google_name,
                 'role': 'creator',
                 'status': 'pending',  # Creators need admin approval
-                'created_at': datetime.utcnow().isoformat()
+                'created_at': datetime.utcnow().isoformat(),
+                'profile_image_url': google_picture or None,
             }
             user = None
             try:
