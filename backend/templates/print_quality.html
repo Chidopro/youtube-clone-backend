@@ -308,6 +308,27 @@
             </div>
             -->
             
+            <!-- Fit to Print Area (above Step 1): product dropdown + screenshot size so admin can fit landscape image to product -->
+            <div id="fitToPrintAreaSection" style="background: #f0f7ff; padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #0066cc;">
+                <h3 style="margin-top: 0; color: #0066cc; font-size: 18px;">📐 Fit to Print Area</h3>
+                <p style="color: #555; margin-bottom: 16px; font-size: 14px;">Select a product to resize the image to that product’s print area (e.g. hoodie vs mug). Use when the email image is landscape and needs to fit apparel.</p>
+                <div class="form-group">
+                    <label for="fitProductSelect">Select Product:</label>
+                    <select id="fitProductSelect" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px;">
+                        <option value="">-- Select Product --</option>
+                    </select>
+                </div>
+                <div class="form-group" id="fitSizeGroup" style="display: none;">
+                    <label for="fitSizeSelect">Size (print area):</label>
+                    <select id="fitSizeSelect" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px;"></select>
+                </div>
+                <div class="form-group">
+                    <label for="screenshotSizeSlider">Screenshot size: <span id="screenshotSizeValue">100</span>%</label>
+                    <input type="range" id="screenshotSizeSlider" min="50" max="150" value="100" style="width: 100%;">
+                    <small style="color: #666;">Scale the image within the print area (100% = full print area).</small>
+                </div>
+            </div>
+            
             <!-- STEP 1: CREATE 300 DPI IMAGE (STANDALONE) -->
             <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin: 20px 0; border: 3px solid #28a745; text-align: center;">
                 <h2 style="margin-top: 0; color: #28a745; font-size: 24px;">🎯 STEP 1: Create 300 DPI Image</h2>
@@ -468,6 +489,70 @@
             });
         }
         let allProducts = [];  // Store all products from order
+        let printAreaProductsList = [];  // From /api/print-area-products for fit-to-print dropdown
+        
+        // Load print area products for fit-to-print dropdown
+        (function loadPrintAreaProducts() {
+            fetch('/api/print-area-products')
+                .then(function(r) { return r.ok ? r.json() : null; })
+                .then(function(data) {
+                    if (data && data.success && data.products && data.products.length) {
+                        printAreaProductsList = data.products;
+                        var sel = document.getElementById('fitProductSelect');
+                        if (sel) {
+                            data.products.forEach(function(p) {
+                                var opt = document.createElement('option');
+                                opt.value = p.name;
+                                opt.textContent = p.name + (p.description ? ' — ' + p.description : '');
+                                sel.appendChild(opt);
+                            });
+                        }
+                    }
+                })
+                .catch(function() {});
+        })();
+        
+        // When fit product changes, show/hide size dropdown
+        document.getElementById('fitProductSelect').addEventListener('change', function() {
+            var productName = this.value;
+            var sizeGroup = document.getElementById('fitSizeGroup');
+            var sizeSelect = document.getElementById('fitSizeSelect');
+            sizeGroup.style.display = 'none';
+            sizeSelect.innerHTML = '';
+            if (!productName) return;
+            var product = printAreaProductsList.find(function(p) { return p.name === productName; });
+            if (product && product.sizes && product.sizes.length) {
+                sizeGroup.style.display = 'block';
+                product.sizes.forEach(function(s) {
+                    var opt = document.createElement('option');
+                    opt.value = s.label;
+                    opt.textContent = s.label + ' (' + s.width + '"×' + s.height + '")';
+                    sizeSelect.appendChild(opt);
+                });
+            }
+        });
+        
+        document.getElementById('screenshotSizeSlider').addEventListener('input', function() {
+            var el = document.getElementById('screenshotSizeValue');
+            if (el) el.textContent = this.value;
+        });
+        
+        // Return { width, height } in inches for current fit product/size and screenshot scale, or null
+        function getFitPrintAreaDimensions() {
+            var productName = document.getElementById('fitProductSelect').value;
+            if (!productName) return null;
+            var product = printAreaProductsList.find(function(p) { return p.name === productName; });
+            if (!product) return null;
+            var w = product.width, h = product.height;
+            var sizeSelect = document.getElementById('fitSizeSelect');
+            if (sizeSelect && sizeSelect.options.length && product.sizes) {
+                var label = sizeSelect.value;
+                var s = product.sizes.find(function(x) { return x.label === label; });
+                if (s) { w = s.width; h = s.height; }
+            }
+            var scale = parseInt(document.getElementById('screenshotSizeSlider').value, 10) / 100;
+            return { width: w * scale, height: h * scale };
+        }
         
         // Function to update product info display
         function updateProductInfoDisplay(product) {
@@ -643,6 +728,13 @@
                     soft_corners: false,  // No effects in step 1
                     edge_feather: false   // No effects in step 1
                 };
+                
+                // Fit to print area: when product is selected, send dimensions so image is resized to fit (e.g. hoodie vs mug)
+                const fitDims = getFitPrintAreaDimensions();
+                if (fitDims) {
+                    payload.print_area_width = fitDims.width;
+                    payload.print_area_height = fitDims.height;
+                }
                 
                 // Build crop area if provided
                 const cropArea = getCropArea();

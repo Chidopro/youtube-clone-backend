@@ -4684,6 +4684,17 @@ def process_thumbnail_print_quality():
         response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
         return response, 500
 
+@app.route("/api/print-area-products", methods=["GET"])
+def get_print_area_products():
+    """Return product list with print area dimensions for print-quality page (fit to product dropdown)."""
+    try:
+        from print_area_products import get_products
+        products = get_products()
+        return jsonify({"success": True, "products": products})
+    except Exception as e:
+        logger.error(f"Error getting print area products: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route("/api/get-order-screenshot/<order_id>")
 def get_order_screenshot(order_id):
     """Get screenshot data for a specific order. Prefer order_store so screenshot from checkout is always available."""
