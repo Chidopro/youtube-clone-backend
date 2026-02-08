@@ -80,12 +80,18 @@ const SubscriptionTiers = () => {
         localStorage.setItem('pending_creator_email', email);
         localStorage.setItem('pending_creator_location', location);
         const creatorSignupReturnUrl = 'https://screenmerch.com';
-        // Use same-origin /api/... on production so Netlify proxies to Fly - avoids CORS
         const o = typeof window !== 'undefined' ? window.location.origin : '';
         const apiBase = (o === 'https://screenmerch.com' || o === 'https://www.screenmerch.com') ? '' : 'https://screenmerch.fly.dev';
-        // Direct redirect: backend always returns 302 to Google. Using fetch() would follow that redirect and hit CORS.
-        const loginUrl = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup`;
         setActionLoading(true);
+        try {
+            await fetch(`${apiBase}/api/auth/register-pending-creator`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: (email || '').trim().toLowerCase() }),
+                credentials: 'include'
+            });
+        } catch (_) {}
+        const loginUrl = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup`;
         window.location.href = loginUrl;
     };
 

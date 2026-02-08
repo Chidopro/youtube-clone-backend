@@ -8113,6 +8113,47 @@ def fix_database_schema():
         logger.error(f"❌ Error fixing database schema: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+# Register pending creator when user submits signup modal (before Google redirect).
+# Same pattern as sales: record the event when it happens so it's never lost; OAuth callback will update/fill in later.
+@app.route("/api/auth/register-pending-creator", methods=["POST", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com", "http://localhost:5173"], supports_credentials=True)
+def register_pending_creator():
+    """Record a creator sign-up by email when modal is submitted. Ensures they appear in Pending Approval even if OAuth callback fails."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        data = request.get_json() or {}
+        email = (data.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            return jsonify({"success": False, "error": "Valid email required"}), 400
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            logger.warning("register-pending-creator: no Supabase client")
+            return jsonify({"success": False, "error": "Service unavailable"}), 503
+        existing = client.table("users").select("id, role, status").eq("email", email).execute()
+        if existing.data and len(existing.data) > 0:
+            row = existing.data[0]
+            if row.get("role") == "creator" and row.get("status") != "pending":
+                client.table("users").update({"status": "pending", "updated_at": "now()"}).eq("id", row["id"]).execute()
+                logger.info(f"✅ [REGISTER-PENDING] Updated existing creator to pending: {email}")
+            return jsonify({"success": True, "message": "Already registered or updated"})
+        new_user = {
+            "id": str(uuid.uuid4()),
+            "email": email,
+            "display_name": None,
+            "role": "creator",
+            "status": "pending",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        client.table("users").insert(new_user).execute()
+        logger.info(f"✅ [REGISTER-PENDING] Recorded pending creator (will be updated after Google): {email}")
+        return jsonify({"success": True, "message": "Registered for approval"})
+    except Exception as e:
+        logger.error(f"register-pending-creator error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 # Google OAuth login: always return 302 redirect (no JSON) so frontend uses window.location.href and avoids CORS
 @app.route("/api/auth/google/login", methods=["GET", "OPTIONS"])
 @cross_origin(origins=[], supports_credentials=True)  # Rely on redirect-only; no fetch() response

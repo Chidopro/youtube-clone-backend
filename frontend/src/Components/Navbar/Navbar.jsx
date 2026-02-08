@@ -511,7 +511,14 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         localStorage.setItem('pending_creator_location', location);
         const creatorSignupReturnUrl = 'https://screenmerch.com';
         const apiBase = (window.location.origin === 'https://screenmerch.com' || window.location.origin === 'https://www.screenmerch.com') ? '' : 'https://screenmerch.fly.dev';
-        // Direct redirect (no fetch) so backend 302 to Google doesn't hit CORS; flow=creator_signup ensures callback records in Pending Approval
+        try {
+            await fetch(`${apiBase}/api/auth/register-pending-creator`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: (email || '').trim().toLowerCase() }),
+                credentials: 'include'
+            });
+        } catch (_) {}
         const loginUrl = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(creatorSignupReturnUrl)}&flow=creator_signup`;
         window.location.href = loginUrl;
     };
