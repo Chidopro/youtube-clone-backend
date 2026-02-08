@@ -59,6 +59,7 @@ const Dashboard = ({ sidebar }) => {
         daily_sales: []  // Last 7 days of sales data
     });
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
+    const [isMasterAdmin, setIsMasterAdmin] = useState(false);
     const [editingVideo, setEditingVideo] = useState(null);
     const [editVideoForm, setEditVideoForm] = useState({
         title: '',
@@ -937,6 +938,21 @@ const Dashboard = ({ sidebar }) => {
         }
     };
 
+    // Check if current user is master admin (so we only show Reset Sales to them)
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            if (!user?.email) return;
+            try {
+                const status = await AdminService.checkAdminStatus();
+                if (mounted) setIsMasterAdmin(status?.isMasterAdmin || false);
+            } catch (_) {
+                if (mounted) setIsMasterAdmin(false);
+            }
+        })();
+        return () => { mounted = false; };
+    }, [user?.email]);
+
     // Fetch analytics data
     const fetchAnalytics = async () => {
         if (!user || !user.id) {
@@ -1543,6 +1559,7 @@ const Dashboard = ({ sidebar }) => {
                                 <div className="analytics-summary">
                                     <span className="total-sales">Total Sales: {analyticsLoading ? 'Loading...' : analyticsData.total_sales}</span>
                                     <span className="total-revenue">Total Revenue: ${analyticsLoading ? '0.00' : analyticsData.total_revenue.toFixed(2)}</span>
+                                    {isMasterAdmin && (
                                     <button 
                                         onClick={async () => {
                                             if (!window.confirm('⚠️ WARNING: This will permanently delete all your sales data. This action cannot be undone. Are you absolutely sure?')) {
@@ -1599,6 +1616,7 @@ const Dashboard = ({ sidebar }) => {
                                     >
                                         🔄 Reset Sales
                                     </button>
+                                    )}
                                 </div>
                             </div>
                             
