@@ -226,6 +226,23 @@
   100% { transform: rotate(360deg); }
 }
 
+.login-forgot-wrap {
+  text-align: center;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.login-forgot-link {
+  color: #667eea;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.login-forgot-link:hover {
+  text-decoration: underline;
+  color: #764ba2;
+}
+
 .login-toggle {
   text-align: center;
   margin-bottom: 25px;

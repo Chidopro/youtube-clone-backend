@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
 import { supabase } from '../../supabaseClient';
 import { AdminService } from '../../utils/adminService';
@@ -492,6 +492,11 @@ const Login = () => {
               isLoginMode ? 'Sign In' : 'Create Account'
             )}
           </button>
+          {isLoginMode && (
+            <div className="login-forgot-wrap">
+              <Link to="/set-password" className="login-forgot-link">Forgot password? Set password</Link>
+            </div>
+          )}
         </form>
 
         <div className="login-toggle">

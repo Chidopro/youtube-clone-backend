@@ -668,9 +668,58 @@ def auth_signup_email_only():
         return response, 500
 
 
+@auth_bp.route("/api/auth/request-set-password", methods=["POST", "OPTIONS"])
+def auth_request_set_password():
+    """Send a 'set password' email. For accounts with no password (e.g. creator signup) or forgot password."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        data = _data_from_request()
+        email = (data.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            return jsonify({"success": False, "error": "Valid email is required"}), 400
+        client = _get_supabase_client()
+        result = client.table('users').select('id, email').eq('email', email).execute()
+        if not result.data:
+            return jsonify({"success": True, "message": "If an account exists with that email, we sent a link to set your password."}), 200
+        verification_token = str(uuid.uuid4())
+        token_expiry = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+        client.table('users').update({
+            'email_verification_token': verification_token,
+            'token_expiry': token_expiry
+        }).eq('id', result.data[0]['id']).execute()
+        resend_api_key = _get_config('RESEND_API_KEY')
+        resend_from = _get_config('RESEND_FROM', 'noreply@screenmerch.com')
+        frontend_url = os.getenv("FRONTEND_URL", "https://screenmerch.com")
+        link = f"{frontend_url}/verify-email?token={verification_token}&email={quote(email)}"
+        if resend_api_key:
+            try:
+                requests.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {resend_api_key}", "Content-Type": "application/json"},
+                    json={
+                        "from": resend_from,
+                        "to": email,
+                        "subject": "Set your ScreenMerch password",
+                        "html": f"""
+                        <p>You requested to set your password for ScreenMerch.</p>
+                        <p><a href="{link}">Set your password</a> (link expires in 24 hours).</p>
+                        <p>If you didn't request this, you can ignore this email.</p>
+                        """
+                    },
+                    timeout=30
+                )
+            except Exception as e:
+                logger.error(f"request-set-password email error: {e}")
+        return jsonify({"success": True, "message": "If an account exists with that email, we sent a link to set your password."}), 200
+    except Exception as e:
+        logger.error(f"request-set-password error: {e}")
+        return jsonify({"success": False, "error": "Something went wrong. Please try again."}), 500
+
+
 @auth_bp.route("/api/auth/verify-email", methods=["POST", "OPTIONS"])
 def auth_verify_email():
-    """Verify email token and set password"""
+    """Verify email token and set password (first-time set or reset)."""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         # Flask-CORS handles CORS headers automatically
@@ -709,10 +758,7 @@ def auth_verify_email():
             except Exception:
                 pass
         
-        # Check if already verified
-        if user.get('email_verified'):
-            return jsonify({"success": False, "error": "Email already verified. Please sign in."}), 400
-        
+        # Allow setting password when token is valid (first-time set or reset); do not block if email_verified
         # Update user: set password, mark as verified, clear token
         password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
