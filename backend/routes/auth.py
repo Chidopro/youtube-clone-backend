@@ -779,8 +779,8 @@ def auth_verify_email():
         
         if update_result.data:
             token = str(uuid.uuid4())
-            
-            response = jsonify({
+            user_id = str(update_result.data[0].get('id'))
+            payload = {
                 "success": True,
                 "message": "Email verified and password set successfully!",
                 "user": {
@@ -790,8 +790,16 @@ def auth_verify_email():
                     "role": update_result.data[0].get('role', 'customer')
                 },
                 "token": token
-            })
-            return response, 200
+            }
+            resp = make_response(jsonify(payload), 200)
+            domain = _cookie_domain()
+            resp.set_cookie(
+                "sm_session", token,
+                domain=domain, path="/",
+                secure=True, httponly=True, samesite="None", max_age=7*24*3600
+            )
+            current_app.config.setdefault("session_token_store", {})[token] = user_id
+            return resp
         else:
             response = jsonify({"success": False, "error": "Failed to verify email"})
             return response, 500

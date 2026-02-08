@@ -97,12 +97,12 @@ const VerifyEmail = () => {
       if (data?.user) localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('isAuthenticated', 'true');
 
-      setMessage({ type: 'success', text: 'Email verified and password set successfully! Redirecting...' });
+      setMessage({ type: 'success', text: 'Email verified and password set successfully! Redirecting to home...' });
 
+      // Redirect to home immediately (same idea as email signup: leave verify flow and land on home, not category)
       setTimeout(() => {
-        // Redirect to home page after setting password (e.g. creator set-password flow)
-        navigate('/');
-      }, 2000);
+        window.location.replace('/');
+      }, 800);
     } catch (err) {
       setMessage({ type: 'error', text: err?.message || 'Verification failed. Please try again.' });
     } finally {
