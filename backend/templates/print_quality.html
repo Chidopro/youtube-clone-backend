@@ -85,10 +85,26 @@
         }
         .image-preview {
             max-width: 100%;
+            max-height: 420px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
             margin-top: 10px;
             border: 1px solid #ddd;
             border-radius: 5px;
             background: transparent;
+            display: block;
+        }
+        .result .image-preview-wrap {
+            max-height: 420px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            border: 1px solid #ddd;
         }
         .button-container {
             display: flex;
@@ -1409,7 +1425,9 @@
                 <p><strong>Format:</strong> ${result.format}</p>
                 <p><strong>Quality:</strong> ${result.quality}</p>
                 
-                <img src="${result.screenshot}" alt="Print Quality Preview" class="image-preview">
+                <div class="image-preview-wrap">
+                    <img src="${result.screenshot}" alt="Print Quality Preview" class="image-preview">
+                </div>
                 
                 <div class="button-container">
                     <a href="${result.screenshot}" download="print_quality_${Date.now()}.png" class="download-btn">
@@ -1436,7 +1454,9 @@
                 <h3>✅ ${effectName}!</h3>
                 <p><strong>Effect:</strong> ${result.effect}</p>
                 
-                <img src="${result.screenshot}" alt="Effect Preview" class="image-preview">
+                <div class="image-preview-wrap">
+                    <img src="${result.screenshot}" alt="Effect Preview" class="image-preview">
+                </div>
                 
                 <div class="button-container">
                     <a href="${result.screenshot}" download="effect_${Date.now()}.png" class="download-btn">
