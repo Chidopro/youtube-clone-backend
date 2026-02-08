@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
 import './AuthModal.css';
 
@@ -261,6 +262,11 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
               isLoginMode ? 'Login' : 'Sign Up'
             )}
           </button>
+          {isLoginMode && (
+            <div className="auth-forgot-wrap">
+              <Link to="/set-password" className="auth-forgot-link" onClick={onClose}>Forgot password? Set password</Link>
+            </div>
+          )}
         </form>
 
         <div className="auth-toggle">

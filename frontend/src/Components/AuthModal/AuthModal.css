@@ -159,6 +159,23 @@
   100% { transform: rotate(360deg); }
 }
 
+.auth-forgot-wrap {
+  text-align: center;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.auth-forgot-link {
+  color: #667eea;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.auth-forgot-link:hover {
+  text-decoration: underline;
+  color: #764ba2;
+}
+
 .auth-toggle {
   padding: 0 30px 20px;
   text-align: center;
