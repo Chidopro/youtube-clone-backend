@@ -97,11 +97,17 @@ const VerifyEmail = () => {
       if (data?.user) localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('isAuthenticated', 'true');
 
+      // So App.jsx keeps user on home and does not redirect to creator-thank-you or elsewhere
+      try {
+        sessionStorage.setItem('from_password_set', '1');
+      } catch (_) {}
+
       setMessage({ type: 'success', text: 'Email verified and password set successfully! Redirecting to home...' });
 
-      // Redirect to home immediately (same idea as email signup: leave verify flow and land on home, not category)
+      // Always send user to homepage after password set (full-page redirect)
+      const homeUrl = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin + '/' : '/';
       setTimeout(() => {
-        window.location.replace('/');
+        window.location.replace(homeUrl);
       }, 800);
     } catch (err) {
       setMessage({ type: 'error', text: err?.message || 'Verification failed. Please try again.' });

@@ -169,6 +169,11 @@ const App = () => {
       window.dispatchEvent(new CustomEvent('creatorThankYouSignOut'));
       return;
     }
+    // After set-password flow: keep user on home, do not redirect to creator-thank-you or elsewhere
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('from_password_set')) {
+      sessionStorage.removeItem('from_password_set');
+      return;
+    }
     const raw = localStorage.getItem('user');
     const isAuth = localStorage.getItem('isAuthenticated') === 'true';
     console.log('[THANKYOU] On path / — safety net check', { hasUser: !!raw, isAuth });

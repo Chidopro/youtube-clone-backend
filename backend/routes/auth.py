@@ -780,14 +780,16 @@ def auth_verify_email():
         if update_result.data:
             token = str(uuid.uuid4())
             user_id = str(update_result.data[0].get('id'))
+            row = update_result.data[0]
             payload = {
                 "success": True,
                 "message": "Email verified and password set successfully!",
                 "user": {
-                    "id": update_result.data[0].get('id'),
-                    "email": update_result.data[0].get('email'),
-                    "display_name": update_result.data[0].get('display_name'),
-                    "role": update_result.data[0].get('role', 'customer')
+                    "id": row.get('id'),
+                    "email": row.get('email'),
+                    "display_name": row.get('display_name'),
+                    "role": row.get('role', 'customer'),
+                    "status": row.get('status', 'active'),
                 },
                 "token": token
             }
