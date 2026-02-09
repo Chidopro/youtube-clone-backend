@@ -95,7 +95,7 @@ PRINT_AREA_PRODUCTS = [
 
 
 def get_products():
-    return list(PRINT_AREA_PRODUCTS)
+    return sorted(PRINT_AREA_PRODUCTS, key=lambda p: p["name"].lower())
 
 
 def get_dimensions_for_product(product_name, size_label=None):
