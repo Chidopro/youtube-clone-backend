@@ -497,12 +497,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     };
 
     const handleSubscribeClick = () => {
-        // If not logged in, open creator signup modal so sign-up uses flow=creator_signup and records in Pending Approval
-        if (!user) {
-            setIsCreatorSignupModalOpen(true);
-            return;
-        }
-        // Logged in: go to subscription-tiers (calculator / payout setup)
+        // Always go to earnings calculator first; from there users can click Get started → creator signup (Pending Approval flow)
         navigate('/subscription-tiers');
     };
 
