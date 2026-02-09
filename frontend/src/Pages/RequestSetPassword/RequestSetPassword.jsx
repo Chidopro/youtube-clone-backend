@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getBackendUrl } from '../../config/apiConfig';
 import './RequestSetPassword.css';
-
-const BACKEND_URL =
-  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
-  (typeof process !== 'undefined' && process.env && process.env.REACT_APP_BACKEND_URL) ||
-  'https://screenmerch.fly.dev';
 
 const RequestSetPassword = () => {
   const [email, setEmail] = useState('');
@@ -24,7 +20,7 @@ const RequestSetPassword = () => {
 
     try {
       setIsLoading(true);
-      const response = await fetch(`${BACKEND_URL}/api/auth/request-set-password`, {
+      const response = await fetch(`${getBackendUrl()}/api/auth/request-set-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ email: trimmed })

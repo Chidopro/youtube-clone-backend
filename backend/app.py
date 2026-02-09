@@ -585,21 +585,16 @@ def get_product_price_range(product_name):
         return f"${min_price:.2f}-${max_price:.2f}"
 
 # Configure CORS for production - Netlify frontend to Fly.io backend
-# Use a function to handle subdomains dynamically
 # Configure CORS for production – screenmerch.com + all subdomains
 ALLOWED_ORIGINS = [
     "https://screenmerch.com",
     "https://www.screenmerch.com",
-
-    # Allow any subdomain like https://testcreator.screenmerch.com
     "https://testcreator.screenmerch.com",
-
-    # Fly.io backend (optional but safe)
     "https://screenmerch.fly.dev",
-
-    # Local development
     "http://localhost:3000",
     "http://localhost:5173",
+    # Allow any subdomain (e.g. filialsons.screenmerch.com) for set-password, login, etc.
+    re.compile(r"^https://[a-z0-9-]+\.screenmerch\.com$"),
 ]
 
 CORS(
