@@ -5,6 +5,7 @@ import { supabase } from '../../supabaseClient';
 import { UserService } from '../../utils/userService';
 import { getBackendUrl } from '../../config/apiConfig';
 import { products } from '../../data/products';
+import { useCreator } from '../../contexts/CreatorContext';
 import './ProductPage.css';
 
 const IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
@@ -43,6 +44,7 @@ const ProductPage = ({ sidebar }) => {
   const { productId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { creatorSettings } = useCreator();
   const [productData, setProductData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -872,7 +874,14 @@ const ProductPage = ({ sidebar }) => {
         const categoryNormalized = (category || '').trim().toLowerCase();
         return categoryNormalized !== 'all' && categoryNormalized !== 'all-products';
       })() && (
-        <div className="user-flow-section">
+        <div
+          className="user-flow-section"
+          style={
+            creatorSettings?.primary_color && creatorSettings?.secondary_color
+              ? { background: `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)` }
+              : undefined
+          }
+        >
           <div className="flow-steps">
             <div className="flow-step">
               <div className="step-number">3</div>

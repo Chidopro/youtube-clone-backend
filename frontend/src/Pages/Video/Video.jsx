@@ -6,6 +6,7 @@ import './Video.css'
 import { useParams } from "react-router-dom";
 import { API_CONFIG } from '../../config/apiConfig'
 import { UserService } from '../../utils/userService'
+import { useCreator } from '../../contexts/CreatorContext';
 
 const Video = ({ sidebar }) => {
 
@@ -23,6 +24,7 @@ const Video = ({ sidebar }) => {
   const [pulseStep2, setPulseStep2] = useState(false); // Step 2 only pulses after video is played
   const [pulseStep3, setPulseStep3] = useState(false); // Step 3 starts not pulsing
   const [userHasTakenScreenshot, setUserHasTakenScreenshot] = useState(false); // Track if user manually took screenshot
+  const { creatorSettings } = useCreator();
 
   // Check if device is mobile and orientation
   useEffect(() => {
@@ -401,8 +403,17 @@ const Video = ({ sidebar }) => {
 
    return (
      <div className="video-page-container">
-       {/* User Flow Section - Matching Home Page */}
-       <div className="user-flow-section">
+       {/* User Flow Section - Matching Home Page (creator colors) */}
+       <div
+         className="user-flow-section"
+         style={
+           creatorSettings?.primary_color && creatorSettings?.secondary_color
+             ? {
+                 background: `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)`,
+               }
+             : undefined
+         }
+       >
          <div className="flow-steps">
            <div 
              className="flow-step clickable-step" 

@@ -7,6 +7,7 @@ import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
 import { UserService } from '../../utils/userService'
 import AuthModal from '../AuthModal/AuthModal'
+import { useCreator } from '../../contexts/CreatorContext'
 
 // Mobile detection hook
 const useIsMobile = () => {
@@ -39,6 +40,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const params = useParams();
     const videoId = propVideoId || params.videoId;
     const { isMobile, isMobilePortrait } = useIsMobile();
+    const { creatorSettings } = useCreator();
     const [video, setVideo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -1436,7 +1438,9 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                             <div 
                                 className="play-icon-overlay"
                                 style={{
-                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    background: creatorSettings?.primary_color && creatorSettings?.secondary_color
+                                        ? `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)`
+                                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                     borderRadius: '50%',
                                     width: isMobile ? '120px' : '150px',
                                     height: isMobile ? '120px' : '150px',

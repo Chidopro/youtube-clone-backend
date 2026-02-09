@@ -5,8 +5,10 @@ import './MerchandiseCategories.css';
 import '../Home/Home.css';
 import { API_CONFIG } from '../../config/apiConfig';
 import AuthModal from '../../Components/AuthModal/AuthModal';
+import { useCreator } from '../../contexts/CreatorContext';
 
 const MerchandiseCategories = ({ sidebar }) => {
+  const { creatorSettings } = useCreator();
   // Enable debug logs via ?debug=1
   if (new URLSearchParams(location.search).has('debug')) {
     window.__DEBUG__ = true;
@@ -165,7 +167,14 @@ const MerchandiseCategories = ({ sidebar }) => {
 
   return (
     <div className={`container ${sidebar ? "" : " large-container"}`}>
-      <div className="user-flow-section">
+      <div
+        className="user-flow-section"
+        style={
+          creatorSettings?.primary_color && creatorSettings?.secondary_color
+            ? { background: `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)` }
+            : undefined
+        }
+      >
         <div className="flow-steps">
           <div className="flow-step">
             <div className="step-number">3</div>
