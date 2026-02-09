@@ -6547,6 +6547,10 @@ def auth_signup_creator_email_only():
     """Creator signup with email only. No password — user will set password after approval via acceptance email."""
     if request.method == "OPTIONS":
         return jsonify(success=True)
+    if not supabase_admin:
+        logger.error("[CREATOR-EMAIL-ONLY] SUPABASE_SERVICE_ROLE_KEY not set; cannot create creator")
+        return jsonify({"success": False, "error": "Service temporarily unavailable. Please try again later."}), 503
+    client = supabase_admin
     try:
         data = _data_from_request()
         email = (data.get("email") or "").strip().lower()
@@ -6558,9 +6562,9 @@ def auth_signup_creator_email_only():
         if not re.match(email_pattern, email):
             return jsonify({"success": False, "error": "Please enter a valid email address"}), 400
 
-        # Creator limit
+        # Creator limit and duplicate check with admin client so RLS doesn't hide rows
         try:
-            creator_result = supabase.table('users').select('id').in_('status', ['active', 'pending']).eq('role', 'creator').execute()
+            creator_result = client.table('users').select('id').in_('status', ['active', 'pending']).eq('role', 'creator').execute()
             current_creator_count = len(creator_result.data) if creator_result.data else 0
             logger.info(f"[CREATOR-EMAIL-ONLY] Creator count: {current_creator_count}")
             if current_creator_count >= 20:
@@ -6571,16 +6575,11 @@ def auth_signup_creator_email_only():
         except Exception as limit_error:
             logger.error(f"[CREATOR-EMAIL-ONLY] Error checking creator limit: {str(limit_error)}")
 
-        existing_user = supabase.table('users').select('*').eq('email', email).execute()
+        existing_user = client.table('users').select('id').eq('email', email).execute()
         if existing_user.data:
             logger.info(f"[CREATOR-EMAIL-ONLY] Email already exists: {email}")
             return jsonify({"success": False, "error": "An account with this email already exists"}), 409
 
-        # Use service-role client so RLS doesn't block insert; insert may require password_hash NOT NULL on some DBs
-        if not supabase_admin:
-            logger.error("[CREATOR-EMAIL-ONLY] SUPABASE_SERVICE_ROLE_KEY not set; cannot create creator")
-            return jsonify({"success": False, "error": "Service temporarily unavailable. Please try again later."}), 503
-        client = supabase_admin
         logger.info("[CREATOR-EMAIL-ONLY] Using supabase_admin for insert")
         # Placeholder hash so DBs with NOT NULL password_hash succeed; user must set password via acceptance flow
         import uuid as _uuid
@@ -6634,8 +6633,11 @@ def auth_signup_creator_email_only():
         })
     except Exception as e:
         import traceback
+        err_msg = str(e).lower()
         logger.error(f"[CREATOR-EMAIL-ONLY] Signup error: {str(e)}")
         logger.error(f"[CREATOR-EMAIL-ONLY] Traceback: {traceback.format_exc()}")
+        if "duplicate" in err_msg or "unique" in err_msg or "23505" in err_msg or "already exists" in err_msg:
+            return jsonify({"success": False, "error": "An account with this email already exists"}), 409
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
