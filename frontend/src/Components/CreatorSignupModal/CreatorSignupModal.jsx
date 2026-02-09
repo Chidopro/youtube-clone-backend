@@ -48,7 +48,7 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: email.trim().toLowerCase() }),
         });
-        const data = res.ok ? await res.json().catch(() => ({})) : null;
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           const errMsg = data?.error || `Signup failed (${res.status})`;
           throw new Error(errMsg);
