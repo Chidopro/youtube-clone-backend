@@ -119,6 +119,72 @@
   font-weight: 700;
 }
 
+.creator-signup-method-toggle {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.creator-signup-method-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  background: white;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.creator-signup-method-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+  background: #f8f9ff;
+}
+
+.creator-signup-method-btn.active {
+  border-color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+  color: #667eea;
+}
+
+.creator-signup-success {
+  text-align: center;
+  padding: 24px 0;
+}
+
+.creator-signup-success-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 12px 0;
+}
+
+.creator-signup-success-text {
+  font-size: 15px;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0 0 20px 0;
+}
+
+.creator-signup-success-link {
+  display: inline-block;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.creator-signup-success-link:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
 .creator-signup-form {
   display: flex;
   flex-direction: column;

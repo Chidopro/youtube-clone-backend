@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import './CreatorSignupModal.css';
 
-const CreatorSignupModal = ({ isOpen, onClose, onSignup }) => {
+const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [location, setLocation] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [signupMethod, setSignupMethod] = useState('google'); // 'google' | 'email'
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   if (!isOpen) return null;
 
@@ -19,9 +24,26 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup }) => {
       return;
     }
 
-    if (!location.trim()) {
-      setError('Please enter your location.');
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email.trim())) {
+      setError('Please enter a valid email address.');
       return;
+    }
+
+    if (signupMethod === 'google') {
+      if (!location.trim()) {
+        setError('Please enter your location.');
+        return;
+      }
+    } else {
+      if (!password || password.length < 6) {
+        setError('Password must be at least 6 characters long.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError('Passwords do not match.');
+        return;
+      }
     }
 
     if (!agreedToTerms) {
@@ -29,20 +51,30 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup }) => {
       return;
     }
 
-    // Email validation
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(email.trim())) {
-      setError('Please enter a valid email address.');
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      // Call the parent's signup handler
-      await onSignup(email.trim(), location.trim());
-      // Close modal on success (parent will handle navigation)
-      onClose();
+      if (signupMethod === 'email') {
+        const url = `${apiBase}/api/auth/signup`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            password,
+            is_creator: true,
+          }),
+        });
+        const data = res.ok ? await res.json().catch(() => ({})) : null;
+        if (!res.ok) {
+          const errMsg = data?.error || `Signup failed (${res.status})`;
+          throw new Error(errMsg);
+        }
+        setSignupSuccess(true);
+      } else {
+        await onSignup(email.trim(), location.trim());
+        onClose();
+      }
     } catch (err) {
       setError(err.message || 'An error occurred. Please try again.');
     } finally {
@@ -73,7 +105,36 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup }) => {
             Join ScreenMerch as a creator and start selling merchandise from your content
           </p>
 
+          {signupSuccess ? (
+            <div className="creator-signup-success">
+              <h3 className="creator-signup-success-title">Account created</h3>
+              <p className="creator-signup-success-text">
+                Your application is pending approval. You can log in with your email and password once you&apos;re ready. We&apos;ll notify you when your account is approved.
+              </p>
+              <Link to="/login" className="creator-signup-success-link">Go to Log in</Link>
+              <button type="button" className="creator-signup-submit-btn" onClick={onClose} style={{ marginTop: 12 }}>
+                Close
+              </button>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="creator-signup-form">
+            <div className="creator-signup-method-toggle">
+              <button
+                type="button"
+                className={`creator-signup-method-btn ${signupMethod === 'google' ? 'active' : ''}`}
+                onClick={() => setSignupMethod('google')}
+              >
+                Continue with Google
+              </button>
+              <button
+                type="button"
+                className={`creator-signup-method-btn ${signupMethod === 'email' ? 'active' : ''}`}
+                onClick={() => setSignupMethod('email')}
+              >
+                Sign up with email
+              </button>
+            </div>
+
             <div className="creator-signup-field">
               <label htmlFor="creator-email" className="creator-signup-label">
                 Email Address <span className="required">*</span>
@@ -91,22 +152,60 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup }) => {
               />
             </div>
 
-            <div className="creator-signup-field">
-              <label htmlFor="creator-location" className="creator-signup-label">
-                Location <span className="required">*</span>
-              </label>
-              <input
-                id="creator-location"
-                type="text"
-                className="creator-signup-input"
-                placeholder="State, Country"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                disabled={isSubmitting}
-                required
-                autoComplete="country-name"
-              />
-            </div>
+            {signupMethod === 'email' && (
+              <>
+                <div className="creator-signup-field">
+                  <label htmlFor="creator-password" className="creator-signup-label">
+                    Password <span className="required">*</span>
+                  </label>
+                  <input
+                    id="creator-password"
+                    type="password"
+                    className="creator-signup-input"
+                    placeholder="At least 6 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isSubmitting}
+                    autoComplete="new-password"
+                    minLength={6}
+                  />
+                </div>
+                <div className="creator-signup-field">
+                  <label htmlFor="creator-confirm-password" className="creator-signup-label">
+                    Confirm password <span className="required">*</span>
+                  </label>
+                  <input
+                    id="creator-confirm-password"
+                    type="password"
+                    className="creator-signup-input"
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={isSubmitting}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </>
+            )}
+
+            {signupMethod === 'google' && (
+              <div className="creator-signup-field">
+                <label htmlFor="creator-location" className="creator-signup-label">
+                  Location <span className="required">*</span>
+                </label>
+                <input
+                  id="creator-location"
+                  type="text"
+                  className="creator-signup-input"
+                  placeholder="State, Country"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  disabled={isSubmitting}
+                  required
+                  autoComplete="country-name"
+                />
+              </div>
+            )}
 
             {error && (
               <div className="creator-signup-error">
@@ -167,11 +266,14 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup }) => {
                   <span className="loading-spinner-small"></span>
                   Processing...
                 </>
+              ) : signupMethod === 'email' ? (
+                'Create account'
               ) : (
                 'Continue with Google Sign In'
               )}
             </button>
           </form>
+          )}
         </div>
       </div>
     </div>

@@ -265,6 +265,7 @@ const SubscriptionTiers = () => {
             )}
 
             <CreatorSignupModal
+                apiBase={typeof window !== 'undefined' ? ((window.location.origin === 'https://screenmerch.com' || window.location.origin === 'https://www.screenmerch.com') ? '' : 'https://screenmerch.fly.dev') : 'https://screenmerch.fly.dev'}
                 isOpen={isCreatorSignupModalOpen}
                 onClose={handleCloseCreatorSignupModal}
                 onSignup={handleCreatorSignup}
