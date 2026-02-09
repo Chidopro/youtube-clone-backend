@@ -6472,6 +6472,7 @@ def auth_signup_creator_email_only():
     try:
         data = _data_from_request()
         email = (data.get("email") or "").strip().lower()
+        logger.info(f"[CREATOR-EMAIL-ONLY] Request body keys: {list(data.keys()) if data else []}, email={email!r}")
         if not email:
             return jsonify({"success": False, "error": "Email is required"}), 400
         import re
@@ -6483,19 +6484,22 @@ def auth_signup_creator_email_only():
         try:
             creator_result = supabase.table('users').select('id').in_('status', ['active', 'pending']).eq('role', 'creator').execute()
             current_creator_count = len(creator_result.data) if creator_result.data else 0
+            logger.info(f"[CREATOR-EMAIL-ONLY] Creator count: {current_creator_count}")
             if current_creator_count >= 20:
                 return jsonify({
                     "success": False,
                     "error": "We've reached our limit of 20 creator signups. Please check back later or contact support."
                 }), 403
         except Exception as limit_error:
-            logger.error(f"Error checking creator limit: {str(limit_error)}")
+            logger.error(f"[CREATOR-EMAIL-ONLY] Error checking creator limit: {str(limit_error)}")
 
         existing_user = supabase.table('users').select('*').eq('email', email).execute()
         if existing_user.data:
+            logger.info(f"[CREATOR-EMAIL-ONLY] Email already exists: {email}")
             return jsonify({"success": False, "error": "An account with this email already exists"}), 409
 
         client = supabase_admin if supabase_admin else supabase
+        logger.info(f"[CREATOR-EMAIL-ONLY] Using {'supabase_admin' if supabase_admin else 'supabase'} for insert")
         new_user = {
             'email': email,
             'role': 'creator',
@@ -6504,7 +6508,9 @@ def auth_signup_creator_email_only():
         }
         result = client.table('users').insert(new_user).execute()
         if not result.data:
+            logger.error("[CREATOR-EMAIL-ONLY] Insert returned no data")
             return jsonify({"success": False, "error": "Failed to create account"}), 500
+        logger.info(f"[CREATOR-EMAIL-ONLY] Insert success, user id={result.data[0].get('id')}")
 
         # Admin notification
         if MAIL_TO:
@@ -6534,13 +6540,15 @@ def auth_signup_creator_email_only():
             except Exception as email_error:
                 logger.error(f"Error sending admin notification: {str(email_error)}")
 
-        logger.info(f"Creator email-only signup: {email} (pending)")
+        logger.info(f"[CREATOR-EMAIL-ONLY] Creator email-only signup success: {email} (pending)")
         return jsonify({
             "success": True,
             "message": "Account requested. You'll receive an acceptance email with a link to set your password once approved."
         })
     except Exception as e:
-        logger.error(f"Creator email-only signup error: {str(e)}")
+        import traceback
+        logger.error(f"[CREATOR-EMAIL-ONLY] Signup error: {str(e)}")
+        logger.error(f"[CREATOR-EMAIL-ONLY] Traceback: {traceback.format_exc()}")
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
