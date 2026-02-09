@@ -6498,10 +6498,19 @@ def auth_signup_creator_email_only():
             logger.info(f"[CREATOR-EMAIL-ONLY] Email already exists: {email}")
             return jsonify({"success": False, "error": "An account with this email already exists"}), 409
 
-        client = supabase_admin if supabase_admin else supabase
-        logger.info(f"[CREATOR-EMAIL-ONLY] Using {'supabase_admin' if supabase_admin else 'supabase'} for insert")
+        # Use service-role client so RLS doesn't block insert; insert may require password_hash NOT NULL on some DBs
+        if not supabase_admin:
+            logger.error("[CREATOR-EMAIL-ONLY] SUPABASE_SERVICE_ROLE_KEY not set; cannot create creator")
+            return jsonify({"success": False, "error": "Service temporarily unavailable. Please try again later."}), 503
+        client = supabase_admin
+        logger.info("[CREATOR-EMAIL-ONLY] Using supabase_admin for insert")
+        # Placeholder hash so DBs with NOT NULL password_hash succeed; user must set password via acceptance flow
+        import uuid as _uuid
+        _placeholder_secret = f"PENDING_CREATOR_{_uuid.uuid4().hex}"
+        _placeholder_hash = bcrypt.hashpw(_placeholder_secret.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         new_user = {
             'email': email,
+            'password_hash': _placeholder_hash,
             'role': 'creator',
             'status': 'pending',
             'email_verified': False,
