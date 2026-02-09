@@ -871,12 +871,20 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
         feather_value = feather_edge_percent if isinstance(feather_edge_percent, (int, float)) and feather_edge_percent > 0 else (50 if edge_feather else 0)
         
         if feather_value > 0:
-            # Avoid OOM/timeout on large images: feather uses heavy numpy/cv2 ops (distanceTransform, etc.)
+            # For very large images: apply feather at reduced resolution then upscale to avoid OOM/timeout (502)
+            orig_w, orig_h = target_width, target_height
             pixel_count = target_width * target_height
-            if pixel_count > 9_500_000:  # ~3080x3080; avoids OOM/timeout (502) on feather with large images
-                logger.warning(f"[PRINT_QUALITY] Image too large for feather ({target_width}x{target_height}); returning friendly error to avoid 502")
-                return {"success": False, "error": "Image too large for feather effect. Try a smaller print area, reduce screenshot size, or disable feather for this image."}
-            logger.info(f"Applying feather effect to HIGH-RESOLUTION print quality image {target_width}x{target_height}")
+            need_upscale = False
+            if pixel_count > 9_500_000:  # ~3080x3080
+                need_upscale = True
+                work_scale = (9_500_000 / pixel_count) ** 0.5
+                work_w = max(100, int(target_width * work_scale))
+                work_h = max(100, int(target_height * work_scale))
+                image = cv2.resize(image, (work_w, work_h), interpolation=cv2.INTER_LINEAR)
+                target_width, target_height = work_w, work_h
+                logger.info(f"[PRINT_QUALITY] Applying feather at reduced resolution {work_w}x{work_h} (will upscale to {orig_w}x{orig_h}) to avoid OOM")
+            else:
+                logger.info(f"Applying feather effect to HIGH-RESOLUTION print quality image {target_width}x{target_height}")
             
             # Get the current alpha channel (which may already have corner radius applied)
             alpha_channel = image[:, :, 3].copy() if image.shape[2] == 4 else np.full((target_height, target_width), 255, dtype=np.uint8)
@@ -1053,6 +1061,12 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                         image[zero_alpha_mask, i] = 0
                 
                 # Removed verbose logging for performance
+            
+            # If we applied feather at reduced resolution, upscale back to original size for frame step
+            if need_upscale:
+                image = cv2.resize(image, (orig_w, orig_h), interpolation=cv2.INTER_LINEAR)
+                target_width, target_height = orig_w, orig_h
+                logger.info(f"[PRINT_QUALITY] Upscaled feathered image back to {target_width}x{target_height}")
         
         # Apply frame border if enabled (AFTER feather to ensure frame is on top and visible)
         if frame_enabled and frame_width > 0:
