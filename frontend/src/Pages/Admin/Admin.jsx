@@ -273,10 +273,10 @@ const Admin = () => {
     ]);
   };
 
-  /** Load 5 most recent users (all roles) for dashboard Recent Activity - ensures new creator sign-ups appear */
+  /** Load 5 most recent active (approved) users for Recent Activity. Pending creators show in Pending Approval until approved. */
   const loadRecentActivityUsers = async () => {
     try {
-      const result = await AdminService.getUsers(0, 5, '', 'all', 'all');
+      const result = await AdminService.getUsers(0, 5, '', 'active', 'all');
       setRecentActivityUsers(result.users || []);
     } catch (error) {
       console.error('Error loading recent activity users:', error);

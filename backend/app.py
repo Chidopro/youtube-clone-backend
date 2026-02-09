@@ -5306,23 +5306,41 @@ def _require_master_admin():
         return jsonify({"error": str(e)}), 500
 
 
+def _serialize_pending_creator(row):
+    """Ensure each pending creator row is JSON-serializable (e.g. datetime -> string)."""
+    if row is None or not isinstance(row, dict):
+        return row
+    out = {}
+    for k, v in row.items():
+        if v is None or isinstance(v, (str, int, float, bool)):
+            out[k] = v
+        elif hasattr(v, 'isoformat'):
+            out[k] = v.isoformat()
+        else:
+            out[k] = str(v)
+    return out
+
+
 @app.route("/api/admin/pending-creators", methods=["GET", "OPTIONS"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def admin_pending_creators():
-    """List pending creators (status=pending, role=creator). Master Admin only."""
+    """List pending creators (status=pending, role=creator). Master Admin only. Always returns JSON."""
     if request.method == "OPTIONS":
         return jsonify(success=True)
-    err, code = _require_master_admin()
-    if err is not None:
-        return err, code
-    client = supabase_admin if supabase_admin else supabase
     try:
+        err, code = _require_master_admin()
+        if err is not None:
+            return err, code
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            return jsonify({"success": False, "error": "Database unavailable", "pending_creators": []}), 500
         r = client.table("users").select("id, email, display_name, created_at, profile_image_url").eq("status", "pending").eq("role", "creator").order("created_at", desc=True).execute()
-        pending = r.data if r.data else []
-        return jsonify({"pending_creators": pending})
+        raw = r.data if r.data else []
+        pending = [_serialize_pending_creator(row) for row in raw]
+        return jsonify({"success": True, "pending_creators": pending})
     except Exception as e:
         logger.error(f"Error fetching pending creators: {str(e)}")
-        return jsonify({"error": str(e), "pending_creators": []}), 500
+        return jsonify({"success": False, "error": str(e), "pending_creators": []}), 500
 
 
 @app.route("/api/admin/approve-creator/<user_id>", methods=["POST", "OPTIONS"])
