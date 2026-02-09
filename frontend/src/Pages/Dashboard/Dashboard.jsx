@@ -1660,18 +1660,21 @@ const Dashboard = ({ sidebar }) => {
                                         <h4>📅 Daily Sales (Last 7 Days)</h4>
                                         <div className="daily-chart-container">
                                             <div className="daily-chart-bars">
-                                                {analyticsData.daily_sales && analyticsData.daily_sales.length > 0 ? (
-                                                    analyticsData.daily_sales.map((dayData, i) => {
-                                                        const isToday = i === analyticsData.daily_sales.length - 1;
+                                                {analyticsData.daily_sales && analyticsData.daily_sales.length > 0 ? (() => {
+                                                    const dailySales = analyticsData.daily_sales;
+                                                    const maxSales = Math.max(...dailySales.map(d => d.sales_count || 0), 1);
+                                                    const maxBarHeightPx = 160;
+                                                    return dailySales.map((dayData, i) => {
+                                                        const isToday = i === dailySales.length - 1;
                                                         const salesCount = dayData.sales_count || 0;
                                                         const netRevenue = dayData.net_revenue || 0;
                                                         const revenue = dayData.revenue || 0;
-                                                        
+                                                        const barHeightPx = salesCount > 0 ? Math.max((salesCount / maxSales) * maxBarHeightPx, 20) : 0;
                                                         return (
                                                             <div key={i} className="daily-bar-container">
                                                                 <div 
                                                                     className={`daily-bar ${salesCount > 0 ? 'has-sales' : 'no-sales'} ${isToday ? 'today' : ''}`}
-                                                                    style={{height: `${salesCount > 0 ? Math.max(salesCount * 40, 20) : 0}px`}}
+                                                                    style={{ height: `${barHeightPx}px` }}
                                                                     title={`${dayData.date_display}: ${salesCount} sales | Gross: $${revenue.toFixed(2)} | Net: $${netRevenue.toFixed(2)}`}
                                                                 >
                                                                     <span className="daily-bar-value">{salesCount}</span>
@@ -1682,8 +1685,8 @@ const Dashboard = ({ sidebar }) => {
                                                                 )}
                                                             </div>
                                                         );
-                                                    })
-                                                ) : (
+                                                    });
+                                                })() : (
                                                     // Fallback if daily_sales is not available yet
                                                     Array.from({length: 7}, (_, i) => {
                                                         const date = new Date();
