@@ -8277,7 +8277,7 @@ def google_callback():
       Requires SUPABASE_SERVICE_ROLE_KEY so insert is visible to admin; record then appears in
       GET /api/admin/pending-creators (same admin client, status=pending, role=creator).
     - If user EXISTS and flow=creator_signup: set status to pending when status was null/empty,
-      or when status is 'active' but user was created in the last 30 minutes (e.g. created by
+      or when status is 'active' but user was created in the last 24 hours (e.g. created by
       another flow with default active). Ensures they show in Pending Approval.
     """
     if request.method == "OPTIONS":

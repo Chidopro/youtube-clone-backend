@@ -21,7 +21,7 @@
 5. **Existing user (email already in DB)**  
    - If `flow=creator_signup` and the user has (or is given) role `creator`:
      - If `status` is null/empty → backend updates to `status='pending'` (and ensures `role='creator'`).
-     - If `status` is `'active'` but the user was **created in the last 30 minutes** → backend updates to `status='pending'` so they still show in Pending Approval (covers users created by another flow/trigger with default active).
+     - If `status` is `'active'` but the user was **created in the last 24 hours** → backend updates to `status='pending'` so they still show in Pending Approval (covers users created by another flow/trigger with default active).
    - Already-approved creators (e.g. `status='active'` and created long ago) are left as active.
 
 6. **Admin list**  
@@ -36,4 +36,5 @@
 
 - Check Fly logs for `[GOOGLE OAUTH CALLBACK]` and `[OAUTH CREATOR SIGNUP]` to see whether the callback ran and whether an insert or update happened.
 - If you see `SUPABASE_SERVICE_ROLE_KEY not set`, set it in Fly secrets and redeploy.
-- If the user already existed with `status='active'` and was created more than 30 minutes ago, they will not be moved back to pending (by design).
+- If the user already existed with `status='active'` and was created more than 24 hours ago, they will not be moved back to pending (by design).
+- Frontend should call `POST /api/auth/register-pending-creator` with email when the user submits the sign-up modal (before redirecting to Google) so a pending record exists even if OAuth fails; the callback will then update that record or create it.
