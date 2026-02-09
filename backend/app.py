@@ -5346,7 +5346,7 @@ def admin_pending_creators():
 @app.route("/api/admin/approve-creator/<user_id>", methods=["POST", "OPTIONS"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def admin_approve_creator(user_id):
-    """Set creator status to active. Master Admin only."""
+    """Set creator status to active and send acceptance email with set-password link. Master Admin only."""
     if request.method == "OPTIONS":
         return jsonify(success=True)
     err, code = _require_master_admin()
@@ -5354,8 +5354,56 @@ def admin_approve_creator(user_id):
         return err, code
     client = supabase_admin if supabase_admin else supabase
     try:
-        client.table("users").update({"status": "active", "updated_at": "now()"}).eq("id", user_id).execute()
+        # Fetch creator email before update
+        r = client.table("users").select("email").eq("id", user_id).eq("role", "creator").execute()
+        if not r.data or len(r.data) == 0:
+            return jsonify({"success": False, "error": "Creator not found"}), 404
+        creator_email = (r.data[0].get("email") or "").strip().lower()
+        if not creator_email:
+            return jsonify({"success": False, "error": "Creator has no email"}), 400
+
+        import datetime
+        set_password_token = str(uuid.uuid4())
+        token_expiry = (datetime.datetime.utcnow() + datetime.timedelta(days=7)).isoformat() + "Z"
+
+        client.table("users").update({
+            "status": "active",
+            "updated_at": "now()",
+            "email_verification_token": set_password_token,
+            "token_expiry": token_expiry,
+        }).eq("id", user_id).execute()
         logger.info(f"Creator approved: {user_id}")
+
+        # Send acceptance email with link to set password (reuses verify-email page)
+        frontend_url = (os.getenv("FRONTEND_URL", "https://screenmerch.com")).rstrip("/")
+        set_password_link = f"{frontend_url}/verify-email?token={quote(set_password_token, safe='')}&email={quote(creator_email, safe='')}"
+        if RESEND_API_KEY and creator_email:
+            try:
+                acceptance_html = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #667eea;">You're approved!</h2>
+                    <p>Your ScreenMerch creator account has been approved. Create your password to sign in and get started.</p>
+                    <p style="margin: 24px 0;">
+                        <a href="{set_password_link}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Create password</a>
+                    </p>
+                    <p style="font-size: 14px; color: #666;">This link expires in 7 days. If you didn't request this, you can ignore this email.</p>
+                    <p style="font-size: 12px; color: #999;">Or copy and paste: {set_password_link}</p>
+                </div>
+                """
+                requests.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+                    json={
+                        "from": RESEND_FROM,
+                        "to": [creator_email],
+                        "subject": "Your ScreenMerch creator account is approved",
+                        "html": acceptance_html,
+                    },
+                )
+                logger.info(f"Acceptance email sent to {creator_email}")
+            except Exception as email_err:
+                logger.error(f"Failed to send acceptance email: {email_err}")
+
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error approving creator: {str(e)}")
@@ -5394,7 +5442,7 @@ def admin_set_creator_pending():
 @app.route("/api/admin/disapprove-creator/<user_id>", methods=["POST", "OPTIONS"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def admin_disapprove_creator(user_id):
-    """Set creator status to suspended. Master Admin only."""
+    """Set creator status to suspended and send decline email. Master Admin only."""
     if request.method == "OPTIONS":
         return jsonify(success=True)
     err, code = _require_master_admin()
@@ -5402,8 +5450,38 @@ def admin_disapprove_creator(user_id):
         return err, code
     client = supabase_admin if supabase_admin else supabase
     try:
+        r = client.table("users").select("email").eq("id", user_id).eq("role", "creator").execute()
+        if not r.data or len(r.data) == 0:
+            return jsonify({"success": False, "error": "Creator not found"}), 404
+        creator_email = (r.data[0].get("email") or "").strip().lower()
+
         client.table("users").update({"status": "suspended", "updated_at": "now()"}).eq("id", user_id).execute()
         logger.info(f"Creator disapproved: {user_id}")
+
+        if creator_email and RESEND_API_KEY:
+            try:
+                decline_html = """
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #333;">ScreenMerch creator application</h2>
+                    <p>Thank you for your interest in ScreenMerch. After review, we are unable to approve your creator account at this time.</p>
+                    <p>If you have questions, please reply to this email or contact support.</p>
+                    <p style="color: #666; font-size: 14px;">— ScreenMerch Team</p>
+                </div>
+                """
+                requests.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+                    json={
+                        "from": RESEND_FROM,
+                        "to": [creator_email],
+                        "subject": "Your ScreenMerch creator application",
+                        "html": decline_html,
+                    },
+                )
+                logger.info(f"Decline email sent to {creator_email}")
+            except Exception as email_err:
+                logger.error(f"Failed to send decline email: {email_err}")
+
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error disapproving creator: {str(e)}")
@@ -6798,10 +6876,11 @@ def auth_verify_email():
         if len(password) < 6:
             return jsonify({"success": False, "error": "Password must be at least 6 characters long"}), 400
         
-        # Find user by email and token
+        # Find user by email and token (use admin so creator approval links work when user is not logged in)
         try:
+            client = supabase_admin if supabase_admin else supabase
             logger.info(f"🔵 [VERIFY-EMAIL] Searching for user with email: {email} and token: {token[:10]}...")
-            result = supabase.table('users').select('*').eq('email', email).eq('email_verification_token', token).execute()
+            result = client.table('users').select('*').eq('email', email).eq('email_verification_token', token).execute()
             logger.info(f"🔵 [VERIFY-EMAIL] Database query result: {len(result.data) if result.data else 0} user(s) found")
             
             if not result.data:
