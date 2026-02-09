@@ -6463,6 +6463,87 @@ def auth_signup():
         response = jsonify({"success": False, "error": "Internal server error"})
         return response, 500
 
+
+@app.route("/api/auth/signup/creator-email-only", methods=["POST", "OPTIONS"])
+def auth_signup_creator_email_only():
+    """Creator signup with email only. No password — user will set password after approval via acceptance email."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        data = _data_from_request()
+        email = (data.get("email") or "").strip().lower()
+        if not email:
+            return jsonify({"success": False, "error": "Email is required"}), 400
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            return jsonify({"success": False, "error": "Please enter a valid email address"}), 400
+
+        # Creator limit
+        try:
+            creator_result = supabase.table('users').select('id').in_('status', ['active', 'pending']).eq('role', 'creator').execute()
+            current_creator_count = len(creator_result.data) if creator_result.data else 0
+            if current_creator_count >= 20:
+                return jsonify({
+                    "success": False,
+                    "error": "We've reached our limit of 20 creator signups. Please check back later or contact support."
+                }), 403
+        except Exception as limit_error:
+            logger.error(f"Error checking creator limit: {str(limit_error)}")
+
+        existing_user = supabase.table('users').select('*').eq('email', email).execute()
+        if existing_user.data:
+            return jsonify({"success": False, "error": "An account with this email already exists"}), 409
+
+        client = supabase_admin if supabase_admin else supabase
+        new_user = {
+            'email': email,
+            'role': 'creator',
+            'status': 'pending',
+            'email_verified': False,
+        }
+        result = client.table('users').insert(new_user).execute()
+        if not result.data:
+            return jsonify({"success": False, "error": "Failed to create account"}), 500
+
+        # Admin notification
+        if MAIL_TO:
+            try:
+                admin_email_data = {
+                    "from": RESEND_FROM,
+                    "to": [MAIL_TO],
+                    "subject": f"🎨 New Creator Signup Request: {email}",
+                    "html": f"""
+                    <h1>🎨 New Creator Signup Request</h1>
+                    <div style="background: #f0f8ff; padding: 20px; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                        <h2>Creator Details:</h2>
+                        <p><strong>Email:</strong> {email}</p>
+                        <p><strong>User ID:</strong> {result.data[0].get('id')}</p>
+                        <p><strong>Status:</strong> Pending Approval</p>
+                        <p><strong>Signup Date:</strong> {result.data[0].get('created_at', 'N/A')}</p>
+                    </div>
+                    <p><strong>Action Required:</strong> Please review and approve this creator signup in the admin panel.</p>
+                    <p>After approval, the creator will receive an acceptance email with a link to set their password.</p>
+                    """
+                }
+                requests.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+                    json=admin_email_data
+                )
+            except Exception as email_error:
+                logger.error(f"Error sending admin notification: {str(email_error)}")
+
+        logger.info(f"Creator email-only signup: {email} (pending)")
+        return jsonify({
+            "success": True,
+            "message": "Account requested. You'll receive an acceptance email with a link to set your password once approved."
+        })
+    except Exception as e:
+        logger.error(f"Creator email-only signup error: {str(e)}")
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+
 @app.route("/api/auth/signup/email-only", methods=["POST", "OPTIONS"])
 def auth_signup_email_only():
     """Handle consumer/customer signup with email only (no password until verification).

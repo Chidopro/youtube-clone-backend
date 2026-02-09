@@ -4,8 +4,6 @@ import './CreatorSignupModal.css';
 
 const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [location, setLocation] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,20 +28,9 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
       return;
     }
 
-    if (signupMethod === 'google') {
-      if (!location.trim()) {
-        setError('Please enter your location.');
-        return;
-      }
-    } else {
-      if (!password || password.length < 6) {
-        setError('Password must be at least 6 characters long.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setError('Passwords do not match.');
-        return;
-      }
+    if (signupMethod === 'google' && !location.trim()) {
+      setError('Please enter your location.');
+      return;
     }
 
     if (!agreedToTerms) {
@@ -55,15 +42,11 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
 
     try {
       if (signupMethod === 'email') {
-        const url = `${apiBase}/api/auth/signup`;
+        const url = `${apiBase}/api/auth/signup/creator-email-only`;
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: email.trim().toLowerCase(),
-            password,
-            is_creator: true,
-          }),
+          body: JSON.stringify({ email: email.trim().toLowerCase() }),
         });
         const data = res.ok ? await res.json().catch(() => ({})) : null;
         if (!res.ok) {
@@ -109,7 +92,7 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
             <div className="creator-signup-success">
               <h3 className="creator-signup-success-title">Account created</h3>
               <p className="creator-signup-success-text">
-                Your application is pending approval. You can log in with your email and password once you&apos;re ready. We&apos;ll notify you when your account is approved.
+                Your application is pending approval. You&apos;ll receive an acceptance email with a link to set your password once approved.
               </p>
               <Link to="/login" className="creator-signup-success-link">Go to Log in</Link>
               <button type="button" className="creator-signup-submit-btn" onClick={onClose} style={{ marginTop: 12 }}>
@@ -151,42 +134,6 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
                 autoComplete="email"
               />
             </div>
-
-            {signupMethod === 'email' && (
-              <>
-                <div className="creator-signup-field">
-                  <label htmlFor="creator-password" className="creator-signup-label">
-                    Password <span className="required">*</span>
-                  </label>
-                  <input
-                    id="creator-password"
-                    type="password"
-                    className="creator-signup-input"
-                    placeholder="At least 6 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isSubmitting}
-                    autoComplete="new-password"
-                    minLength={6}
-                  />
-                </div>
-                <div className="creator-signup-field">
-                  <label htmlFor="creator-confirm-password" className="creator-signup-label">
-                    Confirm password <span className="required">*</span>
-                  </label>
-                  <input
-                    id="creator-confirm-password"
-                    type="password"
-                    className="creator-signup-input"
-                    placeholder="Confirm your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    disabled={isSubmitting}
-                    autoComplete="new-password"
-                  />
-                </div>
-              </>
-            )}
 
             {signupMethod === 'google' && (
               <div className="creator-signup-field">
