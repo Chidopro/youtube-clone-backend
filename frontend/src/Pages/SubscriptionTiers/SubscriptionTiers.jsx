@@ -80,8 +80,7 @@ const SubscriptionTiers = () => {
         localStorage.setItem('pending_creator_email', email);
         localStorage.setItem('pending_creator_location', location);
         const creatorSignupReturnUrl = 'https://screenmerch.com';
-        const o = typeof window !== 'undefined' ? window.location.origin : '';
-        const apiBase = (o === 'https://screenmerch.com' || o === 'https://www.screenmerch.com') ? '' : 'https://screenmerch.fly.dev';
+        const apiBase = 'https://screenmerch.fly.dev';
         setActionLoading(true);
         try {
             await fetch(`${apiBase}/api/auth/register-pending-creator`, {
@@ -265,7 +264,7 @@ const SubscriptionTiers = () => {
             )}
 
             <CreatorSignupModal
-                apiBase={typeof window !== 'undefined' ? ((window.location.origin === 'https://screenmerch.com' || window.location.origin === 'https://www.screenmerch.com') ? '' : 'https://screenmerch.fly.dev') : 'https://screenmerch.fly.dev'}
+                apiBase="https://screenmerch.fly.dev"
                 isOpen={isCreatorSignupModalOpen}
                 onClose={handleCloseCreatorSignupModal}
                 onSignup={handleCreatorSignup}
