@@ -939,6 +939,14 @@ const ToolsPage = () => {
           setCartProducts(mapped);
           setSelectedCartProductIndex(mapped.length > 0 ? 0 : null);
           setOrderScreenshotsError(null);
+          // Auto-select Fit to Print Area to order's product so screenshot auto-resizes to print area (like cart tools)
+          if (mapped.length > 0) {
+            const firstProductName = mapped[0].name;
+            if (firstProductName && Object.prototype.hasOwnProperty.call(PRINT_AREA_CONFIG, firstProductName)) {
+              setSelectedProductName(firstProductName);
+              setPrintAreaFit('product');
+            }
+          }
           console.log(`📦 Loaded ${mapped.length} screenshot(s) from order ${trimmedOrderId} (same as Print Quality / email)`);
         } else {
           setCartProducts([]);
