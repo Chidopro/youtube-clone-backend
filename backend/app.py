@@ -4855,6 +4855,7 @@ def get_order_screenshot(order_id):
             image_base = 'https://' + image_base[7:]
         product_name_to_preview = {}
         product_name_to_preview_lower = {}
+        product_name_to_preview_no_apostrophe = {}
         try:
             for p in PRODUCTS:
                 name = p.get('name')
@@ -4863,6 +4864,10 @@ def get_order_screenshot(order_id):
                     url = f"{image_base}/static/images/{preview_fn}"
                     product_name_to_preview[name] = url
                     product_name_to_preview_lower[(name or '').strip().lower()] = url
+                    # Normalize apostrophes so "Men's" matches "Mens" (frontend/order may use either)
+                    no_apost = (name or '').replace("'", "").replace("'", "").replace("`", "").strip().lower()
+                    if no_apost:
+                        product_name_to_preview_no_apostrophe[no_apost] = url
         except Exception as e:
             logger.warning(f"Could not build product preview lookup: {e}")
 
@@ -4873,8 +4878,15 @@ def get_order_screenshot(order_id):
             url = product_name_to_preview.get(n) or product_name_to_preview_lower.get(n.lower(), '')
             if url:
                 return url
+            n_no_apost = n.replace("'", "").replace("'", "").replace("`", "").lower()
+            url = product_name_to_preview_no_apostrophe.get(n_no_apost, '')
+            if url:
+                return url
             for key, val in product_name_to_preview.items():
                 if key and key.strip().lower() == n.lower():
+                    return val
+                key_no_apost = (key or '').replace("'", "").replace("'", "").replace("`", "").lower()
+                if key_no_apost == n_no_apost:
                     return val
             return ''
 
