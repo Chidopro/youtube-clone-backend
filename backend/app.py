@@ -4849,8 +4849,10 @@ def get_order_screenshot(order_id):
         if order_level_screenshot:
             logger.info(f"✅ [GET-SCREENSHOT] Using screenshot (order-level or from cart fallback), len={len(str(order_level_screenshot))}")
 
-        # Build product name -> preview_image URL for Tools page mockup (same as cart tools)
-        image_base = (os.environ.get('BACKEND_PUBLIC_URL') or request.url_root or 'https://screenmerch.fly.dev').rstrip('/')
+        # Build product name -> preview_image URL for Tools page mockup (exact duplicate of cart tools)
+        # Use fixed production URL so images load from frontend (screenmerch.com) regardless of request host
+        image_base = os.environ.get('BACKEND_PUBLIC_URL') or 'https://screenmerch.fly.dev'
+        image_base = str(image_base).rstrip('/')
         if image_base.startswith('http://'):
             image_base = 'https://' + image_base[7:]
         product_name_to_preview = {}
@@ -4864,7 +4866,6 @@ def get_order_screenshot(order_id):
                     url = f"{image_base}/static/images/{preview_fn}"
                     product_name_to_preview[name] = url
                     product_name_to_preview_lower[(name or '').strip().lower()] = url
-                    # Normalize apostrophes so "Men's" matches "Mens" (frontend/order may use either)
                     no_apost = (name or '').replace("'", "").replace("'", "").replace("`", "").strip().lower()
                     if no_apost:
                         product_name_to_preview_no_apostrophe[no_apost] = url
@@ -4875,6 +4876,8 @@ def get_order_screenshot(order_id):
             if not name or not isinstance(name, str):
                 return ''
             n = name.strip()
+            if not n:
+                return ''
             url = product_name_to_preview.get(n) or product_name_to_preview_lower.get(n.lower(), '')
             if url:
                 return url
@@ -4895,12 +4898,25 @@ def get_order_screenshot(order_id):
         for idx, item in enumerate(cart):
             if not isinstance(item, dict):
                 continue
-            product_name = (item.get('product') or item.get('name') or f'Product {idx + 1}')
+            # Try every key the frontend or DB might use for product name (cart tools use item.name / item.product)
+            product_name = (
+                item.get('product') or item.get('name') or item.get('product_name') or
+                item.get('title') or f'Product {idx + 1}'
+            )
             if isinstance(product_name, str):
                 product_name = product_name.strip() or f'Product {idx + 1}'
             color = (item.get('variants') or {}).get('color', 'N/A')
             size = (item.get('variants') or {}).get('size', 'N/A')
-            preview_image_url = _get_preview_url(product_name)
+            # Use stored image URL if present (some flows may have it), else lookup by product name
+            preview_image_url = (
+                item.get('image') or item.get('img') or item.get('preview_image_url') or
+                item.get('main_image_url') or _get_preview_url(product_name)
+            )
+            if isinstance(preview_image_url, str) and not preview_image_url.strip():
+                preview_image_url = _get_preview_url(product_name)
+            elif not preview_image_url:
+                preview_image_url = _get_preview_url(product_name)
+            logger.info(f"✅ [GET-SCREENSHOT] product={product_name!r} preview_image_url={'yes' if preview_image_url else 'no'}")
 
             # Find screenshot for this product - check item-specific fields first
             screenshot_data = None
