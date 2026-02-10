@@ -4854,24 +4854,41 @@ def get_order_screenshot(order_id):
         if image_base.startswith('http://'):
             image_base = 'https://' + image_base[7:]
         product_name_to_preview = {}
+        product_name_to_preview_lower = {}
         try:
             for p in PRODUCTS:
                 name = p.get('name')
                 preview_fn = p.get('preview_image') or ''
                 if name and preview_fn:
-                    product_name_to_preview[name] = f"{image_base}/static/images/{preview_fn}"
+                    url = f"{image_base}/static/images/{preview_fn}"
+                    product_name_to_preview[name] = url
+                    product_name_to_preview_lower[(name or '').strip().lower()] = url
         except Exception as e:
             logger.warning(f"Could not build product preview lookup: {e}")
+
+        def _get_preview_url(name):
+            if not name or not isinstance(name, str):
+                return ''
+            n = name.strip()
+            url = product_name_to_preview.get(n) or product_name_to_preview_lower.get(n.lower(), '')
+            if url:
+                return url
+            for key, val in product_name_to_preview.items():
+                if key and key.strip().lower() == n.lower():
+                    return val
+            return ''
 
         # Build products list with their screenshots - include ALL products even if they share screenshots
         products = []
         for idx, item in enumerate(cart):
             if not isinstance(item, dict):
                 continue
-            product_name = item.get('product', f'Product {idx + 1}')
+            product_name = (item.get('product') or item.get('name') or f'Product {idx + 1}')
+            if isinstance(product_name, str):
+                product_name = product_name.strip() or f'Product {idx + 1}'
             color = (item.get('variants') or {}).get('color', 'N/A')
             size = (item.get('variants') or {}).get('size', 'N/A')
-            preview_image_url = product_name_to_preview.get(product_name, '')
+            preview_image_url = _get_preview_url(product_name)
 
             # Find screenshot for this product - check item-specific fields first
             screenshot_data = None
