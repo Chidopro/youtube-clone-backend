@@ -924,14 +924,14 @@ const ToolsPage = () => {
           const products = data.products?.length > 0
             ? data.products
             : [{ product: 'Order Screenshot', screenshot: data.screenshot, color: 'N/A', size: 'N/A', index: 0 }];
-          const mapped = products
+          let mapped = products
             .map((p, i) => ({
               originalCartIndex: p.index ?? i,
               name: p.product || 'Product',
               color: p.color || 'N/A',
               size: p.size || 'N/A',
               screenshot: p.screenshot || '',
-              productImage: p.preview_image_url || '', // Product mockup from API (same as cart tools)
+              productImage: (p.preview_image_url && p.preview_image_url.trim()) || '', // Product mockup (same as cart tools)
               toolSettings: null,
               filteredIndex: i
             }))
@@ -939,6 +939,28 @@ const ToolsPage = () => {
           setCartProducts(mapped);
           setSelectedCartProductIndex(mapped.length > 0 ? 0 : null);
           setOrderScreenshotsError(null);
+          // If any product is missing product image, fetch by name so we show product mockup (measure screenshot over print area)
+          const missing = mapped.filter((item) => item.name && !item.productImage);
+          if (missing.length > 0) {
+            Promise.all(
+              missing.map((item) =>
+                fetch(`${API_CONFIG.BASE_URL}/api/product-preview-url?name=${encodeURIComponent(item.name)}`)
+                  .then((r) => r.ok ? r.json() : null)
+                  .then((data) => (data && data.url ? { ...item, productImage: data.url } : item))
+                  .catch(() => item)
+              )
+            ).then((filled) => {
+              if (filled.some((f) => f.productImage)) {
+                const updated = mapped.map((m) => {
+                  const i = missing.findIndex((x) => x.name === m.name && x.originalCartIndex === m.originalCartIndex);
+                  if (i >= 0 && filled[i].productImage) return { ...m, productImage: filled[i].productImage };
+                  return m;
+                });
+                setCartProducts(updated);
+                console.log('📦 Fetched product preview URLs for Tools (screenshot over print area)');
+              }
+            });
+          }
           // Auto-select Fit to Print Area to order's product so screenshot auto-resizes to print area (like cart tools)
           if (mapped.length > 0) {
             const firstProductName = mapped[0].name;

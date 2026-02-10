@@ -273,57 +273,19 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     html += f"<p><strong>Open order &amp; tools (no login):</strong> <a href=\"{print_url}\">{print_url}</a></p>"
     edit_tools_url = f"{EDIT_TOOLS_BASE_URL}?order_id={order_id}"
     admin_orders_url = "https://screenmerch.fly.dev/admin/orders"
-    # Six tools buttons in Video Information section so Gmail and other clients show them (table below may be stripped)
+    # Single set of action buttons (no duplicate block below)
     order_details_url = f"https://screenmerch.fly.dev/admin/orders?order_id={order_id}"
     html += f"""
-        <p style="margin: 20px 0 10px 0;"><strong>Quick actions (no login):</strong></p>
+        <p style="margin: 20px 0 10px 0;"><strong>Quick actions:</strong></p>
         <p style="margin: 8px 0;">
-            <a href="{print_url}" style="background: #007bff; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Print Quality</a>
             <a href="{print_url}" style="background: #007bff; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Print &amp; Image Tools</a>
             <a href="{print_url}" style="background: #28a745; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Generate 300 DPI Image</a>
-        </p>
-        <p style="margin: 8px 0;">
             <a href="{edit_tools_url}" style="background: #fd7e14; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Edit Tools</a>
             <a href="{order_details_url}" style="background: #17a2b8; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Order Details</a>
             <a href="{admin_orders_url}" style="background: #6c757d; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">View All Orders (admin)</a>
         </p>
-    """
-    html += "<br>"
-    html += f"""
-        <hr>
-        <h2>🚀 Order Management &amp; Print Quality</h2>
-        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
-            <tr>
-                <td align="center">
-                    <table cellpadding="0" cellspacing="0">
-                        <tr>
-                            <td style="padding: 10px;">
-                                <a href="{print_url}" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Open Print &amp; Image Tools (no login)</a>
-                            </td>
-                            <td style="padding: 10px;">
-                                <a href="{print_url}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Generate 300 DPI Image</a>
-                            </td>
-                            <td style="padding: 10px;">
-                                <a href="{edit_tools_url}" style="background: #fd7e14; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">✏️ Edit Tools</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="3" style="padding: 10px; text-align: center;">
-                                <a href="{admin_orders_url}" style="background: #6c757d; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📊 View All Orders (admin login required)</a>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3>📝 Quick Instructions:</h3>
-            <ol>
-                <li><strong>Blue or green button</strong> opens the order and print/image tools — <strong>no login</strong>. You can also use the link under Video Information.</li>
-                <li><strong>Orange button (Edit Tools)</strong> opens the full Edit Tools page (product preview, screenshot size, fit to print) for additional editing options.</li>
-                <li><strong>Gray button</strong> (View All Orders) goes to the admin dashboard and requires admin sign-in.</li>
-                <li><strong>Timestamp</strong> above is used in the print quality tool.</li>
-            </ol>
+        <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 0; font-size: 14px;"><strong>Tip:</strong> Blue/green open print tools (no login). Orange = Edit Tools. Teal = this order. Gray = admin dashboard.</p>
         </div>
         <hr>
         <p><small>This is an automated notification from ScreenMerch</small></p>

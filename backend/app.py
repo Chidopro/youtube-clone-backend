@@ -4690,6 +4690,55 @@ def get_print_area_products():
         logger.error(f"Error getting print area products: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
+def _get_product_preview_url_by_name(product_name):
+    """Return preview image URL for a product name (same logic as get_order_screenshot). Used by Tools page when order API omits preview_image_url."""
+    if not product_name or not isinstance(product_name, str) or not product_name.strip():
+        return ''
+    image_base = os.environ.get('BACKEND_PUBLIC_URL') or 'https://screenmerch.fly.dev'
+    image_base = str(image_base).rstrip('/')
+    if image_base.startswith('http://'):
+        image_base = 'https://' + image_base[7:]
+    product_name_to_preview = {}
+    product_name_to_preview_lower = {}
+    product_name_to_preview_no_apostrophe = {}
+    try:
+        for p in PRODUCTS:
+            name = p.get('name')
+            preview_fn = p.get('preview_image') or ''
+            if name and preview_fn:
+                url = f"{image_base}/static/images/{preview_fn}"
+                product_name_to_preview[name] = url
+                product_name_to_preview_lower[(name or '').strip().lower()] = url
+                no_apost = (name or '').replace("'", "").replace("'", "").replace("`", "").strip().lower()
+                if no_apost:
+                    product_name_to_preview_no_apostrophe[no_apost] = url
+    except Exception:
+        return ''
+    n = product_name.strip()
+    url = product_name_to_preview.get(n) or product_name_to_preview_lower.get(n.lower(), '')
+    if url:
+        return url
+    n_no_apost = n.replace("'", "").replace("'", "").replace("`", "").lower()
+    url = product_name_to_preview_no_apostrophe.get(n_no_apost, '')
+    if url:
+        return url
+    for key, val in product_name_to_preview.items():
+        if key and key.strip().lower() == n.lower():
+            return val
+        key_no_apost = (key or '').replace("'", "").replace("'", "").replace("`", "").lower()
+        if key_no_apost == n_no_apost:
+            return val
+    return ''
+
+@app.route("/api/product-preview-url")
+def product_preview_url():
+    """Return preview image URL for a product name. Used by Tools page when order API does not include preview_image_url."""
+    name = request.args.get('name') or request.args.get('product_name') or ''
+    url = _get_product_preview_url_by_name(name)
+    if url:
+        return jsonify({"success": True, "url": url})
+    return jsonify({"success": False, "error": "Product not found or no preview image"}), 404
+
 @app.route("/api/get-order-screenshot/<order_id>")
 def get_order_screenshot(order_id):
     """Get screenshot data for a specific order. Prefer order_store so screenshot from checkout is always available."""
@@ -4849,51 +4898,8 @@ def get_order_screenshot(order_id):
         if order_level_screenshot:
             logger.info(f"✅ [GET-SCREENSHOT] Using screenshot (order-level or from cart fallback), len={len(str(order_level_screenshot))}")
 
-        # Build product name -> preview_image URL for Tools page mockup (exact duplicate of cart tools)
-        # Use fixed production URL so images load from frontend (screenmerch.com) regardless of request host
-        image_base = os.environ.get('BACKEND_PUBLIC_URL') or 'https://screenmerch.fly.dev'
-        image_base = str(image_base).rstrip('/')
-        if image_base.startswith('http://'):
-            image_base = 'https://' + image_base[7:]
-        product_name_to_preview = {}
-        product_name_to_preview_lower = {}
-        product_name_to_preview_no_apostrophe = {}
-        try:
-            for p in PRODUCTS:
-                name = p.get('name')
-                preview_fn = p.get('preview_image') or ''
-                if name and preview_fn:
-                    url = f"{image_base}/static/images/{preview_fn}"
-                    product_name_to_preview[name] = url
-                    product_name_to_preview_lower[(name or '').strip().lower()] = url
-                    no_apost = (name or '').replace("'", "").replace("'", "").replace("`", "").strip().lower()
-                    if no_apost:
-                        product_name_to_preview_no_apostrophe[no_apost] = url
-        except Exception as e:
-            logger.warning(f"Could not build product preview lookup: {e}")
-
-        def _get_preview_url(name):
-            if not name or not isinstance(name, str):
-                return ''
-            n = name.strip()
-            if not n:
-                return ''
-            url = product_name_to_preview.get(n) or product_name_to_preview_lower.get(n.lower(), '')
-            if url:
-                return url
-            n_no_apost = n.replace("'", "").replace("'", "").replace("`", "").lower()
-            url = product_name_to_preview_no_apostrophe.get(n_no_apost, '')
-            if url:
-                return url
-            for key, val in product_name_to_preview.items():
-                if key and key.strip().lower() == n.lower():
-                    return val
-                key_no_apost = (key or '').replace("'", "").replace("'", "").replace("`", "").lower()
-                if key_no_apost == n_no_apost:
-                    return val
-            return ''
-
         # Build products list with their screenshots - include ALL products even if they share screenshots
+        # Product preview URL from shared helper (same as /api/product-preview-url) so Tools page shows product mockup
         products = []
         for idx, item in enumerate(cart):
             if not isinstance(item, dict):
@@ -4907,15 +4913,15 @@ def get_order_screenshot(order_id):
                 product_name = product_name.strip() or f'Product {idx + 1}'
             color = (item.get('variants') or {}).get('color', 'N/A')
             size = (item.get('variants') or {}).get('size', 'N/A')
-            # Use stored image URL if present (some flows may have it), else lookup by product name
+            # Use stored image URL if present, else lookup by product name (same logic as cart tools)
             preview_image_url = (
                 item.get('image') or item.get('img') or item.get('preview_image_url') or
-                item.get('main_image_url') or _get_preview_url(product_name)
+                item.get('main_image_url') or _get_product_preview_url_by_name(product_name)
             )
             if isinstance(preview_image_url, str) and not preview_image_url.strip():
-                preview_image_url = _get_preview_url(product_name)
+                preview_image_url = _get_product_preview_url_by_name(product_name)
             elif not preview_image_url:
-                preview_image_url = _get_preview_url(product_name)
+                preview_image_url = _get_product_preview_url_by_name(product_name)
             logger.info(f"✅ [GET-SCREENSHOT] product={product_name!r} preview_image_url={'yes' if preview_image_url else 'no'}")
 
             # Find screenshot for this product - check item-specific fields first
