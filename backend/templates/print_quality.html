@@ -355,19 +355,6 @@
             </div>
             -->
             
-            <!-- Product Preview (apparel only): show selected product with screenshot overlaid, like Tools page -->
-            <div id="productPreviewSection" style="display: none; background: #fff; padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #dee2e6;">
-                <h3 style="margin-top: 0; color: #333; font-size: 18px;">👕 Product Preview</h3>
-                <p style="color: #555; margin-bottom: 12px; font-size: 14px;">Realistic view of your screenshot on the selected product. Available for women's, men's, and kids apparel when a product is selected below.</p>
-                <div id="productPreviewContainer" style="position: relative; display: inline-block; max-width: 100%;">
-                    <img id="productPreviewImage" src="" alt="Product" style="display: block; max-width: 320px; max-height: 320px; width: auto; height: auto; border-radius: 8px;">
-                    <div id="productPreviewScreenshotOverlay" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); box-sizing: border-box; pointer-events: none;">
-                        <img id="productPreviewScreenshotImg" src="" alt="Screenshot on product" style="display: block; max-width: 100%; max-height: 100%; object-fit: contain;">
-                    </div>
-                </div>
-                <p id="productPreviewLabel" style="margin-top: 10px; font-size: 14px; color: #666;"></p>
-            </div>
-
             <!-- Fit to Print Area (above Step 1): product dropdown + screenshot size so admin can fit landscape image to product -->
             <div id="fitToPrintAreaSection" style="background: #f0f7ff; padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #0066cc;">
                 <h3 style="margin-top: 0; color: #0066cc; font-size: 18px;">📐 Fit to Print Area</h3>
@@ -572,14 +559,14 @@
                 .catch(function() {});
         })();
         
-        // When fit product changes, show/hide size dropdown and update product preview
+        // When fit product changes, show/hide size dropdown
         document.getElementById('fitProductSelect').addEventListener('change', function() {
             var productName = this.value;
             var sizeGroup = document.getElementById('fitSizeGroup');
             var sizeSelect = document.getElementById('fitSizeSelect');
             sizeGroup.style.display = 'none';
             sizeSelect.innerHTML = '';
-            if (!productName) { updateProductPreview(); return; }
+            if (!productName) return;
             var product = printAreaProductsList.find(function(p) { return p.name === productName; });
             if (product && product.sizes && product.sizes.length) {
                 sizeGroup.style.display = 'block';
@@ -590,15 +577,11 @@
                     sizeSelect.appendChild(opt);
                 });
             }
-            updateProductPreview();
         });
-        
-        document.getElementById('fitSizeSelect').addEventListener('change', function() { updateProductPreview(); });
         
         document.getElementById('screenshotSizeSlider').addEventListener('input', function() {
             var el = document.getElementById('screenshotSizeValue');
             if (el) el.textContent = this.value;
-            updateProductPreview();
         });
         
         // Return { width, height } in inches for current fit product/size and screenshot scale, or null
@@ -616,35 +599,6 @@
             }
             var scale = parseInt(document.getElementById('screenshotSizeSlider').value, 10) / 100;
             return { width: w * scale, height: h * scale };
-        }
-
-        // Update Product Preview (apparel): show product image with screenshot overlaid, sized by print area + slider
-        function updateProductPreview() {
-            var section = document.getElementById('productPreviewSection');
-            var productImg = document.getElementById('productPreviewImage');
-            var overlay = document.getElementById('productPreviewScreenshotOverlay');
-            var overlayImg = document.getElementById('productPreviewScreenshotImg');
-            var labelEl = document.getElementById('productPreviewLabel');
-            if (!section || !productImg || !overlay || !overlayImg) return;
-            var productName = document.getElementById('fitProductSelect').value;
-            var product = productName ? printAreaProductsList.find(function(p) { return p.name === productName; }) : null;
-            var previewUrl = product && product.preview_image_url ? product.preview_image_url : '';
-            if (!previewUrl || !orderScreenshot) {
-                section.style.display = 'none';
-                return;
-            }
-            section.style.display = 'block';
-            productImg.src = previewUrl;
-            overlayImg.src = orderScreenshot;
-            var dims = getFitPrintAreaDimensions();
-            var scale = parseInt(document.getElementById('screenshotSizeSlider').value, 10) / 100;
-            var basePct = 52;
-            var wPct = Math.min(95, basePct * scale);
-            var hPct = dims && dims.width && dims.height ? wPct * (dims.height / dims.width) : wPct;
-            hPct = Math.min(95, hPct);
-            overlay.style.width = wPct + '%';
-            overlay.style.height = hPct + '%';
-            if (labelEl) labelEl.textContent = productName + ' — Screenshot size: ' + (document.getElementById('screenshotSizeValue') ? document.getElementById('screenshotSizeValue').textContent : '100%');
         }
         
         // Function to update product info display
@@ -699,7 +653,6 @@
                 document.getElementById('cropHeight').value = '';
                 cropState = { left: 0, top: 0, width: 100, height: 100 };
                 initInteractiveCrop();
-                updateProductPreview();
             } else {
                 orderScreenshot = null;
                 originalScreenshot = null;
