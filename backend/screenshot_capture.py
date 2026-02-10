@@ -747,32 +747,14 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
             # Calculate exact pixel dimensions from print area (inches) * DPI
             target_width = int(print_area_width * print_dpi)
             target_height = int(print_area_height * print_dpi)
-            target_aspect = print_area_width / print_area_height
-            img_aspect = original_width / original_height
-
+            
             logger.info(f"📐 [PRINT_QUALITY] Using exact print area dimensions: {print_area_width}\"x{print_area_height}\" → {target_width}x{target_height}px at {print_dpi} DPI")
-
-            # Center-crop to print area aspect ratio first so resize doesn't stretch/squish
-            if abs(img_aspect - target_aspect) > 0.001:
-                if img_aspect > target_aspect:
-                    # Image is wider than print area: crop width (keep full height)
-                    crop_w = int(original_height * target_aspect)
-                    source_x = (original_width - crop_w) // 2
-                    source_x = max(0, min(source_x, original_width - crop_w))
-                    image = image[0:original_height, source_x:source_x + crop_w]
-                    logger.info(f"📐 [PRINT_QUALITY] Center-cropped width: {original_width}x{original_height} → {crop_w}x{original_height} (no stretch)")
-                else:
-                    # Image is taller than print area: crop height (keep full width)
-                    crop_h = int(original_width / target_aspect)
-                    source_y = (original_height - crop_h) // 2
-                    source_y = max(0, min(source_y, original_height - crop_h))
-                    image = image[source_y:source_y + crop_h, 0:original_width]
-                    logger.info(f"📐 [PRINT_QUALITY] Center-cropped height: {original_width}x{original_height} → {original_width}x{crop_h} (no stretch)")
-                original_height, original_width = image.shape[:2]
-
-            # Resize cropped image to exact print area dimensions (aspect ratio already matches)
+            
+            # Resize image to exact print area dimensions
+            # Use INTER_LINEAR for high quality upscaling
             try:
                 image = cv2.resize(image, (target_width, target_height), interpolation=cv2.INTER_LINEAR)
+                # Verify resize worked
                 actual_height, actual_width = image.shape[:2]
                 logger.info(f"✅ [PRINT_QUALITY] Resize successful! Actual dimensions: {actual_width}x{actual_height}")
                 if actual_width != target_width or actual_height != target_height:
@@ -781,6 +763,7 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                     target_height = actual_height
             except Exception as resize_error:
                 logger.error(f"❌ [PRINT_QUALITY] Resize failed: {str(resize_error)}")
+                # Fall back to original dimensions if resize fails
                 target_width = original_width
                 target_height = original_height
         else:
