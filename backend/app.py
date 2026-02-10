@@ -4681,11 +4681,20 @@ def process_thumbnail_print_quality():
 
 @app.route("/api/print-area-products", methods=["GET"])
 def get_print_area_products():
-    """Return product list with print area dimensions for print-quality page (fit to product dropdown)."""
+    """Return product list with print area dimensions and preview_image_url for print-quality page."""
     try:
         from print_area_products import get_products
         products = get_products()
-        return jsonify({"success": True, "products": products})
+        image_base = (os.environ.get('BACKEND_PUBLIC_URL') or request.url_root or 'https://screenmerch.fly.dev').rstrip('/')
+        product_names_to_preview = {p.get("name"): p.get("preview_image") for p in PRODUCTS if p.get("preview_image")}
+        out = []
+        for p in products:
+            rec = dict(p)
+            name = rec.get("name") or ""
+            preview_fn = product_names_to_preview.get(name)
+            rec["preview_image_url"] = f"{image_base}/static/images/{preview_fn}" if preview_fn else ""
+            out.append(rec)
+        return jsonify({"success": True, "products": out})
     except Exception as e:
         logger.error(f"Error getting print area products: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
