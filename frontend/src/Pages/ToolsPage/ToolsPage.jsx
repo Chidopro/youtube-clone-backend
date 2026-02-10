@@ -808,6 +808,9 @@ const ToolsPage = () => {
   const [screenshotScale, setScreenshotScale] = useState(100); // Screenshot size scale (percentage: 50-150%)
   const [screenshotSizeInteracted, setScreenshotSizeInteracted] = useState(false); // Track if screenshot size has been adjusted
   const [productSelectClicked, setProductSelectClicked] = useState(false); // Track if product select has been clicked
+  const [orderScreenshotsLoading, setOrderScreenshotsLoading] = useState(false);
+  const [orderScreenshotsError, setOrderScreenshotsError] = useState(null);
+  const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
 
   // Calculate and set fixed position for left column
   useEffect(() => {
@@ -867,6 +870,78 @@ const ToolsPage = () => {
     }
   }, [screenshotScale, productImageOffsets, selectedCartProductIndex]);
 
+  // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
+  useEffect(() => {
+    const orderId = searchParams.get('order_id');
+    if (!orderId || String(orderId).trim() === '') {
+      orderIdLoadedRef.current = null;
+      return;
+    }
+    const trimmedOrderId = String(orderId).trim();
+    if (orderIdLoadedRef.current === trimmedOrderId) return;
+
+    let cancelled = false;
+    orderIdLoadedRef.current = trimmedOrderId;
+    setOrderScreenshotsLoading(true);
+    setOrderScreenshotsError(null);
+
+    fetch(`${API_CONFIG.BASE_URL}/api/get-order-screenshot/${encodeURIComponent(trimmedOrderId)}`)
+      .then(async (response) => {
+        if (cancelled) return;
+        if (!response.ok) {
+          let errMsg = 'Failed to load order screenshots';
+          try {
+            const errData = await response.json();
+            if (errData && errData.error) errMsg = errData.error;
+          } catch (_) {}
+          setOrderScreenshotsError(errMsg);
+          setCartProducts([]);
+          setSelectedCartProductIndex(null);
+          orderIdLoadedRef.current = null;
+          return;
+        }
+        const data = await response.json();
+        if (cancelled) return;
+        if (data.success && (data.products?.length > 0 || data.screenshot)) {
+          const products = data.products?.length > 0
+            ? data.products
+            : [{ product: 'Order Screenshot', screenshot: data.screenshot, color: 'N/A', size: 'N/A', index: 0 }];
+          const mapped = products
+            .map((p, i) => ({
+              originalCartIndex: p.index ?? i,
+              name: p.product || 'Product',
+              color: p.color || 'N/A',
+              size: p.size || 'N/A',
+              screenshot: p.screenshot || '',
+              productImage: '',
+              toolSettings: null,
+              filteredIndex: i
+            }))
+            .filter((item) => item.screenshot && item.screenshot.trim() !== '');
+          setCartProducts(mapped);
+          setSelectedCartProductIndex(mapped.length > 0 ? 0 : null);
+          setOrderScreenshotsError(null);
+          console.log(`📦 Loaded ${mapped.length} screenshot(s) from order ${trimmedOrderId} (same as Print Quality / email)`);
+        } else {
+          setCartProducts([]);
+          setSelectedCartProductIndex(null);
+          setOrderScreenshotsError('No screenshots found for this order.');
+        }
+        setOrderScreenshotsLoading(false);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setOrderScreenshotsError(error.message || 'Error loading order screenshots');
+          setCartProducts([]);
+          setSelectedCartProductIndex(null);
+          orderIdLoadedRef.current = null;
+          setOrderScreenshotsLoading(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [searchParams]);
+
   // Auto-adjust screenshot scale to 100% when product is selected (mobile only)
   // This ensures the screenshot is proportionately sized to fit the print area
   useEffect(() => {
@@ -876,8 +951,10 @@ const ToolsPage = () => {
     }
   }, [selectedProductName, printAreaFit]);
 
-  // Load cart products on mount and when component becomes visible
+  // Load cart products on mount and when component becomes visible (skip when order_id in URL — those come from order API)
   useEffect(() => {
+    if (searchParams.get('order_id')) return;
+
     const loadCartProducts = () => {
       try {
         const cartItems = JSON.parse(localStorage.getItem('cart_items') || '[]');
@@ -955,7 +1032,7 @@ const ToolsPage = () => {
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(checkInterval);
     };
-  }, [selectedCartProductIndex]); // Re-run if selected index becomes invalid
+  }, [selectedCartProductIndex, searchParams]); // Re-run if selected index becomes invalid or order_id is removed
 
   // Load screenshot and product name from localStorage or URL params
   useEffect(() => {
@@ -2056,6 +2133,20 @@ const ToolsPage = () => {
         <h1>Edit Tools</h1>
         <p className="tools-subtitle">Edit your screenshot with professional tools</p>
       </div>
+
+      {searchParams.get('order_id') && (orderScreenshotsLoading || orderScreenshotsError) && (
+        <div style={{
+          margin: '0 20px 16px',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          background: orderScreenshotsError ? '#f8d7da' : '#cce5ff',
+          color: orderScreenshotsError ? '#721c24' : '#004085',
+          border: `1px solid ${orderScreenshotsError ? '#f5c6cb' : '#b8daff'}`
+        }}>
+          {orderScreenshotsLoading && '⏳ Loading screenshots from order (same as in your email)...'}
+          {orderScreenshotsError && !orderScreenshotsLoading && `❌ ${orderScreenshotsError}`}
+        </div>
+      )}
 
       {(() => {
         // Check if screenshot and product are selected
