@@ -14,6 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 PRINT_QUALITY_BASE_URL = "https://screenmerch.fly.dev/print-quality"
+EDIT_TOOLS_BASE_URL = "https://screenmerch.com/tools"
 # Inline base64 shows IN the email body (e.g. Proton); CID shows as attachment only. Prefer inline when small so body shows the image.
 MAX_INLINE_BASE64_LEN = 100000  # Inline in body when under ~100KB; over that use cid (attachment)
 
@@ -271,6 +272,7 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     # Direct link to Print Quality page (no login) — works even if buttons are stripped by email clients
     html += f"<p><strong>Open order &amp; tools (no login):</strong> <a href=\"{print_url}\">{print_url}</a></p>"
     html += "<br>"
+    edit_tools_url = f"{EDIT_TOOLS_BASE_URL}?order_id={order_id}"
     html += f"""
         <hr>
         <h2>🚀 Order Management &amp; Print Quality</h2>
@@ -285,9 +287,12 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
                             <td style="padding: 10px;">
                                 <a href="{print_url}" style="background: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Generate 300 DPI Image</a>
                             </td>
+                            <td style="padding: 10px;">
+                                <a href="{edit_tools_url}" style="background: #fd7e14; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">✏️ Edit Tools</a>
+                            </td>
                         </tr>
                         <tr>
-                            <td colspan="2" style="padding: 10px; text-align: center;">
+                            <td colspan="3" style="padding: 10px; text-align: center;">
                                 <a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">📊 View All Orders (admin login required)</a>
                             </td>
                         </tr>
@@ -298,7 +303,8 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3>📝 Quick Instructions:</h3>
             <ol>
-                <li><strong>Blue or green button above</strong> opens the order and print/image tools — <strong>no login</strong>. You can also use the link under Video Information.</li>
+                <li><strong>Blue or green button</strong> opens the order and print/image tools — <strong>no login</strong>. You can also use the link under Video Information.</li>
+                <li><strong>Orange button (Edit Tools)</strong> opens the full Edit Tools page (product preview, screenshot size, fit to print) for additional editing options.</li>
                 <li><strong>Gray button</strong> (View All Orders) goes to the admin dashboard and requires admin sign-in.</li>
                 <li><strong>Timestamp</strong> above is used in the print quality tool.</li>
             </ol>
