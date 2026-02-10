@@ -4849,6 +4849,20 @@ def get_order_screenshot(order_id):
         if order_level_screenshot:
             logger.info(f"✅ [GET-SCREENSHOT] Using screenshot (order-level or from cart fallback), len={len(str(order_level_screenshot))}")
 
+        # Build product name -> preview_image URL for Tools page mockup (same as cart tools)
+        image_base = (os.environ.get('BACKEND_PUBLIC_URL') or request.url_root or 'https://screenmerch.fly.dev').rstrip('/')
+        if image_base.startswith('http://'):
+            image_base = 'https://' + image_base[7:]
+        product_name_to_preview = {}
+        try:
+            for p in PRODUCTS:
+                name = p.get('name')
+                preview_fn = p.get('preview_image') or ''
+                if name and preview_fn:
+                    product_name_to_preview[name] = f"{image_base}/static/images/{preview_fn}"
+        except Exception as e:
+            logger.warning(f"Could not build product preview lookup: {e}")
+
         # Build products list with their screenshots - include ALL products even if they share screenshots
         products = []
         for idx, item in enumerate(cart):
@@ -4857,7 +4871,8 @@ def get_order_screenshot(order_id):
             product_name = item.get('product', f'Product {idx + 1}')
             color = (item.get('variants') or {}).get('color', 'N/A')
             size = (item.get('variants') or {}).get('size', 'N/A')
-            
+            preview_image_url = product_name_to_preview.get(product_name, '')
+
             # Find screenshot for this product - check item-specific fields first
             screenshot_data = None
             if item.get('selected_screenshot'):
@@ -4884,7 +4899,8 @@ def get_order_screenshot(order_id):
                     "product": product_name,
                     "screenshot": screenshot_data,
                     "color": color,
-                    "size": size
+                    "size": size,
+                    "preview_image_url": preview_image_url
                 })
             else:
                 # Even if no screenshot found, add product so user knows it exists (they can still process it)
@@ -4894,7 +4910,8 @@ def get_order_screenshot(order_id):
                     "product": product_name,
                     "screenshot": order_level_screenshot or '',  # Use order-level or empty
                     "color": color,
-                    "size": size
+                    "size": size,
+                    "preview_image_url": preview_image_url
                 })
         
         # If no products found but we have order-level screenshot, create a single product entry
@@ -4904,7 +4921,8 @@ def get_order_screenshot(order_id):
                 "product": "Order Screenshot",
                 "screenshot": order_level_screenshot,
                 "color": "N/A",
-                "size": "N/A"
+                "size": "N/A",
+                "preview_image_url": ""
             })
         
         # Only succeed if we have at least one non-empty screenshot

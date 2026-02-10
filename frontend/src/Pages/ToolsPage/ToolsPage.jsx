@@ -931,7 +931,7 @@ const ToolsPage = () => {
               color: p.color || 'N/A',
               size: p.size || 'N/A',
               screenshot: p.screenshot || '',
-              productImage: '',
+              productImage: p.preview_image_url || '', // Product mockup from API (same as cart tools)
               toolSettings: null,
               filteredIndex: i
             }))
