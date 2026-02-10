@@ -1502,11 +1502,53 @@
             cancelBtn.onclick = function() { overlay.classList.remove('active'); };
 
             applyBtn.onclick = function() {
-                document.getElementById('cropX').value = (cropState.left / 100).toFixed(4);
-                document.getElementById('cropY').value = (cropState.top / 100).toFixed(4);
-                document.getElementById('cropWidth').value = (cropState.width / 100).toFixed(4);
-                document.getElementById('cropHeight').value = (cropState.height / 100).toFixed(4);
-                overlay.classList.remove('active');
+                var imgEl = document.getElementById('activeEditImage');
+                var src = imgEl && imgEl.src;
+                if (!src) { overlay.classList.remove('active'); return; }
+                var x = cropState.left / 100, y = cropState.top / 100, w = cropState.width / 100, h = cropState.height / 100;
+                var aux = new Image();
+                aux.crossOrigin = 'anonymous';
+                aux.onload = function() {
+                    var nw = aux.naturalWidth, nh = aux.naturalHeight;
+                    var sx = Math.round(x * nw), sy = Math.round(y * nh), sw = Math.round(w * nw), sh = Math.round(h * nh);
+                    sw = Math.max(1, Math.min(sw, nw - sx));
+                    sh = Math.max(1, Math.min(sh, nh - sy));
+                    var dataUrl = null;
+                    try {
+                        var canvas = document.createElement('canvas');
+                        canvas.width = sw;
+                        canvas.height = sh;
+                        var ctx = canvas.getContext('2d');
+                        ctx.drawImage(aux, sx, sy, sw, sh, 0, 0, sw, sh);
+                        dataUrl = canvas.toDataURL('image/png');
+                        imgEl.src = dataUrl;
+                        if (typeof orderScreenshot !== 'undefined') orderScreenshot = dataUrl;
+                        if (typeof originalScreenshot !== 'undefined') originalScreenshot = dataUrl;
+                    } catch (err) {
+                        console.warn('Canvas crop failed (e.g. CORS), falling back to crop params only.', err);
+                    }
+                    if (dataUrl) {
+                        document.getElementById('cropX').value = '';
+                        document.getElementById('cropY').value = '';
+                        document.getElementById('cropWidth').value = '';
+                        document.getElementById('cropHeight').value = '';
+                        cropState = { left: 0, top: 0, width: 100, height: 100 };
+                    } else {
+                        document.getElementById('cropX').value = (cropState.left / 100).toFixed(4);
+                        document.getElementById('cropY').value = (cropState.top / 100).toFixed(4);
+                        document.getElementById('cropWidth').value = (cropState.width / 100).toFixed(4);
+                        document.getElementById('cropHeight').value = (cropState.height / 100).toFixed(4);
+                    }
+                    overlay.classList.remove('active');
+                };
+                aux.onerror = function() {
+                    document.getElementById('cropX').value = (cropState.left / 100).toFixed(4);
+                    document.getElementById('cropY').value = (cropState.top / 100).toFixed(4);
+                    document.getElementById('cropWidth').value = (cropState.width / 100).toFixed(4);
+                    document.getElementById('cropHeight').value = (cropState.height / 100).toFixed(4);
+                    overlay.classList.remove('active');
+                };
+                aux.src = src;
             };
 
             overlay.addEventListener('mousedown', function(e) {
