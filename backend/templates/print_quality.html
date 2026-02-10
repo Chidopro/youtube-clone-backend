@@ -230,6 +230,37 @@
             font-weight: bold;
             color: #555;
         }
+        /* Interactive crop tool (like screenshot selection page) */
+        .active-image-wrap { position: relative; display: inline-block; max-width: 100%; }
+        .active-image-wrap img { display: block; max-width: 100%; max-height: 280px; border-radius: 5px; }
+        .crop-tool-btn {
+            position: absolute; top: 8px; left: 8px;
+            background: rgba(255,255,255,0.95); border: 2px solid #333; border-radius: 6px;
+            padding: 6px 10px; font-size: 13px; font-weight: 600; cursor: pointer;
+            color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .crop-tool-btn:hover { background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .crop-overlay {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); cursor: crosshair;
+        }
+        .crop-overlay.active { display: block; }
+        .crop-box {
+            position: absolute; border: 2px solid #0066cc; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+            cursor: move; box-sizing: border-box;
+        }
+        .crop-box .handle {
+            position: absolute; width: 12px; height: 12px; background: #0066cc; border: 2px solid #fff;
+            border-radius: 2px; cursor: nwse-resize;
+        }
+        .crop-box .handle.nw { top: -6px; left: -6px; cursor: nwse-resize; }
+        .crop-box .handle.ne { top: -6px; right: -6px; cursor: nesw-resize; }
+        .crop-box .handle.sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+        .crop-box .handle.se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+        .crop-overlay-actions { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 5; }
+        .crop-overlay-actions button { padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; }
+        .crop-overlay-actions .apply-crop { background: #28a745; color: #fff; }
+        .crop-overlay-actions .cancel-crop { background: #6c757d; color: #fff; }
     </style>
 </head>
 <body>
@@ -292,7 +323,7 @@
                     <input type="number" id="cropWidth" name="cropWidth" placeholder="Width (0-1)" step="0.01" min="0" max="1">
                     <input type="number" id="cropHeight" name="cropHeight" placeholder="Height (0-1)" step="0.01" min="0" max="1">
                 </div>
-                <small>Leave blank for full frame. Values are normalized (0-1).</small>
+                <small>Leave blank for full frame. Values are normalized (0-1). Or use the <strong>++ Crop Tool</strong> on the active image above to set the crop visually before Fit to Print.</small>
             </div>
             
             <div class="form-group">
@@ -598,9 +629,30 @@
                 orderScreenshot = selectedProduct.screenshot;
                 originalScreenshot = selectedProduct.screenshot;
                 document.getElementById('screenshotPreview').innerHTML = `
-                    <img src="${selectedProduct.screenshot}" alt="Active screenshot" style="max-width: 100%; max-height: 280px; border-radius: 5px;">
+                    <div class="active-image-wrap">
+                        <img id="activeEditImage" src="${selectedProduct.screenshot}" alt="Active screenshot">
+                        <button type="button" class="crop-tool-btn" id="cropToolBtn" title="Crop before Fit to Print">++ Crop Tool</button>
+                        <div id="cropOverlay" class="crop-overlay">
+                            <div id="cropBox" class="crop-box" style="left:0;top:0;width:100%;height:100%;">
+                                <span class="handle nw" data-handle="nw"></span>
+                                <span class="handle ne" data-handle="ne"></span>
+                                <span class="handle sw" data-handle="sw"></span>
+                                <span class="handle se" data-handle="se"></span>
+                            </div>
+                            <div class="crop-overlay-actions">
+                                <button type="button" class="cancel-crop" id="cancelCropBtn">Cancel</button>
+                                <button type="button" class="apply-crop" id="applyCropBtn">Apply crop</button>
+                            </div>
+                        </div>
+                    </div>
                     <p style="margin-top: 10px; color: green;">✅ Editing: ${(selectedProduct.product || 'Product')} ${selectedProduct.color && selectedProduct.color !== 'N/A' ? ' — ' + selectedProduct.color : ''} ${selectedProduct.size && selectedProduct.size !== 'N/A' ? ' (' + selectedProduct.size + ')' : ''}</p>
                 `;
+                document.getElementById('cropX').value = '';
+                document.getElementById('cropY').value = '';
+                document.getElementById('cropWidth').value = '';
+                document.getElementById('cropHeight').value = '';
+                cropState = { left: 0, top: 0, width: 100, height: 100 };
+                initInteractiveCrop();
             } else {
                 orderScreenshot = null;
                 originalScreenshot = null;
@@ -1411,6 +1463,129 @@
                 };
             }
             return null;
+        }
+
+        // Interactive crop tool (like screenshot selection page) — crop before Fit to Print
+        var cropState = { left: 0, top: 0, width: 100, height: 100 };
+        var cropDragging = false;
+        var cropResizing = false;
+        var cropResizeHandle = null;
+        var cropDragStart = { x: 0, y: 0, left: 0, top: 0 };
+        var cropResizeStart = { x: 0, y: 0, left: 0, top: 0, width: 0, height: 0 };
+        var cropListenersAttached = false;
+
+        function initInteractiveCrop() {
+            var btn = document.getElementById('cropToolBtn');
+            var overlay = document.getElementById('cropOverlay');
+            var cropBox = document.getElementById('cropBox');
+            var applyBtn = document.getElementById('applyCropBtn');
+            var cancelBtn = document.getElementById('cancelCropBtn');
+            if (!btn || !overlay || !cropBox) return;
+
+            btn.onclick = function() {
+                var xEl = document.getElementById('cropX');
+                var yEl = document.getElementById('cropY');
+                var wEl = document.getElementById('cropWidth');
+                var hEl = document.getElementById('cropHeight');
+                if (xEl && yEl && wEl && hEl && xEl.value && yEl.value && wEl.value && hEl.value) {
+                    cropState.left = parseFloat(xEl.value) * 100;
+                    cropState.top = parseFloat(yEl.value) * 100;
+                    cropState.width = parseFloat(wEl.value) * 100;
+                    cropState.height = parseFloat(hEl.value) * 100;
+                } else {
+                    cropState = { left: 0, top: 0, width: 100, height: 100 };
+                }
+                updateCropBoxStyle();
+                overlay.classList.add('active');
+            };
+
+            cancelBtn.onclick = function() { overlay.classList.remove('active'); };
+
+            applyBtn.onclick = function() {
+                document.getElementById('cropX').value = (cropState.left / 100).toFixed(4);
+                document.getElementById('cropY').value = (cropState.top / 100).toFixed(4);
+                document.getElementById('cropWidth').value = (cropState.width / 100).toFixed(4);
+                document.getElementById('cropHeight').value = (cropState.height / 100).toFixed(4);
+                overlay.classList.remove('active');
+            };
+
+            overlay.addEventListener('mousedown', function(e) {
+                if (e.target.closest('.handle')) return;
+                if (e.target.closest('.crop-overlay-actions')) return;
+                if (!e.target.closest('.crop-box')) return;
+                cropDragging = true;
+                cropDragStart = { x: e.clientX, y: e.clientY, left: cropState.left, top: cropState.top };
+                e.preventDefault();
+            });
+
+            cropBox.querySelectorAll('.handle').forEach(function(h) {
+                h.onmousedown = function(e) {
+                    e.stopPropagation();
+                    cropResizing = true;
+                    cropResizeHandle = h.getAttribute('data-handle');
+                    cropResizeStart = { x: e.clientX, y: e.clientY, left: cropState.left, top: cropState.top, width: cropState.width, height: cropState.height };
+                };
+            });
+
+            if (!cropListenersAttached) {
+                cropListenersAttached = true;
+                document.addEventListener('mousemove', function(e) {
+                    var ol = document.getElementById('cropOverlay');
+                    if (!ol || !ol.classList.contains('active')) return;
+                    var rect = ol.getBoundingClientRect();
+                    var w = rect.width, h = rect.height;
+                    if (cropDragging) {
+                        var dx = (e.clientX - cropDragStart.x) / w * 100;
+                        var dy = (e.clientY - cropDragStart.y) / h * 100;
+                        var nleft = cropDragStart.left + dx;
+                        var ntop = cropDragStart.top + dy;
+                        nleft = Math.max(0, Math.min(nleft, 100 - cropState.width));
+                        ntop = Math.max(0, Math.min(ntop, 100 - cropState.height));
+                        cropState.left = nleft;
+                        cropState.top = ntop;
+                        updateCropBoxStyle();
+                    } else if (cropResizing && cropResizeHandle) {
+                        var px = (e.clientX - rect.left) / w * 100;
+                        var py = (e.clientY - rect.top) / h * 100;
+                        var minSize = 5;
+                        var l = cropResizeStart.left, t = cropResizeStart.top, ww = cropResizeStart.width, hh = cropResizeStart.height;
+                        var r = l + ww, b = t + hh;
+                        if (cropResizeHandle === 'se') {
+                            ww = Math.max(minSize, Math.min(100 - l, px - l));
+                            hh = Math.max(minSize, Math.min(100 - t, py - t));
+                        } else if (cropResizeHandle === 'sw') {
+                            l = Math.max(0, Math.min(r - minSize, px));
+                            ww = r - l;
+                            hh = Math.max(minSize, Math.min(100 - t, py - t));
+                        } else if (cropResizeHandle === 'ne') {
+                            ww = Math.max(minSize, Math.min(100 - l, px - l));
+                            t = Math.max(0, Math.min(b - minSize, py));
+                            hh = b - t;
+                        } else if (cropResizeHandle === 'nw') {
+                            l = Math.max(0, Math.min(r - minSize, px));
+                            t = Math.max(0, Math.min(b - minSize, py));
+                            ww = r - l;
+                            hh = b - t;
+                        }
+                        cropState.left = l; cropState.top = t; cropState.width = ww; cropState.height = hh;
+                        updateCropBoxStyle();
+                    }
+                });
+                document.addEventListener('mouseup', function() {
+                    cropDragging = false;
+                    cropResizing = false;
+                    cropResizeHandle = null;
+                });
+            }
+        }
+
+        function updateCropBoxStyle() {
+            var box = document.getElementById('cropBox');
+            if (!box) return;
+            box.style.left = cropState.left + '%';
+            box.style.top = cropState.top + '%';
+            box.style.width = cropState.width + '%';
+            box.style.height = cropState.height + '%';
         }
         
         function displayResult(result) {
