@@ -777,6 +777,24 @@ const getGenericHatImage = () => {
   return "https://screenmerch.fly.dev/static/images/hatflatfront.png";
 };
 
+// Placeholder when product image is missing (e.g. products loaded from order_id) so screenshot still shows
+let _placeholderProductImage = null;
+const getPlaceholderProductImage = () => {
+  if (_placeholderProductImage) return _placeholderProductImage;
+  const w = 400;
+  const h = 480;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#e0e0e0';
+  ctx.fillRect(20, 20, w - 40, h - 40);
+  _placeholderProductImage = canvas.toDataURL('image/png');
+  return _placeholderProductImage;
+};
+
 const ToolsPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -2411,11 +2429,12 @@ const ToolsPage = () => {
                         }
                       }
                       
-                      // Regular products (shirts, etc.): Show normal preview
-                      if (product.productImage && currentImage) {
+                      // Regular products (shirts, etc.): Show normal preview (use placeholder when productImage missing, e.g. loaded from order_id)
+                      if (currentImage) {
+                        const productImg = product.productImage || getPlaceholderProductImage();
                         return (
                           <ProductPreviewWithDrag
-                            productImage={product.productImage}
+                            productImage={productImg}
                             screenshot={currentImage}
                             productName={productName}
                             productSize={product.size}
