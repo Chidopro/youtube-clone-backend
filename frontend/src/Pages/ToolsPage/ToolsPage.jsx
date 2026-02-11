@@ -839,6 +839,8 @@ const ToolsPage = () => {
     return false;
   });
   const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
+  const [printQualityImageUrl, setPrintQualityImageUrl] = useState(''); // 300 DPI image from API (parked for download)
+  const [generating300Dpi, setGenerating300Dpi] = useState(false);
 
   // Calculate and set fixed position for left column
   useEffect(() => {
@@ -2144,6 +2146,93 @@ const ToolsPage = () => {
     }
   };
 
+  const handleGenerate300Dpi = async () => {
+    const imageToUse = editedImageUrl || imageUrl;
+    if (!imageToUse || !imageToUse.trim()) {
+      alert('No image to use. Please load a screenshot first.');
+      return;
+    }
+    setGenerating300Dpi(true);
+    setPrintQualityImageUrl('');
+    try {
+      const payload = {
+        thumbnail_data: imageToUse,
+        print_dpi: 300,
+        soft_corners: false,
+        edge_feather: false
+      };
+      if (selectedProductName && printAreaFit === 'product') {
+        try {
+          const dims = getPrintAreaDimensions(selectedProductName, null, 'front');
+          if (dims && dims.width && dims.height) {
+            const scale = screenshotScale / 100;
+            payload.print_area_width = dims.width * scale;
+            payload.print_area_height = dims.height * scale;
+          }
+        } catch (_) {}
+      }
+      const apiUrl = import.meta.env.DEV
+        ? 'http://127.0.0.1:5000/api/process-thumbnail-print-quality'
+        : (API_CONFIG.BASE_URL + '/api/process-thumbnail-print-quality');
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (result.screenshot) {
+          setPrintQualityImageUrl(result.screenshot);
+        } else {
+          alert('Generated but no image returned.');
+        }
+      } else {
+        const err = await response.json().catch(() => ({}));
+        alert(err.error || 'Failed to generate 300 DPI image.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Network error. Try again.');
+    } finally {
+      setGenerating300Dpi(false);
+    }
+  };
+
+  const handleDownloadPrintQuality = () => {
+    if (!printQualityImageUrl || !printQualityImageUrl.trim()) {
+      alert('Generate a 300 DPI image first.');
+      return;
+    }
+    const orderId = searchParams.get('order_id') || '';
+    const baseName = orderId ? 'screenmerch-300dpi-' + orderId : 'screenmerch-300dpi';
+    const filename = baseName + '.png';
+    if (printQualityImageUrl.startsWith('data:image')) {
+      try {
+        const comma = printQualityImageUrl.indexOf(',');
+        const base64 = comma >= 0 ? printQualityImageUrl.slice(comma + 1) : '';
+        const mime = printQualityImageUrl.match(/data:([^;]+);/);
+        const type = (mime && mime[1]) || 'image/png';
+        if (base64) {
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const url = URL.createObjectURL(new Blob([bytes], { type }));
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+      } catch (e) {
+        alert('Download failed.');
+      }
+    } else {
+      alert('Download failed. No valid image.');
+    }
+  };
+
   const handleApplyEdits = () => {
     // When opened from order email (order_id in URL): always download, never go to checkout (avoids empty cart)
     const hasOrderId = searchParams.get('order_id') ||
@@ -2987,6 +3076,47 @@ const ToolsPage = () => {
                         )}
                       </div>
                     </div>
+                    {/* Print Quality Image - only on email Edit Tools page; 300 DPI result parked here for download */}
+                    {(searchParams.get('order_id') || (typeof window !== 'undefined' && (window.location.search && new URLSearchParams(window.location.search).get('order_id')) || (window.location.href && window.location.href.includes('order_id='))) || isFromOrderEmail) && (
+                      <div style={{
+                        flexShrink: 0,
+                        width: '200px',
+                        background: 'white',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        marginTop: '12px',
+                        border: '2px solid #28a745',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                      }}>
+                        <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: '#28a745' }}>
+                          Print Quality Image
+                        </h4>
+                        <div style={{
+                          width: '100%',
+                          minHeight: '120px',
+                          maxHeight: '180px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#f0f8f0',
+                          borderRadius: '6px',
+                          overflow: 'hidden',
+                          border: '1px solid #c3e6cb'
+                        }}>
+                          {printQualityImageUrl ? (
+                            <img
+                              src={printQualityImageUrl}
+                              alt="Print Quality 300 DPI"
+                              style={{ maxWidth: '100%', maxHeight: '180px', objectFit: 'contain', display: 'block' }}
+                            />
+                          ) : (
+                            <p style={{ color: '#999', fontSize: '0.85rem', margin: 0, textAlign: 'center', padding: '10px' }}>
+                              Click &quot;Generate 300 DPI Image&quot; to create
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </>
@@ -3021,34 +3151,37 @@ const ToolsPage = () => {
               const isEmailEditToolsPage = !!(fromParams || fromUrl || isFromOrderEmail);
               const orderId = searchParams.get('order_id') || '';
               if (isEmailEditToolsPage) {
-                const printQualityUrl = orderId ? `${API_CONFIG.BASE_URL}/print-quality?order_id=${encodeURIComponent(orderId)}` : '';
                 const orderDetailsUrl = orderId ? `${API_CONFIG.BASE_URL}/admin/orders?order_id=${encodeURIComponent(orderId)}` : '';
                 return (
                   <>
-                    {(printQualityUrl || orderDetailsUrl) && (
-                      <div className="tools-actions-email-row">
-                        {printQualityUrl && (
-                          <a
-                            href={printQualityUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="tools-email-btn tools-email-btn-300dpi"
-                          >
-                            Generate 300 DPI Image
-                          </a>
-                        )}
-                        {orderDetailsUrl && (
-                          <a
-                            href={orderDetailsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="tools-email-btn tools-email-btn-order"
-                          >
-                            Order Details
-                          </a>
-                        )}
-                      </div>
-                    )}
+                    <div className="tools-actions-email-row">
+                      <button
+                        type="button"
+                        className="tools-email-btn tools-email-btn-300dpi"
+                        onClick={handleGenerate300Dpi}
+                        disabled={(!editedImageUrl && !imageUrl) || generating300Dpi}
+                      >
+                        {generating300Dpi ? 'Generating…' : 'Generate 300 DPI Image'}
+                      </button>
+                      {orderDetailsUrl && (
+                        <a
+                          href={orderDetailsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="tools-email-btn tools-email-btn-order"
+                        >
+                          Order Details
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        className="tools-email-btn tools-email-btn-order"
+                        onClick={handleDownloadPrintQuality}
+                        disabled={!printQualityImageUrl}
+                      >
+                        Download Print Quality Image
+                      </button>
+                    </div>
                     <button 
                       className="apply-edits-btn download-btn"
                       onClick={handleDownload}
