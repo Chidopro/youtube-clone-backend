@@ -271,23 +271,23 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     html += f"<p><strong>Screenshot Timestamp:</strong> {ts}</p>"
     # Direct link (no login) — always visible even if buttons are stripped
     html += f"<p><strong>Open order &amp; tools (no login):</strong> <a href=\"{print_url}\">{print_url}</a></p>"
-    edit_tools_url = f"{EDIT_TOOLS_BASE_URL}?order_id={order_id}"
+    # Edit Tools (orange): same destination as Generate 300 DPI — Print Quality page where 300 DPI is generated on-page (no redirect to other edit page)
     admin_orders_url = "https://screenmerch.fly.dev/admin/orders"
     order_details_url = f"https://screenmerch.fly.dev/admin/orders?order_id={order_id}"
-    # Quick actions: tool buttons (table layout for better email client support)
+    # Quick actions: tool buttons (table layout for better email client support). Orange "Edit Tools" uses print_url so it opens Print Quality page and produces 300 DPI image there.
     html += """
         <p style="margin: 20px 0 10px 0;"><strong>Quick actions:</strong></p>
         <table cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0;">
             <tr>
                 <td style="padding: 4px 8px 4px 0;"><a href=""" + f'"{print_url}"' + """ style="background: #007bff; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">Print &amp; Image Tools</a></td>
                 <td style="padding: 4px 8px 4px 0;"><a href=""" + f'"{print_url}"' + """ style="background: #28a745; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">Generate 300 DPI Image</a></td>
-                <td style="padding: 4px 8px 4px 0;"><a href=""" + f'"{edit_tools_url}"' + """ style="background: #fd7e14; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">Edit Tools</a></td>
+                <td style="padding: 4px 8px 4px 0;"><a href=""" + f'"{print_url}"' + """ style="background: #fd7e14; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">Edit Tools / 300 DPI</a></td>
                 <td style="padding: 4px 8px 4px 0;"><a href=""" + f'"{order_details_url}"' + """ style="background: #17a2b8; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">Order Details</a></td>
                 <td style="padding: 4px 8px 4px 0;"><a href=""" + f'"{admin_orders_url}"' + """ style="background: #6c757d; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">View All Orders (admin)</a></td>
             </tr>
         </table>
         <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin: 16px 0;">
-            <p style="margin: 0; font-size: 14px;"><strong>Tip:</strong> Blue/green = print tools (no login). Orange = Edit Tools. Teal = this order. Gray = admin dashboard.</p>
+            <p style="margin: 0; font-size: 14px;"><strong>Tip:</strong> Blue, green, and orange all open the Print Quality page (no login). There you generate 300 DPI on-page, then use feather/crop/frame. Teal = this order. Gray = admin dashboard.</p>
         </div>
         <hr>
         <p><small>This is an automated notification from ScreenMerch</small></p>
