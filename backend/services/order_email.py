@@ -274,21 +274,26 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     edit_tools_url = f"{EDIT_TOOLS_BASE_URL}?order_id={order_id}"
     admin_orders_url = "https://screenmerch.fly.dev/admin/orders"
     order_details_url = f"https://screenmerch.fly.dev/admin/orders?order_id={order_id}"
-    # Quick actions: Print & Image Tools, Generate 300 DPI, Edit Tools, Order Details, View All Orders
+    # Plain-text fallback: always present so links never disappear if styled block is stripped by email client
+    html += f"<p style=\"margin: 12px 0 6px 0; font-size: 14px;\"><strong>Quick links:</strong> "
+    html += f"<a href=\"{print_url}\">Print &amp; Image Tools</a> &middot; "
+    html += f"<a href=\"{print_url}\">Generate 300 DPI</a> &middot; "
+    html += f"<a href=\"{edit_tools_url}\">Edit Tools</a> &middot; "
+    html += f"<a href=\"{order_details_url}\">Order Details</a> &middot; "
+    html += f"<a href=\"{admin_orders_url}\">View All Orders</a></p>"
+    # Styled Quick actions buttons (may be stripped by some clients; plain Quick links above remain)
     html += f"""
-        <p style="margin: 20px 0 10px 0;"><strong>Quick actions:</strong></p>
+        <p style="margin: 16px 0 8px 0;"><strong>Quick actions:</strong></p>
         <p style="margin: 8px 0;">
-            <a href="{print_url}" style="background: #007bff; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Print &amp; Image Tools</a>
-            <a href="{print_url}" style="background: #28a745; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Generate 300 DPI Image</a>
-            <a href="{edit_tools_url}" style="background: #fd7e14; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Edit Tools</a>
-            <a href="{order_details_url}" style="background: #17a2b8; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Order Details</a>
-            <a href="{admin_orders_url}" style="background: #6c757d; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">View All Orders (admin)</a>
+            <a href="{print_url}" style="background:#007bff;color:white;padding:10px 16px;text-decoration:none;border-radius:6px;font-weight:bold;margin:2px 6px 2px 0;">Print &amp; Image Tools</a>
+            <a href="{print_url}" style="background:#28a745;color:white;padding:10px 16px;text-decoration:none;border-radius:6px;font-weight:bold;margin:2px 6px 2px 0;">Generate 300 DPI Image</a>
+            <a href="{edit_tools_url}" style="background:#fd7e14;color:white;padding:10px 16px;text-decoration:none;border-radius:6px;font-weight:bold;margin:2px 6px 2px 0;">Edit Tools</a>
+            <a href="{order_details_url}" style="background:#17a2b8;color:white;padding:10px 16px;text-decoration:none;border-radius:6px;font-weight:bold;margin:2px 6px 2px 0;">Order Details</a>
+            <a href="{admin_orders_url}" style="background:#6c757d;color:white;padding:10px 16px;text-decoration:none;border-radius:6px;font-weight:bold;margin:2px 6px 2px 0;">View All Orders</a>
         </p>
-        <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin: 16px 0;">
-            <p style="margin: 0; font-size: 14px;"><strong>Tip:</strong> Blue/green open print tools (no login). Orange = Edit Tools. Teal = this order. Gray = admin dashboard.</p>
-        </div>
-        <hr>
-        <p><small>This is an automated notification from ScreenMerch</small></p>
+        <p style="margin: 12px 0 0 0; font-size: 13px; color: #555;">Blue/green = print tools. Orange = Edit Tools. Teal = this order. Gray = admin.</p>
+        <hr style="margin: 16px 0;">
+        <p style="margin: 0; font-size: 12px; color: #666;">This is an automated notification from ScreenMerch.</p>
     """
     # Cap to one attachment so email size stays reasonable; body already shows all product screenshots inline
     attachments = attachments[:1]

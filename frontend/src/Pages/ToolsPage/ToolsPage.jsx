@@ -840,6 +840,7 @@ const ToolsPage = () => {
   });
   const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
   const [printQualityImageUrl, setPrintQualityImageUrl] = useState(''); // 300 DPI image from API (parked for download)
+  const [printQualityMeta, setPrintQualityMeta] = useState(null); // { dimensions: { width, height, dpi }, file_size, format, quality }
   const [generating300Dpi, setGenerating300Dpi] = useState(false);
 
   // Calculate and set fixed position for left column
@@ -2154,6 +2155,7 @@ const ToolsPage = () => {
     }
     setGenerating300Dpi(true);
     setPrintQualityImageUrl('');
+    setPrintQualityMeta(null);
     try {
       const payload = {
         thumbnail_data: imageToUse,
@@ -2183,6 +2185,12 @@ const ToolsPage = () => {
         const result = await response.json();
         if (result.screenshot) {
           setPrintQualityImageUrl(result.screenshot);
+          setPrintQualityMeta({
+            dimensions: result.dimensions || { width: 0, height: 0, dpi: 300 },
+            file_size: result.file_size,
+            format: result.format || 'PNG',
+            quality: result.quality || 'Print Ready'
+          });
         } else {
           alert('Generated but no image returned.');
         }
@@ -3115,6 +3123,20 @@ const ToolsPage = () => {
                             </p>
                           )}
                         </div>
+                        {printQualityMeta && printQualityMeta.dimensions && (
+                          <div style={{ marginTop: '8px', fontSize: '11px', color: '#155724', background: '#d4edda', padding: '6px 8px', borderRadius: '4px', border: '1px solid #c3e6cb' }}>
+                            <strong>Print quality verified</strong>
+                            <div style={{ marginTop: '4px' }}>
+                              {printQualityMeta.dimensions.width} × {printQualityMeta.dimensions.height} px
+                              {' · '}{printQualityMeta.dimensions.dpi || 300} DPI
+                              {printQualityMeta.file_size != null && (
+                                <> · {((printQualityMeta.file_size * 3 / 4) / 1024 / 1024).toFixed(1)} MB</>
+                              )}
+                              {printQualityMeta.format && <> · {printQualityMeta.format}</>}
+                              {printQualityMeta.quality && <> · {printQualityMeta.quality}</>}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
