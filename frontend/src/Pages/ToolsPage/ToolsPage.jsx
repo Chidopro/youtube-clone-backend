@@ -2988,7 +2988,12 @@ const ToolsPage = () => {
           })()}
 
           <div className="tools-actions">
-            {(searchParams.get('order_id') || isFromOrderEmail) ? (
+            {(() => {
+              const fromParams = searchParams.get('order_id');
+              const fromUrl = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('order_id');
+              const showDownload = fromParams || fromUrl || isFromOrderEmail;
+              return showDownload;
+            })() ? (
               <button 
                 className="apply-edits-btn download-btn"
                 onClick={handleDownload}
