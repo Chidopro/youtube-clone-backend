@@ -2145,6 +2145,18 @@ const ToolsPage = () => {
   };
 
   const handleApplyEdits = () => {
+    // When opened from order email (order_id in URL): always download, never go to checkout (avoids empty cart)
+    const hasOrderId = searchParams.get('order_id') ||
+      (typeof window !== 'undefined' && (
+        (window.location.search && new URLSearchParams(window.location.search).get('order_id')) ||
+        (window.location.href && window.location.href.includes('order_id='))
+      )) ||
+      isFromOrderEmail;
+    if (hasOrderId) {
+      handleDownload();
+      return;
+    }
+
     if (!editedImageUrl) {
       alert('Please wait for the image to process, or select a screenshot first.');
       return;
