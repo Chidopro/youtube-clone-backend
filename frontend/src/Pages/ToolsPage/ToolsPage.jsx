@@ -2809,6 +2809,10 @@ const ToolsPage = () => {
                     setScreenshotScale(100);
                     setPrintQualityImageUrl('');
                     setPrintQualityMeta(null);
+                    setSelectedProductName('');
+                    setPrintAreaFit('none');
+                    setImageOffsetX(0);
+                    setImageOffsetY(0);
                     const cartIndex = cartProducts[index].originalCartIndex;
                     setProductImageOffsets(prev => ({ ...prev, [cartIndex]: { x: 0, y: 0 } }));
                     console.log(`🔄 Product changed to index ${index} — edits reset for clean image`);
