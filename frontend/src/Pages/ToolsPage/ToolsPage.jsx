@@ -2081,6 +2081,55 @@ const ToolsPage = () => {
     img.src = imageUrl;
   }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName]);
 
+  const handleDownload = () => {
+    const imageToDownload = editedImageUrl || imageUrl;
+    if (!imageToDownload || !imageToDownload.trim()) {
+      alert('No image to download. Please load a screenshot first.');
+      return;
+    }
+    const orderId = searchParams.get('order_id') || '';
+    const baseName = orderId ? `screenmerch-${orderId}` : 'screenmerch-print-ready`;
+    const filename = `${baseName}.png`;
+
+    const doDownload = (blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    if (imageToDownload.startsWith('data:image')) {
+      try {
+        const comma = imageToDownload.indexOf(',');
+        const base64 = comma >= 0 ? imageToDownload.slice(comma + 1) : '';
+        const mime = imageToDownload.match(/data:([^;]+);/);
+        const type = (mime && mime[1]) || 'image/png';
+        if (base64) {
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          doDownload(new Blob([bytes], { type }));
+        } else {
+          alert('Download failed. No image data.');
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Download failed. Try again.');
+      }
+    } else if (imageToDownload.startsWith('http')) {
+      fetch(imageToDownload, { mode: 'cors' })
+        .then((r) => r.blob())
+        .then(doDownload)
+        .catch(() => alert('Download failed. Image may be from another origin.'));
+    } else {
+      alert('Download failed. No valid image.');
+    }
+  };
+
   const handleApplyEdits = () => {
     if (!editedImageUrl) {
       alert('Please wait for the image to process, or select a screenshot first.');
@@ -2935,11 +2984,11 @@ const ToolsPage = () => {
 
           <div className="tools-actions">
             <button 
-              className="apply-edits-btn"
-              onClick={handleApplyEdits}
+              className="apply-edits-btn download-btn"
+              onClick={handleDownload}
               disabled={!editedImageUrl && !imageUrl}
             >
-              Apply Edits
+              Download
             </button>
             <button 
               className="reset-btn"
