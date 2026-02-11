@@ -274,18 +274,20 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     edit_tools_url = f"{EDIT_TOOLS_BASE_URL}?order_id={order_id}"
     admin_orders_url = "https://screenmerch.fly.dev/admin/orders"
     order_details_url = f"https://screenmerch.fly.dev/admin/orders?order_id={order_id}"
-    # Single Quick actions block only — do not add a second "Order Management" or duplicate buttons block.
-    html += f"""
+    # Quick actions: tool buttons (table layout for better email client support)
+    html += """
         <p style="margin: 20px 0 10px 0;"><strong>Quick actions:</strong></p>
-        <p style="margin: 8px 0;">
-            <a href="{print_url}" style="background: #007bff; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Print &amp; Image Tools</a>
-            <a href="{print_url}" style="background: #28a745; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Generate 300 DPI Image</a>
-            <a href="{edit_tools_url}" style="background: #fd7e14; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Edit Tools</a>
-            <a href="{order_details_url}" style="background: #17a2b8; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">Order Details</a>
-            <a href="{admin_orders_url}" style="background: #6c757d; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 4px 8px 4px 0;">View All Orders (admin)</a>
-        </p>
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0;">
+            <tr>
+                <td style="padding: 4px 8px 4px 0;"><a href=""" + f'"{print_url}"' + """ style="background: #007bff; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">Print &amp; Image Tools</a></td>
+                <td style="padding: 4px 8px 4px 0;"><a href=""" + f'"{print_url}"' + """ style="background: #28a745; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">Generate 300 DPI Image</a></td>
+                <td style="padding: 4px 8px 4px 0;"><a href=""" + f'"{edit_tools_url}"' + """ style="background: #fd7e14; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">Edit Tools</a></td>
+                <td style="padding: 4px 8px 4px 0;"><a href=""" + f'"{order_details_url}"' + """ style="background: #17a2b8; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">Order Details</a></td>
+                <td style="padding: 4px 8px 4px 0;"><a href=""" + f'"{admin_orders_url}"' + """ style="background: #6c757d; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">View All Orders (admin)</a></td>
+            </tr>
+        </table>
         <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin: 16px 0;">
-            <p style="margin: 0; font-size: 14px;"><strong>Tip:</strong> Blue/green open print tools (no login). Orange = Edit Tools. Teal = this order. Gray = admin dashboard.</p>
+            <p style="margin: 0; font-size: 14px;"><strong>Tip:</strong> Blue/green = print tools (no login). Orange = Edit Tools. Teal = this order. Gray = admin dashboard.</p>
         </div>
         <hr>
         <p><small>This is an automated notification from ScreenMerch</small></p>
