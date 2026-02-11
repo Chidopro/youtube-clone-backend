@@ -841,6 +841,9 @@ const ToolsPage = () => {
   const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
   // Per-slot edit state (keyed by cart product index) so each of up-to-5 products has its own edits; no carry-over when switching
   const slotStateRef = useRef({});
+  // When true, apply-edits effect must skip so it doesn't overwrite with previous product's image (same effect batch race)
+  const switchingSlotRef = useRef(false);
+  const [slotSwitchTick, setSlotSwitchTick] = useState(0);
   const [printQualityImageUrl, setPrintQualityImageUrl] = useState(''); // 300 DPI image from API (parked for download)
   const [printQualityMeta, setPrintQualityMeta] = useState(null); // { dimensions: { width, height, dpi }, file_size, format, quality }
   const [generating300Dpi, setGenerating300Dpi] = useState(false);
@@ -1144,6 +1147,10 @@ const ToolsPage = () => {
               const cartIndex = selectedProduct.originalCartIndex;
               setProductImageOffsets(prev => ({ ...prev, [cartIndex]: { x: 0, y: 0 } }));
             }
+            setTimeout(function clearSwitchFlag() {
+              switchingSlotRef.current = false;
+              setSlotSwitchTick(t => t + 1);
+            }, 0);
             console.log(`📸 Loaded screenshot from cart product ${selectedCartProductIndex + 1}: ${selectedProduct.name}`);
             return; // Exit early, don't check other sources
           }
@@ -1707,7 +1714,7 @@ const ToolsPage = () => {
   // Apply edits to image
   useEffect(() => {
     if (!imageUrl) return;
-    
+    if (switchingSlotRef.current) return;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -2126,7 +2133,7 @@ const ToolsPage = () => {
       console.error('Failed to load image');
     };
     img.src = imageUrl;
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick]);
 
   const handleDownload = () => {
     const imageToDownload = editedImageUrl || imageUrl;
@@ -2834,6 +2841,7 @@ const ToolsPage = () => {
                 onChange={(e) => {
                   const newIndex = parseInt(e.target.value);
                   if (isNaN(newIndex) || !cartProducts[newIndex]) return;
+                  switchingSlotRef.current = true;
                   const oldIndex = selectedCartProductIndex;
                   if (oldIndex !== null && cartProducts[oldIndex]) {
                     const cartIndex = cartProducts[oldIndex].originalCartIndex;
