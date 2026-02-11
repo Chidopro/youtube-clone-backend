@@ -839,6 +839,8 @@ const ToolsPage = () => {
     return false;
   });
   const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
+  // Per-slot edit state (keyed by cart product index) so each of up-to-5 products has its own edits; no carry-over when switching
+  const slotStateRef = useRef({});
   const [printQualityImageUrl, setPrintQualityImageUrl] = useState(''); // 300 DPI image from API (parked for download)
   const [printQualityMeta, setPrintQualityMeta] = useState(null); // { dimensions: { width, height, dpi }, file_size, format, quality }
   const [generating300Dpi, setGenerating300Dpi] = useState(false);
@@ -871,8 +873,10 @@ const ToolsPage = () => {
     setProductSelectClicked(false);
   }, []);
 
-  // Load tool page state from localStorage on mount
+  // Load tool page state from localStorage on mount (skip when opened from email/order link so we always start clean)
   useEffect(() => {
+    const fromOrder = searchParams.get('order_id') || (typeof window !== 'undefined' && window.location.href && window.location.href.includes('order_id='));
+    if (fromOrder) return;
     try {
       const savedState = localStorage.getItem('tools_page_state');
       if (savedState) {
@@ -885,10 +889,12 @@ const ToolsPage = () => {
     } catch (e) {
       console.warn('Could not load tool page state:', e);
     }
-  }, []);
+  }, [searchParams]);
 
-  // Save tool page state to localStorage whenever it changes
+  // Save tool page state to localStorage whenever it changes (skip when opened from order link)
   useEffect(() => {
+    const fromOrder = searchParams.get('order_id') || (typeof window !== 'undefined' && window.location.href && window.location.href.includes('order_id='));
+    if (fromOrder) return;
     try {
       const stateToSave = {
         screenshotScale,
@@ -899,7 +905,7 @@ const ToolsPage = () => {
     } catch (e) {
       console.warn('Could not save tool page state:', e);
     }
-  }, [screenshotScale, productImageOffsets, selectedCartProductIndex]);
+  }, [screenshotScale, productImageOffsets, selectedCartProductIndex, searchParams]);
 
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
@@ -1114,6 +1120,30 @@ const ToolsPage = () => {
             setImageUrl(screenshot);
             setSelectedImage(screenshot);
             setIsUpgrading(false);
+            const saved = slotStateRef.current[selectedCartProductIndex];
+            if (saved) {
+              setEditedImageUrl(saved.editedImageUrl || '');
+              setScreenshotScale(saved.screenshotScale ?? 100);
+              setSelectedProductName(saved.selectedProductName || '');
+              setPrintAreaFit(saved.printAreaFit || 'none');
+              setImageOffsetX(saved.imageOffsetX ?? 0);
+              setImageOffsetY(saved.imageOffsetY ?? 0);
+              setPrintQualityImageUrl(saved.printQualityImageUrl || '');
+              setPrintQualityMeta(saved.printQualityMeta || null);
+              const cartIndex = selectedProduct.originalCartIndex;
+              setProductImageOffsets(prev => ({ ...prev, [cartIndex]: { x: saved.offsetX ?? 0, y: saved.offsetY ?? 0 } }));
+            } else {
+              setEditedImageUrl('');
+              setScreenshotScale(100);
+              setSelectedProductName('');
+              setPrintAreaFit('none');
+              setImageOffsetX(0);
+              setImageOffsetY(0);
+              setPrintQualityImageUrl('');
+              setPrintQualityMeta(null);
+              const cartIndex = selectedProduct.originalCartIndex;
+              setProductImageOffsets(prev => ({ ...prev, [cartIndex]: { x: 0, y: 0 } }));
+            }
             console.log(`📸 Loaded screenshot from cart product ${selectedCartProductIndex + 1}: ${selectedProduct.name}`);
             return; // Exit early, don't check other sources
           }
@@ -2802,21 +2832,27 @@ const ToolsPage = () => {
               <select
                 value={selectedCartProductIndex !== null ? selectedCartProductIndex : ''}
                 onChange={(e) => {
-                  const index = parseInt(e.target.value);
-                  if (!isNaN(index) && cartProducts[index]) {
-                    setSelectedCartProductIndex(index);
-                    setEditedImageUrl('');
-                    setScreenshotScale(100);
-                    setPrintQualityImageUrl('');
-                    setPrintQualityMeta(null);
-                    setSelectedProductName('');
-                    setPrintAreaFit('none');
-                    setImageOffsetX(0);
-                    setImageOffsetY(0);
-                    const cartIndex = cartProducts[index].originalCartIndex;
-                    setProductImageOffsets(prev => ({ ...prev, [cartIndex]: { x: 0, y: 0 } }));
-                    console.log(`🔄 Product changed to index ${index} — edits reset for clean image`);
+                  const newIndex = parseInt(e.target.value);
+                  if (isNaN(newIndex) || !cartProducts[newIndex]) return;
+                  const oldIndex = selectedCartProductIndex;
+                  if (oldIndex !== null && cartProducts[oldIndex]) {
+                    const cartIndex = cartProducts[oldIndex].originalCartIndex;
+                    const offset = productImageOffsets[cartIndex] || { x: 0, y: 0 };
+                    slotStateRef.current[oldIndex] = {
+                      editedImageUrl,
+                      screenshotScale,
+                      selectedProductName,
+                      printAreaFit,
+                      imageOffsetX,
+                      imageOffsetY,
+                      printQualityImageUrl,
+                      printQualityMeta,
+                      offsetX: offset.x,
+                      offsetY: offset.y
+                    };
                   }
+                  setSelectedCartProductIndex(newIndex);
+                  console.log('Switched to product', newIndex + 1, '; loading slot', newIndex + 1);
                 }}
                 className="print-area-select"
                 style={{ width: '100%' }}
