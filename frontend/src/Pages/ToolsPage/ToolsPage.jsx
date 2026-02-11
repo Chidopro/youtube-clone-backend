@@ -830,6 +830,17 @@ const ToolsPage = () => {
   const [orderScreenshotsError, setOrderScreenshotsError] = useState(null);
   const [isFromOrderEmail, setIsFromOrderEmail] = useState(false); // true when opened from admin email (Edit Tools link) → show Download
   const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
+  const urlOrderIdCheckedRef = useRef(false);
+
+  // On mount: if URL has order_id, show Download (not Apply Edits) — reliable even before React Router/searchParams
+  useEffect(() => {
+    if (urlOrderIdCheckedRef.current) return;
+    urlOrderIdCheckedRef.current = true;
+    try {
+      const q = typeof window !== 'undefined' ? window.location.search : '';
+      if (q && new URLSearchParams(q).get('order_id')) setIsFromOrderEmail(true);
+    } catch (_) {}
+  }, []);
 
   // Calculate and set fixed position for left column
   useEffect(() => {
