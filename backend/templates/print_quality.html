@@ -297,7 +297,16 @@
                     <div id="screenshotPreview" style="margin: 10px 0; padding: 10px; border: 2px dashed #ccc; text-align: center; background: #f9f9f9; min-height: 80px;">
                         <p style="color: #666;">Load screenshots with Order ID above, or use video/upload below. Click a screenshot in the queue to edit it.</p>
                     </div>
-                    <small>Select an image from the queue above; then use the tools below (300 DPI, feather, etc.).</small>
+                    <small>Select an image from the queue above; then generate 300 DPI first, then use the tools below (feather, etc.).</small>
+                </div>
+                
+                <!-- Generate 300 DPI Image - FIRST ACTION (before any tools) -->
+                <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin: 20px 0; border: 3px solid #28a745; text-align: center;">
+                    <h2 style="margin-top: 0; color: #28a745; font-size: 24px;">&#127919; STEP 1: Create 300 DPI Image</h2>
+                    <p style="color: #666; margin-bottom: 20px; font-size: 16px;">Generate high-resolution 300 DPI image for print quality (no navigation — runs on this page)</p>
+                    <button type="button" id="generate300dpiBtn" style="background: #28a745; color: white; border: none; padding: 15px 40px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 18px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                        &#127919; Generate 300 DPI Image
+                    </button>
                 </div>
             </div>
             
@@ -376,16 +385,7 @@
                 </div>
             </div>
             
-            <!-- STEP 1: CREATE 300 DPI IMAGE (STANDALONE) -->
-            <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin: 20px 0; border: 3px solid #28a745; text-align: center;">
-                <h2 style="margin-top: 0; color: #28a745; font-size: 24px;">🎯 STEP 1: Create 300 DPI Image</h2>
-                <p style="color: #666; margin-bottom: 20px; font-size: 16px;">Generate high-resolution 300 DPI image for print quality</p>
-                <button type="button" id="generate300dpiBtn" style="background: #28a745; color: white; border: none; padding: 15px 40px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 18px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-                    🎯 Generate 300 DPI Image
-                </button>
-            </div>
-            
-            <!-- STEP 2: FEATHER EDGE TOOL (OPTIONAL) -->
+            <!-- STEP 2: FEATHER EDGE TOOL (OPTIONAL) - First tool after Generate 300 DPI -->
             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #17a2b8;">
                 <h3 style="margin-top: 0; color: #17a2b8;">✨ STEP 2: Feather Edge Tool (Optional)</h3>
                 
@@ -1677,7 +1677,7 @@
                 
                 <div class="button-container">
                     <a href="${result.screenshot}" download="effect_${Date.now()}.png" class="download-btn">
-                        📥 Download Image
+                        &#128229; Download Print Quality Image
                     </a>
                 </div>
             `;
