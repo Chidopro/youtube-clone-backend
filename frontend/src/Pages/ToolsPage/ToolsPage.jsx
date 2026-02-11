@@ -828,6 +828,7 @@ const ToolsPage = () => {
   const [productSelectClicked, setProductSelectClicked] = useState(false); // Track if product select has been clicked
   const [orderScreenshotsLoading, setOrderScreenshotsLoading] = useState(false);
   const [orderScreenshotsError, setOrderScreenshotsError] = useState(null);
+  const [isFromOrderEmail, setIsFromOrderEmail] = useState(false); // true when opened from admin email (Edit Tools link) → show Download
   const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
 
   // Calculate and set fixed position for left column
@@ -916,6 +917,7 @@ const ToolsPage = () => {
           setCartProducts([]);
           setSelectedCartProductIndex(null);
           orderIdLoadedRef.current = null;
+          setIsFromOrderEmail(false);
           return;
         }
         const data = await response.json();
@@ -939,6 +941,7 @@ const ToolsPage = () => {
           setCartProducts(mapped);
           setSelectedCartProductIndex(mapped.length > 0 ? 0 : null);
           setOrderScreenshotsError(null);
+          setIsFromOrderEmail(true); // Opened from admin email (Edit Tools link) → show Download, not Apply Edits
           // If any product is missing product image, fetch by name so we show product mockup (measure screenshot over print area)
           const missing = mapped.filter((item) => item.name && !item.productImage);
           if (missing.length > 0) {
@@ -974,6 +977,7 @@ const ToolsPage = () => {
           setCartProducts([]);
           setSelectedCartProductIndex(null);
           setOrderScreenshotsError('No screenshots found for this order.');
+          setIsFromOrderEmail(false);
         }
         setOrderScreenshotsLoading(false);
       })
@@ -983,6 +987,7 @@ const ToolsPage = () => {
           setCartProducts([]);
           setSelectedCartProductIndex(null);
           orderIdLoadedRef.current = null;
+          setIsFromOrderEmail(false);
           setOrderScreenshotsLoading(false);
         }
       });
@@ -2983,7 +2988,7 @@ const ToolsPage = () => {
           })()}
 
           <div className="tools-actions">
-            {searchParams.get('order_id') ? (
+            {(searchParams.get('order_id') || isFromOrderEmail) ? (
               <button 
                 className="apply-edits-btn download-btn"
                 onClick={handleDownload}
