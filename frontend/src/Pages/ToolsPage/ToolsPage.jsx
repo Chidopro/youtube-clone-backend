@@ -2983,13 +2983,23 @@ const ToolsPage = () => {
           })()}
 
           <div className="tools-actions">
-            <button 
-              className="apply-edits-btn download-btn"
-              onClick={handleDownload}
-              disabled={!editedImageUrl && !imageUrl}
-            >
-              Download
-            </button>
+            {searchParams.get('order_id') ? (
+              <button 
+                className="apply-edits-btn download-btn"
+                onClick={handleDownload}
+                disabled={!editedImageUrl && !imageUrl}
+              >
+                Download
+              </button>
+            ) : (
+              <button 
+                className="apply-edits-btn"
+                onClick={handleApplyEdits}
+                disabled={!editedImageUrl}
+              >
+                Apply Edits
+              </button>
+            )}
             <button 
               className="reset-btn"
               onClick={() => {
