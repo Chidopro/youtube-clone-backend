@@ -426,8 +426,56 @@
 
 .tools-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-top: 1rem;
+}
+
+/* Row above Download on email Edit Tools page: 300 DPI + Order Details */
+.tools-actions-email-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.tools-email-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.tools-email-btn-300dpi {
+  background: #28a745;
+  color: white;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.tools-email-btn-300dpi:hover {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+.tools-email-btn-order {
+  background: #17a2b8;
+  color: white;
+  box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+}
+
+.tools-email-btn-order:hover {
+  background: #138496;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
 }
 
 .apply-edits-btn {

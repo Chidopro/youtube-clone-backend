@@ -3010,7 +3010,7 @@ const ToolsPage = () => {
 
           <div className="tools-actions">
             {(() => {
-              // Email Edit Tools link (order_id in URL): show Download only (downloads Screenshot Preview image)
+              // Email Edit Tools link (order_id in URL): show 300 DPI + Order Details above Download
               const fromParams = searchParams.get('order_id');
               let fromUrl = false;
               if (typeof window !== 'undefined') {
@@ -3019,15 +3019,44 @@ const ToolsPage = () => {
                 if (!fromUrl && window.location.href && window.location.href.includes('order_id=')) fromUrl = true;
               }
               const isEmailEditToolsPage = !!(fromParams || fromUrl || isFromOrderEmail);
+              const orderId = searchParams.get('order_id') || '';
               if (isEmailEditToolsPage) {
+                const printQualityUrl = orderId ? `${API_CONFIG.BASE_URL}/print-quality?order_id=${encodeURIComponent(orderId)}` : '';
+                const orderDetailsUrl = orderId ? `${API_CONFIG.BASE_URL}/admin/orders?order_id=${encodeURIComponent(orderId)}` : '';
                 return (
-                  <button 
-                    className="apply-edits-btn download-btn"
-                    onClick={handleDownload}
-                    disabled={!editedImageUrl && !imageUrl}
-                  >
-                    Download
-                  </button>
+                  <>
+                    {(printQualityUrl || orderDetailsUrl) && (
+                      <div className="tools-actions-email-row">
+                        {printQualityUrl && (
+                          <a
+                            href={printQualityUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="tools-email-btn tools-email-btn-300dpi"
+                          >
+                            Generate 300 DPI Image
+                          </a>
+                        )}
+                        {orderDetailsUrl && (
+                          <a
+                            href={orderDetailsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="tools-email-btn tools-email-btn-order"
+                          >
+                            Order Details
+                          </a>
+                        )}
+                      </div>
+                    )}
+                    <button 
+                      className="apply-edits-btn download-btn"
+                      onClick={handleDownload}
+                      disabled={!editedImageUrl && !imageUrl}
+                    >
+                      Download
+                    </button>
+                  </>
                 );
               }
               // Cart tools: show Apply Edits (apply and proceed to checkout)
