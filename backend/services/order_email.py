@@ -274,7 +274,7 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     edit_tools_url = f"{EDIT_TOOLS_BASE_URL}?order_id={order_id}"
     admin_orders_url = "https://screenmerch.fly.dev/admin/orders"
     order_details_url = f"https://screenmerch.fly.dev/admin/orders?order_id={order_id}"
-    # Single Quick actions block only — do not add a second "Order Management" or duplicate buttons block.
+    # Quick actions: Print & Image Tools, Generate 300 DPI, Edit Tools, Order Details, View All Orders
     html += f"""
         <p style="margin: 20px 0 10px 0;"><strong>Quick actions:</strong></p>
         <p style="margin: 8px 0;">
