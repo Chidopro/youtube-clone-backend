@@ -2803,9 +2803,15 @@ const ToolsPage = () => {
                 value={selectedCartProductIndex !== null ? selectedCartProductIndex : ''}
                 onChange={(e) => {
                   const index = parseInt(e.target.value);
-                  if (!isNaN(index)) {
+                  if (!isNaN(index) && cartProducts[index]) {
                     setSelectedCartProductIndex(index);
-                    console.log(`🔄 Product changed to index ${index}`);
+                    setEditedImageUrl('');
+                    setScreenshotScale(100);
+                    setPrintQualityImageUrl('');
+                    setPrintQualityMeta(null);
+                    const cartIndex = cartProducts[index].originalCartIndex;
+                    setProductImageOffsets(prev => ({ ...prev, [cartIndex]: { x: 0, y: 0 } }));
+                    console.log(`🔄 Product changed to index ${index} — edits reset for clean image`);
                   }
                 }}
                 className="print-area-select"
