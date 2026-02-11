@@ -828,19 +828,17 @@ const ToolsPage = () => {
   const [productSelectClicked, setProductSelectClicked] = useState(false); // Track if product select has been clicked
   const [orderScreenshotsLoading, setOrderScreenshotsLoading] = useState(false);
   const [orderScreenshotsError, setOrderScreenshotsError] = useState(null);
-  const [isFromOrderEmail, setIsFromOrderEmail] = useState(false); // true when opened from admin email (Edit Tools link) → show Download
-  const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
-  const urlOrderIdCheckedRef = useRef(false);
-
-  // On mount: if URL has order_id, show Download (not Apply Edits) — reliable even before React Router/searchParams
-  useEffect(() => {
-    if (urlOrderIdCheckedRef.current) return;
-    urlOrderIdCheckedRef.current = true;
+  // True when opened from admin email (Edit Tools link) → show Download. Init from URL so first paint is correct.
+  const [isFromOrderEmail, setIsFromOrderEmail] = useState(() => {
+    if (typeof window === 'undefined') return false;
     try {
-      const q = typeof window !== 'undefined' ? window.location.search : '';
-      if (q && new URLSearchParams(q).get('order_id')) setIsFromOrderEmail(true);
+      const q = window.location.search;
+      if (q && new URLSearchParams(q).get('order_id')) return true;
+      if (window.location.href && window.location.href.includes('order_id=')) return true;
     } catch (_) {}
-  }, []);
+    return false;
+  });
+  const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
 
   // Calculate and set fixed position for left column
   useEffect(() => {
@@ -3001,8 +2999,13 @@ const ToolsPage = () => {
           <div className="tools-actions">
             {(() => {
               const fromParams = searchParams.get('order_id');
-              const fromUrl = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('order_id');
-              const showDownload = fromParams || fromUrl || isFromOrderEmail;
+              let fromUrl = false;
+              if (typeof window !== 'undefined') {
+                const q = window.location.search;
+                if (q) fromUrl = !!new URLSearchParams(q).get('order_id');
+                if (!fromUrl && window.location.href && window.location.href.includes('order_id=')) fromUrl = true;
+              }
+              const showDownload = !!(fromParams || fromUrl || isFromOrderEmail);
               return showDownload;
             })() ? (
               <button 
