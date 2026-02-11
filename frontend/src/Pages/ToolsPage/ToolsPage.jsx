@@ -2102,8 +2102,8 @@ const ToolsPage = () => {
       return;
     }
     const orderId = searchParams.get('order_id') || '';
-    const baseName = orderId ? `screenmerch-${orderId}` : 'screenmerch-print-ready`;
-    const filename = `${baseName}.png`;
+    const baseName = orderId ? 'screenmerch-' + orderId : 'screenmerch-print-ready';
+    const filename = baseName + '.png';
 
     const doDownload = (blob) => {
       const url = URL.createObjectURL(blob);
@@ -3010,6 +3010,7 @@ const ToolsPage = () => {
 
           <div className="tools-actions">
             {(() => {
+              // Email Edit Tools link (order_id in URL): show Download only (downloads Screenshot Preview image)
               const fromParams = searchParams.get('order_id');
               let fromUrl = false;
               if (typeof window !== 'undefined') {
@@ -3017,25 +3018,29 @@ const ToolsPage = () => {
                 if (q) fromUrl = !!new URLSearchParams(q).get('order_id');
                 if (!fromUrl && window.location.href && window.location.href.includes('order_id=')) fromUrl = true;
               }
-              const showDownload = !!(fromParams || fromUrl || isFromOrderEmail);
-              return showDownload;
-            })() ? (
-              <button 
-                className="apply-edits-btn download-btn"
-                onClick={handleDownload}
-                disabled={!editedImageUrl && !imageUrl}
-              >
-                Download
-              </button>
-            ) : (
-              <button 
-                className="apply-edits-btn"
-                onClick={handleApplyEdits}
-                disabled={!editedImageUrl}
-              >
-                Apply Edits
-              </button>
-            )}
+              const isEmailEditToolsPage = !!(fromParams || fromUrl || isFromOrderEmail);
+              if (isEmailEditToolsPage) {
+                return (
+                  <button 
+                    className="apply-edits-btn download-btn"
+                    onClick={handleDownload}
+                    disabled={!editedImageUrl && !imageUrl}
+                  >
+                    Download
+                  </button>
+                );
+              }
+              // Cart tools: show Apply Edits (apply and proceed to checkout)
+              return (
+                <button 
+                  className="apply-edits-btn"
+                  onClick={handleApplyEdits}
+                  disabled={!editedImageUrl}
+                >
+                  Apply Edits
+                </button>
+              );
+            })()}
             <button 
               className="reset-btn"
               onClick={() => {
