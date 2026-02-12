@@ -4243,13 +4243,26 @@ def _creator_id_from_request_subdomain():
 
 @app.route("/api/videos", methods=["GET"])
 def get_videos():
+    """Get list of videos. Query params: category (optional), user_id (optional), limit (optional, default 100)."""
     try:
+        # Prefer query params from frontend (CORS fix: frontend calls this instead of Supabase)
+        category = request.args.get("category", "").strip() or None
+        user_id_param = request.args.get("user_id", "").strip() or None
+        limit_param = request.args.get("limit", "100").strip()
+        try:
+            limit = min(int(limit_param), 500) if limit_param.isdigit() else 100
+        except ValueError:
+            limit = 100
         creator_id, is_subdomain = _creator_id_from_request_subdomain()
-        if is_subdomain and not creator_id:
+        if is_subdomain and not creator_id and not user_id_param:
             return jsonify([]), 200
-        query = supabase.table("videos2").select("*").order("created_at", desc=True).limit(20)
-        if creator_id:
+        query = supabase.table("videos2").select("*").order("created_at", desc=True).limit(limit)
+        if user_id_param:
+            query = query.eq("user_id", user_id_param)
+        elif creator_id:
             query = query.eq("user_id", creator_id)
+        if category:
+            query = query.eq("category", category)
         response = query.execute()
         return jsonify(response.data), 200
     except Exception as e:
