@@ -1174,13 +1174,17 @@ const ProductPage = ({ sidebar }) => {
           </div>
 
           <div className="product-options-section">
-            <p className="product-mockup-color-notice">
-              Product mockups show representative colors. Your order will be made in the colors you select.
-            </p>
             {/* Cart Buttons Above Products */}
             <div className="cart-section">
-              <button className="view-cart-btn" onClick={() => setIsCartOpen(true)}>View Cart</button>
-              <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+              <div className="cart-section-buttons">
+                <button className="view-cart-btn" onClick={() => setIsCartOpen(true)}>View Cart</button>
+                <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+              </div>
+              {(category === 'womens' || category === 'mens' || category === 'kids') && (
+                <p className="product-mockup-color-notice product-mockup-color-notice-center">
+                  Product mockups show representative colors. Your order will be made in the colors you select.
+                </p>
+              )}
             </div>
 
             <div className="products-grid">

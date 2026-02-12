@@ -768,13 +768,31 @@
   font-style: italic;
 }
 
+.product-mockup-color-notice-center {
+  width: 100%;
+  text-align: center;
+  margin: 0.5rem 0 0 0;
+}
+
 .cart-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  padding-top: 0.75rem;
+}
+
+.cart-section-buttons {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 2rem;
-  padding-top: 2rem;
+}
+
+.cart-section-bottom {
+  flex-direction: row;
 }
 
 .cart-section-bottom {

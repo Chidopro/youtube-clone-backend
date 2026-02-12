@@ -2470,9 +2470,6 @@ const ToolsPage = () => {
                         </div>
                       </div>
                     </div>
-                    <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>
-                      Product mockup shows a representative color. Your item will be made in the color you selected.
-                    </p>
                     {/* Product Preview - Handle different product types */}
                     {(() => {
                       const productName = product.name || '';
@@ -2698,6 +2695,9 @@ const ToolsPage = () => {
                       
                       return null;
                     })()}
+                    <p style={{ margin: '12px 0 0 0', fontSize: '12px', color: '#6b7280', fontStyle: 'italic', textAlign: 'center' }}>
+                      Product mockup, your item will be made in the color you selected.
+                    </p>
                   </div>
                 );
               })()}
