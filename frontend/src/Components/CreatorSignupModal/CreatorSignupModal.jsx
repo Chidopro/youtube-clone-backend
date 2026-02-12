@@ -6,6 +6,7 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
   const [email, setEmail] = useState('');
   const [location, setLocation] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [signupMethod, setSignupMethod] = useState('google'); // 'google' | 'email'
@@ -33,8 +34,8 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
       return;
     }
 
-    if (!agreedToTerms) {
-      setError('You must agree to the Terms of Service to continue.');
+    if (!agreedToTerms || !agreedToPrivacy) {
+      setError('You must agree to the Terms of Service and Privacy Policy to continue.');
       return;
     }
 
@@ -161,33 +162,14 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
             )}
 
             <div className="creator-signup-terms">
-              <h3 className="terms-title">Terms of Service</h3>
-              <div className="terms-content">
-                <p>
-                  By signing up as a creator on ScreenMerch, you agree to the following terms:
-                </p>
-                <ul>
-                  <li>
-                    <strong>Content Ownership:</strong> You confirm that any content you upload to ScreenMerch 
-                    is either owned by you or you have the legal rights and permissions to use it for commercial purposes.
-                  </li>
-                  <li>
-                    <strong>No Reverse Engineering:</strong> You agree not to reverse engineer, decompile, or 
-                    disassemble any part of the ScreenMerch platform, software, or services.
-                  </li>
-                  <li>
-                    <strong>Limitation of Liability:</strong> ScreenMerch is not responsible for any damages, 
-                    losses, or liabilities arising from your use of the platform, including but not limited to 
-                    product sales, customer disputes, or intellectual property claims.
-                  </li>
-                  <li>
-                    <strong>User Responsibility:</strong> You assume all responsibility and liability for the 
-                    content you upload, the products you create, and any interactions with customers through 
-                    the ScreenMerch platform.
-                  </li>
-                </ul>
-              </div>
-
+              <p className="creator-signup-agreement-intro">
+                By creating an account you agree to our Terms of Service and Privacy Policy. Your application requires admin approval.
+              </p>
+              <p className="creator-signup-links">
+                <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms of Service</a>
+                {' · '}
+                <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+              </p>
               <label className="terms-checkbox-label">
                 <input
                   type="checkbox"
@@ -197,8 +179,19 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
                   required
                 />
                 <span>
-                  I have read and agree to the Terms of Service and understand that my application 
-                  requires admin approval. <span className="required">*</span>
+                  I have read and agree to the <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms of Service</a>. <span className="required">*</span>
+                </span>
+              </label>
+              <label className="terms-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={agreedToPrivacy}
+                  onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+                  disabled={isSubmitting}
+                  required
+                />
+                <span>
+                  I have read and agree to the <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>. <span className="required">*</span>
                 </span>
               </label>
             </div>
@@ -206,7 +199,7 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
             <button
               type="submit"
               className="creator-signup-submit-btn"
-              disabled={isSubmitting || !agreedToTerms}
+              disabled={isSubmitting || !agreedToTerms || !agreedToPrivacy}
             >
               {isSubmitting ? (
                 <>

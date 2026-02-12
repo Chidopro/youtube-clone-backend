@@ -256,6 +256,28 @@
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.08);
 }
 
+.creator-signup-agreement-intro {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.creator-signup-links {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+}
+
+.creator-signup-links a {
+  color: #667eea;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.creator-signup-links a:hover {
+  text-decoration: underline;
+}
+
 .terms-title {
   font-size: 20px;
   font-weight: 800;
@@ -327,6 +349,16 @@
   display: block;
   margin-bottom: 6px;
   font-size: 15px;
+}
+
+.terms-checkbox-label a {
+  color: #667eea;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.terms-checkbox-label a:hover {
+  text-decoration: underline;
 }
 
 .terms-checkbox-label {
