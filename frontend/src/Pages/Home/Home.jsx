@@ -20,15 +20,24 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const { creatorSettings, currentCreator, refreshCreator } = useCreator();
 
   useEffect(() => {
+    const subdomain = getSubdomain();
     const fetchVideos = async () => {
       setLoading(true);
       setError('');
+      if (subdomain && !currentCreator?.id) {
+        setVideos([]);
+        setLoading(false);
+        return;
+      }
       let query = supabase
         .from('videos2')
         .select('*')
         .order('created_at', { ascending: false });
       if (category && category !== 'All') {
         query = query.eq('category', category);
+      }
+      if (currentCreator?.id) {
+        query = query.eq('user_id', currentCreator.id);
       }
       let { data, error } = await query;
       if (error) {
@@ -40,7 +49,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
       setLoading(false);
     };
     fetchVideos();
-  }, [category]);
+  }, [category, currentCreator?.id]);
 
   // Check if user can edit colors (must be authenticated and own the subdomain)
   useEffect(() => {

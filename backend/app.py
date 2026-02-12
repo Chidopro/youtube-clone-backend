@@ -4221,10 +4221,36 @@ def create_printful_order():
         logger.error(f"Printful order creation error: {str(e)}")
         return jsonify(success=False, error="Internal server error"), 500
 
+def _creator_id_from_request_subdomain():
+    """If request Origin/Referer is a subdomain (e.g. creator.screenmerch.com), return (creator_id or None, is_subdomain_request)."""
+    try:
+        origin = request.headers.get("Origin") or request.headers.get("Referer") or ""
+        if not origin:
+            return None, False
+        from urllib.parse import urlparse
+        hostname = urlparse(origin).hostname or ""
+        if not hostname.endswith(".screenmerch.com"):
+            return None, False
+        subdomain = hostname.replace(".screenmerch.com", "").strip().lower()
+        if not subdomain or subdomain == "www":
+            return None, False
+        r = supabase_admin.table("users").select("id").eq("subdomain", subdomain).limit(1).execute()
+        if r.data and len(r.data) > 0:
+            return r.data[0].get("id"), True
+        return None, True
+    except Exception:
+        return None, False
+
 @app.route("/api/videos", methods=["GET"])
 def get_videos():
     try:
-        response = supabase.table("videos2").select("*").order("created_at", desc=True).limit(20).execute()
+        creator_id, is_subdomain = _creator_id_from_request_subdomain()
+        if is_subdomain and not creator_id:
+            return jsonify([]), 200
+        query = supabase.table("videos2").select("*").order("created_at", desc=True).limit(20)
+        if creator_id:
+            query = query.eq("user_id", creator_id)
+        response = query.execute()
         return jsonify(response.data), 200
     except Exception as e:
         logger.error(f"Error fetching videos: {e}")
