@@ -761,6 +761,13 @@
 }
 
 /* Cart Section Styles */
+.product-mockup-color-notice {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
 .cart-section {
   display: flex;
   justify-content: center;

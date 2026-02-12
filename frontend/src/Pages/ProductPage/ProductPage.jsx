@@ -1174,6 +1174,9 @@ const ProductPage = ({ sidebar }) => {
           </div>
 
           <div className="product-options-section">
+            <p className="product-mockup-color-notice">
+              Product mockups show representative colors. Your order will be made in the colors you select.
+            </p>
             {/* Cart Buttons Above Products */}
             <div className="cart-section">
               <button className="view-cart-btn" onClick={() => setIsCartOpen(true)}>View Cart</button>
