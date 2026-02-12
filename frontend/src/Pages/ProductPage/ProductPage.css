@@ -914,6 +914,13 @@
   transform: translateY(-2px);
 }
 
+.cart-mockup-remark {
+  margin: 0 0 12px 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
 .cart-item-image-wrapper {
   display: flex;
   flex-direction: column;
@@ -922,9 +929,9 @@
 }
 
 .cart-item img {
-  width: 72px;
-  height: 72px;
-  object-fit: cover;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
@@ -1219,8 +1226,9 @@
   }
 
   .cart-item img {
-    width: 60px;
-    height: 60px;
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
   }
 
   .cart-item-name {

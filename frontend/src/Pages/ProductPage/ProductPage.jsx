@@ -1359,6 +1359,7 @@ const ProductPage = ({ sidebar }) => {
             ) : (
               <div className="cart-items-wrapper">
                 <h2 className="cart-section-title">Cart Items</h2>
+                <p className="cart-mockup-remark">Product mockup, your item will be made in the color you selected.</p>
                 <div className="cart-items">
                   {cartItems.map((ci, i) => (
                   <div key={i} className="cart-item">
