@@ -204,6 +204,15 @@
   gap: 20px;
 }
 
+.checkout-mockup-remark {
+  margin: 12px 0 0 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-style: italic;
+  text-align: center;
+  font-weight: 500;
+}
+
 .item-card {
   display: flex;
   gap: 20px;

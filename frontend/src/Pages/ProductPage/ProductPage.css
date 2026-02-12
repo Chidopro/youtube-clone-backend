@@ -916,9 +916,11 @@
 
 .cart-mockup-remark {
   margin: 0 0 12px 0;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #6b7280;
   font-style: italic;
+  text-align: center;
+  font-weight: 500;
 }
 
 .cart-item-image-wrapper {

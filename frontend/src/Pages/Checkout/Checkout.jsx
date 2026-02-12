@@ -258,6 +258,7 @@ const Checkout = () => {
                   );
                 })}
               </div>
+              <p className="checkout-mockup-remark">Product mockup, your item will be made in the color you selected.</p>
             </div>
 
             {/* Shipping Section */}
