@@ -13,6 +13,11 @@ from urllib.parse import urlencode, quote
 import json
 from supabase_storage import storage
 from supabase import create_client, Client
+try:
+    from supabase.lib.client_options import ClientOptions
+    _supabase_options = ClientOptions(postgrest_client_timeout=60)
+except Exception:
+    _supabase_options = None
 # Twilio removed - using email notifications instead
 from pathlib import Path
 import sys
@@ -639,13 +644,13 @@ def add_security_headers(response):
     
     return response
 
-# Initialize Supabase client for database operations
-supabase: Client = create_client(supabase_url, supabase_key)
+# Initialize Supabase client for database operations (longer timeout to avoid "read operation timed out")
+supabase: Client = create_client(supabase_url, supabase_key, _supabase_options) if _supabase_options else create_client(supabase_url, supabase_key)
 
 # Create service role client for admin operations (bypasses RLS)
 supabase_admin: Client = None
 if supabase_service_key:
-    supabase_admin = create_client(supabase_url, supabase_service_key)
+    supabase_admin = create_client(supabase_url, supabase_service_key, _supabase_options) if _supabase_options else create_client(supabase_url, supabase_service_key)
     print("[OK] Service role client initialized - new creator signups WILL be recorded in admin dashboard")
 else:
     print("[WARNING] SUPABASE_SERVICE_ROLE_KEY not set - new creator signups will NOT be recorded. Set it in Fly.io Secrets.")
@@ -4261,14 +4266,24 @@ def get_videos():
         creator_id, is_subdomain = _creator_id_from_request_subdomain()
         if is_subdomain and not creator_id and not user_id_param:
             return jsonify([]), 200
-        query = supabase.table("videos2").select("*").order("created_at", desc=True).limit(limit)
-        if user_id_param:
-            query = query.eq("user_id", user_id_param)
-        elif creator_id:
-            query = query.eq("user_id", creator_id)
-        if category:
-            query = query.eq("category", category)
-        response = query.execute()
+        def _run_query():
+            q = supabase.table("videos2").select("*").order("created_at", desc=True).limit(limit)
+            if user_id_param:
+                q = q.eq("user_id", user_id_param)
+            elif creator_id:
+                q = q.eq("user_id", creator_id)
+            if category:
+                q = q.eq("category", category)
+            return q.execute()
+        try:
+            response = _run_query()
+        except Exception as timeout_exc:
+            err_msg = str(timeout_exc).lower()
+            if "timed out" in err_msg or "timeout" in err_msg:
+                logger.warning(f"get_videos: first attempt timed out, retrying once: {timeout_exc}")
+                response = _run_query()
+            else:
+                raise
         return jsonify(response.data), 200
     except Exception as e:
         import traceback
