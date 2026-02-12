@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
+import API_CONFIG from '../../config/apiConfig';
 
 
 
@@ -29,22 +30,22 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         setLoading(false);
         return;
       }
-      let query = supabase
-        .from('videos2')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (category && category !== 'All') {
-        query = query.eq('category', category);
-      }
-      if (currentCreator?.id) {
-        query = query.eq('user_id', currentCreator.id);
-      }
-      let { data, error } = await query;
-      if (error) {
+      const params = new URLSearchParams();
+      if (category && category !== 'All') params.set('category', category);
+      if (currentCreator?.id) params.set('user_id', currentCreator.id);
+      const url = `${API_CONFIG.BASE_URL}/api/videos${params.toString() ? '?' + params.toString() : ''}`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          setError('Failed to fetch videos.');
+          setVideos([]);
+        } else {
+          const data = await res.json();
+          setVideos(Array.isArray(data) ? data : []);
+        }
+      } catch (_) {
         setError('Failed to fetch videos.');
         setVideos([]);
-      } else {
-        setVideos(data || []);
       }
       setLoading(false);
     };

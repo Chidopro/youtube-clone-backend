@@ -58,14 +58,25 @@ def _handle_cors_preflight():
 
 @videos_bp.route("/api/videos", methods=["GET"])
 def get_videos():
-    """Get list of videos"""
+    """Get list of videos. Query params: category (optional), user_id (optional), limit (optional, default 100)."""
     try:
         client = _get_supabase_client()
-        if client:
-            response = client.table("videos2").select("*").order("created_at", desc=True).limit(20).execute()
-            return jsonify(response.data), 200
-        else:
+        if not client:
             return jsonify({"error": "Database not available"}), 500
+        category = request.args.get("category", "").strip() or None
+        user_id = request.args.get("user_id", "").strip() or None
+        limit = request.args.get("limit", "100").strip()
+        try:
+            limit = min(int(limit), 500) if limit.isdigit() else 100
+        except ValueError:
+            limit = 100
+        query = client.table("videos2").select("*").order("created_at", desc=True).limit(limit)
+        if category:
+            query = query.eq("category", category)
+        if user_id:
+            query = query.eq("user_id", user_id)
+        response = query.execute()
+        return jsonify(response.data), 200
     except Exception as e:
         logger.error(f"Error fetching videos: {e}")
         return jsonify({"error": str(e)}), 500
