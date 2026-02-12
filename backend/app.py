@@ -4224,6 +4224,8 @@ def create_printful_order():
 def _creator_id_from_request_subdomain():
     """If request Origin/Referer is a subdomain (e.g. creator.screenmerch.com), return (creator_id or None, is_subdomain_request)."""
     try:
+        if not supabase_admin:
+            return None, False
         origin = request.headers.get("Origin") or request.headers.get("Referer") or ""
         if not origin:
             return None, False
@@ -4245,6 +4247,9 @@ def _creator_id_from_request_subdomain():
 def get_videos():
     """Get list of videos. Query params: category (optional), user_id (optional), limit (optional, default 100)."""
     try:
+        if not supabase:
+            logger.error("get_videos: supabase client not available")
+            return jsonify({"error": "Database not available"}), 500
         # Prefer query params from frontend (CORS fix: frontend calls this instead of Supabase)
         category = request.args.get("category", "").strip() or None
         user_id_param = request.args.get("user_id", "").strip() or None
@@ -4266,7 +4271,9 @@ def get_videos():
         response = query.execute()
         return jsonify(response.data), 200
     except Exception as e:
+        import traceback
         logger.error(f"Error fetching videos: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/search/creators", methods=["GET", "OPTIONS"])

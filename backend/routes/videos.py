@@ -78,7 +78,9 @@ def get_videos():
         response = query.execute()
         return jsonify(response.data), 200
     except Exception as e:
+        import traceback
         logger.error(f"Error fetching videos: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 
