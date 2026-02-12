@@ -14,8 +14,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
+      # Retry remote build up to 3 times; if still failing, fall back to local build (no Depot)
       - name: Deploy to Fly.io (screenmerch backend)
-        run: flyctl deploy --remote-only
+        run: |
+          for i in 1 2 3; do
+            if flyctl deploy --remote-only; then exit 0; fi
+            echo "Remote deploy attempt $i failed, retrying in 30s..."
+            sleep 30
+          done
+          echo "Remote builder failed, falling back to local build..."
+          flyctl deploy
         working-directory: backend
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
