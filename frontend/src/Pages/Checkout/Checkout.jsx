@@ -11,7 +11,17 @@ const Checkout = () => {
   const [shipping, setShipping] = useState({ cost: 0, method: 'Standard Shipping', loading: false, error: '', calculated: false });
   const [address, setAddress] = useState({ country_code: 'US', zip: '' });
   const shippingRef = useRef(shipping);
-  
+  // Design preferences modal (safeguard before checkout)
+  const [showDesignModal, setShowDesignModal] = useState(false);
+  const [designOrientation, setDesignOrientation] = useState('portrait');
+  const [designFeather, setDesignFeather] = useState('no');
+  const [designCornerRadius, setDesignCornerRadius] = useState('no');
+  const [designFrame, setDesignFrame] = useState('no');
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  /** Set true when user completes design modal with "Continue to Checkout" (all tools No). Required before Place Order. */
+  const [designConfirmed, setDesignConfirmed] = useState(false);
+  const designModalShownOnLoadRef = useRef(false);
+
   // Keep ref in sync with state
   useEffect(() => {
     shippingRef.current = shipping;
@@ -28,6 +38,14 @@ const Checkout = () => {
       setSubtotal(0);
     }
   }, []);
+
+  // Show design modal as soon as user lands on checkout (from cart) — before they enter zip
+  useEffect(() => {
+    if (items.length > 0 && !designModalShownOnLoadRef.current) {
+      designModalShownOnLoadRef.current = true;
+      setShowDesignModal(true);
+    }
+  }, [items.length]);
 
   const fetchShipping = useCallback(async () => {
     if (items.length === 0) return;
@@ -184,6 +202,130 @@ const Checkout = () => {
       });
     }
   }, [address.zip, items.length, shipping.calculated, shipping.loading, fetchShipping]);
+
+  /** Run actual checkout (build payload, POST, redirect). Call after design modal "Continue" when all tools are No. */
+  const runCheckout = useCallback(async (cartOverride = null) => {
+    const cartToUse = Array.isArray(cartOverride) ? cartOverride : items;
+    const zipValue = String(address.zip || '').trim();
+    const countryValue = String(address.country_code || 'US').trim();
+    const currentShipping = shippingRef.current;
+    const shippingCost = currentShipping.cost || 0;
+
+    let selectedScreenshot = null;
+    for (const it of cartToUse) {
+      selectedScreenshot = it.screenshot || it.selected_screenshot || it.thumbnail || it.img;
+      if (selectedScreenshot && selectedScreenshot.trim()) break;
+    }
+    let screenshotTimestampFromStorage = null;
+    try {
+      const merchData = localStorage.getItem('pending_merch_data');
+      if (merchData) {
+        const parsed = JSON.parse(merchData);
+        screenshotTimestampFromStorage = parsed.screenshot_timestamp ?? parsed.timestamp ?? null;
+        if (!selectedScreenshot) {
+          selectedScreenshot = parsed.edited_screenshot || parsed.selected_screenshot ||
+            (parsed.screenshots && Array.isArray(parsed.screenshots) && parsed.screenshots.length > 0 ? parsed.screenshots[0] : null) ||
+            parsed.thumbnail || null;
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    const stripeCart = cartToUse.map(it => {
+      const itemScreenshot = it.screenshot || it.selected_screenshot || it.thumbnail || it.img;
+      const finalScreenshot = itemScreenshot || selectedScreenshot || null;
+      const cleanItem = {
+        product: it.product || it.name,
+        variants: { color: it.color || 'Default', size: it.size || 'Default' },
+        price: it.price || 0,
+        selected_screenshot: finalScreenshot,
+        note: it.note || ''
+      };
+      if (it.toolSettings && typeof it.toolSettings === 'object') {
+        cleanItem.toolSettings = it.toolSettings;
+      }
+      return cleanItem;
+    });
+
+    const shippingAddress = { zip: zipValue, country_code: countryValue };
+    const userEmail = searchParams.get('email') || localStorage.getItem('user_email') || '';
+    const payload = {
+      shipping_address: shippingAddress,
+      cart: stripeCart,
+      product_id: cartToUse[0]?.product_id || cartToUse[0]?.id || null,
+      sms_consent: false,
+      shipping_cost: shippingCost,
+      videoUrl: cartToUse[0]?.video_url || null,
+      videoTitle: cartToUse[0]?.video_title || null,
+      creatorName: cartToUse[0]?.creator_name || null,
+      user_email: userEmail,
+      screenshot_timestamp: cartToUse[0]?.screenshot_timestamp ?? screenshotTimestampFromStorage ?? null,
+      timestamp: cartToUse[0]?.screenshot_timestamp ?? screenshotTimestampFromStorage ?? null,
+    };
+    if (selectedScreenshot) payload.selected_screenshot = selectedScreenshot;
+
+    if (!payload.shipping_address?.zip) {
+      alert('⚠️ Error: Shipping address is missing. Please refresh and try again.');
+      return;
+    }
+
+    setIsCheckoutLoading(true);
+    const payloadJSON = JSON.stringify(payload);
+    try {
+      const res = await fetch(API_CONFIG.ENDPOINTS.CREATE_CHECKOUT_SESSION, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: payloadJSON,
+      });
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorData;
+        try { errorData = JSON.parse(errorText); } catch (e) { errorData = { error: errorText }; }
+        throw new Error(errorData.error || errorData.message || `API returned status ${res.status}`);
+      }
+      const data = await res.json();
+      if (data?.url) {
+        try {
+          localStorage.removeItem('cart');
+          localStorage.removeItem('cart_items');
+          localStorage.removeItem('cartData');
+          localStorage.removeItem('persistent_cart');
+          Object.keys(localStorage).forEach(key => { if (key.toLowerCase().includes('cart')) localStorage.removeItem(key); });
+          Object.keys(sessionStorage).forEach(key => { if (key.toLowerCase().includes('cart')) sessionStorage.removeItem(key); });
+        } catch (err) { /* ignore */ }
+        window.location.href = data.url;
+        return;
+      }
+      const res2 = await fetch(API_CONFIG.ENDPOINTS.PLACE_ORDER, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: payloadJSON,
+      });
+      if (!res2.ok) {
+        const errorText = await res2.text();
+        let errorData;
+        try { errorData = JSON.parse(errorText); } catch (e) { errorData = { error: errorText }; }
+        throw new Error(errorData.error || errorData.message || `API returned status ${res2.status}`);
+      }
+      const data2 = await res2.json();
+      if (data2?.next_url) {
+        try {
+          localStorage.removeItem('cart');
+          localStorage.removeItem('cart_items');
+          localStorage.removeItem('cartData');
+          localStorage.removeItem('persistent_cart');
+          Object.keys(localStorage).forEach(key => { if (key.toLowerCase().includes('cart')) localStorage.removeItem(key); });
+          Object.keys(sessionStorage).forEach(key => { if (key.toLowerCase().includes('cart')) sessionStorage.removeItem(key); });
+        } catch (err) { /* ignore */ }
+        window.location.href = data2.next_url;
+      } else {
+        alert(data?.error || data2?.error || 'Failed to start checkout');
+      }
+    } catch (e) {
+      alert(`⚠️ Checkout error: ${e.message || 'Network error starting checkout'}`);
+    } finally {
+      setIsCheckoutLoading(false);
+    }
+  }, [items, address, searchParams]);
 
   return (
     <div className="checkout-container">
@@ -422,320 +564,152 @@ const Checkout = () => {
               </button>
               <button 
                 className="btn-primary btn-large" 
-                disabled={!address.zip || !address.zip.trim() || shipping.loading}
+                disabled={!address.zip || !address.zip.trim() || shipping.loading || isCheckoutLoading}
                 style={{
-                  opacity: (!address.zip || !address.zip.trim() || shipping.loading) ? 0.5 : 1,
-                  cursor: (!address.zip || !address.zip.trim() || shipping.loading) ? 'not-allowed' : 'pointer'
+                  opacity: (!address.zip || !address.zip.trim() || shipping.loading || isCheckoutLoading) ? 0.5 : 1,
+                  cursor: (!address.zip || !address.zip.trim() || shipping.loading || isCheckoutLoading) ? 'not-allowed' : 'pointer'
                 }}
                 title={!address.zip || !address.zip.trim() 
                   ? 'Please enter ZIP code' 
                   : shipping.loading
                   ? 'Calculating shipping...'
                   : 'Ready to checkout'}
-                onClick={async (event) => {
-                // Only require ZIP code - that's the essential validation
-                // Capture ZIP directly from input field as safeguard
+                onClick={() => {
+                // Require design preferences first (modal shows when they click Checkout from cart)
+                if (!designConfirmed) {
+                  setShowDesignModal(true);
+                  return;
+                }
                 const zipInput = document.querySelector('input[aria-label="ZIP or Postal Code"]');
-                
-                // Ensure clean ZIP (coerce to string and trim)
                 const zipValue = String(zipInput?.value ?? address.zip ?? '').trim();
                 const countryValue = String(address.country_code || 'US').trim();
-                
                 if (!zipValue) {
                   alert('⚠️ Please enter your ZIP / Postal Code before proceeding.');
                   return;
                 }
-                
-                // If shipping is currently being calculated, wait a moment
                 if (shipping.loading) {
                   alert('⚠️ Please wait for shipping calculation to complete.');
                   return;
                 }
-                
-                // Use calculated shipping cost if available, otherwise use 0 (backend will handle validation)
-                const currentShipping = shippingRef.current;
-                const shippingCost = currentShipping.cost || 0;
-                console.log('🔍 Proceeding with checkout:', {
-                  zip: zipValue,
-                  shippingCost: shippingCost,
-                  shippingCalculated: currentShipping.calculated
-                });
-                
-                const button = event.target;
-                const originalContent = button.innerHTML;
-                button.innerHTML = '<span className="loading-spinner"></span>Processing Order...';
-                button.disabled = true;
-                
-                try {
-                  
-                  // Validate ZIP before building payload
-                  if (!zipValue) {
-                    alert('⚠️ ZIP / Postal Code is required. Please enter your ZIP code.');
-                    button.innerHTML = originalContent;
-                    button.disabled = false;
-                    return;
-                  }
-                  
-                  // Ensure shipping address is built first and validated
-                  const shippingAddress = {
-                    zip: String(zipValue).trim(),
-                    country_code: String(countryValue || 'US').trim()
-                  };
-                  
-                  // Extract selected screenshot BEFORE cleaning cart
-                  // Get the first available screenshot from cart items (for storage)
-                  let selectedScreenshot = null;
-                  for (const item of items) {
-                    // Check multiple possible screenshot fields
-                    selectedScreenshot = item.screenshot || item.selected_screenshot || item.thumbnail || item.img;
-                    if (selectedScreenshot && selectedScreenshot.trim()) {
-                      break; // Found one, use it
-                    }
-                  }
-                  
-                  // Also check localStorage for screenshot data and timestamp (Tools page saves edited_screenshot here)
-                  let screenshotTimestampFromStorage = null;
-                  try {
-                    const merchData = localStorage.getItem('pending_merch_data');
-                    if (merchData) {
-                      const parsed = JSON.parse(merchData);
-                      screenshotTimestampFromStorage = parsed.screenshot_timestamp ?? parsed.timestamp ?? null;
-                      if (!selectedScreenshot) {
-                        // Prefer Tools-edited image, then selected_screenshot, then screenshots array, then thumbnail
-                        selectedScreenshot = parsed.edited_screenshot || parsed.selected_screenshot ||
-                          (parsed.screenshots && Array.isArray(parsed.screenshots) && parsed.screenshots.length > 0 ? parsed.screenshots[0] : null) ||
-                          parsed.thumbnail || null;
-                        if (selectedScreenshot) console.log('📸 Using screenshot from pending_merch_data (edited_screenshot/selected_screenshot)');
-                      }
-                    }
-                  } catch (e) {
-                    console.warn('Could not load screenshot from localStorage:', e);
-                  }
-                  
-                  console.log('📸 Selected screenshot found:', selectedScreenshot ? 'Yes' : 'No');
-                  
-                  // Create lean cart payload - preserve selected_screenshot but exclude other image fields
-                  // This allows backend to retrieve the screenshot without breaking email notifications
-                  // IMPORTANT: Always include screenshot in cart items (even base64) so backend can extract it
-                  const stripeCart = items.map(it => {
-                    // Get screenshot from item first, then fallback to selectedScreenshot from loop above
-                    const itemScreenshot = it.screenshot || it.selected_screenshot || it.thumbnail || it.img;
-                    const finalScreenshot = itemScreenshot || selectedScreenshot || null;
-                    
-                    const cleanItem = {
-                      product: it.product || it.name,
-                      variants: { 
-                        color: it.color || 'Default', 
-                        size: it.size || 'Default' 
-                      },
-                      price: it.price || 0,
-                      // Preserve selected_screenshot so backend can store it in order
-                      // Backend will extract it from cart items before they're enriched
-                      // Include base64 screenshots here - backend will handle them properly
-                      selected_screenshot: finalScreenshot
-                    };
-                    // Explicitly exclude img, thumbnail, image fields (but keep selected_screenshot)
-                    return cleanItem;
-                  });
-                  
-                  console.log('📸 Cart items with screenshots:', stripeCart.map(item => ({
-                    product: item.product,
-                    has_screenshot: !!item.selected_screenshot,
-                    screenshot_type: item.selected_screenshot ? (item.selected_screenshot.startsWith('data:image') ? 'base64' : (item.selected_screenshot.startsWith('http') ? 'URL' : 'other')) : 'none'
-                  })));
-                  
-                  // Get user email from URL params or localStorage
-                  const userEmail = searchParams.get('email') || localStorage.getItem('user_email') || '';
-                  
-                  // Build payload with shipping_address FIRST to ensure it's included
-                  const payload = {
-                    shipping_address: shippingAddress,  // Put shipping_address FIRST
-                    cart: stripeCart,
-                    product_id: items[0]?.product_id || items[0]?.id || null,
-                    sms_consent: false,
-                    shipping_cost: shippingCost,
-                    videoUrl: items[0]?.video_url || null,
-                    videoTitle: items[0]?.video_title || null,
-                    creatorName: items[0]?.creator_name || null,
-                    user_email: userEmail,  // Add user email to payload
-                    screenshot_timestamp: items[0]?.screenshot_timestamp ?? screenshotTimestampFromStorage ?? null,
-                    timestamp: items[0]?.screenshot_timestamp ?? screenshotTimestampFromStorage ?? null,
-                  };
-                  
-                  // Include selected_screenshot at top level so backend always receives it (create-checkout-session and place-order).
-                  // Cart items already have selected_screenshot; top-level ensures backend gets it even if cart is normalized elsewhere.
-                  if (selectedScreenshot) {
-                    const screenshotStr = String(selectedScreenshot);
-                    payload.selected_screenshot = selectedScreenshot;
-                    if (screenshotStr.startsWith('data:image')) {
-                      console.log(`📸 Added screenshot (base64, ${Math.round(screenshotStr.length/1024)}KB) to payload`);
-                    } else if (screenshotStr.startsWith('http') || screenshotStr.startsWith('https')) {
-                      console.log('📸 Added screenshot URL to payload');
-                    } else {
-                      console.log('📸 Added screenshot (other format) to payload');
-                    }
-                  }
-                  
-                  // Verify payload has shipping_address before sending
-                  if (!payload.shipping_address || !payload.shipping_address.zip) {
-                    console.error('❌ CRITICAL: shipping_address missing from payload!', payload);
-                    alert('⚠️ Error: Shipping address is missing. Please refresh and try again.');
-                    button.innerHTML = originalContent;
-                    button.disabled = false;
-                    return;
-                  }
-                  
-                  console.log('🔍 FINAL checkout payload to /api/create-checkout-session:', payload);
-                  console.log('🔍 ZIP value being sent:', zipValue);
-                  console.log('🔍 Country value being sent:', countryValue);
-                  console.log('🔍 Shipping address object:', payload.shipping_address);
-                  console.log('🔍 Shipping address keys:', Object.keys(payload.shipping_address || {}));
-                  console.log('🔍 Shipping address zip check:', payload.shipping_address?.zip);
-                  
-                  // Create JSON string and verify shipping_address is in it
-                  const payloadJSON = JSON.stringify(payload);
-                  console.log('🔍 JSON payload length:', payloadJSON.length);
-                  console.log('🔍 JSON string includes shipping_address:', payloadJSON.includes('shipping_address'));
-                  console.log('🔍 JSON string includes zip:', payloadJSON.includes('zip'));
-                  console.log('🔍 JSON string includes zip value:', payloadJSON.includes(zipValue));
-                  
-                  console.log('🔍 API Endpoint:', API_CONFIG.ENDPOINTS.CREATE_CHECKOUT_SESSION);
-                  console.log('🔍 Sending POST request to backend...');
-                  
-                  const res = await fetch(API_CONFIG.ENDPOINTS.CREATE_CHECKOUT_SESSION, {
-                    method: 'POST',
-                    headers: { 
-                      'Content-Type': 'application/json',
-                      'Accept': 'application/json'
-                    },
-                    body: payloadJSON  // Use the verified JSON string directly
-                  });
-                  
-                  console.log('🔍 Response status:', res.status);
-                  console.log('🔍 Response URL:', res.url);
-                  
-                  if (!res.ok) {
-                    const errorText = await res.text();
-                    console.error('❌ Backend Error Response:', errorText);
-                    console.error('❌ Response Status:', res.status);
-                    console.error('❌ Response URL:', res.url);
-                    console.error('❌ Response Headers:', Object.fromEntries(res.headers.entries()));
-                    console.error('❌ Request Payload Sent:', payload);
-                    console.error('❌ ZIP Code Sent:', zipValue);
-                    console.error('❌ Shipping Address Sent:', payload.shipping_address);
-                    let errorData;
-                    try {
-                      errorData = JSON.parse(errorText);
-                      console.error('❌ Parsed Error Data:', errorData);
-                    } catch (e) {
-                      errorData = { error: errorText || `HTTP ${res.status}: ${res.statusText}` };
-                      console.error('❌ Could not parse error as JSON:', e);
-                    }
-                    const errorMessage = errorData.error || errorData.message || errorData.details || `API returned status ${res.status}`;
-                    console.error('❌ Final Error Message:', errorMessage);
-                    alert(`⚠️ Checkout Error: ${errorMessage}`);
-                    throw new Error(errorMessage);
-                  }
-                  
-                  const data = await res.json();
-                  if (data?.url) {
-                    // Clear cart immediately when checkout session is created and redirecting to Stripe
-                    // This ensures cart is cleared even if user doesn't return to success page
-                    try {
-                      localStorage.removeItem('cart');
-                      localStorage.removeItem('cart_items');
-                      localStorage.removeItem('cartData');
-                      localStorage.removeItem('persistent_cart');
-                      // Also clear any variations/case-insensitive matches for cart
-                      Object.keys(localStorage).forEach(key => {
-                        if (key.toLowerCase().includes('cart')) {
-                          localStorage.removeItem(key);
-                        }
-                      });
-                      Object.keys(sessionStorage).forEach(key => {
-                        if (key.toLowerCase().includes('cart')) {
-                          sessionStorage.removeItem(key);
-                        }
-                      });
-                      console.log('🛒 Cart cleared before redirecting to Stripe checkout');
-                    } catch (error) {
-                      console.error('Error clearing cart:', error);
-                    }
-                    window.location.href = data.url;
-                  } else {
-                    // Fallback: hit legacy place-order which now returns next_url
-                    try {
-                      // Use the same payload (without thumbnail) for place-order
-                      const res2 = await fetch(API_CONFIG.ENDPOINTS.PLACE_ORDER, {
-                        method: 'POST',
-                        headers: { 
-                          'Content-Type': 'application/json',
-                          'Accept': 'application/json'
-                        },
-                        body: payloadJSON  // Use same verified JSON
-                      });
-                      
-                      if (!res2.ok) {
-                        const errorText = await res2.text();
-                        let errorData;
-                        try {
-                          errorData = JSON.parse(errorText);
-                        } catch (e) {
-                          errorData = { error: errorText || `HTTP ${res2.status}: ${res2.statusText}` };
-                        }
-                        throw new Error(errorData.error || errorData.message || `API returned status ${res2.status}`);
-                      }
-                      
-                      const data2 = await res2.json();
-                      if (data2?.next_url) {
-                        // Clear cart immediately when checkout session is created and redirecting to Stripe
-                        // This ensures cart is cleared even if user doesn't return to success page
-                        try {
-                          localStorage.removeItem('cart');
-                          localStorage.removeItem('cart_items');
-                          localStorage.removeItem('cartData');
-                          localStorage.removeItem('persistent_cart');
-                          // Also clear any variations/case-insensitive matches for cart
-                          Object.keys(localStorage).forEach(key => {
-                            if (key.toLowerCase().includes('cart')) {
-                              localStorage.removeItem(key);
-                            }
-                          });
-                          Object.keys(sessionStorage).forEach(key => {
-                            if (key.toLowerCase().includes('cart')) {
-                              sessionStorage.removeItem(key);
-                            }
-                          });
-                          console.log('🛒 Cart cleared before redirecting to Stripe checkout (fallback)');
-                        } catch (error) {
-                          console.error('Error clearing cart:', error);
-                        }
-                        window.location.href = data2.next_url;
-                      } else {
-                        button.innerHTML = originalContent;
-                        button.disabled = false;
-                        alert(data?.error || data2?.error || 'Failed to start checkout');
-                      }
-                    } catch (e2) {
-                      button.innerHTML = originalContent;
-                      button.disabled = false;
-                      alert('Network error starting checkout');
-                    }
-                  }
-                } catch (e) {
-                  console.error('❌ Checkout error:', e);
-                  button.innerHTML = originalContent;
-                  button.disabled = false;
-                  alert(`⚠️ Checkout error: ${e.message || 'Network error starting checkout'}`);
-                }
+                runCheckout();
               }}>
-                <span>Place Order</span>
-                <span className="btn-icon">→</span>
+                {isCheckoutLoading ? (
+                  <>
+                    <span className="loading-spinner"></span>
+                    <span>Processing Order...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Place Order</span>
+                    <span className="btn-icon">→</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Design preferences safeguard modal (ScreenMerch style) */}
+      {showDesignModal && (
+        <div className="design-modal-overlay" style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999,
+        }} onClick={() => setShowDesignModal(false)}>
+          <div className="design-modal" style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '16px', padding: '28px', maxWidth: '420px', width: '90%',
+            boxShadow: '0 20px 60px rgba(102, 126, 234, 0.4)',
+            color: '#fff',
+          }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ margin: '0 0 20px', fontSize: '1.35rem' }}>Design preferences</h2>
+            <p style={{ margin: '0 0 16px', opacity: 0.95, fontSize: '0.95rem' }}>Please confirm before checkout.</p>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Image orientation</label>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="radio" name="orientation" checked={designOrientation === 'portrait'} onChange={() => setDesignOrientation('portrait')} />
+                  Portrait
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="radio" name="orientation" checked={designOrientation === 'landscape'} onChange={() => setDesignOrientation('landscape')} />
+                  Landscape
+                </label>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Feather edge?</label>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="radio" name="feather" checked={designFeather === 'yes'} onChange={() => setDesignFeather('yes')} />
+                  Yes
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="radio" name="feather" checked={designFeather === 'no'} onChange={() => setDesignFeather('no')} />
+                  No
+                </label>
+              </div>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Corner radius tool?</label>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="radio" name="corner" checked={designCornerRadius === 'yes'} onChange={() => setDesignCornerRadius('yes')} />
+                  Yes
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="radio" name="corner" checked={designCornerRadius === 'no'} onChange={() => setDesignCornerRadius('no')} />
+                  No
+                </label>
+              </div>
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Frame tool?</label>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="radio" name="frame" checked={designFrame === 'yes'} onChange={() => setDesignFrame('yes')} />
+                  Yes
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input type="radio" name="frame" checked={designFrame === 'no'} onChange={() => setDesignFrame('no')} />
+                  No
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <button type="button" className="btn-outline" style={{ borderColor: '#fff', color: '#fff' }} onClick={() => setShowDesignModal(false)}>
+                Cancel
+              </button>
+              {(designFeather === 'yes' || designCornerRadius === 'yes' || designFrame === 'yes') ? (
+                <button type="button" className="btn-primary" style={{ background: '#fff', color: '#764ba2', fontWeight: 700 }}
+                  onClick={() => { setShowDesignModal(false); navigate('/tools'); }}>
+                  Go to Edit Tools
+                </button>
+              ) : (
+                <button type="button" className="btn-primary" style={{ background: '#fff', color: '#764ba2', fontWeight: 700 }}
+                  onClick={() => {
+                    const orientation = designOrientation === 'landscape' ? 'landscape' : 'portrait';
+                    const updated = items.map(it => ({
+                      ...it,
+                      toolSettings: { ...(it.toolSettings || {}), imageOrientation: orientation },
+                    }));
+                    setItems(updated);
+                    try { localStorage.setItem('cart_items', JSON.stringify(updated)); } catch (e) { /* ignore */ }
+                    setDesignConfirmed(true);
+                    setShowDesignModal(false);
+                  }}>
+                  Continue to Checkout
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
