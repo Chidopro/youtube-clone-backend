@@ -812,6 +812,7 @@ const ToolsPage = () => {
   const [frameWidth, setFrameWidth] = useState(10);
   const [doubleFrame, setDoubleFrame] = useState(false);
   const [printAreaFit, setPrintAreaFit] = useState('none'); // 'none', 'horizontal', 'square', 'vertical', 'product'
+  const [imageOrientation, setImageOrientation] = useState('portrait'); // 'portrait' | 'landscape' - landscape forces No Fit for uncropped view
   const [imageOffsetX, setImageOffsetX] = useState(0); // -100 to 100 (percentage)
   const [imageOffsetY, setImageOffsetY] = useState(0); // -100 to 100 (percentage)
   const [editedImageUrl, setEditedImageUrl] = useState('');
@@ -922,6 +923,7 @@ const ToolsPage = () => {
       screenshotScale,
       selectedProductName,
       printAreaFit,
+      imageOrientation,
       imageOffsetX,
       imageOffsetY,
       printQualityImageUrl,
@@ -929,7 +931,7 @@ const ToolsPage = () => {
       offsetX: offset.x,
       offsetY: offset.y
     };
-  }, [selectedCartProductIndex, cartProducts, editedImageUrl, screenshotScale, selectedProductName, printAreaFit, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets]);
+  }, [selectedCartProductIndex, cartProducts, editedImageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets]);
 
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
@@ -1150,6 +1152,7 @@ const ToolsPage = () => {
               setScreenshotScale(saved.screenshotScale ?? 100);
               setSelectedProductName(saved.selectedProductName || '');
               setPrintAreaFit(saved.printAreaFit || 'none');
+              setImageOrientation(saved.imageOrientation || 'portrait');
               setImageOffsetX(saved.imageOffsetX ?? 0);
               setImageOffsetY(saved.imageOffsetY ?? 0);
               setPrintQualityImageUrl(saved.printQualityImageUrl || '');
@@ -1161,6 +1164,7 @@ const ToolsPage = () => {
               setScreenshotScale(100);
               setSelectedProductName('');
               setPrintAreaFit('none');
+              setImageOrientation('portrait');
               setImageOffsetX(0);
               setImageOffsetY(0);
               setPrintQualityImageUrl('');
@@ -2874,6 +2878,7 @@ const ToolsPage = () => {
                       screenshotScale,
                       selectedProductName,
                       printAreaFit,
+                      imageOrientation,
                       imageOffsetX,
                       imageOffsetY,
                       printQualityImageUrl,
@@ -2902,6 +2907,38 @@ const ToolsPage = () => {
           <div className="tool-control-group">
             <h3>Fit to Print Area</h3>
             <p className="tool-description">Crop image to fit product print areas</p>
+            
+            {/* Portrait / Landscape - landscape = No Fit for uncropped image */}
+            <div className="select-control" style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Image orientation:</label>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="imageOrientation"
+                    value="portrait"
+                    checked={imageOrientation === 'portrait'}
+                    onChange={() => {
+                      setImageOrientation('portrait');
+                    }}
+                  />
+                  <span>Portrait</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="imageOrientation"
+                    value="landscape"
+                    checked={imageOrientation === 'landscape'}
+                    onChange={() => {
+                      setImageOrientation('landscape');
+                      setPrintAreaFit('none'); // No Fit = uncropped landscape image
+                    }}
+                  />
+                  <span>Landscape (No Fit – show more image, less crop)</span>
+                </label>
+              </div>
+            </div>
             
             {/* Product Selector */}
             <div 
@@ -2944,8 +2981,9 @@ const ToolsPage = () => {
               <select
                 value={printAreaFit}
                 onChange={(e) => {
-                  setPrintAreaFit(e.target.value);
-                  // Reset offsets when changing print area
+                  const value = e.target.value;
+                  setPrintAreaFit(value);
+                  if (value !== 'none') setImageOrientation('portrait'); // Fit type = portrait mode
                   setImageOffsetX(0);
                   setImageOffsetY(0);
                 }}
@@ -2961,7 +2999,7 @@ const ToolsPage = () => {
               </select>
             </div>
             
-            {printAreaFit !== 'none' && (
+            {(printAreaFit !== 'none' || imageOrientation === 'landscape') && (
               <>
                 <div className="slider-control" style={{ marginTop: '1rem' }}>
                   <label>Move Horizontal:</label>
