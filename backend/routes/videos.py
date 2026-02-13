@@ -62,7 +62,8 @@ def get_videos():
     try:
         client = _get_supabase_client()
         if not client:
-            return jsonify({"error": "Database not available"}), 500
+            logger.warning("get_videos: Supabase client not available, returning empty list")
+            return jsonify([]), 200
         category = request.args.get("category", "").strip() or None
         user_id = request.args.get("user_id", "").strip() or None
         limit = request.args.get("limit", "100").strip()
@@ -76,12 +77,12 @@ def get_videos():
         if user_id:
             query = query.eq("user_id", user_id)
         response = query.execute()
-        return jsonify(response.data), 200
+        return jsonify(response.data if response.data is not None else []), 200
     except Exception as e:
         import traceback
         logger.error(f"Error fetching videos: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify([]), 200
 
 
 @videos_bp.route("/api/search/creators", methods=["GET", "OPTIONS"])

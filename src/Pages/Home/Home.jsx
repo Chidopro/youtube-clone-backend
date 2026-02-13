@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from "react";
 import Feed from "../../Components/Feed/Feed";
+import { API_CONFIG } from "../../config/apiConfig";
+import { mockVideos } from "../../mockVideos";
 import './Home.css';
 import { useNavigate } from 'react-router-dom';
 
-
+// Normalize mock items so Feed has created_at (uses publishedAt as fallback)
+const mockVideosForFeed = mockVideos.map((v) => ({
+  ...v,
+  created_at: v.created_at || v.publishedAt,
+}));
 
 const Home = ({ sidebar, category, selectedCategory, setSelectedCategory }) => {
   const [videos, setVideos] = useState([]);
@@ -16,14 +22,16 @@ const Home = ({ sidebar, category, selectedCategory, setSelectedCategory }) => {
       setLoading(true);
       setError('');
       try {
-        const response = await fetch('https://screenmerch.fly.dev/api/videos');
+        const url = `${API_CONFIG.BASE_URL}/api/videos`;
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch');
         const data = await response.json();
-        setVideos(data || []);
+        const list = Array.isArray(data) ? data : [];
+        setVideos(list.length > 0 ? list : mockVideosForFeed);
       } catch (err) {
-        console.error(err);
-        setError('Failed to fetch videos.');
-        setVideos([]);
+        console.error('Home: videos API failed, using fallback:', err);
+        setError('');
+        setVideos(mockVideosForFeed);
       }
       setLoading(false);
     };

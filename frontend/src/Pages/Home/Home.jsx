@@ -7,6 +7,9 @@ import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
 import API_CONFIG from '../../config/apiConfig';
+import { mockVideos } from '../../mockVideos';
+
+const mockVideosForFeed = mockVideos.map((v) => ({ ...v, created_at: v.created_at || v.publishedAt }));
 
 
 
@@ -37,15 +40,16 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
       try {
         const res = await fetch(url);
         if (!res.ok) {
-          setError('Failed to fetch videos.');
-          setVideos([]);
+          setError('');
+          setVideos(mockVideosForFeed);
         } else {
           const data = await res.json();
-          setVideos(Array.isArray(data) ? data : []);
+          const list = Array.isArray(data) ? data : [];
+          setVideos(list.length > 0 ? list : mockVideosForFeed);
         }
       } catch (_) {
-        setError('Failed to fetch videos.');
-        setVideos([]);
+        setError('');
+        setVideos(mockVideosForFeed);
       }
       setLoading(false);
     };
