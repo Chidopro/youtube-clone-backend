@@ -610,87 +610,77 @@ const Checkout = () => {
         </div>
       )}
 
-      {/* Design preferences safeguard modal (ScreenMerch style) */}
+      {/* Design preferences safeguard modal – matches Order Summary styling */}
       {showDesignModal && (
-        <div className="design-modal-overlay" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999,
-        }} onClick={() => setShowDesignModal(false)}>
-          <div className="design-modal" style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            borderRadius: '16px', padding: '28px', maxWidth: '420px', width: '90%',
-            boxShadow: '0 20px 60px rgba(102, 126, 234, 0.4)',
-            color: '#fff',
-          }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ margin: '0 0 20px', fontSize: '1.35rem' }}>Design preferences</h2>
-            <p style={{ margin: '0 0 16px', opacity: 0.95, fontSize: '0.95rem' }}>Please confirm before checkout.</p>
+        <div className="design-modal-overlay" onClick={() => setShowDesignModal(false)}>
+          <div className="design-modal" onClick={e => e.stopPropagation()}>
+            <h2>Design preferences</h2>
+            <p className="design-modal-subtitle">Please confirm before checkout.</p>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600 }}>Image orientation</label>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+            <div className="design-modal-field">
+              <label>Image orientation</label>
+              <div className="design-modal-options">
+                <label>
                   <input type="radio" name="orientation" checked={designOrientation === 'portrait'} onChange={() => setDesignOrientation('portrait')} />
                   Portrait
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <label>
                   <input type="radio" name="orientation" checked={designOrientation === 'landscape'} onChange={() => setDesignOrientation('landscape')} />
                   Landscape
                 </label>
               </div>
             </div>
 
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Feather edge?</label>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+            <div className="design-modal-field">
+              <label>Feather edge?</label>
+              <div className="design-modal-options">
+                <label>
                   <input type="radio" name="feather" checked={designFeather === 'yes'} onChange={() => setDesignFeather('yes')} />
                   Yes
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <label>
                   <input type="radio" name="feather" checked={designFeather === 'no'} onChange={() => setDesignFeather('no')} />
                   No
                 </label>
               </div>
             </div>
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Corner radius tool?</label>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+            <div className="design-modal-field">
+              <label>Corner radius tool?</label>
+              <div className="design-modal-options">
+                <label>
                   <input type="radio" name="corner" checked={designCornerRadius === 'yes'} onChange={() => setDesignCornerRadius('yes')} />
                   Yes
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <label>
                   <input type="radio" name="corner" checked={designCornerRadius === 'no'} onChange={() => setDesignCornerRadius('no')} />
                   No
                 </label>
               </div>
             </div>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Frame tool?</label>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+            <div className="design-modal-field">
+              <label>Frame tool?</label>
+              <div className="design-modal-options">
+                <label>
                   <input type="radio" name="frame" checked={designFrame === 'yes'} onChange={() => setDesignFrame('yes')} />
                   Yes
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <label>
                   <input type="radio" name="frame" checked={designFrame === 'no'} onChange={() => setDesignFrame('no')} />
                   No
                 </label>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button type="button" className="btn-outline" style={{ borderColor: '#fff', color: '#fff' }} onClick={() => setShowDesignModal(false)}>
+            <div className="design-modal-actions">
+              <button type="button" className="btn-outline" onClick={() => setShowDesignModal(false)}>
                 Cancel
               </button>
               {(designFeather === 'yes' || designCornerRadius === 'yes' || designFrame === 'yes') ? (
-                <button type="button" className="btn-primary" style={{ background: '#fff', color: '#764ba2', fontWeight: 700 }}
-                  onClick={() => { setShowDesignModal(false); navigate('/tools'); }}>
+                <button type="button" className="btn-primary" onClick={() => { setShowDesignModal(false); navigate('/tools'); }}>
                   Go to Edit Tools
                 </button>
               ) : (
-                <button type="button" className="btn-primary" style={{ background: '#fff', color: '#764ba2', fontWeight: 700 }}
+                <button type="button" className="btn-primary"
                   onClick={() => {
                     const orientation = designOrientation === 'landscape' ? 'landscape' : 'portrait';
                     const updated = items.map(it => ({
