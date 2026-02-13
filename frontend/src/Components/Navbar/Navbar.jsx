@@ -12,8 +12,10 @@ import CreatorSignupModal from '../CreatorSignupModal/CreatorSignupModal'
 import { supabase } from '../../supabaseClient'
 import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from '../../utils/userService'
 import { AdminService } from '../../utils/adminService'
+import { useCreator } from '../../contexts/CreatorContext'
 
 const Navbar = ({ setSidebar, resetCategory }) => {
+    const { creatorSettings } = useCreator() || {};
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
     const [isCreatorSignupModalOpen, setIsCreatorSignupModalOpen] = useState(false);
     const [user, setUser] = useState(null);
@@ -620,7 +622,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         }}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                     />
-                    <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}> <img src={logo} alt="" className={`logo ${isOrderSuccessPage ? 'order-success-logo' : ''}`} /></Link>
+                    <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}> <img src={creatorSettings?.custom_logo_url || logo} alt="Logo" className={`logo ${isOrderSuccessPage ? 'order-success-logo' : ''}`} onError={(e) => { e.target.onerror = null; e.target.src = logo; }} /></Link>
                 </div>
                 <div className="nav-center-right flex-div">
                     <div className="nav-middle flex-div">

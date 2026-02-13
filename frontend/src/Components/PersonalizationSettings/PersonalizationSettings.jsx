@@ -559,7 +559,7 @@ const PersonalizationSettings = () => {
               type="text"
               value={settings.custom_domain}
               onChange={(e) => setSettings({...settings, custom_domain: e.target.value})}
-              placeholder="merch.yourdomain.com"
+              placeholder="Coming Soon"
               className="setting-input"
             />
             <p className="help-text">Connect your own domain (requires DNS configuration)</p>
@@ -617,18 +617,6 @@ const PersonalizationSettings = () => {
               </div>
               <p className="help-text">Secondary brand color used in gradients</p>
             </div>
-          </div>
-          
-          <div className="setting-group">
-            <label className="setting-label">
-              <input
-                type="checkbox"
-                checked={settings.hide_screenmerch_branding}
-                onChange={(e) => setSettings({...settings, hide_screenmerch_branding: e.target.checked})}
-              />
-              <span className="setting-label-text">Hide "Powered by ScreenMerch" Branding</span>
-            </label>
-            <p className="help-text">Remove ScreenMerch branding from your personalized app</p>
           </div>
           
           <div className="setting-group">
