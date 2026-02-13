@@ -498,10 +498,8 @@ const ProductPage = ({ sidebar }) => {
     let videoMetadata = {};
     try {
       const raw = localStorage.getItem('pending_merch_data');
-      console.log('🔍 Raw localStorage data:', raw);
       if (raw) {
         const merchData = JSON.parse(raw);
-        console.log('🔍 Parsed merch data:', merchData);
         videoMetadata = {
           video_url: merchData.videoUrl,
           video_title: merchData.videoTitle,
@@ -509,7 +507,6 @@ const ProductPage = ({ sidebar }) => {
           thumbnail: merchData.thumbnail,
           screenshot_timestamp: merchData.screenshot_timestamp
         };
-        console.log('🔍 Video metadata extracted:', videoMetadata);
       }
     } catch (e) {
       console.warn('Could not load video metadata from localStorage:', e);

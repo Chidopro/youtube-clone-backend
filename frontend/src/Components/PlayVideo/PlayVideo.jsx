@@ -43,6 +43,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const { creatorSettings } = useCreator();
     const [video, setVideo] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isBuffering, setIsBuffering] = useState(false);
     const [error, setError] = useState('');
     const [videoError, setVideoError] = useState(null);
     const videoRef = propVideoRef || useRef(null);

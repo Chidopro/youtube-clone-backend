@@ -910,6 +910,27 @@ const ToolsPage = () => {
     }
   }, [screenshotScale, productImageOffsets, selectedCartProductIndex, searchParams]);
 
+  // Persist current slot's Fit to Print (and related) state so it survives cart poll / loadScreenshot re-run
+  useEffect(() => {
+    if (selectedCartProductIndex === null || !cartProducts.length || !cartProducts[selectedCartProductIndex]) return;
+    const idx = selectedCartProductIndex;
+    const cartIndex = cartProducts[idx].originalCartIndex;
+    const offset = productImageOffsets[cartIndex] || { x: 0, y: 0 };
+    slotStateRef.current[idx] = {
+      ...(slotStateRef.current[idx] || {}),
+      editedImageUrl,
+      screenshotScale,
+      selectedProductName,
+      printAreaFit,
+      imageOffsetX,
+      imageOffsetY,
+      printQualityImageUrl,
+      printQualityMeta,
+      offsetX: offset.x,
+      offsetY: offset.y
+    };
+  }, [selectedCartProductIndex, cartProducts, editedImageUrl, screenshotScale, selectedProductName, printAreaFit, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets]);
+
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
     const orderId = searchParams.get('order_id');

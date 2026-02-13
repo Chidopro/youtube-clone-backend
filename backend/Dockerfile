@@ -16,8 +16,7 @@ COPY . .
 
 EXPOSE 8080
 
-ENV FLASK_APP=app.py \
-    FLASK_RUN_PORT=8080 \
-    FLASK_RUN_HOST=0.0.0.0
+ENV PORT=8080
 
-CMD ["python", "app.py"]
+# Use gunicorn so the app listens on 0.0.0.0:8080 immediately (Fly expects this)
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "4", "--timeout", "120", "app:app"]

@@ -614,10 +614,14 @@ def _is_origin_allowed(origin):
     return False
 
 
-# Flask-CORS: use only string origins so /api/* gets correct CORS (regex in list can be unreliable)
+# Flask-CORS: use only string origins so /api/* gets correct CORS (regex in list can be unreliable).
+# allow_headers must include Content-Type so POST /api/auth/login (and other JSON APIs) pass preflight.
 CORS(
     app,
-    resources={r"/api/*": {"origins": ALLOWED_ORIGINS_LIST}},
+    resources={r"/api/*": {
+        "origins": ALLOWED_ORIGINS_LIST,
+        "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma", "Expires", "X-User-Email"],
+    }},
     supports_credentials=True,
     always_send=True,
 )
@@ -659,6 +663,8 @@ def add_security_headers(response):
         if origin and _is_origin_allowed(origin):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
+            # Preflight must allow Content-Type so POST JSON (e.g. /api/auth/login) succeeds
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
     
     return response
 
