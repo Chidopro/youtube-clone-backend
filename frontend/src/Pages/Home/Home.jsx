@@ -11,8 +11,6 @@ import { mockVideos } from '../../mockVideos';
 
 const mockVideosForFeed = mockVideos.map((v) => ({ ...v, created_at: v.created_at || v.publishedAt }));
 
-
-
 const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);

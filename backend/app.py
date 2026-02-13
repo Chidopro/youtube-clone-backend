@@ -591,20 +591,33 @@ def get_product_price_range(product_name):
 
 # Configure CORS for production - Netlify frontend to Fly.io backend
 # Configure CORS for production – screenmerch.com + all subdomains
-ALLOWED_ORIGINS = [
+ALLOWED_ORIGINS_LIST = [
     "https://screenmerch.com",
     "https://www.screenmerch.com",
     "https://testcreator.screenmerch.com",
     "https://screenmerch.fly.dev",
     "http://localhost:3000",
     "http://localhost:5173",
-    # Allow any subdomain (e.g. filialsons.screenmerch.com) for set-password, login, etc.
-    re.compile(r"^https://[a-z0-9-]+\.screenmerch\.com$"),
 ]
+ALLOWED_ORIGINS_SUBDOMAIN = re.compile(r"^https://[a-z0-9-]+\.screenmerch\.com$")
 
+
+def _is_origin_allowed(origin):
+    """True if origin is in allowed list or matches subdomain regex."""
+    if not origin or not isinstance(origin, str):
+        return False
+    origin = origin.strip()
+    if origin in ALLOWED_ORIGINS_LIST:
+        return True
+    if ALLOWED_ORIGINS_SUBDOMAIN.match(origin):
+        return True
+    return False
+
+
+# Flask-CORS: use only string origins so /api/* gets correct CORS (regex in list can be unreliable)
 CORS(
     app,
-    resources={r"/api/*": {"origins": ALLOWED_ORIGINS}},
+    resources={r"/api/*": {"origins": ALLOWED_ORIGINS_LIST}},
     supports_credentials=True,
     always_send=True,
 )
@@ -640,7 +653,12 @@ def add_security_headers(response):
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
     
-    # Don't set CORS headers here - Flask-CORS handles all CORS automatically
+    # Guarantee CORS for /api/* when Origin is allowed (covers subdomains + main; Flask-CORS uses list only)
+    if request.path.startswith("/api/"):
+        origin = request.headers.get("Origin")
+        if origin and _is_origin_allowed(origin):
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
     
     return response
 
