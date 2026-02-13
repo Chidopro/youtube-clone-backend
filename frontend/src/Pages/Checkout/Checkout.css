@@ -750,6 +750,14 @@
   display: block;
 }
 
+.design-modal-option-text {
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.95rem;
+  line-height: 1;
+  display: inline-block;
+}
+
 .design-modal-actions {
   display: flex;
   gap: 16px;

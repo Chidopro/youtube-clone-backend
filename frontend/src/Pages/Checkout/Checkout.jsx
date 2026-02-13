@@ -622,11 +622,11 @@ const Checkout = () => {
               <div className="design-modal-options">
                 <label>
                   <input type="radio" name="orientation" checked={designOrientation === 'portrait'} onChange={() => setDesignOrientation('portrait')} />
-                  Portrait
+                  <span className="design-modal-option-text">Portrait</span>
                 </label>
                 <label>
                   <input type="radio" name="orientation" checked={designOrientation === 'landscape'} onChange={() => setDesignOrientation('landscape')} />
-                  Landscape
+                  <span className="design-modal-option-text">Landscape</span>
                 </label>
               </div>
             </div>
@@ -636,11 +636,11 @@ const Checkout = () => {
               <div className="design-modal-options">
                 <label>
                   <input type="radio" name="feather" checked={designFeather === 'yes'} onChange={() => setDesignFeather('yes')} />
-                  Yes
+                  <span className="design-modal-option-text">Yes</span>
                 </label>
                 <label>
                   <input type="radio" name="feather" checked={designFeather === 'no'} onChange={() => setDesignFeather('no')} />
-                  No
+                  <span className="design-modal-option-text">No</span>
                 </label>
               </div>
             </div>
@@ -649,11 +649,11 @@ const Checkout = () => {
               <div className="design-modal-options">
                 <label>
                   <input type="radio" name="corner" checked={designCornerRadius === 'yes'} onChange={() => setDesignCornerRadius('yes')} />
-                  Yes
+                  <span className="design-modal-option-text">Yes</span>
                 </label>
                 <label>
                   <input type="radio" name="corner" checked={designCornerRadius === 'no'} onChange={() => setDesignCornerRadius('no')} />
-                  No
+                  <span className="design-modal-option-text">No</span>
                 </label>
               </div>
             </div>
@@ -662,11 +662,11 @@ const Checkout = () => {
               <div className="design-modal-options">
                 <label>
                   <input type="radio" name="frame" checked={designFrame === 'yes'} onChange={() => setDesignFrame('yes')} />
-                  Yes
+                  <span className="design-modal-option-text">Yes</span>
                 </label>
                 <label>
                   <input type="radio" name="frame" checked={designFrame === 'no'} onChange={() => setDesignFrame('no')} />
-                  No
+                  <span className="design-modal-option-text">No</span>
                 </label>
               </div>
             </div>
