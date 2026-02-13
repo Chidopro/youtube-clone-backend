@@ -717,20 +717,24 @@
 
 .design-modal-options {
   display: flex;
+  align-items: center;
   gap: 16px;
   flex-wrap: wrap;
 }
 
 .design-modal-options label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
   font-weight: 500;
   color: #374151;
   font-size: 0.95rem;
-  line-height: 20px;
-  min-height: 20px;
+  line-height: 1;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .design-modal-options input[type="radio"] {
@@ -740,9 +744,10 @@
   min-width: 18px;
   min-height: 18px;
   margin: 0;
+  padding: 0;
   flex-shrink: 0;
   cursor: pointer;
-  vertical-align: middle;
+  display: block;
 }
 
 .design-modal-actions {
