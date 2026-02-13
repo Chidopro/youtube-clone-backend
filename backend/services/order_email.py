@@ -251,6 +251,10 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
         size = (item.get("variants") or {}).get("size", "N/A")
         note = item.get("note", "None")
         price = item.get("price", 0)
+        # Image orientation (portrait/landscape) from tool settings
+        tool_settings = item.get("toolSettings") or {}
+        image_orientation = (tool_settings.get("imageOrientation") or item.get("image_orientation") or "portrait").lower()
+        image_orientation_label = "Landscape" if image_orientation == "landscape" else "Portrait"
         # Per-product screenshot (item's selected_screenshot or fallback to order/first)
         item_img = _get_item_screenshot(item, fallback=fallback_screenshot)
         item_img = _ensure_base64(item_img)
@@ -272,6 +276,7 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
             <div style='border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 8px;'>
                 <p style='margin-top:0;'><strong>📸 {product_name} — Screenshot</strong></p>
                 {product_img_tag}
+                <p><strong>Image:</strong> {image_orientation_label}</p>
                 <p><strong>Color:</strong> {color}</p>
                 <p><strong>Size:</strong> {size}</p>
                 <p><strong>Note:</strong> {note}</p>
@@ -335,10 +340,14 @@ def build_customer_order_email(order_id, order_data, cart, order_number, total_a
         size = (item.get("variants") or {}).get("size", "N/A")
         price = item.get("price", 0)
         note = item.get("note", "")
+        tool_settings = item.get("toolSettings") or {}
+        image_orientation = (tool_settings.get("imageOrientation") or item.get("image_orientation") or "portrait").lower()
+        image_orientation_label = "Landscape" if image_orientation == "landscape" else "Portrait"
         note_p = f'<p><strong>Note:</strong> {note}</p>' if note else ''
         html += f"""
         <div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
             <h3 style="margin-top: 0; color: #333;">{product_name}</h3>
+            <p><strong>Image:</strong> {image_orientation_label}</p>
             <p><strong>Color:</strong> {color}</p>
             <p><strong>Size:</strong> {size}</p>
             <p><strong>Price:</strong> ${price:.2f}</p>

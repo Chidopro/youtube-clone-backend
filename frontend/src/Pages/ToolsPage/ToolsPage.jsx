@@ -2369,7 +2369,8 @@ const ToolsPage = () => {
                 frameColor,
                 frameWidth,
                 doubleFrame,
-                printAreaFit
+                printAreaFit,
+                imageOrientation
               }
             };
           }
