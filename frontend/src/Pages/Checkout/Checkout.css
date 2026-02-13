@@ -258,7 +258,7 @@
 .item-image-wrapper img {
   width: 72px;
   height: 72px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
@@ -271,10 +271,11 @@
 .item-screenshot {
   width: 90px;
   height: 72px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
+  background: #f1f5f9;
 }
 
 .item-card:hover .item-screenshot {
@@ -701,6 +702,37 @@
   margin-top: 20px;
   margin-bottom: 24px;
   font-weight: 500;
+}
+
+.design-modal--multi {
+  max-width: 480px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.design-modal-items {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-bottom: 20px;
+  padding-right: 4px;
+}
+
+.design-modal-item-block {
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.design-modal-item-block:last-child {
+  border-bottom: none;
+}
+
+.design-modal-item-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 12px 0;
 }
 
 .design-modal-field {
