@@ -151,10 +151,11 @@
 }
 
 .screenshot-image {
-  width: 160px;
-  height: 120px;
-  object-fit: cover;
+  width: 180px;
+  height: 101px; /* 16:9 landscape to match capture/screenshot area */
+  object-fit: contain;
   display: block;
+  background: #0a0a0a;
 }
 
 .screenshot-label {
@@ -461,8 +462,8 @@
   }
 
   .screenshot-image {
-    width: 100px;
-    height: 75px;
+    width: 112px;
+    height: 63px; /* 16:9 landscape to match capture */
   }
 
   .screenshot-grid {
