@@ -13,7 +13,7 @@ const Checkout = () => {
   const shippingRef = useRef(shipping);
   // Design preferences modal (safeguard before checkout)
   const [showDesignModal, setShowDesignModal] = useState(false);
-  const [designOrientation, setDesignOrientation] = useState('portrait');
+  const [designOrientation, setDesignOrientation] = useState(''); /* no default – user must choose */
   const [designFeather, setDesignFeather] = useState('no');
   const [designCornerRadius, setDesignCornerRadius] = useState('no');
   const [designFrame, setDesignFrame] = useState('no');
@@ -676,12 +676,23 @@ const Checkout = () => {
                 Cancel
               </button>
               {(designFeather === 'yes' || designCornerRadius === 'yes' || designFrame === 'yes') ? (
-                <button type="button" className="btn-primary" onClick={() => { setShowDesignModal(false); navigate('/tools'); }}>
+                <button type="button" className="btn-primary" onClick={() => {
+                  if (designOrientation !== 'portrait' && designOrientation !== 'landscape') {
+                    alert('Please choose an Image orientation (Portrait or Landscape) before continuing.');
+                    return;
+                  }
+                  setShowDesignModal(false);
+                  navigate('/tools');
+                }}>
                   Go to Edit Tools
                 </button>
               ) : (
                 <button type="button" className="btn-primary"
                   onClick={() => {
+                    if (designOrientation !== 'portrait' && designOrientation !== 'landscape') {
+                      alert('Please choose an Image orientation (Portrait or Landscape) before continuing.');
+                      return;
+                    }
                     const orientation = designOrientation === 'landscape' ? 'landscape' : 'portrait';
                     const updated = items.map(it => ({
                       ...it,

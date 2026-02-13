@@ -671,7 +671,7 @@
   width: 90%;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 3px solid #667eea;
   color: #1a202c;
 }
 
@@ -729,13 +729,20 @@
   font-weight: 500;
   color: #374151;
   font-size: 0.95rem;
+  line-height: 20px;
+  min-height: 20px;
 }
 
 .design-modal-options input[type="radio"] {
   accent-color: #667eea;
   width: 18px;
   height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 0;
+  flex-shrink: 0;
   cursor: pointer;
+  vertical-align: middle;
 }
 
 .design-modal-actions {
