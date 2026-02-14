@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
+import { useCreator } from '../../contexts/CreatorContext';
 import './PersonalizationSettings.css';
 
 const BUCKET_CREATOR_LOGOS = 'creator-logos';
 
 const PersonalizationSettings = () => {
+  const { refreshCreator } = useCreator() || {};
   const [settings, setSettings] = useState({
     subdomain: '',
     custom_domain: '',
@@ -514,11 +516,11 @@ const PersonalizationSettings = () => {
         }
         
         if (settings.personalization_enabled && settings.subdomain) {
-          setMessage(`✅ Settings saved! Your personalized app is now active at ${settings.subdomain}.screenmerch.com`);
+          setMessage(`✅ Settings saved! Your logo and theme should update now. If the navbar logo doesn’t change, refresh the page (F5).`);
         } else if (settings.subdomain) {
-          setMessage(`✅ Settings saved! Don't forget to check "Enable Personalization" at the top and save again to activate your app at ${settings.subdomain}.screenmerch.com`);
+          setMessage(`✅ Settings saved! Don't forget to check "Enable Personalization" and save again to activate your app at ${settings.subdomain}.screenmerch.com`);
         } else {
-          setMessage('✅ Settings saved successfully!');
+          setMessage('✅ Settings saved! If the navbar logo doesn’t update, refresh the page (F5).');
         }
         setMessageType('success');
         
@@ -526,9 +528,11 @@ const PersonalizationSettings = () => {
         console.log('🔄 Reloading settings after save...');
         await loadSettings();
         
-        // Trigger CreatorContext refresh to apply changes immediately
-        console.log('🔄 Triggering creator settings update event');
+        // Trigger CreatorContext refresh so navbar logo and theme update immediately
         window.dispatchEvent(new CustomEvent('creatorSettingsUpdated'));
+        if (typeof refreshCreator === 'function') {
+          refreshCreator();
+        }
         
         // Force immediate color update (even if not on subdomain yet)
         if (settings.primary_color) {
