@@ -622,7 +622,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         }}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                     />
-                    <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}> <img src={creatorSettings?.custom_logo_url || logo} alt="Logo" className={`logo ${isOrderSuccessPage ? 'order-success-logo' : ''}`} onError={(e) => { e.target.onerror = null; e.target.src = logo; }} /></Link>
+                    <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}> <img src={creatorSettings?.custom_logo_url || logo} alt="Logo" className={`logo ${isOrderSuccessPage ? 'order-success-logo' : ''}`} onError={(e) => { e.target.onerror = null; e.target.src = logo; if (creatorSettings?.custom_logo_url) console.warn('Custom logo failed to load. Check URL is public and correct:', creatorSettings.custom_logo_url); }} /></Link>
                 </div>
                 <div className="nav-center-right flex-div">
                     <div className="nav-middle flex-div">
