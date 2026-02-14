@@ -10,7 +10,7 @@ const BUCKET_CREATOR_LOGOS = 'creator-logos';
 const PersonalizationSettings = () => {
   const { refreshCreator } = useCreator() || {};
   const [settings, setSettings] = useState({
-    subdomain: '',
+    subdomain: (typeof window !== 'undefined' && getSubdomain()) || '',
     custom_domain: '',
     custom_logo_url: '',
     primary_color: '#667eea',
@@ -48,7 +48,22 @@ const PersonalizationSettings = () => {
           targetUserId = creator.id;
           console.log('✅ PersonalizationSettings: Found creator for subdomain:', creator.display_name, 'ID:', targetUserId);
           
-          // Load settings from database using the creator's ID
+          // Prefill form from subdomain API response so logo/colors/favicon stay in sync (avoids RLS issues with Supabase load)
+          const fromApi = {
+            subdomain: creator.subdomain || currentSubdomain || '',
+            custom_domain: creator.custom_domain || '',
+            custom_logo_url: creator.custom_logo_url || creator.logo_url || '',
+            primary_color: creator.primary_color || '#667eea',
+            secondary_color: creator.secondary_color || '#764ba2',
+            hide_screenmerch_branding: creator.hide_screenmerch_branding || false,
+            custom_favicon_url: creator.custom_favicon_url || '',
+            custom_meta_title: creator.custom_meta_title || '',
+            custom_meta_description: creator.custom_meta_description || '',
+            personalization_enabled: creator.personalization_enabled || false
+          };
+          setSettings(fromApi);
+          
+          // Optionally load extra fields from DB (may fail with RLS for OAuth users – we already have form from API)
           const { data, error } = await supabase
             .from('users')
             .select('subdomain, custom_domain, custom_logo_url, primary_color, secondary_color, hide_screenmerch_branding, custom_favicon_url, custom_meta_title, custom_meta_description, personalization_enabled, email')
@@ -56,24 +71,22 @@ const PersonalizationSettings = () => {
             .single();
           
           if (data && !error) {
-            console.log('✅ PersonalizationSettings: Loaded settings for subdomain user:', data);
+            console.log('✅ PersonalizationSettings: Merged DB settings for subdomain user');
             setSettings({
-              subdomain: data.subdomain || '',
+              subdomain: data.subdomain || fromApi.subdomain,
               custom_domain: data.custom_domain || '',
-              custom_logo_url: data.custom_logo_url || '',
-              primary_color: data.primary_color || '#667eea',
-              secondary_color: data.secondary_color || '#764ba2',
+              custom_logo_url: data.custom_logo_url || fromApi.custom_logo_url,
+              primary_color: data.primary_color || fromApi.primary_color,
+              secondary_color: data.secondary_color || fromApi.secondary_color,
               hide_screenmerch_branding: data.hide_screenmerch_branding || false,
-              custom_favicon_url: data.custom_favicon_url || '',
+              custom_favicon_url: data.custom_favicon_url || fromApi.custom_favicon_url,
               custom_meta_title: data.custom_meta_title || '',
               custom_meta_description: data.custom_meta_description || '',
-              personalization_enabled: data.personalization_enabled || false
+              personalization_enabled: data.personalization_enabled ?? fromApi.personalization_enabled
             });
-            setLoading(false);
-            return; // Successfully loaded from subdomain
-          } else {
-            console.error('❌ PersonalizationSettings: Error loading settings for subdomain user:', error);
           }
+          setLoading(false);
+          return; // Successfully loaded from subdomain API (form already set above)
         } else {
           console.warn('⚠️ PersonalizationSettings: No creator found for subdomain (404) – will prefill subdomain from URL so you can re-save', currentSubdomain);
         }
@@ -651,10 +664,11 @@ const PersonalizationSettings = () => {
             <label className="setting-label">Custom Domain (Premium)</label>
             <input
               type="text"
-              value={settings.custom_domain}
-              onChange={(e) => setSettings({...settings, custom_domain: e.target.value})}
-              placeholder="Coming Soon"
+              value={settings.custom_domain || 'Coming Soon'}
+              readOnly
+              disabled
               className="setting-input"
+              style={{ cursor: 'not-allowed', opacity: 0.8 }}
             />
             <p className="help-text">Connect your own domain (requires DNS configuration)</p>
           </div>
