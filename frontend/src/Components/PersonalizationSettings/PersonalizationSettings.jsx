@@ -3,6 +3,8 @@ import { supabase } from '../../supabaseClient';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
 import './PersonalizationSettings.css';
 
+const BUCKET_CREATOR_LOGOS = 'creator-logos';
+
 const PersonalizationSettings = () => {
   const [settings, setSettings] = useState({
     subdomain: '',
@@ -19,6 +21,7 @@ const PersonalizationSettings = () => {
   
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState(''); // 'success' or 'error'
 
@@ -179,6 +182,65 @@ const PersonalizationSettings = () => {
       setMessageType('error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const uploadLogoToSupabase = async (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      setMessage('Please select an image file (PNG, JPG, SVG, or WebP).');
+      setMessageType('error');
+      return;
+    }
+    setUploadingLogo(true);
+    setMessage('');
+    setMessageType('');
+    try {
+      let userId = null;
+      const currentSubdomain = getSubdomain();
+      if (currentSubdomain) {
+        const creator = await getCreatorFromSubdomain(currentSubdomain);
+        if (creator?.id) userId = creator.id;
+      }
+      if (!userId) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser?.id) userId = authUser.id;
+      }
+      if (!userId && localStorage.getItem('isAuthenticated') === 'true') {
+        try {
+          const ud = JSON.parse(localStorage.getItem('user') || '{}');
+          if (ud.id) userId = ud.id;
+          else if (ud.email) {
+            const { data: profileData } = await supabase.from('users').select('id').eq('email', ud.email).single();
+            if (profileData?.id) userId = profileData.id;
+          }
+        } catch (e) {}
+      }
+      if (!userId) {
+        setMessage('Please log in to upload a logo.');
+        setMessageType('error');
+        setUploadingLogo(false);
+        return;
+      }
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+      const fileName = `${userId}/logo-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from(BUCKET_CREATOR_LOGOS)
+        .upload(fileName, file, { cacheControl: '3600', upsert: true });
+      if (error) {
+        setMessage(error.message || 'Upload failed. Create a Supabase bucket named "creator-logos" and allow public read + authenticated upload.');
+        setMessageType('error');
+        setUploadingLogo(false);
+        return;
+      }
+      const { data: { publicUrl } } = supabase.storage.from(BUCKET_CREATOR_LOGOS).getPublicUrl(fileName);
+      setSettings(prev => ({ ...prev, custom_logo_url: publicUrl }));
+      setMessage('Logo uploaded. Click Save Settings to apply.');
+      setMessageType('success');
+    } catch (err) {
+      setMessage(err?.message || 'Upload failed.');
+      setMessageType('error');
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
@@ -574,7 +636,29 @@ const PersonalizationSettings = () => {
               placeholder="https://example.com/logo.png"
               className="setting-input"
             />
-            <p className="help-text">URL to your custom logo image (recommended: 200x50px PNG or SVG)</p>
+            <div className="logo-upload-row">
+              <label className="logo-upload-btn">
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadLogoToSupabase(file);
+                    e.target.value = '';
+                  }}
+                  disabled={uploadingLogo}
+                />
+                {uploadingLogo ? 'Uploading…' : 'Upload from Supabase bucket'}
+              </label>
+              <span className="help-text-inline">Stores in bucket &quot;creator-logos&quot;</span>
+            </div>
+            {settings.custom_logo_url && (
+              <div className="logo-preview-wrap">
+                <img src={settings.custom_logo_url} alt="Logo preview" className="logo-preview" onError={(e) => { e.target.style.display = 'none'; }} />
+              </div>
+            )}
+            <p className="help-text">URL to your custom logo (recommended: 200x50px PNG or SVG). Upload to Supabase or paste a URL.</p>
           </div>
           
           <div className="color-settings">

@@ -74,6 +74,54 @@
   font-family: inherit;
 }
 
+.logo-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.logo-upload-btn {
+  display: inline-block;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.logo-upload-btn:hover:not(:has(input:disabled)) {
+  opacity: 0.9;
+}
+
+.logo-upload-btn:has(input:disabled) {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.help-text-inline {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.logo-preview-wrap {
+  margin-top: 12px;
+}
+
+.logo-preview {
+  max-width: 200px;
+  max-height: 60px;
+  object-fit: contain;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 4px;
+  background: #f9f9f9;
+}
+
 .help-text {
   margin: 6px 0 0 0;
   font-size: 0.85rem;
