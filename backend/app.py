@@ -6156,6 +6156,60 @@ def get_subdomain_creator(subdomain):
         })
         return _allow_origin(response), 500
 
+# Creator logo upload - uses service role to bypass Storage RLS (works for Google OAuth users)
+CREATOR_LOGOS_BUCKET = "creator-logos"
+MAX_LOGO_SIZE = 2 * 1024 * 1024  # 2MB
+
+@app.route("/api/upload-creator-logo", methods=["POST", "OPTIONS"])
+def upload_creator_logo():
+    """
+    Upload a logo image to the creator-logos bucket using service role.
+    Frontend sends multipart form: file (image), user_id (UUID of the creator).
+    Returns { "success": True, "url": "https://..." } or error.
+    """
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server upload not configured (missing service role)"}), 503
+        user_id = request.form.get("user_id", "").strip()
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id is required"}), 400
+        file = request.files.get("file")
+        if not file or file.filename == "":
+            return jsonify({"success": False, "error": "No file provided"}), 400
+        if not file.content_type or not file.content_type.startswith("image/"):
+            return jsonify({"success": False, "error": "File must be an image (PNG, JPG, etc.)"}), 400
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(0)
+        if size > MAX_LOGO_SIZE:
+            return jsonify({"success": False, "error": "Logo must be under 2MB"}), 400
+        ext = (file.filename.split(".")[-1] or "png").lower().replace(" ", "")[:10]
+        if ext not in ("png", "jpg", "jpeg", "gif", "webp", "svg"):
+            ext = "png"
+        path = f"{user_id}/logo-{int(time.time() * 1000)}.{ext}"
+        file_bytes = file.read()
+        try:
+            supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).upload(
+                path=path,
+                file=file_bytes,
+                file_options={"content-type": file.content_type or "image/png", "upsert": "true"}
+            )
+        except Exception as upload_err:
+            logger.error("Upload creator logo error: %s", upload_err)
+            if "Bucket not found" in str(upload_err) or "not found" in str(upload_err).lower():
+                return jsonify({
+                    "success": False,
+                    "error": "Bucket 'creator-logos' not found. Create a public bucket named 'creator-logos' in Supabase Storage."
+                }), 400
+            return jsonify({"success": False, "error": str(upload_err)}), 500
+        public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{CREATOR_LOGOS_BUCKET}/{path}"
+        return jsonify({"success": True, "url": public_url}), 200
+    except Exception as e:
+        logger.exception("upload_creator_logo: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # Admin check API endpoints - bypass RLS to prevent 406 errors
 @app.route("/api/admin/check-status", methods=["GET", "OPTIONS"])
 def check_admin_status():

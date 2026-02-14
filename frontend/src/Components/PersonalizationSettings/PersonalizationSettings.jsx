@@ -194,6 +194,11 @@ const PersonalizationSettings = () => {
       setMessageType('error');
       return;
     }
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage('Logo must be under 2MB.');
+      setMessageType('error');
+      return;
+    }
     setUploadingLogo(true);
     setMessage('');
     setMessageType('');
@@ -224,21 +229,30 @@ const PersonalizationSettings = () => {
         setUploadingLogo(false);
         return;
       }
-      const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
-      const fileName = `${userId}/logo-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage
-        .from(BUCKET_CREATOR_LOGOS)
-        .upload(fileName, file, { cacheControl: '3600', upsert: true });
-      if (error) {
-        setMessage(error.message || 'Upload failed. Create a Supabase bucket named "creator-logos" and allow public read + authenticated upload.');
+      const backendUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) || 'https://screenmerch.fly.dev';
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('user_id', userId);
+      const res = await fetch(`${backendUrl}/api/upload-creator-logo`, {
+        method: 'POST',
+        body: formData,
+        headers: { Accept: 'application/json' }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage(data.error || `Upload failed (${res.status})`);
         setMessageType('error');
         setUploadingLogo(false);
         return;
       }
-      const { data: { publicUrl } } = supabase.storage.from(BUCKET_CREATOR_LOGOS).getPublicUrl(fileName);
-      setSettings(prev => ({ ...prev, custom_logo_url: publicUrl }));
-      setMessage('Logo uploaded. Click Save Settings to apply.');
-      setMessageType('success');
+      if (data.success && data.url) {
+        setSettings(prev => ({ ...prev, custom_logo_url: data.url }));
+        setMessage('Logo uploaded. Click Save Settings to apply.');
+        setMessageType('success');
+      } else {
+        setMessage(data.error || 'Upload failed.');
+        setMessageType('error');
+      }
     } catch (err) {
       setMessage(err?.message || 'Upload failed.');
       setMessageType('error');
@@ -654,16 +668,16 @@ const PersonalizationSettings = () => {
                   }}
                   disabled={uploadingLogo}
                 />
-                {uploadingLogo ? 'Uploading…' : 'Upload from Supabase bucket'}
+                {uploadingLogo ? 'Uploading…' : 'Upload logo'}
               </label>
-              <span className="help-text-inline">Stores in bucket &quot;creator-logos&quot;</span>
+              <span className="help-text-inline">Uploads via server to bucket &quot;creator-logos&quot; (no Supabase RLS needed)</span>
             </div>
             {settings.custom_logo_url && (
               <div className="logo-preview-wrap">
                 <img src={normalizeStorageUrl(settings.custom_logo_url)} alt="Logo preview" className="logo-preview" onError={(e) => { e.target.style.display = 'none'; }} />
               </div>
             )}
-            <p className="help-text">URL to your custom logo (recommended: 200x50px PNG or SVG). Upload to Supabase or paste a URL.</p>
+            <p className="help-text">URL to your custom logo (recommended: 200x50px PNG or SVG). Use &quot;Upload logo&quot; or paste a URL. Uploads use the existing creator-logos bucket.</p>
           </div>
           
           <div className="color-settings">

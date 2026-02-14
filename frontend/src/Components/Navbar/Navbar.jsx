@@ -689,7 +689,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             return shouldShowProfile;
                         })() ? (
                             <>
-                                {console.log('🎨 Rendering creator profile for:', user?.display_name || user?.user_metadata?.name)}
+                                {console.log('🎨 Rendering creator profile for:', user?.display_name ?? user?.user_metadata?.name ?? user?.email ?? 'user')}
                                 {console.log('🔍 Full user object:', user)}
                                 {console.log('🔍 User role:', user?.role, 'User status:', user?.status)}
                                 <button
