@@ -26,11 +26,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     const fetchVideos = async () => {
       setLoading(true);
       setError('');
-      if (subdomain && !currentCreator?.id) {
-        setVideos([]);
-        setLoading(false);
-        return;
-      }
+      // When on a subdomain: if creator found, filter by user_id; if not found (404), still show placeholder videos
       const params = new URLSearchParams();
       if (category && category !== 'All') params.set('category', category);
       if (currentCreator?.id) params.set('user_id', currentCreator.id);

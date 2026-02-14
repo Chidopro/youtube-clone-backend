@@ -75,9 +75,11 @@ const PersonalizationSettings = () => {
             console.error('❌ PersonalizationSettings: Error loading settings for subdomain user:', error);
           }
         } else {
-          console.warn('⚠️ PersonalizationSettings: No creator found for subdomain:', currentSubdomain);
+          console.warn('⚠️ PersonalizationSettings: No creator found for subdomain (404) – will prefill subdomain from URL so you can re-save', currentSubdomain);
         }
       }
+
+      // When subdomain lookup failed (404), we still have currentSubdomain from URL – use it to prefill below so re-save restores it
       
       // Fallback: Get logged-in user (if not on subdomain or subdomain lookup failed)
       let user = null;
@@ -140,7 +142,7 @@ const PersonalizationSettings = () => {
         if (data && !error) {
           console.log('✅ PersonalizationSettings: Loaded settings from database:', data);
           setSettings({
-            subdomain: data.subdomain || '',
+            subdomain: data.subdomain || currentSubdomain || '',
             custom_domain: data.custom_domain || '',
             custom_logo_url: data.custom_logo_url || '',
             primary_color: data.primary_color || '#667eea',
@@ -166,7 +168,7 @@ const PersonalizationSettings = () => {
         if (data && !error) {
           console.log('✅ PersonalizationSettings: Loaded settings by email:', data);
           setSettings({
-            subdomain: data.subdomain || '',
+            subdomain: data.subdomain || currentSubdomain || '',
             custom_domain: data.custom_domain || '',
             custom_logo_url: data.custom_logo_url || '',
             primary_color: data.primary_color || '#667eea',
