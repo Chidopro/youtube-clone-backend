@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
+import { normalizeStorageUrl } from '../../utils/storageUrl';
 import { useCreator } from '../../contexts/CreatorContext';
 import './PersonalizationSettings.css';
 
@@ -659,7 +660,7 @@ const PersonalizationSettings = () => {
             </div>
             {settings.custom_logo_url && (
               <div className="logo-preview-wrap">
-                <img src={settings.custom_logo_url} alt="Logo preview" className="logo-preview" onError={(e) => { e.target.style.display = 'none'; }} />
+                <img src={normalizeStorageUrl(settings.custom_logo_url)} alt="Logo preview" className="logo-preview" onError={(e) => { e.target.style.display = 'none'; }} />
               </div>
             )}
             <p className="help-text">URL to your custom logo (recommended: 200x50px PNG or SVG). Upload to Supabase or paste a URL.</p>
