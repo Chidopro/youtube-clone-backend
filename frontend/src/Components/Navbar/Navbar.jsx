@@ -15,7 +15,8 @@ import { AdminService } from '../../utils/adminService'
 import { useCreator } from '../../contexts/CreatorContext'
 
 const Navbar = ({ setSidebar, resetCategory }) => {
-    const { creatorSettings } = useCreator() || {};
+    const creatorContext = useCreator();
+    const creatorSettings = creatorContext?.creatorSettings ?? null;
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
     const [isCreatorSignupModalOpen, setIsCreatorSignupModalOpen] = useState(false);
     const [user, setUser] = useState(null);
@@ -623,10 +624,22 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                     />
                     <div className="navbar-logo-wrap">
-                        <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}> <img src={creatorSettings?.custom_logo_url || logo} alt="Logo" className={`logo ${isOrderSuccessPage ? 'order-success-logo' : ''}`} onError={(e) => { e.target.onerror = null; e.target.src = logo; if (creatorSettings?.custom_logo_url) console.warn('Custom logo failed to load. Check URL is public and correct:', creatorSettings.custom_logo_url); }} /></Link>
-                        {location.pathname.includes('/dashboard') && user && (user.role === 'creator' || user.role === 'admin') && (
-                            <Link to={{ pathname: '/dashboard', search: '?tab=personalization' }} className="navbar-logo-edit" aria-label="Edit logo in Personalization">
-                                ✏️
+                        <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}>
+                            <img
+                                key={`navbar-logo-${creatorSettings?.custom_logo_url ? 'custom' : 'default'}`}
+                                src={creatorSettings?.custom_logo_url || logo}
+                                alt="Logo"
+                                className={`logo ${isOrderSuccessPage ? 'order-success-logo' : ''}`}
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = logo;
+                                    if (creatorSettings?.custom_logo_url) console.warn('Custom logo failed to load. Check URL is public and correct:', creatorSettings.custom_logo_url);
+                                }}
+                            />
+                        </Link>
+                        {location.pathname.includes('/dashboard') && user && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && (
+                            <Link to="/dashboard?tab=personalization" className="navbar-logo-edit" aria-label="Edit logo in Personalization" title="Edit logo">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                             </Link>
                         )}
                     </div>
