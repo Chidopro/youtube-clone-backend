@@ -622,7 +622,14 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         }}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                     />
-                    <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}> <img src={creatorSettings?.custom_logo_url || logo} alt="Logo" className={`logo ${isOrderSuccessPage ? 'order-success-logo' : ''}`} onError={(e) => { e.target.onerror = null; e.target.src = logo; if (creatorSettings?.custom_logo_url) console.warn('Custom logo failed to load. Check URL is public and correct:', creatorSettings.custom_logo_url); }} /></Link>
+                    <div className="navbar-logo-wrap">
+                        <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}> <img src={creatorSettings?.custom_logo_url || logo} alt="Logo" className={`logo ${isOrderSuccessPage ? 'order-success-logo' : ''}`} onError={(e) => { e.target.onerror = null; e.target.src = logo; if (creatorSettings?.custom_logo_url) console.warn('Custom logo failed to load. Check URL is public and correct:', creatorSettings.custom_logo_url); }} /></Link>
+                        {location.pathname.includes('/dashboard') && user && (user.role === 'creator' || user.role === 'admin') && (
+                            <Link to={{ pathname: '/dashboard', search: '?tab=personalization' }} className="navbar-logo-edit" aria-label="Edit logo in Personalization">
+                                ✏️
+                            </Link>
+                        )}
+                    </div>
                 </div>
                 <div className="nav-center-right flex-div">
                     <div className="nav-middle flex-div">

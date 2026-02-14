@@ -32,6 +32,12 @@ const Dashboard = ({ sidebar }) => {
     const [isEditingAvatar, setIsEditingAvatar] = useState(false);
     const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState('videos');
+
+    // Open Personalization tab when URL has ?tab=personalization (e.g. from navbar logo edit)
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab === 'personalization') setActiveTab('personalization');
+    }, [searchParams]);
     const [currentUser, setCurrentUser] = useState(null);
     const [payoutData, setPayoutData] = useState({
         paypal_email: '',
