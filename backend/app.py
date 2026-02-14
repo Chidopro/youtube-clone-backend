@@ -6210,6 +6210,47 @@ def upload_creator_logo():
         logger.exception("upload_creator_logo: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+@app.route("/api/update-creator-settings", methods=["POST", "OPTIONS"])
+def update_creator_settings():
+    """
+    Update creator personalization settings using service role (bypasses RLS).
+    Same pattern as color persistence: save to DB so subdomain API returns updated values.
+    Body: JSON with user_id (required) and any of: custom_logo_url, primary_color, secondary_color,
+    subdomain, custom_domain, hide_screenmerch_branding, custom_favicon_url, custom_meta_title,
+    custom_meta_description, personalization_enabled.
+    """
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured (missing service role)"}), 503
+        data = request.get_json() or {}
+        user_id = (data.get("user_id") or "").strip()
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id is required"}), 400
+        allowed = {
+            "custom_logo_url", "primary_color", "secondary_color", "subdomain", "custom_domain",
+            "hide_screenmerch_branding", "custom_favicon_url", "custom_meta_title",
+            "custom_meta_description", "personalization_enabled"
+        }
+        update_data = {k: data.get(k) for k in allowed if k in data}
+        if not update_data:
+            return jsonify({"success": False, "error": "No allowed fields to update"}), 400
+        if "subdomain" in update_data and update_data["subdomain"] is not None:
+            update_data["subdomain"] = (update_data["subdomain"] or "").strip().lower() or None
+        if "custom_domain" in update_data and update_data["custom_domain"] is not None:
+            update_data["custom_domain"] = (update_data["custom_domain"] or "").strip().lower() or None
+        result = supabase_admin.table("users").update(update_data).eq("id", user_id).execute()
+        if not result.data:
+            logger.warning("update_creator_settings: no row updated for user_id=%s", user_id)
+        logger.info("Updated creator settings for user_id=%s keys=%s", user_id, list(update_data.keys()))
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        logger.exception("update_creator_settings: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 # Admin check API endpoints - bypass RLS to prevent 406 errors
 @app.route("/api/admin/check-status", methods=["GET", "OPTIONS"])
 def check_admin_status():

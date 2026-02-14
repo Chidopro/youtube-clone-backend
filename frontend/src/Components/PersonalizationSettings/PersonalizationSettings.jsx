@@ -449,8 +449,8 @@ const PersonalizationSettings = () => {
       
       let updateResult = null;
       let error = null;
-      
-      // Prepare update data
+
+      // Prepare update data (same shape as before)
       const updateData = {
         subdomain: normalizedSubdomain || null,
         custom_domain: settings.custom_domain ? settings.custom_domain.toLowerCase().trim() : null,
@@ -463,35 +463,46 @@ const PersonalizationSettings = () => {
         custom_meta_description: settings.custom_meta_description || null,
         personalization_enabled: settings.personalization_enabled || false
       };
-      
-      // Always update by id (which should match auth.uid() for RLS to work)
+
+      // Try backend first (bypasses RLS – same pattern as color persistence so logo persists on subdomain)
+      const backendUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) || 'https://screenmerch.fly.dev';
       if (userId) {
-        console.log('💾 PersonalizationSettings: Attempting to update user with ID:', userId);
-        console.log('💾 PersonalizationSettings: Update data:', updateData);
-        
+        console.log('💾 PersonalizationSettings: Saving via backend (user_id:', userId, ')');
+        try {
+          const res = await fetch(`${backendUrl}/api/update-creator-settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ user_id: userId, ...updateData })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.success) {
+            updateResult = [updateData];
+            console.log('✅ PersonalizationSettings: Saved via backend (logo/colors will persist on subdomain)');
+          } else {
+            console.warn('⚠️ Backend save failed, falling back to Supabase:', res.status, data);
+          }
+        } catch (err) {
+          console.warn('⚠️ Backend save request failed, falling back to Supabase:', err);
+        }
+      }
+
+      // Fallback: direct Supabase update (for when backend is down or not used)
+      if (userId && updateResult === null) {
+        console.log('💾 PersonalizationSettings: Attempting Supabase update for ID:', userId);
         const updateResponse = await supabase
           .from('users')
           .update(updateData)
           .eq('id', userId)
-          .select(); // Select to get updated data back
-        
+          .select();
         updateResult = updateResponse.data;
         error = updateResponse.error;
-        
         if (error) {
-          console.error('❌ Update failed with error:', error);
-          console.error('   Error code:', error.code);
-          console.error('   Error message:', error.message);
-          console.error('   Error details:', error.details);
-          console.error('   Error hint:', error.hint);
+          console.error('❌ Supabase update failed:', error);
         }
-      } else {
-        console.error('❌ No userId available for update');
+      } else if (!userId) {
         error = { message: 'No user ID available. Please log in again.' };
       }
-      
-      console.log('💾 PersonalizationSettings: Update result:', updateResult, 'Error:', error);
-      
+
       if (error) {
         console.error('❌ Error saving settings:', error);
         console.error('   Error details:', JSON.stringify(error, null, 2));

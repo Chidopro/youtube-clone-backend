@@ -468,6 +468,24 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         };
     }, [dropdownOpen]);
 
+    // Enrich user with role/status from backend so pencil (edit logo) and upload show for creators
+    useEffect(() => {
+        let isMounted = true;
+        const userId = user?.id;
+        const needsRole = userId && (user.role === undefined || user.role === null);
+        if (!needsRole) return;
+        (async () => {
+            const profile = await fetchMyProfileFromBackend(userId);
+            if (!isMounted || !profile) return;
+            const role = profile.role ?? user.role;
+            const status = profile.status ?? user.status ?? 'active';
+            if (role !== user.role || status !== user.status) {
+                setUser(prev => (prev && prev.id === userId ? { ...prev, role, status, ...profile } : prev));
+            }
+        })();
+        return () => { isMounted = false; };
+    }, [user?.id, user?.role, user?.status]);
+
     // Check admin role when user changes
     useEffect(() => {
         const checkAdminRole = async () => {
@@ -626,7 +644,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     <div className="navbar-logo-wrap">
                         <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}>
                             <img
-                                key={`navbar-logo-${creatorSettings?.custom_logo_url ? 'custom' : 'default'}`}
+                                key={`navbar-logo-${creatorSettings?.custom_logo_url || 'default'}`}
                                 src={creatorSettings?.custom_logo_url || logo}
                                 alt="Logo"
                                 className={`logo ${isOrderSuccessPage ? 'order-success-logo' : ''}`}
