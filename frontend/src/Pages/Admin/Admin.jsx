@@ -1234,14 +1234,6 @@ const Admin = () => {
               💵 Platform Revenue
             </button>
           )}
-          {isFullAdmin && (
-            <button 
-              className={`admin-tab ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => setActiveTab('settings')}
-            >
-              System Settings
-            </button>
-          )}
         </div>
 
         <div className="admin-main">
@@ -2825,25 +2817,6 @@ const Admin = () => {
                   <p>Click "Apply Filters" to load platform revenue data</p>
                 </div>
               )}
-            </div>
-          )}
-
-          {activeTab === 'settings' && isMasterAdmin && (
-            <div className="admin-settings">
-              <h3>System Settings</h3>
-              <div className="settings-section">
-                <h4>Admin Configuration</h4>
-                <p>Configure admin emails and system settings here.</p>
-                <div className="setting-item">
-                  <label>Admin Emails (comma-separated):</label>
-                  <input 
-                    type="text" 
-                    placeholder="admin@example.com, admin2@example.com"
-                    className="setting-input"
-                  />
-                </div>
-                <button className="save-settings-btn">Save Settings</button>
-              </div>
             </div>
           )}
         </div>
