@@ -6214,11 +6214,10 @@ def upload_creator_logo():
 @app.route("/api/update-creator-settings", methods=["POST", "OPTIONS"])
 def update_creator_settings():
     """
-    Update creator personalization settings using service role (bypasses RLS).
-    Same pattern as color persistence: save to DB so subdomain API returns updated values.
+    Update creator personalization and payout settings using service role (bypasses RLS).
     Body: JSON with user_id (required) and any of: custom_logo_url, primary_color, secondary_color,
     subdomain, custom_domain, hide_screenmerch_branding, custom_favicon_url, custom_meta_title,
-    custom_meta_description, personalization_enabled.
+    custom_meta_description, personalization_enabled, paypal_email, tax_id.
     """
     if request.method == "OPTIONS":
         return jsonify(success=True)
@@ -6232,7 +6231,8 @@ def update_creator_settings():
         allowed = {
             "custom_logo_url", "primary_color", "secondary_color", "subdomain", "custom_domain",
             "hide_screenmerch_branding", "custom_favicon_url", "custom_meta_title",
-            "custom_meta_description", "personalization_enabled"
+            "custom_meta_description", "personalization_enabled",
+            "paypal_email", "tax_id"
         }
         update_data = {k: data.get(k) for k in allowed if k in data}
         if not update_data:

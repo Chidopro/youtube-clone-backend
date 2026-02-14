@@ -1892,20 +1892,30 @@ const Dashboard = ({ sidebar }) => {
                                             tax_id: payoutData.tax_id.trim() || null
                                         };
 
-                                        const { data, error } = await supabase
-                                            .from('users')
-                                            .update(updateData)
-                                            .eq('id', user.id)
-                                            .select()
-                                            .single();
+                                        const backendUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) || 'https://screenmerch.fly.dev';
+                                        const res = await fetch(`${backendUrl}/api/update-creator-settings`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                                            body: JSON.stringify({ user_id: user.id, ...updateData })
+                                        });
+                                        const apiData = await res.json().catch(() => ({}));
 
-                                        if (error) throw error;
-
-                                        setPayoutMessage('Payout information saved successfully!');
-                                        setUserProfile({ ...userProfile, ...updateData });
-                                        
-                                        // Clear message after 3 seconds
-                                        setTimeout(() => setPayoutMessage(''), 3000);
+                                        if (res.ok && apiData.success) {
+                                            setPayoutMessage('Payout information saved successfully!');
+                                            setUserProfile({ ...userProfile, ...updateData });
+                                            setTimeout(() => setPayoutMessage(''), 3000);
+                                        } else {
+                                            const { error } = await supabase
+                                                .from('users')
+                                                .update(updateData)
+                                                .eq('id', user.id)
+                                                .select()
+                                                .single();
+                                            if (error) throw error;
+                                            setPayoutMessage('Payout information saved successfully!');
+                                            setUserProfile({ ...userProfile, ...updateData });
+                                            setTimeout(() => setPayoutMessage(''), 3000);
+                                        }
                                     } catch (error) {
                                         console.error('Error saving payout info:', error);
                                         setPayoutMessage(`Failed to save payout information: ${error.message}`);
