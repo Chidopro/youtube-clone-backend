@@ -21,6 +21,7 @@ const Admin = () => {
   const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState('active'); // Filter for subscriptions
   const [pendingPayouts, setPendingPayouts] = useState([]);
   const [payoutHistory, setPayoutHistory] = useState([]);
+  const [creatorsPayoutList, setCreatorsPayoutList] = useState([]);
   const [payoutLoading, setPayoutLoading] = useState(false);
   const [pendingApprovalUsers, setPendingApprovalUsers] = useState([]);
   const [pendingApprovalLoading, setPendingApprovalLoading] = useState(false);
@@ -314,12 +315,14 @@ const Admin = () => {
   const loadPayouts = async () => {
     setPayoutLoading(true);
     try {
-      const [pending, history] = await Promise.all([
+      const [pending, history, creators] = await Promise.all([
         AdminService.getPendingPayouts(),
-        AdminService.getPayoutHistory()
+        AdminService.getPayoutHistory(),
+        AdminService.getCreatorsPayoutList()
       ]);
       setPendingPayouts(pending);
       setPayoutHistory(history);
+      setCreatorsPayoutList(creators);
     } catch (error) {
       console.error('Error loading payouts:', error);
     } finally {
@@ -1779,6 +1782,64 @@ const Admin = () => {
                 </div>
               ) : (
                 <>
+                  <div className="payouts-section payouts-creators-list">
+                    <h4>Creators & payout info</h4>
+                    <p className="payouts-section-desc">All creators with PayPal email and pending balance. Process payouts from &quot;Pending Payouts&quot; when balance ≥ $50.</p>
+                    {creatorsPayoutList.length === 0 ? (
+                      <div className="no-payouts">
+                        <p>No creators found.</p>
+                      </div>
+                    ) : (
+                      <div className="payouts-table-wrap">
+                        <table className="payouts-table payouts-creators-table">
+                          <thead>
+                            <tr>
+                              <th>Creator</th>
+                              <th>Email</th>
+                              <th>Subdomain</th>
+                              <th>PayPal Email</th>
+                              <th>Pending</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {creatorsPayoutList.map(c => (
+                              <tr key={c.id}>
+                                <td>
+                                  <div className="payout-creator-info">
+                                    <img src={c.profile_image_url || '/default-avatar.jpg'} alt="" className="payout-creator-avatar" onError={e => { e.target.src = '/default-avatar.jpg'; }} />
+                                    <span>{c.display_name}</span>
+                                  </div>
+                                </td>
+                                <td><span className="payout-email-cell">{c.email}</span></td>
+                                <td><span className="payout-subdomain-cell">{c.subdomain || '—'}</span></td>
+                                <td>
+                                  {c.paypal_email ? (
+                                    <span className="payout-paypal-ok">{c.paypal_email}</span>
+                                  ) : (
+                                    <span className="payout-paypal-missing">Not set</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <span className="payout-amount-cell">${c.pending_amount.toFixed(2)}</span>
+                                </td>
+                                <td>
+                                  {c.pending_amount >= 50 && c.paypal_email ? (
+                                    <span className="payout-status-badge ready">Ready</span>
+                                  ) : !c.paypal_email ? (
+                                    <span className="payout-status-badge no-paypal">No PayPal</span>
+                                  ) : (
+                                    <span className="payout-status-badge below">Below $50</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="payouts-section">
                     <h4>Pending Payouts ({pendingPayouts.length})</h4>
                     {pendingPayouts.length === 0 ? (

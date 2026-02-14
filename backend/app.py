@@ -5492,6 +5492,45 @@ def admin_pending_creators():
         return jsonify({"success": False, "error": str(e), "pending_creators": []}), 500
 
 
+@app.route("/api/admin/creators-payout-list", methods=["GET", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_creators_payout_list():
+    """List all creators with payout-related info (display_name, email, paypal_email, subdomain, pending_amount). Master Admin only."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        err, code = _require_master_admin()
+        if err is not None:
+            return err, code
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            return jsonify({"success": False, "error": "Database unavailable", "creators": []}), 500
+        r = client.table("users").select("id, display_name, email, paypal_email, subdomain, profile_image_url, status").eq("role", "creator").order("display_name").execute()
+        creators = list(r.data or [])
+        earnings_r = client.table("creator_earnings").select("user_id, creator_share").eq("status", "pending").execute()
+        pending_by_user = {}
+        for row in (earnings_r.data or []):
+            uid = row.get("user_id")
+            amt = float(row.get("creator_share") or 0)
+            pending_by_user[uid] = pending_by_user.get(uid, 0) + amt
+        out = []
+        for c in creators:
+            out.append({
+                "id": c.get("id"),
+                "display_name": c.get("display_name") or c.get("email") or "—",
+                "email": c.get("email") or "",
+                "paypal_email": c.get("paypal_email") or "",
+                "subdomain": c.get("subdomain") or "",
+                "profile_image_url": c.get("profile_image_url"),
+                "status": c.get("status") or "active",
+                "pending_amount": round(pending_by_user.get(c.get("id"), 0), 2)
+            })
+        return jsonify({"success": True, "creators": out})
+    except Exception as e:
+        logger.exception("admin_creators_payout_list: %s", e)
+        return jsonify({"success": False, "error": str(e), "creators": []}), 500
+
+
 @app.route("/api/admin/approve-creator/<user_id>", methods=["POST", "OPTIONS"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def admin_approve_creator(user_id):

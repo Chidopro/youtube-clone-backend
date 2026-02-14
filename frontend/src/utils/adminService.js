@@ -1012,6 +1012,29 @@ export class AdminService {
   }
 
   /**
+   * Get all creators with payout-related info (for admin Payouts page list).
+   * @returns {Promise<Array>} List of { id, display_name, email, paypal_email, subdomain, profile_image_url, status, pending_amount }
+   */
+  static async getCreatorsPayoutList() {
+    try {
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) throw new Error('Not authenticated');
+      const base = getAdminApiBase();
+      const res = await fetch(`${base}/api/admin/creators-payout-list`, {
+        method: 'GET',
+        headers: { 'X-User-Email': currentUser.userEmail },
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      return data.creators || [];
+    } catch (error) {
+      console.error('Error fetching creators payout list:', error);
+      return [];
+    }
+  }
+
+  /**
    * Get payout history
    * @returns {Promise<Array>} Payout history
    */

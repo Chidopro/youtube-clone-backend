@@ -801,6 +801,209 @@ tr:hover {
   text-decoration: underline;
 }
 
+/* ========== Payouts page ========== */
+.admin-payouts {
+  max-width: 1100px;
+  padding: 0 4px;
+}
+
+.admin-payouts .payouts-header {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  border: 1px solid #dee2e6;
+}
+
+.admin-payouts .payouts-header h3 {
+  margin: 0 0 6px 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.admin-payouts .payouts-header p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #5a6268;
+  line-height: 1.45;
+}
+
+.admin-payouts .payouts-section {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  padding: 20px 22px;
+  margin-bottom: 24px;
+}
+
+.admin-payouts .payouts-section.payouts-creators-list {
+  margin-bottom: 28px;
+}
+
+.admin-payouts .payouts-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.admin-payouts .payouts-section-desc {
+  margin: 0 0 16px 0;
+  font-size: 0.9rem;
+  color: #6c757d;
+  line-height: 1.45;
+}
+
+.admin-payouts .no-payouts {
+  padding: 20px 0;
+  text-align: center;
+  color: #6c757d;
+  font-size: 0.95rem;
+}
+
+.admin-payouts .no-payouts p {
+  margin: 0;
+}
+
+.admin-payouts .payouts-table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e9ecef;
+}
+
+.admin-payouts .payouts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-payouts .payouts-table th {
+  text-align: left;
+  padding: 12px 14px;
+  background: #f1f3f5;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.admin-payouts .payouts-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+.admin-payouts .payouts-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.admin-payouts .payouts-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-payouts .payout-creator-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-payouts .payout-creator-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.admin-payouts .payout-email-cell,
+.admin-payouts .payout-subdomain-cell {
+  color: #495057;
+}
+
+.admin-payouts .payout-paypal-ok {
+  color: #198754;
+  font-weight: 500;
+}
+
+.admin-payouts .payout-paypal-missing {
+  color: #dc3545;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+.admin-payouts .payout-amount-cell {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.admin-payouts .payout-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.admin-payouts .payout-status-badge.ready {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.admin-payouts .payout-status-badge.below {
+  background: #fff3cd;
+  color: #664d03;
+}
+
+.admin-payouts .payout-status-badge.no-paypal {
+  background: #f8d7da;
+  color: #842029;
+}
+
+.admin-payouts .user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-payouts .user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.admin-payouts .action-btn.approve {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.admin-payouts .action-btn.approve:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.admin-payouts .status-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.admin-payouts .status-badge.completed,
+.admin-payouts .status-badge.paid {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.admin-payouts .status-badge.pending {
+  background: #fff3cd;
+  color: #664d03;
+}
+
 /* ========== Pending Approval page (single spot under Payouts) ========== */
 .admin-pending-approval {
   max-width: 900px;
