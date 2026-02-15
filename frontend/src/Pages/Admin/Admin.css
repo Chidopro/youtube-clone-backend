@@ -384,6 +384,8 @@
   background: var(--sm-bg);
   border-left: 1px solid var(--sm-border);
   text-align: right;
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .admin-users .users-table td {
@@ -406,6 +408,7 @@
   z-index: 1;
   border-left: 1px solid var(--sm-border);
   text-align: right;
+  white-space: nowrap;
 }
 
 .admin-users .users-table tbody tr:hover .users-table-actions-cell {
