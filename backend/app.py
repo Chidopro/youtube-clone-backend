@@ -5368,6 +5368,12 @@ def admin_dashboard_stats():
                 if stats_row.get('pending_users') is None:
                     pending_res = client_to_use.table('users').select('id').eq('status', 'pending').execute()
                     stats_row['pending_users'] = len(pending_res.data) if pending_res.data else 0
+                # Add creator_count and customer_count (not total subscriptions)
+                if stats_row.get('creator_count') is None or stats_row.get('customer_count') is None:
+                    creators_res = client_to_use.table('users').select('id').eq('role', 'creator').execute()
+                    customers_res = client_to_use.table('users').select('id').eq('role', 'customer').execute()
+                    stats_row['creator_count'] = len(creators_res.data) if creators_res.data else 0
+                    stats_row['customer_count'] = len(customers_res.data) if customers_res.data else 0
                 return jsonify(stats_row)
         except Exception as view_error:
             logger.warning(f"Could not use admin_dashboard_stats view: {view_error}, calculating manually")
@@ -5402,11 +5408,13 @@ def admin_dashboard_stats():
             approved_videos_result = client_to_use.table('videos2').select('id').eq('verification_status', 'approved').execute()
             approved_videos = len(approved_videos_result.data) if approved_videos_result.data else 0
             
-            # Get total subscriptions
-            subscriptions_result = client_to_use.table('user_subscriptions').select('id').execute()
-            total_subscriptions = len(subscriptions_result.data) if subscriptions_result.data else 0
+            # Creator and customer counts (by role), not total subscriptions
+            creators_result = client_to_use.table('users').select('id').eq('role', 'creator').execute()
+            customers_result = client_to_use.table('users').select('id').eq('role', 'customer').execute()
+            creator_count = len(creators_result.data) if creators_result.data else 0
+            customer_count = len(customers_result.data) if customers_result.data else 0
             
-            # Get active subscriptions
+            # Get active subscriptions (kept for internal use only)
             active_subscriptions_result = client_to_use.table('user_subscriptions').select('id').eq('status', 'active').execute()
             active_subscriptions = len(active_subscriptions_result.data) if active_subscriptions_result.data else 0
             
@@ -5437,7 +5445,8 @@ def admin_dashboard_stats():
                 "total_videos": total_videos,
                 "pending_videos": pending_videos,
                 "approved_videos": approved_videos,
-                "total_subscriptions": total_subscriptions,
+                "creator_count": creator_count,
+                "customer_count": customer_count,
                 "active_subscriptions": active_subscriptions,
                 "premium_subscriptions": premium_subscriptions,
                 "creator_network_subscriptions": creator_network_subscriptions,

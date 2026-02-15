@@ -309,6 +309,18 @@
   overflow: hidden;
 }
 
+.subscriptions-creator-customer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.subscriptions-creator-customer .subscriptions-section h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: #495057;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

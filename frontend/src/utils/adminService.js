@@ -244,7 +244,8 @@ export class AdminService {
         total_videos: 0,
         pending_videos: 0,
         approved_videos: 0,
-        total_subscriptions: 0,
+        creator_count: 0,
+        customer_count: 0,
         active_subscriptions: 0,
         premium_subscriptions: 0,
         creator_network_subscriptions: 0
@@ -381,7 +382,7 @@ export class AdminService {
     try {
       let query = supabase
         .from('user_subscriptions')
-        .select('*, users(display_name, email)')
+        .select('*, users(display_name, email, role)')
         .order('created_at', { ascending: false });
 
       // Filter subscriptions by status

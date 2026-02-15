@@ -889,7 +889,8 @@ const Admin = () => {
       setStats({
         totalUsers: data.total_users || 0,
         totalVideos: data.total_videos || 0,
-        totalSubscriptions: data.total_subscriptions || 0,
+        creatorCount: data.creator_count ?? 0,
+        customerCount: data.customer_count ?? 0,
         pendingVideos: data.pending_videos || 0,
         pendingUsers: data.pending_users || 0,
         activeUsers: data.active_users || 0,
@@ -1257,8 +1258,12 @@ const Admin = () => {
                   <p className="stat-number">{stats.totalVideos}</p>
                 </div>
                 <div className="stat-card">
-                  <h3>Active Subscriptions</h3>
-                  <p className="stat-number">{stats.totalSubscriptions}</p>
+                  <h3>Creator Count</h3>
+                  <p className="stat-number">{stats.creatorCount}</p>
+                </div>
+                <div className="stat-card">
+                  <h3>Customer Count</h3>
+                  <p className="stat-number">{stats.customerCount}</p>
                 </div>
               </div>
 
@@ -1676,89 +1681,75 @@ const Admin = () => {
             </div>
           )}
 
-          {activeTab === 'subscriptions' && isMasterAdmin && (
+          {activeTab === 'subscriptions' && isMasterAdmin && (() => {
+            const creatorSubs = subscriptions.filter(sub => sub.users?.role === 'creator');
+            const customerSubs = subscriptions.filter(sub => sub.users?.role !== 'creator');
+            const renderSubTable = (list, emptyLabel) => (
+              <table>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>User email</th>
+                    <th>Tier</th>
+                    <th>Status</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th style={{ backgroundColor: '#ffeb3b', color: '#000', minWidth: '150px', position: 'sticky', right: '0' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '12px', color: '#666' }}>{emptyLabel}</td></tr>
+                  ) : (
+                    list.map(sub => (
+                      <tr key={sub.id}>
+                        <td>{sub.users?.display_name || '—'}</td>
+                        <td>{sub.users?.email || sub.email || '—'}</td>
+                        <td><span className={`tier-badge ${sub.tier}`}>{sub.tier}</span></td>
+                        <td><span className={`status-badge ${sub.status}`}>{sub.status}</span></td>
+                        <td>{sub.current_period_start ? new Date(sub.current_period_start).toLocaleDateString() : 'N/A'}</td>
+                        <td>{sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : 'N/A'}</td>
+                        <td style={{ minWidth: '150px', position: 'sticky', right: '0', backgroundColor: '#fff', zIndex: 10 }}>
+                          <div className="action-buttons">
+                            {sub.status === 'canceled' ? (
+                              <button onClick={() => handleSubscriptionAction(sub.id, 'reactivate')} className="action-btn activate" style={{ backgroundColor: '#28a745', color: 'white' }}>Reactivate</button>
+                            ) : (
+                              <button onClick={() => handleSubscriptionAction(sub.id, 'delete')} className="action-btn delete" style={{ backgroundColor: '#dc3545', color: 'white' }}>Delete</button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            );
+            return (
             <div className="admin-subscriptions">
               <h3>Subscription Management</h3>
               <p className="admin-note" style={{ marginBottom: '12px', fontSize: '13px', color: '#666' }}>
                 To fully delete a user and reuse their email, you must also delete them in Supabase: <strong>Authentication → Users</strong> (and optionally the row in Table Editor → users).
               </p>
               <div className="admin-filters">
-                <select 
-                  value={subscriptionStatusFilter} 
-                  onChange={(e) => setSubscriptionStatusFilter(e.target.value)}
-                  className="admin-filter"
-                >
+                <select value={subscriptionStatusFilter} onChange={(e) => setSubscriptionStatusFilter(e.target.value)} className="admin-filter">
                   <option value="active">Active Subscriptions</option>
                   <option value="canceled">Canceled Subscriptions</option>
                   <option value="all">All Subscriptions</option>
                 </select>
               </div>
-              <div className="subscriptions-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>User</th>
-                      <th>User email</th>
-                      <th>Tier</th>
-                      <th>Status</th>
-                      <th>Start Date</th>
-                      <th>End Date</th>
-                      <th style={{ backgroundColor: '#ffeb3b', color: '#000', minWidth: '150px', position: 'sticky', right: '0' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {subscriptions.map(sub => (
-                      <tr key={sub.id}>
-                        <td>{sub.users?.display_name || '—'}</td>
-                        <td>{sub.users?.email || sub.email || '—'}</td>
-                        <td>
-                          <span className={`tier-badge ${sub.tier}`}>
-                            {sub.tier}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`status-badge ${sub.status}`}>
-                            {sub.status}
-                          </span>
-                        </td>
-                        <td>
-                          {sub.current_period_start 
-                            ? new Date(sub.current_period_start).toLocaleDateString() 
-                            : 'N/A'}
-                        </td>
-                        <td>
-                          {sub.current_period_end 
-                            ? new Date(sub.current_period_end).toLocaleDateString() 
-                            : 'N/A'}
-                        </td>
-                        <td style={{ minWidth: '150px', position: 'sticky', right: '0', backgroundColor: '#fff', zIndex: 10 }}>
-                          <div className="action-buttons">
-                            {sub.status === 'canceled' ? (
-                              <button
-                                onClick={() => handleSubscriptionAction(sub.id, 'reactivate')}
-                                className="action-btn activate"
-                                style={{ backgroundColor: '#28a745', color: 'white' }}
-                              >
-                                Reactivate
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleSubscriptionAction(sub.id, 'delete')}
-                                className="action-btn delete"
-                                style={{ backgroundColor: '#dc3545', color: 'white' }}
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="subscriptions-creator-customer">
+                <div className="subscriptions-section">
+                  <h4>Creators ({creatorSubs.length})</h4>
+                  <div className="subscriptions-table">{renderSubTable(creatorSubs, 'No creator subscriptions.')}</div>
+                </div>
+                <div className="subscriptions-section">
+                  <h4>Customers ({customerSubs.length})</h4>
+                  <div className="subscriptions-table">{renderSubTable(customerSubs, 'No customer subscriptions.')}</div>
+                </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {activeTab === 'payouts' && isMasterAdmin && (
             <div className="admin-payouts">
