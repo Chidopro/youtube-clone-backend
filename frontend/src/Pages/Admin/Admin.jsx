@@ -1315,7 +1315,7 @@ const Admin = () => {
                       <th>Subdomain</th>
                       <th>Joined</th>
                       <th>Status</th>
-                      <th style={{ backgroundColor: '#ffeb3b', color: '#000', minWidth: '200px', position: 'sticky', right: '0' }}>Actions</th>
+                      <th className="users-table-actions-header">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1341,15 +1341,7 @@ const Admin = () => {
                         </td>
                         <td>{user.email}</td>
                         <td>
-                          <span style={{ 
-                            padding: '4px 8px', 
-                            borderRadius: '4px', 
-                            backgroundColor: user.role === 'creator' ? '#e3f2fd' : '#f5f5f5',
-                            color: user.role === 'creator' ? '#1976d2' : '#666',
-                            textTransform: 'capitalize',
-                            fontSize: '12px',
-                            fontWeight: '500'
-                          }}>
+                          <span className={`role-badge role-badge--${user.role === 'creator' ? 'creator' : 'customer'}`}>
                             {user.role || 'customer'}
                           </span>
                         </td>
@@ -1513,7 +1505,7 @@ const Admin = () => {
                             {user.status ? user.status.toUpperCase() : 'ACTIVE'}
                           </span>
                         </td>
-                        <td style={{ minWidth: '200px', position: 'sticky', right: '0', backgroundColor: '#fff', zIndex: 10 }}>
+                        <td className="users-table-actions-cell">
                           <div className="action-buttons">
                             {user.status === 'pending' && (
                               <button

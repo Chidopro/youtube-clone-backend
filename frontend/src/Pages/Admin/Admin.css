@@ -299,6 +299,215 @@
   min-width: 150px;
 }
 
+/* ========== User Management – ScreenMerch style ========== */
+.admin-users {
+  --sm-primary: #667eea;
+  --sm-primary-dark: #5a67d8;
+  --sm-secondary: #764ba2;
+  --sm-text: #2d3748;
+  --sm-text-muted: #718096;
+  --sm-border: #e2e8f0;
+  --sm-bg: #f7fafc;
+}
+
+.admin-users .admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem 0;
+}
+
+.admin-users .admin-search {
+  max-width: 320px;
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--sm-border);
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  color: var(--sm-text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.admin-users .admin-search::placeholder {
+  color: var(--sm-text-muted);
+}
+
+.admin-users .admin-search:focus {
+  outline: none;
+  border-color: var(--sm-primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.admin-users .admin-filter {
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--sm-border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.9375rem;
+  color: var(--sm-text);
+  min-width: 140px;
+  transition: border-color 0.2s;
+}
+
+.admin-users .admin-filter:focus {
+  outline: none;
+  border-color: var(--sm-primary);
+}
+
+.admin-users .users-table {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  border: 1px solid var(--sm-border);
+}
+
+.admin-users .users-table table {
+  min-width: 1200px;
+}
+
+.admin-users .users-table th {
+  background: var(--sm-bg);
+  padding: 0.875rem 1rem;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sm-text-muted);
+  border-bottom: 1px solid var(--sm-border);
+}
+
+.admin-users .users-table-actions-header {
+  min-width: 200px;
+  position: sticky;
+  right: 0;
+  background: var(--sm-bg);
+  border-left: 1px solid var(--sm-border);
+  text-align: right;
+}
+
+.admin-users .users-table td {
+  padding: 0.875rem 1rem;
+  font-size: 0.9375rem;
+  color: var(--sm-text);
+  border-bottom: 1px solid var(--sm-border);
+  vertical-align: middle;
+}
+
+.admin-users .users-table tbody tr:hover {
+  background: var(--sm-bg);
+}
+
+.admin-users .users-table-actions-cell {
+  min-width: 200px;
+  position: sticky;
+  right: 0;
+  background: inherit;
+  z-index: 1;
+  border-left: 1px solid var(--sm-border);
+  text-align: right;
+}
+
+.admin-users .users-table tbody tr:hover .users-table-actions-cell {
+  background: var(--sm-bg);
+}
+
+.admin-users .user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-users .user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--sm-border);
+}
+
+.admin-users .user-info span {
+  font-weight: 500;
+  color: var(--sm-text);
+}
+
+/* Role badge – creator uses ScreenMerch purple */
+.admin-users .role-badge {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.admin-users .role-badge--creator {
+  background: rgba(102, 126, 234, 0.12);
+  color: var(--sm-primary);
+}
+
+.admin-users .role-badge--customer {
+  background: #edf2f7;
+  color: var(--sm-text-muted);
+}
+
+.admin-users .action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.admin-users .action-btn {
+  padding: 0.5rem 0.875rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.admin-users .action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.admin-users .action-btn.suspend {
+  background: #ed8936;
+  color: #fff;
+}
+
+.admin-users .action-btn.suspend:hover:not(:disabled) {
+  background: #dd6b20;
+}
+
+.admin-users .action-btn.activate,
+.admin-users .action-btn.approve {
+  background: #38a169;
+  color: #fff;
+}
+
+.admin-users .action-btn.activate:hover:not(:disabled),
+.admin-users .action-btn.approve:hover:not(:disabled) {
+  background: #2f855a;
+}
+
+.admin-users .action-btn.delete {
+  background: #e53e3e;
+  color: #fff;
+}
+
+.admin-users .action-btn.delete:hover:not(:disabled) {
+  background: #c53030;
+}
+
+.admin-users .action-btn.reset-analytics {
+  background: #dd6b20;
+  color: #fff;
+}
+
+.admin-users .action-btn.reset-analytics:hover:not(:disabled) {
+  background: #c05621;
+}
+
 /* Table Styles */
 .users-table,
 .videos-table,
