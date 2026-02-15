@@ -574,14 +574,15 @@ export class AdminService {
    */
   static async deleteUser(userId) {
     try {
+      const base = getAdminApiBase();
+      const url = `${base}/api/users/${userId}/delete-account`;
       console.log('🗑️ Deleting user:', userId);
-      console.log('🗑️ API URL:', `${API_CONFIG.SUBSCRIPTION_API_URL}/api/users/${userId}/delete-account`);
-      
-      const response = await fetch(`${API_CONFIG.SUBSCRIPTION_API_URL}/api/users/${userId}/delete-account`, {
+      console.log('🗑️ API URL:', url);
+
+      const response = await fetch(url, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
       console.log('🗑️ Delete response status:', response.status);
