@@ -599,11 +599,11 @@ def auth_signup_email_only():
         result = client.table('users').insert(new_user).execute()
         
         if result.data:
-            # Send verification email
-            resend_api_key = _get_config('RESEND_API_KEY')
-            resend_from = _get_config('RESEND_FROM', 'noreply@screenmerch.com')
+            # Send verification email (prefer config, fallback to env for Resend)
+            resend_api_key = _get_config('RESEND_API_KEY') or os.getenv('RESEND_API_KEY')
+            resend_from = _get_config('RESEND_FROM') or os.getenv('RESEND_FROM', 'noreply@screenmerch.com')
             frontend_url = os.getenv("FRONTEND_URL", "https://screenmerch.com")
-            verification_link = f"{frontend_url}/verify-email?token={verification_token}&email={email}"
+            verification_link = f"{frontend_url}/verify-email?token={verification_token}&email={quote(email, safe='')}"
             
             if resend_api_key:
                 try:
@@ -650,8 +650,12 @@ def auth_signup_email_only():
                     
                     if email_response.status_code == 200:
                         logger.info(f"✅ Verification email sent successfully to {email}")
+                    else:
+                        logger.warning(f"Resend returned {email_response.status_code}: {email_response.text}")
                 except Exception as email_error:
                     logger.error(f"❌ Error sending verification email: {str(email_error)}")
+            else:
+                logger.warning("RESEND_API_KEY not set - verification email not sent. Set RESEND_API_KEY (and RESEND_FROM) in Fly.io secrets.")
             
             response = jsonify({
                 "success": True,

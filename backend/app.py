@@ -7260,7 +7260,7 @@ def auth_signup_email_only():
                                 pass
                     else:
                         logger.error("🔵 [EMAIL-ONLY-SIGNUP] ❌ RESEND_API_KEY not configured - verification email not sent")
-                        logger.error("🔵 [EMAIL-ONLY-SIGNUP] ❌ Please set RESEND_API_KEY environment variable in Fly.io")
+                        logger.error("🔵 [EMAIL-ONLY-SIGNUP] ❌ Set RESEND_API_KEY and RESEND_FROM in Fly.io Secrets (Settings → Secrets) and redeploy.")
                     
                 except Exception as email_error:
                     logger.error(f"🔵 [EMAIL-ONLY-SIGNUP] ❌ Exception sending verification email: {str(email_error)}")
