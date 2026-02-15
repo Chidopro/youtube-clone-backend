@@ -521,6 +521,7 @@ const ProductPage = ({ sidebar }) => {
       screenshot: screenshotUrl,
       selected_screenshot: screenshotUrl,
       qty: 1,
+      category: category || '', // womens, mens, kids = shirts (need portrait/landscape); others skip design modal
       // Include video metadata in cart item (screenshot_timestamp for email/Print Quality)
       ...videoMetadata
     };

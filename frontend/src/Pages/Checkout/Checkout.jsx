@@ -20,6 +20,10 @@ const Checkout = () => {
   const [designConfirmed, setDesignConfirmed] = useState(false);
   const designModalShownOnLoadRef = useRef(false);
 
+  // Portrait/landscape confirmation only for shirts (Womens, Mens, Kids). Other categories go straight to checkout.
+  const SHIRT_CATEGORIES = ['womens', 'mens', 'kids'];
+  const cartNeedsDesignModal = (itemList) => (itemList || items).some(it => SHIRT_CATEGORIES.includes(it.category));
+
   // Keep ref in sync with state
   useEffect(() => {
     shippingRef.current = shipping;
@@ -37,11 +41,15 @@ const Checkout = () => {
     }
   }, []);
 
-  // Show design modal as soon as user lands on checkout (from cart) — before they enter zip
+  // Show design modal only when cart has shirt items (Womens, Mens, Kids). Other categories go straight to checkout.
   useEffect(() => {
     if (items.length > 0 && !designModalShownOnLoadRef.current) {
       designModalShownOnLoadRef.current = true;
-      setShowDesignModal(true);
+      if (cartNeedsDesignModal(items)) {
+        setShowDesignModal(true);
+      } else {
+        setDesignConfirmed(true);
+      }
     }
   }, [items.length]);
 
@@ -585,10 +593,13 @@ const Checkout = () => {
                   ? 'Calculating shipping...'
                   : 'Ready to checkout'}
                 onClick={() => {
-                // Require design preferences first (modal shows when they click Checkout from cart)
+                // Require design preferences only for shirts (Womens, Mens, Kids). Other categories skip modal.
                 if (!designConfirmed) {
-                  setShowDesignModal(true);
-                  return;
+                  if (cartNeedsDesignModal(items)) {
+                    setShowDesignModal(true);
+                    return;
+                  }
+                  setDesignConfirmed(true);
                 }
                 const zipInput = document.querySelector('input[aria-label="ZIP or Postal Code"]');
                 const zipValue = String(zipInput?.value ?? address.zip ?? '').trim();
@@ -639,9 +650,11 @@ const Checkout = () => {
                   });
                 };
                 const itemName = item.name || item.product || `Item ${i + 1}`;
+                const isShirt = SHIRT_CATEGORIES.includes(item.category);
                 return (
                   <div key={i} className="design-modal-item-block">
                     <h3 className="design-modal-item-title">{itemName}</h3>
+                    {isShirt && (
                     <div className="design-modal-field">
                       <label>Image orientation</label>
                       <div className="design-modal-options">
@@ -655,6 +668,7 @@ const Checkout = () => {
                         </label>
                       </div>
                     </div>
+                    )}
                     <div className="design-modal-field">
                       <label>Feather edge?</label>
                       <div className="design-modal-options">
@@ -708,13 +722,14 @@ const Checkout = () => {
                   const p = designPreferences[i] ?? {};
                   return p.feather === 'yes' || p.cornerRadius === 'yes' || p.frame === 'yes';
                 });
-                const allHaveOrientation = items.every((_, i) => {
+                const allShirtItemsHaveOrientation = items.every((it, i) => {
+                  if (!SHIRT_CATEGORIES.includes(it.category)) return true;
                   const o = (designPreferences[i] ?? {}).orientation;
                   return o === 'portrait' || o === 'landscape';
                 });
                 const handleContinue = () => {
-                  if (!allHaveOrientation) {
-                    alert('Please choose Image orientation (Portrait or Landscape) for every item before continuing.');
+                  if (!allShirtItemsHaveOrientation) {
+                    alert('Please choose Image orientation (Portrait or Landscape) for each shirt item before continuing.');
                     return;
                   }
                   const updated = items.map((it, idx) => ({
@@ -730,8 +745,8 @@ const Checkout = () => {
                   setShowDesignModal(false);
                 };
                 const handleGoToTools = () => {
-                  if (!allHaveOrientation) {
-                    alert('Please choose Image orientation (Portrait or Landscape) for every item before continuing.');
+                  if (!allShirtItemsHaveOrientation) {
+                    alert('Please choose Image orientation (Portrait or Landscape) for each shirt item before continuing.');
                     return;
                   }
                   setShowDesignModal(false);
