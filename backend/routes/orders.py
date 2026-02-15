@@ -177,8 +177,10 @@ def _record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=N
                 try:
                     user_result = client.table('users').select('role').eq('id', creator_user_id).single().execute()
                     if user_result.data and user_result.data.get('role') == 'creator':
-                        creator_share = item_price * 0.70
-                        platform_fee = item_price * 0.30
+                        from utils.payout import get_payout_for_sale
+                        product_name = sale_data.get('product_name') or item.get('product') or ''
+                        quantity = item.get('quantity', 1)
+                        creator_share, platform_fee = get_payout_for_sale(product_name, item_price, quantity)
                         earnings_order_id = order_id or item.get('order_id') or f"ORD-{str(uuid.uuid4())[:8].upper()}"
                         
                         earnings_data = {

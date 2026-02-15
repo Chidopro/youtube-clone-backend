@@ -2421,9 +2421,11 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
                 # Check if user is a creator
                 user_result = client_to_use.table('users').select('role').eq('id', creator_user_id).single().execute()
                 if user_result.data and user_result.data.get('role') == 'creator':
-                    # Calculate earnings (70% creator, 30% platform)
-                    creator_share = item_price * 0.70
-                    platform_fee = item_price * 0.30
+                    # Precise payout: $10 markup = $7 creator / $3 platform per sale; cards/stickers/magnets use 70/30 (TBD)
+                    from utils.payout import get_payout_for_sale
+                    product_name = sale_data.get('product_name') or item.get('product') or ''
+                    quantity = item.get('quantity', 1)
+                    creator_share, platform_fee = get_payout_for_sale(product_name, item_price, quantity)
                     
                     # Get order_id from item if available, otherwise generate one (shorter format)
                     fallback_id = f"ORD-{str(uuid.uuid4())[:8].upper()}"
