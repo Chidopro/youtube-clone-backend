@@ -1576,7 +1576,7 @@ const Admin = () => {
                             }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <option value="">Actions</option>
+                            <option value="">Select...</option>
                             {user.status === 'pending' && <option value="approve">Approve</option>}
                             <option value="suspend" disabled={user.status === 'suspended'}>Suspend</option>
                             <option value="activate" disabled={user.status === 'active' || user.status === 'pending'}>Activate</option>
