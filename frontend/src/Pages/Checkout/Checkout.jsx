@@ -636,7 +636,6 @@ const Checkout = () => {
         <div className="design-modal-overlay" onClick={() => setShowDesignModal(false)}>
           <div className="design-modal design-modal--multi" onClick={e => e.stopPropagation()}>
             <h2>Design preferences</h2>
-            <p className="design-modal-subtitle">Confirm style for each item before checkout.</p>
 
             <div className="design-modal-items">
               {items.map((item, i) => {
@@ -657,21 +656,18 @@ const Checkout = () => {
                     {isShirt && (
                     <div className="design-modal-field design-modal-field--orientation">
                       <label>Image orientation</label>
-                      <p className="design-modal-orientation-hint">Choose how your image fits on the product. Portrait is taller (more crop); landscape is wider (less crop).</p>
                       <div className="design-modal-orientation-options">
                         <label className={`design-modal-orientation-card ${prefs.orientation === 'portrait' ? 'design-modal-orientation-card--selected' : ''}`}>
                           <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'portrait'} onChange={() => setPref('orientation', 'portrait')} className="design-modal-orientation-radio" />
                           <div className="design-modal-orientation-visual design-modal-orientation-visual--portrait" aria-hidden="true">
                             <span className="design-modal-orientation-visual-label">Portrait</span>
                           </div>
-                          <span className="design-modal-orientation-explain">Taller frame · more crop</span>
                         </label>
                         <label className={`design-modal-orientation-card ${prefs.orientation === 'landscape' ? 'design-modal-orientation-card--selected' : ''}`}>
                           <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'landscape'} onChange={() => setPref('orientation', 'landscape')} className="design-modal-orientation-radio" />
                           <div className="design-modal-orientation-visual design-modal-orientation-visual--landscape" aria-hidden="true">
                             <span className="design-modal-orientation-visual-label">Landscape</span>
                           </div>
-                          <span className="design-modal-orientation-explain">Wider frame · less crop</span>
                         </label>
                       </div>
                     </div>
