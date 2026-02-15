@@ -1096,6 +1096,22 @@ const Admin = () => {
     return matchesSearch && matchesStatus && matchesRole;
   });
 
+  const usersByRole = React.useMemo(() => {
+    const out = { master_admin: [], admin: [], creator: [], customer: [] };
+    filteredUsers.forEach(u => {
+      const r = getDisplayRole(u);
+      if (out[r]) out[r].push(u);
+    });
+    return out;
+  }, [filteredUsers]);
+
+  const ROLE_SECTIONS = [
+    { key: 'master_admin', label: 'Master Admin' },
+    { key: 'admin', label: 'Admin' },
+    { key: 'creator', label: 'Creator' },
+    { key: 'customer', label: 'Customer' },
+  ];
+
   const filteredVideos = videos.filter(video => {
     const matchesSearch = video.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          video.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -1319,8 +1335,11 @@ const Admin = () => {
                 </select>
               </div>
 
-        <div className="users-table" style={{ overflowX: 'auto', width: '100%' }}>
-          <table style={{ minWidth: '1400px', width: '100%' }}>
+        {ROLE_SECTIONS.map(({ key, label }) => (
+            <div key={key} className="admin-users-role-section">
+              <h4 className="admin-users-role-section-title">{label} ({(usersByRole[key] || []).length})</h4>
+              <div className="users-table" style={{ overflowX: 'auto', width: '100%' }}>
+                <table style={{ minWidth: '1400px', width: '100%' }}>
                   <thead>
                     <tr>
                       <th>User</th>
@@ -1333,8 +1352,7 @@ const Admin = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {console.log('🔍 Rendering users table with', filteredUsers.length, 'users')}
-                    {filteredUsers.map(user => (
+                    {(usersByRole[key] || []).map(user => (
                       <tr key={user.id}>
                         <td>
                           <div className="user-info">
@@ -1611,6 +1629,8 @@ const Admin = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+        ))}
             </div>
           )}
 

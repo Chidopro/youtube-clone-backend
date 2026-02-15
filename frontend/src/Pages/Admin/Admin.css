@@ -479,6 +479,48 @@
   border-color: var(--sm-primary);
 }
 
+/* Role sections – clear blocks for Master Admin, Admin, Creator, Customer */
+.admin-users-role-section {
+  margin-bottom: 2rem;
+  padding: 0;
+}
+
+.admin-users-role-section:last-child {
+  margin-bottom: 0;
+}
+
+.admin-users-role-section-title {
+  margin: 0 0 0.75rem 0;
+  padding: 0.5rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--sm-text);
+  border-bottom: 2px solid var(--sm-border);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-users .admin-users-role-section:nth-child(1) .admin-users-role-section-title {
+  border-bottom-color: rgba(102, 126, 234, 0.5);
+  color: #4338ca;
+}
+
+.admin-users .admin-users-role-section:nth-child(2) .admin-users-role-section-title {
+  border-bottom-color: rgba(118, 75, 162, 0.5);
+  color: #5b21b6;
+}
+
+.admin-users .admin-users-role-section:nth-child(3) .admin-users-role-section-title {
+  border-bottom-color: rgba(102, 126, 234, 0.35);
+  color: var(--sm-primary);
+}
+
+.admin-users .admin-users-role-section:nth-child(4) .admin-users-role-section-title {
+  border-bottom-color: #cbd5e0;
+  color: var(--sm-text-muted);
+}
+
 .admin-users .action-buttons {
   display: flex;
   flex-wrap: wrap;
