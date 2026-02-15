@@ -1561,68 +1561,28 @@ const Admin = () => {
                           </span>
                         </td>
                         <td className="users-table-actions-cell">
-                          <div className="action-buttons">
-                            {user.status === 'pending' && (
-                              <button
-                                onClick={() => handleUserAction(user.id, 'approve')}
-                                className="action-btn approve"
-                                style={{ backgroundColor: '#28a745', color: 'white' }}
-                              >
-                                Approve
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleUserAction(user.id, 'suspend')}
-                              className="action-btn suspend"
-                              disabled={user.status === 'suspended'}
-                            >
-                              Suspend
-                            </button>
-                            <button
-                              onClick={() => handleUserAction(user.id, 'activate')}
-                              className="action-btn activate"
-                              disabled={user.status === 'active' || user.status === 'pending'}
-                            >
-                              Activate
-                            </button>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      alert('Delete button clicked!');
-                      console.log('🗑️ DELETE BUTTON CLICKED!');
-                      console.log('🗑️ User ID:', user.id);
-                      console.log('🗑️ User email:', user.email);
-                      console.log('🗑️ Event:', e);
-                      handleUserAction(user.id, 'delete');
-                    }}
-                    className="action-btn delete"
-                    style={{ backgroundColor: '#dc3545', color: 'white', padding: '8px 16px', fontSize: '14px', cursor: 'pointer' }}
-                  >
-                    Delete
-                  </button>
-                            {isMasterAdmin && user.role === 'creator' && (
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleResetAnalytics(user.id, user.email);
-                                }}
-                                className="action-btn reset-analytics"
-                                style={{ 
-                                  backgroundColor: '#ff9800', 
-                                  color: 'white', 
-                                  padding: '8px 16px', 
-                                  fontSize: '14px', 
-                                  cursor: 'pointer',
-                                  marginLeft: '4px'
-                                }}
-                                title="Reset all sales and analytics data for this creator"
-                              >
-                                🔄 Reset Analytics
-                              </button>
-                            )}
-                          </div>
+                          <select
+                            className="admin-user-actions-select"
+                            value=""
+                            onChange={(e) => {
+                              const action = e.target.value;
+                              if (!action) return;
+                              if (action === 'approve') handleUserAction(user.id, 'approve');
+                              else if (action === 'suspend') handleUserAction(user.id, 'suspend');
+                              else if (action === 'activate') handleUserAction(user.id, 'activate');
+                              else if (action === 'delete') handleUserAction(user.id, 'delete');
+                              else if (action === 'reset-analytics') handleResetAnalytics(user.id, user.email);
+                              e.target.value = '';
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <option value="">Actions</option>
+                            {user.status === 'pending' && <option value="approve">Approve</option>}
+                            <option value="suspend" disabled={user.status === 'suspended'}>Suspend</option>
+                            <option value="activate" disabled={user.status === 'active' || user.status === 'pending'}>Activate</option>
+                            <option value="delete">Delete</option>
+                            {isMasterAdmin && user.role === 'creator' && <option value="reset-analytics">Reset Analytics</option>}
+                          </select>
                         </td>
                       </tr>
                     ))}

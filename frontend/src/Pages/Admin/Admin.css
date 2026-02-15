@@ -578,6 +578,28 @@
   background: #c05621;
 }
 
+/* Actions dropdown – single select instead of multiple buttons */
+.admin-user-actions-select {
+  min-width: 140px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--sm-border);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--sm-text);
+  background: #fff;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.admin-user-actions-select:focus {
+  outline: none;
+  border-color: var(--sm-primary);
+}
+
+.admin-users .users-table-actions-cell .admin-user-actions-select {
+  min-width: 150px;
+}
+
 /* Table Styles */
 .users-table,
 .videos-table,
