@@ -119,19 +119,33 @@ export const CreatorProvider = ({ children }) => {
             link.href = userData.custom_favicon_url;
           }
           
-          // Update meta tags
-          if (userData.custom_meta_title) {
-            document.title = userData.custom_meta_title;
+          // Update meta tags (title + description) – used in browser tab and search results
+          const metaTitle = userData.custom_meta_title || (userData.display_name ? `${userData.display_name} | ScreenMerch` : null);
+          if (metaTitle) {
+            document.title = metaTitle;
           }
           
-          if (userData.custom_meta_description) {
+          const metaDescription = userData.custom_meta_description || (userData.display_name ? `Shop custom merchandise from ${userData.display_name}.` : null);
+          if (metaDescription) {
             let metaDesc = document.querySelector('meta[name="description"]');
             if (!metaDesc) {
               metaDesc = document.createElement('meta');
               metaDesc.name = 'description';
               document.getElementsByTagName('head')[0].appendChild(metaDesc);
             }
-            metaDesc.content = userData.custom_meta_description;
+            metaDesc.content = metaDescription;
+          }
+
+          // Open Graph (social sharing) – use same title/description so shared links show creator brand
+          if (metaTitle) {
+            let ogTitle = document.querySelector('meta[property="og:title"]');
+            if (!ogTitle) { ogTitle = document.createElement('meta'); ogTitle.setAttribute('property', 'og:title'); document.head.appendChild(ogTitle); }
+            ogTitle.setAttribute('content', metaTitle);
+          }
+          if (metaDescription) {
+            let ogDesc = document.querySelector('meta[property="og:description"]');
+            if (!ogDesc) { ogDesc = document.createElement('meta'); ogDesc.setAttribute('property', 'og:description'); document.head.appendChild(ogDesc); }
+            ogDesc.setAttribute('content', metaDescription);
           }
         }
       } else {

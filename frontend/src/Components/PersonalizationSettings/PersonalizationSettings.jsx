@@ -789,6 +789,7 @@ const PersonalizationSettings = () => {
             <p className="help-text">URL to your custom favicon (recommended: 32x32px ICO or PNG)</p>
           </div>
           
+          <p className="help-text personalization-meta-intro">Title and description below are used on your personal link so browser tabs, search results, and social shares show your brand.</p>
           <div className="setting-group">
             <label className="setting-label">Custom Meta Title</label>
             <input
