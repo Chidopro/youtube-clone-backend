@@ -534,6 +534,31 @@ export class AdminService {
   }
 
   /**
+   * Activate a user (status -> active). For creators, backend sends welcome email once. Master Admin only.
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} Result object
+   */
+  static async activateUser(userId) {
+    try {
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) return { success: false, error: 'Not authenticated' };
+      const base = getAdminApiBase();
+      const res = await fetch(`${base}/api/admin/users/${userId}/activate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },
+        credentials: 'include',
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.error || res.statusText };
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error activating user:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Approve a pending user (changes status from 'pending' to 'active')
    * @param {string} userId - User ID
    * @returns {Promise<Object>} Result object

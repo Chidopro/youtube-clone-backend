@@ -946,7 +946,7 @@ const Admin = () => {
         console.log('Suspend result:', result);
       } else if (action === 'activate') {
         console.log(`Activating user ${userId}...`);
-        result = await AdminService.updateUserStatus(userId, 'active');
+        result = await AdminService.activateUser(userId);
         console.log('Activate result:', result);
       } else if (action === 'approve') {
         console.log(`Approving user ${userId}...`);

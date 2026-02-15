@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, session
 from flask_cors import cross_origin
 import logging
+import os
 import re
 import uuid
 import bcrypt
@@ -73,6 +74,62 @@ def _handle_cors_preflight():
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-User-Email')
     response.headers.add('Access-Control-Allow-Credentials', 'true')
     return response
+
+
+def _send_creator_welcome_email(creator_email):
+    """Send the creator welcome email via Resend. Returns True if sent, False otherwise."""
+    if not creator_email or not creator_email.strip():
+        return False
+    api_key = os.getenv("RESEND_API_KEY")
+    from_addr = os.getenv("RESEND_FROM", "noreply@screenmerch.com")
+    signin_url = os.getenv("SCREENMERCH_LOGIN_URL", "https://screenmerch.com/login")
+    intro_video_url = os.getenv("SCREENMERCH_INTRO_VIDEO_URL", "")
+    if not api_key:
+        logger.warning("RESEND_API_KEY not set; skipping creator welcome email")
+        return False
+    subject = "Welcome to ScreenMerch — your store is ready"
+    body = f"""Hi,
+
+Welcome to ScreenMerch — we're glad you're here.
+
+You get your own store link (yourname.screenmerch.com) where only your videos show. In Personalization you can add your logo, colors, and a custom title and description so your store feels like you.
+
+We invite you to sign in and check out the products we offer — from women's and men's to kids, mugs, bags, hats, and more (stickers, magnets, greeting cards, and more). You'll see prices and colors for each item so you know exactly what your fans can order.
+
+Fans pick a moment from your video, capture a screenshot, and put it on any product. Every screenshot is processed for 300 DPI print quality. You earn $7 per sale on most items; we handle printing and shipping.
+
+Next steps: Sign in, browse the catalog, set your subdomain, upload your videos, and share your link.
+
+Sign in and explore products: {signin_url}
+"""
+    if intro_video_url:
+        body += f"\nWant a full walkthrough? Watch our intro video: {intro_video_url}\n"
+    body += """
+
+Thanks for joining — we're excited to have you.
+
+The ScreenMerch team
+"""
+    try:
+        r = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "from": from_addr,
+                "to": [creator_email.strip()],
+                "subject": subject,
+                "text": body.strip(),
+            },
+            timeout=15,
+        )
+        if r.status_code in (200, 201, 202):
+            logger.info(f"Creator welcome email sent to {creator_email}")
+            return True
+        logger.warning(f"Resend welcome email failed: {r.status_code} {r.text}")
+        return False
+    except Exception as e:
+        logger.exception(f"Error sending creator welcome email: {e}")
+        return False
 
 
 def _is_valid_uuid(value):
@@ -532,15 +589,81 @@ def admin_approve_creator(user_id):
         if not client:
             response = jsonify({"success": False, "error": "Database unavailable"})
             return _allow_origin(response), 500
+        # Fetch creator to check welcome email and get email address
+        try:
+            creator_row = client.table('users').select('id, email, creator_welcome_email_sent_at').eq('id', user_id).eq('status', 'pending').eq('role', 'creator').single().execute()
+        except Exception:
+            creator_row = client.table('users').select('id, email').eq('id', user_id).eq('status', 'pending').eq('role', 'creator').single().execute()
+        if not creator_row.data:
+            response = jsonify({"success": False, "error": "User not found or not pending creator"})
+            return _allow_origin(response), 404
+        creator = creator_row.data
         result = client.table('users').update({'status': 'active'}).eq('id', user_id).eq('status', 'pending').eq('role', 'creator').execute()
         if not result.data or len(result.data) == 0:
             response = jsonify({"success": False, "error": "User not found or not pending creator"})
             return _allow_origin(response), 404
+        # Send welcome email once (when creator_welcome_email_sent_at is null)
+        if creator.get('creator_welcome_email_sent_at') is None and _send_creator_welcome_email(creator.get('email') or ''):
+            try:
+                client.table('users').update({'creator_welcome_email_sent_at': datetime.utcnow().isoformat()}).eq('id', user_id).execute()
+            except Exception:
+                pass
         logger.info(f"Creator approved: {user_id} by {admin_email}")
         response = jsonify({"success": True, "message": "Creator approved"})
         return _allow_origin(response), 200
     except Exception as e:
         logger.error(f"approve-creator error: {e}")
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
+@admin_bp.route("/api/admin/users/<user_id>/activate", methods=["POST", "OPTIONS"])
+@admin_bp.route("/api/admin/users/<user_id>/activate/", methods=["POST", "OPTIONS"])
+def admin_activate_user(user_id):
+    """Set user status to active. For creators, send welcome email once (when creator_welcome_email_sent_at is null). Master Admin only."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin_email = request.headers.get("X-User-Email") or (_data_from_request() or {}).get("admin_email")
+        if not admin_email:
+            response = jsonify({"success": False, "error": "X-User-Email required"})
+            return _allow_origin(response), 401
+        if not _is_master_admin(admin_email):
+            response = jsonify({"success": False, "error": "Master admin required"})
+            return _allow_origin(response), 403
+        if not _is_valid_uuid(user_id):
+            response = jsonify({"success": False, "error": "Invalid user ID"})
+            return _allow_origin(response), 400
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": False, "error": "Database unavailable"})
+            return _allow_origin(response), 500
+        # Fetch user (include creator_welcome_email_sent_at if column exists)
+        try:
+            row = client.table("users").select("id, email, role, creator_welcome_email_sent_at").eq("id", user_id).single().execute()
+        except Exception:
+            row = client.table("users").select("id, email, role").eq("id", user_id).single().execute()
+        if not row.data:
+            response = jsonify({"success": False, "error": "User not found"})
+            return _allow_origin(response), 404
+        user = row.data
+        # Update status to active (pending or suspended -> active)
+        client.table("users").update({"status": "active"}).eq("id", user_id).execute()
+        # If creator and welcome email not yet sent, send and mark
+        if user.get("role") == "creator":
+            sent_at = user.get("creator_welcome_email_sent_at")
+            if sent_at is None:
+                if _send_creator_welcome_email(user.get("email") or ""):
+                    try:
+                        client.table("users").update({"creator_welcome_email_sent_at": datetime.utcnow().isoformat()}).eq("id", user_id).execute()
+                    except Exception:
+                        pass
+                # If send failed we still activated; don't block
+        logger.info(f"User activated: {user_id} by {admin_email}")
+        response = jsonify({"success": True, "message": "User activated"})
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.exception(f"activate user error: {e}")
         response = jsonify({"success": False, "error": str(e)})
         return _allow_origin(response), 500
 
