@@ -676,40 +676,40 @@ const Checkout = () => {
                     )}
                     <div className="design-modal-field">
                       <label>Feather edge?</label>
-                      <div className="design-modal-options">
-                        <label className="design-modal-option-label">
-                          <input type="radio" name={`feather-${i}`} checked={prefs.feather === 'yes'} onChange={() => setPref('feather', 'yes')} />
-                          <span className="design-modal-option-text">Yes</span>
+                      <div className="design-modal-toggle-group" role="group" aria-label="Feather edge">
+                        <label className={`design-modal-segment ${prefs.feather === 'yes' ? 'design-modal-segment-selected' : ''}`}>
+                          <input type="radio" name={`feather-${i}`} checked={prefs.feather === 'yes'} onChange={() => setPref('feather', 'yes')} className="design-modal-segment-input" />
+                          <span>Yes</span>
                         </label>
-                        <label className="design-modal-option-label">
-                          <input type="radio" name={`feather-${i}`} checked={prefs.feather === 'no'} onChange={() => setPref('feather', 'no')} />
-                          <span className="design-modal-option-text">No</span>
+                        <label className={`design-modal-segment ${prefs.feather === 'no' ? 'design-modal-segment-selected' : ''}`}>
+                          <input type="radio" name={`feather-${i}`} checked={prefs.feather === 'no'} onChange={() => setPref('feather', 'no')} className="design-modal-segment-input" />
+                          <span>No</span>
                         </label>
                       </div>
                     </div>
                     <div className="design-modal-field">
                       <label>Corner radius tool?</label>
-                      <div className="design-modal-options">
-                        <label className="design-modal-option-label">
-                          <input type="radio" name={`corner-${i}`} checked={prefs.cornerRadius === 'yes'} onChange={() => setPref('cornerRadius', 'yes')} />
-                          <span className="design-modal-option-text">Yes</span>
+                      <div className="design-modal-toggle-group" role="group" aria-label="Corner radius tool">
+                        <label className={`design-modal-segment ${prefs.cornerRadius === 'yes' ? 'design-modal-segment-selected' : ''}`}>
+                          <input type="radio" name={`corner-${i}`} checked={prefs.cornerRadius === 'yes'} onChange={() => setPref('cornerRadius', 'yes')} className="design-modal-segment-input" />
+                          <span>Yes</span>
                         </label>
-                        <label className="design-modal-option-label">
-                          <input type="radio" name={`corner-${i}`} checked={prefs.cornerRadius === 'no'} onChange={() => setPref('cornerRadius', 'no')} />
-                          <span className="design-modal-option-text">No</span>
+                        <label className={`design-modal-segment ${prefs.cornerRadius === 'no' ? 'design-modal-segment-selected' : ''}`}>
+                          <input type="radio" name={`corner-${i}`} checked={prefs.cornerRadius === 'no'} onChange={() => setPref('cornerRadius', 'no')} className="design-modal-segment-input" />
+                          <span>No</span>
                         </label>
                       </div>
                     </div>
                     <div className="design-modal-field">
                       <label>Frame tool?</label>
-                      <div className="design-modal-options">
-                        <label className="design-modal-option-label">
-                          <input type="radio" name={`frame-${i}`} checked={prefs.frame === 'yes'} onChange={() => setPref('frame', 'yes')} />
-                          <span className="design-modal-option-text">Yes</span>
+                      <div className="design-modal-toggle-group" role="group" aria-label="Frame tool">
+                        <label className={`design-modal-segment ${prefs.frame === 'yes' ? 'design-modal-segment-selected' : ''}`}>
+                          <input type="radio" name={`frame-${i}`} checked={prefs.frame === 'yes'} onChange={() => setPref('frame', 'yes')} className="design-modal-segment-input" />
+                          <span>Yes</span>
                         </label>
-                        <label className="design-modal-option-label">
-                          <input type="radio" name={`frame-${i}`} checked={prefs.frame === 'no'} onChange={() => setPref('frame', 'no')} />
-                          <span className="design-modal-option-text">No</span>
+                        <label className={`design-modal-segment ${prefs.frame === 'no' ? 'design-modal-segment-selected' : ''}`}>
+                          <input type="radio" name={`frame-${i}`} checked={prefs.frame === 'no'} onChange={() => setPref('frame', 'no')} className="design-modal-segment-input" />
+                          <span>No</span>
                         </label>
                       </div>
                     </div>

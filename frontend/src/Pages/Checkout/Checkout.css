@@ -815,18 +815,23 @@
   display: inline-block;
 }
 
-/* Image orientation: shape above label, radio + text in a row */
+/* Image orientation: even cards – same size, shape above label */
 .design-modal-orientation-options {
-  align-items: flex-end;
-  gap: 20px;
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
 }
 
 .design-modal-orientation-option {
   display: inline-flex !important;
+  flex: 1;
+  min-width: 0;
+  min-height: 88px;
   flex-direction: column !important;
   align-items: center !important;
+  justify-content: center !important;
   gap: 8px !important;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-radius: 10px;
   border: 2px solid #e5e7eb;
   background: #fafafa;
@@ -843,8 +848,10 @@
   background: #eef2ff;
 }
 
+/* Same-height shape area so portrait and landscape align evenly */
 .design-modal-orientation-shape {
   display: block;
+  flex-shrink: 0;
   border-radius: 4px;
   background: linear-gradient(135deg, #c7d2fe 0%, #a5b4fc 100%);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -864,6 +871,58 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Yes/No: even segmented control (no radios visible), equal-width segments */
+.design-modal-toggle-group {
+  display: flex;
+  width: 100%;
+  max-width: 200px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #e5e7eb;
+  background: #f3f4f6;
+}
+
+.design-modal-segment {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  margin: 0;
+}
+
+.design-modal-segment:first-child {
+  border-right: 1px solid #e5e7eb;
+}
+
+.design-modal-segment:hover {
+  color: #374151;
+  background: #e5e7eb;
+}
+
+.design-modal-segment-selected {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.design-modal-segment-selected:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  color: white;
+}
+
+.design-modal-segment-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
 
 .design-modal-actions {
