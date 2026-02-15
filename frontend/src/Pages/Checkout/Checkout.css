@@ -754,6 +754,31 @@
   flex-wrap: wrap;
 }
 
+/* Yes/No and other radio options: radio then text evenly to the right */
+.design-modal-option-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.design-modal-option-label input[type="radio"] {
+  order: 1;
+  flex-shrink: 0;
+}
+
+.design-modal-option-label .design-modal-option-text {
+  order: 2;
+}
+
 .design-modal-options label {
   display: inline-flex;
   align-items: center;
@@ -763,7 +788,7 @@
   color: #374151;
   font-size: 0.95rem;
   line-height: 1;
-  height: 24px;
+  height: auto;
   padding: 0;
   margin: 0;
   box-sizing: border-box;
@@ -788,6 +813,57 @@
   font-size: 0.95rem;
   line-height: 1;
   display: inline-block;
+}
+
+/* Image orientation: shape above label, radio + text in a row */
+.design-modal-orientation-options {
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.design-modal-orientation-option {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 2px solid #e5e7eb;
+  background: #fafafa;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.design-modal-orientation-option:hover {
+  border-color: #c7d2fe;
+  background: #f5f3ff;
+}
+
+.design-modal-orientation-option:has(input:checked) {
+  border-color: #667eea;
+  background: #eef2ff;
+}
+
+.design-modal-orientation-shape {
+  display: block;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #c7d2fe 0%, #a5b4fc 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.design-modal-orientation-portrait {
+  width: 28px;
+  height: 36px;
+}
+
+.design-modal-orientation-landscape {
+  width: 36px;
+  height: 28px;
+}
+
+.design-modal-option-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .design-modal-actions {

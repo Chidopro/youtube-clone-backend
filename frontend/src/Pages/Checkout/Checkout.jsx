@@ -656,14 +656,20 @@ const Checkout = () => {
                     {isShirt && (
                     <div className="design-modal-field">
                       <label>Image orientation</label>
-                      <div className="design-modal-options">
-                        <label>
-                          <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'portrait'} onChange={() => setPref('orientation', 'portrait')} />
-                          <span className="design-modal-option-text">Portrait</span>
+                      <div className="design-modal-options design-modal-orientation-options">
+                        <label className="design-modal-orientation-option">
+                          <span className="design-modal-orientation-shape design-modal-orientation-portrait" aria-hidden />
+                          <span className="design-modal-option-row">
+                            <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'portrait'} onChange={() => setPref('orientation', 'portrait')} />
+                            <span className="design-modal-option-text">Portrait</span>
+                          </span>
                         </label>
-                        <label>
-                          <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'landscape'} onChange={() => setPref('orientation', 'landscape')} />
-                          <span className="design-modal-option-text">Landscape</span>
+                        <label className="design-modal-orientation-option">
+                          <span className="design-modal-orientation-shape design-modal-orientation-landscape" aria-hidden />
+                          <span className="design-modal-option-row">
+                            <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'landscape'} onChange={() => setPref('orientation', 'landscape')} />
+                            <span className="design-modal-option-text">Landscape</span>
+                          </span>
                         </label>
                       </div>
                     </div>
@@ -671,11 +677,11 @@ const Checkout = () => {
                     <div className="design-modal-field">
                       <label>Feather edge?</label>
                       <div className="design-modal-options">
-                        <label>
+                        <label className="design-modal-option-label">
                           <input type="radio" name={`feather-${i}`} checked={prefs.feather === 'yes'} onChange={() => setPref('feather', 'yes')} />
                           <span className="design-modal-option-text">Yes</span>
                         </label>
-                        <label>
+                        <label className="design-modal-option-label">
                           <input type="radio" name={`feather-${i}`} checked={prefs.feather === 'no'} onChange={() => setPref('feather', 'no')} />
                           <span className="design-modal-option-text">No</span>
                         </label>
@@ -684,11 +690,11 @@ const Checkout = () => {
                     <div className="design-modal-field">
                       <label>Corner radius tool?</label>
                       <div className="design-modal-options">
-                        <label>
+                        <label className="design-modal-option-label">
                           <input type="radio" name={`corner-${i}`} checked={prefs.cornerRadius === 'yes'} onChange={() => setPref('cornerRadius', 'yes')} />
                           <span className="design-modal-option-text">Yes</span>
                         </label>
-                        <label>
+                        <label className="design-modal-option-label">
                           <input type="radio" name={`corner-${i}`} checked={prefs.cornerRadius === 'no'} onChange={() => setPref('cornerRadius', 'no')} />
                           <span className="design-modal-option-text">No</span>
                         </label>
@@ -697,11 +703,11 @@ const Checkout = () => {
                     <div className="design-modal-field">
                       <label>Frame tool?</label>
                       <div className="design-modal-options">
-                        <label>
+                        <label className="design-modal-option-label">
                           <input type="radio" name={`frame-${i}`} checked={prefs.frame === 'yes'} onChange={() => setPref('frame', 'yes')} />
                           <span className="design-modal-option-text">Yes</span>
                         </label>
-                        <label>
+                        <label className="design-modal-option-label">
                           <input type="radio" name={`frame-${i}`} checked={prefs.frame === 'no'} onChange={() => setPref('frame', 'no')} />
                           <span className="design-modal-option-text">No</span>
                         </label>
