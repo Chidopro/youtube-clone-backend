@@ -654,20 +654,16 @@ const Checkout = () => {
                   <div key={i} className="design-modal-item-block">
                     <h3 className="design-modal-item-title">{itemName}</h3>
                     {isShirt && (
-                    <div className="design-modal-field design-modal-field--orientation">
+                    <div className="design-modal-field">
                       <label>Image orientation</label>
-                      <div className="design-modal-orientation-options">
-                        <label className={`design-modal-orientation-card ${prefs.orientation === 'portrait' ? 'design-modal-orientation-card--selected' : ''}`}>
-                          <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'portrait'} onChange={() => setPref('orientation', 'portrait')} className="design-modal-orientation-radio" />
-                          <div className="design-modal-orientation-visual design-modal-orientation-visual--portrait" aria-hidden="true">
-                            <span className="design-modal-orientation-visual-label">Portrait</span>
-                          </div>
+                      <div className="design-modal-options">
+                        <label>
+                          <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'portrait'} onChange={() => setPref('orientation', 'portrait')} />
+                          <span className="design-modal-option-text">Portrait</span>
                         </label>
-                        <label className={`design-modal-orientation-card ${prefs.orientation === 'landscape' ? 'design-modal-orientation-card--selected' : ''}`}>
-                          <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'landscape'} onChange={() => setPref('orientation', 'landscape')} className="design-modal-orientation-radio" />
-                          <div className="design-modal-orientation-visual design-modal-orientation-visual--landscape" aria-hidden="true">
-                            <span className="design-modal-orientation-visual-label">Landscape</span>
-                          </div>
+                        <label>
+                          <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'landscape'} onChange={() => setPref('orientation', 'landscape')} />
+                          <span className="design-modal-option-text">Landscape</span>
                         </label>
                       </div>
                     </div>
