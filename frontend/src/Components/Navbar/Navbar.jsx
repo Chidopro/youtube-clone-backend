@@ -13,6 +13,7 @@ import { supabase } from '../../supabaseClient'
 import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from '../../utils/userService'
 import { AdminService } from '../../utils/adminService'
 import { useCreator } from '../../contexts/CreatorContext'
+import { getSubdomain } from '../../utils/subdomainService'
 
 const Navbar = ({ setSidebar, resetCategory }) => {
     const creatorContext = useCreator();
@@ -667,7 +668,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         <div className="search-box flex-div">
                             <input
                                 type="text"
-                                placeholder="Search channels"
+                                placeholder={getSubdomain() ? 'Search videos' : 'Search channels'}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onKeyPress={handleSearchKeyPress}
