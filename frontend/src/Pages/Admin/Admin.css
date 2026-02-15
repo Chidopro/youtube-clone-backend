@@ -441,6 +441,18 @@
   text-transform: capitalize;
 }
 
+.admin-users .role-badge--master_admin {
+  background: rgba(102, 126, 234, 0.2);
+  color: #4338ca;
+  font-weight: 600;
+}
+
+.admin-users .role-badge--admin {
+  background: rgba(118, 75, 162, 0.2);
+  color: #5b21b6;
+  font-weight: 500;
+}
+
 .admin-users .role-badge--creator {
   background: rgba(102, 126, 234, 0.12);
   color: var(--sm-primary);
@@ -449,6 +461,22 @@
 .admin-users .role-badge--customer {
   background: #edf2f7;
   color: var(--sm-text-muted);
+}
+
+.admin-users .admin-role-change-select {
+  margin-left: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--sm-border);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: var(--sm-text);
+  background: #fff;
+  cursor: pointer;
+}
+
+.admin-users .admin-role-change-select:focus {
+  outline: none;
+  border-color: var(--sm-primary);
 }
 
 .admin-users .action-buttons {

@@ -17,7 +17,7 @@ const Admin = () => {
   const [stats, setStats] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [filterRole, setFilterRole] = useState('creator'); // Default to showing creators
+  const [filterRole, setFilterRole] = useState('all'); // all | master_admin | admin | creator | customer
   const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState('active'); // Filter for subscriptions
   const [pendingPayouts, setPendingPayouts] = useState([]);
   const [payoutHistory, setPayoutHistory] = useState([]);
@@ -1074,13 +1074,25 @@ const Admin = () => {
     }
   };
 
+  /** One of: master_admin, admin, creator, customer */
+  const getDisplayRole = (u) => {
+    if (u?.is_admin && u?.admin_role === 'master_admin') return 'master_admin';
+    if (u?.is_admin && (u?.admin_role === 'admin' || u?.admin_role === 'order_processing_admin')) return 'admin';
+    if ((u?.role || '').toLowerCase() === 'creator') return 'creator';
+    return 'customer';
+  };
+  const getDisplayRoleLabel = (u) => {
+    const r = getDisplayRole(u);
+    return r === 'master_admin' ? 'Master Admin' : r === 'admin' ? 'Admin' : r === 'creator' ? 'Creator' : 'Customer';
+  };
+
   const filteredUsers = users.filter(user => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = user.display_name?.toLowerCase().includes(searchLower) ||
                          user.email?.toLowerCase().includes(searchLower) ||
                          user.subdomain?.toLowerCase().includes(searchLower);
     const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
-    const matchesRole = filterRole === 'all' || user.role === filterRole;
+    const matchesRole = filterRole === 'all' || getDisplayRole(user) === filterRole;
     return matchesSearch && matchesStatus && matchesRole;
   });
 
@@ -1290,8 +1302,10 @@ const Admin = () => {
                   className="admin-filter"
                 >
                   <option value="all">All Roles</option>
-                  <option value="creator">Creators</option>
-                  <option value="customer">Customers</option>
+                  <option value="master_admin">Master Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="creator">Creator</option>
+                  <option value="customer">Customer</option>
                 </select>
                 <select 
                   value={filterStatus} 
@@ -1341,9 +1355,32 @@ const Admin = () => {
                         </td>
                         <td>{user.email}</td>
                         <td>
-                          <span className={`role-badge role-badge--${user.role === 'creator' ? 'creator' : 'customer'}`}>
-                            {user.role || 'customer'}
+                          <span className={`role-badge role-badge--${getDisplayRole(user)}`}>
+                            {getDisplayRoleLabel(user)}
                           </span>
+                          {isMasterAdmin && (
+                            <select
+                              className="admin-role-change-select"
+                              value={getDisplayRole(user)}
+                              onChange={async (e) => {
+                                const newRole = e.target.value;
+                                if (newRole === getDisplayRole(user)) return;
+                                if (!window.confirm(`Change this user to ${newRole === 'master_admin' ? 'Master Admin' : newRole === 'admin' ? 'Admin' : newRole === 'creator' ? 'Creator' : 'Customer'}?`)) return;
+                                const result = await AdminService.updateUserRole(user.id, { display_role: newRole });
+                                if (result.success) {
+                                  await loadUsers();
+                                } else {
+                                  alert(result.error || 'Failed to update role');
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value="master_admin">Master Admin</option>
+                              <option value="admin">Admin</option>
+                              <option value="creator">Creator</option>
+                              <option value="customer">Customer</option>
+                            </select>
+                          )}
                         </td>
                         <td>
                           {editingSubdomain === user.id ? (

@@ -303,9 +303,10 @@ export class AdminService {
         query = query.eq('status', status);
       }
 
-      if (role !== 'all') {
+      if (role !== 'all' && (role === 'creator' || role === 'customer')) {
         query = query.eq('role', role);
       }
+      /* master_admin and admin are filtered client-side by is_admin/admin_role */
 
       const { data, error, count } = await query
         .order('created_at', { ascending: false })
@@ -329,6 +330,32 @@ export class AdminService {
     } catch (error) {
       console.error('Error fetching users:', error);
       return { users: [], total: 0, page, limit, totalPages: 0 };
+    }
+  }
+
+  /**
+   * Update a user's display role (Master Admin, Admin, Creator, Customer). Master Admin only.
+   * @param {string} userId - User ID
+   * @param {{ display_role: 'master_admin'|'admin'|'creator'|'customer' }} payload
+   * @returns {Promise<{ success: boolean, error?: string }>}
+   */
+  static async updateUserRole(userId, payload) {
+    try {
+      const currentUser = await this.getCurrentUser();
+      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      if (!currentUser?.userEmail) throw new Error('Not authenticated');
+      const res = await fetch(`${apiUrl}/api/admin/users/${userId}/role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { success: false, error: data.error || res.statusText };
+      return data.success ? { success: true } : { success: false, error: data.error || 'Update failed' };
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      return { success: false, error: error.message };
     }
   }
 

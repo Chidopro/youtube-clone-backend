@@ -5566,6 +5566,138 @@ def admin_creators_payout_list():
         return jsonify({"success": False, "error": str(e), "creators": []}), 500
 
 
+@app.route("/api/admin/users", methods=["GET", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_list_users():
+    """List users with role/admin fields. Master Admin only. Filter by role: all, master_admin, admin, creator, customer."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    err, code = _require_master_admin()
+    if err is not None:
+        return err, code
+    client = supabase_admin if supabase_admin else supabase
+    if not client:
+        return jsonify({"success": False, "error": "Database unavailable"}), 500
+    try:
+        role_filter = (request.args.get("role") or "all").strip().lower()
+        status = (request.args.get("status") or "all").strip().lower()
+        search = (request.args.get("search") or "").strip()
+        page = max(0, int(request.args.get("page", 0)))
+        limit = min(100, max(1, int(request.args.get("limit", 100))))
+
+        q = client.table("users").select(
+            "id, email, display_name, profile_image_url, role, status, is_admin, admin_role, subdomain, created_at",
+            count="exact"
+        ).order("created_at", desc=True)
+
+        if search:
+            q = q.or_(f"display_name.ilike.%{search}%,email.ilike.%{search}%")
+        if status != "all":
+            q = q.eq("status", status)
+
+        r = q.range(page * limit, (page + 1) * limit - 1).execute()
+        total = r.count if getattr(r, "count", None) is not None else len(r.data or [])
+
+        users = list(r.data or [])
+        # Filter by display role if requested (master_admin, admin, creator, customer)
+        if role_filter not in ("all", ""):
+            def _display_role(u):
+                if u.get("is_admin") and u.get("admin_role") == "master_admin":
+                    return "master_admin"
+                if u.get("is_admin") and u.get("admin_role") in ("admin", "order_processing_admin"):
+                    return "admin"
+                if (u.get("role") or "").lower() == "creator":
+                    return "creator"
+                return "customer"
+
+            users = [u for u in users if _display_role(u) == role_filter]
+            total = len(users)
+
+        return jsonify({
+            "success": True,
+            "users": users,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "totalPages": max(1, (total + limit - 1) // limit),
+        }), 200
+    except Exception as e:
+        logger.exception("admin_list_users: %s", e)
+        return jsonify({"success": False, "error": str(e), "users": []}), 500
+
+
+@app.route("/api/admin/users/<user_id>/role", methods=["PUT", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_update_user_role(user_id):
+    """Update a user's role and/or admin flags. Master Admin only. Body: role?, is_admin?, admin_role?"""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    err, code = _require_master_admin()
+    if err is not None:
+        return err, code
+    client = supabase_admin if supabase_admin else supabase
+    if not client:
+        return jsonify({"success": False, "error": "Database unavailable"}), 500
+    try:
+        data = request.get_json() or {}
+        role = data.get("role")
+        is_admin = data.get("is_admin")
+        admin_role = data.get("admin_role")
+
+        # Only allow these four display roles; map to (role, is_admin, admin_role)
+        # Master Admin -> is_admin=True, admin_role=master_admin, role can stay as-is
+        # Admin -> is_admin=True, admin_role=admin (or order_processing_admin)
+        # Creator -> is_admin=False, admin_role=null, role=creator
+        # Customer -> is_admin=False, admin_role=null, role=customer
+        if "display_role" in data:
+            dr = (data.get("display_role") or "").strip().lower()
+            if dr == "master_admin":
+                is_admin = True
+                admin_role = "master_admin"
+                role = role or "creator"  # keep existing or creator
+            elif dr == "admin":
+                is_admin = True
+                admin_role = "admin"
+                role = role or "creator"
+            elif dr == "creator":
+                is_admin = False
+                admin_role = None
+                role = "creator"
+            elif dr == "customer":
+                is_admin = False
+                admin_role = None
+                role = "customer"
+
+        update_data = {}
+        if role is not None:
+            if role not in ("creator", "customer"):
+                role = "customer"
+            update_data["role"] = role
+        if is_admin is not None:
+            update_data["is_admin"] = bool(is_admin)
+        if admin_role is not None:
+            update_data["admin_role"] = admin_role if admin_role in ("master_admin", "admin", "order_processing_admin") else None
+
+        if not update_data:
+            return jsonify({"success": True, "message": "No changes"}), 200
+
+        # Prevent demoting the last master_admin (optional: allow if changing self)
+        if update_data.get("admin_role") is None and (is_admin is False or admin_role is None):
+            current = client.table("users").select("is_admin, admin_role").eq("id", user_id).execute()
+            if current.data and current.data[0].get("admin_role") == "master_admin":
+                other_master = client.table("users").select("id").eq("admin_role", "master_admin").neq("id", user_id).execute()
+                if not other_master.data or len(other_master.data) == 0:
+                    return jsonify({"success": False, "error": "Cannot remove the last Master Admin"}), 400
+
+        result = client.table("users").update(update_data).eq("id", user_id).execute()
+        if not result.data or len(result.data) == 0:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        return jsonify({"success": True, "user": result.data[0]}), 200
+    except Exception as e:
+        logger.exception("admin_update_user_role: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/admin/approve-creator/<user_id>", methods=["POST", "OPTIONS"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def admin_approve_creator(user_id):
