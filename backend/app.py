@@ -4315,6 +4315,32 @@ def get_videos():
         logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify([]), 200
 
+@app.route("/api/creators/list", methods=["GET", "OPTIONS"])
+@cross_origin(origins=[], supports_credentials=True)
+def creators_list():
+    """List ScreenMerch creators for sidebar (main + subdomains). Public, no auth. Uses service role so list is same everywhere."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        client = supabase_admin if supabase_admin else supabase
+        r = client.table("users").select(
+            "id, username, display_name, profile_image_url, subdomain"
+        ).not_("username", "is", None).order("created_at", desc=True).limit(20).execute()
+        creators = []
+        for row in (r.data or []):
+            creators.append({
+                "id": row.get("id"),
+                "username": row.get("username"),
+                "name": row.get("display_name") or row.get("username"),
+                "avatar": row.get("profile_image_url"),
+                "subdomain": row.get("subdomain") or "",
+            })
+        return jsonify({"success": True, "creators": creators}), 200
+    except Exception as e:
+        logger.error(f"Error listing creators for sidebar: {e}")
+        return jsonify({"success": False, "error": str(e), "creators": []}), 500
+
+
 @app.route("/api/search/creators", methods=["GET", "OPTIONS"])
 @cross_origin(origins=[], supports_credentials=True)
 def search_creators():

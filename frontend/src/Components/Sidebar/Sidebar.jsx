@@ -2,56 +2,40 @@ import React, { useState, useEffect } from 'react'
 import './Sidebar.css'
 import home from '../../assets/home.png'
 import { Link, useLocation } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { API_CONFIG } from '../../config/apiConfig';
 
 const Sidebar = ({sidebar, category, setCategory}) => {
   const [showSubs, setShowSubs] = useState(true);
   const [subscribers, setSubscribers] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(true);
-  const [subscriberType, setSubscriberType] = useState('platform');
   const location = useLocation();
 
+  // Fetch ScreenMerch creators from backend so list works on main and all subdomains (bypasses RLS)
   useEffect(() => {
-    const fetchPlatformSubscribers = async () => {
+    const fetchCreators = async () => {
       setLoadingSubs(true);
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select(`
-            id,
-            username,
-            display_name,
-            profile_image_url,
-            created_at
-          `)
-          .not('username', 'is', null)
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        if (error) {
-          console.error('Error fetching platform creators:', error);
-          setSubscribers([]);
+        const res = await fetch(`${API_CONFIG.BASE_URL}/api/creators/list`);
+        const data = await res.json().catch(() => ({}));
+        if (data?.success && Array.isArray(data.creators)) {
+          setSubscribers(data.creators.map(c => ({
+            id: c.id,
+            username: c.username,
+            name: c.name || c.display_name || c.username,
+            avatar: c.avatar,
+            subdomain: c.subdomain || '',
+          })));
         } else {
-          const platformCreators = data
-            .filter(user => user.username)
-            .map(user => ({
-              id: user.id,
-              username: user.username,
-              name: user.display_name || user.username,
-              avatar: user.profile_image_url,
-              joinedAt: user.created_at,
-              type: 'platform'
-            }));
-          setSubscribers(platformCreators);
+          setSubscribers([]);
         }
       } catch (err) {
-        console.error('Error fetching subscribers:', err);
+        console.error('Error fetching creators for sidebar:', err);
         setSubscribers([]);
       }
       setLoadingSubs(false);
     };
 
-    fetchPlatformSubscribers();
+    fetchCreators();
   }, []);
 
   return (
@@ -76,16 +60,21 @@ const Sidebar = ({sidebar, category, setCategory}) => {
               <div className="subscribers-list">
                 {subscribers.map(sub => (
                   <div className="subscriber-item-container" key={sub.id}>
-                    <Link to={`/profile/${sub.username}`} className="side-link subscriber-item">
-                      <img 
-                        src={sub.avatar || '/default-avatar.jpg'} 
-                        alt={sub.name} 
-                        className="subscriber-avatar"
-                      />
-                      <div className="subscriber-info">
-                        <p className="subscriber-name">{sub.name}</p>
-                      </div>
-                    </Link>
+                    {sub.subdomain ? (
+                      <a href={`https://${sub.subdomain}.screenmerch.com`} className="side-link subscriber-item" target="_blank" rel="noopener noreferrer">
+                        <img src={sub.avatar || '/default-avatar.jpg'} alt={sub.name} className="subscriber-avatar" />
+                        <div className="subscriber-info">
+                          <p className="subscriber-name">{sub.name}</p>
+                        </div>
+                      </a>
+                    ) : (
+                      <Link to={`/profile/${sub.username}`} className="side-link subscriber-item">
+                        <img src={sub.avatar || '/default-avatar.jpg'} alt={sub.name} className="subscriber-avatar" />
+                        <div className="subscriber-info">
+                          <p className="subscriber-name">{sub.name}</p>
+                        </div>
+                      </Link>
+                    )}
                   </div>
                 ))}
               </div>
