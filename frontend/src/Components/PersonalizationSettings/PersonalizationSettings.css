@@ -21,6 +21,62 @@
   line-height: 1.6;
 }
 
+.personalization-personal-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 10px;
+}
+
+.personalization-personal-link--top {
+  margin-top: 0;
+  margin-bottom: 28px;
+}
+
+.personal-link-placeholder {
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.personal-link-label {
+  font-weight: 600;
+  color: #4338ca;
+  font-size: 0.95rem;
+}
+
+.personal-link-url {
+  color: #667eea;
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.personal-link-url:hover {
+  text-decoration: underline;
+}
+
+.personal-link-copy {
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.personal-link-copy:hover {
+  opacity: 0.9;
+}
+
 .personalization-settings-loading {
   text-align: center;
   padding: 40px;

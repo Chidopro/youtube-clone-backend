@@ -621,8 +621,36 @@ const PersonalizationSettings = () => {
     return <div className="personalization-settings-loading">Loading settings...</div>;
   }
 
+  const personalSubdomain = (settings.subdomain || (typeof window !== 'undefined' && getSubdomain()) || '').trim().toLowerCase();
+  const personalLinkUrl = personalSubdomain ? `https://${personalSubdomain}.screenmerch.com` : '';
+
   return (
     <div className="personalization-settings">
+      <div className="personalization-personal-link personalization-personal-link--top">
+        <span className="personal-link-label">Your personal link</span>
+        {personalLinkUrl ? (
+          <>
+            <a href={personalLinkUrl} target="_blank" rel="noopener noreferrer" className="personal-link-url">
+              {personalLinkUrl}
+            </a>
+            <button
+              type="button"
+              className="personal-link-copy"
+              onClick={() => {
+                navigator.clipboard?.writeText(personalLinkUrl);
+                setMessage('Link copied to clipboard');
+                setMessageType('success');
+                setTimeout(() => setMessage(''), 2000);
+              }}
+            >
+              Copy link
+            </button>
+          </>
+        ) : (
+          <span className="personal-link-placeholder">Set your subdomain below to get your personal link.</span>
+        )}
+      </div>
+
       <h2>Personalize Your ScreenMerch App</h2>
       <p className="personalization-description">
         Create your own branded ScreenMerch app with a custom subdomain, colors, and branding. 
