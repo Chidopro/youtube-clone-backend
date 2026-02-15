@@ -1246,14 +1246,6 @@ const Admin = () => {
                   <p className="stat-number">{stats.totalUsers}</p>
                 </div>
                 <div className="stat-card">
-                  <h3>Active Users</h3>
-                  <p className="stat-number">{stats.activeUsers}</p>
-                </div>
-                <div className="stat-card">
-                  <h3>Suspended Users</h3>
-                  <p className="stat-number">{stats.suspendedUsers}</p>
-                </div>
-                <div className="stat-card">
                   <h3>Total Videos</h3>
                   <p className="stat-number">{stats.totalVideos}</p>
                 </div>
