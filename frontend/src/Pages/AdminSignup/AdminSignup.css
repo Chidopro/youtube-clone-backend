@@ -32,6 +32,16 @@
   font-size: 16px;
 }
 
+.admin-signup-invite-only {
+  padding: 20px 0;
+  color: #555;
+  line-height: 1.6;
+}
+
+.admin-signup-invite-only p {
+  margin-bottom: 12px;
+}
+
 .admin-signup-form {
   margin-bottom: 30px;
 }

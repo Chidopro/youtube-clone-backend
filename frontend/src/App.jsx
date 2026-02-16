@@ -31,6 +31,7 @@ import ToolsPage from "./Pages/ToolsPage/ToolsPage";
 import VerifyEmail from "./Pages/VerifyEmail/VerifyEmail";
 import RequestSetPassword from "./Pages/RequestSetPassword/RequestSetPassword";
 import CreatorThankYou from "./Pages/CreatorThankYou/CreatorThankYou";
+import AdminSignup from "./Pages/AdminSignup/AdminSignup";
 import { API_CONFIG } from "./config/apiConfig";
 import { CreatorProvider } from "./contexts/CreatorContext";
 
@@ -276,6 +277,7 @@ const App = () => {
                 <Route path="/tools" element={<ToolsPage />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/set-password" element={<RequestSetPassword />} />
+                <Route path="/admin-signup" element={<AdminSignup />} />
                 <Route path="/creator-thank-you" element={<CreatorThankYou />} />
                 {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
               </Routes>

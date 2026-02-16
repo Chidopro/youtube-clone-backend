@@ -43,6 +43,9 @@ const Admin = () => {
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [adminSignupRequests, setAdminSignupRequests] = useState([]);
   const [allAdmins, setAllAdmins] = useState([]);
+  const [adminInviteEmail, setAdminInviteEmail] = useState('');
+  const [adminInviteSending, setAdminInviteSending] = useState(false);
+  const [adminInviteMessage, setAdminInviteMessage] = useState({ type: '', text: '' });
   const [subdomains, setSubdomains] = useState([]);
   const [subdomainSearchTerm, setSubdomainSearchTerm] = useState('');
   const [subdomainLoading, setSubdomainLoading] = useState(false);
@@ -491,6 +494,29 @@ const Admin = () => {
     } catch (error) {
       console.error('Error rejecting admin request:', error);
       alert('Failed to reject admin request');
+    }
+  };
+
+  const handleSendAdminInvite = async () => {
+    const email = (adminInviteEmail || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      setAdminInviteMessage({ type: 'error', text: 'Enter a valid email address' });
+      return;
+    }
+    setAdminInviteSending(true);
+    setAdminInviteMessage({ type: '', text: '' });
+    try {
+      const result = await AdminService.sendAdminInvite(email);
+      if (result.success) {
+        setAdminInviteMessage({ type: 'success', text: result.message || `Invite sent to ${email}` });
+        setAdminInviteEmail('');
+      } else {
+        setAdminInviteMessage({ type: 'error', text: result.error || 'Failed to send invite' });
+      }
+    } catch (err) {
+      setAdminInviteMessage({ type: 'error', text: 'Failed to send invite' });
+    } finally {
+      setAdminInviteSending(false);
     }
   };
 
@@ -2524,10 +2550,42 @@ const Admin = () => {
             <div className="admin-management-page">
               <header className="admin-mgmt-header">
                 <h2 className="admin-mgmt-title">Admin Management</h2>
-                <p className="admin-mgmt-subtitle">Approve signup requests and manage admin roles</p>
+                <p className="admin-mgmt-subtitle">Send invites, approve signup requests, and manage admin roles</p>
               </header>
 
               <div className="admin-mgmt-grid">
+                <section className="admin-mgmt-card admin-mgmt-card-invite" style={{ marginBottom: '20px' }}>
+                  <h3 className="admin-mgmt-card-title">
+                    <span className="admin-mgmt-card-icon">✉️</span>
+                    Send admin invite
+                  </h3>
+                  <p className="admin-mgmt-empty" style={{ marginBottom: '12px' }}>Send an email invite with a one-time link. The recipient uses that link to submit their signup request; you then approve and add them to the system.</p>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      type="email"
+                      placeholder="email@example.com"
+                      value={adminInviteEmail}
+                      onChange={(e) => setAdminInviteEmail(e.target.value)}
+                      style={{ padding: '8px 12px', minWidth: '220px', border: '1px solid #ddd', borderRadius: '6px' }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendAdminInvite()}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSendAdminInvite}
+                      disabled={adminInviteSending}
+                      className="admin-mgmt-btn"
+                      style={{ background: '#28a745', color: 'white' }}
+                    >
+                      {adminInviteSending ? 'Sending…' : 'Send invite'}
+                    </button>
+                  </div>
+                  {adminInviteMessage.text && (
+                    <p style={{ marginTop: '10px', fontSize: '14px', color: adminInviteMessage.type === 'error' ? '#c00' : '#0a0' }}>
+                      {adminInviteMessage.text}
+                    </p>
+                  )}
+                </section>
+
                 <section className="admin-mgmt-card admin-mgmt-card-pending">
                   <h3 className="admin-mgmt-card-title">
                     <span className="admin-mgmt-card-icon">📋</span>
@@ -2535,7 +2593,7 @@ const Admin = () => {
                     <span className="admin-mgmt-badge">{adminSignupRequests.filter(r => r.status === 'pending').length}</span>
                   </h3>
                   {adminSignupRequests.filter(r => r.status === 'pending').length === 0 ? (
-                    <p className="admin-mgmt-empty">No pending requests. New admins can request access at the signup page.</p>
+                    <p className="admin-mgmt-empty">No pending requests. Send an invite above; recipients use the link in the email to submit a signup request.</p>
                   ) : (
                     <div className="admin-mgmt-table-wrap">
                       <table className="admin-table admin-mgmt-table">
@@ -2632,13 +2690,13 @@ const Admin = () => {
                     How to add new admins
                   </h3>
                   <ol className="admin-mgmt-steps">
-                    <li>Approve a signup request above (user is created in the users table).</li>
-                    <li>In Supabase Dashboard → Authentication → Users, click “Add user” and enter the approved email.</li>
-                    <li>Set a secure password and share it with the admin.</li>
-                    <li>They can sign in at the admin login with that email and password.</li>
+                    <li>Send an invite above (recipient gets an email with a one-time link to the signup page).</li>
+                    <li>When they submit their email via that link, their request appears in Pending Signup Requests. Approve it and choose their role.</li>
+                    <li>In Supabase Dashboard → Authentication → Users, add the approved email and set a secure password.</li>
+                    <li>Share the login details with the new admin; they sign in at the admin portal.</li>
                   </ol>
-                  <p className="admin-mgmt-link">
-                    Request form: <a href="/admin-signup" target="_blank" rel="noopener noreferrer">/admin-signup</a>
+                  <p className="admin-mgmt-link" style={{ color: '#666', fontSize: '14px' }}>
+                    Invited users use the link in their email to open the signup page. The signup page is invite-only and not linked publicly.
                   </p>
                 </section>
               </div>

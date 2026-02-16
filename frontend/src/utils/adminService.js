@@ -1432,7 +1432,7 @@ export class AdminService {
   }
 
   /**
-   * Submit admin signup request
+   * Submit admin signup request (legacy; prefer submitAdminSignupFromInvite with invite token)
    * @param {string} email - Admin email address
    * @returns {Promise<Object>} Result object
    */
@@ -1454,6 +1454,58 @@ export class AdminService {
       console.error('Error submitting admin signup request:', error);
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Validate admin invite token (public). Returns { valid, invited_email }.
+   * @param {string} token - Invite token from URL
+   * @returns {Promise<Object>}
+   */
+  static async validateAdminInvite(token) {
+    const base = getAdminApiBase();
+    const apiUrl = base || API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+    const res = await fetch(`${apiUrl}/api/admin/validate-invite?invite=${encodeURIComponent(token)}`, { method: 'GET', credentials: 'include' });
+    const json = await res.json().catch(() => ({}));
+    return json;
+  }
+
+  /**
+   * Submit admin signup request using invite token (public).
+   * @param {string} inviteToken - Token from invite link
+   * @param {string} email - Email address (must match invited email)
+   * @returns {Promise<Object>}
+   */
+  static async submitAdminSignupFromInvite(inviteToken, email) {
+    const base = getAdminApiBase();
+    const apiUrl = base || API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+    const res = await fetch(`${apiUrl}/api/admin/submit-signup-from-invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ invite_token: inviteToken, email: (email || '').trim().toLowerCase() })
+    });
+    const json = await res.json().catch(() => ({}));
+    return { success: !!json.success, error: json.error, message: json.message };
+  }
+
+  /**
+   * Send admin invite email (master admin only). Recipient gets link to /admin-signup?invite=TOKEN.
+   * @param {string} email - Email to send invite to
+   * @returns {Promise<Object>}
+   */
+  static async sendAdminInvite(email) {
+    const currentUser = await this.getCurrentUser();
+    if (!currentUser?.userEmail) return { success: false, error: 'Not authenticated' };
+    const base = getAdminApiBase();
+    const apiUrl = base || API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+    const res = await fetch(`${apiUrl}/api/admin/send-admin-invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },
+      credentials: 'include',
+      body: JSON.stringify({ email: (email || '').trim().toLowerCase() })
+    });
+    const json = await res.json().catch(() => ({}));
+    return { success: !!json.success, error: json.error, message: json.message };
   }
 
   /**

@@ -4,6 +4,7 @@ from flask_cors import cross_origin
 import logging
 import os
 import re
+import secrets
 import uuid
 import bcrypt
 import requests
@@ -352,6 +353,187 @@ def admin_get_signup_requests():
             response = jsonify({"success": True, "requests": []})
             return _allow_origin(response), 200
         logger.error(f"Error in admin_get_signup_requests: {str(e)}")
+        response = jsonify({"success": False, "error": "Internal server error"})
+        return _allow_origin(response), 500
+
+
+def _send_admin_invite_email(to_email, invite_link):
+    """Send admin invite email via Resend. Returns True if sent."""
+    if not to_email or not to_email.strip():
+        return False
+    api_key = os.getenv("RESEND_API_KEY")
+    from_addr = os.getenv("RESEND_FROM", "noreply@screenmerch.com")
+    if not api_key:
+        logger.warning("RESEND_API_KEY not set; skipping admin invite email")
+        return False
+    subject = "You're invited to the ScreenMerch Admin Portal"
+    body = f"""Hi,
+
+You've been invited to join the ScreenMerch Admin Portal. Use the link below to submit your signup request. Once the master admin approves, you'll receive login details.
+
+Sign up here: {invite_link}
+
+This link is for you only and will expire in 7 days. If you didn't expect this email, you can ignore it.
+
+— ScreenMerch
+"""
+    try:
+        r = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "from": from_addr,
+                "to": [to_email.strip()],
+                "subject": subject,
+                "text": body.strip(),
+            },
+            timeout=15,
+        )
+        if r.status_code in (200, 201, 202):
+            logger.info(f"Admin invite email sent to {to_email}")
+            return True
+        logger.warning(f"Resend admin invite failed: {r.status_code} {r.text}")
+        return False
+    except Exception as e:
+        logger.exception(f"Error sending admin invite email: {e}")
+        return False
+
+
+@admin_bp.route("/api/admin/send-admin-invite", methods=["POST", "OPTIONS"])
+@admin_bp.route("/api/admin/send-admin-invite/", methods=["POST", "OPTIONS"])
+def admin_send_invite():
+    """Send admin invite email with one-time link. Master Admin only."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin_email = request.headers.get("X-User-Email") or (_data_from_request() or {}).get("admin_email") or (request.json or {}).get("admin_email")
+        if not admin_email or not _is_master_admin(admin_email):
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            return _allow_origin(response), 403
+        data = _data_from_request() or request.json or {}
+        invited = (data.get("email") or "").strip().lower()
+        if not invited or "@" not in invited:
+            response = jsonify({"success": False, "error": "Valid email required"})
+            return _allow_origin(response), 400
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": False, "error": "Database service unavailable"})
+            return _allow_origin(response), 500
+        base_url = os.getenv("SCREENMERCH_FRONTEND_URL", "https://screenmerch.com")
+        token = secrets.token_urlsafe(32)
+        expires_at = (datetime.utcnow() + timedelta(days=7)).isoformat()
+        try:
+            client.table("admin_invites").insert({
+                "token": token,
+                "invited_email": invited,
+                "expires_at": expires_at,
+            }).execute()
+        except Exception as tbl_err:
+            if "42P01" in str(tbl_err) or "does not exist" in str(tbl_err).lower():
+                response = jsonify({"success": False, "error": "Invite system not set up. Run supabase_admin_invites.sql in Supabase."})
+                return _allow_origin(response), 503
+            raise
+        invite_link = f"{base_url.rstrip('/')}/admin-signup?invite={token}"
+        if not _send_admin_invite_email(invited, invite_link):
+            response = jsonify({"success": False, "error": "Failed to send invite email"})
+            return _allow_origin(response), 500
+        response = jsonify({"success": True, "message": f"Invite sent to {invited}"})
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.exception(f"Error in send-admin-invite: {e}")
+        response = jsonify({"success": False, "error": "Internal server error"})
+        return _allow_origin(response), 500
+
+
+@admin_bp.route("/api/admin/validate-invite", methods=["GET", "OPTIONS"])
+@admin_bp.route("/api/admin/validate-invite/", methods=["GET", "OPTIONS"])
+def admin_validate_invite():
+    """Public: validate invite token; returns invited_email if valid. No auth required."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        token = (request.args.get("invite") or "").strip()
+        if not token:
+            response = jsonify({"success": True, "valid": False})
+            return _allow_origin(response), 200
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": True, "valid": False})
+            return _allow_origin(response), 200
+        now = datetime.utcnow().isoformat()
+        result = client.table("admin_invites").select("invited_email, used_at").eq("token", token).execute()
+        if not result.data or len(result.data) == 0:
+            response = jsonify({"success": True, "valid": False})
+            return _allow_origin(response), 200
+        row = result.data[0]
+        if row.get("used_at"):
+            response = jsonify({"success": True, "valid": False})
+            return _allow_origin(response), 200
+        # Check expiry (expires_at is stored in DB)
+        exp_result = client.table("admin_invites").select("expires_at").eq("token", token).single().execute()
+        if exp_result.data and exp_result.data.get("expires_at"):
+            if exp_result.data["expires_at"] < now:
+                response = jsonify({"success": True, "valid": False})
+                return _allow_origin(response), 200
+        response = jsonify({"success": True, "valid": True, "invited_email": row.get("invited_email") or ""})
+        return _allow_origin(response), 200
+    except Exception as e:
+        if "42P01" in str(e) or "does not exist" in str(e).lower():
+            response = jsonify({"success": True, "valid": False})
+            return _allow_origin(response), 200
+        logger.exception(f"Error in validate-invite: {e}")
+        response = jsonify({"success": False, "error": "Internal server error"})
+        return _allow_origin(response), 500
+
+
+@admin_bp.route("/api/admin/submit-signup-from-invite", methods=["POST", "OPTIONS"])
+@admin_bp.route("/api/admin/submit-signup-from-invite/", methods=["POST", "OPTIONS"])
+def admin_submit_signup_from_invite():
+    """Public: submit admin signup request using valid invite token. No auth required."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        data = _data_from_request() or request.json or {}
+        token = (data.get("invite_token") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        if not token or not email or "@" not in email:
+            response = jsonify({"success": False, "error": "Invite token and valid email required"})
+            return _allow_origin(response), 400
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": False, "error": "Service unavailable"})
+            return _allow_origin(response), 503
+        now = datetime.utcnow().isoformat()
+        inv = client.table("admin_invites").select("id, invited_email, expires_at, used_at").eq("token", token).execute()
+        if not inv.data or len(inv.data) == 0:
+            response = jsonify({"success": False, "error": "Invalid or expired invite"})
+            return _allow_origin(response), 400
+        row = inv.data[0]
+        if row.get("used_at"):
+            response = jsonify({"success": False, "error": "This invite has already been used"})
+            return _allow_origin(response), 400
+        if row.get("expires_at") and row["expires_at"] < now:
+            response = jsonify({"success": False, "error": "Invite has expired"})
+            return _allow_origin(response), 400
+        # Optional: require email to match invited_email (stricter)
+        invited = (row.get("invited_email") or "").strip().lower()
+        if invited and email != invited:
+            response = jsonify({"success": False, "error": "Use the email address this invite was sent to"})
+            return _allow_origin(response), 400
+        # Insert signup request
+        client.table("admin_signup_requests").insert({
+            "email": email,
+            "status": "pending",
+        }).execute()
+        # Mark invite as used
+        client.table("admin_invites").update({"used_at": now}).eq("id", row["id"]).execute()
+        response = jsonify({"success": True, "message": "Signup request submitted. The master admin will approve and send you login details."})
+        return _allow_origin(response), 200
+    except Exception as e:
+        if "42P01" in str(e) or "does not exist" in str(e).lower():
+            response = jsonify({"success": False, "error": "Invite system not set up"})
+            return _allow_origin(response), 503
+        logger.exception(f"Error in submit-signup-from-invite: {e}")
         response = jsonify({"success": False, "error": "Internal server error"})
         return _allow_origin(response), 500
 
