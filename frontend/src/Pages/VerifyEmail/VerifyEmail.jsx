@@ -16,11 +16,11 @@ const VerifyEmail = () => {
   const [message, setMessage] = useState(null);
   const [token, setToken] = useState(null);
   const [email, setEmail] = useState(null);
+  const [resendLoading, setResendLoading] = useState(false);
 
   useEffect(() => {
-    const tokenParam = searchParams.get('token');
-    const emailParam = searchParams.get('email');
-    
+    const tokenParam = (searchParams.get('token') || '').trim();
+    const emailParam = (searchParams.get('email') || '').trim().toLowerCase();
     if (!tokenParam || !emailParam) {
       setMessage({ type: 'error', text: 'Invalid verification link. Please check your email and try again.' });
     } else {
@@ -58,13 +58,14 @@ const VerifyEmail = () => {
 
       const response = await fetch(`${BACKEND_URL}/api/auth/verify-email`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          token: token,
-          email: email,
+          token: (token || '').trim(),
+          email: (email || '').trim().toLowerCase(),
           password: password
         })
       });
@@ -113,6 +114,30 @@ const VerifyEmail = () => {
       setMessage({ type: 'error', text: err?.message || 'Verification failed. Please try again.' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!email || resendLoading) return;
+    setResendLoading(true);
+    setMessage(null);
+    try {
+      const r = await fetch(`${BACKEND_URL}/api/auth/signup/email-only`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() })
+      });
+      const data = r.ok ? await r.json().catch(() => ({})) : {};
+      if (r.ok && data.success) {
+        setMessage({ type: 'success', text: 'A new verification link was sent to your email. Use the link in the latest email, then set your password.' });
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Could not send a new link. Try again or sign up again from the home page.' });
+      }
+    } catch (_) {
+      setMessage({ type: 'error', text: 'Could not send a new link. Try again or sign up again from the home page.' });
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -189,6 +214,12 @@ const VerifyEmail = () => {
                 'Verify & Set Password'
               )}
             </button>
+            <p className="verify-email-resend">
+              Link invalid or expired?{' '}
+              <button type="button" className="verify-email-resend-btn" onClick={handleResendVerification} disabled={resendLoading}>
+                {resendLoading ? 'Sending...' : 'Send a new verification link'}
+              </button>
+            </p>
           </form>
         ) : (
           <div className="verify-email-error">

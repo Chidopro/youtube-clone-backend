@@ -123,6 +123,31 @@
   cursor: not-allowed;
 }
 
+.verify-email-resend {
+  margin-top: 16px;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.verify-email-resend-btn {
+  background: none;
+  border: none;
+  color: #667eea;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+}
+
+.verify-email-resend-btn:hover:not(:disabled) {
+  color: #764ba2;
+}
+
+.verify-email-resend-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .verify-email-error {
   text-align: center;
   padding: 20px;
