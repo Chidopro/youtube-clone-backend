@@ -1233,25 +1233,32 @@ export class AdminService {
    */
   static async assignOrderToWorker(queueId, workerId) {
     try {
-      const { data, error } = await supabase
-        .from('order_processing_queue')
-        .update({
-          status: 'assigned',
-          assigned_to: workerId,
-          assigned_at: new Date().toISOString()
-        })
-        .eq('id', queueId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
+      const userEmail = await this.getCurrentUserEmail();
+      const apiUrl = getAdminApiBase() || (process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      if (userEmail) {
+        headers['X-User-Email'] = userEmail;
+      }
+      const response = await fetch(`${apiUrl}/api/admin/assign-order`, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({ queue_id: queueId, worker_id: workerId })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}`);
+      }
+      if (!result.success) {
+        throw new Error(result.error || 'Assign failed');
+      }
       await this.logAdminAction('assign_order', 'order_processing_queue', queueId, {
         worker_id: workerId,
         queue_id: queueId
       });
-
-      return { success: true, data };
+      return { success: true, data: result };
     } catch (error) {
       console.error('Error assigning order:', error);
       return { success: false, error: error.message };

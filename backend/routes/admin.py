@@ -1102,6 +1102,58 @@ def admin_processing_history():
         return _allow_origin(response), 500
 
 
+@admin_bp.route("/api/admin/assign-order", methods=["POST", "OPTIONS"])
+@admin_required()
+def assign_order():
+    """Assign a queue item to a worker (master admin or order processing admin). Body: { \"queue_id\": \"uuid\", \"worker_id\": \"uuid\" }."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+        if not user_email:
+            response = jsonify({"success": False, "error": "X-User-Email required"})
+            return _allow_origin(response), 401
+        # Allow master_admin or order_processing_admin to assign
+        client = _get_supabase_client()
+        user_result = client.table('users').select('admin_role, is_admin').eq('email', user_email.strip().lower()).execute()
+        if not user_result.data:
+            response = jsonify({"success": False, "error": "User not found"})
+            return _allow_origin(response), 403
+        user = user_result.data[0]
+        if not (user.get('is_admin') and user.get('admin_role') in ('master_admin', 'order_processing_admin')):
+            response = jsonify({"success": False, "error": "Admin access required to assign orders"})
+            return _allow_origin(response), 403
+        data = request.get_json() or {}
+        queue_id = data.get('queue_id')
+        worker_id = data.get('worker_id')
+        if not queue_id or not worker_id:
+            response = jsonify({"success": False, "error": "queue_id and worker_id are required"})
+            return _allow_origin(response), 400
+        queue_result = client.table('order_processing_queue').select('id, order_id').eq('id', queue_id).execute()
+        if not queue_result.data:
+            response = jsonify({"success": False, "error": "Order not found in queue"})
+            return _allow_origin(response), 404
+        from datetime import datetime, timezone
+        assigned_at = datetime.now(timezone.utc).isoformat()
+        client.table('order_processing_queue').update({
+            'status': 'assigned',
+            'assigned_to': worker_id,
+            'assigned_at': assigned_at
+        }).eq('id', queue_id).execute()
+        logger.info(f"✅ [ADMIN] Assigned queue {queue_id} to worker {worker_id} by {user_email}")
+        response = jsonify({
+            "success": True,
+            "message": "Order assigned successfully",
+            "queue_id": queue_id,
+            "assigned_to": worker_id
+        })
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error assigning order: {str(e)}")
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
 @admin_bp.route("/api/admin/delete-order/<queue_id>", methods=["DELETE", "OPTIONS"])
 @admin_required()
 def delete_order(queue_id):
