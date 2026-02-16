@@ -3109,6 +3109,13 @@ const Admin = () => {
                 <p><strong>Total Amount:</strong> ${selectedOrder.total_amount ? parseFloat(selectedOrder.total_amount).toFixed(2) : '0.00'}</p>
                 <p><strong>Customer Email:</strong> {selectedOrder.customer_email || 'N/A'}</p>
                 <p><strong>Customer Phone:</strong> {selectedOrder.customer_phone || 'N/A'}</p>
+                <p><strong>Address:</strong> {selectedOrder.shipping_address ? (
+                  typeof selectedOrder.shipping_address === 'string' ? selectedOrder.shipping_address : (
+                    [selectedOrder.shipping_address.line1, selectedOrder.shipping_address.line2, selectedOrder.shipping_address.city, selectedOrder.shipping_address.state, selectedOrder.shipping_address.postal_code, selectedOrder.shipping_address.country].filter(Boolean).join(', ') || (selectedOrder.shipping_address.name ? `${selectedOrder.shipping_address.name} — see full address below` : 'See full address below')
+                  )
+                ) : (
+                  <span style={{ fontStyle: 'italic', color: '#666' }}>Not collected (Stripe test mode). Full address appears in Live Mode.</span>
+                )}</p>
                 <p><strong>Created:</strong> {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString() : 'N/A'}</p>
               </div>
 
