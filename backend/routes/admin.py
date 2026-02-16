@@ -82,7 +82,8 @@ def _send_creator_welcome_email(creator_email):
         return False
     api_key = os.getenv("RESEND_API_KEY")
     from_addr = os.getenv("RESEND_FROM", "noreply@screenmerch.com")
-    signin_url = os.getenv("SCREENMERCH_LOGIN_URL", "https://screenmerch.com/login")
+    # New creators haven't set a password yet; link to set-password page
+    set_password_url = os.getenv("SCREENMERCH_SET_PASSWORD_URL", "https://screenmerch.com/set-password")
     intro_video_url = os.getenv("SCREENMERCH_INTRO_VIDEO_URL", "")
     if not api_key:
         logger.warning("RESEND_API_KEY not set; skipping creator welcome email")
@@ -98,9 +99,9 @@ We invite you to sign in and check out the products we offer — from women's an
 
 Fans pick a moment from your video, capture a screenshot, and put it on any product. Every screenshot is processed for 300 DPI print quality. You earn $7 per sale on most items; we handle printing and shipping.
 
-Next steps: Sign in, browse the catalog, set your subdomain, upload your videos, and share your link.
+Next steps: Create your password, sign in, browse the catalog, set your subdomain, upload your videos, and share your link.
 
-Sign in and explore products: {signin_url}
+Create your password and explore products: {set_password_url}
 """
     if intro_video_url:
         body += f"\nWant a full walkthrough? Watch our intro video: {intro_video_url}\n"
