@@ -668,6 +668,12 @@ def add_security_headers(response):
     
     return response
 
+@app.errorhandler(404)
+def not_found(e):
+    """Log 404s so we can see which URL was requested (e.g. /api/email-status before deploy)."""
+    logger.info("404 Not Found: %s %s", request.method, request.path)
+    return jsonify({"error": "Not Found", "path": request.path}), 404
+
 # Initialize Supabase client for database operations (longer timeout to avoid "read operation timed out")
 supabase: Client = create_client(supabase_url, supabase_key, _supabase_options) if _supabase_options else create_client(supabase_url, supabase_key)
 
@@ -687,10 +693,14 @@ product_data_store = {}
 order_store = {}  # In-memory store for demo; use a database for production
 
 # --- Resend Email Configuration ---
-# These are loaded from your .env file
+# On Fly.io these come from Secrets (not .env). Set: flyctl secrets set RESEND_API_KEY=... RESEND_FROM=...
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 RESEND_FROM = os.getenv("RESEND_FROM", "onboarding@resend.dev")
 MAIL_TO = os.getenv("MAIL_TO") # The email address that will receive the orders
+if not RESEND_API_KEY:
+    logger.warning("RESEND_API_KEY is not set - signup verification and order confirmation emails will not be sent. On Fly.io set: flyctl secrets set RESEND_API_KEY=re_xxx RESEND_FROM=noreply@screenmerch.com")
+else:
+    logger.info("RESEND: API key set, from=%s", RESEND_FROM or "NOT SET")
 
 # Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -6213,6 +6223,16 @@ def calculate_shipping():
             "success": False,
             "error": f"Shipping calculation failed: {str(e)}. Please verify your ZIP code and try again."
         }), 500
+
+@app.route("/api/email-status", methods=["GET"])
+def email_status():
+    """Safe check: is Resend configured? (no auth, no secrets in response). Use to verify Fly.io secrets."""
+    logger.info("GET /api/email-status - returning Resend config status")
+    return jsonify({
+        "resend_configured": bool(os.getenv("RESEND_API_KEY")),
+        "resend_from": os.getenv("RESEND_FROM") or "NOT SET",
+        "mail_to_set": bool(os.getenv("MAIL_TO"))
+    })
 
 @app.route("/api/test-email-config", methods=["GET"])
 def test_email_config():

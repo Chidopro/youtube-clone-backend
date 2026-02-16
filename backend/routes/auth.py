@@ -652,7 +652,11 @@ def auth_signup_email_only():
                     if email_response.status_code in (200, 201, 202):
                         logger.info(f"[signup/email-only] Verification email sent to {email}")
                     else:
-                        logger.warning(f"[signup/email-only] Resend returned {email_response.status_code}: {email_response.text[:200]}")
+                        logger.warning(
+                            "[signup/email-only] Resend failed status=%s body=%s",
+                            email_response.status_code,
+                            email_response.text[:500]
+                        )
                 except Exception as email_error:
                     logger.error(f"❌ Error sending verification email: {str(email_error)}")
             else:
