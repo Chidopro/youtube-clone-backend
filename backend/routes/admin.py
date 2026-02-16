@@ -538,6 +538,111 @@ def admin_submit_signup_from_invite():
         return _allow_origin(response), 500
 
 
+@admin_bp.route("/api/admin/approve-signup-request", methods=["POST", "OPTIONS"])
+@admin_bp.route("/api/admin/approve-signup-request/", methods=["POST", "OPTIONS"])
+def admin_approve_signup_request():
+    """Master Admin only: approve an admin signup request; create or update user with admin role."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin_email = request.headers.get("X-User-Email") or (_data_from_request() or {}).get("admin_email") or (request.json or {}).get("admin_email")
+        if not admin_email or not _is_master_admin(admin_email):
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            return _allow_origin(response), 403
+        data = _data_from_request() or request.json or {}
+        request_id = data.get("request_id") or data.get("requestId")
+        admin_role = (data.get("admin_role") or data.get("adminRole") or "order_processing_admin").strip()
+        if admin_role not in ("master_admin", "order_processing_admin"):
+            admin_role = "order_processing_admin"
+        if not request_id:
+            response = jsonify({"success": False, "error": "request_id required"})
+            return _allow_origin(response), 400
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": False, "error": "Database service unavailable"})
+            return _allow_origin(response), 500
+        # Get the signup request (service role bypasses RLS)
+        req_result = client.table("admin_signup_requests").select("*").eq("id", request_id).execute()
+        if not req_result.data or len(req_result.data) == 0:
+            response = jsonify({"success": False, "error": "Signup request not found"})
+            return _allow_origin(response), 404
+        req = req_result.data[0]
+        if (req.get("status") or "").lower() != "pending":
+            response = jsonify({"success": False, "error": "Request is not pending"})
+            return _allow_origin(response), 400
+        email = (req.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            response = jsonify({"success": False, "error": "Invalid request email"})
+            return _allow_origin(response), 400
+        # Resolve approver user id for approved_by
+        approver = client.table("users").select("id").ilike("email", admin_email).limit(1).execute()
+        approved_by = approver.data[0]["id"] if approver.data else None
+        # Update request
+        client.table("admin_signup_requests").update({
+            "status": "approved",
+            "approved_by": approved_by,
+            "approved_at": datetime.utcnow().isoformat(),
+        }).eq("id", request_id).execute()
+        # Find or create user in users table
+        existing = client.table("users").select("id").ilike("email", email).execute()
+        if existing.data and len(existing.data) > 0:
+            client.table("users").update({
+                "is_admin": True,
+                "admin_role": admin_role,
+            }).eq("id", existing.data[0]["id"]).execute()
+        else:
+            client.table("users").insert({
+                "email": email,
+                "is_admin": True,
+                "admin_role": admin_role,
+                "role": "customer",
+                "status": "active",
+            }).execute()
+        response = jsonify({"success": True, "message": f"Approved {email} as {admin_role}"})
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.exception(f"Error in approve-signup-request: {e}")
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
+@admin_bp.route("/api/admin/reject-signup-request", methods=["POST", "OPTIONS"])
+@admin_bp.route("/api/admin/reject-signup-request/", methods=["POST", "OPTIONS"])
+def admin_reject_signup_request():
+    """Master Admin only: reject an admin signup request."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin_email = request.headers.get("X-User-Email") or (_data_from_request() or {}).get("admin_email") or (request.json or {}).get("admin_email")
+        if not admin_email or not _is_master_admin(admin_email):
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            return _allow_origin(response), 403
+        data = _data_from_request() or request.json or {}
+        request_id = data.get("request_id") or data.get("requestId")
+        notes = (data.get("notes") or "").strip()
+        if not request_id:
+            response = jsonify({"success": False, "error": "request_id required"})
+            return _allow_origin(response), 400
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": False, "error": "Database service unavailable"})
+            return _allow_origin(response), 500
+        approver = client.table("users").select("id").ilike("email", admin_email).limit(1).execute()
+        approved_by = approver.data[0]["id"] if approver.data else None
+        client.table("admin_signup_requests").update({
+            "status": "rejected",
+            "approved_by": approved_by,
+            "approved_at": datetime.utcnow().isoformat(),
+            "notes": notes,
+        }).eq("id", request_id).execute()
+        response = jsonify({"success": True, "message": "Request rejected"})
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.exception(f"Error in reject-signup-request: {e}")
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
 # User list for User Management (Master Admin only, bypasses RLS)
 @admin_bp.route("/api/admin/users", methods=["GET", "OPTIONS"])
 @admin_bp.route("/api/admin/users/", methods=["GET", "OPTIONS"])

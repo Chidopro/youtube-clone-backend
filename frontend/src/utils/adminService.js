@@ -1545,81 +1545,26 @@ export class AdminService {
   }
 
   /**
-   * Approve admin signup request (master admin only)
+   * Approve admin signup request (master admin only). Uses backend API to avoid RLS/PGRST116.
    * @param {string} requestId - Request ID
-   * @param {string} adminRole - Role to assign ('order_processing_admin' or 'admin')
+   * @param {string} adminRole - Role to assign ('order_processing_admin' or 'master_admin')
    * @returns {Promise<Object>} Result object
    */
   static async approveAdminSignupRequest(requestId, adminRole = 'order_processing_admin') {
     try {
-      // Get the request
-      const { data: request, error: requestError } = await supabase
-        .from('admin_signup_requests')
-        .select('*')
-        .eq('id', requestId)
-        .single();
-
-      if (requestError) throw requestError;
-
-      // Get current user (master admin)
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: false, error: 'Not authenticated' };
-      }
-
-      // Update the request status
-      const { error: updateError } = await supabase
-        .from('admin_signup_requests')
-        .update({
-          status: 'approved',
-          approved_by: user.id,
-          approved_at: new Date().toISOString()
-        })
-        .eq('id', requestId);
-
-      if (updateError) throw updateError;
-
-      // Find or create user in users table and set admin role
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('*')
-        .ilike('email', request.email)
-        .single();
-
-      if (existingUser) {
-        // Update existing user
-        const { error: userUpdateError } = await supabase
-          .from('users')
-          .update({
-            is_admin: true,
-            admin_role: adminRole
-          })
-          .eq('id', existingUser.id);
-
-        if (userUpdateError) throw userUpdateError;
-      } else {
-        // Create new user (they'll need to set password via Supabase Auth)
-        // For now, just create a placeholder - master admin will need to set up auth manually
-        const { error: userCreateError } = await supabase
-          .from('users')
-          .insert({
-            email: request.email,
-            is_admin: true,
-            admin_role: adminRole,
-            role: 'customer',
-            status: 'active'
-          });
-
-        if (userCreateError) throw userCreateError;
-      }
-
-      // Log admin action
-      await this.logAdminAction('approve_admin_signup', 'admin_signup_request', requestId, {
-        approved_email: request.email,
-        admin_role: adminRole
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) return { success: false, error: 'Not authenticated' };
+      const base = getAdminApiBase();
+      const apiUrl = base || API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const res = await fetch(`${apiUrl}/api/admin/approve-signup-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },
+        credentials: 'include',
+        body: JSON.stringify({ request_id: requestId, admin_role: adminRole })
       });
-
-      return { success: true };
+      const json = await res.json().catch(() => ({}));
+      if (json.success) return { success: true };
+      return { success: false, error: json.error || 'Failed to approve' };
     } catch (error) {
       console.error('Error approving admin signup request:', error);
       return { success: false, error: error.message };
@@ -1627,36 +1572,26 @@ export class AdminService {
   }
 
   /**
-   * Reject admin signup request (master admin only)
+   * Reject admin signup request (master admin only). Uses backend API to avoid RLS.
    * @param {string} requestId - Request ID
    * @param {string} notes - Optional rejection notes
    * @returns {Promise<Object>} Result object
    */
   static async rejectAdminSignupRequest(requestId, notes = '') {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: false, error: 'Not authenticated' };
-      }
-
-      const { error } = await supabase
-        .from('admin_signup_requests')
-        .update({
-          status: 'rejected',
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
-          notes: notes
-        })
-        .eq('id', requestId);
-
-      if (error) throw error;
-
-      // Log admin action
-      await this.logAdminAction('reject_admin_signup', 'admin_signup_request', requestId, {
-        notes: notes
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) return { success: false, error: 'Not authenticated' };
+      const base = getAdminApiBase();
+      const apiUrl = base || API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const res = await fetch(`${apiUrl}/api/admin/reject-signup-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },
+        credentials: 'include',
+        body: JSON.stringify({ request_id: requestId, notes: notes || '' })
       });
-
-      return { success: true };
+      const json = await res.json().catch(() => ({}));
+      if (json.success) return { success: true };
+      return { success: false, error: json.error || 'Failed to reject' };
     } catch (error) {
       console.error('Error rejecting admin signup request:', error);
       return { success: false, error: error.message };
