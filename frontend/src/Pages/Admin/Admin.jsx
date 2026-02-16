@@ -2327,7 +2327,7 @@ const Admin = () => {
                                       >
                                         View Details
                                       </button>
-                                      {isMasterAdmin && queueItem.status === 'pending' && (
+                                      {isMasterAdmin && (queueItem.status?.toLowerCase() === 'pending' || !queueItem.assigned_to) && (
                                         <select
                                           className="worker-select"
                                           onChange={(e) => {
@@ -2336,12 +2336,13 @@ const Admin = () => {
                                             }
                                           }}
                                           defaultValue=""
-                                          style={{ fontSize: '12px', padding: '4px 8px' }}
+                                          style={{ fontSize: '12px', padding: '6px 10px', minWidth: '140px' }}
+                                          title="Assign this order to a worker"
                                         >
-                                          <option value="">Assign...</option>
+                                          <option value="">Assign to...</option>
                                           {workers.map(worker => (
                                             <option key={worker.user_id} value={worker.user_id}>
-                                              {worker.user?.display_name || worker.user?.email}
+                                              {worker.user?.display_name || worker.user?.email || worker.user_id}
                                             </option>
                                           ))}
                                         </select>
