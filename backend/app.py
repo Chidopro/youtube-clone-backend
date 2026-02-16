@@ -616,11 +616,13 @@ def _is_origin_allowed(origin):
 
 # Flask-CORS: use only string origins so /api/* gets correct CORS (regex in list can be unreliable).
 # allow_headers must include Content-Type so POST /api/auth/login (and other JSON APIs) pass preflight.
+# methods must include DELETE so admin delete-order (and other DELETE APIs) pass preflight.
 CORS(
     app,
     resources={r"/api/*": {
         "origins": ALLOWED_ORIGINS_LIST,
         "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma", "Expires", "X-User-Email"],
+        "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     }},
     supports_credentials=True,
     always_send=True,
@@ -663,6 +665,7 @@ def add_security_headers(response):
         if origin and _is_origin_allowed(origin):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
             # Preflight must allow Content-Type so POST JSON (e.g. /api/auth/login) succeeds
             response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
     

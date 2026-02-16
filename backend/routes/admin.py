@@ -1138,6 +1138,45 @@ def delete_order(queue_id):
         return _allow_origin(response), 500
 
 
+@admin_bp.route("/api/admin/delete-orders", methods=["POST", "OPTIONS"])
+@admin_required()
+def delete_orders_bulk():
+    """Delete multiple orders from the processing queue (master admin only). Body: { \"queue_ids\": [\"uuid\", ...] }."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+        if not _is_master_admin(user_email):
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            response.status_code = 403
+            return _allow_origin(response), 403
+        data = request.get_json() or {}
+        queue_ids = data.get('queue_ids') or []
+        if not queue_ids or not isinstance(queue_ids, list):
+            response = jsonify({"success": False, "error": "queue_ids array is required"})
+            return _allow_origin(response), 400
+        client = _get_supabase_client()
+        deleted = 0
+        errors = []
+        for qid in queue_ids:
+            try:
+                client.table('order_processing_queue').delete().eq('id', qid).execute()
+                deleted += 1
+            except Exception as e:
+                errors.append(str(e))
+        response = jsonify({
+            "success": True,
+            "message": f"Deleted {deleted} order(s)",
+            "deleted_count": deleted,
+            "errors": errors if errors else None
+        })
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error bulk deleting orders: {str(e)}")
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
 @admin_bp.route("/api/admin/workers", methods=["GET", "OPTIONS"])
 @admin_required()
 def admin_workers():

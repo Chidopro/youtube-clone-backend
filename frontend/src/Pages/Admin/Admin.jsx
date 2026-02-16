@@ -33,6 +33,8 @@ const Admin = () => {
   const [workers, setWorkers] = useState([]);
   const [queueStatusFilter, setQueueStatusFilter] = useState('all');
   const [queueLoading, setQueueLoading] = useState(false);
+  const [selectedQueueIds, setSelectedQueueIds] = useState([]);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [isFullAdmin, setIsFullAdmin] = useState(false);
   const [isOrderProcessingAdmin, setIsOrderProcessingAdmin] = useState(false);
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
@@ -873,6 +875,7 @@ const Admin = () => {
       const result = await AdminService.deleteOrder(queueId);
       if (result.success) {
         alert('Order deleted successfully');
+        setSelectedQueueIds(prev => prev.filter(id => id !== queueId));
         loadProcessingQueue();
       } else {
         alert(`Failed to delete order: ${result.error}`);
@@ -880,6 +883,66 @@ const Admin = () => {
     } catch (error) {
       console.error('Error deleting order:', error);
       alert('Failed to delete order');
+    }
+  };
+
+  const handleToggleQueueSelect = (queueId) => {
+    setSelectedQueueIds(prev =>
+      prev.includes(queueId) ? prev.filter(id => id !== queueId) : [...prev, queueId]
+    );
+  };
+
+  const handleSelectAllQueue = (checked) => {
+    if (checked) {
+      setSelectedQueueIds(processingQueue.map(item => item.id));
+    } else {
+      setSelectedQueueIds([]);
+    }
+  };
+
+  const handleBulkDeleteSelected = async () => {
+    if (selectedQueueIds.length === 0) {
+      alert('Please select one or more orders to delete.');
+      return;
+    }
+    if (!confirm(`Delete ${selectedQueueIds.length} selected order(s)? This cannot be undone.`)) return;
+    setBulkDeleteLoading(true);
+    try {
+      const result = await AdminService.deleteOrdersBulk(selectedQueueIds);
+      if (result.success) {
+        alert(result.message || `Deleted ${result.deleted_count} order(s).`);
+        setSelectedQueueIds([]);
+        loadProcessingQueue();
+      } else {
+        alert(`Failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error bulk deleting orders:', error);
+      alert('Failed to delete orders');
+    } finally {
+      setBulkDeleteLoading(false);
+    }
+  };
+
+  const handleBulkDeleteAll = async () => {
+    if (processingQueue.length === 0) return;
+    if (!confirm(`Delete all ${processingQueue.length} orders in the queue? This cannot be undone.`)) return;
+    setBulkDeleteLoading(true);
+    try {
+      const ids = processingQueue.map(item => item.id);
+      const result = await AdminService.deleteOrdersBulk(ids);
+      if (result.success) {
+        alert(result.message || `Deleted ${result.deleted_count} order(s).`);
+        setSelectedQueueIds([]);
+        loadProcessingQueue();
+      } else {
+        alert(`Failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error bulk deleting orders:', error);
+      alert('Failed to delete orders');
+    } finally {
+      setBulkDeleteLoading(false);
     }
   };
 
@@ -2081,7 +2144,7 @@ const Admin = () => {
                 </div>
               ) : (
                 <>
-                  <div className="queue-filters">
+                  <div className="queue-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
                     <select 
                       value={queueStatusFilter} 
                       onChange={(e) => setQueueStatusFilter(e.target.value)}
@@ -2095,6 +2158,42 @@ const Admin = () => {
                       <option value="failed">Failed</option>
                     </select>
                     <button onClick={loadProcessingQueue} className="refresh-btn">Refresh</button>
+                    {isMasterAdmin && processingQueue.length > 0 && (
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: 'auto' }}>
+                        <button
+                          type="button"
+                          onClick={handleBulkDeleteSelected}
+                          disabled={selectedQueueIds.length === 0 || bulkDeleteLoading}
+                          style={{
+                            padding: '6px 12px',
+                            fontSize: '13px',
+                            background: selectedQueueIds.length > 0 ? '#dc3545' : '#ccc',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: selectedQueueIds.length > 0 && !bulkDeleteLoading ? 'pointer' : 'not-allowed'
+                          }}
+                        >
+                          {bulkDeleteLoading ? 'Deleting...' : `Delete selected (${selectedQueueIds.length})`}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleBulkDeleteAll}
+                          disabled={bulkDeleteLoading}
+                          style={{
+                            padding: '6px 12px',
+                            fontSize: '13px',
+                            background: '#a71d2a',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: bulkDeleteLoading ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          Delete all
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
                   {isOrderProcessingAdmin && !isMasterAdmin && processingQueue.length === 0 && !queueLoading && (
@@ -2124,6 +2223,16 @@ const Admin = () => {
                         <table>
                           <thead>
                             <tr>
+                              {isMasterAdmin && (
+                                <th style={{ width: '40px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={processingQueue.length > 0 && selectedQueueIds.length === processingQueue.length}
+                                    onChange={(e) => handleSelectAllQueue(e.target.checked)}
+                                    title="Select all"
+                                  />
+                                </th>
+                              )}
                               <th>Order ID</th>
                               <th>Status</th>
                               <th>Priority</th>
@@ -2137,6 +2246,16 @@ const Admin = () => {
                               const order = queueItem.orders || {};
                               return (
                                 <tr key={queueItem.id}>
+                                  {isMasterAdmin && (
+                                    <td>
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedQueueIds.includes(queueItem.id)}
+                                        onChange={() => handleToggleQueueSelect(queueItem.id)}
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    </td>
+                                  )}
                                   <td>
                                     <strong>{order.order_id ? order.order_id.slice(0, 8) : 'N/A'}</strong>
                                     {order.cart && (

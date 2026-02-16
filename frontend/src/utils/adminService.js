@@ -1767,11 +1767,8 @@ export class AdminService {
    */
   static async deleteOrder(queueId) {
     try {
-      // Get user email for authentication
       const userEmail = await this.getCurrentUserEmail();
-      
-      // Use API endpoint
-      const apiUrl = process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev';
+      const apiUrl = getAdminApiBase() || (process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev');
       const headers = {
         'Content-Type': 'application/json'
       };
@@ -1798,6 +1795,40 @@ export class AdminService {
       return result;
     } catch (error) {
       console.error('Error deleting order:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Delete multiple orders from processing queue (master admin only)
+   * @param {string[]} queueIds - Array of queue item IDs
+   * @returns {Promise<Object>} Result object with deleted_count
+   */
+  static async deleteOrdersBulk(queueIds) {
+    try {
+      const userEmail = await this.getCurrentUserEmail();
+      const apiUrl = getAdminApiBase() || (process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      if (userEmail) {
+        headers['X-User-Email'] = userEmail;
+      }
+      const response = await fetch(`${apiUrl}/api/admin/delete-orders`, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({ queue_ids: queueIds })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      const result = await response.json();
+      await this.logAdminAction('delete_orders_bulk', 'order_processing_queue', null, { count: result.deleted_count });
+      return result;
+    } catch (error) {
+      console.error('Error bulk deleting orders:', error);
       return { success: false, error: error.message };
     }
   }
