@@ -683,7 +683,7 @@ if supabase_service_key:
     supabase_admin = create_client(supabase_url, supabase_service_key, _supabase_options) if _supabase_options else create_client(supabase_url, supabase_service_key)
     print("[OK] Service role client initialized - new creator signups WILL be recorded in admin dashboard")
 else:
-    print("[WARNING] SUPABASE_SERVICE_ROLE_KEY not set - new creator signups will NOT be recorded. Set it in Fly.io Secrets.")
+    print("[WARNING] SUPABASE_SERVICE_ROLE_KEY not set - new creator signups will NOT be recorded; email verification (set password) will return 503. Set it in Fly.io Secrets.")
 
 # NEW: Initialize Printful integration
 printful_integration = ScreenMerchPrintfulIntegration()
@@ -5211,46 +5211,59 @@ def get_my_profile():
         return jsonify({"error": "Internal server error"}), 500
 
 
-@app.route("/api/users/ensure-exists", methods=["POST"])
+@app.route("/api/users/ensure-exists", methods=["POST", "OPTIONS"])
 def ensure_user_exists():
-    """Ensure user exists in users table"""
+    """Ensure user exists in users table. Uses admin client to bypass RLS for server-side upsert."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True), 200
     try:
-        data = request.get_json()
+        from datetime import datetime, timezone
+        data = request.get_json() or {}
         user_id = data.get('user_id')
         email = data.get('email')
         display_name = data.get('display_name')
         
         # If no user_id provided, generate one from email
         if not user_id:
-            import uuid
             user_id = str(uuid.uuid4())
             logger.info(f"Generated UUID for user: {user_id}")
+        else:
+            user_id = str(user_id).strip()
+        
+        # Use admin client so we can read/insert/update users regardless of RLS (no Supabase auth in this request)
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            logger.error("ensure_user_exists: No Supabase client available")
+            return jsonify({"error": "Database service unavailable"}), 500
         
         # Check if user exists
-        result = supabase.table('users').select('*').eq('id', user_id).execute()
+        result = client.table('users').select('*').eq('id', user_id).execute()
+        
+        now_iso = datetime.now(timezone.utc).isoformat()
         
         if result.data and len(result.data) > 0:
             # User exists, update if needed
-            if display_name and result.data[0].get('display_name') != display_name:
-                supabase.table('users').update({
+            if display_name is not None and result.data[0].get('display_name') != display_name:
+                client.table('users').update({
                     'display_name': display_name,
-                    'updated_at': 'now()'
+                    'updated_at': now_iso
                 }).eq('id', user_id).execute()
+                result = client.table('users').select('*').eq('id', user_id).execute()
             return jsonify({"message": "User exists", "user": result.data[0]})
         else:
-            # Create user
+            # Create user (admin client required for insert when RLS is on)
             new_user = {
                 'id': user_id,
-                'email': email,
-                'username': email.split('@')[0] if email else 'user',
+                'email': email or None,
+                'username': (email.split('@')[0] if email else 'user'),
                 'display_name': display_name or (email.split('@')[0] if email else 'User'),
                 'role': 'creator',
-                'created_at': 'now()',
-                'updated_at': 'now()'
+                'created_at': now_iso,
+                'updated_at': now_iso
             }
             
             try:
-                result = supabase.table('users').insert(new_user).execute()
+                result = client.table('users').insert(new_user).execute()
                 if result.data and len(result.data) > 0:
                     return jsonify({"message": "User created", "user": result.data[0]})
                 else:
@@ -5259,9 +5272,9 @@ def ensure_user_exists():
                 # If insert fails due to duplicate key, try to update existing user
                 if "duplicate key" in str(insert_error).lower():
                     logger.info(f"Duplicate key detected for user {user_id}, updating existing user")
-                    result = supabase.table('users').update({
+                    result = client.table('users').update({
                         'role': 'creator',
-                        'updated_at': 'now()'
+                        'updated_at': now_iso
                     }).eq('id', user_id).execute()
                     if result.data and len(result.data) > 0:
                         return jsonify({"message": "User updated", "user": result.data[0]})

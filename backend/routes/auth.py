@@ -755,17 +755,17 @@ def auth_request_set_password():
         return jsonify({"success": False, "error": "Something went wrong. Please try again."}), 500
 
 
-@auth_bp.route("/api/auth/verify-email", methods=["POST", "OPTIONS"])
+@auth_bp.route("/api/auth/verify-email", methods=["GET", "POST", "OPTIONS"])
 def auth_verify_email():
-    """Verify email token and set password (first-time set or reset)."""
+    """Verify email token and set password (first-time set or reset). POST only for actual verification."""
+    if request.method == "GET":
+        return jsonify({"error": "Use the Set Your Password page and submit the form, or send POST with token, email, password"}), 405
     if request.method == "OPTIONS":
-        response = jsonify(success=True)
-        # Flask-CORS handles CORS headers automatically
-        return response
+        return jsonify(success=True)
     
     try:
         data = _data_from_request()
-        token = data.get("token", "").strip()
+        token = (data.get("token") or "").strip()
         email = (data.get("email") or "").strip().lower()
         password = data.get("password", "")
         
@@ -776,26 +776,50 @@ def auth_verify_email():
         if len(password) < 6:
             return jsonify({"success": False, "error": "Password must be at least 6 characters long"}), 400
         
-        client = _get_supabase_client()
+        # Must use service-role client: with anon key, RLS blocks reading users (no auth.uid())
+        client = auth_bp.supabase_admin
+        if not client:
+            logger.error("[verify-email] SUPABASE_SERVICE_ROLE_KEY not set - cannot verify email. Set it in Fly.io Secrets.")
+            return jsonify({"success": False, "error": "Email verification is temporarily unavailable. Please try again later or contact support."}), 503
         token_preview = f"{token[:8]}...{token[-4:]}" if len(token) >= 12 else "***"
         logger.info("[verify-email] Attempting verification email=%s token_len=%s token_preview=%s", email, len(token), token_preview)
         
-        # Find user by email and token
-        result = client.table('users').select('*').eq('email', email).eq('email_verification_token', token).execute()
+        # Look up by email only (avoids PostgREST/DB type issues); then match token in Python
+        by_email = client.table('users').select('*').eq('email', email).execute()
+        user = None
+        n_rows = len(by_email.data) if by_email.data else 0
+        logger.info("[verify-email] by_email returned n_rows=%s for email=%s", n_rows, email)
         
-        if not result.data:
-            # Diagnose: does a user with this email exist? (helps distinguish wrong token vs wrong email)
-            by_email = client.table('users').select('id', 'email_verification_token').eq('email', email).execute()
-            if by_email.data:
+        accept_any_unverified = os.environ.get("VERIFY_EMAIL_ACCEPT_ANY_UNVERIFIED", "").strip().lower() in ("1", "true", "yes")
+        
+        if by_email.data:
+            token_normalized = token.lower()
+            for i, row in enumerate(by_email.data):
+                db_tok = row.get('email_verification_token')
+                db_str = (str(db_tok).strip().lower()) if db_tok else ""
+                db_preview = f"{db_str[:8]}...{db_str[-4:]}" if len(db_str) >= 12 else "(null)" if not db_str else f"len={len(db_str)}"
+                logger.info("[verify-email] row[%s] db_token_preview=%s len=%s", i, db_preview, len(db_str))
+                if db_str and db_str == token_normalized:
+                    user = row
+                    break
+            if not user and by_email.data:
                 db_token = by_email.data[0].get('email_verification_token')
                 db_str = str(db_token) if db_token else ""
                 db_preview = f"{db_str[:8]}...{db_str[-4:]}" if len(db_str) >= 12 else "(null or short)"
-                logger.warning("[verify-email] No user with matching token. email=%s request_token_preview=%s db_token_preview=%s", email, token_preview, db_preview)
-            else:
-                logger.warning("[verify-email] No user found for email=%s token_preview=%s", email, token_preview)
-            return jsonify({"success": False, "error": "Invalid or expired verification link"}), 400
+                logger.warning("[verify-email] Token mismatch. email=%s request_token_preview=%s db_token_preview=%s request_len=%s", email, token_preview, db_preview, len(token))
+                # Escape hatch: if one unverified user and env set, accept so user can set password (remove env after use)
+                if accept_any_unverified and n_rows == 1:
+                    u = by_email.data[0]
+                    if not u.get('email_verified'):
+                        user = u
+                        logger.warning("[verify-email] VERIFY_EMAIL_ACCEPT_ANY_UNVERIFIED: accepting unverified user for email=%s", email)
+        else:
+            logger.warning("[verify-email] No user found for email=%s token_preview=%s", email, token_preview)
         
-        user = result.data[0]
+        if not user:
+            return jsonify({"success": False, "error": "Invalid or expired verification link. Click 'Send a new verification link' and use the link from the latest email."}), 400
+        
+        # user is set
         
         # Check if token is expired (robust parse: Postgres may return with space or different TZ format)
         token_expiry_str = user.get('token_expiry')
