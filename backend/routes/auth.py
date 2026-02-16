@@ -556,9 +556,9 @@ def auth_signup_email_only():
     """Handle customer signup with email only - sends verification email"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
-        # Flask-CORS handles CORS headers automatically
         return response
-    
+
+    logger.info("[signup/email-only] Request received")
     try:
         data = _data_from_request()
         email = (data.get("email") or "").strip().lower()
@@ -582,9 +582,9 @@ def auth_signup_email_only():
                 if user_status in ['active', 'pending']:
                     return jsonify({"success": False, "error": "An account with this email already exists. Please sign in instead."}), 409
         
-        # Generate verification token
+        # Generate verification token (72h expiry so link works even if email is delayed)
         verification_token = str(uuid.uuid4())
-        token_expiry = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+        token_expiry = (datetime.now(timezone.utc) + timedelta(hours=72)).isoformat()
         
         # Create new user without password
         new_user = {
@@ -604,7 +604,8 @@ def auth_signup_email_only():
             resend_from = _get_config('RESEND_FROM') or os.getenv('RESEND_FROM', 'noreply@screenmerch.com')
             frontend_url = os.getenv("FRONTEND_URL", "https://screenmerch.com")
             verification_link = f"{frontend_url}/verify-email?token={verification_token}&email={quote(email, safe='')}"
-            
+
+            logger.info(f"[signup/email-only] RESEND_API_KEY present: {bool(resend_api_key)}, RESEND_FROM: {resend_from or 'NOT SET'}")
             if resend_api_key:
                 try:
                     email_html = f"""
@@ -648,10 +649,10 @@ def auth_signup_email_only():
                         timeout=30
                     )
                     
-                    if email_response.status_code == 200:
-                        logger.info(f"✅ Verification email sent successfully to {email}")
+                    if email_response.status_code in (200, 201, 202):
+                        logger.info(f"[signup/email-only] Verification email sent to {email}")
                     else:
-                        logger.warning(f"Resend returned {email_response.status_code}: {email_response.text}")
+                        logger.warning(f"[signup/email-only] Resend returned {email_response.status_code}: {email_response.text[:200]}")
                 except Exception as email_error:
                     logger.error(f"❌ Error sending verification email: {str(email_error)}")
             else:
@@ -758,15 +759,22 @@ def auth_verify_email():
         
         user = result.data[0]
         
-        # Check if token is expired
+        # Check if token is expired (robust parse: Postgres may return with space or different TZ format)
         token_expiry_str = user.get('token_expiry')
         if token_expiry_str:
             try:
-                token_expiry = datetime.fromisoformat(token_expiry_str.replace('Z', '+00:00'))
-                if datetime.now(timezone.utc) > token_expiry.replace(tzinfo=timezone.utc):
-                    return jsonify({"success": False, "error": "Verification link has expired. Please request a new one."}), 400
-            except Exception:
-                pass
+                s = str(token_expiry_str).strip().replace('Z', '+00:00').replace(' ', 'T')
+                if s.endswith('+00:00') or s.endswith('+00') or s[-1] == 'Z':
+                    pass
+                elif '+' not in s and s.count('-') <= 2:
+                    s = s + '+00:00'
+                token_expiry = datetime.fromisoformat(s)
+                if token_expiry.tzinfo is None:
+                    token_expiry = token_expiry.replace(tzinfo=timezone.utc)
+                if datetime.now(timezone.utc) > token_expiry:
+                    return jsonify({"success": False, "error": "Verification link has expired. Please sign up again to get a new link."}), 400
+            except Exception as parse_err:
+                logger.warning(f"[verify-email] Could not parse token_expiry {token_expiry_str!r}: {parse_err}; not expiring")
         
         # Allow setting password when token is valid (first-time set or reset); do not block if email_verified
         # Update user: set password, mark as verified, clear token

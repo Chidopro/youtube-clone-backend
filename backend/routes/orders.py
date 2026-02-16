@@ -1086,6 +1086,7 @@ def stripe_webhook():
                 # Send customer confirmation email
                 if customer_email and customer_email != "Not provided" and resend_api_key:
                     try:
+                        logger.info("Webhook: sending order confirmation email to customer")
                         customer_html = f"""
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                             <h1>🎉 Thank You for Your Order!</h1>
@@ -1108,7 +1109,7 @@ def stripe_webhook():
                             "html": customer_html
                         }
                         
-                        requests.post(
+                        r = requests.post(
                             "https://api.resend.com/emails",
                             headers={
                                 "Authorization": f"Bearer {resend_api_key}",
@@ -1117,8 +1118,17 @@ def stripe_webhook():
                             json=customer_email_data,
                             timeout=30
                         )
-                    except Exception:
-                        pass
+                        if r.status_code in (200, 201, 202):
+                            logger.info("Webhook: order confirmation email sent to customer")
+                        else:
+                            logger.warning("Webhook: Resend customer email failed %s %s", r.status_code, r.text[:200])
+                    except Exception as email_err:
+                        logger.exception("Webhook: exception sending customer order email: %s", email_err)
+                else:
+                    if not customer_email or customer_email == "Not provided":
+                        logger.warning("Webhook: skipping customer order email (no customer email)")
+                    elif not resend_api_key:
+                        logger.warning("Webhook: skipping customer order email (RESEND_API_KEY not set)")
                 
                 # Update order status to 'paid'
                 try:
