@@ -46,6 +46,7 @@ const Admin = () => {
   const [adminInviteEmail, setAdminInviteEmail] = useState('');
   const [adminInviteSending, setAdminInviteSending] = useState(false);
   const [adminInviteMessage, setAdminInviteMessage] = useState({ type: '', text: '' });
+  const [adminSetPasswordLinkSending, setAdminSetPasswordLinkSending] = useState(null); // email when sending
   const [subdomains, setSubdomains] = useState([]);
   const [subdomainSearchTerm, setSubdomainSearchTerm] = useState('');
   const [subdomainLoading, setSubdomainLoading] = useState(false);
@@ -517,6 +518,23 @@ const Admin = () => {
       setAdminInviteMessage({ type: 'error', text: 'Failed to send invite' });
     } finally {
       setAdminInviteSending(false);
+    }
+  };
+
+  const handleSendAdminSetPasswordLink = async (email) => {
+    if (!email) return;
+    setAdminSetPasswordLinkSending(email);
+    try {
+      const result = await AdminService.sendAdminSetPasswordLink(email);
+      if (result.success) {
+        alert(result.message || 'Set-password link sent.');
+      } else {
+        alert(result.error || 'Failed to send link.');
+      }
+    } catch (err) {
+      alert('Failed to send set-password link.');
+    } finally {
+      setAdminSetPasswordLinkSending(null);
     }
   };
 
@@ -2672,6 +2690,16 @@ const Admin = () => {
                               </td>
                               <td>{admin.created_at ? new Date(admin.created_at).toLocaleDateString() : '—'}</td>
                               <td>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendAdminSetPasswordLink(admin.email)}
+                                  disabled={adminSetPasswordLinkSending === admin.email}
+                                  className="admin-mgmt-btn"
+                                  style={{ marginRight: admin.admin_role !== 'master_admin' ? '8px' : 0 }}
+                                  title="Email them a link to set their password (same as creators)"
+                                >
+                                  {adminSetPasswordLinkSending === admin.email ? 'Sending…' : 'Send set-password link'}
+                                </button>
                                 {admin.admin_role !== 'master_admin' && (
                                   <button type="button" onClick={() => handleRemoveAdminAccess(admin.id)} className="admin-mgmt-btn admin-mgmt-btn-remove">Remove</button>
                                 )}
@@ -2692,8 +2720,8 @@ const Admin = () => {
                   <ol className="admin-mgmt-steps">
                     <li>Send an invite above (recipient gets an email with a one-time link to the signup page).</li>
                     <li>When they submit their email via that link, their request appears in Pending Signup Requests. Approve it and choose their role.</li>
-                    <li>In Supabase Dashboard → Authentication → Users, add the approved email and set a secure password.</li>
-                    <li>Share the login details with the new admin; they sign in at the admin portal.</li>
+                    <li>In Supabase Dashboard → Authentication → Users, add the approved email (use any placeholder password—you won't share it).</li>
+                    <li>In All Admins above, click <strong>Send set-password link</strong> for that admin. They get an email with a link to create their own password, then sign in at the admin portal.</li>
                   </ol>
                   <p className="admin-mgmt-link" style={{ color: '#666', fontSize: '14px' }}>
                     Invited users use the link in their email to open the signup page. The signup page is invite-only and not linked publicly.

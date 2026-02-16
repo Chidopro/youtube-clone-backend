@@ -9,6 +9,7 @@ import uuid
 import bcrypt
 import requests
 from datetime import datetime, timedelta
+from urllib.parse import quote
 
 # Import utilities
 from utils.helpers import _data_from_request, _allow_origin
@@ -367,9 +368,10 @@ def _send_admin_invite_email(to_email, invite_link):
         logger.warning("RESEND_API_KEY not set; skipping admin invite email")
         return False
     subject = "You're invited to the ScreenMerch Admin Portal"
+    set_password_url = os.getenv("SCREENMERCH_SET_PASSWORD_URL", "https://screenmerch.com/set-password")
     body = f"""Hi,
 
-You've been invited to join the ScreenMerch Admin Portal. Use the link below to submit your signup request. Once the master admin approves, you'll receive login details.
+You've been invited to join the ScreenMerch Admin Portal. Use the link below to submit your signup request. Once the master admin approves and your account is created, go to {set_password_url} to set your own password, then sign in at the admin portal.
 
 Sign up here: {invite_link}
 
@@ -633,6 +635,79 @@ def admin_reject_signup_request():
         return _allow_origin(response), 200
     except Exception as e:
         logger.exception(f"Error in reject-signup-request: {e}")
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
+@admin_bp.route("/api/admin/send-admin-set-password-link", methods=["POST", "OPTIONS"])
+@admin_bp.route("/api/admin/send-admin-set-password-link/", methods=["POST", "OPTIONS"])
+def admin_send_set_password_link():
+    """Master Admin only: send 'set your password' email with verify-email link to an admin (same as creators)."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin_email = request.headers.get("X-User-Email") or (_data_from_request() or {}).get("admin_email") or (request.json or {}).get("admin_email")
+        if not admin_email or not _is_master_admin(admin_email):
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            return _allow_origin(response), 403
+        data = _data_from_request() or request.json or {}
+        to_email = (data.get("email") or "").strip().lower()
+        if not to_email or "@" not in to_email:
+            response = jsonify({"success": False, "error": "Valid email required"})
+            return _allow_origin(response), 400
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": False, "error": "Database service unavailable"})
+            return _allow_origin(response), 500
+        # User must exist in public.users (e.g. added in Supabase Auth so trigger created the row)
+        user_row = client.table("users").select("id").eq("email", to_email).execute()
+        if not user_row.data or len(user_row.data) == 0:
+            response = jsonify({"success": False, "error": "No user found with that email. Add them in Supabase Auth first."})
+            return _allow_origin(response), 404
+        verification_token = str(uuid.uuid4())
+        token_expiry = (datetime.utcnow() + timedelta(days=7)).isoformat() + "Z"
+        client.table("users").update({
+            "email_verification_token": verification_token,
+            "token_expiry": token_expiry,
+        }).eq("id", user_row.data[0]["id"]).execute()
+        frontend_url = os.getenv("FRONTEND_URL", "https://screenmerch.com").rstrip("/")
+        set_password_link = f"{frontend_url}/verify-email?token={quote(verification_token, safe='')}&email={quote(to_email, safe='')}"
+        api_key = os.getenv("RESEND_API_KEY")
+        from_addr = os.getenv("RESEND_FROM", "noreply@screenmerch.com")
+        if not api_key:
+            response = jsonify({"success": False, "error": "Email not configured (RESEND_API_KEY)"})
+            return _allow_origin(response), 503
+        html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #667eea;">Set your admin password</h2>
+            <p>Your ScreenMerch admin account is ready. Create your password to sign in to the admin portal.</p>
+            <p style="margin: 24px 0;">
+                <a href="{set_password_link}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Create password</a>
+            </p>
+            <p style="font-size: 14px; color: #666;">This link expires in 7 days. If you didn't expect this, you can ignore this email.</p>
+            <p style="font-size: 12px; color: #999;">Or copy and paste: {set_password_link}</p>
+        </div>
+        """
+        r = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "from": from_addr,
+                "to": [to_email],
+                "subject": "Set your ScreenMerch admin password",
+                "html": html.strip(),
+            },
+            timeout=15,
+        )
+        if r.status_code not in (200, 201, 202):
+            logger.warning(f"Resend send-admin-set-password failed: {r.status_code} {r.text[:300]}")
+            response = jsonify({"success": False, "error": "Failed to send email"})
+            return _allow_origin(response), 500
+        logger.info(f"Admin set-password link sent to {to_email}")
+        response = jsonify({"success": True, "message": f"Set-password link sent to {to_email}"})
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.exception(f"Error in send-admin-set-password-link: {e}")
         response = jsonify({"success": False, "error": str(e)})
         return _allow_origin(response), 500
 

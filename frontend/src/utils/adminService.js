@@ -1489,6 +1489,26 @@ export class AdminService {
   }
 
   /**
+   * Send "set your password" link email to an admin (master admin only). Same flow as creators.
+   * @param {string} email - Admin email (user must already exist in Supabase Auth / public.users)
+   * @returns {Promise<Object>}
+   */
+  static async sendAdminSetPasswordLink(email) {
+    const currentUser = await this.getCurrentUser();
+    if (!currentUser?.userEmail) return { success: false, error: 'Not authenticated' };
+    const base = getAdminApiBase();
+    const apiUrl = base || API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+    const res = await fetch(`${apiUrl}/api/admin/send-admin-set-password-link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-User-Email': currentUser.userEmail },
+      credentials: 'include',
+      body: JSON.stringify({ email: (email || '').trim().toLowerCase() })
+    });
+    const json = await res.json().catch(() => ({}));
+    return { success: !!json.success, error: json.error, message: json.message };
+  }
+
+  /**
    * Send admin invite email (master admin only). Recipient gets link to /admin-signup?invite=TOKEN.
    * @param {string} email - Email to send invite to
    * @returns {Promise<Object>}
