@@ -36,6 +36,8 @@ const Admin = () => {
   const [queueLoading, setQueueLoading] = useState(false);
   const [selectedQueueIds, setSelectedQueueIds] = useState([]);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const [bulkAssignWorkerId, setBulkAssignWorkerId] = useState('');
+  const [bulkAssignLoading, setBulkAssignLoading] = useState(false);
   const [isFullAdmin, setIsFullAdmin] = useState(false);
   const [isOrderProcessingAdmin, setIsOrderProcessingAdmin] = useState(false);
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
@@ -944,6 +946,36 @@ const Admin = () => {
       alert('Failed to delete orders');
     } finally {
       setBulkDeleteLoading(false);
+    }
+  };
+
+  const handleBulkAssignSelected = async () => {
+    if (selectedQueueIds.length === 0) {
+      alert('Please select one or more orders to assign.');
+      return;
+    }
+    if (!bulkAssignWorkerId) {
+      alert('Please choose a worker from the "Assign selected to" dropdown.');
+      return;
+    }
+    const workerName = workers.find(w => w.user_id === bulkAssignWorkerId)?.user?.display_name || workers.find(w => w.user_id === bulkAssignWorkerId)?.user?.email || 'worker';
+    if (!confirm(`Assign ${selectedQueueIds.length} selected order(s) to ${workerName}?`)) return;
+    setBulkAssignLoading(true);
+    try {
+      const result = await AdminService.assignOrdersBulk(selectedQueueIds, bulkAssignWorkerId);
+      if (result.success) {
+        alert(result.message || `Assigned ${result.assigned_count} order(s).`);
+        setSelectedQueueIds([]);
+        setBulkAssignWorkerId('');
+        loadProcessingQueue();
+      } else {
+        alert(`Failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error bulk assigning orders:', error);
+      alert('Failed to assign orders');
+    } finally {
+      setBulkAssignLoading(false);
     }
   };
 
@@ -2160,7 +2192,37 @@ const Admin = () => {
                     </select>
                     <button onClick={loadProcessingQueue} className="refresh-btn">Refresh</button>
                     {isMasterAdmin && processingQueue.length > 0 && (
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: 'auto' }}>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: 'auto', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '13px', color: '#555', marginRight: '4px' }}>Assign selected to:</span>
+                        <select
+                          value={bulkAssignWorkerId}
+                          onChange={(e) => setBulkAssignWorkerId(e.target.value)}
+                          style={{ padding: '6px 10px', fontSize: '13px', minWidth: '160px' }}
+                          title="Choose worker for bulk assign"
+                        >
+                          <option value="">Select worker...</option>
+                          {workers.map(worker => (
+                            <option key={worker.user_id} value={worker.user_id}>
+                              {worker.user?.display_name || worker.user?.email || worker.user_id}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handleBulkAssignSelected}
+                          disabled={selectedQueueIds.length === 0 || !bulkAssignWorkerId || bulkAssignLoading}
+                          style={{
+                            padding: '6px 12px',
+                            fontSize: '13px',
+                            background: (selectedQueueIds.length > 0 && bulkAssignWorkerId) ? '#007bff' : '#ccc',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: (selectedQueueIds.length > 0 && bulkAssignWorkerId && !bulkAssignLoading) ? 'pointer' : 'not-allowed'
+                          }}
+                        >
+                          {bulkAssignLoading ? 'Assigning...' : `Assign selected (${selectedQueueIds.length})`}
+                        </button>
                         <button
                           type="button"
                           onClick={handleBulkDeleteSelected}

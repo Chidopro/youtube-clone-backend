@@ -1266,6 +1266,34 @@ export class AdminService {
   }
 
   /**
+   * Bulk assign multiple queue items to one worker (master admin / order processing admin).
+   * @param {string[]} queueIds - Array of queue item IDs
+   * @param {string} workerId - User ID of the worker to assign to
+   * @returns {Promise<Object>} Result with assigned_count
+   */
+  static async assignOrdersBulk(queueIds, workerId) {
+    try {
+      const userEmail = await this.getCurrentUserEmail();
+      const apiUrl = getAdminApiBase() || (process.env.REACT_APP_API_URL || 'https://screenmerch.fly.dev');
+      const headers = { 'Content-Type': 'application/json' };
+      if (userEmail) headers['X-User-Email'] = userEmail;
+      const response = await fetch(`${apiUrl}/api/admin/assign-orders`, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({ queue_ids: queueIds, worker_id: workerId })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+      if (!result.success) throw new Error(result.error || 'Bulk assign failed');
+      return result;
+    } catch (error) {
+      console.error('Error bulk assigning orders:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Get processing history
    * @param {number} limit - Number of records to return
    * @returns {Promise<Array>} Processing history

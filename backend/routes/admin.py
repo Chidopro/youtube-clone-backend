@@ -1154,6 +1154,62 @@ def assign_order():
         return _allow_origin(response), 500
 
 
+@admin_bp.route("/api/admin/assign-orders", methods=["POST", "OPTIONS"])
+@admin_required()
+def assign_orders_bulk():
+    """Bulk assign multiple queue items to one worker. Body: { \"queue_ids\": [\"uuid\", ...], \"worker_id\": \"uuid\" }."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+        if not user_email:
+            response = jsonify({"success": False, "error": "X-User-Email required"})
+            return _allow_origin(response), 401
+        client = _get_supabase_client()
+        user_result = client.table('users').select('admin_role, is_admin').eq('email', user_email.strip().lower()).execute()
+        if not user_result.data:
+            response = jsonify({"success": False, "error": "User not found"})
+            return _allow_origin(response), 403
+        user = user_result.data[0]
+        if not (user.get('is_admin') and user.get('admin_role') in ('master_admin', 'order_processing_admin')):
+            response = jsonify({"success": False, "error": "Admin access required to assign orders"})
+            return _allow_origin(response), 403
+        data = request.get_json() or {}
+        queue_ids = data.get('queue_ids') or []
+        worker_id = data.get('worker_id')
+        if not queue_ids or not isinstance(queue_ids, list):
+            response = jsonify({"success": False, "error": "queue_ids array is required"})
+            return _allow_origin(response), 400
+        if not worker_id:
+            response = jsonify({"success": False, "error": "worker_id is required"})
+            return _allow_origin(response), 400
+        from datetime import datetime, timezone
+        assigned_at = datetime.now(timezone.utc).isoformat()
+        updated = 0
+        for qid in queue_ids:
+            try:
+                client.table('order_processing_queue').update({
+                    'status': 'assigned',
+                    'assigned_to': worker_id,
+                    'assigned_at': assigned_at
+                }).eq('id', qid).execute()
+                updated += 1
+            except Exception:
+                pass
+        logger.info(f"✅ [ADMIN] Bulk assigned {updated} order(s) to worker {worker_id} by {user_email}")
+        response = jsonify({
+            "success": True,
+            "message": f"Assigned {updated} order(s)",
+            "assigned_count": updated,
+            "assigned_to": worker_id
+        })
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error bulk assigning orders: {str(e)}")
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
 @admin_bp.route("/api/admin/delete-order/<queue_id>", methods=["DELETE", "OPTIONS"])
 @admin_required()
 def delete_order(queue_id):
