@@ -574,13 +574,9 @@ def admin_approve_signup_request():
         if not email or "@" not in email:
             response = jsonify({"success": False, "error": "Invalid request email"})
             return _allow_origin(response), 400
-        # Resolve approver user id for approved_by
-        approver = client.table("users").select("id").ilike("email", admin_email).limit(1).execute()
-        approved_by = approver.data[0]["id"] if approver.data else None
-        # Update request
+        # approved_by FK references auth.users(id); we only have public.users id here, so leave approved_by null to avoid FK violation
         client.table("admin_signup_requests").update({
             "status": "approved",
-            "approved_by": approved_by,
             "approved_at": datetime.utcnow().isoformat(),
         }).eq("id", request_id).execute()
         # Find or create user in users table
@@ -627,11 +623,9 @@ def admin_reject_signup_request():
         if not client:
             response = jsonify({"success": False, "error": "Database service unavailable"})
             return _allow_origin(response), 500
-        approver = client.table("users").select("id").ilike("email", admin_email).limit(1).execute()
-        approved_by = approver.data[0]["id"] if approver.data else None
+        # approved_by FK references auth.users(id); leave null to avoid FK violation
         client.table("admin_signup_requests").update({
             "status": "rejected",
-            "approved_by": approved_by,
             "approved_at": datetime.utcnow().isoformat(),
             "notes": notes,
         }).eq("id", request_id).execute()
