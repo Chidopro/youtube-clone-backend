@@ -2642,48 +2642,27 @@ def send_order():
                 item['screenshot_timestamp'] = data['screenshot_timestamp']
             # Pass creator_user_id if we found it from subdomain
             record_sale(item, user_id=creator_user_id_from_subdomain, order_id=order_id)
-        # --- Send Email with Resend ---
+        # --- Send Email with Resend (use same builder as place_order/webhook so tools buttons always persist) ---
+        total_amount_send_order = sum([float(next((p.get('price', 0) for p in PRODUCTS if p.get('name') == item.get('product')), 0)) for item in cart])
+        email_order_data = { **order_store[order_id], "cart": enriched_cart }
+        html_body, email_attachments = build_admin_order_email(order_id, email_order_data, enriched_cart, order_number, total_amount_send_order)
+        resend_attachments = resend_attachments_from_builder(email_attachments)
         email_data = {
             "from": RESEND_FROM,
             "to": [MAIL_TO],
             "subject": f"🛍️ New ScreenMerch Order #{order_number}",
-            "html": f"""
-                    <h2>New Order Received!</h2>
-                    <p><strong>Order ID:</strong> {order_number}</p>
-                    <p><strong>Items:</strong> {len(cart)}</p>
-                    <p><strong>Total Value:</strong> ${sum([next((p['price'] for p in PRODUCTS if p['name'] == item.get('product')), 0) for item in cart]):.2f}</p>
-                    <br>
-                    <hr>
-                    <h2>📹 Video Information</h2>
-                    <p><strong>Video Title:</strong> {data.get("videoTitle", data.get("video_title", "Unknown Video"))}</p>
-                    <p><strong>Creator:</strong> {data.get("creatorName", data.get("creator_name", "Unknown Creator"))}</p>
-                    <p><strong>Video URL:</strong> {data.get("videoUrl", data.get("video_url", "Not provided"))}</p>
-                    <p><strong>Screenshot Timestamp:</strong> {data.get("screenshot_timestamp", data.get("timestamp", "Not provided"))} seconds</p>
-                    <br>
-                    <p><strong>🖨️ Open tools (feather edge, corner radius, frame, 300 DPI):</strong></p>
-                    <p><a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Open Print & Image Tools</a></p>
-                    <br>
-                    <p><strong>📊 All Orders Dashboard:</strong></p>
-                    <p><a href="https://screenmerch.fly.dev/admin/orders" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View All Orders</a></p>
-                    <br>
-                    <hr>
-                    <h2>🖨️ Print Quality Images</h2>
-                    <p><strong>For Printify Upload:</strong></p>
-                    <p>Use the print quality generator to get 300 DPI images:</p>
-                    <p><strong>Web Interface:</strong> <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}">https://screenmerch.fly.dev/print-quality?order_id={order_id}</a></p>
-                    <p>This will generate professional print-ready images (2400x3000+ pixels, PNG format)</p>
-                    <br>
-                    <p><small>This is an automated notification from ScreenMerch</small></p>
-                """
-            }
-        
+            "html": html_body,
+        }
+        if resend_attachments:
+            email_data["attachments"] = resend_attachments[:1]
         response = requests.post(
             "https://api.resend.com/emails",
             headers={
                 "Authorization": f"Bearer {RESEND_API_KEY}",
                 "Content-Type": "application/json"
             },
-            json=email_data
+            json=email_data,
+            timeout=30
         )
 
         # --- Send SMS Notification ---

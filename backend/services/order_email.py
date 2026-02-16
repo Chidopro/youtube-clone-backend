@@ -218,12 +218,9 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     admin_orders_url = "https://screenmerch.fly.dev/admin/orders"
     order_details_url = f"https://screenmerch.fly.dev/admin/orders?order_id={order_id}"
 
+    # Tools block FIRST (immediately after title) so it is never clipped or missing in any client
     html = f"<h1>🛍️ New ScreenMerch Order #{order_number}</h1>"
-    html += f"<p><strong>Order ID:</strong> {order_id}</p>"
-    html += f"<p><strong>Items:</strong> {len(cart)}</p>"
-    html += f"<p><strong>Total Value:</strong> ${total_amount:.2f}</p>"
-    html += "<br>"
-    # Tools block at TOP so Gmail clipping never hides it; table layout for better client compatibility
+    html += "<!-- ORDER TOOLS BLOCK - keep at top -->"
     html += f"<p><strong>Open order &amp; tools (no login):</strong> <a href=\"{print_url}\">{print_url}</a></p>"
     html += f"<p style=\"margin: 12px 0 6px 0; font-size: 14px;\"><strong>Quick links:</strong> "
     html += f"<a href=\"{print_url}\">Generate 300 DPI</a> &middot; "
@@ -238,6 +235,10 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
 <td style="padding: 4px 6px;"><a href="{admin_orders_url}" style="background:#6c757d;color:white;padding:10px 16px;text-decoration:none;border-radius:6px;font-weight:bold;display:inline-block;">View All Orders</a></td>
 </tr></table>"""
     html += "<p style=\"margin: 12px 0 0 0; font-size: 13px; color: #555;\">Green = 300 DPI. Orange = Edit Tools. Teal = this order. Gray = admin.</p>"
+    html += "<hr style=\"margin: 16px 0;\">"
+    html += f"<p><strong>Order ID:</strong> {order_id}</p>"
+    html += f"<p><strong>Items:</strong> {len(cart)}</p>"
+    html += f"<p><strong>Total Value:</strong> ${total_amount:.2f}</p>"
     html += "<hr style=\"margin: 16px 0;\">"
     html += "<h2>🛍️ Products</h2>"
 
