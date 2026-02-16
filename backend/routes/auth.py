@@ -576,27 +576,50 @@ def auth_signup_email_only():
         # Check if user already exists
         existing_user = client.table('users').select('*').eq('email', email).execute()
         
-        if existing_user.data:
-            for user in existing_user.data:
-                user_status = user.get('status')
-                if user_status in ['active', 'pending']:
-                    return jsonify({"success": False, "error": "An account with this email already exists. Please sign in instead."}), 409
-        
-        # Generate verification token (72h expiry so link works even if email is delayed)
         verification_token = str(uuid.uuid4())
         token_expiry = (datetime.now(timezone.utc) + timedelta(hours=72)).isoformat()
         
-        # Create new user without password
-        new_user = {
-            'email': email,
-            'role': 'customer',
-            'status': 'active',
-            'email_verified': False,
-            'email_verification_token': verification_token,
-            'token_expiry': token_expiry
-        }
+        if existing_user.data:
+            for user in existing_user.data:
+                user_status = user.get('status')
+                email_verified = user.get('email_verified', False)
+                # If already verified or active/pending, they must sign in
+                if user_status in ['active', 'pending'] and email_verified:
+                    return jsonify({"success": False, "error": "An account with this email already exists. Please sign in instead."}), 409
+                # Same email but not verified: update token and resend so latest link works
+                if user_status in ['active', 'pending'] and not email_verified:
+                    user_id = user.get('id')
+                    if user_id:
+                        try:
+                            client.table('users').update({
+                                'email_verification_token': verification_token,
+                                'token_expiry': token_expiry
+                            }).eq('id', user_id).execute()
+                            logger.info("[signup/email-only] Updated verification token for existing unverified user %s", email)
+                        except Exception as upd_err:
+                            logger.warning("[signup/email-only] Failed to update token for %s: %s", email, upd_err)
+                    # Fall through to send verification email (reuse same link-building below)
+                    result = type('Result', (), {'data': existing_user.data})()
+                    break
+            else:
+                # Had existing users but none was unverified active/pending; treat as conflict if any active/pending
+                if any(u.get('status') in ['active', 'pending'] for u in existing_user.data):
+                    return jsonify({"success": False, "error": "An account with this email already exists. Please sign in instead."}), 409
+                result = None
+        else:
+            result = None
         
-        result = client.table('users').insert(new_user).execute()
+        if result is None:
+            # Create new user without password
+            new_user = {
+                'email': email,
+                'role': 'customer',
+                'status': 'active',
+                'email_verified': False,
+                'email_verification_token': verification_token,
+                'token_expiry': token_expiry
+            }
+            result = client.table('users').insert(new_user).execute()
         
         if result.data:
             # Send verification email (prefer config, fallback to env for Resend)
@@ -628,7 +651,7 @@ def auth_signup_email_only():
                             </div>
                             <p style="font-size: 12px; color: #666;">Or copy and paste this link into your browser:</p>
                             <p style="font-size: 12px; color: #667eea; word-break: break-all;">{verification_link}</p>
-                            <p style="font-size: 12px; color: #666; margin-top: 30px;">This link will expire in 24 hours.</p>
+                            <p style="font-size: 12px; color: #666; margin-top: 30px;">This link expires in 72 hours.</p>
                         </div>
                     </body>
                     </html>
@@ -754,11 +777,22 @@ def auth_verify_email():
             return jsonify({"success": False, "error": "Password must be at least 6 characters long"}), 400
         
         client = _get_supabase_client()
+        token_preview = f"{token[:8]}...{token[-4:]}" if len(token) >= 12 else "***"
+        logger.info("[verify-email] Attempting verification email=%s token_len=%s token_preview=%s", email, len(token), token_preview)
         
         # Find user by email and token
         result = client.table('users').select('*').eq('email', email).eq('email_verification_token', token).execute()
         
         if not result.data:
+            # Diagnose: does a user with this email exist? (helps distinguish wrong token vs wrong email)
+            by_email = client.table('users').select('id', 'email_verification_token').eq('email', email).execute()
+            if by_email.data:
+                db_token = by_email.data[0].get('email_verification_token')
+                db_str = str(db_token) if db_token else ""
+                db_preview = f"{db_str[:8]}...{db_str[-4:]}" if len(db_str) >= 12 else "(null or short)"
+                logger.warning("[verify-email] No user with matching token. email=%s request_token_preview=%s db_token_preview=%s", email, token_preview, db_preview)
+            else:
+                logger.warning("[verify-email] No user found for email=%s token_preview=%s", email, token_preview)
             return jsonify({"success": False, "error": "Invalid or expired verification link"}), 400
         
         user = result.data[0]
