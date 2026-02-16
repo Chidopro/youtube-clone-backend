@@ -3,6 +3,7 @@ import { supabase } from '../../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { AdminService } from '../../utils/adminService';
 import { getPrintAreaDimensions } from '../../config/printAreaConfig';
+import { API_CONFIG } from '../../config/apiConfig';
 import './Admin.css';
 
 const Admin = () => {
@@ -2983,8 +2984,64 @@ const Admin = () => {
               ×
             </button>
             <h2 style={{ marginTop: 0 }}>Order Details</h2>
+
+            {/* Quick actions – same as email processing page */}
+            <div style={{
+              marginBottom: '20px',
+              padding: '16px',
+              background: '#f0f8ff',
+              borderRadius: '8px',
+              border: '1px solid #b8d4e8'
+            }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#333' }}>Open order &amp; tools</h4>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                <a
+                  href={`${API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev'}/print-quality?order_id=${selectedOrder.order_id || ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    background: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    display: 'inline-block'
+                  }}
+                >
+                  Generate 300 DPI Image
+                </a>
+                <a
+                  href={`${typeof window !== 'undefined' ? window.location.origin : ''}/tools?order_id=${selectedOrder.order_id || ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    background: '#fd7e14',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    display: 'inline-block'
+                  }}
+                >
+                  Edit Tools
+                </a>
+              </div>
+              <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#666' }}>
+                Green = Print Quality (landscape). Orange = Edit Tools (portrait).
+              </p>
+            </div>
+
             <div className="order-details">
-              <div style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: '20px', padding: '12px', background: '#e8f5e9', borderRadius: '4px', border: '1px solid #a5d6a7' }}>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Customer order details (for Printful)</h4>
                 <p><strong>Order ID:</strong> {selectedOrder.order_id || 'N/A'}</p>
                 <p><strong>Status:</strong> {selectedOrder.status || 'N/A'}</p>
                 <p><strong>Total Amount:</strong> ${selectedOrder.total_amount ? parseFloat(selectedOrder.total_amount).toFixed(2) : '0.00'}</p>
@@ -3118,8 +3175,8 @@ const Admin = () => {
                 </div>
               )}
 
-              <div style={{ marginBottom: '20px', padding: '12px', background: '#f5f5f5', borderRadius: '4px' }}>
-                <h4>Shipping Address:</h4>
+              <div style={{ marginBottom: '20px', padding: '12px', background: '#e8f5e9', borderRadius: '4px', border: '1px solid #a5d6a7' }}>
+                <h4>Shipping address (for Printful)</h4>
                 {selectedOrder.shipping_address ? (
                   typeof selectedOrder.shipping_address === 'string' ? (
                     <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
