@@ -8,6 +8,7 @@ import more_icon from '../../assets/more.png'
 import notification_icon from '../../assets/notification.png'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import SubscriptionModal from '../SubscriptionModal/SubscriptionModal'
+import SignUpChoiceModal from '../SignUpChoiceModal/SignUpChoiceModal'
 import CreatorSignupModal from '../CreatorSignupModal/CreatorSignupModal'
 import { supabase } from '../../supabaseClient'
 import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from '../../utils/userService'
@@ -19,6 +20,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     const creatorContext = useCreator();
     const creatorSettings = creatorContext?.creatorSettings ?? null;
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+    const [isSignUpChoiceOpen, setIsSignUpChoiceOpen] = useState(false);
     const [isCreatorSignupModalOpen, setIsCreatorSignupModalOpen] = useState(false);
     const [user, setUser] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
@@ -523,6 +525,10 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         navigate('/subscription-tiers');
     };
 
+    const handleSignUpClick = () => {
+        setIsSignUpChoiceOpen(true);
+    };
+
     const handleCreatorSignup = async (email, location) => {
         localStorage.setItem('pending_creator_email', email);
         localStorage.setItem('pending_creator_location', location);
@@ -713,9 +719,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 {console.log('🔍 User role:', user?.role, 'User status:', user?.status)}
                                 <button
                                     className="subscribe-btn"
-                                    onClick={handleSubscribeClick}
+                                    onClick={handleSignUpClick}
                                 >
-                                    Start Free
+                                    Sign Up
                                 </button>
                                 <button
                                     className="user-profile-container"
@@ -964,9 +970,9 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             </button>
                             <button 
                                 className="subscribe-btn"
-                                onClick={handleSubscribeClick}
+                                onClick={handleSignUpClick}
                             >
-                                Start Free
+                                Sign Up
                             </button>
                         </>
                     )}
@@ -977,6 +983,11 @@ const Navbar = ({ setSidebar, resetCategory }) => {
             <SubscriptionModal
                 isOpen={isSubscriptionModalOpen}
                 onClose={handleCloseModal}
+            />
+
+            <SignUpChoiceModal
+                isOpen={isSignUpChoiceOpen}
+                onClose={() => setIsSignUpChoiceOpen(false)}
             />
 
             <CreatorSignupModal
