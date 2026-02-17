@@ -1089,6 +1089,30 @@ export class AdminService {
   }
 
   /**
+   * Remove a user from the creators payout list (exclude from list). Master admin only.
+   * @param {string} userId - User ID to remove from list
+   * @returns {Promise<{ success: boolean, error?: string }>}
+   */
+  static async removeFromPayoutList(userId) {
+    try {
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) return { success: false, error: 'Not authenticated' };
+      const base = getAdminApiBase();
+      const res = await fetch(`${base}/api/admin/creators-payout-list/${encodeURIComponent(userId)}/remove`, {
+        method: 'POST',
+        headers: { 'X-User-Email': currentUser.userEmail },
+        credentials: 'include'
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { success: false, error: data.error || res.statusText };
+      return { success: true };
+    } catch (error) {
+      console.error('Error removing from payout list:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Get payout history
    * @returns {Promise<Array>} Payout history
    */

@@ -5551,8 +5551,14 @@ def admin_creators_payout_list():
         client = supabase_admin if supabase_admin else supabase
         if not client:
             return jsonify({"success": False, "error": "Database unavailable", "creators": []}), 500
-        r = client.table("users").select("id, display_name, email, paypal_email, subdomain, profile_image_url, status").eq("role", "creator").order("display_name").execute()
-        creators = list(r.data or [])
+        select_cols = "id, display_name, email, paypal_email, subdomain, profile_image_url, status, is_admin"
+        try:
+            r = client.table("users").select(select_cols + ", exclude_from_payout_list").eq("role", "creator").order("display_name").execute()
+        except Exception:
+            r = client.table("users").select(select_cols).eq("role", "creator").order("display_name").execute()
+        creators_raw = list(r.data or [])
+        # Exclude admins and users removed from payout list
+        creators = [c for c in creators_raw if not c.get("is_admin") and not c.get("exclude_from_payout_list")]
         earnings_r = client.table("creator_earnings").select("user_id, creator_share").eq("status", "pending").execute()
         pending_by_user = {}
         for row in (earnings_r.data or []):
@@ -5575,6 +5581,33 @@ def admin_creators_payout_list():
     except Exception as e:
         logger.exception("admin_creators_payout_list: %s", e)
         return jsonify({"success": False, "error": str(e), "creators": []}), 500
+
+
+@app.route("/api/admin/creators-payout-list/<user_id>/remove", methods=["POST", "DELETE", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_remove_from_payout_list(user_id):
+    """Remove a user from the creators payout list (sets exclude_from_payout_list). Master Admin only."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        err, code = _require_master_admin()
+        if err is not None:
+            return err, code
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id required"}), 400
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            return jsonify({"success": False, "error": "Database unavailable"}), 500
+        try:
+            client.table("users").update({"exclude_from_payout_list": True}).eq("id", user_id).eq("role", "creator").execute()
+        except Exception as col_err:
+            if "exclude_from_payout_list" in str(col_err) or "column" in str(col_err).lower():
+                return jsonify({"success": False, "error": "exclude_from_payout_list column missing; run migration database_exclude_from_payout_list.sql"}), 501
+            raise
+        return jsonify({"success": True, "message": "Removed from payout list"})
+    except Exception as e:
+        logger.exception("admin_remove_from_payout_list: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/admin/users", methods=["GET", "OPTIONS"])

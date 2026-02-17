@@ -339,6 +339,16 @@ const Admin = () => {
     }
   };
 
+  const handleRemoveFromPayoutList = async (userId) => {
+    if (!window.confirm('Remove this creator from the payout list? They will no longer appear here (you can re-add via User Management if needed).')) return;
+    const result = await AdminService.removeFromPayoutList(userId);
+    if (result.success) {
+      await loadPayouts();
+    } else {
+      alert(result.error || 'Failed to remove from list');
+    }
+  };
+
   const loadPendingApprovalUsers = async () => {
     setPendingApprovalLoading(true);
     try {
@@ -1924,6 +1934,7 @@ const Admin = () => {
                               <th>PayPal Email</th>
                               <th>Pending</th>
                               <th>Status</th>
+                              <th>Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1955,6 +1966,16 @@ const Admin = () => {
                                   ) : (
                                     <span className="payout-status-badge below">Below $50</span>
                                   )}
+                                </td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="action-btn delete"
+                                    onClick={() => handleRemoveFromPayoutList(c.id)}
+                                    title="Remove from list"
+                                  >
+                                    Remove
+                                  </button>
                                 </td>
                               </tr>
                             ))}
