@@ -32,26 +32,32 @@ const Login = () => {
   const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState(null);
 
+// Customer signup = email-only flow (from "Make a purchase" in Sign Up modal)
+  const isCustomerSignup = location.pathname === '/signup' && location.state?.intent === 'customer';
+
   // Force signup view if routed to /signup
   // Check if coming from "Start Free" flow (payment-setup with flow=new_user)
   useEffect(() => {
     if (location.pathname === '/signup') {
       setIsLoginMode(false);
+      // Customer intent (Make a purchase) uses email-only form; don't set creator
+      if (location.state?.intent === 'customer') {
+        setIsCreatorSignup(false);
+        return;
+      }
       // Check if user came from payment-setup (Start Free flow) or has pending payment info
       const pendingPaypalEmail = localStorage.getItem('pending_paypal_email');
       const pendingPaymentMethod = localStorage.getItem('pending_payment_method');
-      const fromPaymentSetup = location.state?.from?.includes('/payment-setup') || 
+      const fromPaymentSetup = location.state?.from?.includes('/payment-setup') ||
                                document.referrer.includes('/payment-setup');
-      
+
       // If coming from payment setup or has pending payment info, it's a creator signup
       if (pendingPaypalEmail || pendingPaymentMethod || fromPaymentSetup) {
         setIsCreatorSignup(true);
       } else {
-        // Ensure creator signup is false for regular customer signups
         setIsCreatorSignup(false);
       }
     } else {
-      // If not on /signup route, ensure creator signup is false
       setIsCreatorSignup(false);
     }
   }, [location.pathname, location.state]);
@@ -119,6 +125,38 @@ const Login = () => {
   // Always return absolute API URL (no more relative proxy assumption)
   const apiUrl = (endpoint) => `${BACKEND_URL}${endpoint}`;
 
+  // Customer (make a purchase) signup: email only → backend sends confirmation email to set password
+  const handleCustomerEmailSubmit = async (e) => {
+    e.preventDefault();
+    setMessage(null);
+    if (!email.trim()) {
+      setMessage({ type: 'error', text: 'Please enter your email.' });
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const response = await fetch(apiUrl('/api/auth/signup/email-only'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && (data.success || data.message)) {
+        setMessage({
+          type: 'success',
+          text: 'Check your email for a confirmation link to create your password. Then you can sign in and shop.'
+        });
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Something went wrong. Please try again.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: err?.message || 'Could not send. Please try again.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
@@ -127,8 +165,14 @@ const Login = () => {
       setMessage({ type: 'error', text: 'Please enter your email.' });
       return;
     }
-    
-    // Password is always required
+
+    // Customer signup uses email-only flow above
+    if (location.state?.intent === 'customer') {
+      handleCustomerEmailSubmit(e);
+      return;
+    }
+
+    // Password is always required for login / creator signup
     if (!password) {
       setMessage({ type: 'error', text: 'Please enter your password.' });
       return;
@@ -400,15 +444,21 @@ const Login = () => {
       <div className="login-card">
         <div className="login-card-header">
           <div className="login-logo">🎯</div>
-          <h2 className="login-title">{isLoginMode ? 'ScreenMerch Login' : 'ScreenMerch Sign Up'}</h2>
+          <h2 className="login-title">
+            {isCustomerSignup ? 'ScreenMerch Sign Up' : isLoginMode ? 'ScreenMerch Login' : 'ScreenMerch Sign Up'}
+          </h2>
         </div>
 
         <div className="login-info">
-          <strong>{isLoginMode ? 'Login Required' : 'Create Account'}</strong>
+          <strong>
+            {isCustomerSignup ? 'Make a purchase' : isLoginMode ? 'Login Required' : 'Create Account'}
+          </strong>
           <p>
-            {isLoginMode
-              ? 'To create merchandise, please log in or create an account with your email address.'
-              : 'Join ScreenMerch and start creating merch from your content.'}
+            {isCustomerSignup
+              ? 'Enter your email and we’ll send you a link to create your password. Then you can sign in and shop.'
+              : isLoginMode
+                ? 'To create merchandise, please log in or create an account with your email address.'
+                : 'Join ScreenMerch and start creating merch from your content.'}
           </p>
         </div>
 
@@ -456,31 +506,33 @@ const Login = () => {
             />
           </div>
 
-          <div className="login-field">
-            <label htmlFor="password" className="login-label">Password</label>
-            <div className="password-input-wrapper">
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                className="login-input"
-                placeholder="••••••••"
-                autoComplete={isLoginMode ? 'current-password' : 'new-password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle-btn"
-                onClick={() => setShowPassword(!showPassword)}
-                tabIndex={-1}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? '🙈' : '👁️'}
-              </button>
+          {!isCustomerSignup && (
+            <div className="login-field">
+              <label htmlFor="password" className="login-label">Password</label>
+              <div className="password-input-wrapper">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="login-input"
+                  placeholder="••••••••"
+                  autoComplete={isLoginMode ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <button type="submit" className="login-submit-btn" disabled={isLoading}>
             {isLoading ? (
@@ -489,22 +541,36 @@ const Login = () => {
                 Processing...
               </>
             ) : (
-              isLoginMode ? 'Sign In' : 'Create Account'
+              isCustomerSignup ? 'Submit' : isLoginMode ? 'Sign In' : 'Create Account'
             )}
           </button>
-          {isLoginMode && (
+          {isLoginMode && !isCustomerSignup && (
             <div className="login-forgot-wrap">
               <Link to="/set-password" className="login-forgot-link">Forgot password? Set password</Link>
             </div>
           )}
         </form>
 
-        <div className="login-toggle">
-          <span>{isLoginMode ? "Don't have an account?" : "Already have an account?"}</span>
-          <button className="login-toggle-btn" onClick={handleToggleMode} disabled={isLoading}>
-            {isLoginMode ? 'Sign Up' : 'Sign in'}
-          </button>
-        </div>
+        {!isCustomerSignup && (
+          <div className="login-toggle">
+            <span>{isLoginMode ? "Don't have an account?" : "Already have an account?"}</span>
+            <button className="login-toggle-btn" onClick={handleToggleMode} disabled={isLoading}>
+              {isLoginMode ? 'Sign Up' : 'Sign in'}
+            </button>
+          </div>
+        )}
+        {isCustomerSignup && (
+          <div className="login-toggle">
+            <span>Already have an account?</span>
+            <button
+              className="login-toggle-btn"
+              onClick={() => { setIsLoginMode(true); navigate('/login', { replace: true }); setMessage(null); }}
+              disabled={isLoading}
+            >
+              Sign in
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

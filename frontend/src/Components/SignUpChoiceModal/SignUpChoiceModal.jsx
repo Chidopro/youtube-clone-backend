@@ -45,7 +45,7 @@ const SignUpChoiceModal = ({ isOpen, onClose }) => {
                             </svg>
                         </div>
                         <h3>Make a purchase</h3>
-                        <p>Create an account to browse merch, save favorites, and order custom products from your favorite creators.</p>
+                        <p>Create an account to browse merch and order custom products from your favorite creators.</p>
                         <span className="signup-choice-cta">Sign up as customer →</span>
                     </button>
 
