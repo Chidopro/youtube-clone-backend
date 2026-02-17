@@ -152,7 +152,15 @@
 
 .creator-signup-success {
   text-align: center;
-  padding: 24px 0;
+  padding: 32px 0 24px 0;
+}
+
+.creator-signup-success-thankyou {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 24px 0;
+  letter-spacing: 0.02em;
 }
 
 .creator-signup-success-title {

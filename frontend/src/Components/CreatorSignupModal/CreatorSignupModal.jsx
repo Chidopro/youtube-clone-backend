@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import './CreatorSignupModal.css';
 
 const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
@@ -91,12 +90,8 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
 
           {signupSuccess ? (
             <div className="creator-signup-success">
-              <h3 className="creator-signup-success-title">Account created</h3>
-              <p className="creator-signup-success-text">
-                Your application is pending approval. You&apos;ll receive an acceptance email with a link to set your password once approved.
-              </p>
-              <Link to="/login" className="creator-signup-success-link">Go to Log in</Link>
-              <button type="button" className="creator-signup-submit-btn" onClick={onClose} style={{ marginTop: 12 }}>
+              <p className="creator-signup-success-thankyou">Thank you</p>
+              <button type="button" className="creator-signup-submit-btn" onClick={onClose}>
                 Close
               </button>
             </div>
