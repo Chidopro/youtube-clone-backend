@@ -90,6 +90,9 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
 
           {signupSuccess ? (
             <div className="creator-signup-success">
+              <p className="creator-signup-success-text">
+                Your application is pending approval. You&apos;ll receive an acceptance email with a link to set your password once approved.
+              </p>
               <p className="creator-signup-success-thankyou">Thank you</p>
               <button type="button" className="creator-signup-submit-btn" onClick={onClose}>
                 Close
