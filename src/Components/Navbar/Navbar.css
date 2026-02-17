@@ -34,6 +34,7 @@ nav{
     background-color: #065fd4;
     color: white;
     border: 1px solid #065fd4;
+    font-size: 14px; /* Congruent with Sign Up */
 }
 
 .sign-in-btn:hover {
@@ -41,11 +42,12 @@ nav{
     transform: translateY(-1px);
 }
 
-/* Subscribe button with YouTube-style red */
+/* Sign Up button – same font size as Sign In */
 .nav-right .subscribe-btn {
     background: #cc0000;
     color: white;
     border: 1px solid #cc0000;
+    font-size: 14px; /* Congruent with Sign In */
 }
 
 .nav-right .subscribe-btn:hover {

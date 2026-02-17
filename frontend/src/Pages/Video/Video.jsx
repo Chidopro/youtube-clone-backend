@@ -24,6 +24,7 @@ const Video = ({ sidebar }) => {
   const [pulseStep2, setPulseStep2] = useState(false); // Step 2 only pulses after video is played
   const [pulseStep3, setPulseStep3] = useState(false); // Step 3 starts not pulsing
   const [userHasTakenScreenshot, setUserHasTakenScreenshot] = useState(false); // Track if user manually took screenshot
+  const lastResetVideoIdRef = useRef(null); // Only reset play state when videoId changes, not when thumbnail loads late
   const { creatorSettings } = useCreator();
 
   // Check if device is mobile and orientation
@@ -149,16 +150,22 @@ const Video = ({ sidebar }) => {
     }
   }, [screenshots, userHasTakenScreenshot, videoHasPlayed]);
 
-  // Reset screenshots when video changes and set thumbnail as first image
+  // Reset only when videoId changes (not when thumbnail loads late, so step 2 pulse is not cleared after play)
   useEffect(() => {
-    if (videoId && thumbnail) {
-      // Clear existing screenshots and set thumbnail as first
-      setScreenshots([thumbnail]);
-      // Reset user screenshot flag when video changes
+    if (!videoId) return;
+    if (lastResetVideoIdRef.current !== videoId) {
+      lastResetVideoIdRef.current = videoId;
       setUserHasTakenScreenshot(false);
-      // Reset video played state when video changes
       setVideoHasPlayed(false);
       setPulseStep2(false);
+      setPulseStep3(false);
+    }
+  }, [videoId]);
+
+  // Set screenshots to [thumbnail] when we have both (can run when thumbnail loads late)
+  useEffect(() => {
+    if (videoId && thumbnail) {
+      setScreenshots([thumbnail]);
     }
   }, [videoId, thumbnail]);
 
