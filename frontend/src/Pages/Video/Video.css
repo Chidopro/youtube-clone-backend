@@ -135,6 +135,20 @@
   transition: all 0.3s ease;
 }
 
+/* Desktop: force pulse to run (override any conflicting rules, promote to own layer) */
+@media (min-width: 769px) {
+  .user-flow-section .step-number.step-red.pulse {
+    animation: pulseRed 1.4s ease-in-out infinite !important;
+    transition: none !important;
+    will-change: transform;
+  }
+  .user-flow-section .step-number.step-green.pulse {
+    animation: pulseGreen 1.4s ease-in-out infinite !important;
+    transition: none !important;
+    will-change: transform;
+  }
+}
+
 /* Hover only when not pulsing – so pulse animation works on desktop */
 .flow-step:hover .step-number:not(.pulse) {
   background: rgba(255, 255, 255, 0.3);

@@ -4489,7 +4489,7 @@ def capture_print_quality():
         return response
     
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         video_url = data.get('video_url')
         timestamp = data.get('timestamp', 0)
         crop_area = data.get('crop_area')
@@ -4497,6 +4497,12 @@ def capture_print_quality():
         
         if not video_url:
             return jsonify({"success": False, "error": "video_url is required"}), 400
+        video_url = (video_url or "").strip()
+        if video_url.lower().startswith("blob:") or video_url.lower().startswith("data:"):
+            return jsonify({
+                "success": False,
+                "error": "Server cannot access blob or data URLs. Print-quality upgrade is skipped; client capture is used."
+            }), 400
         
         logger.info(f"Capturing PRINT QUALITY screenshot from {video_url} at timestamp {timestamp}")
         if crop_area:
@@ -4509,19 +4515,17 @@ def capture_print_quality():
             print_dpi
         )
         
-        if result['success']:
+        if result.get('success'):
             logger.info(f"Print quality screenshot captured: {result.get('dimensions', {}).get('width', 'unknown')}x{result.get('dimensions', {}).get('height', 'unknown')}, {result.get('file_size', 0):,} bytes")
-            response = jsonify(result)
-            return response
-        else:
-            logger.error(f"Print quality screenshot capture failed: {result['error']}")
-            response = jsonify(result)
-            return response, 500
+            return jsonify(result)
+        # Capture failed: return 200 with success: false so client can read error and keep client capture
+        err = result.get('error', 'Unknown error')
+        logger.warning(f"Print quality capture failed (client keeps capture): {err}")
+        return jsonify({"success": False, "error": err}), 200
             
     except Exception as e:
-        logger.error(f"Error in capture_print_quality: {str(e)}")
-        response = jsonify({"success": False, "error": f"Internal server error: {str(e)}"})
-        return response, 500
+        logger.error(f"Error in capture_print_quality: {str(e)}", exc_info=True)
+        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
 
 @app.route("/api/process-shirt-image", methods=["POST", "OPTIONS"])
 def process_shirt_image():

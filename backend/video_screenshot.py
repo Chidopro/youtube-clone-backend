@@ -252,8 +252,18 @@ class VideoScreenshotCapture:
                 'file_size': int (bytes)
             }
         """
+        screenshot_path = None  # for safe cleanup in except
         try:
             logger.info(f"Capturing PRINT QUALITY screenshot from {video_url} at timestamp {timestamp}")
+
+            # Reject URLs the server cannot access (blob URLs, data URLs, empty)
+            if not video_url or not isinstance(video_url, str) or not video_url.strip():
+                return {'success': False, 'error': 'video_url is required and must be a non-empty string'}
+            video_url = video_url.strip()
+            if video_url.lower().startswith('blob:'):
+                return {'success': False, 'error': 'Server cannot access blob URLs. Use a direct video file URL for print-quality upgrade.'}
+            if video_url.lower().startswith('data:'):
+                return {'success': False, 'error': 'Server cannot use data URLs for print-quality capture. Use a direct video file URL.'}
             
             # Fix video URL if it's missing file extension
             processed_video_url = self._fix_video_url(video_url)
@@ -423,23 +433,21 @@ class VideoScreenshotCapture:
         except ffmpeg.Error as e:
             error_msg = f"FFmpeg error: {str(e)}"
             logger.error(error_msg)
-            # Clean up on error
-            if os.path.exists(screenshot_path):
-                os.unlink(screenshot_path)
-            return {
-                'success': False,
-                'error': error_msg
-            }
+            if screenshot_path and os.path.exists(screenshot_path):
+                try:
+                    os.unlink(screenshot_path)
+                except OSError:
+                    pass
+            return {'success': False, 'error': error_msg}
         except Exception as e:
             error_msg = f"Unexpected error: {str(e)}"
-            logger.error(error_msg)
-            # Clean up on error
-            if os.path.exists(screenshot_path):
-                os.unlink(screenshot_path)
-            return {
-                'success': False,
-                'error': error_msg
-            }
+            logger.error(f"Print quality capture failed: {error_msg}", exc_info=True)
+            if screenshot_path and os.path.exists(screenshot_path):
+                try:
+                    os.unlink(screenshot_path)
+                except OSError:
+                    pass
+            return {'success': False, 'error': error_msg}
 
     def process_uploaded_image_for_print_quality(self, image_file, print_dpi=300, crop_area=None):
         """
