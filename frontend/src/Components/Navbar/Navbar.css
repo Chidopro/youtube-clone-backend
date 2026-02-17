@@ -30,10 +30,10 @@ nav{
 /* Sign In button styling */
 .sign-in-btn {
     border: 1px solid #065fd4;
-    padding: 8px 12px; /* Match Start Free button padding */
+    padding: 8px 12px; /* Match Sign Up button padding */
     border-radius: 4px; /* Rectangular shape */
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px; /* Match Sign Up for congruent button text */
     font-weight: 500;
     line-height: 1;
     height: 32px;
@@ -60,14 +60,13 @@ nav{
     transform: translateY(-1px);
 }
 
-/* Subscribe button with YouTube-style red - increased height to match Sign In */
+/* Sign Up button (subscribe-btn) - match Sign In for congruent styling */
 .nav-right .subscribe-btn {
-    /* Copy ALL Sign In button properties exactly */
-    border: 1px solid #cc0000; /* Match Sign In button border */
-    padding: 8px 12px; /* INCREASED vertical padding from 6px to 8px for height */
-    border-radius: 4px; /* Rectangular shape */
+    border: 1px solid #cc0000;
+    padding: 8px 12px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 14px; /* Same as .sign-in-btn */
     font-weight: 500;
     line-height: 1;
     height: 32px;

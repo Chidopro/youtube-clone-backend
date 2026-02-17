@@ -30,55 +30,47 @@
   animation: pulse 2s infinite;
 }
 
-/* Red effect for step 2 when video is selected */
+/* Red effect for step 2 when video is played – pulsating to grab attention */
 .step-number.step-red {
-  background: rgba(220, 53, 69, 0.9) !important;
+  background: rgba(220, 53, 69, 0.95) !important;
   border: 3px solid #dc3545 !important;
   box-shadow: 0 0 20px rgba(220, 53, 69, 0.6), 0 4px 12px rgba(220, 53, 69, 0.4);
 }
 
 .step-number.step-red.pulse {
-  animation: pulseRed 2s infinite;
+  animation: pulseRed 1.4s ease-in-out infinite;
 }
 
 @keyframes pulseRed {
-  0% {
+  0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7), 0 4px 12px rgba(220, 53, 69, 0.4);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.8), 0 0 24px rgba(220, 53, 69, 0.5), 0 4px 12px rgba(220, 53, 69, 0.4);
   }
   50% {
-    transform: scale(1.1);
-    box-shadow: 0 0 0 10px rgba(220, 53, 69, 0), 0 6px 16px rgba(220, 53, 69, 0.5);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0), 0 4px 12px rgba(220, 53, 69, 0.4);
+    transform: scale(1.18);
+    box-shadow: 0 0 0 12px rgba(220, 53, 69, 0.2), 0 0 32px rgba(220, 53, 69, 0.7), 0 6px 20px rgba(220, 53, 69, 0.5);
   }
 }
 
-/* Green effect for step 3 when screenshot is selected */
+/* Green effect for step 3 when screenshot is selected – pulsating to grab attention */
 .step-number.step-green {
-  background: rgba(40, 167, 69, 0.9) !important;
+  background: rgba(40, 167, 69, 0.95) !important;
   border: 3px solid #28a745 !important;
   box-shadow: 0 0 20px rgba(40, 167, 69, 0.6), 0 4px 12px rgba(40, 167, 69, 0.4);
 }
 
 .step-number.step-green.pulse {
-  animation: pulseGreen 2s infinite;
+  animation: pulseGreen 1.4s ease-in-out infinite;
 }
 
 @keyframes pulseGreen {
-  0% {
+  0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7), 0 4px 12px rgba(40, 167, 69, 0.4);
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.8), 0 0 24px rgba(40, 167, 69, 0.5), 0 4px 12px rgba(40, 167, 69, 0.4);
   }
   50% {
-    transform: scale(1.1);
-    box-shadow: 0 0 0 10px rgba(40, 167, 69, 0), 0 6px 16px rgba(40, 167, 69, 0.5);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0), 0 4px 12px rgba(40, 167, 69, 0.4);
+    transform: scale(1.18);
+    box-shadow: 0 0 0 12px rgba(40, 167, 69, 0.2), 0 0 32px rgba(40, 167, 69, 0.7), 0 6px 20px rgba(40, 167, 69, 0.5);
   }
 }
 
