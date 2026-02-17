@@ -39,6 +39,7 @@
 
 .step-number.step-red.pulse {
   animation: pulseRed 1.4s ease-in-out infinite;
+  transition: none; /* let animation drive transform on desktop */
 }
 
 @keyframes pulseRed {
@@ -61,6 +62,7 @@
 
 .step-number.step-green.pulse {
   animation: pulseGreen 1.4s ease-in-out infinite;
+  transition: none; /* let animation drive transform on desktop */
 }
 
 @keyframes pulseGreen {
@@ -133,7 +135,8 @@
   transition: all 0.3s ease;
 }
 
-.flow-step:hover .step-number {
+/* Hover only when not pulsing – so pulse animation works on desktop */
+.flow-step:hover .step-number:not(.pulse) {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.1);
 }
