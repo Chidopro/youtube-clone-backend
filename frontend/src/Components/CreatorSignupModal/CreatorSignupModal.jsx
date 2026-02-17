@@ -84,9 +84,11 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
 
         <div className="creator-signup-modal-content">
           <h2 className="creator-signup-modal-title">Creator Signup</h2>
-          <p className="creator-signup-modal-subtitle">
-            Join ScreenMerch as a creator and start selling merchandise from your content
-          </p>
+          {!signupSuccess && (
+            <p className="creator-signup-modal-subtitle">
+              Join ScreenMerch as a creator and start selling merchandise from your content
+            </p>
+          )}
 
           {signupSuccess ? (
             <div className="creator-signup-success">
