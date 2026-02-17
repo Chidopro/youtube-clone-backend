@@ -192,15 +192,6 @@ const MerchandiseCategories = ({ sidebar }) => {
             </div>
           ))}
         </div>
-        
-        <div className="back-button-container">
-          <button 
-            className="back-button"
-            onClick={() => window.history.back()}
-          >
-            ← Back to Video
-          </button>
-        </div>
       </div>
 
         {/* Authentication Modal */}

@@ -199,29 +199,6 @@
   position: relative;
 }
 
-.back-button-container {
-  margin-top: 2rem;
-  text-align: center;
-}
-
-.back-button {
-  background: #667eea;
-  border: 1px solid #667eea;
-  border-radius: 8px;
-  padding: 12px 24px;
-  color: white;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.back-button:hover {
-  background: #5a6fd8;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
 .loading-overlay {
   position: absolute;
   top: 0;
@@ -372,13 +349,6 @@
   
   .category-name {
     font-size: 0.8rem;
-  }
-  
-  .back-button {
-    padding: 10px 20px;
-    font-size: 0.9rem;
-    border-radius: 8px;
-    width: auto;
   }
   
   .loading-overlay {
