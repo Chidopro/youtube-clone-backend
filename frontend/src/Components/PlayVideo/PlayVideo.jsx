@@ -296,122 +296,8 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
             setScreenshotTimestamps(prev => {
                 return prev.length < 6 ? [...prev, currentTime] : prev;
             });
-            
-            // Step 2: Upgrade to print quality in the background (non-blocking)
-            if (videoUrl) {
-                // Mark upgrade as starting in localStorage so Tools page knows
-                try {
-                    const raw = localStorage.getItem('pending_merch_data');
-                    if (raw) {
-                        const data = JSON.parse(raw);
-                        data.print_quality_upgrade_timestamp = Date.now();
-                        delete data.print_quality_upgrade_failed; // Clear any previous failure
-                        localStorage.setItem('pending_merch_data', JSON.stringify(data));
-                        window.dispatchEvent(new Event('localStorageUpdated'));
-                    }
-                } catch (e) {
-                    console.warn('Failed to mark upgrade as starting:', e);
-                }
-                
-                // Don't await - let it run in background and replace when ready
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => {
-                    controller.abort();
-                    console.warn('⚠️ Print quality upgrade timed out after 60 seconds');
-                    // Mark upgrade as failed in localStorage so Tools page knows
-                    try {
-                        const raw = localStorage.getItem('pending_merch_data');
-                        if (raw) {
-                            const data = JSON.parse(raw);
-                            data.print_quality_upgrade_failed = true;
-                            localStorage.setItem('pending_merch_data', JSON.stringify(data));
-                            window.dispatchEvent(new Event('localStorageUpdated'));
-                        }
-                    } catch (e) {
-                        console.warn('Failed to mark upgrade as failed:', e);
-                    }
-                }, 60000); // 60 second timeout
-                
-                fetch(API_CONFIG.ENDPOINTS.CAPTURE_PRINT_QUALITY, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        video_url: videoUrl,
-                        timestamp: currentTime,
-                        print_dpi: 300
-                    }),
-                    signal: controller.signal
-                })
-                .then(response => {
-                    clearTimeout(timeoutId);
-                    if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
-                    return response.json();
-                })
-                .then(result => {
-                    if (result.success && result.screenshot) {
-                        // Replace client-side screenshot with print quality version
-                        setScreenshots(prev => {
-                            const updated = [...prev];
-                            if (updated[tempIndex]) {
-                                updated[tempIndex] = result.screenshot;
-                            }
-                            return updated;
-                        });
-                        
-                        // Also update localStorage so Tools page gets the upgraded version
-                        try {
-                            const raw = localStorage.getItem('pending_merch_data');
-                            if (raw) {
-                                const data = JSON.parse(raw);
-                                if (data.screenshots && Array.isArray(data.screenshots) && data.screenshots[tempIndex]) {
-                                    data.screenshots[tempIndex] = result.screenshot;
-                                    // Also update selected_screenshot if this is the selected one
-                                    if (data.selected_screenshot === clientScreenshot) {
-                                        data.selected_screenshot = result.screenshot;
-                                    }
-                                    // Clear upgrade failure flag if it exists
-                                    delete data.print_quality_upgrade_failed;
-                                    delete data.print_quality_upgrade_timestamp;
-                                    localStorage.setItem('pending_merch_data', JSON.stringify(data));
-                                    // Trigger custom event for same-tab updates (storage event only fires cross-tab)
-                                    window.dispatchEvent(new Event('localStorageUpdated'));
-                                }
-                            }
-                        } catch (e) {
-                            console.warn('Failed to update localStorage with print quality screenshot:', e);
-                        }
-                        
-                        console.log('✅ Screenshot upgraded to print quality and saved to localStorage');
-                    } else {
-                        throw new Error(result.error || 'Server failed to capture print quality screenshot');
-                    }
-                })
-                .catch(error => {
-                    clearTimeout(timeoutId);
-                    if (error.name === 'AbortError') {
-                        console.warn('⚠️ Print quality upgrade aborted (timeout)');
-                    } else {
-                        console.warn('⚠️ Print quality upgrade failed, keeping client-side capture:', error);
-                    }
-                    // Mark upgrade as failed in localStorage so Tools page knows
-                    try {
-                        const raw = localStorage.getItem('pending_merch_data');
-                        if (raw) {
-                            const data = JSON.parse(raw);
-                            data.print_quality_upgrade_failed = true;
-                            data.print_quality_upgrade_timestamp = Date.now();
-                            localStorage.setItem('pending_merch_data', JSON.stringify(data));
-                            window.dispatchEvent(new Event('localStorageUpdated'));
-                        }
-                    } catch (e) {
-                        console.warn('Failed to mark upgrade as failed:', e);
-                    }
-                    // Keep the client-side capture - it's better than nothing
-                });
-            }
-            return; // Success with instant capture
+            // Print-quality upgrade happens only when the image is passed through the 300 DPI print image generator (e.g. Tools / print-quality page), not here.
+            return; // Success with instant client-side capture
         }
         
         // Fallback: If client-side capture fails, use server-side
@@ -421,88 +307,42 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
         }
         
         try {
-            // Try print quality first
+            // Use regular screenshot endpoint only; print-quality upgrade happens in the 300 DPI print image generator flow
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // Shorter timeout for responsiveness
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
             
-            const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_PRINT_QUALITY, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+            const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                 body: JSON.stringify({
                     video_url: videoUrl,
                     timestamp: currentTime,
-                    print_dpi: 300
+                    quality: 95
                 }),
                 signal: controller.signal
             });
             
             clearTimeout(timeoutId);
             
-            if (!response.ok) {
-                throw new Error(`Server responded with status: ${response.status}`);
-            }
-            
-            const result = await response.json();
-            
-            if (result.success && result.screenshot) {
-                setScreenshots(prev => {
-                    const newScreenshots = prev.length < 6 ? [...prev, result.screenshot] : prev;
-                    showGreenFlagConfirmation(prev.length);
-                    return newScreenshots;
-                });
-                setScreenshotTimestamps(prev => {
-                    const newTimestamps = prev.length < 6 ? [...prev, currentTime] : newTimestamps;
-                    return newTimestamps;
-                });
-                return;
-            } else {
-                throw new Error(result.error || 'Server failed to capture print quality screenshot');
-            }
-            
-        } catch (error) {
-            console.error('❌ Print quality capture failed, trying regular screenshot endpoint:', error);
-            
-            // Fallback to regular screenshot endpoint
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // Quick timeout
-                
-                const fallbackResponse = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        video_url: videoUrl,
-                        timestamp: currentTime,
-                        quality: 95
-                    }),
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
-                
-                if (fallbackResponse.ok) {
-                    const fallbackResult = await fallbackResponse.json();
-                    
-                    if (fallbackResult.success && fallbackResult.screenshot) {
-                        setScreenshots(prev => {
-                            const newScreenshots = prev.length < 6 ? [...prev, fallbackResult.screenshot] : prev;
-                            showGreenFlagConfirmation(prev.length);
-                            return newScreenshots;
-                        });
-                        setScreenshotTimestamps(prev => {
-                            const newTimestamps = prev.length < 6 ? [...prev, currentTime] : newTimestamps;
-                            return newTimestamps;
-                        });
-                        return;
-                    }
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.screenshot) {
+                    setScreenshots(prev => {
+                        const newScreenshots = prev.length < 6 ? [...prev, result.screenshot] : prev;
+                        showGreenFlagConfirmation(prev.length);
+                        return newScreenshots;
+                    });
+                    setScreenshotTimestamps(prev => {
+                        const newTimestamps = prev.length < 6 ? [...prev, currentTime] : prev;
+                        return newTimestamps;
+                    });
+                    return;
                 }
-            } catch (fallbackError) {
-                console.error('❌ Fallback screenshot capture also failed:', fallbackError);
             }
+        } catch (error) {
+            console.error('❌ Server screenshot capture failed:', error);
             
             // Last resort: use thumbnail
             const thumbnailUrl = video?.thumbnail || video?.poster || videoElement.poster;
@@ -939,7 +779,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                     
                     console.log(`Requesting server-side screenshot at ${currentTime}s from ${videoUrl}`);
                     
-                    const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_PRINT_QUALITY, {
+                    const response = await fetch(API_CONFIG.ENDPOINTS.CAPTURE_SCREENSHOT, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -948,7 +788,7 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
                         body: JSON.stringify({
                             video_url: videoUrl,
                             timestamp: currentTime,
-                            print_dpi: 300
+                            quality: 95
                         })
                     });
                     
