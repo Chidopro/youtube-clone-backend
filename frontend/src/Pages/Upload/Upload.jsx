@@ -124,6 +124,46 @@ const Upload = ({ sidebar }) => {
         return null;
     };
 
+    // Thumbnail must be 16:9 so it matches the screenshot window and other thumbnails (no size mismatch)
+    const THUMBNAIL_ASPECT_RATIO = 16 / 9;  // 1.778
+    const THUMBNAIL_ASPECT_TOLERANCE = 0.08; // e.g. 1.70–1.86
+
+    const handleThumbnailChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) {
+            setThumbnail(null);
+            setMessage('');
+            return;
+        }
+        const error = validateFile(file, 'image');
+        if (error) {
+            setMessage(`❌ ${error}`);
+            setThumbnail(null);
+            return;
+        }
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const ratio = img.width / img.height;
+            const minRatio = THUMBNAIL_ASPECT_RATIO - THUMBNAIL_ASPECT_TOLERANCE;
+            const maxRatio = THUMBNAIL_ASPECT_RATIO + THUMBNAIL_ASPECT_TOLERANCE;
+            if (ratio >= minRatio && ratio <= maxRatio) {
+                setThumbnail(file);
+                setMessage('');
+            } else {
+                setThumbnail(null);
+                setMessage('❌ Thumbnail must be 16:9 aspect ratio so it matches the screenshot window. Use e.g. 1280×720 or 1920×1080.');
+            }
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            setMessage('❌ Could not read image. Please select a valid image file.');
+            setThumbnail(null);
+        };
+        img.src = url;
+    };
+
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         const error = validateFile(file, 'video');
@@ -132,18 +172,6 @@ const Upload = ({ sidebar }) => {
             setFile(null);
         } else {
             setFile(file);
-            setMessage('');
-        }
-    };
-
-    const handleThumbnailChange = (e) => {
-        const file = e.target.files[0];
-        const error = validateFile(file, 'image');
-        if (error) {
-            setMessage(`❌ ${error}`);
-            setThumbnail(null);
-        } else {
-            setThumbnail(file);
             setMessage('');
         }
     };
@@ -386,7 +414,7 @@ const Upload = ({ sidebar }) => {
                         )}
                     </div>
                     <div style={{ marginBottom: 16 }}>
-                        <label>Thumbnail Image * (Max 10MB)</label>
+                        <label>Thumbnail Image * (16:9 aspect ratio, max 10MB — e.g. 1280×720 or 1920×1080)</label>
                         <input 
                             type="file" 
                             accept="image/*" 
