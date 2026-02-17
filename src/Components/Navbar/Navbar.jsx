@@ -8,11 +8,13 @@ import more_icon from '../../assets/more.png'
 import notification_icon from '../../assets/notification.png'
 import { Link, useNavigate } from 'react-router-dom'
 import SubscriptionModal from '../SubscriptionModal/SubscriptionModal'
+import SignUpChoiceModal from '../SignUpChoiceModal/SignUpChoiceModal'
 import { supabase } from '../../supabaseClient'
 import { upsertUserProfile, deleteUserAccount } from '../../utils/userService'
 
 const Navbar = ({ setSidebar, resetCategory }) => {
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+    const [isSignUpChoiceOpen, setIsSignUpChoiceOpen] = useState(false);
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -193,9 +195,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         }
     };
 
-    const handleSubscribeClick = () => {
-        // Always redirect to tiers page for new user signups
-        navigate('/subscription-tiers');
+    const handleSignUpClick = () => {
+        setIsSignUpChoiceOpen(true);
     };
 
     const handleSubscribeModalClick = () => {
@@ -237,10 +238,10 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         </Link>
                     )}
                     <button 
-                        className="subscribe-btn"
-                        onClick={handleSubscribeClick}
+                        className="subscribe-btn sign-up-btn"
+                        onClick={handleSignUpClick}
                     >
-                        Subscribe
+                        Sign Up
                     </button>
                     {loading ? (
                         <div className="loading-spinner-navbar"></div>
@@ -346,6 +347,10 @@ const Navbar = ({ setSidebar, resetCategory }) => {
             <SubscriptionModal 
                 isOpen={isSubscriptionModalOpen} 
                 onClose={handleCloseModal} 
+            />
+            <SignUpChoiceModal 
+                isOpen={isSignUpChoiceOpen} 
+                onClose={() => setIsSignUpChoiceOpen(false)} 
             />
         </>
     )
