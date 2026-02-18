@@ -136,6 +136,7 @@ def _send_creator_welcome_email(creator_email):
     <li style="margin-bottom: 6px;">Share your store link with your audience</li>
   </ul>
 
+  <p style="margin-bottom: 12px; font-size: 14px; color: #555;"><em>Note: Your custom subdomain may take up to 24 hours to be reviewed and activated by host.</em></p>
   <p style="margin-bottom: 8px;"><strong>👉 Create your password here:</strong></p>
   <p style="margin-bottom: 24px;"><a href="{set_password_url}" style="color: #667eea; font-weight: 600; word-break: break-all;">{set_password_url}</a></p>
   {intro_video_block}
@@ -178,6 +179,8 @@ Next Steps:
 • Upload your videos
 • Browse the product catalog
 • Share your store link with your audience
+
+Note: Your custom subdomain may take up to 24 hours to be reviewed and activated by host.
 
 👉 Create your password here: {set_password_url}
 """
