@@ -90,30 +90,106 @@ def _send_creator_welcome_email(creator_email):
     if not api_key:
         logger.warning("RESEND_API_KEY not set; skipping creator welcome email")
         return False
-    subject = "Welcome to ScreenMerch — your store is ready"
-    body = f"""Congratulations and welcome to ScreenMerch creator portal. Inside your dashboard you can find your:
+    subject = "Welcome to Your ScreenMerch Creator Portal 🎉"
+    intro_video_block = f'<p style="margin-top: 24px;"><a href="{intro_video_url}" style="color: #667eea; font-weight: 600;">Want a full walkthrough? Watch our intro video here.</a></p>' if intro_video_url else ""
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to ScreenMerch</title>
+</head>
+<body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.7; color: #333; max-width: 600px; margin: 0 auto; padding: 24px;">
+  <p style="font-size: 18px; margin-bottom: 8px;">Congratulations — and welcome to the ScreenMerch Creator Portal!</p>
+  <p style="margin-bottom: 20px;">We're excited to have you on board.</p>
+  <p style="margin-bottom: 16px;">Inside your dashboard, you'll find everything you need to build and manage your store:</p>
 
-- Videos - Add your videos to your page
-- Favorites - Select your personal favorite screenshots or thumbnails
-- Analytics - Track your sales amounts, products and dates of sales
-- Payout Setup - Set up your paypal account for payout
-- Personalization - Set your subdomain name (yourname.screenmerch.com) for your personal video page and store. Add your logo, select colors and favicon. Enter your custom Meta title and Custom Meta Description.
+  <p style="margin: 16px 0 4px 0; font-weight: 600;">🔹 Videos</p>
+  <p style="margin: 0 0 12px 0;">Add and manage the videos that will appear on your page.</p>
 
-We invite you to sign in and check out the products we offer — from women's and men's to kids, mugs, bags, hats, and more (stickers, magnets, greeting cards, and more). You'll see prices and colors for each item so you know exactly what your fans can order.
+  <p style="margin: 16px 0 4px 0; font-weight: 600;">🔹 Favorites</p>
+  <p style="margin: 0 0 12px 0;">Select your favorite screenshots or thumbnails to highlight.</p>
 
-Fans pick a moment from your video, capture a screenshot, and put it on any product. Every screenshot is processed for 300 DPI print quality. You earn $7 per sale on all items except for greeting cards, stickers and magnets; we handle printing and shipping.
+  <p style="margin: 16px 0 4px 0; font-weight: 600;">🔹 Analytics</p>
+  <p style="margin: 0 0 12px 0;">Track your sales, see which products are selling, and view dates and earnings in real time.</p>
 
-Next steps: Create your password, sign in, browse the catalog, set your subdomain, upload your videos, and share your link.
+  <p style="margin: 16px 0 4px 0; font-weight: 600;">🔹 Payout Setup</p>
+  <p style="margin: 0 0 12px 0;">Connect your PayPal account to receive payouts from your earnings.</p>
 
-Create your password: {set_password_url}
+  <p style="margin: 16px 0 4px 0; font-weight: 600;">🔹 Personalization</p>
+  <p style="margin: 0 0 20px 0;">Create your custom subdomain (yourname.screenmerch.com) for your personal video store. Upload your logo, choose your brand colors, add a favicon, and enter your custom Meta title and description so your store reflects your identity.</p>
+
+  <p style="margin-bottom: 16px;">We invite you to sign in and explore the full product catalog — including apparel for women, men, and kids, plus mugs, bags, hats, pet items, stickers, magnets, greeting cards, and more.</p>
+  <p style="margin-bottom: 20px;">You'll be able to see available colors and pricing so you know exactly what your fans can order.</p>
+
+  <p style="font-weight: 600; margin-bottom: 8px;">Here's how it works:</p>
+  <p style="margin-bottom: 16px;">Your fans pick a moment from your video, capture a screenshot, and place it on the product of their choice. Every screenshot is automatically processed for high-quality 300 DPI printing.</p>
+  <p style="margin-bottom: 20px;">You earn $7 per sale on most items (excluding greeting cards, stickers, and magnets). We handle the payment processing, printing, and shipping — so you can focus on creating content.</p>
+
+  <p style="font-weight: 600; margin-bottom: 12px;">Next Steps:</p>
+  <ul style="margin: 0 0 20px 0; padding-left: 22px;">
+    <li style="margin-bottom: 6px;">Create your password</li>
+    <li style="margin-bottom: 6px;">Sign in to your dashboard</li>
+    <li style="margin-bottom: 6px;">Set your subdomain</li>
+    <li style="margin-bottom: 6px;">Upload your videos</li>
+    <li style="margin-bottom: 6px;">Browse the product catalog</li>
+    <li style="margin-bottom: 6px;">Share your store link with your audience</li>
+  </ul>
+
+  <p style="margin-bottom: 8px;"><strong>👉 Create your password here:</strong></p>
+  <p style="margin-bottom: 24px;"><a href="{set_password_url}" style="color: #667eea; font-weight: 600; word-break: break-all;">{set_password_url}</a></p>
+  {intro_video_block}
+  <p style="margin-top: 24px;">Thank you for joining us — we're excited to support your journey.</p>
+  <p style="font-style: italic; color: #555; margin: 16px 0;">Your brand. Your videos. Your earnings.</p>
+  <p style="margin-top: 24px;">The ScreenMerch Team</p>
+</body>
+</html>"""
+    text_body = f"""Congratulations — and welcome to the ScreenMerch Creator Portal!
+
+We're excited to have you on board.
+
+Inside your dashboard, you'll find everything you need to build and manage your store:
+
+🔹 Videos - Add and manage the videos that will appear on your page.
+
+🔹 Favorites - Select your favorite screenshots or thumbnails to highlight.
+
+🔹 Analytics - Track your sales, see which products are selling, and view dates and earnings in real time.
+
+🔹 Payout Setup - Connect your PayPal account to receive payouts from your earnings.
+
+🔹 Personalization - Create your custom subdomain (yourname.screenmerch.com) for your personal video store. Upload your logo, choose your brand colors, add a favicon, and enter your custom Meta title and description so your store reflects your identity.
+
+We invite you to sign in and explore the full product catalog — including apparel for women, men, and kids, plus mugs, bags, hats, pet items, stickers, magnets, greeting cards, and more.
+
+You'll be able to see available colors and pricing so you know exactly what your fans can order.
+
+Here's how it works:
+
+Your fans pick a moment from your video, capture a screenshot, and place it on the product of their choice. Every screenshot is automatically processed for high-quality 300 DPI printing.
+
+You earn $7 per sale on most items (excluding greeting cards, stickers, and magnets). We handle the payment processing, printing, and shipping — so you can focus on creating content.
+
+Next Steps:
+
+• Create your password
+• Sign in to your dashboard
+• Set your subdomain
+• Upload your videos
+• Browse the product catalog
+• Share your store link with your audience
+
+👉 Create your password here: {set_password_url}
 """
     if intro_video_url:
-        body += f"\nWant a full walkthrough? Watch our intro video: {intro_video_url}\n"
-    body += """
+        text_body += f"\nWant a full walkthrough? Watch our intro video: {intro_video_url}\n"
+    text_body += """
 
-Thanks for joining — we're excited to have you.
+Thank you for joining us — we're excited to support your journey.
 
-The ScreenMerch team
+Your brand. Your videos. Your earnings.
+
+The ScreenMerch Team
 """
     try:
         r = requests.post(
@@ -123,7 +199,8 @@ The ScreenMerch team
                 "from": from_addr,
                 "to": [creator_email.strip()],
                 "subject": subject,
-                "text": body.strip(),
+                "html": html_body,
+                "text": text_body.strip(),
             },
             timeout=15,
         )
