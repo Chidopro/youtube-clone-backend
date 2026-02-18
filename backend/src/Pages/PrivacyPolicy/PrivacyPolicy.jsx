@@ -12,7 +12,7 @@ const PrivacyPolicy = () => {
         </div>
         
         <h1>Privacy Policy</h1>
-        <div className="last-updated">Last Updated: January 2025</div>
+        <div className="last-updated">Last Updated: February 2025</div>
 
         <section>
           <h2>Company Information</h2>
@@ -50,15 +50,14 @@ const PrivacyPolicy = () => {
         <section className="security-box">
           <h2>Content Processing and Protection</h2>
           
-          <h3>Video Content Handling</h3>
-          <p><strong>How We Process Your Content:</strong></p>
+          <h3>How We Process Your Content</h3>
+          <p>Uploaded videos and images are processed securely to:</p>
           <ul>
-            <li>Video content is processed through secure, encrypted servers</li>
-            <li>We extract screenshots and thumbnails for merchandise creation</li>
-            <li>All processing occurs within our protected infrastructure</li>
-            <li>Content is never shared with unauthorized third parties</li>
-            <li>We maintain strict access controls for all uploaded content</li>
+            <li>Generate thumbnails</li>
+            <li>Capture screenshots</li>
+            <li>Optimize files for high-resolution (300 DPI) printing</li>
           </ul>
+          <p>Final print-ready files are generated server-side and are not exposed publicly.</p>
 
           <h3>Content Rights and Usage</h3>
           <ul>
@@ -70,10 +69,9 @@ const PrivacyPolicy = () => {
 
           <h3>Data Retention</h3>
           <ul>
-            <li>Active account content: Retained while account is active</li>
-            <li>Order-related content: Retained for 7 years for legal/tax purposes</li>
-            <li>Backup content: Securely destroyed after 90 days in backups</li>
-            <li>Deleted account content: Permanently removed within 30 days</li>
+            <li>Active account data is retained while accounts remain active.</li>
+            <li>Order records may be retained for up to 7 years for tax and legal compliance (U.S. requirements).</li>
+            <li>Deleted accounts are removed within 30 days, subject to legal retention requirements.</li>
           </ul>
         </section>
 
@@ -123,14 +121,14 @@ const PrivacyPolicy = () => {
         </section>
 
         <section>
-          <h2>Data Security and Protection</h2>
-          <h3>Technical Safeguards</h3>
+          <h2>Infrastructure &amp; Security</h2>
+          <p>ScreenMerch is hosted on reputable cloud infrastructure providers that maintain industry-standard security certifications.</p>
+          <p>We implement:</p>
           <ul>
-            <li><strong>Encryption:</strong> End-to-end encryption for data transmission and storage</li>
-            <li><strong>Access Controls:</strong> Multi-factor authentication and role-based access</li>
-            <li><strong>Monitoring:</strong> 24/7 security monitoring and intrusion detection</li>
-            <li><strong>Backups:</strong> Secure, encrypted backups with restricted access</li>
-            <li><strong>Infrastructure:</strong> SOC 2 compliant cloud infrastructure</li>
+            <li>Encrypted data transmission (HTTPS/TLS)</li>
+            <li>Role-based access controls</li>
+            <li>Secure authentication systems</li>
+            <li>Encrypted storage where applicable</li>
           </ul>
         </section>
 
@@ -168,4 +166,4 @@ const PrivacyPolicy = () => {
   );
 };
 
-export default PrivacyPolicy; 
+export default PrivacyPolicy;

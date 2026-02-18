@@ -12,162 +12,137 @@ const TermsOfService = () => {
         </div>
         
         <h1>Terms of Service</h1>
-        <div className="last-updated">Last Updated: January 2025</div>
+        <div className="last-updated">Last Updated: February 2025</div>
 
         <section>
           <h2>1. Acceptance of Terms</h2>
-          <p>By accessing and using ScreenMerch ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. These Terms of Service ("Terms") govern your use of the ScreenMerch website and services. If you do not agree to these terms, you must not use the Service.</p>
+          <p>By accessing or using ScreenMerch (&quot;the Service&quot;), you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree, you may not use the Service.</p>
         </section>
 
         <section>
           <h2>2. Description of Service</h2>
-          <p>ScreenMerch is a platform that allows users to create custom merchandise from video content, including screenshots and thumbnails. We facilitate the creation and ordering of custom products through third-party providers. Our platform is designed exclusively for creating merchandise through ScreenMerch services.</p>
+          <p>ScreenMerch is a creator-focused merchandise platform that allows approved creators to:</p>
+          <ul>
+            <li>Upload and manage video content</li>
+            <li>Enable fans to capture screenshots or thumbnails</li>
+            <li>Place captured images onto merchandise</li>
+            <li>Sell products through ScreenMerch&apos;s integrated checkout and fulfillment system</li>
+          </ul>
+          <p>ScreenMerch processes images for print optimization (including 300 DPI formatting) and coordinates production and shipping through third-party fulfillment providers.</p>
+        </section>
+
+        <section>
+          <h2>3. Creator Accounts &amp; Approval</h2>
+          <ul>
+            <li>Creator accounts are subject to administrative review and approval.</li>
+            <li>Accounts remain pending until approved by a master administrator.</li>
+            <li>ScreenMerch reserves the right to approve or deny applications at its discretion.</li>
+            <li>Subdomains may take up to 24 hours to be activated following approval.</li>
+          </ul>
         </section>
 
         <section className="critical-box">
-          <h2>3. CRITICAL: Intellectual Property Protection & Platform Exclusivity</h2>
-          
-          <h3>3.1 Reverse Engineering Prohibition</h3>
-          <p><strong>YOU EXPRESSLY AGREE AND ACKNOWLEDGE THAT:</strong></p>
+          <h2>4. Intellectual Property &amp; Platform Protection</h2>
+          <h3>4.1 Your Content</h3>
+          <p>You retain ownership of all original content you upload to ScreenMerch.</p>
+          <p>By uploading content, you grant ScreenMerch a limited, non-exclusive, royalty-free license to:</p>
           <ul>
-            <li>You will NOT reverse engineer, decompile, disassemble, or attempt to derive the source code of ScreenMerch platform</li>
-            <li>You will NOT attempt to discover underlying algorithms, methods, or processes used by ScreenMerch</li>
-            <li>You will NOT use any automated tools, bots, or scrapers to extract data or functionality from ScreenMerch</li>
-            <li>You will NOT create competing services based on ScreenMerch's functionality or design</li>
-            <li>You will NOT copy, reproduce, or replicate ScreenMerch's user interface, workflows, or business processes</li>
+            <li>Process your content for merchandise creation</li>
+            <li>Optimize images for print production</li>
+            <li>Display content within your approved storefront</li>
           </ul>
+          <p>This license exists solely to operate the ScreenMerch platform.</p>
 
-          <h3>3.2 Platform Exclusivity Agreement</h3>
-          <p><strong>EXCLUSIVE USE COMMITMENT:</strong></p>
+          <h3>4.2 Platform Technology</h3>
+          <p>All ScreenMerch platform elements — including but not limited to:</p>
           <ul>
-            <li><strong>You agree that any video images, screenshots, thumbnails, or content processed through ScreenMerch may ONLY be used to create products through ScreenMerch platform</strong></li>
-            <li>You will NOT use video content processed on ScreenMerch to create merchandise on any other platform (including but not limited to Printful, Teespring, Redbubble, Etsy, Amazon Merch, etc.)</li>
-            <li>You will NOT download, export, or transfer video images from ScreenMerch to create products elsewhere</li>
-            <li>You will NOT share, distribute, or provide ScreenMerch-processed content to third parties for merchandise creation</li>
-            <li>Any custom designs, layouts, or modifications created through ScreenMerch remain exclusive to ScreenMerch platform</li>
+            <li>Screenshot capture tools</li>
+            <li>Image processing workflows</li>
+            <li>Print optimization systems</li>
+            <li>Product templates and layouts</li>
+            <li>UI/UX design</li>
+            <li>Backend systems and algorithms</li>
           </ul>
+          <p>are proprietary to ScreenMerch and protected by intellectual property law.</p>
 
-          <h3>3.3 Enforcement and Penalties</h3>
-          <p>Violation of these exclusivity and protection terms will result in:</p>
+          <h3>4.3 Commercial Bypass &amp; Platform Circumvention</h3>
+          <p>You agree not to:</p>
           <ul>
-            <li>Immediate account termination without refund</li>
-            <li>Legal action for breach of contract and intellectual property infringement</li>
-            <li>Monetary damages including lost profits and legal fees</li>
-            <li>Permanent ban from all ScreenMerch services</li>
+            <li>Extract, download, or export platform-processed, print-optimized, or formatted images for use on competing merchandise platforms</li>
+            <li>Circumvent or attempt to bypass ScreenMerch&apos;s checkout, payment, or fulfillment systems</li>
+            <li>Use ScreenMerch tools or workflows to generate commercial merchandise outside the ScreenMerch ecosystem</li>
+            <li>Use automated tools, scraping systems, or reverse engineering techniques to access platform-generated assets</li>
+          </ul>
+          <p>Nothing in these Terms restricts your ownership of your original content. However, ScreenMerch-generated formatting, processing, and production outputs are provided solely for use within the ScreenMerch platform.</p>
+        </section>
+
+        <section>
+          <h2>5. Prohibited Content</h2>
+          <p>You may not upload content that:</p>
+          <ul>
+            <li>Infringes copyright, trademark, or publicity rights</li>
+            <li>Contains unlawful, harmful, or discriminatory material</li>
+            <li>Includes explicit or adult content</li>
+            <li>Violates applicable laws or regulations</li>
+          </ul>
+          <p>You are solely responsible for ensuring you have rights to all uploaded material.</p>
+        </section>
+
+        <section>
+          <h2>6. Orders &amp; Payment</h2>
+          <ul>
+            <li>Payments are processed securely through Stripe.</li>
+            <li>All prices are listed in USD.</li>
+            <li>ScreenMerch coordinates fulfillment through third-party providers (e.g., Printful).</li>
+            <li>Because products are custom-made, returns are generally not accepted except in cases of manufacturing defects or production errors.</li>
+            <li>Claims for production defects must be submitted within 30 days of delivery.</li>
           </ul>
         </section>
 
         <section>
-          <h2>4. User Accounts</h2>
-          <h3>Account Creation</h3>
+          <h2>7. Creator Earnings &amp; Payouts</h2>
           <ul>
-            <li>You may be required to create an account to access certain features</li>
-            <li>You are responsible for maintaining the confidentiality of your account</li>
-            <li>You are responsible for all activities that occur under your account</li>
-            <li>You must provide accurate and complete information when creating an account</li>
-            <li>Each user may only maintain one active account</li>
+            <li>Creators earn $7 per sale on most items (excluding greeting cards, stickers, and magnets unless otherwise specified).</li>
+            <li>Payout eligibility requires a minimum balance of $50.</li>
+            <li>Creators must provide a valid PayPal email for payout processing.</li>
+            <li>ScreenMerch reserves the right to withhold payouts in cases of fraud, abuse, or violation of these Terms.</li>
           </ul>
         </section>
 
         <section>
-          <h2>5. Content and Intellectual Property Rights</h2>
-          <h3>5.1 User Content Ownership</h3>
+          <h2>8. Account Termination</h2>
+          <p>ScreenMerch may suspend or terminate accounts for:</p>
           <ul>
-            <li>You retain ownership of original content you upload to ScreenMerch</li>
-            <li>You grant ScreenMerch a limited, non-exclusive license to process your content for merchandise creation</li>
-            <li>You are responsible for ensuring you have rights to any content you upload</li>
-            <li>You must not upload copyrighted content without proper authorization</li>
+            <li>Violations of these Terms</li>
+            <li>Intellectual property abuse</li>
+            <li>Platform circumvention</li>
+            <li>Fraudulent activity</li>
           </ul>
-
-          <h3>5.2 ScreenMerch Intellectual Property</h3>
+          <p>Upon termination:</p>
           <ul>
-            <li>ScreenMerch platform, technology, algorithms, and processes are proprietary and protected</li>
-            <li>All ScreenMerch branding, logos, and design elements are owned by ScreenMerch</li>
-            <li>Product templates, layouts, and customization tools are ScreenMerch intellectual property</li>
-            <li>You may not use ScreenMerch IP for any purpose outside the intended service</li>
+            <li>Access to the platform is revoked</li>
+            <li>Outstanding payouts may be reviewed before release</li>
           </ul>
         </section>
 
         <section>
-          <h2>6. Platform Usage Restrictions</h2>
-          <h3>6.1 Prohibited Content</h3>
-          <p>You may not upload or create products containing:</p>
+          <h2>9. Limitation of Liability</h2>
+          <p>To the maximum extent permitted by law:</p>
           <ul>
-            <li>Copyrighted material without authorization</li>
-            <li>Illegal, harmful, threatening, or offensive content</li>
-            <li>Content that violates privacy or publicity rights</li>
-            <li>Trademarked material without permission</li>
-            <li>Adult or explicit content</li>
-            <li>Content promoting violence, hate, or discrimination</li>
+            <li>ScreenMerch shall not be liable for indirect, incidental, consequential, or punitive damages, including lost profits or lost revenue.</li>
+            <li>Our total liability shall not exceed the total fees paid to ScreenMerch in the twelve (12) months preceding the claim.</li>
           </ul>
         </section>
 
         <section>
-          <h2>7. Orders and Payment</h2>
-          <h3>7.1 Product Orders</h3>
-          <ul>
-            <li>All orders are subject to acceptance and product availability</li>
-            <li>Prices are displayed in USD and may change without notice</li>
-            <li>Payment is processed securely through Stripe</li>
-            <li>You agree to provide accurate billing information</li>
-            <li>Orders cannot be transferred to other platforms</li>
-          </ul>
-
-          <h3>7.2 Refunds and Returns</h3>
-          <ul>
-            <li>Custom merchandise is typically non-refundable due to personalized nature</li>
-            <li>Defective or damaged products may be eligible for replacement</li>
-            <li>Refund requests must be submitted within 30 days of delivery</li>
-            <li>No refunds for violation of exclusivity terms</li>
-          </ul>
+          <h2>10. Arbitration &amp; Dispute Resolution (U.S.)</h2>
+          <p>Any disputes arising from these Terms shall be resolved through binding arbitration in the United States, except where prohibited by law.</p>
+          <p>You waive the right to participate in class-action lawsuits.</p>
         </section>
 
         <section>
-          <h2>8. Prohibited Uses</h2>
-          <p>You may not use ScreenMerch to:</p>
-          <ul>
-            <li>Upload illegal, harmful, or offensive content</li>
-            <li>Infringe on intellectual property rights</li>
-            <li>Engage in fraudulent or deceptive practices</li>
-            <li>Attempt to circumvent security measures</li>
-            <li>Use automated systems to access the service</li>
-            <li>Reverse engineer or replicate our platform</li>
-            <li>Export content for use on competing platforms</li>
-            <li>Violate platform exclusivity agreements</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2>9. Termination</h2>
-          <h3>9.1 Termination by ScreenMerch</h3>
-          <ul>
-            <li>We may terminate accounts for violation of these terms</li>
-            <li>Immediate termination for reverse engineering or exclusivity violations</li>
-            <li>We reserve the right to refuse service to anyone</li>
-          </ul>
-
-          <h3>9.2 Effect of Termination</h3>
-          <ul>
-            <li>All licenses granted to you terminate immediately</li>
-            <li>You must cease all use of ScreenMerch services</li>
-            <li>Outstanding orders may be cancelled</li>
-            <li>Exclusivity obligations survive termination</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2>10. Contact Information</h2>
-          <div className="highlight-box">
-            <strong>ScreenMerch Support</strong><br />
-            Email: support@screenmerch.com<br />
-            Website: screenmerch.com<br />
-            Legal Issues: support@screenmerch.com
-          </div>
-        </section>
-
-        <section>
-          <h2>11. Entire Agreement</h2>
-          <p>These Terms of Service, together with our Privacy Policy, constitute the entire agreement between you and ScreenMerch regarding the use of our services.</p>
+          <h2>11. Changes to Terms</h2>
+          <p>We may update these Terms periodically. Continued use of the Service constitutes acceptance of updated Terms.</p>
         </section>
 
         <div className="navigation-links">
@@ -179,4 +154,4 @@ const TermsOfService = () => {
   );
 };
 
-export default TermsOfService; 
+export default TermsOfService;
