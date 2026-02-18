@@ -91,19 +91,21 @@ def _send_creator_welcome_email(creator_email):
         logger.warning("RESEND_API_KEY not set; skipping creator welcome email")
         return False
     subject = "Welcome to ScreenMerch — your store is ready"
-    body = f"""Hi,
+    body = f"""Congratulations and welcome to ScreenMerch creator portal. Inside your dashboard you can find your:
 
-Welcome to ScreenMerch — we're glad you're here.
-
-You get your own store link (yourname.screenmerch.com) where only your videos show. In Personalization you can add your logo, colors, and a custom title and description so your store feels like you.
+- Videos - Add your videos to your page
+- Favorites - Select your personal favorite screenshots or thumbnails
+- Analytics - Track your sales amounts, products and dates of sales
+- Payout Setup - Set up your paypal account for payout
+- Personalization - Set your subdomain name (yourname.screenmerch.com) for your personal video page and store. Add your logo, select colors and favicon. Enter your custom Meta title and Custom Meta Description.
 
 We invite you to sign in and check out the products we offer — from women's and men's to kids, mugs, bags, hats, and more (stickers, magnets, greeting cards, and more). You'll see prices and colors for each item so you know exactly what your fans can order.
 
-Fans pick a moment from your video, capture a screenshot, and put it on any product. Every screenshot is processed for 300 DPI print quality. You earn $7 per sale on most items; we handle printing and shipping.
+Fans pick a moment from your video, capture a screenshot, and put it on any product. Every screenshot is processed for 300 DPI print quality. You earn $7 per sale on all items except for greeting cards, stickers and magnets; we handle printing and shipping.
 
 Next steps: Create your password, sign in, browse the catalog, set your subdomain, upload your videos, and share your link.
 
-Create your password and explore products: {set_password_url}
+Create your password: {set_password_url}
 """
     if intro_video_url:
         body += f"\nWant a full walkthrough? Watch our intro video: {intro_video_url}\n"
