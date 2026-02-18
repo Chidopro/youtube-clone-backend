@@ -631,6 +631,8 @@ def auth_signup_email_only():
             logger.info(f"[signup/email-only] RESEND_API_KEY present: {bool(resend_api_key)}, RESEND_FROM: {resend_from or 'NOT SET'}")
             if resend_api_key:
                 try:
+                    # Use absolute URL in href so email clients (e.g. Yahoo) render a clickable link
+                    verification_link_escaped = verification_link.replace("&", "&amp;")  # escape for HTML
                     email_html = f"""
                     <!DOCTYPE html>
                     <html>
@@ -644,14 +646,15 @@ def auth_signup_email_only():
                             <h1 style="color: white; margin: 0;">Welcome to ScreenMerch!</h1>
                         </div>
                         <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-                            <p>Hi there,</p>
-                            <p>Thank you for signing up! Please verify your email address and set your password by clicking the button below:</p>
-                            <div style="text-align: center; margin: 30px 0;">
-                                <a href="{verification_link}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Verify Email & Set Password</a>
-                            </div>
-                            <p style="font-size: 12px; color: #666;">Or copy and paste this link into your browser:</p>
-                            <p style="font-size: 12px; color: #667eea; word-break: break-all;">{verification_link}</p>
-                            <p style="font-size: 12px; color: #666; margin-top: 30px;">This link expires in 72 hours.</p>
+                            <p style="margin: 0 0 16px 0;">Welcome to ScreenMerch thank you for signing up! Please verify your email address by clicking the link below.</p>
+                            <p style="margin: 0 0 12px 0;">
+                                <a href="{verification_link_escaped}" style="color: #2563eb; text-decoration: underline; font-weight: bold;">Click here to verify your email and set your password</a>
+                            </p>
+                            <p style="margin: 0 0 8px 0; font-size: 13px;">If the link above does not work, copy and paste this URL into your browser:</p>
+                            <p style="margin: 0 0 16px 0; font-size: 12px; word-break: break-all;">
+                                <a href="{verification_link_escaped}" style="color: #2563eb; text-decoration: underline;">{verification_link}</a>
+                            </p>
+                            <p style="font-size: 12px; color: #666; margin: 0;">This link expires in 72 hours.</p>
                         </div>
                     </body>
                     </html>
