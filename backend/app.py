@@ -3114,6 +3114,7 @@ def place_order():
         return response, 500
 
 @app.route("/success")
+@app.route("/order-success")
 def success():
     order_id = request.args.get('order_id')
     logger.info(f"🎯 Success page visited with order_id: {order_id}")

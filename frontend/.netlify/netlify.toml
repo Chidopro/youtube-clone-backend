@@ -70,6 +70,13 @@ to = "https://screenmerch.fly.dev/api/:splat"
 status = 200.0
 force = true
 
+# Serve order-success from backend so updated confirmation always shows (avoids cached React bundle)
+[[redirects]]
+from = "/order-success"
+to = "https://screenmerch.fly.dev/order-success"
+status = 200
+force = true
+
 [redirects.query]
 
 [redirects.conditions]
