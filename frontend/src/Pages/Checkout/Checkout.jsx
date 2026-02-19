@@ -658,14 +658,14 @@ const Checkout = () => {
                       <label>Image orientation</label>
                       <div className="design-modal-options design-modal-orientation-options">
                         <label className="design-modal-orientation-option">
-                          <span className="design-modal-orientation-shape design-modal-orientation-portrait" aria-hidden />
+                          <img src="/shirt-portrait.png" alt="Portrait print on shirt" className="design-modal-orientation-img" />
                           <span className="design-modal-option-row">
                             <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'portrait'} onChange={() => setPref('orientation', 'portrait')} />
                             <span className="design-modal-option-text">Portrait</span>
                           </span>
                         </label>
                         <label className="design-modal-orientation-option">
-                          <span className="design-modal-orientation-shape design-modal-orientation-landscape" aria-hidden />
+                          <img src="/shirt-landscape.png" alt="Landscape print on shirt" className="design-modal-orientation-img" />
                           <span className="design-modal-option-row">
                             <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'landscape'} onChange={() => setPref('orientation', 'landscape')} />
                             <span className="design-modal-option-text">Landscape</span>

@@ -848,7 +848,19 @@
   background: #eef2ff;
 }
 
-/* Same-height shape area so portrait and landscape align evenly */
+/* Shirt mockup images – constrained to fit in popup without changing modal size */
+.design-modal-orientation-img {
+  display: block;
+  width: 100%;
+  max-width: 100px;
+  max-height: 72px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Legacy shape placeholders (kept for fallback if images fail) */
 .design-modal-orientation-shape {
   display: block;
   flex-shrink: 0;
