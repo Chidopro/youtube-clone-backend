@@ -1,136 +1,226 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Order Successful - ScreenMerch</title>
+  <meta charset="UTF-8">
+  <title>Order confirmed - ScreenMerch</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      text-align: center; 
-      padding: 40px; 
-      background: #f8f8f8;
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .order-success-page { width: 100%; max-width: 440px; }
+    .order-success-container {
+      background: #fff;
+      border-radius: 16px;
+      padding: 40px 48px;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    .order-success-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      color: #10b981;
+    }
+    .order-success-icon svg { width: 48px; height: 48px; }
+    .order-success-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.02em;
+    }
+    .order-success-message {
+      font-size: 0.9375rem;
+      color: #64748b;
+      line-height: 1.5;
+      margin: 0 0 28px 0;
+    }
+    .order-success-next-steps {
+      text-align: left;
+      margin-bottom: 24px;
+      padding: 20px;
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+    }
+    .order-success-next-steps-title {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 0 0 12px 0;
+    }
+    .order-success-list {
+      list-style: none;
+      padding: 0;
       margin: 0;
     }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background: white;
-      padding: 40px;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    .order-success-list li {
+      font-size: 0.875rem;
+      color: #334155;
+      line-height: 1.5;
+      padding: 6px 0 6px 22px;
+      position: relative;
     }
-    .success-message { 
-      color: #4CAF50; 
-      font-size: 28px; 
-      margin-bottom: 20px;
-      font-weight: bold;
+    .order-success-list li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #667eea;
     }
-    .success-icon {
-      font-size: 48px;
-      margin-bottom: 20px;
+    .order-success-support {
+      font-size: 0.8125rem;
+      color: #64748b;
+      margin: 0 0 24px 0;
     }
-    .tracking-info { 
-      background: #f8f8f8; 
-      padding: 20px; 
-      border-radius: 8px; 
-      margin: 20px 0;
+    .order-success-support a {
+      color: #667eea;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .order-success-support a:hover { text-decoration: underline; }
+    .order-success-cta {
+      display: block;
+      width: 100%;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #1e293b;
+      color: #fff;
+      text-decoration: none;
+      text-align: center;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .order-success-cta:hover {
+      background: #334155;
+      transform: translateY(-1px);
+      color: #fff;
+    }
+    .tracking-info {
       text-align: left;
+      margin-bottom: 24px;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      display: none;
     }
-    .tracking-link { 
-      color: #3f51b5; 
-      text-decoration: none;
-      font-weight: bold;
+    .tracking-info h3 {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 0 0 8px 0;
     }
-    .tracking-link:hover {
-      text-decoration: underline;
-    }
-    .order-details {
-      background: #e8f5e8;
-      padding: 15px;
-      border-radius: 6px;
-      margin: 15px 0;
-      border-left: 4px solid #4CAF50;
-    }
-    .home-link {
-      display: inline-block;
-      margin-top: 30px;
-      padding: 12px 24px;
-      background: #3f51b5;
-      color: white;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: bold;
-    }
-    .home-link:hover {
-      background: #303f9f;
-    }
-    .processing-note {
-      color: #666;
-      font-style: italic;
-      margin: 20px 0;
+    .tracking-info a { color: #667eea; font-weight: 600; text-decoration: none; }
+    .tracking-info a:hover { text-decoration: underline; }
+    @media (max-width: 480px) {
+      .order-success-container { padding: 32px 24px; }
+      .order-success-title { font-size: 1.25rem; }
+      .order-success-next-steps { padding: 16px; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="success-icon">✅</div>
-    <div class="success-message">Order Successful!</div>
-    
-    <p>Thank you for your order. Your custom merchandise is being created!</p>
-    
-    <div class="processing-note">
-      <strong>What happens next:</strong><br>
-      • Your order is being processed automatically<br>
-      • Products will be created and fulfilled by Printful<br>
-      • You'll receive tracking information once shipped
-    </div>
-    
-    <div class="tracking-info" id="tracking-info" style="display: none;">
-      <h3>📦 Order Tracking</h3>
-      <div class="order-details">
-        <p><strong>Order ID:</strong> <span id="order-id"></span></p>
-        <p><strong>Track your order:</strong> <a href="#" id="tracking-link" class="tracking-link">View Order Status →</a></p>
+  <div class="order-success-page">
+    <div class="order-success-container">
+      <div class="order-success-icon" aria-hidden>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5" fill="none"/>
+        </svg>
       </div>
+      <h1 class="order-success-title">Order confirmed</h1>
+      <p class="order-success-message">
+        Thank you for your order. Your custom merchandise is being created.
+      </p>
+
+      <div class="order-success-next-steps">
+        <h2 class="order-success-next-steps-title">What happens next</h2>
+        <ul class="order-success-list">
+          <li>Your order is being processed automatically</li>
+          <li>You'll receive tracking information once shipped</li>
+        </ul>
+      </div>
+
+      <div class="tracking-info" id="tracking-info">
+        <h3>Order tracking</h3>
+        <p style="margin: 0 0 4px 0; font-size: 0.875rem; color: #334155;"><strong>Order ID:</strong> <span id="order-id"></span></p>
+        <p style="margin: 0; font-size: 0.875rem;"><a href="#" id="tracking-link">View order status</a></p>
+      </div>
+
+      <p class="order-success-support">
+        Need help? <a href="mailto:support@screenmerch.com">support@screenmerch.com</a>
+      </p>
+
+      <a href="https://screenmerch.com" class="order-success-cta">Return to Home</a>
     </div>
-    
-    <a href="https://screenmerch.com" class="home-link">Return to Home</a>
   </div>
-  
+
   <script>
-    // Display order tracking information if available
-    const trackingData = localStorage.getItem('order_tracking');
-    if (trackingData) {
+    (function() {
       try {
-        const tracking = JSON.parse(trackingData);
-        document.getElementById('order-id').textContent = tracking.order_id;
-        
-        if (tracking.tracking_url) {
-          document.getElementById('tracking-link').href = tracking.tracking_url;
-        } else {
-          document.getElementById('tracking-link').style.display = 'none';
-        }
-        
-        document.getElementById('tracking-info').style.display = 'block';
-        
-        // Clear the tracking data from localStorage
-        localStorage.removeItem('order_tracking');
-      } catch (error) {
-        console.error('Error parsing tracking data:', error);
+        localStorage.removeItem('cart');
+        localStorage.removeItem('cart_items');
+        localStorage.removeItem('cartData');
+        localStorage.removeItem('persistent_cart');
+        sessionStorage.removeItem('cartData');
+        sessionStorage.removeItem('cart');
+        Object.keys(localStorage).forEach(function(key) {
+          if (key.toLowerCase().indexOf('cart') !== -1) localStorage.removeItem(key);
+        });
+        Object.keys(sessionStorage).forEach(function(key) {
+          if (key.toLowerCase().indexOf('cart') !== -1) sessionStorage.removeItem(key);
+        });
+      } catch (e) {}
+      var trackingData = localStorage.getItem('order_tracking');
+      if (trackingData) {
+        try {
+          var tracking = JSON.parse(trackingData);
+          var orderIdEl = document.getElementById('order-id');
+          var linkEl = document.getElementById('tracking-link');
+          var blockEl = document.getElementById('tracking-info');
+          if (orderIdEl) orderIdEl.textContent = tracking.order_id || '';
+          if (linkEl && tracking.tracking_url) linkEl.href = tracking.tracking_url;
+          else if (linkEl) linkEl.style.display = 'none';
+          if (blockEl) blockEl.style.display = 'block';
+          localStorage.removeItem('order_tracking');
+        } catch (e) {}
       }
-    }
-    
-    // Add some animation
-    document.addEventListener('DOMContentLoaded', function() {
-      const container = document.querySelector('.container');
-      container.style.opacity = '0';
-      container.style.transform = 'translateY(20px)';
-      
-      setTimeout(() => {
-        container.style.transition = 'all 0.5s ease';
-        container.style.opacity = '1';
-        container.style.transform = 'translateY(0)';
-      }, 100);
-    });
+      var container = document.querySelector('.order-success-container');
+      if (container) {
+        container.style.opacity = '0';
+        container.style.transform = 'translateY(20px)';
+        setTimeout(function() {
+          container.style.transition = 'all 0.5s ease';
+          container.style.opacity = '1';
+          container.style.transform = 'translateY(0)';
+        }, 100);
+      }
+    })();
   </script>
 </body>
-</html> 
+</html>

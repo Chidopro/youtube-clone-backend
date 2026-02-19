@@ -1,390 +1,226 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Order Successful - ScreenMerch</title>
+  <meta charset="UTF-8">
+  <title>Order confirmed - ScreenMerch</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
+    * { box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      margin: 0;
-      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+      background: #f1f5f9;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    
-    .container {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-      border-radius: 20px;
-      padding: 40px;
-      width: 90%;
-      max-width: 600px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    .order-success-page { width: 100%; max-width: 440px; }
+    .order-success-container {
+      background: #fff;
+      border-radius: 16px;
+      padding: 40px 48px;
       text-align: center;
-      position: relative;
-      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+      border: 1px solid rgba(0, 0, 0, 0.06);
     }
-    
-    .container::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #4CAF50, #45a049, #4CAF50);
-      animation: shimmer 2s infinite;
-    }
-    
-    @keyframes shimmer {
-      0% { transform: translateX(-100%); }
-      100% { transform: translateX(100%); }
-    }
-    
-    .success-icon {
-      width: 80px;
-      height: 80px;
-      background: linear-gradient(135deg, #4CAF50, #45a049);
-      border-radius: 50%;
-      display: flex;
+    .order-success-icon {
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 30px;
-      box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
-      animation: bounce 0.6s ease-out;
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      color: #10b981;
     }
-    
-    @keyframes bounce {
-      0% { transform: scale(0.3); opacity: 0; }
-      50% { transform: scale(1.05); }
-      70% { transform: scale(0.9); }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    
-    .success-icon::before {
-      content: '✓';
-      color: white;
-      font-size: 40px;
-      font-weight: bold;
-    }
-    
-    .success-message {
-      color: #2c3e50;
-      font-size: 32px;
+    .order-success-icon svg { width: 48px; height: 48px; }
+    .order-success-title {
+      font-size: 1.5rem;
       font-weight: 700;
-      margin-bottom: 15px;
-      background: linear-gradient(135deg, #4CAF50, #45a049);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #0f172a;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.02em;
     }
-    
-    .subtitle {
-      color: #7f8c8d;
-      font-size: 18px;
-      margin-bottom: 30px;
+    .order-success-message {
+      font-size: 0.9375rem;
+      color: #64748b;
       line-height: 1.5;
+      margin: 0 0 28px 0;
     }
-    
-    .next-steps {
-      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-      border-radius: 15px;
-      padding: 25px;
-      margin: 30px 0;
+    .order-success-next-steps {
       text-align: left;
-      border-left: 4px solid #4CAF50;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      margin-bottom: 24px;
+      padding: 20px;
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
     }
-    
-    .next-steps h3 {
-      color: #2c3e50;
-      font-size: 20px;
+    .order-success-next-steps-title {
+      font-size: 0.8125rem;
       font-weight: 600;
-      margin: 0 0 15px 0;
-      display: flex;
-      align-items: center;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 0 0 12px 0;
     }
-    
-    .next-steps h3::before {
-      content: '🚀';
-      margin-right: 10px;
-      font-size: 24px;
-    }
-    
-    .step-list {
+    .order-success-list {
       list-style: none;
       padding: 0;
       margin: 0;
     }
-    
-    .step-list li {
-      color: #5a6c7d;
-      font-size: 16px;
-      line-height: 1.6;
-      margin-bottom: 12px;
-      padding-left: 25px;
+    .order-success-list li {
+      font-size: 0.875rem;
+      color: #334155;
+      line-height: 1.5;
+      padding: 6px 0 6px 22px;
       position: relative;
     }
-    
-    .step-list li::before {
-      content: '✓';
-      position: absolute;
-      left: 0;
-      color: #4CAF50;
-      font-weight: bold;
-      font-size: 18px;
-    }
-    
-    .tracking-info {
-      background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-      border-radius: 15px;
-      padding: 25px;
-      margin: 25px 0;
-      text-align: left;
-      border-left: 4px solid #2196F3;
-      box-shadow: 0 4px 15px rgba(33, 150, 243, 0.1);
-      display: none;
-    }
-    
-    .tracking-info h3 {
-      color: #1565c0;
-      font-size: 20px;
-      font-weight: 600;
-      margin: 0 0 15px 0;
-      display: flex;
-      align-items: center;
-    }
-    
-    .tracking-info h3::before {
-      content: '📦';
-      margin-right: 10px;
-      font-size: 24px;
-    }
-    
-    .order-details {
-      background: rgba(255, 255, 255, 0.7);
-      padding: 20px;
-      border-radius: 10px;
-      margin-top: 15px;
-    }
-    
-    .order-details p {
-      margin: 8px 0;
-      color: #37474f;
-      font-size: 15px;
-    }
-    
-    .order-details strong {
-      color: #1565c0;
-    }
-    
-    .tracking-link {
-      color: #2196F3;
-      text-decoration: none;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      transition: all 0.3s ease;
-    }
-    
-    .tracking-link:hover {
-      color: #1565c0;
-      transform: translateX(5px);
-    }
-    
-    .tracking-link::after {
-      content: ' →';
-      margin-left: 5px;
-      transition: transform 0.3s ease;
-    }
-    
-    .tracking-link:hover::after {
-      transform: translateX(3px);
-    }
-    
-    .home-button {
-      display: inline-block;
-      margin-top: 30px;
-      padding: 15px 35px;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
-      text-decoration: none;
-      border-radius: 50px;
-      font-weight: 600;
-      font-size: 16px;
-      transition: all 0.3s ease;
-      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .home-button::before {
+    .order-success-list li::before {
       content: '';
       position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.5s;
-    }
-    
-    .home-button:hover::before {
-      left: 100%;
-    }
-    
-    .home-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
-    }
-    
-    .logo-sidebar {
-      position: absolute;
-      top: 40px;
       left: 0;
-      width: 160px;
-      background: transparent;
-      box-shadow: none;
-      padding: 0;
-      min-height: unset;
-      border-radius: 0;
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #667eea;
     }
-    
-    @media (max-width: 768px) {
-      .container {
-        margin: 20px;
-        padding: 30px 20px;
-      }
-      
-      .success-message {
-        font-size: 28px;
-      }
-      
-      .subtitle {
-        font-size: 16px;
-      }
-      
-      .next-steps, .tracking-info {
-        padding: 20px;
-      }
+    .order-success-support {
+      font-size: 0.8125rem;
+      color: #64748b;
+      margin: 0 0 24px 0;
+    }
+    .order-success-support a {
+      color: #667eea;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .order-success-support a:hover { text-decoration: underline; }
+    .order-success-cta {
+      display: block;
+      width: 100%;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #1e293b;
+      color: #fff;
+      text-decoration: none;
+      text-align: center;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .order-success-cta:hover {
+      background: #334155;
+      transform: translateY(-1px);
+      color: #fff;
+    }
+    .tracking-info {
+      text-align: left;
+      margin-bottom: 24px;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      display: none;
+    }
+    .tracking-info h3 {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 0 0 8px 0;
+    }
+    .tracking-info a { color: #667eea; font-weight: 600; text-decoration: none; }
+    .tracking-info a:hover { text-decoration: underline; }
+    @media (max-width: 480px) {
+      .order-success-container { padding: 32px 24px; }
+      .order-success-title { font-size: 1.25rem; }
+      .order-success-next-steps { padding: 16px; }
     }
   </style>
 </head>
 <body>
-  <div class="logo-sidebar">
-    <img src="/static/icons/screenmerch_logo.png" alt="ScreenMerch Logo" style="width:90px; display:block; margin:auto; background:none; box-shadow:none;">
-  </div>
-  
-  <div class="container">
-    <div class="success-icon"></div>
-    <div class="success-message">Order Successful!</div>
-    
-    <div class="subtitle">
-      Thank you for your order. Your custom merchandise is being created!
-    </div>
-    
-    <div class="next-steps">
-      <h3>What happens next:</h3>
-      <ul class="step-list">
-        <li>Your order is being processed automatically</li>
-        <li>Products will be created and fulfilled by Printful</li>
-        <li>You'll receive tracking information once shipped</li>
-      </ul>
-    </div>
-    
-    <div class="tracking-info" id="tracking-info">
-      <h3>Order Tracking</h3>
-      <div class="order-details">
-        <p><strong>Order ID:</strong> <span id="order-id"></span></p>
-        <p><strong>Track your order:</strong> <a href="#" id="tracking-link" class="tracking-link">View Order Status</a></p>
+  <div class="order-success-page">
+    <div class="order-success-container">
+      <div class="order-success-icon" aria-hidden>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5" fill="none"/>
+        </svg>
       </div>
+      <h1 class="order-success-title">Order confirmed</h1>
+      <p class="order-success-message">
+        Thank you for your order. Your custom merchandise is being created.
+      </p>
+
+      <div class="order-success-next-steps">
+        <h2 class="order-success-next-steps-title">What happens next</h2>
+        <ul class="order-success-list">
+          <li>Your order is being processed automatically</li>
+          <li>You'll receive tracking information once shipped</li>
+        </ul>
+      </div>
+
+      <div class="tracking-info" id="tracking-info">
+        <h3>Order tracking</h3>
+        <p style="margin: 0 0 4px 0; font-size: 0.875rem; color: #334155;"><strong>Order ID:</strong> <span id="order-id"></span></p>
+        <p style="margin: 0; font-size: 0.875rem;"><a href="#" id="tracking-link">View order status</a></p>
+      </div>
+
+      <p class="order-success-support">
+        Need help? <a href="mailto:support@screenmerch.com">support@screenmerch.com</a>
+      </p>
+
+      <a href="https://screenmerch.com" class="order-success-cta">Return to Home</a>
     </div>
-    
-    <a href="https://screenmerch.com" class="home-button">Return to Home</a>
   </div>
-  
+
   <script>
-    // Clear cart data after successful purchase
-    localStorage.removeItem('persistent_cart');
-    localStorage.removeItem('cart');
-    localStorage.removeItem('cartData');
-    sessionStorage.removeItem('cartData');
-    console.log('🛒 Cart cleared after successful purchase');
-    
-    // Display order tracking information if available
-    const trackingData = localStorage.getItem('order_tracking');
-    if (trackingData) {
+    (function() {
       try {
-        const tracking = JSON.parse(trackingData);
-        document.getElementById('order-id').textContent = tracking.order_id;
-        
-        if (tracking.tracking_url) {
-          document.getElementById('tracking-link').href = tracking.tracking_url;
-        } else {
-          document.getElementById('tracking-link').style.display = 'none';
-        }
-        
-        document.getElementById('tracking-info').style.display = 'block';
-        
-        // Clear the tracking data from localStorage
-        localStorage.removeItem('order_tracking');
-      } catch (error) {
-        console.error('Error parsing tracking data:', error);
+        localStorage.removeItem('cart');
+        localStorage.removeItem('cart_items');
+        localStorage.removeItem('cartData');
+        localStorage.removeItem('persistent_cart');
+        sessionStorage.removeItem('cartData');
+        sessionStorage.removeItem('cart');
+        Object.keys(localStorage).forEach(function(key) {
+          if (key.toLowerCase().indexOf('cart') !== -1) localStorage.removeItem(key);
+        });
+        Object.keys(sessionStorage).forEach(function(key) {
+          if (key.toLowerCase().indexOf('cart') !== -1) sessionStorage.removeItem(key);
+        });
+      } catch (e) {}
+      var trackingData = localStorage.getItem('order_tracking');
+      if (trackingData) {
+        try {
+          var tracking = JSON.parse(trackingData);
+          var orderIdEl = document.getElementById('order-id');
+          var linkEl = document.getElementById('tracking-link');
+          var blockEl = document.getElementById('tracking-info');
+          if (orderIdEl) orderIdEl.textContent = tracking.order_id || '';
+          if (linkEl && tracking.tracking_url) linkEl.href = tracking.tracking_url;
+          else if (linkEl) linkEl.style.display = 'none';
+          if (blockEl) blockEl.style.display = 'block';
+          localStorage.removeItem('order_tracking');
+        } catch (e) {}
       }
-    }
-    
-    // Enhanced animations
-    document.addEventListener('DOMContentLoaded', function() {
-      const container = document.querySelector('.container');
-      const successIcon = document.querySelector('.success-icon');
-      const successMessage = document.querySelector('.success-message');
-      const subtitle = document.querySelector('.subtitle');
-      const nextSteps = document.querySelector('.next-steps');
-      const homeButton = document.querySelector('.home-button');
-      
-      // Initial state
-      container.style.opacity = '0';
-      container.style.transform = 'translateY(30px) scale(0.95)';
-      
-      // Animate container
-      setTimeout(() => {
-        container.style.transition = 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        container.style.opacity = '1';
-        container.style.transform = 'translateY(0) scale(1)';
-      }, 100);
-      
-      // Animate elements sequentially
-      setTimeout(() => {
-        successMessage.style.transition = 'all 0.6s ease';
-        successMessage.style.opacity = '1';
-        successMessage.style.transform = 'translateY(0)';
-      }, 400);
-      
-      setTimeout(() => {
-        subtitle.style.transition = 'all 0.6s ease';
-        subtitle.style.opacity = '1';
-        subtitle.style.transform = 'translateY(0)';
-      }, 600);
-      
-      setTimeout(() => {
-        nextSteps.style.transition = 'all 0.6s ease';
-        nextSteps.style.opacity = '1';
-        nextSteps.style.transform = 'translateY(0)';
-      }, 800);
-      
-      setTimeout(() => {
-        homeButton.style.transition = 'all 0.6s ease';
-        homeButton.style.opacity = '1';
-        homeButton.style.transform = 'translateY(0)';
-      }, 1000);
-    });
+      var container = document.querySelector('.order-success-container');
+      if (container) {
+        container.style.opacity = '0';
+        container.style.transform = 'translateY(20px)';
+        setTimeout(function() {
+          container.style.transition = 'all 0.5s ease';
+          container.style.opacity = '1';
+          container.style.transform = 'translateY(0)';
+        }, 100);
+      }
+    })();
   </script>
 </body>
-</html> 
+</html>
