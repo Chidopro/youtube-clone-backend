@@ -25,6 +25,15 @@ const OrderSuccess = () => {
     return '/dashboard';
   };
 
+  const handleReturnHome = () => {
+    const homeUrl = getHomeUrl();
+    if (homeUrl.startsWith('http')) {
+      window.location.href = homeUrl;
+    } else {
+      navigate(homeUrl);
+    }
+  };
+
   useEffect(() => {
     // Clear cart immediately and comprehensively after successful purchase - run first!
     (function clearCartCompletely() {
@@ -112,13 +121,7 @@ const OrderSuccess = () => {
 
         <button
           type="button"
-          onClick={() => {
-            const homeUrl = getHomeUrl();
-            if (homeUrl.startsWith('http')) {
-              window.location.href = homeUrl;
-            } else {
-              navigate(homeUrl);
-            }}
+          onClick={handleReturnHome}
           className="order-success-cta"
         >
           Return to Home
