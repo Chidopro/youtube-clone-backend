@@ -13,6 +13,10 @@ const ProductPreviewWithDrag = ({
   offsetX, 
   offsetY, 
   onOffsetChange,
+  textEnabled,
+  textOffsetX = 50,
+  textOffsetY = 50,
+  onTextPositionChange,
   featherEdge,
   cornerRadius,
   printAreaFit,
@@ -25,7 +29,10 @@ const ProductPreviewWithDrag = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const lastDragPositionRef = useRef({ x: 0, y: 0 });
   const currentDragPositionRef = useRef({ x: 0, y: 0 }); // Track current position for snapping
+  const dragStartTextPositionRef = useRef({ x: 50, y: 50 }); // When text drag starts, store text %
+  const totalDragDeltaRef = useRef({ x: 0, y: 0 }); // Accumulated pixel delta during text drag
   const [processedImage, setProcessedImage] = useState(screenshot);
+  const textDragMode = Boolean(textEnabled && onTextPositionChange);
   const [screenshotDisplaySize, setScreenshotDisplaySize] = useState({ width: 150, height: 150 });
   const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
 
@@ -385,77 +392,69 @@ const ProductPreviewWithDrag = ({
   const handleMouseDown = (e) => {
     e.preventDefault();
     setIsDragging(true);
-    // Store the initial mouse position
     const startPos = { x: e.clientX, y: e.clientY };
     setDragStart(startPos);
     lastDragPositionRef.current = startPos;
+    if (textDragMode) {
+      dragStartTextPositionRef.current = { x: textOffsetX, y: textOffsetY };
+      totalDragDeltaRef.current = { x: 0, y: 0 };
+    }
   };
 
   const handleTouchStart = (e) => {
     e.preventDefault();
     const touch = e.touches[0];
     setIsDragging(true);
-    // Store the initial touch position
     const startPos = { x: touch.clientX, y: touch.clientY };
     setDragStart(startPos);
     lastDragPositionRef.current = startPos;
+    if (textDragMode) {
+      dragStartTextPositionRef.current = { x: textOffsetX, y: textOffsetY };
+      totalDragDeltaRef.current = { x: 0, y: 0 };
+    }
   };
 
   useEffect(() => {
     if (isDragging) {
       const handleMove = (e) => {
-        // Prevent default behavior (scrolling, selection, etc.) on mobile
-        if (e.touches) {
-          e.preventDefault();
-        }
-        
+        if (e.touches) e.preventDefault();
         const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
         const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
-        
         if (clientX === undefined || clientY === undefined) return;
         
-        // Increase sensitivity for easier movement (0.75 = 75% sensitivity = more responsive)
         const sensitivityMultiplier = 0.75;
-        // Calculate delta from last position (not from start) for smoother movement
         const deltaX = (clientX - lastDragPositionRef.current.x) * sensitivityMultiplier;
         const deltaY = (clientY - lastDragPositionRef.current.y) * sensitivityMultiplier;
-        
-        // Update last position for next calculation
         lastDragPositionRef.current = { x: clientX, y: clientY };
         
-        // Calculate new position relative to current offset
+        if (textDragMode && onTextPositionChange) {
+          totalDragDeltaRef.current.x += deltaX;
+          totalDragDeltaRef.current.y += deltaY;
+          const refW = productImageSize.width || screenshotDisplaySize.width || 300;
+          const refH = productImageSize.height || screenshotDisplaySize.height || 300;
+          const start = dragStartTextPositionRef.current;
+          const percentX = Math.max(0, Math.min(100, start.x + (totalDragDeltaRef.current.x / refW) * 100));
+          const percentY = Math.max(0, Math.min(100, start.y + (totalDragDeltaRef.current.y / refH) * 100));
+          onTextPositionChange(percentX, percentY);
+          return;
+        }
+        
         const newX = offsetX + deltaX;
         const newY = offsetY + deltaY;
-        
-        // Calculate drag bounds based on product image size to allow full range of movement
-        // Account for screenshot scale when calculating bounds
         const scaledWidth = screenshotDisplaySize.width * (screenshotScale / 100);
         const scaledHeight = screenshotDisplaySize.height * (screenshotScale / 100);
         
-        // Screenshot starts centered (50% of product image), so we need to allow movement
-        // up to at least half the product image height to reach the top
         if (productImageSize.width > 0 && productImageSize.height > 0) {
-          // Allow horizontal movement up to 40% of product image width
           const maxOffsetX = productImageSize.width * 0.4;
-          // Allow upward movement up to 60% of product image height (to reach top of print area)
           const maxOffsetYUp = productImageSize.height * 0.6;
-          // Allow downward movement up to 40% of product image height
           const maxOffsetYDown = productImageSize.height * 0.4;
-          
-          // Clamp to bounds
           let clampedX = Math.max(-maxOffsetX, Math.min(maxOffsetX, newX));
           let clampedY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, newY));
-          
-          // Store current position for snapping on release
           currentDragPositionRef.current = { x: clampedX, y: clampedY };
-          
-          // Don't snap during dragging - allow free movement
-          // Snapping will happen on release (in handleUp)
           onOffsetChange(clampedX, clampedY);
         } else {
-          // Fallback to screenshot-based bounds if product image size not available
           const maxOffsetX = Math.max(scaledWidth, scaledHeight) * 0.5;
-          const maxOffsetYUp = Math.max(scaledWidth, scaledHeight) * 1.2; // Increased significantly
+          const maxOffsetYUp = Math.max(scaledWidth, scaledHeight) * 1.2;
           const maxOffsetYDown = Math.max(scaledWidth, scaledHeight) * 0.5;
           const clampedX = Math.max(-maxOffsetX, Math.min(maxOffsetX, newX));
           const clampedY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, newY));
@@ -464,39 +463,24 @@ const ProductPreviewWithDrag = ({
       };
       
       const handleUp = () => {
-        // Snap to center/print area when released if close enough
+        if (textDragMode && onTextPositionChange) {
+          setIsDragging(false);
+          return;
+        }
         if (productImageSize.width > 0 && productImageSize.height > 0) {
           const maxOffsetX = productImageSize.width * 0.4;
           const maxOffsetYUp = productImageSize.height * 0.6;
           const maxOffsetYDown = productImageSize.height * 0.4;
-          
-          // Use the current drag position for snapping
           const currentX = currentDragPositionRef.current.x;
           const currentY = currentDragPositionRef.current.y;
-          
-          // Calculate snap threshold based on product size (larger threshold for easier snapping)
-          const snapThresholdX = productImageSize.width * 0.03; // 3% of product width
-          const snapThresholdY = productImageSize.height * 0.03; // 3% of product height
-          
-          let finalX = currentX;
-          let finalY = currentY;
-          
-          // Snap to center if within threshold
-          if (Math.abs(currentX) < snapThresholdX) {
-            finalX = 0;
-          }
-          if (Math.abs(currentY) < snapThresholdY) {
-            finalY = 0;
-          }
-          
-          // Clamp to bounds
+          const snapThresholdX = productImageSize.width * 0.03;
+          const snapThresholdY = productImageSize.height * 0.03;
+          let finalX = Math.abs(currentX) < snapThresholdX ? 0 : currentX;
+          let finalY = Math.abs(currentY) < snapThresholdY ? 0 : currentY;
           finalX = Math.max(-maxOffsetX, Math.min(maxOffsetX, finalX));
           finalY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, finalY));
-          
-          // Update position (will snap if within threshold)
           onOffsetChange(finalX, finalY);
         }
-        
         setIsDragging(false);
       };
       
@@ -513,7 +497,7 @@ const ProductPreviewWithDrag = ({
         document.removeEventListener('touchcancel', handleUp);
       };
     }
-  }, [isDragging, dragStart, onOffsetChange, screenshotDisplaySize, productImageSize, screenshotScale, offsetX, offsetY]);
+  }, [isDragging, dragStart, onOffsetChange, onTextPositionChange, textDragMode, textOffsetX, textOffsetY, screenshotDisplaySize, productImageSize, screenshotScale, offsetX, offsetY]);
 
   return (
     <div 
@@ -2626,6 +2610,10 @@ const ToolsPage = () => {
                                     [cartIndex]: { x, y }
                                   }));
                                 }}
+                                textEnabled={textEnabled}
+                                textOffsetX={textOffsetX}
+                                textOffsetY={textOffsetY}
+                                onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
                                 featherEdge={featherEdge}
                                 cornerRadius={cornerRadius}
                                 printAreaFit={printAreaFit}
@@ -2699,6 +2687,10 @@ const ToolsPage = () => {
                                   [cartIndex]: { x, y }
                                 }));
                               }}
+                              textEnabled={textEnabled}
+                              textOffsetX={textOffsetX}
+                              textOffsetY={textOffsetY}
+                              onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
                               featherEdge={featherEdge}
                               cornerRadius={cornerRadius}
                               printAreaFit={printAreaFit}
@@ -2752,6 +2744,10 @@ const ToolsPage = () => {
                                 [cartIndex]: { x, y }
                               }));
                             }}
+                            textEnabled={textEnabled}
+                            textOffsetX={textOffsetX}
+                            textOffsetY={textOffsetY}
+                            onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
                             featherEdge={featherEdge}
                             cornerRadius={cornerRadius}
                             printAreaFit={printAreaFit}
@@ -3237,6 +3233,7 @@ const ToolsPage = () => {
                         />
                         <span className="slider-value">{textOffsetY}%</span>
                       </div>
+                      <small style={{ color: '#666', display: 'block', marginTop: '6px' }}>Or drag the product mockup to move the text.</small>
                     </>
                   )}
                 </div>

@@ -1440,6 +1440,14 @@ const ProductPage = ({ sidebar }) => {
                       <p className="tool-description">Add a colored frame around your screenshot</p>
                     </div>
                   </div>
+                  
+                  <div className="tool-item">
+                    <div className="tool-icon">📝</div>
+                    <div className="tool-info">
+                      <h4 className="tool-name">Text</h4>
+                      <p className="tool-description">Add headline or text with font, color, size and position</p>
+                    </div>
+                  </div>
                 </div>
               </div>
               
