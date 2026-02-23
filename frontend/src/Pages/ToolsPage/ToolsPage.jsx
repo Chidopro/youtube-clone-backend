@@ -3161,14 +3161,23 @@ const ToolsPage = () => {
                         <select
                           value={textFont}
                           onChange={(e) => setTextFont(e.target.value)}
-                          style={{ padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                          style={{ padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px', maxWidth: '100%' }}
                         >
-                          <option value="Arial">Arial</option>
-                          <option value="Helvetica">Helvetica</option>
-                          <option value="Georgia">Georgia</option>
-                          <option value="Times New Roman">Times New Roman</option>
-                          <option value="Verdana">Verdana</option>
-                          <option value="Courier New">Courier New</option>
+                          <optgroup label="Classic">
+                            <option value="Arial">Arial</option>
+                            <option value="Helvetica">Helvetica</option>
+                            <option value="Georgia">Georgia</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                            <option value="Verdana">Verdana</option>
+                            <option value="Courier New">Courier New</option>
+                          </optgroup>
+                          <optgroup label="Fringe &amp; style">
+                            <option value="Permanent Marker">Permanent Marker (Graffiti)</option>
+                            <option value="Orbitron">Orbitron (Metal)</option>
+                            <option value="Bebas Neue">Bebas Neue (Hip Hop)</option>
+                            <option value="Creepster">Creepster (Scary / Halloween)</option>
+                            <option value="Noto Sans JP">Noto Sans JP (Asian style)</option>
+                          </optgroup>
                         </select>
                       </div>
                       <div className="color-control" style={{ flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
