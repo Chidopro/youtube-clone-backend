@@ -252,10 +252,17 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
         size = (item.get("variants") or {}).get("size", "N/A")
         note = item.get("note", "None")
         price = item.get("price", 0)
-        # Image orientation (portrait/landscape) from tool settings
+        # Image orientation (portrait/landscape) and text tool from tool settings
         tool_settings = item.get("toolSettings") or {}
         image_orientation = (tool_settings.get("imageOrientation") or item.get("image_orientation") or "portrait").lower()
         image_orientation_label = "Landscape" if image_orientation == "landscape" else "Portrait"
+        text_enabled = tool_settings.get("textEnabled", False) and (tool_settings.get("textContent") or "").strip()
+        text_line = ""
+        if text_enabled:
+            tc = (tool_settings.get("textContent") or "").strip()[:50]
+            if len((tool_settings.get("textContent") or "").strip()) > 50:
+                tc += "..."
+            text_line = f"<p><strong>Text:</strong> {tc} (font: {tool_settings.get('textFont', 'Arial')}, color: {tool_settings.get('textColor', '#000000')}, size: {tool_settings.get('textSize', 24)}px)</p>"
         # Per-product screenshot (item's selected_screenshot or fallback to order/first)
         item_img = _get_item_screenshot(item, fallback=fallback_screenshot)
         item_img = _ensure_base64(item_img)
@@ -278,6 +285,7 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
                 <p style='margin-top:0;'><strong>📸 {product_name} — Screenshot</strong></p>
                 {product_img_tag}
                 <p><strong>Image:</strong> {image_orientation_label}</p>
+                {text_line}
                 <p><strong>Color:</strong> {color}</p>
                 <p><strong>Size:</strong> {size}</p>
                 <p><strong>Note:</strong> {note}</p>
@@ -344,11 +352,19 @@ def build_customer_order_email(order_id, order_data, cart, order_number, total_a
         tool_settings = item.get("toolSettings") or {}
         image_orientation = (tool_settings.get("imageOrientation") or item.get("image_orientation") or "portrait").lower()
         image_orientation_label = "Landscape" if image_orientation == "landscape" else "Portrait"
+        text_enabled = tool_settings.get("textEnabled", False) and (tool_settings.get("textContent") or "").strip()
+        text_p = ""
+        if text_enabled:
+            tc = (tool_settings.get("textContent") or "").strip()[:50]
+            if len((tool_settings.get("textContent") or "").strip()) > 50:
+                tc += "..."
+            text_p = f'<p><strong>Text:</strong> {tc} (font: {tool_settings.get("textFont", "Arial")}, size: {tool_settings.get("textSize", 24)}px)</p>'
         note_p = f'<p><strong>Note:</strong> {note}</p>' if note else ''
         html += f"""
         <div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
             <h3 style="margin-top: 0; color: #333;">{product_name}</h3>
             <p><strong>Image:</strong> {image_orientation_label}</p>
+            {text_p}
             <p><strong>Color:</strong> {color}</p>
             <p><strong>Size:</strong> {size}</p>
             <p><strong>Price:</strong> ${price:.2f}</p>

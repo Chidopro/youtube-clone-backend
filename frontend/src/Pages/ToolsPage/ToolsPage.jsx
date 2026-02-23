@@ -811,6 +811,11 @@ const ToolsPage = () => {
   const [frameColor, setFrameColor] = useState('#FF0000');
   const [frameWidth, setFrameWidth] = useState(10);
   const [doubleFrame, setDoubleFrame] = useState(false);
+  const [textEnabled, setTextEnabled] = useState(false);
+  const [textContent, setTextContent] = useState('');
+  const [textFont, setTextFont] = useState('Arial');
+  const [textColor, setTextColor] = useState('#000000');
+  const [textSize, setTextSize] = useState(24);
   const [printAreaFit, setPrintAreaFit] = useState('none'); // 'none', 'horizontal', 'square', 'vertical', 'product'
   const [imageOrientation, setImageOrientation] = useState('portrait'); // 'portrait' | 'landscape' - landscape forces No Fit for uncropped view
   const [imageOffsetX, setImageOffsetX] = useState(0); // -100 to 100 (percentage)
@@ -2150,6 +2155,24 @@ const ToolsPage = () => {
         }
       }
 
+      // Apply text overlay if enabled
+      if (textEnabled && textContent && textContent.trim()) {
+        ctx.save();
+        const scale = Math.min(canvas.width, canvas.height) / 800;
+        const fontSize = Math.max(12, Math.min(120, Math.round(textSize * scale)));
+        ctx.font = `${fontSize}px "${textFont}", Arial, sans-serif`;
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const lines = textContent.trim().split('\n');
+        const lineHeight = fontSize * 1.2;
+        const startY = canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+        lines.forEach((line, i) => {
+          ctx.fillText(line, canvas.width / 2, startY + i * lineHeight);
+        });
+        ctx.restore();
+      }
+
       // Convert to data URL
       const dataUrl = canvas.toDataURL('image/png');
       setEditedImageUrl(dataUrl);
@@ -2158,7 +2181,7 @@ const ToolsPage = () => {
       console.error('Failed to load image');
     };
     img.src = imageUrl;
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, textEnabled, textContent, textFont, textColor, textSize, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick]);
 
   const handleDownload = () => {
     const imageToDownload = editedImageUrl || imageUrl;
@@ -2333,6 +2356,11 @@ const ToolsPage = () => {
         frameColor,
         frameWidth,
         doubleFrame,
+        textEnabled,
+        textContent,
+        textFont,
+        textColor,
+        textSize,
         printAreaFit,
         imageOffsetX,
         imageOffsetY
@@ -2369,6 +2397,11 @@ const ToolsPage = () => {
                 frameColor,
                 frameWidth,
                 doubleFrame,
+                textEnabled,
+                textContent,
+                textFont,
+                textColor,
+                textSize,
                 printAreaFit,
                 imageOrientation
               }
@@ -3094,6 +3127,72 @@ const ToolsPage = () => {
                 </div>
 
                 <div className="tool-control-group">
+                  <h3>Text</h3>
+                  <p className="tool-description">Add text to your creation with custom font, color and size</p>
+                  <div className="checkbox-control">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={textEnabled}
+                        onChange={(e) => setTextEnabled(e.target.checked)}
+                      />
+                      Add Text
+                    </label>
+                  </div>
+                  {textEnabled && (
+                    <>
+                      <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                        <label>Text:</label>
+                        <textarea
+                          value={textContent}
+                          onChange={(e) => setTextContent(e.target.value)}
+                          placeholder="Enter text to overlay"
+                          rows={2}
+                          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', resize: 'vertical' }}
+                        />
+                      </div>
+                      <div className="color-control" style={{ flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <label style={{ minWidth: '80px' }}>Font:</label>
+                        <select
+                          value={textFont}
+                          onChange={(e) => setTextFont(e.target.value)}
+                          style={{ padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        >
+                          <option value="Arial">Arial</option>
+                          <option value="Helvetica">Helvetica</option>
+                          <option value="Georgia">Georgia</option>
+                          <option value="Times New Roman">Times New Roman</option>
+                          <option value="Verdana">Verdana</option>
+                          <option value="Courier New">Courier New</option>
+                        </select>
+                      </div>
+                      <div className="color-control" style={{ flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <label style={{ minWidth: '80px' }}>Color:</label>
+                        <input
+                          type="color"
+                          value={textColor}
+                          onChange={(e) => setTextColor(e.target.value)}
+                          className="color-picker"
+                        />
+                        <span className="color-value" style={{ wordBreak: 'break-all' }}>{textColor}</span>
+                      </div>
+                      <div className="slider-control" style={{ marginTop: '0.5rem' }}>
+                        <label>Size:</label>
+                        <input
+                          type="range"
+                          min="12"
+                          max="72"
+                          value={textSize}
+                          onChange={(e) => setTextSize(parseInt(e.target.value, 10))}
+                          className="slider"
+                        />
+                        <span className="slider-value">{textSize}px</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="tool-control-group">
                   <div className="framed-border-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ width: '100%' }}>
                       <h3>Framed Border</h3>
@@ -3350,6 +3449,11 @@ const ToolsPage = () => {
                 setFrameWidth(10);
                 setFrameColor('#FF0000');
                 setDoubleFrame(false);
+                setTextEnabled(false);
+                setTextContent('');
+                setTextFont('Arial');
+                setTextColor('#000000');
+                setTextSize(24);
                 setPrintAreaFit('none');
                 setImageOffsetX(0);
                 setImageOffsetY(0);

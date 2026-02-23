@@ -297,7 +297,7 @@
                     <div id="screenshotPreview" style="margin: 10px 0; padding: 10px; border: 2px dashed #ccc; text-align: center; background: #f9f9f9; min-height: 80px;">
                         <p style="color: #666;">Load screenshots with Order ID above, or use video/upload below. Click a screenshot in the queue to edit it.</p>
                     </div>
-                    <small>Select an image from the queue above; then generate 300 DPI first, then use the tools below (feather, etc.).</small>
+                    <small>Select an image from the queue above; then generate 300 DPI first, then use the tools below (feather, corner radius, frame, text).</small>
                 </div>
                 
                 <!-- Generate 300 DPI Image - FIRST ACTION (before any tools) -->
@@ -495,9 +495,65 @@
                 </div>
             </div>
             
-            <!-- STEP 5: READY FOR DOWNLOAD -->
+            <!-- STEP 5: TEXT TOOL (OPTIONAL) -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0; border: 2px solid #6f42c1;">
+                <h3 style="margin-top: 0; color: #6f42c1;">📝 STEP 5: Text Tool (Optional)</h3>
+                
+                <div class="form-group">
+                    <label style="font-size: 16px; font-weight: bold;">
+                        <input type="checkbox" id="textEnabled" name="textEnabled" style="margin-right: 8px; transform: scale(1.2);">
+                        Add Text
+                    </label>
+                    <small style="display: block; color: #666; margin-top: 4px;">
+                        Add text to your creation with custom font, color and size
+                    </small>
+                </div>
+                
+                <div class="form-group" id="textControlsGroup" style="display: none;">
+                    <label for="textContent">Text:</label>
+                    <textarea id="textContent" name="textContent" rows="2" placeholder="Enter text to overlay" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+                    
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label for="textFont">Font:</label>
+                        <select id="textFont" name="textFont" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="Arial">Arial</option>
+                            <option value="Helvetica">Helvetica</option>
+                            <option value="Georgia">Georgia</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                            <option value="Verdana">Verdana</option>
+                            <option value="Courier New">Courier New</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="textColor">Text Color:</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="color" id="textColor" name="textColor" value="#000000" style="width: 60px; height: 40px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
+                            <input type="text" id="textColorText" value="#000000" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="textSize">Text Size:</label>
+                        <input type="range" id="textSize" name="textSize" min="12" max="72" value="24" style="width: 100%;">
+                        <small style="color: #666;">12–72px</small>
+                        <div id="textSizeValue" style="margin-top: 5px; font-weight: bold; color: #6f42c1;">24px</div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button type="button" id="applyTextBtn" style="background: #6f42c1; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; display: none; flex: 1;">
+                            Apply Text
+                        </button>
+                        <button type="button" id="resetTextBtn" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; display: none; flex: 1;">
+                            Reset Text
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- STEP 6: READY FOR DOWNLOAD -->
             <div id="downloadSection" style="background: #fff3cd; padding: 20px; border-radius: 10px; margin: 20px 0; border: 3px solid #ffc107; text-align: center; display: none;">
-                <h2 style="margin-top: 0; color: #856404; font-size: 24px;">📥 STEP 5: Ready for Download</h2>
+                <h2 style="margin-top: 0; color: #856404; font-size: 24px;">📥 STEP 6: Ready for Download</h2>
                 <p style="color: #856404; margin-bottom: 20px; font-size: 16px;">Your print-quality image is ready! Download the high-resolution file for production.</p>
                 <div id="downloadButtons" style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
                     <!-- Download buttons will be added here by JavaScript -->
@@ -929,6 +985,29 @@
             frameBtn.style.display = this.checked ? 'inline-block' : 'none';
             resetFrameBtn.style.display = this.checked ? 'inline-block' : 'none';
         });
+        // Show/hide text controls based on checkbox
+        document.getElementById('textEnabled').addEventListener('change', function() {
+            const textGroup = document.getElementById('textControlsGroup');
+            const textBtn = document.getElementById('applyTextBtn');
+            const resetTextBtn = document.getElementById('resetTextBtn');
+            textGroup.style.display = this.checked ? 'block' : 'none';
+            textBtn.style.display = this.checked ? 'inline-block' : 'none';
+            resetTextBtn.style.display = this.checked ? 'inline-block' : 'none';
+        });
+        // Sync text color picker and text input
+        document.getElementById('textColor').addEventListener('input', function() {
+            document.getElementById('textColorText').value = this.value;
+        });
+        document.getElementById('textColorText').addEventListener('input', function() {
+            const colorValue = this.value;
+            if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+                document.getElementById('textColor').value = colorValue;
+            }
+        });
+        // Update text size display value
+        document.getElementById('textSize').addEventListener('input', function() {
+            document.getElementById('textSizeValue').textContent = this.value + 'px';
+        });
         
         // Sync frame color picker and text input
         document.getElementById('frameColor').addEventListener('input', function() {
@@ -972,14 +1051,19 @@
             const edgeFeather = document.getElementById('edgeFeather').checked;
             const softCorners = document.getElementById('softCorners').checked;
             const frameEnabled = document.getElementById('frameEnabled').checked;
+            const textEnabled = document.getElementById('textEnabled').checked;
             const featherValue = edgeFeather ? parseInt(document.getElementById('featherRadius').value) : 0;
             const cornerRadiusPercent = softCorners ? parseInt(document.getElementById('cornerRadius').value) : 0;
             const frameColor = document.getElementById('frameColor').value;
             const frameWidth = parseInt(document.getElementById('frameWidth').value);
             const doubleFrame = document.getElementById('doubleFrame').checked;
+            const textContent = (document.getElementById('textContent').value || '').trim();
+            const textFont = document.getElementById('textFont').value || 'Arial';
+            const textColor = document.getElementById('textColor').value || '#000000';
+            const textSize = parseInt(document.getElementById('textSize').value, 10) || 24;
             const dpi = parseInt(document.getElementById('dpi').value);
             
-            console.log(`Applying all effects: Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%, Frame: ${frameEnabled ? `enabled (${frameColor}, ${frameWidth}px, double: ${doubleFrame})` : 'disabled'}`);
+            console.log(`Applying all effects: Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%, Frame: ${frameEnabled ? `enabled (${frameColor}, ${frameWidth}px, double: ${doubleFrame})` : 'disabled'}, Text: ${textEnabled && textContent ? `enabled (${textContent}, ${textFont}, ${textSize}px)` : 'disabled'}`);
             
             try {
                 const requestBody = {
@@ -993,6 +1077,11 @@
                     frame_color: frameColor,
                     frame_width: frameWidth,
                     double_frame: doubleFrame,
+                    text_enabled: textEnabled && !!textContent,
+                    text_content: textContent || '',
+                    text_font: textFont,
+                    text_color: textColor,
+                    text_size: textSize,
                     add_white_background: false
                 };
                 
@@ -1376,6 +1465,98 @@
             } finally {
                 resetBtn.disabled = false;
                 resetBtn.textContent = 'Reset Frame';
+            }
+        });
+        
+        // Apply Text Tool - applies all effects together (including text)
+        document.getElementById('applyTextBtn').addEventListener('click', async function() {
+            const textBtn = this;
+            const textEnabled = document.getElementById('textEnabled').checked;
+            const textContent = (document.getElementById('textContent').value || '').trim();
+            
+            if (!textEnabled || !textContent) {
+                alert('Please check "Add Text" and enter some text first.');
+                return;
+            }
+            
+            if (!original300DpiImage && !originalScreenshot) {
+                alert('No base image available. Please generate 300 DPI image first.');
+                return;
+            }
+            
+            textBtn.disabled = true;
+            textBtn.textContent = 'Applying Effects...';
+            
+            try {
+                const processedImage = await applyAllEffects();
+                if (processedImage) {
+                    orderScreenshot = processedImage;
+                    const textSize = document.getElementById('textSize').value;
+                    const textFont = document.getElementById('textFont').value;
+                    let effectsText = `Text: "${textContent.substring(0, 20)}${textContent.length > 20 ? '...' : ''}" (${textFont}, ${textSize}px)`;
+                    const featherValue = document.getElementById('edgeFeather').checked ? parseInt(document.getElementById('featherRadius').value) : 0;
+                    const cornerRadiusPercent = document.getElementById('softCorners').checked ? parseInt(document.getElementById('cornerRadius').value) : 0;
+                    const frameEnabled = document.getElementById('frameEnabled').checked;
+                    if (featherValue > 0) effectsText += `, Feather: ${featherValue}%`;
+                    if (cornerRadiusPercent > 0) effectsText += `, Corner: ${cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%'}`;
+                    if (frameEnabled) effectsText += `, Frame: ${document.getElementById('frameWidth').value}px`;
+                    document.getElementById('screenshotPreview').innerHTML = `
+                        <img src="${processedImage}" alt="Processed Screenshot" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
+                        <p style="margin-top: 10px; color: green;">✅ Effects Applied (${effectsText})</p>
+                    `;
+                    displayEffectResult({ success: true, screenshot: processedImage, effect: "text" }, 'Text Applied!');
+                } else {
+                    displayError('Failed to apply effects');
+                }
+            } catch (error) {
+                displayError('Error applying text: ' + (error.message || error));
+            } finally {
+                textBtn.disabled = false;
+                textBtn.textContent = 'Apply Text';
+            }
+        });
+        
+        // Reset Text Tool
+        document.getElementById('resetTextBtn').addEventListener('click', async function() {
+            const resetBtn = this;
+            if (!original300DpiImage && !originalScreenshot) {
+                alert('No base image available. Please generate 300 DPI image first.');
+                return;
+            }
+            document.getElementById('textEnabled').checked = false;
+            document.getElementById('textContent').value = '';
+            document.getElementById('textFont').value = 'Arial';
+            document.getElementById('textColor').value = '#000000';
+            document.getElementById('textColorText').value = '#000000';
+            document.getElementById('textSize').value = 24;
+            document.getElementById('textSizeValue').textContent = '24px';
+            document.getElementById('textControlsGroup').style.display = 'none';
+            document.getElementById('applyTextBtn').style.display = 'none';
+            resetBtn.style.display = 'none';
+            resetBtn.disabled = true;
+            resetBtn.textContent = 'Resetting...';
+            try {
+                const processedImage = await applyAllEffects();
+                if (processedImage) {
+                    orderScreenshot = processedImage;
+                    let effectsText = 'Text: Reset';
+                    const featherValue = document.getElementById('edgeFeather').checked ? parseInt(document.getElementById('featherRadius').value) : 0;
+                    const cornerRadiusPercent = document.getElementById('softCorners').checked ? parseInt(document.getElementById('cornerRadius').value) : 0;
+                    const frameEnabled = document.getElementById('frameEnabled').checked;
+                    if (featherValue > 0) effectsText += `, Feather: ${featherValue}%`;
+                    if (cornerRadiusPercent > 0) effectsText += `, Corner: ${cornerRadiusPercent === 100 ? 'Circle' : cornerRadiusPercent + '%'}`;
+                    if (frameEnabled) effectsText += `, Frame: ${document.getElementById('frameWidth').value}px`;
+                    document.getElementById('screenshotPreview').innerHTML = `
+                        <img src="${processedImage}" alt="Processed Screenshot" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
+                        <p style="margin-top: 10px; color: green;">✅ Text Reset (${effectsText})</p>
+                    `;
+                    displayEffectResult({ success: true, screenshot: processedImage, effect: "text_reset" }, 'Text Reset!');
+                }
+            } catch (error) {
+                displayError('Error resetting text: ' + (error.message || error));
+            } finally {
+                resetBtn.disabled = false;
+                resetBtn.textContent = 'Reset Text';
             }
         });
         
