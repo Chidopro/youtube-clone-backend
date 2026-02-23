@@ -656,7 +656,7 @@ def apply_corner_radius_only(image_data, corner_radius=15):
         logger.error(f"Error applying corner radius: {str(e)}")
         return {"success": False, "error": f"Failed to apply corner radius: {str(e)}"}
 
-def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, add_white_background=False, print_area_width=None, print_area_height=None):
+def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, edge_feather=False, crop_area=None, corner_radius_percent=0, feather_edge_percent=0, frame_enabled=False, frame_color='#FF0000', frame_width=10, double_frame=False, text_enabled=False, text_content='', text_font='Arial', text_color='#000000', text_size=24, text_offset_x=50, text_offset_y=50, add_white_background=False, print_area_width=None, print_area_height=None):
     """Process a thumbnail image for print quality output"""
     try:
         # Validate input
@@ -1296,9 +1296,14 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 try:
                     draw = ImageDraw.Draw(pil_image)
                     width, height = pil_image.size
-                    # Scale font size by image size (reference 800px)
+                    # Scale font size by image size (reference 800px); allow up to 100px base -> larger headlines
                     scale = min(width, height) / 800.0
-                    font_px = max(12, min(120, int(text_size * scale)))
+                    font_px = max(12, min(200, int(text_size * scale)))
+                    # Position: 0-100, 50 = center
+                    ox = max(0, min(100, text_offset_x if text_offset_x is not None else 50))
+                    oy = max(0, min(100, text_offset_y if text_offset_y is not None else 50))
+                    center_x = int(width * ox / 100)
+                    center_y = int(height * oy / 100)
                     # Try to load font; fallback to default
                     font_paths = []
                     if os.name == 'nt':  # Windows
@@ -1333,10 +1338,10 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                         fill_tuple = (0, 0, 0) if pil_image.mode == 'RGB' else (0, 0, 0, 255)
                     lines = [line.strip() for line in text_content.strip().split('\n') if line.strip()]
                     if lines:
-                        # Center text (multiline)
+                        # Position text block at center_x, center_y (multiline)
                         line_height = int(font_px * 1.2)
                         total_h = (len(lines) - 1) * line_height
-                        start_y = (height - total_h) // 2
+                        start_y = center_y - total_h // 2
                         for i, line in enumerate(lines):
                             # Get bbox to center each line (Pillow 8+ has textbbox; older has textsize)
                             try:
@@ -1344,7 +1349,7 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                                 tw = bbox[2] - bbox[0]
                             except AttributeError:
                                 tw, _ = draw.textsize(line, font=font)
-                            x = (width - tw) // 2
+                            x = center_x - tw // 2
                             y = start_y + i * line_height
                             draw.text((x, y), line, font=font, fill=fill_tuple)
                     logger.info("Text overlay applied successfully")

@@ -501,12 +501,16 @@ def process_thumbnail_print_quality():
         text_font = data.get("text_font", "Arial")
         text_color = data.get("text_color", "#000000")
         text_size = int(data.get("text_size", 24))
+        text_offset_x = int(data.get("text_offset_x", 50))
+        text_offset_y = int(data.get("text_offset_y", 50))
         add_white_background = data.get("add_white_background", False)
         print_area_width = data.get("print_area_width")
         print_area_height = data.get("print_area_height")
         
         frame_width = max(1, min(100, frame_width))
-        text_size = max(12, min(72, text_size))
+        text_size = max(12, min(100, text_size))
+        text_offset_x = max(0, min(100, text_offset_x))
+        text_offset_y = max(0, min(100, text_offset_y))
         
         if not thumbnail_data:
             response = jsonify({"success": False, "error": "thumbnail_data is required"})
@@ -544,6 +548,8 @@ def process_thumbnail_print_quality():
             text_font=text_font,
             text_color=text_color,
             text_size=text_size,
+            text_offset_x=text_offset_x,
+            text_offset_y=text_offset_y,
             add_white_background=add_white_background,
             print_area_width=print_area_width,
             print_area_height=print_area_height

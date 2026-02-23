@@ -816,6 +816,8 @@ const ToolsPage = () => {
   const [textFont, setTextFont] = useState('Arial');
   const [textColor, setTextColor] = useState('#000000');
   const [textSize, setTextSize] = useState(24);
+  const [textOffsetX, setTextOffsetX] = useState(50); // 0-100, 50 = center
+  const [textOffsetY, setTextOffsetY] = useState(50); // 0-100, 50 = center
   const [printAreaFit, setPrintAreaFit] = useState('none'); // 'none', 'horizontal', 'square', 'vertical', 'product'
   const [imageOrientation, setImageOrientation] = useState('portrait'); // 'portrait' | 'landscape' - landscape forces No Fit for uncropped view
   const [imageOffsetX, setImageOffsetX] = useState(0); // -100 to 100 (percentage)
@@ -2155,20 +2157,22 @@ const ToolsPage = () => {
         }
       }
 
-      // Apply text overlay if enabled
+      // Apply text overlay if enabled (position: textOffsetX/Y are 0-100, 50 = center)
       if (textEnabled && textContent && textContent.trim()) {
         ctx.save();
         const scale = Math.min(canvas.width, canvas.height) / 800;
-        const fontSize = Math.max(12, Math.min(120, Math.round(textSize * scale)));
+        const fontSize = Math.max(12, Math.min(200, Math.round(textSize * scale)));
         ctx.font = `${fontSize}px "${textFont}", Arial, sans-serif`;
         ctx.fillStyle = textColor;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        const centerX = (canvas.width * textOffsetX) / 100;
+        const centerY = (canvas.height * textOffsetY) / 100;
         const lines = textContent.trim().split('\n');
         const lineHeight = fontSize * 1.2;
-        const startY = canvas.height / 2 - (lines.length - 1) * lineHeight / 2;
+        const startY = centerY - (lines.length - 1) * lineHeight / 2;
         lines.forEach((line, i) => {
-          ctx.fillText(line, canvas.width / 2, startY + i * lineHeight);
+          ctx.fillText(line, centerX, startY + i * lineHeight);
         });
         ctx.restore();
       }
@@ -2181,7 +2185,7 @@ const ToolsPage = () => {
       console.error('Failed to load image');
     };
     img.src = imageUrl;
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, textEnabled, textContent, textFont, textColor, textSize, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick]);
 
   const handleDownload = () => {
     const imageToDownload = editedImageUrl || imageUrl;
@@ -2361,6 +2365,8 @@ const ToolsPage = () => {
         textFont,
         textColor,
         textSize,
+        textOffsetX,
+        textOffsetY,
         printAreaFit,
         imageOffsetX,
         imageOffsetY
@@ -2402,6 +2408,8 @@ const ToolsPage = () => {
                 textFont,
                 textColor,
                 textSize,
+                textOffsetX,
+                textOffsetY,
                 printAreaFit,
                 imageOrientation
               }
@@ -3181,12 +3189,36 @@ const ToolsPage = () => {
                         <input
                           type="range"
                           min="12"
-                          max="72"
+                          max="100"
                           value={textSize}
                           onChange={(e) => setTextSize(parseInt(e.target.value, 10))}
                           className="slider"
                         />
                         <span className="slider-value">{textSize}px</span>
+                      </div>
+                      <div className="slider-control" style={{ marginTop: '0.5rem' }}>
+                        <label>Horizontal position:</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={textOffsetX}
+                          onChange={(e) => setTextOffsetX(parseInt(e.target.value, 10))}
+                          className="slider"
+                        />
+                        <span className="slider-value">{textOffsetX}%</span>
+                      </div>
+                      <div className="slider-control" style={{ marginTop: '0.5rem' }}>
+                        <label>Vertical position:</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={textOffsetY}
+                          onChange={(e) => setTextOffsetY(parseInt(e.target.value, 10))}
+                          className="slider"
+                        />
+                        <span className="slider-value">{textOffsetY}%</span>
                       </div>
                     </>
                   )}
@@ -3454,6 +3486,8 @@ const ToolsPage = () => {
                 setTextFont('Arial');
                 setTextColor('#000000');
                 setTextSize(24);
+                setTextOffsetX(50);
+                setTextOffsetY(50);
                 setPrintAreaFit('none');
                 setImageOffsetX(0);
                 setImageOffsetY(0);

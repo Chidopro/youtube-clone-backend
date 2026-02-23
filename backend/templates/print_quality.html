@@ -535,9 +535,18 @@
                     
                     <div class="form-group">
                         <label for="textSize">Text Size:</label>
-                        <input type="range" id="textSize" name="textSize" min="12" max="72" value="24" style="width: 100%;">
-                        <small style="color: #666;">12–72px</small>
+                        <input type="range" id="textSize" name="textSize" min="12" max="100" value="24" style="width: 100%;">
+                        <small style="color: #666;">12–100px (headline size)</small>
                         <div id="textSizeValue" style="margin-top: 5px; font-weight: bold; color: #6f42c1;">24px</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="textOffsetX">Horizontal position: <span id="textOffsetXValue">50</span>%</label>
+                        <input type="range" id="textOffsetX" name="textOffsetX" min="0" max="100" value="50" style="width: 100%;">
+                    </div>
+                    <div class="form-group">
+                        <label for="textOffsetY">Vertical position: <span id="textOffsetYValue">50</span>%</label>
+                        <input type="range" id="textOffsetY" name="textOffsetY" min="0" max="100" value="50" style="width: 100%;">
                     </div>
                     
                     <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -1008,6 +1017,14 @@
         document.getElementById('textSize').addEventListener('input', function() {
             document.getElementById('textSizeValue').textContent = this.value + 'px';
         });
+        document.getElementById('textOffsetX').addEventListener('input', function() {
+            const el = document.getElementById('textOffsetXValue');
+            if (el) el.textContent = this.value;
+        });
+        document.getElementById('textOffsetY').addEventListener('input', function() {
+            const el = document.getElementById('textOffsetYValue');
+            if (el) el.textContent = this.value;
+        });
         
         // Sync frame color picker and text input
         document.getElementById('frameColor').addEventListener('input', function() {
@@ -1061,9 +1078,11 @@
             const textFont = document.getElementById('textFont').value || 'Arial';
             const textColor = document.getElementById('textColor').value || '#000000';
             const textSize = parseInt(document.getElementById('textSize').value, 10) || 24;
+            const textOffsetX = parseInt(document.getElementById('textOffsetX').value, 10);
+            const textOffsetY = parseInt(document.getElementById('textOffsetY').value, 10);
             const dpi = parseInt(document.getElementById('dpi').value);
             
-            console.log(`Applying all effects: Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%, Frame: ${frameEnabled ? `enabled (${frameColor}, ${frameWidth}px, double: ${doubleFrame})` : 'disabled'}, Text: ${textEnabled && textContent ? `enabled (${textContent}, ${textFont}, ${textSize}px)` : 'disabled'}`);
+            console.log(`Applying all effects: Corner: ${cornerRadiusPercent}%, Feather: ${featherValue}%, Frame: ${frameEnabled ? `enabled (${frameColor}, ${frameWidth}px, double: ${doubleFrame})` : 'disabled'}, Text: ${textEnabled && textContent ? `enabled (${textContent}, ${textFont}, ${textSize}px, pos ${textOffsetX}%/${textOffsetY}%)` : 'disabled'}`);
             
             try {
                 const requestBody = {
@@ -1082,6 +1101,8 @@
                     text_font: textFont,
                     text_color: textColor,
                     text_size: textSize,
+                    text_offset_x: isNaN(textOffsetX) ? 50 : Math.max(0, Math.min(100, textOffsetX)),
+                    text_offset_y: isNaN(textOffsetY) ? 50 : Math.max(0, Math.min(100, textOffsetY)),
                     add_white_background: false
                 };
                 
@@ -1530,6 +1551,10 @@
             document.getElementById('textColorText').value = '#000000';
             document.getElementById('textSize').value = 24;
             document.getElementById('textSizeValue').textContent = '24px';
+            document.getElementById('textOffsetX').value = 50;
+            document.getElementById('textOffsetXValue').textContent = '50';
+            document.getElementById('textOffsetY').value = 50;
+            document.getElementById('textOffsetYValue').textContent = '50';
             document.getElementById('textControlsGroup').style.display = 'none';
             document.getElementById('applyTextBtn').style.display = 'none';
             resetBtn.style.display = 'none';
