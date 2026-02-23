@@ -2160,8 +2160,9 @@ const ToolsPage = () => {
       // Apply text overlay if enabled (position: textOffsetX/Y are 0-100, 50 = center)
       if (textEnabled && textContent && textContent.trim()) {
         ctx.save();
-        const scale = Math.min(canvas.width, canvas.height) / 800;
-        const fontSize = Math.max(12, Math.min(200, Math.round(textSize * scale)));
+        // Headline-style: textSize 100 = ~22% of image min dimension so it stands out (not sentence-sized)
+        const minDim = Math.min(canvas.width, canvas.height);
+        const fontSize = Math.max(12, Math.min(300, Math.round((textSize / 100) * minDim * 0.22)));
         ctx.font = `${fontSize}px "${textFont}", Arial, sans-serif`;
         ctx.fillStyle = textColor;
         ctx.textAlign = 'center';
@@ -3185,16 +3186,32 @@ const ToolsPage = () => {
                         <span className="color-value" style={{ wordBreak: 'break-all' }}>{textColor}</span>
                       </div>
                       <div className="slider-control" style={{ marginTop: '0.5rem' }}>
-                        <label>Size:</label>
-                        <input
-                          type="range"
-                          min="12"
-                          max="100"
-                          value={textSize}
-                          onChange={(e) => setTextSize(parseInt(e.target.value, 10))}
-                          className="slider"
-                        />
-                        <span className="slider-value">{textSize}px</span>
+                        <label>Size (headline scale):</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                          <input
+                            type="range"
+                            min="12"
+                            max="150"
+                            value={Math.min(150, Math.max(12, textSize))}
+                            onChange={(e) => setTextSize(parseInt(e.target.value, 10) || 24)}
+                            className="slider"
+                            style={{ flex: '1 1 120px', minWidth: '100px' }}
+                          />
+                          <input
+                            type="number"
+                            min={12}
+                            max={200}
+                            value={textSize}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              if (!Number.isNaN(v)) setTextSize(Math.max(12, Math.min(200, v)));
+                            }}
+                            style={{ width: '64px', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                            title="Type 12–200 for headline size"
+                          />
+                          <span className="slider-value">{textSize}</span>
+                        </div>
+                        <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>Slider or type 12–200: 100+ = headline size</small>
                       </div>
                       <div className="slider-control" style={{ marginTop: '0.5rem' }}>
                         <label>Horizontal position:</label>

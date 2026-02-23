@@ -534,10 +534,13 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="textSize">Text Size:</label>
-                        <input type="range" id="textSize" name="textSize" min="12" max="100" value="24" style="width: 100%;">
-                        <small style="color: #666;">12–100px (headline size)</small>
-                        <div id="textSizeValue" style="margin-top: 5px; font-weight: bold; color: #6f42c1;">24px</div>
+                        <label for="textSize">Text Size (headline scale):</label>
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <input type="range" id="textSize" name="textSize" min="12" max="150" value="24" style="flex: 1; min-width: 100px;">
+                            <input type="number" id="textSizeNumber" min="12" max="200" value="24" style="width: 64px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;" title="Type 12–200 for headline size">
+                            <span id="textSizeValue" style="font-weight: bold; color: #6f42c1;">24</span>
+                        </div>
+                        <small style="color: #666;">12–200: 100+ = headline size</small>
                     </div>
                     
                     <div class="form-group">
@@ -1013,9 +1016,20 @@
                 document.getElementById('textColor').value = colorValue;
             }
         });
-        // Update text size display value
+        // Sync text size slider, number input, and display
+        function updateTextSizeDisplay(val) {
+            var n = parseInt(val, 10);
+            if (isNaN(n)) return;
+            n = Math.max(12, Math.min(200, n));
+            document.getElementById('textSize').value = Math.min(150, n);
+            document.getElementById('textSizeNumber').value = n;
+            document.getElementById('textSizeValue').textContent = n;
+        }
         document.getElementById('textSize').addEventListener('input', function() {
-            document.getElementById('textSizeValue').textContent = this.value + 'px';
+            updateTextSizeDisplay(this.value);
+        });
+        document.getElementById('textSizeNumber').addEventListener('input', function() {
+            updateTextSizeDisplay(this.value);
         });
         document.getElementById('textOffsetX').addEventListener('input', function() {
             const el = document.getElementById('textOffsetXValue');
@@ -1077,7 +1091,8 @@
             const textContent = (document.getElementById('textContent').value || '').trim();
             const textFont = document.getElementById('textFont').value || 'Arial';
             const textColor = document.getElementById('textColor').value || '#000000';
-            const textSize = parseInt(document.getElementById('textSize').value, 10) || 24;
+            const textSizeInput = document.getElementById('textSizeNumber') || document.getElementById('textSize');
+            const textSize = Math.max(12, Math.min(200, parseInt(textSizeInput ? textSizeInput.value : 24, 10) || 24));
             const textOffsetX = parseInt(document.getElementById('textOffsetX').value, 10);
             const textOffsetY = parseInt(document.getElementById('textOffsetY').value, 10);
             const dpi = parseInt(document.getElementById('dpi').value);
@@ -1550,7 +1565,9 @@
             document.getElementById('textColor').value = '#000000';
             document.getElementById('textColorText').value = '#000000';
             document.getElementById('textSize').value = 24;
-            document.getElementById('textSizeValue').textContent = '24px';
+            var numEl = document.getElementById('textSizeNumber');
+            if (numEl) numEl.value = 24;
+            document.getElementById('textSizeValue').textContent = '24';
             document.getElementById('textOffsetX').value = 50;
             document.getElementById('textOffsetXValue').textContent = '50';
             document.getElementById('textOffsetY').value = 50;

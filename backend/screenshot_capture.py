@@ -1296,9 +1296,9 @@ def process_thumbnail_for_print(image_data, print_dpi=300, soft_corners=False, e
                 try:
                     draw = ImageDraw.Draw(pil_image)
                     width, height = pil_image.size
-                    # Scale font size by image size (reference 800px); allow up to 100px base -> larger headlines
-                    scale = min(width, height) / 800.0
-                    font_px = max(12, min(200, int(text_size * scale)))
+                    # Headline-style: text_size 100 = ~22% of image min dimension (match frontend)
+                    min_dim = min(width, height)
+                    font_px = max(12, min(300, int((text_size / 100.0) * min_dim * 0.22)))
                     # Position: 0-100, 50 = center
                     ox = max(0, min(100, text_offset_x if text_offset_x is not None else 50))
                     oy = max(0, min(100, text_offset_y if text_offset_y is not None else 50))
