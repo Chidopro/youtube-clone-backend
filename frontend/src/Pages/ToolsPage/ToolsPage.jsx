@@ -3227,7 +3227,7 @@ const ToolsPage = () => {
                           <optgroup label="Fringe &amp; style">
                             <option value="Permanent Marker">Permanent Marker (Graffiti)</option>
                             <option value="Orbitron">Orbitron (Metal)</option>
-                            <option value="Bebas Neue">Bebas Neue (Hip Hop)</option>
+                            <option value="Bebas Neue">Bebas Neue</option>
                             <option value="Creepster">Creepster (Scary / Halloween)</option>
                             <option value="Dela Gothic One">Dela Gothic One</option>
                             <option value="Long Cang">Long Cang (Chinese brush)</option>
