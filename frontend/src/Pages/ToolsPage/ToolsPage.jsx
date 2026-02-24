@@ -10,9 +10,11 @@ const TEXT_TOOL_GOOGLE_FONTS = [
   'Orbitron',
   'Bebas Neue',
   'Creepster',
-  'Dela Gothic One'
+  'Dela Gothic One',
+  'Long Cang',
+  'Pacifico'
 ];
-const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Orbitron:wght@400;700&family=Bebas+Neue&family=Creepster&family=Dela+Gothic+One&display=swap';
+const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Orbitron:wght@400;700&family=Bebas+Neue&family=Creepster&family=Dela+Gothic+One&family=Long+Cang&family=Pacifico&display=swap';
 
 // Component for product preview with draggable screenshot
 const ProductPreviewWithDrag = ({ 
@@ -3227,7 +3229,9 @@ const ToolsPage = () => {
                             <option value="Orbitron">Orbitron (Metal)</option>
                             <option value="Bebas Neue">Bebas Neue (Hip Hop)</option>
                             <option value="Creepster">Creepster (Scary / Halloween)</option>
-                            <option value="Dela Gothic One">Dela Gothic One (Japanese style)</option>
+                            <option value="Dela Gothic One">Dela Gothic One</option>
+                            <option value="Long Cang">Long Cang (Chinese brush)</option>
+                            <option value="Pacifico">Pacifico (Hawaiian / surf)</option>
                           </optgroup>
                         </select>
                       </div>
