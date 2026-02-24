@@ -10,9 +10,9 @@ const TEXT_TOOL_GOOGLE_FONTS = [
   'Orbitron',
   'Bebas Neue',
   'Creepster',
-  'Noto Sans JP'
+  'Dela Gothic One'
 ];
-const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Orbitron:wght@400;700&family=Bebas+Neue&family=Creepster&family=Noto+Sans+JP:wght@400;700&display=swap';
+const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Orbitron:wght@400;700&family=Bebas+Neue&family=Creepster&family=Dela+Gothic+One&display=swap';
 
 // Component for product preview with draggable screenshot
 const ProductPreviewWithDrag = ({ 
@@ -3227,7 +3227,7 @@ const ToolsPage = () => {
                             <option value="Orbitron">Orbitron (Metal)</option>
                             <option value="Bebas Neue">Bebas Neue (Hip Hop)</option>
                             <option value="Creepster">Creepster (Scary / Halloween)</option>
-                            <option value="Noto Sans JP" title="Best for Japanese text; English/Latin appears as clean sans-serif">Noto Sans JP (Japanese)</option>
+                            <option value="Dela Gothic One">Dela Gothic One (Japanese style)</option>
                           </optgroup>
                         </select>
                       </div>
