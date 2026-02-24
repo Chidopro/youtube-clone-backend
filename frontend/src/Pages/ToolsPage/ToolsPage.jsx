@@ -4,6 +4,16 @@ import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, ge
 import API_CONFIG from '../../config/apiConfig';
 import './ToolsPage.css';
 
+// Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
+const TEXT_TOOL_GOOGLE_FONTS = [
+  'Permanent Marker',
+  'Orbitron',
+  'Bebas Neue',
+  'Creepster',
+  'Noto Sans JP'
+];
+const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Orbitron:wght@400;700&family=Bebas+Neue&family=Creepster&family=Noto+Sans+JP:wght@400;700&display=swap';
+
 // Component for product preview with draggable screenshot
 const ProductPreviewWithDrag = ({ 
   productImage, 
@@ -839,6 +849,37 @@ const ToolsPage = () => {
   const [printQualityImageUrl, setPrintQualityImageUrl] = useState(''); // 300 DPI image from API (parked for download)
   const [printQualityMeta, setPrintQualityMeta] = useState(null); // { dimensions: { width, height, dpi }, file_size, format, quality }
   const [generating300Dpi, setGenerating300Dpi] = useState(false);
+  const customFontsReadyRef = useRef(false);
+
+  // Ensure Google Fonts stylesheet is loaded and preload fringe fonts so canvas can use them
+  useEffect(() => {
+    let cancelled = false;
+    const ensureFonts = async () => {
+      if (typeof document === 'undefined' || !document.fonts) return;
+      const existing = document.querySelector(`link[href*="fonts.googleapis.com"][rel="stylesheet"]`);
+      if (!existing) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = GOOGLE_FONTS_STYLESHEET_URL;
+        document.head.appendChild(link);
+        await new Promise((resolve, reject) => {
+          link.onload = resolve;
+          link.onerror = reject;
+        });
+      }
+      if (cancelled) return;
+      await document.fonts.ready;
+      if (cancelled) return;
+      await Promise.all(
+        TEXT_TOOL_GOOGLE_FONTS.map((family) =>
+          document.fonts.load(`16px "${family}"`)
+        )
+      ).catch(() => {});
+      if (!cancelled) customFontsReadyRef.current = true;
+    };
+    ensureFonts();
+    return () => { cancelled = true; };
+  }, []);
 
   // Calculate and set fixed position for left column
   useEffect(() => {
@@ -2143,11 +2184,15 @@ const ToolsPage = () => {
 
       // Apply text overlay if enabled (position: textOffsetX/Y are 0-100, 50 = center)
       if (textEnabled && textContent && textContent.trim()) {
-        // Ensure custom/Google Font is loaded before drawing (fixes fringe fonts not showing)
-        try {
-          await document.fonts.load(`16px "${textFont}"`);
-        } catch (_) {
-          // Fallback font will be used if load fails
+        // Ensure font is loaded before drawing (required for Google/fringe fonts to show)
+        if (typeof document !== 'undefined' && document.fonts) {
+          try {
+            await document.fonts.ready;
+            const loadPromise = document.fonts.load(`16px "${textFont}"`);
+            await Promise.race([loadPromise, new Promise((r) => setTimeout(r, 3000))]);
+          } catch (_) {
+            // Fallback font will be used
+          }
         }
         ctx.save();
         // Headline-style: textSize 100 = ~22% of image min dimension so it stands out (not sentence-sized)
