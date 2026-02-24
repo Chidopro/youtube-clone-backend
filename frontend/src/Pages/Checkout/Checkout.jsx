@@ -15,6 +15,7 @@ const Checkout = () => {
   const [showDesignModal, setShowDesignModal] = useState(false);
   /** One entry per cart item: { orientation: ''|'portrait'|'landscape', feather: 'yes'|'no', cornerRadius: 'yes'|'no', frame: 'yes'|'no' } */
   const [designPreferences, setDesignPreferences] = useState([]);
+  const designPreferencesRef = useRef([]);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   /** Set true when user completes design modal with "Continue to Checkout" (all tools No). Required before Place Order. */
   const [designConfirmed, setDesignConfirmed] = useState(false);
@@ -24,10 +25,13 @@ const Checkout = () => {
   const SHIRT_CATEGORIES = ['womens', 'mens', 'kids'];
   const cartNeedsDesignModal = (itemList) => (itemList || items).some(it => SHIRT_CATEGORIES.includes(it.category));
 
-  // Keep ref in sync with state
+  // Keep refs in sync with state
   useEffect(() => {
     shippingRef.current = shipping;
   }, [shipping]);
+  useEffect(() => {
+    designPreferencesRef.current = designPreferences;
+  }, [designPreferences]);
 
   useEffect(() => {
     try {
@@ -53,11 +57,11 @@ const Checkout = () => {
     }
   }, [items.length]);
 
-  // When design modal opens, init per-item preferences from current items (or empty)
+  // When design modal opens, init per-item preferences (orientation left empty so user must choose)
   useEffect(() => {
     if (showDesignModal && items.length > 0) {
-      setDesignPreferences(items.map(it => ({
-        orientation: (it.toolSettings && (it.toolSettings.imageOrientation === 'portrait' || it.toolSettings.imageOrientation === 'landscape')) ? it.toolSettings.imageOrientation : '',
+      setDesignPreferences(items.map(() => ({
+        orientation: '',
         feather: 'no',
         cornerRadius: 'no',
         frame: 'no',
@@ -723,17 +727,24 @@ const Checkout = () => {
                 Cancel
               </button>
               {(() => {
+                const prefs = designPreferencesRef.current;
                 const anyToolYes = items.some((_, i) => {
-                  const p = designPreferences[i] ?? {};
+                  const p = prefs[i] ?? {};
                   return p.feather === 'yes' || p.cornerRadius === 'yes' || p.frame === 'yes';
                 });
                 const allShirtItemsHaveOrientation = items.every((it, i) => {
                   if (!SHIRT_CATEGORIES.includes(it.category)) return true;
-                  const o = (designPreferences[i] ?? {}).orientation;
+                  const o = (prefs[i] ?? {}).orientation || it.toolSettings?.imageOrientation || '';
                   return o === 'portrait' || o === 'landscape';
                 });
                 const handleContinue = () => {
-                  if (!allShirtItemsHaveOrientation) {
+                  const currentPrefs = designPreferencesRef.current;
+                  const hasOrientation = items.every((it, i) => {
+                    if (!SHIRT_CATEGORIES.includes(it.category)) return true;
+                    const o = (currentPrefs[i] ?? {}).orientation || it.toolSettings?.imageOrientation || '';
+                    return o === 'portrait' || o === 'landscape';
+                  });
+                  if (!hasOrientation) {
                     alert('Please choose Image orientation (Portrait or Landscape) for each shirt item before continuing.');
                     return;
                   }
@@ -741,7 +752,7 @@ const Checkout = () => {
                     ...it,
                     toolSettings: {
                       ...(it.toolSettings || {}),
-                      imageOrientation: (designPreferences[idx] ?? {}).orientation === 'landscape' ? 'landscape' : 'portrait',
+                      imageOrientation: ((currentPrefs[idx] ?? {}).orientation || it.toolSettings?.imageOrientation) === 'landscape' ? 'landscape' : 'portrait',
                     },
                   }));
                   setItems(updated);
@@ -750,7 +761,13 @@ const Checkout = () => {
                   setShowDesignModal(false);
                 };
                 const handleGoToTools = () => {
-                  if (!allShirtItemsHaveOrientation) {
+                  const currentPrefs = designPreferencesRef.current;
+                  const hasOrientation = items.every((it, i) => {
+                    if (!SHIRT_CATEGORIES.includes(it.category)) return true;
+                    const o = (currentPrefs[i] ?? {}).orientation || it.toolSettings?.imageOrientation || '';
+                    return o === 'portrait' || o === 'landscape';
+                  });
+                  if (!hasOrientation) {
                     alert('Please choose Image orientation (Portrait or Landscape) for each shirt item before continuing.');
                     return;
                   }
