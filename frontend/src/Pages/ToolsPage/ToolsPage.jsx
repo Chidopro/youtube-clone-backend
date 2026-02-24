@@ -1733,7 +1733,7 @@ const ToolsPage = () => {
     if (switchingSlotRef.current) return;
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => {
+    img.onload = async () => {
       // Store current image dimensions
       const newDimensions = { width: img.width, height: img.height };
       setCurrentImageDimensions(newDimensions);
@@ -2143,6 +2143,12 @@ const ToolsPage = () => {
 
       // Apply text overlay if enabled (position: textOffsetX/Y are 0-100, 50 = center)
       if (textEnabled && textContent && textContent.trim()) {
+        // Ensure custom/Google Font is loaded before drawing (fixes fringe fonts not showing)
+        try {
+          await document.fonts.load(`16px "${textFont}"`);
+        } catch (_) {
+          // Fallback font will be used if load fails
+        }
         ctx.save();
         // Headline-style: textSize 100 = ~22% of image min dimension so it stands out (not sentence-sized)
         const minDim = Math.min(canvas.width, canvas.height);
