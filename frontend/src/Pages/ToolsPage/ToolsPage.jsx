@@ -3227,7 +3227,7 @@ const ToolsPage = () => {
                             <option value="Orbitron">Orbitron (Metal)</option>
                             <option value="Bebas Neue">Bebas Neue (Hip Hop)</option>
                             <option value="Creepster">Creepster (Scary / Halloween)</option>
-                            <option value="Noto Sans JP">Noto Sans JP (Asian style)</option>
+                            <option value="Noto Sans JP" title="Best for Japanese text; English/Latin appears as clean sans-serif">Noto Sans JP (Japanese)</option>
                           </optgroup>
                         </select>
                       </div>
