@@ -1,18 +1,19 @@
 .terms-container {
   font-family: Arial, sans-serif;
   background: #f8f8f8;
-  padding: 40px;
+  padding: 24px 40px 48px;
   line-height: 1.6;
   margin: 0;
-  min-height: 100vh;
+  width: 100%;
+  /* No max-height or overflow: content flows with page scroll */
 }
 
 .terms-content {
   background: #fff;
   border-radius: 12px;
-  padding: 40px;
+  padding: 32px 40px 48px;
   max-width: 800px;
-  margin: auto;
+  margin: 0 auto;
   box-shadow: 0 2px 12px rgba(0,0,0,0.1);
 }
 
@@ -115,18 +116,32 @@
 
 @media (max-width: 768px) {
   .terms-container {
-    padding: 20px;
+    padding: 16px 16px 32px;
   }
   
   .terms-content {
-    padding: 20px;
+    padding: 20px 16px 32px;
   }
   
   .terms-content h1 {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
   
   .terms-content h2 {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
+  }
+  
+  .terms-content h3 {
+    font-size: 1.15rem;
+  }
+  
+  .navigation-links {
+    margin-top: 24px;
+    padding-top: 16px;
+  }
+  
+  .nav-link {
+    display: inline-block;
+    margin: 4px 8px;
   }
 } 

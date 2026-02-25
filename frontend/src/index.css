@@ -21,4 +21,10 @@ img{
   flex-grow: 1;
   padding: 20px 20px 20px 10px;
   width: 100%; /* Ensure it takes full width */
+  min-width: 0; /* Allow shrinking in flex layout */
+}
+
+/* Let long pages (e.g. Terms, Privacy) grow and use page scroll */
+.main-content-inner {
+  min-width: 0;
 }
