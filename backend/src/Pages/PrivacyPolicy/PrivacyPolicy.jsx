@@ -100,6 +100,16 @@ const PrivacyPolicy = () => {
         </section>
 
         <section>
+          <h2>Sharing with Fulfillment Partners</h2>
+          <p>To produce and ship merchandise orders, we share necessary information with third-party fulfillment partners, including Printful, Inc. This may include:</p>
+          <ul>
+            <li>Recipient name, shipping address, phone number, and email</li>
+            <li>Order details (e.g., product type, design/print information)</li>
+          </ul>
+          <p>This sharing is required to fulfill orders. Our partners process this data in accordance with their own privacy and data processing terms. For Printful, see <a href="https://www.printful.com/policies/privacy" target="_blank" rel="noopener noreferrer">Printful&apos;s Privacy Policy</a> and their Data Processing Terms (where applicable for merchants).</p>
+        </section>
+
+        <section>
           <h2>How We Use Your Information</h2>
           <h3>Primary Uses</h3>
           <ul>

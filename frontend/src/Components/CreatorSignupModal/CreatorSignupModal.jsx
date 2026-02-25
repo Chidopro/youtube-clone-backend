@@ -165,6 +165,9 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
               <p className="creator-signup-agreement-intro">
                 By creating an account you agree to our Terms of Service and Privacy Policy. Your application requires admin approval.
               </p>
+              <p className="creator-signup-fulfillment-notice">
+                Merchandise orders are fulfilled by third-party partners (e.g., Printful). Their <a href="https://www.printful.com/policies/terms" target="_blank" rel="noopener noreferrer">terms</a> and <a href="https://www.printful.com/policies/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a> apply to fulfillment.
+              </p>
               <p className="creator-signup-links">
                 <a href="/terms-of-service" target="_blank" rel="noopener noreferrer">Terms of Service</a>
                 {' · '}

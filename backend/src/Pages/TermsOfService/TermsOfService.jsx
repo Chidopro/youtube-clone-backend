@@ -84,12 +84,31 @@ const TermsOfService = () => {
             <li>Contains unlawful, harmful, or discriminatory material</li>
             <li>Includes explicit or adult content</li>
             <li>Violates applicable laws or regulations</li>
+            <li>Exploits or abuses children, or presents children in a sexual manner</li>
+            <li>Harasses, bullies, defames, or threatens a specific individual</li>
+            <li>Promotes violence or hatred based on race, ethnicity, color, national origin, religion, age, gender, sexual orientation, disability, medical condition, or veteran status</li>
+            <li>Promotes or supports terrorism or terrorist organizations</li>
+            <li>Promotes self-harm</li>
+            <li>Promotes harmful misinformation that may lead to violence or threats to health and safety</li>
+            <li>Contains personally identifiable information, sensitive personal information, or confidential information (e.g., credit card numbers, national IDs, passwords) without consent</li>
           </ul>
-          <p>You are solely responsible for ensuring you have rights to all uploaded material.</p>
+          <p>Our fulfillment partners (e.g., Printful) may remove or refuse content that violates their policies. You are solely responsible for ensuring you have rights to all uploaded material and that it complies with these rules.</p>
         </section>
 
         <section>
-          <h2>6. Orders &amp; Payment</h2>
+          <h2>6. Third-Party Fulfillment (e.g., Printful)</h2>
+          <p>Merchandise production and shipping are fulfilled by third-party partners, including Printful, Inc. By using ScreenMerch&apos;s merchandise services, you agree that:</p>
+          <ul>
+            <li>Fulfillment is subject to the fulfillment provider&apos;s terms of service and policies (e.g., <a href="https://www.printful.com/policies/terms" target="_blank" rel="noopener noreferrer">Printful&apos;s Terms of Service</a>). We recommend reviewing them.</li>
+            <li>Any legal claims related to products (e.g., defects, misrepresentation, or injury) must be brought against the seller. ScreenMerch and its fulfillment partners are not liable for such product-related claims except as set out in these Terms.</li>
+            <li>Customer data shared with fulfillment partners for orders is processed in accordance with our Privacy Policy and the partner&apos;s data processing and privacy policies.</li>
+            <li>Disputes with a fulfillment partner (e.g., Printful) regarding their services are subject to that partner&apos;s dispute resolution and governing law, not ScreenMerch&apos;s.</li>
+          </ul>
+          <p><strong>EU / EEA users:</strong> To report content that you believe is illegal under EU or national law, you may use our fulfillment partner&apos;s complaint mechanism where applicable. See Printful&apos;s <a href="https://www.printful.com/site/eu-illegal-content" target="_blank" rel="noopener noreferrer">EU illegal content notice</a> (Digital Services Act).</p>
+        </section>
+
+        <section>
+          <h2>7. Orders &amp; Payment</h2>
           <ul>
             <li>Payments are processed securely through Stripe.</li>
             <li>All prices are listed in USD.</li>
@@ -100,7 +119,7 @@ const TermsOfService = () => {
         </section>
 
         <section>
-          <h2>7. Creator Earnings &amp; Payouts</h2>
+          <h2>8. Creator Earnings &amp; Payouts</h2>
           <ul>
             <li>Creators earn $7 per sale on most items (excluding greeting cards, stickers, and magnets unless otherwise specified).</li>
             <li>Payout eligibility requires a minimum balance of $50.</li>
@@ -110,7 +129,7 @@ const TermsOfService = () => {
         </section>
 
         <section>
-          <h2>8. Account Termination</h2>
+          <h2>9. Account Termination</h2>
           <p>ScreenMerch may suspend or terminate accounts for:</p>
           <ul>
             <li>Violations of these Terms</li>
@@ -126,7 +145,7 @@ const TermsOfService = () => {
         </section>
 
         <section>
-          <h2>9. Limitation of Liability</h2>
+          <h2>10. Limitation of Liability</h2>
           <p>To the maximum extent permitted by law:</p>
           <ul>
             <li>ScreenMerch shall not be liable for indirect, incidental, consequential, or punitive damages, including lost profits or lost revenue.</li>
@@ -135,13 +154,19 @@ const TermsOfService = () => {
         </section>
 
         <section>
-          <h2>10. Arbitration &amp; Dispute Resolution (U.S.)</h2>
+          <h2>11. Arbitration &amp; Dispute Resolution (U.S.)</h2>
           <p>Any disputes arising from these Terms shall be resolved through binding arbitration in the United States, except where prohibited by law.</p>
           <p>You waive the right to participate in class-action lawsuits.</p>
+          <p>Disputes with third-party fulfillment partners (e.g., Printful) are governed by those partners&apos; terms and their arbitration or dispute-resolution provisions, not this section.</p>
         </section>
 
         <section>
-          <h2>11. Changes to Terms</h2>
+          <h2>12. California Consumer Rights</h2>
+          <p>Under California Civil Code Section 1789.3, California users are entitled to the following: The Complaint Assistance Unit of the Division of Consumer Services of the California Department of Consumer Affairs may be contacted in writing at 1625 North Market Blvd., Suite N 112, Sacramento, CA 95834, or by telephone at (916) 445-1254 or (800) 952-5210. You may contact ScreenMerch at support@screenmerch.com.</p>
+        </section>
+
+        <section>
+          <h2>13. Changes to Terms</h2>
           <p>We may update these Terms periodically. Continued use of the Service constitutes acceptance of updated Terms.</p>
         </section>
 
