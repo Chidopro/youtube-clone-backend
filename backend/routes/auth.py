@@ -318,18 +318,31 @@ def login_page():
     return render_template('login.html')
 
 
+def _verify_admin_password(password, stored_password):
+    """Verify password against stored value: bcrypt hash or legacy plain text."""
+    if not stored_password:
+        return False
+    stored = stored_password.strip()
+    try:
+        if stored.startswith('$2b$') or stored.startswith('$2a$'):
+            return bcrypt.checkpw(password.encode('utf-8'), stored.encode('utf-8'))
+        return password.strip() == stored
+    except Exception:
+        return False
+
+
 @auth_bp.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     """Admin login page"""
     if request.method == "POST":
         data = request.form
-        email = data.get('email', '').strip().lower()
+        email_or_username = data.get('email', '').strip().lower()
         password = data.get('password', '')
         
-        if not email or not password:
+        if not email_or_username or not password:
             return render_template('admin_login.html', error="Email and password are required")
         
-        # Email whitelist validation
+        # Email whitelist (also allow "master admin" / "masteradmin" to look up by role)
         allowed_emails = [
             'chidopro@proton.me',
             'alancraigdigital@gmail.com',
@@ -337,22 +350,27 @@ def admin_login():
             'admin@screenmerch.com',
             'driveralan1@yahoo.com'
         ]
-        if email not in allowed_emails:
+        is_master_admin_lookup = email_or_username in ('master admin', 'masteradmin')
+        if not is_master_admin_lookup and email_or_username not in allowed_emails:
             return render_template('admin_login.html', error="Access restricted to authorized users only")
         
         try:
             client = _get_supabase_client()
-            result = client.table('users').select('*').eq('email', email).execute()
+            if is_master_admin_lookup:
+                result = client.table('users').select('*').eq('admin_role', 'master_admin').limit(1).execute()
+            else:
+                result = client.table('users').select('*').eq('email', email_or_username).execute()
             
             if result.data:
                 user = result.data[0]
+                email = user.get('email', '').lower()
                 stored_password = user.get('password_hash', '')
                 user_role = user.get('role', 'customer')
                 is_admin = user.get('is_admin', False)
                 admin_role = user.get('admin_role')
                 
-                # Check password and admin access (role=='admin' OR is_admin flag)
-                if password != stored_password:
+                # Verify password (bcrypt or legacy plain text)
+                if not _verify_admin_password(password, stored_password):
                     return render_template('admin_login.html', error="Invalid credentials or insufficient privileges")
                 if user_role == 'admin' or is_admin or admin_role in ('master_admin', 'admin', 'order_processing_admin'):
                     session['admin_logged_in'] = True
