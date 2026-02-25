@@ -22,9 +22,11 @@ img{
   padding: 20px 20px 20px 10px;
   width: 100%; /* Ensure it takes full width */
   min-width: 0; /* Allow shrinking in flex layout */
+  overflow: visible; /* Legal pages (Terms, Privacy) use page scroll, not inner scrollbar */
 }
 
 /* Let long pages (e.g. Terms, Privacy) grow and use page scroll */
 .main-content-inner {
   min-width: 0;
+  overflow: visible;
 }

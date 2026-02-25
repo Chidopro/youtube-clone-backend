@@ -5,7 +5,8 @@
   line-height: 1.6;
   margin: 0;
   width: 100%;
-  /* No max-height or overflow: content flows with page scroll */
+  overflow: visible; /* Use page scroll so user sees all content; no inner scrollbar */
+  min-height: auto;
 }
 
 .terms-content {
@@ -15,6 +16,7 @@
   max-width: 800px;
   margin: 0 auto;
   box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  overflow: visible;
 }
 
 .terms-content h1 {
