@@ -1,20 +1,39 @@
 import os
 import base64
 import uuid
+import logging
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
-# Initialize Supabase client
-# Try VITE_ prefixed variables first, then fall back to non-prefixed
-supabase_url = os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("VITE_SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
+# Lazy Supabase client so a bad key does not crash the app at import (avoids restart loop on Fly).
+_supabase: Client | None = None
+_supabase_failed = False
 
-if not supabase_url or not supabase_key:
-    raise ValueError("Missing Supabase environment variables")
 
-supabase: Client = create_client(supabase_url, supabase_key)
+def _get_supabase() -> Client | None:
+    global _supabase, _supabase_failed
+    if _supabase is not None:
+        return _supabase
+    if _supabase_failed:
+        return None
+    url = os.getenv("VITE_SUPABASE_URL") or os.getenv("SUPABASE_URL")
+    key = os.getenv("VITE_SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
+    if not url or not key:
+        logger.warning("Supabase storage: missing VITE_SUPABASE_URL/SUPABASE_URL or anon key")
+        _supabase_failed = True
+        return None
+    try:
+        client = create_client(url, key)
+        _supabase = client
+        return _supabase
+    except Exception as e:
+        logger.warning("Supabase storage: could not create client (check anon key): %s", e)
+        _supabase_failed = True
+        return None
+
 
 class SupabaseStorage:
     def __init__(self):
@@ -31,6 +50,9 @@ class SupabaseStorage:
         Returns:
             str: Public URL of the saved image
         """
+        supabase = _get_supabase()
+        if not supabase:
+            return None
         try:
             # Generate filename if not provided
             if not filename:
@@ -59,7 +81,7 @@ class SupabaseStorage:
             return None
             
         except Exception as e:
-            print(f"Error saving image to Supabase: {str(e)}")
+            logger.warning("Error saving image to Supabase: %s", e)
             return None
     
     def save_multiple_images(self, images_data, prefix="product"):
@@ -93,16 +115,19 @@ class SupabaseStorage:
         Returns:
             bool: True if successful, False otherwise
         """
+        supabase = _get_supabase()
+        if not supabase:
+            return False
         try:
             # Extract filename from URL
             filename = image_url.split('/')[-1]
             
             # Delete from storage
-            response = supabase.storage.from_(self.bucket_name).remove([filename])
+            supabase.storage.from_(self.bucket_name).remove([filename])
             return True
             
         except Exception as e:
-            print(f"Error deleting image from Supabase: {str(e)}")
+            logger.warning("Error deleting image from Supabase: %s", e)
             return False
 
 # Create global instance

@@ -716,13 +716,21 @@ def internal_error(e):
 
 
 # Initialize Supabase client for database operations (longer timeout to avoid "read operation timed out")
-supabase: Client = create_client(supabase_url, supabase_key, _supabase_options) if _supabase_options else create_client(supabase_url, supabase_key)
+# If create_client fails (e.g. Invalid API key), do not crash the app so Fly does not restart-loop.
+supabase: Client = None
+try:
+    supabase = create_client(supabase_url, supabase_key, _supabase_options) if _supabase_options else create_client(supabase_url, supabase_key)
+except Exception as e:
+    logger.warning("Supabase anon client failed (check SUPABASE_ANON_KEY / VITE_SUPABASE_ANON_KEY): %s", e)
 
 # Create service role client for admin operations (bypasses RLS)
 supabase_admin: Client = None
 if supabase_service_key:
-    supabase_admin = create_client(supabase_url, supabase_service_key, _supabase_options) if _supabase_options else create_client(supabase_url, supabase_service_key)
-    print("[OK] Service role client initialized - new creator signups WILL be recorded in admin dashboard")
+    try:
+        supabase_admin = create_client(supabase_url, supabase_service_key, _supabase_options) if _supabase_options else create_client(supabase_url, supabase_service_key)
+        print("[OK] Service role client initialized - new creator signups WILL be recorded in admin dashboard")
+    except Exception as e:
+        logger.warning("Supabase service role client failed (check SUPABASE_SERVICE_ROLE_KEY): %s", e)
 else:
     print("[WARNING] SUPABASE_SERVICE_ROLE_KEY not set - new creator signups will NOT be recorded; email verification (set password) will return 503. Set it in Fly.io Secrets.")
 
