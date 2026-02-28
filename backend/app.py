@@ -4268,48 +4268,7 @@ def _creator_id_from_request_subdomain():
     except Exception:
         return None, False
 
-@app.route("/api/videos", methods=["GET"])
-def get_videos():
-    """Get list of videos. Query params: category (optional), user_id (optional), limit (optional, default 100)."""
-    try:
-        if not supabase:
-            logger.warning("get_videos: supabase client not available, returning empty list")
-            return jsonify([]), 200
-        # Prefer query params from frontend (CORS fix: frontend calls this instead of Supabase)
-        category = request.args.get("category", "").strip() or None
-        user_id_param = request.args.get("user_id", "").strip() or None
-        limit_param = request.args.get("limit", "100").strip()
-        try:
-            limit = min(int(limit_param), 500) if limit_param.isdigit() else 100
-        except ValueError:
-            limit = 100
-        creator_id, is_subdomain = _creator_id_from_request_subdomain()
-        if is_subdomain and not creator_id and not user_id_param:
-            return jsonify([]), 200
-        def _run_query():
-            q = supabase.table("videos2").select("*").order("created_at", desc=True).limit(limit)
-            if user_id_param:
-                q = q.eq("user_id", user_id_param)
-            elif creator_id:
-                q = q.eq("user_id", creator_id)
-            if category:
-                q = q.eq("category", category)
-            return q.execute()
-        try:
-            response = _run_query()
-        except Exception as timeout_exc:
-            err_msg = str(timeout_exc).lower()
-            if "timed out" in err_msg or "timeout" in err_msg:
-                logger.warning(f"get_videos: first attempt timed out, retrying once: {timeout_exc}")
-                response = _run_query()
-            else:
-                raise
-        return jsonify(response.data if response.data is not None else []), 200
-    except Exception as e:
-        import traceback
-        logger.error(f"Error fetching videos: {e}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        return jsonify([]), 200
+# /api/videos is handled by the videos blueprint (OPTIONS + CORS via _allow_origin); duplicate route removed so CORS works from screenmerch.com
 
 @app.route("/api/creators/list", methods=["GET", "OPTIONS"])
 @cross_origin(origins=[], supports_credentials=True)
