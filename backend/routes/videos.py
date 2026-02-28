@@ -47,23 +47,20 @@ def _get_sc_module():
 
 
 def _handle_cors_preflight():
-    """Handle CORS preflight requests"""
-    response = jsonify(success=True)
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cache-Control,Pragma,Expires')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
+    """Handle CORS preflight; use _allow_origin so credentials work."""
+    return _allow_origin(jsonify(success=True))
 
 
-@videos_bp.route("/api/videos", methods=["GET"])
+@videos_bp.route("/api/videos", methods=["GET", "OPTIONS"])
 def get_videos():
     """Get list of videos. Query params: category (optional), user_id (optional), limit (optional, default 100)."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
     try:
         client = _get_supabase_client()
         if not client:
             logger.warning("get_videos: Supabase client not available, returning empty list")
-            return jsonify([]), 200
+            return _allow_origin(jsonify([])), 200
         category = request.args.get("category", "").strip() or None
         user_id = request.args.get("user_id", "").strip() or None
         limit = request.args.get("limit", "100").strip()
@@ -77,12 +74,13 @@ def get_videos():
         if user_id:
             query = query.eq("user_id", user_id)
         response = query.execute()
-        return jsonify(response.data if response.data is not None else []), 200
+        data = response.data if response.data is not None else []
+        return _allow_origin(jsonify(data)), 200
     except Exception as e:
         import traceback
         logger.error(f"Error fetching videos: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
-        return jsonify([]), 200
+        return _allow_origin(jsonify([])), 200
 
 
 @videos_bp.route("/api/search/creators", methods=["GET", "OPTIONS"])
