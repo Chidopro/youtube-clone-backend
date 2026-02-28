@@ -659,15 +659,16 @@ def add_security_headers(response):
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
     
-    # Guarantee CORS for /api/* when Origin is allowed (covers subdomains + main; Flask-CORS uses list only)
+    # CORS for /api/*: always send a header so screenmerch.com works (env/proxy may strip Origin)
     if request.path.startswith("/api/"):
         origin = request.headers.get("Origin")
         if origin and _is_origin_allowed(origin):
             response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-            # Preflight must allow Content-Type so POST JSON (e.g. /api/auth/login) succeeds
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
+        else:
+            response.headers["Access-Control-Allow-Origin"] = "https://screenmerch.com"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
     
     return response
 
