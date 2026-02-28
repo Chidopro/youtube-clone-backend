@@ -659,8 +659,9 @@ def add_security_headers(response):
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
     
-    # CORS for /api/*: always send a header so screenmerch.com works (env/proxy may strip Origin).
-    # Set these last so nothing overwrites; prevent caching so old responses without CORS aren't served.
+    # CORS for /api/* (final fix): always send Allow-Origin so screenmerch.com works when Origin
+    # is missing or stripped by proxy. /api/videos must be served only by the videos blueprint
+    # (no duplicate route in app.py) so OPTIONS and GET both get these headers.
     if request.path.startswith("/api/"):
         origin = request.headers.get("Origin")
         if origin and _is_origin_allowed(origin):
@@ -672,7 +673,7 @@ def add_security_headers(response):
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
         response.headers["Vary"] = "Origin"
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-        response.headers["X-ScreenMerch-CORS"] = "1"  # So you can confirm this code path is running
+        response.headers["X-ScreenMerch-CORS"] = "1"
     return response
 
 @app.errorhandler(404)
@@ -4272,7 +4273,7 @@ def _creator_id_from_request_subdomain():
     except Exception:
         return None, False
 
-# /api/videos is handled by the videos blueprint (OPTIONS + CORS via _allow_origin); duplicate route removed so CORS works from screenmerch.com
+# /api/videos: only the videos blueprint (routes/videos.py) must handle this. Do not add @app.route("/api/videos") here or CORS from screenmerch.com will fail.
 
 @app.route("/api/creators/list", methods=["GET", "OPTIONS"])
 @cross_origin(origins=[], supports_credentials=True)
