@@ -296,11 +296,35 @@ app = Flask(__name__,
            static_folder='static')
 # Allow large checkout payloads (base64 screenshots in cart) - default 1MB can truncate
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
-# --- Preflight handler (fixes OPTIONS 500 / CORS preflight failures) ---
+
+def _cors_allow_origin():
+    """Return Origin if allowed for CORS, else https://screenmerch.com. No dependency on later app code."""
+    origin = (request.headers.get("Origin") or "").strip()
+    if not origin:
+        return "https://screenmerch.com"
+    if origin == "https://screenmerch.com" or origin == "https://www.screenmerch.com":
+        return origin
+    if origin.startswith("https://") and ".screenmerch.com" in origin:
+        return origin
+    if origin in ("https://screenmerch.fly.dev", "http://localhost:5173", "http://localhost:3000"):
+        return origin
+    return "https://screenmerch.com"
+
+# --- Preflight: OPTIONS /api/* must return CORS headers so browser allows GET from screenmerch.com ---
 @app.before_request
 def _handle_preflight():
-    if request.method == "OPTIONS":
+    if request.method != "OPTIONS":
+        return None
+    if not request.path.startswith("/api/"):
         return ("", 204)
+    resp = make_response("", 204)
+    resp.headers["Access-Control-Allow-Origin"] = _cors_allow_origin()
+    resp.headers["Access-Control-Allow-Credentials"] = "true"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
+    resp.headers["Vary"] = "Origin"
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    return resp
 
 # Configure session secret key - REQUIRED for security
 secret_key = os.getenv("FLASK_SECRET_KEY")
@@ -614,23 +638,9 @@ def _is_origin_allowed(origin):
     return False
 
 
-# Flask-CORS: use only string origins so /api/* gets correct CORS (regex in list can be unreliable).
-# allow_headers must include Content-Type so POST /api/auth/login (and other JSON APIs) pass preflight.
-# methods must include DELETE so admin delete-order (and other DELETE APIs) pass preflight.
-CORS(
-    app,
-    resources={r"/api/*": {
-        "origins": ALLOWED_ORIGINS_LIST,
-        "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma", "Expires", "X-User-Email"],
-        "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    }},
-    supports_credentials=True,
-    always_send=True,
-)
-
-# NOTE:
-# CORS is handled via Flask-CORS using the explicit ALLOWED_ORIGINS list above.
-# Subdomains must be listed explicitly or added here.
+# CORS for /api/* is handled only in _handle_preflight and add_security_headers above (single source of truth).
+# Do not apply Flask-CORS to /api/* so it cannot overwrite or conflict with our headers.
+CORS(app, resources={r"/_no_cors": {"origins": "*"}}, supports_credentials=False)
 
 # Security middleware
 @app.before_request
@@ -658,22 +668,19 @@ def add_security_headers(response):
     """Add security headers to all responses"""
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
-    
-    # CORS for /api/* (final fix): always send Allow-Origin so screenmerch.com works when Origin
-    # is missing or stripped by proxy. /api/videos must be served only by the videos blueprint
-    # (no duplicate route in app.py) so OPTIONS and GET both get these headers.
+    # CORS for /api/*: always set so screenmerch.com works (single source; Flask-CORS not used for /api/*)
     if request.path.startswith("/api/"):
-        origin = request.headers.get("Origin")
-        if origin and _is_origin_allowed(origin):
-            response.headers["Access-Control-Allow-Origin"] = origin
-        else:
+        try:
+            response.headers["Access-Control-Allow-Origin"] = _cors_allow_origin()
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
+            response.headers["Vary"] = "Origin"
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            response.headers["X-ScreenMerch-CORS"] = "1"
+        except Exception:
             response.headers["Access-Control-Allow-Origin"] = "https://screenmerch.com"
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
-        response.headers["Vary"] = "Origin"
-        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-        response.headers["X-ScreenMerch-CORS"] = "1"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
 @app.errorhandler(404)
