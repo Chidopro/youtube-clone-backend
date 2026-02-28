@@ -697,6 +697,24 @@ def not_found(e):
     logger.info("404 Not Found: %s %s", request.method, request.path)
     return jsonify({"error": "Not Found", "path": request.path}), 404
 
+
+@app.errorhandler(500)
+def internal_error(e):
+    """Ensure 500 responses still get CORS so browser doesn't show generic CORS error."""
+    resp = make_response(jsonify({"error": "Internal Server Error"}), 500)
+    if request.path.startswith("/api/"):
+        try:
+            resp.headers["Access-Control-Allow-Origin"] = _cors_allow_origin()
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
+            resp.headers["Vary"] = "Origin"
+        except Exception:
+            resp.headers["Access-Control-Allow-Origin"] = "https://screenmerch.com"
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+    return resp
+
+
 # Initialize Supabase client for database operations (longer timeout to avoid "read operation timed out")
 supabase: Client = create_client(supabase_url, supabase_key, _supabase_options) if _supabase_options else create_client(supabase_url, supabase_key)
 
