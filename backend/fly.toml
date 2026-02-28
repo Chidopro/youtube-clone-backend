@@ -25,6 +25,4 @@ primary_region = "sjc"
   PORT = "8080"
   SUPABASE_URL = "https://sojxbydpcdcdzfdtbypd.supabase.co"
   # Note: Sensitive keys should be set via fly secrets, not in fly.toml
-  # Add these via: fly secrets set GOOGLE_CLIENT_ID=your_client_id
-  # fly secrets set GOOGLE_CLIENT_SECRET=your_client_secret
-  # fly secrets set GOOGLE_REDIRECT_URI=https://your-app.fly.dev/api/auth/callback
+  # fly secrets set SUPABASE_ANON_KEY=...  (must be the anon key for the project above)
