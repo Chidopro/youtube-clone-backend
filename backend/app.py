@@ -638,9 +638,17 @@ def _is_origin_allowed(origin):
     return False
 
 
-# CORS for /api/* is handled only in _handle_preflight and add_security_headers above (single source of truth).
-# Do not apply Flask-CORS to /api/* so it cannot overwrite or conflict with our headers.
-CORS(app, resources={r"/_no_cors": {"origins": "*"}}, supports_credentials=False)
+# CORS for /api/*: _handle_preflight and add_security_headers set headers; Flask-CORS backs them up.
+CORS(
+    app,
+    resources={r"/api/*": {
+        "origins": ALLOWED_ORIGINS_LIST,
+        "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma", "Expires", "X-User-Email"],
+        "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    }},
+    supports_credentials=True,
+    always_send=True,
+)
 
 # Security middleware
 @app.before_request
