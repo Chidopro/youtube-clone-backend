@@ -659,7 +659,8 @@ def add_security_headers(response):
     for header, value in SECURITY_HEADERS.items():
         response.headers[header] = value
     
-    # CORS for /api/*: always send a header so screenmerch.com works (env/proxy may strip Origin)
+    # CORS for /api/*: always send a header so screenmerch.com works (env/proxy may strip Origin).
+    # Set these last so nothing overwrites; prevent caching so old responses without CORS aren't served.
     if request.path.startswith("/api/"):
         origin = request.headers.get("Origin")
         if origin and _is_origin_allowed(origin):
@@ -669,7 +670,9 @@ def add_security_headers(response):
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
-    
+        response.headers["Vary"] = "Origin"
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response.headers["X-ScreenMerch-CORS"] = "1"  # So you can confirm this code path is running
     return response
 
 @app.errorhandler(404)
@@ -787,7 +790,8 @@ except Exception as e:
 
 @app.route("/api/ping")
 def ping():
-    return {"message": "pong"}
+    """Health check; X-ScreenMerch-CORS and CORS headers confirm deploy has CORS fix."""
+    return {"message": "pong", "cors_fix": "2025-02"}
 
 @app.route("/api/product/browse", methods=["GET", "OPTIONS"])
 def get_browse_api():
