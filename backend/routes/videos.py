@@ -9,28 +9,34 @@ logger = logging.getLogger(__name__)
 videos_bp = Blueprint('videos', __name__)
 
 
-def register_videos_routes(app, supabase, screenshot_capture_module, sc_module):
+def register_videos_routes(app, supabase, screenshot_capture_module, sc_module, supabase_admin=None):
     """
     Register video routes with the Flask app
-    
+
     Args:
         app: Flask application instance
-        supabase: Supabase client
+        supabase: Supabase anon client
         screenshot_capture_module: Screenshot capture module/class (from video_screenshot)
         sc_module: Screenshot capture module (imported as sc_module)
+        supabase_admin: Optional service_role client; used as fallback for get_videos when anon is None
     """
     # Store dependencies in Blueprint
     videos_bp.supabase = supabase
+    videos_bp.supabase_admin = supabase_admin
     videos_bp.screenshot_capture = screenshot_capture_module
     videos_bp.sc_module = sc_module
-    
+
     # Register the Blueprint
     app.register_blueprint(videos_bp)
 
 
 def _get_supabase_client():
-    """Get Supabase client"""
-    return videos_bp.supabase if hasattr(videos_bp, 'supabase') else None
+    """Get Supabase client for DB reads (anon preferred; fallback to service_role so videos still load)."""
+    if hasattr(videos_bp, 'supabase') and videos_bp.supabase is not None:
+        return videos_bp.supabase
+    if hasattr(videos_bp, 'supabase_admin') and videos_bp.supabase_admin is not None:
+        return videos_bp.supabase_admin
+    return None
 
 
 def _get_screenshot_capture():

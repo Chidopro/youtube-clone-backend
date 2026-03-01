@@ -812,8 +812,8 @@ try:
     register_admin_routes(app, supabase, supabase_admin, order_store)
     print("  [OK] Admin Blueprint registered")
     
-    # Videos Blueprint
-    register_videos_routes(app, supabase, screenshot_capture, sc_module)
+    # Videos Blueprint (pass supabase_admin so get_videos can use it when anon client is None)
+    register_videos_routes(app, supabase, screenshot_capture, sc_module, supabase_admin)
     print("  [OK] Videos Blueprint registered")
     
     # Analytics Blueprint
