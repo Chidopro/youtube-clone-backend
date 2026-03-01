@@ -128,8 +128,8 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     <>
       <div className={`container ${sidebar ? "" : " large-container"}`}>
         {/* Launch banner: under navbar, above purple bar */}
-        <Link to="/release" className="home-launch-banner" aria-label="Press release">
-          FOR IMMEDIATE RELEASE — ScreenMerch Officially Launches February 28, 2026
+        <Link to="/release" className="home-launch-banner" aria-label="Launch message">
+          The Creator Revolution Has a Storefront February 28, 2026
         </Link>
 
         {/* User Flow Section */}
