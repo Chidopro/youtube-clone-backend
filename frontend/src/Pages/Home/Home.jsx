@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Feed from "../../Components/Feed/Feed";
 import { supabase } from '../../supabaseClient';
 import './Home.css'
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
@@ -127,8 +127,13 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   return (
     <>
       <div className={`container ${sidebar ? "" : " large-container"}`}>
+        {/* Launch banner: under navbar, above purple bar */}
+        <Link to="/release" className="home-launch-banner" aria-label="Launch message">
+          The Creator Revolution Has a Storefront February 28, 2026
+        </Link>
+
         {/* User Flow Section */}
-        <div 
+        <div
           className="user-flow-section"
           onMouseEnter={() => setIsHovering(true)}
           onMouseLeave={() => setIsHovering(false)}

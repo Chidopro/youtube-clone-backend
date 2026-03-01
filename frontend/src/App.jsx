@@ -32,6 +32,7 @@ import VerifyEmail from "./Pages/VerifyEmail/VerifyEmail";
 import RequestSetPassword from "./Pages/RequestSetPassword/RequestSetPassword";
 import CreatorThankYou from "./Pages/CreatorThankYou/CreatorThankYou";
 import AdminSignup from "./Pages/AdminSignup/AdminSignup";
+import Release from "./Pages/Release/Release";
 import { API_CONFIG } from "./config/apiConfig";
 import { CreatorProvider } from "./contexts/CreatorContext";
 
@@ -259,6 +260,7 @@ const App = () => {
                 <Route path="/success" element={<OrderSuccess />} />
                 <Route path="/order-success" element={<OrderSuccess />} />
                 <Route path="/coming-soon" element={<ComingSoon />} />
+                <Route path="/release" element={<Release />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/auth" element={<AuthForm />} />
                 <Route path="/login" element={<Login />} />
