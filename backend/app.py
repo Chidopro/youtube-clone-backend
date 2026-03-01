@@ -764,21 +764,18 @@ def ensure_stripe_test_mode():
     if not stripe_key:
         raise ValueError("STRIPE_SECRET_KEY environment variable is not set")
     
-    # Validate that we're using test mode key
-    if not stripe_key.startswith("sk_test_"):
-        logger.warning(f"⚠️ WARNING: Stripe key does not start with 'sk_test_' - this may be a LIVE key!")
-        logger.warning(f"⚠️ Key preview: {stripe_key[:20]}...{stripe_key[-4:] if len(stripe_key) > 24 else '***'}")
-        logger.warning(f"⚠️ If you want test mode, ensure your STRIPE_SECRET_KEY starts with 'sk_test_'")
-    else:
+    # Check test vs live mode
+    if stripe_key.startswith("sk_live_"):
+        logger.info(f"✅ Stripe LIVE mode - key starts with 'sk_live_'")
+    elif stripe_key.startswith("sk_test_"):
         logger.info(f"✅ Stripe test mode confirmed - key starts with 'sk_test_'")
+    else:
+        logger.warning(f"⚠️ Stripe key format not recognized (expected sk_test_ or sk_live_)")
+    key_preview_log = f"{stripe_key[:20]}...{stripe_key[-4:]}" if len(stripe_key) > 24 else "***"
+    logger.info(f"🔑 Using Stripe API key: {key_preview_log}")
     
     # Set the key
     stripe.api_key = stripe_key
-    
-    # Log key info for debugging (first 20 chars and last 4 chars)
-    key_preview = f"{stripe_key[:20]}...{stripe_key[-4:]}" if len(stripe_key) > 24 else "***"
-    logger.info(f"🔑 Using Stripe API key: {key_preview} (length: {len(stripe_key)})")
-    
     return stripe_key
 
 # NEW: Printful API Key (optional for now)
