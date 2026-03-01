@@ -9,7 +9,7 @@ const Release = () => {
         <p className="release-for-immediate">FOR IMMEDIATE RELEASE</p>
         <p className="release-date">February 28, 2026</p>
         <h1 className="release-title">The Creator Revolution Has a Storefront: ScreenMerch Officially Launches</h1>
-        <p className="release-dateline">Fruitdale, California — February 28, 2026</p>
+        <p className="release-dateline">Alameda, California — February 28, 2026</p>
 
         <p>Today marks the official public launch of ScreenMerch, a creator-focused platform designed to transform video moments into merchandise — and give creators full ownership of their storefronts.</p>
 
