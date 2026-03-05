@@ -6659,7 +6659,7 @@ def upload_favorite():
             "image_url": public_url,
             "thumbnail_url": public_url,
         }
-        result = supabase_admin.table("creator_favorites").insert(insert_data).select().execute()
+        result = supabase_admin.table("creator_favorites").insert(insert_data).execute()
         if not result.data or len(result.data) == 0:
             return jsonify({"success": False, "error": "Failed to save favorite"}), 500
         return jsonify({"success": True, "favorite": result.data[0]}), 200
