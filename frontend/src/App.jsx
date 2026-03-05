@@ -115,21 +115,19 @@ const App = () => {
         oauthSuccessProcessedRef.current = true;
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('isAuthenticated', 'true');
-        // Store session token from URL (query string is reliable; fragment can be stripped)
-        const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const hash = (typeof window !== 'undefined' && window.location.hash) || '';
-        const tokFromQuery = searchParams && searchParams.get('sm_tok');
-        const tokFromHash = (hash.match(/[#&]sm_tok=([^&]+)/) || [])[1];
-        const smTok = tokFromQuery || tokFromHash;
+        // Session token: backend puts it inside user object so it always arrives
+        const smTok = user.sm_tok || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('sm_tok')) || (window.location.hash.match(/[#&]sm_tok=([^&]+)/) || [])[1];
         if (smTok) {
           localStorage.setItem('auth_token', smTok);
           console.log('✅ Stored session token for API auth');
+          if (user.sm_tok) delete user.sm_tok;
+          localStorage.setItem('user', JSON.stringify(user));
           const params = new URLSearchParams(window.location.search);
           params.delete('sm_tok');
           const newSearch = params.toString() ? '?' + params.toString() : '';
           window.history.replaceState(null, '', window.location.pathname + newSearch);
         } else {
-          console.warn('⚠️ No sm_tok in URL — API calls may get 401. Re-sign in if upload fails.');
+          console.warn('⚠️ No session token — API calls may get 401. Re-sign in if upload fails.');
         }
         console.log('✅ User auto-signed in via OAuth');
 

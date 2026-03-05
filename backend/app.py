@@ -9,7 +9,7 @@ from flask_cors import CORS, cross_origin
 import uuid
 import requests
 import stripe
-from urllib.parse import urlencode, quote
+from urllib.parse import urlencode, quote, unquote, parse_qs, urlparse
 import json
 from supabase_storage import storage
 from supabase import create_client, Client
@@ -482,23 +482,27 @@ def _persist_session_token(token, user_id):
 
 def _oauth_redirect_with_session(redirect_url, user_id):
     """Build redirect response and set sm_session cookie so /api/users/me works after OAuth.
-    Cookie is set for backend domain (screenmerch.fly.dev); cross-origin requests may not send it,
-    so we also pass the token in the URL fragment so the frontend can send X-Session-Token."""
+    Puts token inside the redirect URL's user= JSON so the frontend always receives it."""
     token = str(uuid.uuid4())
     store = app.config.get("session_token_store") or {}
     store[token] = str(user_id)
     app.config["session_token_store"] = store
     _persist_session_token(token, user_id)
     domain = _cookie_domain()
-    # Add token to query string (reliable; fragment can be stripped by some clients) and fragment as fallback
-    sep = "&" if "?" in redirect_url else "?"
-    url_with_q = f"{redirect_url}{sep}sm_tok={quote(token)}"
-    if "#" in url_with_q:
-        base, frag = url_with_q.split("#", 1)
-        final_url = f"{base}#{frag}&sm_tok={quote(token)}"
-    else:
-        final_url = f"{url_with_q}#sm_tok={quote(token)}"
-    resp = redirect(final_url, code=303)
+    # Inject token into user= JSON so frontend can read it (no reliance on query/fragment)
+    try:
+        parsed = urlparse(redirect_url)
+        qs = parse_qs(parsed.query)
+        if "user" in qs:
+            user_str = unquote(qs["user"][0])
+            user_obj = json.loads(user_str)
+            user_obj["sm_tok"] = token
+            qs["user"] = [quote(json.dumps(user_obj))]
+            new_query = urlencode(qs, doseq=True)
+            redirect_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}?{new_query}"
+    except Exception as e:
+        logger.warning("Could not inject sm_tok into user param: %s", e)
+    resp = redirect(redirect_url, code=303)
     resp.set_cookie(
         "sm_session", token,
         domain=domain, path="/",
