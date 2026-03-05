@@ -584,10 +584,13 @@ const Dashboard = ({ sidebar }) => {
                 formData.append('title', newFavorite.title);
                 if (newFavorite.description) formData.append('description', newFavorite.description);
                 formData.append('channel_title', channelTitle);
+                const headers = { 'X-User-Id': userId };
+                const sessionToken = typeof localStorage !== 'undefined' && localStorage.getItem('auth_token');
+                if (sessionToken) headers['X-Session-Token'] = sessionToken;
                 const res = await fetch(`${getBackendUrl()}/api/favorites/upload`, {
                     method: 'POST',
                     credentials: 'include',
-                    headers: { 'X-User-Id': userId },
+                    headers,
                     body: formData
                 });
                 const json = await res.json().catch(() => ({}));

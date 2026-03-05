@@ -441,19 +441,26 @@ def _cookie_domain():
 
 def _oauth_redirect_with_session(redirect_url, user_id):
     """Build redirect response and set sm_session cookie so /api/users/me works after OAuth.
-    Cookie is set for backend domain (screenmerch.fly.dev) so it is sent on API calls from any frontend origin."""
+    Cookie is set for backend domain (screenmerch.fly.dev); cross-origin requests may not send it,
+    so we also pass the token in the URL fragment so the frontend can send X-Session-Token."""
     token = str(uuid.uuid4())
     store = app.config.get("session_token_store") or {}
     store[token] = str(user_id)
     app.config["session_token_store"] = store
     domain = _cookie_domain()
-    resp = redirect(redirect_url, code=303)
+    # Add token to fragment so frontend can store and send X-Session-Token (works when cookie is blocked cross-origin)
+    if "#" in redirect_url:
+        base, frag = redirect_url.split("#", 1)
+        final_url = f"{base}#{frag}&sm_tok={token}"
+    else:
+        final_url = f"{redirect_url}#sm_tok={token}"
+    resp = redirect(final_url, code=303)
     resp.set_cookie(
         "sm_session", token,
         domain=domain, path="/",
         secure=True, httponly=True, samesite="None", max_age=7 * 24 * 3600
     )
-    logger.info(f"✅ [OAUTH] Set sm_session cookie for user {user_id} (domain={domain})")
+    logger.info(f"✅ [OAUTH] Set sm_session cookie and fragment token for user {user_id} (domain={domain})")
     return resp
 
 def read_json():

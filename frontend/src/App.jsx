@@ -89,6 +89,7 @@ const App = () => {
       // SECURITY: Always clear previous auth before applying OAuth result — never show a different user than the one just authenticated
       localStorage.removeItem('user');
       localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('auth_token');
       localStorage.removeItem('oauth_confirmation_pending');
       localStorage.removeItem('customer_authenticated');
       localStorage.removeItem('customer_user');
@@ -114,6 +115,14 @@ const App = () => {
         oauthSuccessProcessedRef.current = true;
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('isAuthenticated', 'true');
+        // Store session token from URL fragment so API calls work when cross-origin cookie is blocked
+        const hash = (typeof window !== 'undefined' && window.location.hash) || '';
+        const match = hash.match(/[#&]sm_tok=([^&]+)/);
+        if (match && match[1]) {
+          localStorage.setItem('auth_token', match[1]);
+          console.log('✅ Stored session token for API auth');
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
         console.log('✅ User auto-signed in via OAuth');
 
         window.dispatchEvent(new CustomEvent('oauthSuccess', { detail: user }));
@@ -142,6 +151,7 @@ const App = () => {
       // Clear all authentication data
       localStorage.removeItem('user');
       localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('auth_token');
       localStorage.removeItem('oauth_confirmation_pending');
       localStorage.removeItem('customer_authenticated');
       localStorage.removeItem('customer_user');
@@ -166,6 +176,7 @@ const App = () => {
       // User explicitly chose "Go to Homepage" from thank-you: do not keep them signed in as creator
       localStorage.removeItem('user');
       localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('auth_token');
       localStorage.removeItem('oauth_confirmation_pending');
       oauthSuccessProcessedRef.current = false;
       window.dispatchEvent(new CustomEvent('creatorThankYouSignOut'));
