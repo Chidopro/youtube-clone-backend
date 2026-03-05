@@ -5,6 +5,7 @@ import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend } from '../../utils/userService';
+import { getBackendUrl } from '../../config/apiConfig';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 // Force Netlify rebuild
 
@@ -531,8 +532,12 @@ const Dashboard = ({ sidebar }) => {
                     const googleUser = JSON.parse(userData);
                     console.log('Found Google OAuth user:', googleUser);
                     
-                    // Try to find user in users table by email
-                    if (googleUser.email) {
+                    // Use id from OAuth redirect if backend sent it (Google OAuth callback includes user.id)
+                    if (googleUser.id) {
+                        userId = googleUser.id;
+                        console.log('Using user ID from Google OAuth session:', userId);
+                    } else if (googleUser.email) {
+                        // Fallback: find user in users table by email (may fail due to RLS if no Supabase session)
                         const { data: userRecord, error: userError } = await supabase
                             .from('users')
                             .select('id')
@@ -558,6 +563,8 @@ const Dashboard = ({ sidebar }) => {
             return;
         }
 
+        const useBackendUpload = !supabaseUser; // Google OAuth users: no Supabase session, use backend so storage/RLS works
+
         try {
             setUploadingFavorite(true);
 
@@ -568,7 +575,40 @@ const Dashboard = ({ sidebar }) => {
                 return;
             }
 
-            // Upload image to Supabase storage
+            if (useBackendUpload) {
+                // Google OAuth: backend uploads to storage and inserts row (bypasses RLS)
+                const channelTitle = userProfile?.display_name || userProfile?.username || 'Unknown';
+                const formData = new FormData();
+                formData.append('file', newFavorite.image);
+                formData.append('user_id', userId);
+                formData.append('title', newFavorite.title);
+                if (newFavorite.description) formData.append('description', newFavorite.description);
+                formData.append('channel_title', channelTitle);
+                const res = await fetch(`${getBackendUrl()}/api/favorites/upload`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'X-User-Id': userId },
+                    body: formData
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    alert(json.error || `Upload failed (${res.status})`);
+                    setUploadingFavorite(false);
+                    return;
+                }
+                if (json.success && json.favorite) {
+                    setFavorites(prev => [json.favorite, ...prev]);
+                    setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+                    setShowFavoriteModal(false);
+                    alert('Favorite uploaded successfully!');
+                } else {
+                    alert(json.error || 'Upload failed');
+                }
+                setUploadingFavorite(false);
+                return;
+            }
+
+            // Supabase Auth user: upload and insert via client
             const fileExt = newFavorite.image.name.split('.').pop();
             const fileName = `${userId}/favorites/${Date.now()}.${fileExt}`;
             
@@ -586,7 +626,6 @@ const Dashboard = ({ sidebar }) => {
                 console.error('Error uploading image:', uploadError);
                 console.error('Error details:', JSON.stringify(uploadError, null, 2));
                 
-                // Try alternative bucket if thumbnails fails
                 if (uploadError.message && uploadError.message.includes('not found')) {
                     alert('Storage bucket not found. Please check your Supabase storage configuration.');
                 } else if (uploadError.message && uploadError.message.includes('row-level security')) {
@@ -606,17 +645,12 @@ const Dashboard = ({ sidebar }) => {
 
             console.log('Public URL:', publicUrl);
 
-            // Get channel title - use same logic as videos (display_name || username)
-            // This must match exactly what Profile.jsx queries for
             const channelTitle = userProfile?.display_name || userProfile?.username || 'Unknown';
             console.log('Saving favorite to database with channelTitle:', channelTitle);
-            console.log('User profile data:', { display_name: userProfile?.display_name, username: userProfile?.username });
 
-            // Save favorite to database
-            // Use camelCase channelTitle to match database schema (quoted column name "channelTitle")
             let insertData = {
                 user_id: userId,
-                channelTitle: channelTitle,  // Use camelCase to match database column "channelTitle"
+                channelTitle: channelTitle,
                 title: newFavorite.title,
                 description: newFavorite.description || null,
                 image_url: publicUrl,
@@ -631,46 +665,34 @@ const Dashboard = ({ sidebar }) => {
 
             if (error) {
                 console.error('Error saving favorite:', error);
-                console.error('Error details:', JSON.stringify(error, null, 2));
-                
-                // If error is about column name, try with lowercase as fallback
                 if (error.message && (error.message.includes('channelTitle') || error.message.includes('channeltitle'))) {
-                    console.log('Retrying with lowercase column name as fallback...');
                     const retryData = {
                         user_id: userId,
-                        channeltitle: channelTitle,  // Try lowercase as fallback
+                        channeltitle: channelTitle,
                         title: newFavorite.title,
                         description: newFavorite.description || null,
                         image_url: publicUrl,
                         thumbnail_url: publicUrl
                     };
-                    
                     const { data: retryData_result, error: retryError } = await supabase
                         .from('creator_favorites')
                         .insert(retryData)
                         .select()
                         .single();
-                    
                     if (retryError) {
-                        console.error('Retry also failed:', retryError);
-                        alert(`Failed to save favorite: ${retryError.message || 'Unknown error'}. Please check that the creator_favorites table exists and has the correct columns.`);
+                        alert(`Failed to save favorite: ${retryError.message || 'Unknown error'}.`);
                     } else {
-                        console.log('Favorite saved successfully with lowercase column:', retryData_result);
                         setFavorites(prev => [retryData_result, ...prev]);
                         setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
                         setShowFavoriteModal(false);
                         alert('Favorite uploaded successfully!');
                     }
-                    setUploadingFavorite(false);
-                    return;
+                } else {
+                    alert(`Failed to save favorite: ${error.message || 'Unknown error'}`);
                 }
-                
-                alert(`Failed to save favorite: ${error.message || 'Unknown error'}`);
             } else {
                 console.log('Favorite saved successfully:', data);
-                // Add to local state
                 setFavorites(prev => [data, ...prev]);
-                // Reset form and close modal
                 setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
                 setShowFavoriteModal(false);
                 alert('Favorite uploaded successfully!');

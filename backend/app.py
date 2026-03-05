@@ -6479,6 +6479,96 @@ def upload_creator_logo():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# Favorite image upload - uses service role so Google OAuth users (no Supabase session) can upload
+FAVORITES_BUCKET = "thumbnails"
+MAX_FAVORITE_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+def _validate_favorites_session():
+    """Same auth as get_my_profile: require sm_session (or X-Session-Token) and X-User-Id matching. Returns (user_id, error_response)."""
+    token = request.cookies.get("sm_session")
+    if not token and request.headers.get("X-Session-Token"):
+        token = request.headers.get("X-Session-Token").strip()
+    if not token and request.headers.get("Authorization"):
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:].strip()
+    store = app.config.get("session_token_store") or {}
+    user_id_from_session = store.get(token) if token else None
+    if not user_id_from_session:
+        return None, (jsonify({"success": False, "error": "Authentication required (valid session cookie)"}), 401)
+    user_id = (request.form.get("user_id") or request.headers.get("X-User-Id") or "").strip()
+    if not user_id:
+        return None, (jsonify({"success": False, "error": "X-User-Id or user_id is required"}), 401)
+    if str(user_id_from_session) != user_id:
+        return None, (jsonify({"success": False, "error": "Forbidden"}), 403)
+    return user_id, None
+
+
+@app.route("/api/favorites/upload", methods=["POST", "OPTIONS"])
+def upload_favorite():
+    """
+    Upload a favorite image and create creator_favorites row. Uses service role so Google OAuth users work.
+    Form: file (image), user_id, title, description (optional), channel_title (optional).
+    """
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_favorites_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server upload not configured"}), 503
+        title = (request.form.get("title") or "").strip()
+        if not title:
+            return jsonify({"success": False, "error": "title is required"}), 400
+        file = request.files.get("file")
+        if not file or file.filename == "":
+            return jsonify({"success": False, "error": "No file provided"}), 400
+        if not file.content_type or not file.content_type.startswith("image/"):
+            return jsonify({"success": False, "error": "File must be an image"}), 400
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(0)
+        if size > MAX_FAVORITE_IMAGE_SIZE:
+            return jsonify({"success": False, "error": "Image must be under 5MB"}), 400
+        description = (request.form.get("description") or "").strip() or None
+        channel_title = (request.form.get("channel_title") or "").strip()
+        if not channel_title:
+            row = supabase_admin.table("users").select("display_name, username").eq("id", user_id).limit(1).execute()
+            if row.data and len(row.data) > 0:
+                r = row.data[0]
+                channel_title = (r.get("display_name") or r.get("username") or "Unknown")
+            else:
+                channel_title = "Unknown"
+        ext = (file.filename.split(".")[-1] or "png").lower().replace(" ", "")[:10]
+        if ext not in ("png", "jpg", "jpeg", "gif", "webp"):
+            ext = "png"
+        path = f"{user_id}/favorites/{int(time.time() * 1000)}.{ext}"
+        file_bytes = file.read()
+        supabase_admin.storage.from_(FAVORITES_BUCKET).upload(
+            path=path,
+            file=file_bytes,
+            file_options={"content-type": file.content_type or "image/png", "upsert": "false"}
+        )
+        public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{path}"
+        insert_data = {
+            "user_id": user_id,
+            "channelTitle": channel_title,
+            "title": title,
+            "description": description,
+            "image_url": public_url,
+            "thumbnail_url": public_url,
+        }
+        result = supabase_admin.table("creator_favorites").insert(insert_data).select().execute()
+        if not result.data or len(result.data) == 0:
+            return jsonify({"success": False, "error": "Failed to save favorite"}), 500
+        return jsonify({"success": True, "favorite": result.data[0]}), 200
+    except Exception as e:
+        logger.exception("upload_favorite: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/update-creator-settings", methods=["POST", "OPTIONS"])
 def update_creator_settings():
     """
