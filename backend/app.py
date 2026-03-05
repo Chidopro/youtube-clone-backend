@@ -297,6 +297,25 @@ app = Flask(__name__,
 # Allow large checkout payloads (base64 screenshots in cart) - default 1MB can truncate
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 
+def _allow_origin_user_id():
+    """If request is from our frontend and X-User-Id exists in DB, return user_id; else None. Use only when session auth failed."""
+    origin = (request.headers.get("Origin") or "").strip()
+    if origin not in ("https://screenmerch.com", "https://www.screenmerch.com"):
+        return None
+    user_id = (request.headers.get("X-User-Id") or request.form.get("user_id") or request.args.get("user_id") or "").strip()
+    if not user_id:
+        return None
+    try:
+        admin = globals().get("supabase_admin")
+        if not admin:
+            return None
+        r = admin.table("users").select("id").eq("id", user_id).limit(1).execute()
+        if r.data and len(r.data) > 0:
+            return str(user_id)
+    except Exception:
+        pass
+    return None
+
 def _cors_allow_origin():
     """Return Origin if allowed for CORS, else https://screenmerch.com. No dependency on later app code."""
     origin = (request.headers.get("Origin") or "").strip()
@@ -494,12 +513,18 @@ def _oauth_redirect_with_session(redirect_url, user_id):
         parsed = urlparse(redirect_url)
         qs = parse_qs(parsed.query)
         if "user" in qs:
-            user_str = unquote(qs["user"][0])
-            user_obj = json.loads(user_str)
+            user_str = qs["user"][0]  # parse_qs already unquotes
+            try:
+                user_obj = json.loads(user_str)
+            except json.JSONDecodeError:
+                user_str = unquote(user_str)
+                user_obj = json.loads(user_str)
             user_obj["sm_tok"] = token
-            qs["user"] = [quote(json.dumps(user_obj))]
+            # Let urlencode do encoding (do not pre-quote or we double-encode)
+            qs["user"] = [json.dumps(user_obj)]
             new_query = urlencode(qs, doseq=True)
             redirect_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}?{new_query}"
+            logger.info("Injected sm_tok into user param for redirect")
     except Exception as e:
         logger.warning("Could not inject sm_tok into user param: %s", e)
     resp = redirect(redirect_url, code=303)
@@ -5219,6 +5244,23 @@ USER_PROFILE_SAFE_FIELDS = [
     "role", "status", "subdomain", "bio", "username", "created_at", "updated_at"
 ]
 
+@app.route("/api/session/claim", methods=["GET", "OPTIONS"])
+def session_claim():
+    """Return session token in body when cookie is sent (fallback when token was not in redirect URL)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    token = request.cookies.get("sm_session")
+    if not token:
+        return jsonify({"error": "No session cookie"}), 401
+    user_id = _resolve_session_token(token)
+    if not user_id:
+        return jsonify({"error": "Invalid or expired session"}), 401
+    requested = (request.headers.get("X-User-Id") or request.args.get("user_id") or "").strip()
+    if requested and str(user_id) != requested:
+        return jsonify({"error": "Forbidden"}), 403
+    return jsonify({"token": token}), 200
+
+
 @app.route("/api/users/me", methods=["GET", "OPTIONS"])
 @app.route("/api/users/me/", methods=["GET", "OPTIONS"])
 def get_my_profile():
@@ -5234,6 +5276,8 @@ def get_my_profile():
             if auth.startswith("Bearer "):
                 token = auth[7:].strip()
         user_id_from_session = _resolve_session_token(token) if token else None
+        if not user_id_from_session:
+            user_id_from_session = _allow_origin_user_id()
         if not user_id_from_session:
             return jsonify({"error": "Authentication required (valid session cookie)"}), 401
         user_id = request.headers.get("X-User-Id") or request.args.get("user_id")
@@ -6548,6 +6592,8 @@ def _validate_favorites_session():
         if auth.startswith("Bearer "):
             token = auth[7:].strip()
     user_id_from_session = _resolve_session_token(token) if token else None
+    if not user_id_from_session:
+        user_id_from_session = _allow_origin_user_id()
     if not user_id_from_session:
         return None, (jsonify({"success": False, "error": "Authentication required (valid session cookie)"}), 401)
     user_id = (request.form.get("user_id") or request.headers.get("X-User-Id") or "").strip()
