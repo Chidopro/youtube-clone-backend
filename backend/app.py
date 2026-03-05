@@ -321,7 +321,7 @@ def _handle_preflight():
     resp.headers["Access-Control-Allow-Origin"] = _cors_allow_origin()
     resp.headers["Access-Control-Allow-Credentials"] = "true"
     resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email, X-Session-Token, X-User-Id"
     resp.headers["Vary"] = "Origin"
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     return resp
@@ -643,7 +643,7 @@ CORS(
     app,
     resources={r"/api/*": {
         "origins": ALLOWED_ORIGINS_LIST,
-        "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma", "Expires", "X-User-Email"],
+        "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma", "Expires", "X-User-Email", "X-Session-Token", "X-User-Id"],
         "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     }},
     supports_credentials=True,
@@ -682,7 +682,7 @@ def add_security_headers(response):
             response.headers["Access-Control-Allow-Origin"] = _cors_allow_origin()
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email, X-Session-Token, X-User-Id"
             response.headers["Vary"] = "Origin"
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
             response.headers["X-ScreenMerch-CORS"] = "1"
@@ -707,7 +707,7 @@ def internal_error(e):
             resp.headers["Access-Control-Allow-Origin"] = _cors_allow_origin()
             resp.headers["Access-Control-Allow-Credentials"] = "true"
             resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Cache-Control, Pragma, Expires, X-User-Email, X-Session-Token, X-User-Id"
             resp.headers["Vary"] = "Origin"
         except Exception:
             resp.headers["Access-Control-Allow-Origin"] = "https://screenmerch.com"
