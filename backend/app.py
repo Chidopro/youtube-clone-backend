@@ -333,7 +333,7 @@ if not secret_key:
 app.secret_key = secret_key
 
 # Session / cookie settings for cross-device friendly auth
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 
 def get_cookie_domain():
     host = request.host.lower()
@@ -439,6 +439,47 @@ def _cookie_domain():
         return "screenmerch.fly.dev"
     return None
 
+# Session token resolution: in-memory first, then DB (survives restarts)
+USER_SESSIONS_TABLE = "user_sessions"
+
+def _resolve_session_token(token):
+    """Return user_id for a session token, or None. Checks in-memory store then user_sessions table."""
+    if not token or not str(token).strip():
+        return None
+    token = str(token).strip()
+    store = app.config.get("session_token_store") or {}
+    user_id = store.get(token)
+    if user_id:
+        return str(user_id)
+    # Persisted sessions (survives backend restart)
+    try:
+        admin = globals().get("supabase_admin")
+        if admin is not None:
+            r = admin.table(USER_SESSIONS_TABLE).select("user_id").eq("token", token).limit(1).execute()
+            if r.data and len(r.data) > 0:
+                uid = r.data[0].get("user_id")
+                if uid:
+                    store[token] = str(uid)
+                    app.config["session_token_store"] = store
+                    return str(uid)
+    except Exception as e:
+        logger.debug("Session resolve from DB: %s", e)
+    return None
+
+def _persist_session_token(token, user_id):
+    """Persist session to user_sessions table so it survives backend restart."""
+    try:
+        admin = globals().get("supabase_admin")
+        if admin is not None:
+            admin.table(USER_SESSIONS_TABLE).insert({
+                "token": token,
+                "user_id": str(user_id),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+            logger.info("Persisted session token to DB for user %s", user_id)
+    except Exception as e:
+        logger.warning("Could not persist session to DB (table may not exist): %s", e)
+
 def _oauth_redirect_with_session(redirect_url, user_id):
     """Build redirect response and set sm_session cookie so /api/users/me works after OAuth.
     Cookie is set for backend domain (screenmerch.fly.dev); cross-origin requests may not send it,
@@ -447,13 +488,16 @@ def _oauth_redirect_with_session(redirect_url, user_id):
     store = app.config.get("session_token_store") or {}
     store[token] = str(user_id)
     app.config["session_token_store"] = store
+    _persist_session_token(token, user_id)
     domain = _cookie_domain()
-    # Add token to fragment so frontend can store and send X-Session-Token (works when cookie is blocked cross-origin)
-    if "#" in redirect_url:
-        base, frag = redirect_url.split("#", 1)
-        final_url = f"{base}#{frag}&sm_tok={token}"
+    # Add token to query string (reliable; fragment can be stripped by some clients) and fragment as fallback
+    sep = "&" if "?" in redirect_url else "?"
+    url_with_q = f"{redirect_url}{sep}sm_tok={quote(token)}"
+    if "#" in url_with_q:
+        base, frag = url_with_q.split("#", 1)
+        final_url = f"{base}#{frag}&sm_tok={quote(token)}"
     else:
-        final_url = f"{redirect_url}#sm_tok={token}"
+        final_url = f"{url_with_q}#sm_tok={quote(token)}"
     resp = redirect(final_url, code=303)
     resp.set_cookie(
         "sm_session", token,
@@ -5185,8 +5229,7 @@ def get_my_profile():
             auth = request.headers.get("Authorization", "")
             if auth.startswith("Bearer "):
                 token = auth[7:].strip()
-        store = app.config.get("session_token_store") or {}
-        user_id_from_session = store.get(token) if token else None
+        user_id_from_session = _resolve_session_token(token) if token else None
         if not user_id_from_session:
             return jsonify({"error": "Authentication required (valid session cookie)"}), 401
         user_id = request.headers.get("X-User-Id") or request.args.get("user_id")
@@ -6500,8 +6543,7 @@ def _validate_favorites_session():
         auth = request.headers.get("Authorization", "")
         if auth.startswith("Bearer "):
             token = auth[7:].strip()
-    store = app.config.get("session_token_store") or {}
-    user_id_from_session = store.get(token) if token else None
+    user_id_from_session = _resolve_session_token(token) if token else None
     if not user_id_from_session:
         return None, (jsonify({"success": False, "error": "Authentication required (valid session cookie)"}), 401)
     user_id = (request.form.get("user_id") or request.headers.get("X-User-Id") or "").strip()
