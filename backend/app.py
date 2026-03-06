@@ -4401,15 +4401,17 @@ def creators_list():
         return jsonify(success=True)
     try:
         client = supabase_admin if supabase_admin else supabase
+        if not client:
+            return jsonify({"success": False, "error": "Database unavailable", "creators": []}), 503
         r = client.table("users").select(
             "id, username, display_name, profile_image_url, subdomain"
-        ).not_("username", "is", None).order("created_at", desc=True).limit(20).execute()
+        ).eq("role", "creator").order("created_at", desc=True).limit(20).execute()
         creators = []
         for row in (r.data or []):
             creators.append({
                 "id": row.get("id"),
-                "username": row.get("username"),
-                "name": row.get("display_name") or row.get("username"),
+                "username": row.get("username") or "",
+                "name": (row.get("display_name") or row.get("username") or "Creator").strip() or "Creator",
                 "avatar": row.get("profile_image_url"),
                 "subdomain": row.get("subdomain") or "",
             })

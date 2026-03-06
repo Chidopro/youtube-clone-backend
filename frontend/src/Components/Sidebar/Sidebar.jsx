@@ -67,13 +67,20 @@ const Sidebar = ({sidebar, category, setCategory}) => {
                           <p className="subscriber-name">{sub.name}</p>
                         </div>
                       </a>
-                    ) : (
+                    ) : sub.username ? (
                       <Link to={`/profile/${sub.username}`} className="side-link subscriber-item">
                         <img src={sub.avatar || '/default-avatar.jpg'} alt={sub.name} className="subscriber-avatar" />
                         <div className="subscriber-info">
                           <p className="subscriber-name">{sub.name}</p>
                         </div>
                       </Link>
+                    ) : (
+                      <div className="side-link subscriber-item">
+                        <img src={sub.avatar || '/default-avatar.jpg'} alt={sub.name} className="subscriber-avatar" />
+                        <div className="subscriber-info">
+                          <p className="subscriber-name">{sub.name}</p>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ))}
