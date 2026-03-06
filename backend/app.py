@@ -4409,8 +4409,6 @@ def creators_list():
         creators = []
         for row in (r.data or []):
             subdomain = (row.get("subdomain") or "").strip()
-            if subdomain.lower() == "testcreator":
-                subdomain = ""
             creators.append({
                 "id": row.get("id"),
                 "username": row.get("username") or "",

@@ -27,7 +27,7 @@ const Sidebar = ({sidebar, category, setCategory}) => {
           }));
           // Only show creators that have a usable link (subdomain or username); hide "phantom" entries that go nowhere
           const linkable = mapped.filter(
-            c => (c.subdomain && c.subdomain.toLowerCase() !== 'testcreator') || (c.username && c.username.trim())
+            c => (c.subdomain && c.subdomain.trim()) || (c.username && c.username.trim())
           );
           setSubscribers(linkable);
         } else {
@@ -65,7 +65,7 @@ const Sidebar = ({sidebar, category, setCategory}) => {
               <div className="subscribers-list">
                 {subscribers.map(sub => (
                   <div className="subscriber-item-container" key={sub.id}>
-                    {sub.subdomain && sub.subdomain.toLowerCase() !== 'testcreator' ? (
+                    {sub.subdomain ? (
                       <a href={`https://${sub.subdomain}.screenmerch.com`} className="side-link subscriber-item" target="_blank" rel="noopener noreferrer">
                         <img src={sub.avatar || '/default-avatar.jpg'} alt={sub.name} className="subscriber-avatar" />
                         <div className="subscriber-info">
