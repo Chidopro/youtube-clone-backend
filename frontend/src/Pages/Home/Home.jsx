@@ -18,6 +18,8 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [favoritesCount, setFavoritesCount] = useState(0);
+  const [favoritesPreview, setFavoritesPreview] = useState(null);
   const navigate = useNavigate();
   const { creatorSettings, currentCreator, refreshCreator } = useCreator();
 
@@ -49,6 +51,43 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     };
     fetchVideos();
   }, [category, currentCreator?.id]);
+
+  // Fetch favorites count and preview for the Favorites card
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!currentCreator?.id) {
+        setFavoritesCount(0);
+        setFavoritesPreview(null);
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from('creator_favorites')
+          .select('id, image_url, thumbnail_url')
+          .eq('user_id', currentCreator.id)
+          .order('created_at', { ascending: false })
+          .limit(4);
+        
+        if (error) {
+          console.error('Error fetching favorites preview:', error);
+          setFavoritesCount(0);
+          setFavoritesPreview(null);
+        } else {
+          setFavoritesCount(data?.length || 0);
+          if (data && data.length > 0) {
+            setFavoritesPreview(data.map(f => f.image_url || f.thumbnail_url).filter(Boolean));
+          } else {
+            setFavoritesPreview(null);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching favorites:', err);
+        setFavoritesCount(0);
+        setFavoritesPreview(null);
+      }
+    };
+    fetchFavorites();
+  }, [currentCreator?.id]);
 
   // Check if user can edit colors (must be authenticated and own the subdomain)
   useEffect(() => {
@@ -206,7 +245,12 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         {loading && <div style={{padding: 24}}>Loading videos...</div>}
         {error && <div style={{padding: 24, color: 'red'}}>{error}</div>}
         {!loading && !error && videos.length > 0 && (
-          <Feed videos={videos} />
+          <Feed 
+            videos={videos} 
+            favoritesCount={favoritesCount}
+            favoritesPreview={favoritesPreview}
+            creatorName={currentCreator?.display_name}
+          />
         )}
       </div>
     </>

@@ -33,6 +33,7 @@ import RequestSetPassword from "./Pages/RequestSetPassword/RequestSetPassword";
 import CreatorThankYou from "./Pages/CreatorThankYou/CreatorThankYou";
 import AdminSignup from "./Pages/AdminSignup/AdminSignup";
 import Release from "./Pages/Release/Release";
+import Favorites from "./Pages/Favorites/Favorites";
 import { API_CONFIG } from "./config/apiConfig";
 import { CreatorProvider } from "./contexts/CreatorContext";
 
@@ -298,6 +299,7 @@ const App = () => {
                 <Route path="/set-password" element={<RequestSetPassword />} />
                 <Route path="/admin-signup" element={<AdminSignup />} />
                 <Route path="/creator-thank-you" element={<CreatorThankYou />} />
+                <Route path="/favorites" element={<Favorites sidebar={sidebar} />} />
                 {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
               </Routes>
             </div>
