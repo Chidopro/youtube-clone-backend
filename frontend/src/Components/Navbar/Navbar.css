@@ -235,17 +235,17 @@ nav{
     }
     .nav-middle .search-box {
         width: 100%; /* Make search box full width of container */
-        min-width: 140px; /* Ensure enough width for "Search channels" placeholder */
+        min-width: 130px; /* Ensure enough width for "Search channels" placeholder */
         margin-right: 0 !important;
-        padding: 6px 10px !important; /* Match button height */
+        padding: 6px 8px !important; /* Match button height */
     }
     .nav-middle .search-box input{
         width: 100%; /* Full width input */
-        min-width: 115px; /* Fit full placeholder text */
+        min-width: 110px; /* Fit full placeholder text */
      }
     .nav-center-right {
         flex-direction: row; /* Keep horizontal layout */
-        gap: 8px; /* Minimal gap */
+        gap: 4px; /* Reduced gap */
         align-items: center;
         margin-right: 0;
         z-index: 10000;
@@ -258,7 +258,7 @@ nav{
     
     .nav-right {
         flex-direction: row; /* Make buttons side by side on mobile */
-        gap: 6px;
+        gap: 4px; /* Reduced gap */
         align-items: center;
         justify-content: flex-end; /* Align to right */
         flex-shrink: 0; /* Don't shrink buttons */
@@ -270,8 +270,8 @@ nav{
     /* Search bar styling */
     .nav-middle {
         flex: 1; /* Take available space */
-        max-width: 200px; /* Limit search bar width */
-        margin-right: 8px;
+        max-width: 180px; /* Reduced to give more room for buttons */
+        margin-right: 4px; /* Reduced margin */
     }
          /* Sign In button mobile styling - COMPACT SIZE */
          .sign-in-btn {
