@@ -18,13 +18,18 @@ const Sidebar = ({sidebar, category, setCategory}) => {
         const res = await fetch(`${API_CONFIG.BASE_URL}/api/creators/list`);
         const data = await res.json().catch(() => ({}));
         if (data?.success && Array.isArray(data.creators)) {
-          setSubscribers(data.creators.map(c => ({
+          const mapped = data.creators.map(c => ({
             id: c.id,
             username: c.username,
             name: c.name || c.display_name || c.username,
             avatar: c.avatar,
             subdomain: c.subdomain || '',
-          })));
+          }));
+          // Only show creators that have a usable link (subdomain or username); hide "phantom" entries that go nowhere
+          const linkable = mapped.filter(
+            c => (c.subdomain && c.subdomain.toLowerCase() !== 'testcreator') || (c.username && c.username.trim())
+          );
+          setSubscribers(linkable);
         } else {
           setSubscribers([]);
         }
