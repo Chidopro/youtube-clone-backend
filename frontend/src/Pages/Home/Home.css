@@ -8,10 +8,10 @@ body {
 
 /* Launch banner: thin bar under navbar, above purple flow section */
 .home-launch-banner {
-  display: block;
+  display: inline-block;
   text-align: center;
-  padding: 10px 16px;
-  margin-bottom: 16px;
+  padding: 10px 20px;
+  margin: 0 auto 16px auto;
   font-family: 'Inter', sans-serif;
   font-weight: 600;
   font-size: 1rem;
@@ -19,10 +19,54 @@ body {
   color: #1a1a1a;
   background: transparent;
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  cursor: pointer;
 }
+
+/* Animated underline */
+.home-launch-banner::after {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+.home-launch-banner:hover::after {
+  width: 80%;
+}
+
 .home-launch-banner:hover {
   color: #5568d3;
+  transform: translateY(-1px);
+}
+
+/* Subtle pulse animation to draw attention */
+@keyframes subtle-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+.home-launch-banner {
+  animation: subtle-pulse 3s ease-in-out infinite;
+}
+
+.home-launch-banner:hover {
+  animation: none;
+}
+
+/* Container for centering the banner */
+.container .home-launch-banner {
+  display: block;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .container {
