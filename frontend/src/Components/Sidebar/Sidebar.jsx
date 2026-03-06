@@ -60,7 +60,7 @@ const Sidebar = ({sidebar, category, setCategory}) => {
               <div className="subscribers-list">
                 {subscribers.map(sub => (
                   <div className="subscriber-item-container" key={sub.id}>
-                    {sub.subdomain ? (
+                    {sub.subdomain && sub.subdomain.toLowerCase() !== 'testcreator' ? (
                       <a href={`https://${sub.subdomain}.screenmerch.com`} className="side-link subscriber-item" target="_blank" rel="noopener noreferrer">
                         <img src={sub.avatar || '/default-avatar.jpg'} alt={sub.name} className="subscriber-avatar" />
                         <div className="subscriber-info">
@@ -68,12 +68,12 @@ const Sidebar = ({sidebar, category, setCategory}) => {
                         </div>
                       </a>
                     ) : sub.username ? (
-                      <Link to={`/profile/${sub.username}`} className="side-link subscriber-item">
+                      <a href={`https://screenmerch.com/profile/${sub.username}`} className="side-link subscriber-item" target="_blank" rel="noopener noreferrer">
                         <img src={sub.avatar || '/default-avatar.jpg'} alt={sub.name} className="subscriber-avatar" />
                         <div className="subscriber-info">
                           <p className="subscriber-name">{sub.name}</p>
                         </div>
-                      </Link>
+                      </a>
                     ) : (
                       <div className="side-link subscriber-item">
                         <img src={sub.avatar || '/default-avatar.jpg'} alt={sub.name} className="subscriber-avatar" />

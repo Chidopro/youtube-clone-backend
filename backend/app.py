@@ -4405,15 +4405,18 @@ def creators_list():
             return jsonify({"success": False, "error": "Database unavailable", "creators": []}), 503
         r = client.table("users").select(
             "id, username, display_name, profile_image_url, subdomain"
-        ).eq("role", "creator").order("created_at", desc=True).limit(20).execute()
+        ).eq("role", "creator").eq("status", "active").order("created_at", desc=True).limit(20).execute()
         creators = []
         for row in (r.data or []):
+            subdomain = (row.get("subdomain") or "").strip()
+            if subdomain.lower() == "testcreator":
+                subdomain = ""
             creators.append({
                 "id": row.get("id"),
                 "username": row.get("username") or "",
                 "name": (row.get("display_name") or row.get("username") or "Creator").strip() or "Creator",
                 "avatar": row.get("profile_image_url"),
-                "subdomain": row.get("subdomain") or "",
+                "subdomain": subdomain,
             })
         return jsonify({"success": True, "creators": creators}), 200
     except Exception as e:
