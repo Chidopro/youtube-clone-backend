@@ -57,12 +57,10 @@
 /* Favorites Card Styles */
 .favorites-card {
     position: relative;
-    border: 2px solid #f0c14b;
-    background: linear-gradient(135deg, #fff9e6 0%, #fff 100%);
 }
 
 .favorites-card:hover {
-    box-shadow: 0 4px 16px rgba(240, 193, 75, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .favorites-card-preview {
