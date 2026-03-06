@@ -235,11 +235,13 @@ nav{
     }
     .nav-middle .search-box {
         width: 100%; /* Make search box full width of container */
+        min-width: 140px; /* Ensure enough width for "Search channels" placeholder */
         margin-right: 0 !important;
         padding: 6px 10px !important; /* Match button height */
     }
     .nav-middle .search-box input{
         width: 100%; /* Full width input */
+        min-width: 115px; /* Fit full placeholder text */
      }
     .nav-center-right {
         flex-direction: row; /* Keep horizontal layout */
