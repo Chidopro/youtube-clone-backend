@@ -1445,6 +1445,28 @@ const Dashboard = ({ sidebar }) => {
                                 + Add Favorite
                             </button>
                         </div>
+
+                        {/* FrameSnag Promo Section */}
+                        <div className="framesnag-promo-section">
+                            <div className="framesnag-promo-content">
+                                <div className="framesnag-promo-text">
+                                    <h3>📸 Capture YouTube Screenshots with FrameSnag</h3>
+                                    <p>Use our free Chrome extension to capture high-quality thumbnails and screenshots from your YouTube videos, then add them to your favorites!</p>
+                                    <div className="framesnag-promo-code">
+                                        <span className="promo-label">Your Free Pro Access Code:</span>
+                                        <code className="promo-code">SCREENMERCH</code>
+                                    </div>
+                                </div>
+                                <a 
+                                    href="https://framesnag.com" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="framesnag-btn"
+                                >
+                                    Get FrameSnag Free →
+                                </a>
+                            </div>
+                        </div>
                         
                         {favorites.length > 0 ? (
                             <div className="dashboard-video-grid">
