@@ -43,21 +43,21 @@ const Favorites = ({ sidebar }) => {
   }, [currentCreator?.id]);
 
   const handleMakeMerch = async (favorite) => {
-    const isAuth = localStorage.getItem('isAuthenticated') === 'true';
-    if (!isAuth) {
-      alert('Please sign in to create merchandise.');
-      return;
-    }
-
     const imageUrl = favorite.image_url || favorite.thumbnail_url;
     if (!imageUrl) {
       alert('No image available for this favorite.');
       return;
     }
 
-    localStorage.setItem('screenshotImageUrl', imageUrl);
-    localStorage.setItem('screenshotVideoTitle', favorite.title || 'Favorite');
-    localStorage.setItem('screenshotTimestamp', '0:00');
+    // Set pending_merch_data which ProductPage reads for screenshot selection
+    const merchData = {
+      thumbnail: imageUrl,
+      screenshots: [imageUrl],
+      videoTitle: favorite.title || 'Favorite',
+      creatorName: currentCreator?.display_name || 'Creator',
+      screenshot_timestamp: '0:00'
+    };
+    localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
     localStorage.setItem('creator_favorites_mode', 'false');
 
     navigate('/product/browse?category=mens');
