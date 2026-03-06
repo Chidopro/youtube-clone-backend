@@ -6,6 +6,13 @@ body {
   padding: 0 !important;
 }
 
+/* Pulse animation for banner - defined first */
+@keyframes banner-color-pulse {
+  0% { color: #1a1a1a; }
+  50% { color: #667eea; }
+  100% { color: #1a1a1a; }
+}
+
 /* Launch banner: thin bar under navbar, above purple flow section */
 .home-launch-banner {
   display: inline-block;
@@ -16,38 +23,15 @@ body {
   font-weight: 600;
   font-size: 1rem;
   letter-spacing: 0.5px;
-  color: #1a1a1a;
   background: transparent;
   text-decoration: none;
-  transition: all 0.3s ease;
   position: relative;
   cursor: pointer;
-  -webkit-animation: banner-glow 2s ease-in-out infinite;
-  -moz-animation: banner-glow 2s ease-in-out infinite;
-  animation: banner-glow 2s ease-in-out infinite;
-}
-
-/* Glow pulse animation to draw attention */
-@-webkit-keyframes banner-glow {
-  0%, 100% { 
-    color: #1a1a1a;
-    text-shadow: none;
-  }
-  50% { 
-    color: #5568d3;
-    text-shadow: 0 0 8px rgba(102, 126, 234, 0.4);
-  }
-}
-
-@keyframes banner-glow {
-  0%, 100% { 
-    color: #1a1a1a;
-    text-shadow: none;
-  }
-  50% { 
-    color: #5568d3;
-    text-shadow: 0 0 8px rgba(102, 126, 234, 0.4);
-  }
+  color: #1a1a1a;
+  animation-name: banner-color-pulse !important;
+  animation-duration: 2s !important;
+  animation-timing-function: ease-in-out !important;
+  animation-iteration-count: infinite !important;
 }
 
 /* Animated underline */
@@ -69,12 +53,9 @@ body {
 }
 
 .home-launch-banner:hover {
-  color: #5568d3 !important;
-  text-shadow: 0 0 8px rgba(102, 126, 234, 0.5) !important;
+  color: #5568d3;
   transform: translateY(-1px);
-  -webkit-animation: none;
-  -moz-animation: none;
-  animation: none;
+  animation: none !important;
 }
 
 /* Container for centering the banner */
