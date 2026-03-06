@@ -901,6 +901,28 @@
   gap: 20px;
 }
 
+/* Empty cart message - centered */
+.empty-cart-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  width: 100%;
+}
+
+.empty-cart-message .empty-cart-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-cart-message p {
+  font-size: 18px;
+  color: #666;
+  margin: 0;
+}
+
 .cart-item {
   display: grid;
   grid-template-columns: auto 1fr auto auto;
