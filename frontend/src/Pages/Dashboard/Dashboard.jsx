@@ -4,7 +4,7 @@ import './Dashboard.css';
 import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
-import { fetchMyProfileFromBackend } from '../../utils/userService';
+import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../utils/userService';
 import { getBackendUrl } from '../../config/apiConfig';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 // Force Netlify rebuild
@@ -585,7 +585,8 @@ const Dashboard = ({ sidebar }) => {
                 if (newFavorite.description) formData.append('description', newFavorite.description);
                 formData.append('channel_title', channelTitle);
                 const headers = { 'X-User-Id': userId };
-                const sessionToken = typeof localStorage !== 'undefined' && localStorage.getItem('auth_token');
+                let sessionToken = typeof localStorage !== 'undefined' && localStorage.getItem('auth_token');
+                if (!sessionToken) sessionToken = await claimSessionTokenIfNeeded(userId);
                 if (sessionToken) headers['X-Session-Token'] = sessionToken;
                 const res = await fetch(`${getBackendUrl()}/api/favorites/upload`, {
                     method: 'POST',

@@ -16,11 +16,33 @@ function isSubdomainOfScreenMerch() {
   return host.endsWith('.screenmerch.com') && host !== 'screenmerch.com' && host !== 'www.screenmerch.com';
 }
 
+/** If we have no auth_token, try to claim one from backend (cookie may be sent). Exported for Dashboard upload. */
+export async function claimSessionTokenIfNeeded(userId) {
+  if (typeof localStorage === 'undefined') return null;
+  if (localStorage.getItem('auth_token')) return localStorage.getItem('auth_token');
+  try {
+    const res = await fetch(`${getBackendUrl()}/api/session/claim`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'X-User-Id': userId },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.token) {
+        localStorage.setItem('auth_token', data.token);
+        return data.token;
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
 export async function fetchMyProfileFromBackend(userId) {
   if (!userId) return null;
   try {
     const headers = { 'X-User-Id': userId };
-    const token = typeof localStorage !== 'undefined' && localStorage.getItem('auth_token');
+    let token = typeof localStorage !== 'undefined' && localStorage.getItem('auth_token');
+    if (!token) token = await claimSessionTokenIfNeeded(userId);
     if (token) headers['X-Session-Token'] = token;
     const res = await fetch(`${getBackendUrl()}/api/users/me`, {
       method: 'GET',

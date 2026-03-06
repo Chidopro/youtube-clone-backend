@@ -28,7 +28,29 @@ In [Fly Dashboard](https://fly.io/dashboard) → your app **screenmerch** → **
 
 If any of these are missing or wrong, the app can crash on startup and Fly will return 502.
 
-### 2. Check Fly logs
+### 2. If logs say "Invalid API key" for Supabase
+
+The backend uses **supabase-py**, which only accepts **JWT-format** keys (long strings starting with `eyJ...`).  
+The newer **Publishable** (`sb_publishable_...`) and **Secret** (`sb_secret_...`) keys are not accepted by this client and will cause:
+
+- `Supabase anon client failed ... Invalid API key`
+- `Supabase service role client failed ... Invalid API key`
+- `/api/videos` returning `[]` and "Supabase client not available"
+
+**Fix:** Use the **Legacy** anon and service_role keys (JWT format) in Fly secrets:
+
+1. Open [Supabase Dashboard](https://supabase.com/dashboard) → your project.
+2. Go to **Project Settings** (gear) → **API** (or **API Keys**).
+3. Find the **"Legacy API Keys"** (or **"JWT Keys"**) section.
+4. Copy the **anon** key (public, JWT) and the **service_role** key (secret, JWT). They look like long strings starting with `eyJ...`.
+5. In Fly: **Secrets** → set:
+   - `SUPABASE_ANON_KEY` = anon JWT value
+   - `SUPABASE_SERVICE_ROLE_KEY` = service_role JWT value
+6. Redeploy: `fly deploy -a screenmerch` (or push to trigger deploy).
+
+After this, the app should start with valid Supabase clients and `/api/videos` will return real data.
+
+### 3. Check Fly logs (and confirm no "Invalid API key")
 
 In the Fly dashboard: **Logs** (or **Logs & Errors**). Or in a terminal (with [Fly CLI](https://fly.io/docs/hands-on/install-flyctl/) installed):
 
@@ -41,7 +63,7 @@ Look for:
 - Python tracebacks (import errors, missing env, Supabase/Flask errors).
 - Messages like `[OK] Videos Blueprint registered` (confirms app started and videos route is registered).
 
-### 3. Test after deploy
+### 4. Test after deploy
 
 1. Deploy: push to the branch that triggers Fly deploy (e.g. `main`).
 2. Wait for the new release to be live (Fly dashboard or GitHub Actions).
