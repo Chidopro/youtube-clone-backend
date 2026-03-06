@@ -3,7 +3,7 @@ import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import './Profile.css';
 import '../../Components/ChannelHeader/ChannelHeaderShared.css';
-import { API_CONFIG } from '../../config/apiConfig';
+import { API_CONFIG, getBackendUrl } from '../../config/apiConfig';
 
 const Profile = ({ sidebar }) => {
   const { username } = useParams();
@@ -21,13 +21,20 @@ const Profile = ({ sidebar }) => {
     const fetchProfileAndVideos = async () => {
       setLoading(true);
       setError(null);
-      // Fetch user profile by username
-      const { data: userProfile, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', username)
-        .single();
-      if (userError || !userProfile) {
+      // Fetch user profile by username from backend (bypasses RLS; works for screenmerch.com/profile/cheedov)
+      let userProfile = null;
+      try {
+        const res = await fetch(`${getBackendUrl()}/api/users/by-username/${encodeURIComponent(username)}`, {
+          method: 'GET',
+          headers: { Accept: 'application/json' }
+        });
+        if (res.ok) {
+          userProfile = await res.json();
+        }
+      } catch (e) {
+        console.error('Error fetching profile by username:', e);
+      }
+      if (!userProfile) {
         setError('User not found');
         setLoading(false);
         return;

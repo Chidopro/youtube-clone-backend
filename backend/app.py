@@ -4424,6 +4424,30 @@ def creators_list():
         return jsonify({"success": False, "error": str(e), "creators": []}), 500
 
 
+@app.route("/api/users/by-username/<username>", methods=["GET", "OPTIONS"])
+@cross_origin(origins=[], supports_credentials=True)
+def get_user_by_username(username):
+    """Public profile by username for screenmerch.com/profile/<username>. No auth. Uses service role so RLS does not block."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    uname = (username or "").strip()
+    if not uname:
+        return jsonify({"error": "Username required"}), 400
+    try:
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            return jsonify({"error": "Service unavailable"}), 503
+        r = client.table("users").select(
+            "id, username, display_name, profile_image_url, cover_image_url, bio, created_at"
+        ).ilike("username", uname).eq("role", "creator").eq("status", "active").limit(1).execute()
+        if not r.data or len(r.data) == 0:
+            return jsonify({"error": "User not found"}), 404
+        return jsonify(r.data[0]), 200
+    except Exception as e:
+        logger.error(f"Error fetching user by username %s: %s", uname, e)
+        return jsonify({"error": "User not found"}), 404
+
+
 @app.route("/api/search/creators", methods=["GET", "OPTIONS"])
 @cross_origin(origins=[], supports_credentials=True)
 def search_creators():
