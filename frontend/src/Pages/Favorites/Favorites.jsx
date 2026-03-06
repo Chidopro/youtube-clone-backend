@@ -60,7 +60,8 @@ const Favorites = ({ sidebar }) => {
     localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
     localStorage.setItem('creator_favorites_mode', 'false');
 
-    navigate('/product/browse?category=mens');
+    // Navigate to category selection page first
+    navigate('/merchandise');
   };
 
   if (loading) {
