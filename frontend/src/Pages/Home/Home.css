@@ -75,6 +75,17 @@ body {
   max-width: 100% !important;
 }
 
+/* Reduce padding above banner on mobile */
+@media (max-width: 768px) {
+  .container {
+    padding-top: 4px;
+  }
+  .home-launch-banner {
+    padding-top: 4px;
+    margin-bottom: 10px;
+  }
+}
+
 .large-container {
   /* This class is no longer needed for padding but may be used elsewhere */
 }
