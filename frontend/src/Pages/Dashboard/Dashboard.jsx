@@ -38,7 +38,10 @@ const Dashboard = ({ sidebar }) => {
     useEffect(() => {
         const tab = searchParams.get('tab');
         if (tab === 'personalization') setActiveTab('personalization');
-        if (tab === 'favorites') setActiveTab('favorites');
+        if (tab === 'favorites') {
+            setActiveTab('favorites');
+            setShowPasteHint(true); // Show "press Ctrl+V" hint when sent from FrameSnag
+        }
     }, [searchParams]);
 
     // Paste-from-FrameSnag: when on Favorites tab, accept pasted image and open Add Favorite modal
@@ -60,6 +63,7 @@ const Dashboard = ({ sidebar }) => {
                         imagePreview: URL.createObjectURL(blob)
                     });
                     setShowFavoriteModal(true);
+                    setShowPasteHint(false); // Hide hint once they pasted
                     break;
                 }
             }
@@ -78,6 +82,7 @@ const Dashboard = ({ sidebar }) => {
     const [favorites, setFavorites] = useState([]);
     const [uploadingFavorite, setUploadingFavorite] = useState(false);
     const [showFavoriteModal, setShowFavoriteModal] = useState(false);
+    const [showPasteHint, setShowPasteHint] = useState(false);
     const [newFavorite, setNewFavorite] = useState({
         title: '',
         description: '',
@@ -1475,6 +1480,14 @@ const Dashboard = ({ sidebar }) => {
                             </button>
                         </div>
                         <p className="paste-hint">Paste from FrameSnag (Ctrl+V) to add a captured image.</p>
+
+                        {/* Prominent hint when sent from FrameSnag */}
+                        {showPasteHint && (
+                            <div className="framesnag-paste-banner">
+                                <span>📋 You were sent here from FrameSnag. <strong>Press Ctrl+V</strong> (or Cmd+V on Mac) to add your screenshot to favorites.</span>
+                                <button type="button" className="framesnag-paste-banner-dismiss" onClick={() => setShowPasteHint(false)} aria-label="Dismiss">×</button>
+                            </div>
+                        )}
 
                         {/* FrameSnag Promo Section */}
                         <div className="framesnag-promo-section">
