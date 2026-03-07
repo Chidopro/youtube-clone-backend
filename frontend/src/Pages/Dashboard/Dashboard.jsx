@@ -1451,7 +1451,16 @@ const Dashboard = ({ sidebar }) => {
                             <div className="framesnag-promo-content">
                                 <div className="framesnag-promo-text">
                                     <h3>📸 Capture YouTube Screenshots with FrameSnag</h3>
-                                    <p>Use our free Chrome extension to capture high-quality thumbnails and screenshots from your YouTube videos, then add them to your favorites!</p>
+                                    <p>Capture high-quality thumbnails and screenshots from your YouTube videos, then add them to your favorites!</p>
+                                    <div className="framesnag-instructions">
+                                        <p><strong>How to activate your free Pro access:</strong></p>
+                                        <ol>
+                                            <li>Install the FrameSnag Chrome extension</li>
+                                            <li>Open the extension popup on any YouTube video</li>
+                                            <li>Enter your email address</li>
+                                            <li>Enter your promo code and click "Apply"</li>
+                                        </ol>
+                                    </div>
                                     <div className="framesnag-promo-code">
                                         <span className="promo-label">Your Free Pro Access Code:</span>
                                         <code className="promo-code">SCREENMERCH</code>
@@ -1463,7 +1472,7 @@ const Dashboard = ({ sidebar }) => {
                                     rel="noopener noreferrer"
                                     className="framesnag-btn"
                                 >
-                                    Get FrameSnag Free →
+                                    Install FrameSnag →
                                 </a>
                             </div>
                         </div>
