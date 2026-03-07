@@ -3043,6 +3043,12 @@
     }
 }
 
+.paste-hint {
+    font-size: 0.9rem;
+    color: #666;
+    margin: -8px 0 16px 0;
+}
+
 /* FrameSnag Promo Section */
 .framesnag-promo-section {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);

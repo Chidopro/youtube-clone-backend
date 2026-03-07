@@ -34,11 +34,40 @@ const Dashboard = ({ sidebar }) => {
     const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState('videos');
 
-    // Open Personalization tab when URL has ?tab=personalization (e.g. from navbar logo edit)
+    // Open tab when URL has ?tab= (e.g. from navbar logo edit or FrameSnag "Add to Favorites")
     useEffect(() => {
         const tab = searchParams.get('tab');
         if (tab === 'personalization') setActiveTab('personalization');
+        if (tab === 'favorites') setActiveTab('favorites');
     }, [searchParams]);
+
+    // Paste-from-FrameSnag: when on Favorites tab, accept pasted image and open Add Favorite modal
+    useEffect(() => {
+        if (activeTab !== 'favorites') return;
+        const handlePaste = (e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            for (const item of items) {
+                if (item.type === 'image/png' || item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const blob = item.getAsFile();
+                    if (!blob) return;
+                    const file = new File([blob], `framesnag-${Date.now()}.png`, { type: blob.type || 'image/png' });
+                    setNewFavorite({
+                        title: 'From FrameSnag',
+                        description: '',
+                        image: file,
+                        imagePreview: URL.createObjectURL(blob)
+                    });
+                    setShowFavoriteModal(true);
+                    break;
+                }
+            }
+        };
+        document.addEventListener('paste', handlePaste);
+        return () => document.removeEventListener('paste', handlePaste);
+    }, [activeTab]);
+
     const [currentUser, setCurrentUser] = useState(null);
     const [payoutData, setPayoutData] = useState({
         paypal_email: '',
@@ -1445,6 +1474,7 @@ const Dashboard = ({ sidebar }) => {
                                 + Add Favorite
                             </button>
                         </div>
+                        <p className="paste-hint">Paste from FrameSnag (Ctrl+V) to add a captured image.</p>
 
                         {/* FrameSnag Promo Section */}
                         <div className="framesnag-promo-section">
