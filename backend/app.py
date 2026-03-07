@@ -6695,6 +6695,36 @@ def upload_favorite():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/creator-settings", methods=["GET", "OPTIONS"])
+def get_creator_settings():
+    """
+    Get creator personalization settings by user_id (for dashboard on main domain).
+    Uses service role so it works regardless of Supabase RLS / OAuth session.
+    Query: user_id= (required).
+    """
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        user_id = (request.args.get("user_id") or request.headers.get("X-User-Id") or "").strip()
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id is required"}), 400
+        cols = (
+            "subdomain", "custom_domain", "custom_logo_url", "primary_color", "secondary_color",
+            "hide_screenmerch_branding", "custom_favicon_url", "custom_meta_title",
+            "custom_meta_description", "personalization_enabled"
+        )
+        r = supabase_admin.table("users").select(",".join(cols)).eq("id", user_id).limit(1).execute()
+        row = (r.data or [None])[0]
+        if not row:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        return jsonify({"success": True, "settings": row}), 200
+    except Exception as e:
+        logger.exception("get_creator_settings: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/update-creator-settings", methods=["POST", "OPTIONS"])
 def update_creator_settings():
     """

@@ -3,6 +3,7 @@ import { supabase } from '../../supabaseClient';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
 import { normalizeStorageUrl } from '../../utils/storageUrl';
 import { useCreator } from '../../contexts/CreatorContext';
+import { getBackendUrl } from '../../config/apiConfig';
 import './PersonalizationSettings.css';
 
 const BUCKET_CREATOR_LOGOS = 'creator-logos';
@@ -97,17 +98,17 @@ const PersonalizationSettings = () => {
       // Fallback: Get logged-in user (if not on subdomain or subdomain lookup failed)
       let user = null;
       let userId = null;
-      
+
       // Check for authenticated user first
       const isAuthenticated = localStorage.getItem('isAuthenticated');
       const userData = localStorage.getItem('user');
-      
+
       if (isAuthenticated === 'true' && userData) {
         try {
           const authenticatedUser = JSON.parse(userData);
           user = authenticatedUser;
           userId = authenticatedUser.id;
-          
+
           // If user doesn't have id but has email, look up user in database
           if (!userId && authenticatedUser.email) {
             console.log('🔐 PersonalizationSettings: User missing id, looking up by email:', authenticatedUser.email);
@@ -117,7 +118,7 @@ const PersonalizationSettings = () => {
                 .select('id')
                 .eq('email', authenticatedUser.email)
                 .single();
-              
+
               if (profileData && profileData.id) {
                 userId = profileData.id;
                 user = { ...user, id: profileData.id };
@@ -131,7 +132,7 @@ const PersonalizationSettings = () => {
           console.error('Error parsing user data:', error);
         }
       }
-      
+
       // Fallback to Supabase auth
       if (!user || !userId) {
         try {
@@ -144,14 +145,46 @@ const PersonalizationSettings = () => {
           console.error('Error getting Supabase user:', error);
         }
       }
-      
+
+      // When on main domain (no subdomain), load settings via backend API so it works for OAuth users (bypasses RLS)
+      if (userId && !currentSubdomain) {
+        try {
+          const res = await fetch(`${getBackendUrl()}/api/creator-settings?user_id=${encodeURIComponent(userId)}`, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            credentials: 'include'
+          });
+          const json = await res.json().catch(() => ({}));
+          if (res.ok && json.success && json.settings) {
+            const d = json.settings;
+            console.log('✅ PersonalizationSettings: Loaded settings from API (main domain):', d);
+            setSettings({
+              subdomain: d.subdomain || '',
+              custom_domain: d.custom_domain || '',
+              custom_logo_url: d.custom_logo_url || '',
+              primary_color: d.primary_color || '#667eea',
+              secondary_color: d.secondary_color || '#764ba2',
+              hide_screenmerch_branding: d.hide_screenmerch_branding || false,
+              custom_favicon_url: d.custom_favicon_url || '',
+              custom_meta_title: d.custom_meta_title || '',
+              custom_meta_description: d.custom_meta_description || '',
+              personalization_enabled: d.personalization_enabled || false
+            });
+            setLoading(false);
+            return;
+          }
+        } catch (apiErr) {
+          console.warn('PersonalizationSettings: API load failed, falling back to Supabase:', apiErr);
+        }
+      }
+
       if (userId) {
         const { data, error } = await supabase
           .from('users')
           .select('subdomain, custom_domain, custom_logo_url, primary_color, secondary_color, hide_screenmerch_branding, custom_favicon_url, custom_meta_title, custom_meta_description, personalization_enabled')
           .eq('id', userId)
           .single();
-        
+
         if (data && !error) {
           console.log('✅ PersonalizationSettings: Loaded settings from database:', data);
           setSettings({
@@ -177,7 +210,7 @@ const PersonalizationSettings = () => {
           .select('id, subdomain, custom_domain, custom_logo_url, primary_color, secondary_color, hide_screenmerch_branding, custom_favicon_url, custom_meta_title, custom_meta_description, personalization_enabled')
           .eq('email', user.email)
           .single();
-        
+
         if (data && !error) {
           console.log('✅ PersonalizationSettings: Loaded settings by email:', data);
           setSettings({
