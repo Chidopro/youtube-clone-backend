@@ -649,6 +649,8 @@ const Checkout = () => {
                     const next = prev.slice(0, items.length);
                     while (next.length <= i) next.push({ orientation: '', feather: 'no', cornerRadius: 'no', frame: 'no' });
                     next[i] = { ...next[i], [key]: value };
+                    // Keep ref in sync immediately so validation buttons use latest choice
+                    designPreferencesRef.current = next;
                     return next;
                   });
                 };
