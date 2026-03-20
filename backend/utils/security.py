@@ -6,6 +6,14 @@ from flask import request, jsonify, redirect, url_for, session
 logger = logging.getLogger(__name__)
 
 
+def _login_redirect_with_next():
+    """Send user to admin login and return them here after sign-in (path + query only)."""
+    next_path = request.path
+    if request.query_string:
+        next_path = next_path + "?" + request.query_string.decode()
+    return redirect(url_for("auth.admin_login", next=next_path))
+
+
 def admin_required(supabase_admin=None):
     """
     Decorator factory to require admin authentication - supports both session and email-based auth
@@ -79,7 +87,7 @@ def admin_required(supabase_admin=None):
                 response.headers.add('Access-Control-Allow-Credentials', 'true')
                 return response
             
-            # For non-API endpoints, redirect to login
-            return redirect(url_for('admin_login'))
+            # For non-API endpoints, redirect to login (auth blueprint)
+            return _login_redirect_with_next()
         return decorated_function
     return decorator

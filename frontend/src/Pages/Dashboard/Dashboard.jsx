@@ -1496,12 +1496,12 @@ const Dashboard = ({ sidebar }) => {
                                     <h3>📸 Capture YouTube Screenshots with FrameSnag</h3>
                                     <p>Capture high-quality thumbnails and screenshots from your YouTube videos, then add them to your favorites!</p>
                                     <div className="framesnag-instructions">
-                                        <p><strong>How to activate your free Pro access:</strong></p>
+                                        <p><strong>How to install:</strong></p>
                                         <ol>
-                                            <li>Install the FrameSnag Chrome extension</li>
-                                            <li>Open the extension popup on any YouTube video</li>
-                                            <li>Enter your email address</li>
-                                            <li>Enter your promo code and click "Apply"</li>
+                                            <li>Click &quot;Install FrameSnag&quot; below to download the extension ZIP</li>
+                                            <li>Unzip the file, then open Chrome → Extensions → Developer mode → Load unpacked</li>
+                                            <li>Select the unzipped FrameSnag folder</li>
+                                            <li>Open any YouTube video and click the FrameSnag icon to capture and add to favorites</li>
                                         </ol>
                                     </div>
                                     <div className="framesnag-promo-code">
@@ -1510,8 +1510,9 @@ const Dashboard = ({ sidebar }) => {
                                     </div>
                                 </div>
                                 <a 
-                                    href="https://framesnag.com" 
-                                    target="_blank" 
+                                    href="https://framesnag.com/download/FrameSnag-extension.zip"
+                                    download="FrameSnag-extension.zip"
+                                    target="_blank"
                                     rel="noopener noreferrer"
                                     className="framesnag-btn"
                                 >

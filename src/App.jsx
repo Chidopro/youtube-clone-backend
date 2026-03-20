@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "./Components/Navbar/Navbar";
 import Footer from "./Components/Footer/Footer";
-import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import Home from "./Pages/Home/Home";
 import Video from "./Pages/Video/Video";
 import Upload from "./Pages/Upload/Upload";
@@ -136,6 +136,8 @@ const App = () => {
               <Route path="/success" element={<OrderSuccess />} />
               <Route path="/coming-soon" element={<ComingSoon />} />
               <Route path="/admin" element={<Admin />} />
+              {/* Backend admin login redirects to /admin/orders; if SPA serves it, send to admin dashboard */}
+              <Route path="/admin/orders" element={<Navigate to="/admin" replace />} />
               <Route path="/auth" element={<AuthForm />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Login />} />

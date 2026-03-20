@@ -8,7 +8,7 @@ import secrets
 import uuid
 import bcrypt
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
 # Import utilities
@@ -48,6 +48,63 @@ def _get_supabase_client():
 def _get_order_store():
     """Get the order store dictionary"""
     return admin_bp.order_store if hasattr(admin_bp, 'order_store') else {}
+
+
+def _parse_created_sort_value(created_at):
+    """Best-effort sort key for mixed timestamps / ISO strings / 'N/A'."""
+    if created_at is None or created_at == "N/A":
+        return 0.0
+    if isinstance(created_at, (int, float)):
+        return float(created_at)
+    if isinstance(created_at, str):
+        s = created_at.strip()
+        if not s:
+            return 0.0
+        try:
+            return float(s)
+        except ValueError:
+            pass
+        try:
+            iso = s.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(iso)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.timestamp()
+        except Exception:
+            return 0.0
+    return 0.0
+
+
+def _fetch_order_row_by_lookup(client, order_id):
+    """
+    Resolve a row from `orders` when the URL/email uses ORD-XXXX, order_number, or internal id.
+    Returns (db_order dict or None, canonical_order_id str or None).
+    """
+    if not client or not order_id:
+        return None, None
+    oid = str(order_id).strip()
+    try:
+        r = client.table("orders").select("*").eq("order_id", oid).limit(1).execute()
+        if r.data:
+            row = r.data[0]
+            return row, row.get("order_id") or oid
+        r = client.table("orders").select("*").eq("order_number", oid).limit(1).execute()
+        if r.data:
+            row = r.data[0]
+            return row, row.get("order_id") or oid
+        r = client.table("orders").select("*").eq("order_number", oid.replace("ORD-", "")).limit(1).execute()
+        if r.data:
+            row = r.data[0]
+            return row, row.get("order_id") or oid
+        suffix = oid.replace("ORD-", "").replace("-", "")
+        if suffix.isalnum() and len(suffix) >= 4:
+            r = client.table("orders").select("*").ilike("order_id", f"%{suffix}%").limit(5).execute()
+            if r.data:
+                row = r.data[0]
+                return row, row.get("order_id") or oid
+    except Exception as e:
+        logger.warning("Order lookup failed for %s: %s", order_id, e)
+    return None, None
 
 
 def _is_master_admin(user_email):
@@ -1306,20 +1363,8 @@ def admin_orders():
         except Exception as db_error:
             logger.error(f"Database error loading sales: {str(db_error)}")
         
-        # Sort by creation time
-        def sort_key(order):
-            created_at = order.get('created_at', '')
-            if isinstance(created_at, (int, float)):
-                return created_at
-            elif isinstance(created_at, str):
-                try:
-                    return float(created_at)
-                except (ValueError, TypeError):
-                    return 0
-            else:
-                return 0
-        
-        all_orders.sort(key=sort_key, reverse=True)
+        # Sort by creation time (handles ISO strings from Postgres)
+        all_orders.sort(key=lambda o: _parse_created_sort_value(o.get("created_at")), reverse=True)
         
         return render_template('admin_orders.html', orders=all_orders, admin_email=session.get('admin_email'))
     except Exception as e:
@@ -1338,9 +1383,9 @@ def admin_order_detail(order_id):
         if not order_data:
             client = _get_supabase_client()
             try:
-                db_result = client.table('orders').select('*').eq('order_id', order_id).execute()
-                if db_result.data:
-                    db_order = db_result.data[0]
+                db_order, canonical_id = _fetch_order_row_by_lookup(client, order_id)
+                if db_order:
+                    order_id = canonical_id or order_id
                     order_data = {
                         'cart': db_order.get('cart', []),
                         'status': db_order.get('status', 'pending'),
@@ -1348,7 +1393,11 @@ def admin_order_detail(order_id):
                         'video_title': db_order.get('video_title', 'Unknown Video'),
                         'creator_name': db_order.get('creator_name', 'Unknown Creator'),
                         'video_url': db_order.get('video_url', 'Not provided'),
-                        'shipping_cost': db_order.get('shipping_cost', 0)
+                        'shipping_cost': db_order.get('shipping_cost', 0),
+                        'shipping_address': db_order.get('shipping_address'),
+                        'customer_email': db_order.get('customer_email', ''),
+                        'customer_phone': db_order.get('customer_phone', ''),
+                        'total_amount': db_order.get('total_amount'),
                     }
                 else:
                     return "Order not found", 404

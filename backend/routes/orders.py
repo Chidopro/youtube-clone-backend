@@ -392,6 +392,7 @@ def place_order():
             "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
             "status": "pending",
             "created_at": data.get("created_at", "Recent"),
+            "shipping_address": shipping_address,
         }
         
         # Send admin notification email
@@ -662,6 +663,7 @@ def send_order():
                     success_url=f"{base_url}/order-success?order_id={order_id}",
                     cancel_url=f"{base_url}/checkout",
                     phone_number_collection={"enabled": True},
+                    shipping_address_collection={"allowed_countries": ["US", "CA", "GB", "AU", "DE"]},
                     payment_intent_data={"statement_descriptor": "ScreenMerch"},
                     metadata={
                         "order_id": order_id,
@@ -816,6 +818,7 @@ def create_checkout_session():
         order_store[order_id] = {
             "cart": enriched_cart,
             "sms_consent": sms_consent,
+            "shipping_address": shipping_address,
             "timestamp": data.get("timestamp"),
             "order_id": order_id,
             "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
@@ -887,6 +890,7 @@ def create_checkout_session():
             "success_url": f"{base_url}/order-success?order_id={order_id}",
             "cancel_url": f"{base_url}/checkout/{product_id or ''}",
             "phone_number_collection": {"enabled": True},
+            "shipping_address_collection": {"allowed_countries": ["US", "CA", "GB", "AU", "DE"]},
             "payment_intent_data": {"statement_descriptor": "ScreenMerch"},
             "metadata": {
                 "order_id": order_id,
@@ -1130,7 +1134,7 @@ def stripe_webhook():
                     elif not resend_api_key:
                         logger.warning("Webhook: skipping customer order email (RESEND_API_KEY not set)")
                 
-                # Update order status to 'paid'
+                # Update order status to 'paid' and persist Stripe shipping address if collected
                 try:
                     if client:
                         update_data = {
@@ -1141,6 +1145,19 @@ def stripe_webhook():
                         }
                         if customer_email and customer_email != "Not provided":
                             update_data['customer_email'] = customer_email
+                        # Persist shipping address from Stripe (same in test and live mode when shipping_address_collection is used)
+                        if shipping_details and shipping_address:
+                            addr = shipping_details.get("address") or shipping_address
+                            if addr:
+                                update_data['shipping_address'] = {
+                                    "name": customer_name or "",
+                                    "line1": addr.get("line1", ""),
+                                    "line2": addr.get("line2", ""),
+                                    "city": addr.get("city", ""),
+                                    "state": addr.get("state", ""),
+                                    "zip": addr.get("postal_code", ""),
+                                    "country_code": (addr.get("country") or "").upper()[:2] if addr.get("country") else "",
+                                }
                         client.table('orders').update(update_data).eq('order_id', order_id).execute()
                         
                         # Ensure order is in processing queue

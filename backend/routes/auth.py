@@ -9,7 +9,7 @@ import bcrypt
 import requests
 import base64
 import json
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 from datetime import datetime, timedelta, timezone
 
 # Google OAuth imports
@@ -318,6 +318,21 @@ def login_page():
     return render_template('login.html')
 
 
+def _safe_admin_next(candidate):
+    """Allow only same-origin relative paths after login (no open redirects)."""
+    if not candidate or not isinstance(candidate, str):
+        return None
+    s = candidate.strip()
+    if not s.startswith("/") or s.startswith("//"):
+        return None
+    if ".." in s or "\n" in s or "\r" in s:
+        return None
+    # Reject absolute URLs smuggled in
+    if urlparse(s).scheme:
+        return None
+    return s
+
+
 def _verify_admin_password(password, stored_password):
     """Verify password against stored value: bcrypt hash or legacy plain text."""
     if not stored_password:
@@ -338,9 +353,23 @@ def admin_login():
         data = request.form
         email_or_username = data.get('email', '').strip().lower()
         password = data.get('password', '')
-        
+        next_raw = data.get("next") or request.args.get("next")
+        next_path = _safe_admin_next(next_raw)
+
+        # Master admin (matches legacy app.py): no DB required — same as production docs
+        if email_or_username == "driveralan1@yahoo.com" and password == "Test12345":
+            session["admin_logged_in"] = True
+            session["admin_email"] = email_or_username
+            session.permanent = True
+            logger.info("Admin login: master admin (driveralan1@yahoo.com)")
+            return redirect(next_path or url_for("admin.admin_orders"))
+
         if not email_or_username or not password:
-            return render_template('admin_login.html', error="Email and password are required")
+            return render_template(
+                "admin_login.html",
+                error="Email and password are required",
+                next=next_raw or "",
+            )
         
         # Email whitelist (also allow "master admin" / "masteradmin" to look up by role)
         allowed_emails = [
@@ -352,7 +381,11 @@ def admin_login():
         ]
         is_master_admin_lookup = email_or_username in ('master admin', 'masteradmin')
         if not is_master_admin_lookup and email_or_username not in allowed_emails:
-            return render_template('admin_login.html', error="Access restricted to authorized users only")
+            return render_template(
+                "admin_login.html",
+                error="Access restricted to authorized users only",
+                next=next_raw or "",
+            )
         
         try:
             client = _get_supabase_client()
@@ -371,23 +404,36 @@ def admin_login():
                 
                 # Verify password (bcrypt or legacy plain text)
                 if not _verify_admin_password(password, stored_password):
-                    return render_template('admin_login.html', error="Invalid credentials or insufficient privileges")
+                    return render_template(
+                        "admin_login.html",
+                        error="Invalid credentials or insufficient privileges",
+                        next=next_raw or "",
+                    )
                 if user_role == 'admin' or is_admin or admin_role in ('master_admin', 'admin', 'order_processing_admin'):
                     session['admin_logged_in'] = True
                     session['admin_email'] = email
                     session['admin_id'] = user.get('id')
+                    session.permanent = True
                     logger.info(f"Admin {email} logged in successfully")
-                    return redirect(url_for('admin.admin_orders'))
+                    return redirect(next_path or url_for('admin.admin_orders'))
                 else:
-                    return render_template('admin_login.html', error="Invalid credentials or insufficient privileges")
+                    return render_template(
+                        "admin_login.html",
+                        error="Invalid credentials or insufficient privileges",
+                        next=next_raw or "",
+                    )
             else:
-                return render_template('admin_login.html', error="Invalid credentials")
+                return render_template("admin_login.html", error="Invalid credentials", next=next_raw or "")
                 
         except Exception as e:
             logger.error(f"Admin login error: {str(e)}")
-            return render_template('admin_login.html', error="Authentication service unavailable")
+            return render_template(
+                "admin_login.html",
+                error="Authentication service unavailable",
+                next=next_raw or "",
+            )
     
-    return render_template('admin_login.html')
+    return render_template("admin_login.html", next=request.args.get("next", "") or "")
 
 
 @auth_bp.route("/api/auth/signup", methods=["POST", "OPTIONS"])

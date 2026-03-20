@@ -8,7 +8,15 @@ const Checkout = () => {
   const [items, setItems] = useState([]);
   const [subtotal, setSubtotal] = useState(0);
   const [shipping, setShipping] = useState({ cost: 0, method: 'Standard Shipping', loading: false, error: '' });
-  const [address, setAddress] = useState({ country_code: 'US', zip: '' });
+  const [address, setAddress] = useState({
+    country_code: 'US',
+    zip: '',
+    name: '',
+    line1: '',
+    line2: '',
+    city: '',
+    state: ''
+  });
 
   useEffect(() => {
     try {
@@ -96,11 +104,72 @@ const Checkout = () => {
               <h2>Shipping Information</h2>
               <div className="shipping-form">
                 <div className="form-row">
+                  <div className="form-group form-group-full">
+                    <label>Full name</label>
+                    <input
+                      type="text"
+                      placeholder="Name for delivery"
+                      value={address.name}
+                      onChange={e => setAddress(a => ({ ...a, name: e.target.value }))}
+                      className="form-input"
+                      aria-label="Full name"
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group form-group-full">
+                    <label>Address line 1</label>
+                    <input
+                      type="text"
+                      placeholder="Street address"
+                      value={address.line1}
+                      onChange={e => setAddress(a => ({ ...a, line1: e.target.value }))}
+                      className="form-input"
+                      aria-label="Address line 1"
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group form-group-full">
+                    <label>Address line 2 (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Apt, suite, etc."
+                      value={address.line2}
+                      onChange={e => setAddress(a => ({ ...a, line2: e.target.value }))}
+                      className="form-input"
+                      aria-label="Address line 2"
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>City</label>
+                    <input
+                      type="text"
+                      placeholder="City"
+                      value={address.city}
+                      onChange={e => setAddress(a => ({ ...a, city: e.target.value }))}
+                      className="form-input"
+                      aria-label="City"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>State / Province</label>
+                    <input
+                      type="text"
+                      placeholder="State or province"
+                      value={address.state}
+                      onChange={e => setAddress(a => ({ ...a, state: e.target.value }))}
+                      className="form-input"
+                      aria-label="State or Province"
+                    />
+                  </div>
                   <div className="form-group">
                     <label>ZIP / Postal Code</label>
                     <input 
                       type="text" 
-                      placeholder="Enter ZIP code" 
+                      placeholder="ZIP or postal code" 
                       value={address.zip} 
                       onChange={e => setAddress(a => ({ ...a, zip: e.target.value }))}
                       className="form-input"
@@ -194,6 +263,15 @@ const Checkout = () => {
                     product_id: items[0]?.product_id || items[0]?.id || '',
                     sms_consent: false,
                     shipping_cost: shipping.cost || 0,
+                    shipping_address: {
+                      name: address.name,
+                      line1: address.line1,
+                      line2: address.line2 || undefined,
+                      city: address.city,
+                      state: address.state,
+                      zip: address.zip,
+                      country_code: address.country_code
+                    },
                     videoUrl: items[0]?.video_url,
                     videoTitle: items[0]?.video_title,
                     creatorName: items[0]?.creator_name,

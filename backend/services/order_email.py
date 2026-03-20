@@ -10,6 +10,7 @@ Do not edit app.py email HTML; edit this module only.
 """
 import json
 import logging
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -216,7 +217,11 @@ def build_admin_order_email(order_id, order_data, cart, order_number, total_amou
     print_url = f"{PRINT_QUALITY_BASE_URL}?order_id={order_id}"
     edit_tools_url = f"{EDIT_TOOLS_BASE_URL}?order_id={order_id}"
     admin_orders_url = "https://screenmerch.fly.dev/admin/orders"
-    order_details_url = f"https://screenmerch.fly.dev/admin/orders?order_id={order_id}"
+    # After login, land on full customer/order detail (not the HTML table which ignores ?order_id=)
+    order_details_path = f"/admin/order/{order_id}"
+    order_details_url = (
+        f"https://screenmerch.fly.dev/admin/login?next={quote(order_details_path, safe='')}"
+    )
 
     # Tools block FIRST (immediately after title) so it is never clipped or missing in any client
     html = f"<h1>🛍️ New ScreenMerch Order #{order_number}</h1>"
