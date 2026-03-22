@@ -308,6 +308,7 @@
                     <div class="order-header">
                         <div>
                             <div class="order-id">Order #{{ order.order_id[-8:].upper() }}</div>
+                            <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">ID: {{ order.order_id }}</div>
                             <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">
                                 {{ order.created_at if order.created_at != 'N/A' else 'Recent' }}
                             </div>
@@ -345,7 +346,13 @@
                             </div>
                             <div class="summary-item">
                                 <div class="summary-label">Customer</div>
-                                <div class="summary-value">{{ order.cart[0].email if order.cart and order.cart[0].email else 'N/A' }}</div>
+                                <div class="summary-value">
+                                    {% set ce = order.customer_email | default('', true) %}
+                                    {% if not ce and order.cart|length > 0 %}
+                                        {% set ce = order.cart[0].email | default('', true) %}
+                                    {% endif %}
+                                    {{ ce or 'N/A' }}
+                                </div>
                             </div>
                         </div>
                         

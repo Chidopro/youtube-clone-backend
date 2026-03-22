@@ -75,9 +75,43 @@ def _parse_created_sort_value(created_at):
     return 0.0
 
 
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def _ord_candidates_from_order_key(oid: str):
+    """Build possible ORD-XXXXXXXX keys from a path segment (ORD-xxx, 8-char hex, full UUID, etc.)."""
+    out = []
+    if not oid:
+        return out
+    s = str(oid).strip()
+    if not s:
+        return out
+    # Full UUID (e.g. from Stripe): map to ORD-{first8} and ORD-{last8} of the 32 hex chars
+    if _UUID_RE.match(s):
+        hex32 = s.replace("-", "").lower()
+        if len(hex32) == 32:
+            out.append(f"ORD-{hex32[:8].upper()}")
+            out.append(f"ORD-{hex32[-8:].upper()}")
+    frag = re.sub(r"[^0-9a-fA-F]", "", s.replace("ORD-", "").replace("ord-", ""))
+    if len(frag) >= 8:
+        out.append(f"ORD-{frag[:8].upper()}")
+        out.append(f"ORD-{frag[-8:].upper()}")
+    # de-dupe preserving order
+    seen = set()
+    uniq = []
+    for x in out:
+        if x and x not in seen:
+            seen.add(x)
+            uniq.append(x)
+    return uniq
+
+
 def _fetch_order_row_by_lookup(client, order_id):
     """
-    Resolve a row from `orders` when the URL/email uses ORD-XXXX, order_number, or internal id.
+    Resolve a row from `orders` when the URL/email uses ORD-XXXX, order_number, full UUID, or 8-char suffix.
     Returns (db_order dict or None, canonical_order_id str or None).
     """
     if not client or not order_id:
@@ -88,6 +122,15 @@ def _fetch_order_row_by_lookup(client, order_id):
         if r.data:
             row = r.data[0]
             return row, row.get("order_id") or oid
+        # Postgres uuid primary key (if present)
+        if _UUID_RE.match(oid):
+            try:
+                r = client.table("orders").select("*").eq("id", oid).limit(1).execute()
+                if r.data:
+                    row = r.data[0]
+                    return row, row.get("order_id") or oid
+            except Exception:
+                pass
         r = client.table("orders").select("*").eq("order_number", oid).limit(1).execute()
         if r.data:
             row = r.data[0]
@@ -96,8 +139,16 @@ def _fetch_order_row_by_lookup(client, order_id):
         if r.data:
             row = r.data[0]
             return row, row.get("order_id") or oid
+        for cand in _ord_candidates_from_order_key(oid):
+            if cand == oid:
+                continue  # already tried eq("order_id", oid) above
+            r = client.table("orders").select("*").eq("order_id", cand).limit(1).execute()
+            if r.data:
+                row = r.data[0]
+                return row, row.get("order_id") or cand
         suffix = oid.replace("ORD-", "").replace("-", "")
-        if suffix.isalnum() and len(suffix) >= 4:
+        suffix = re.sub(r"[^0-9a-fA-F]", "", suffix)
+        if len(suffix) >= 4:
             r = client.table("orders").select("*").ilike("order_id", f"%{suffix}%").limit(5).execute()
             if r.data:
                 row = r.data[0]
@@ -1314,6 +1365,17 @@ def admin_orders():
     try:
         all_orders = []
         order_store = _get_order_store()
+
+        # ?order_id= from email links → go straight to detail when we can resolve it
+        raw_q = (request.args.get("order_id") or "").strip()
+        if raw_q:
+            if raw_q in order_store:
+                return redirect(url_for("admin.admin_order_detail", order_id=raw_q))
+            client_early = _get_supabase_client()
+            if client_early:
+                _row, canonical = _fetch_order_row_by_lookup(client_early, raw_q)
+                if canonical:
+                    return redirect(url_for("admin.admin_order_detail", order_id=canonical))
         
         # Get orders from order_store (recent orders)
         for order_id, order_data in order_store.items():
@@ -1333,6 +1395,7 @@ def admin_orders():
                     'status': order.get('status', 'pending'),
                     'created_at': order.get('created_at', 'N/A'),
                     'total_value': order.get('total_amount', 0),
+                    'shipping_cost': order.get('shipping_cost', 0),
                     'customer_email': order.get('customer_email', ''),
                     'customer_phone': order.get('customer_phone', ''),
                     'video_title': order.get('video_title', ''),
