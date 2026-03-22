@@ -297,6 +297,12 @@ def send_order_email(order_details):
 app = Flask(__name__, 
            template_folder='templates',
            static_folder='static')
+# Fly.io / reverse proxy: trust X-Forwarded-Proto so request.is_secure and cookies behave correctly
+try:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+except Exception as _proxy_err:
+    logger.warning("ProxyFix not applied: %s", _proxy_err)
 # Allow large checkout payloads (base64 screenshots in cart) - default 1MB can truncate
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 
@@ -377,10 +383,13 @@ def _allow_origin(resp):
     return resp
 
 
+# Flask signed session MUST NOT share the sm_session cookie name with customer auth (UUID token).
+# Reusing sm_session caused browsers to hold a host-only Flask cookie + Domain=... sm_session UUID,
+# breaking session decode so admin login appeared to "do nothing" after redirect.
 app.config.update(
-    SESSION_COOKIE_NAME="sm_session",
-    SESSION_COOKIE_DOMAIN=None,     # overridden dynamically if needed
-    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_NAME="sm_flask_session",
+    SESSION_COOKIE_DOMAIN=None,     # host-only; avoids clashing with OAuth sm_session Domain=...
+    SESSION_COOKIE_SAMESITE="Lax",   # first-party admin + OAuth state; more reliable than None here
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
     PERMANENT_SESSION_LIFETIME=timedelta(days=7),

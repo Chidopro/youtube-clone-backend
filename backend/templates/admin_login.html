@@ -128,7 +128,8 @@
         </div>
         {% endif %}
         
-        <form method="POST">
+        {# Explicit action so POST always hits auth.admin_login with ?next= preserved #}
+        <form method="POST" action="{% if next %}{{ url_for('auth.admin_login', next=next) }}{% else %}{{ url_for('auth.admin_login') }}{% endif %}">
             {% if next %}
             <input type="hidden" name="next" value="{{ next }}">
             {% endif %}
