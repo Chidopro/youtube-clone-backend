@@ -8,6 +8,7 @@ const Checkout = () => {
   const [items, setItems] = useState([]);
   const [subtotal, setSubtotal] = useState(0);
   const [shipping, setShipping] = useState({ cost: 0, method: 'Standard Shipping', loading: false, error: '' });
+  const [checkoutEmail, setCheckoutEmail] = useState('');
   const [address, setAddress] = useState({
     country_code: 'US',
     zip: '',
@@ -103,6 +104,20 @@ const Checkout = () => {
             <div className="order-section">
               <h2>Shipping Information</h2>
               <div className="shipping-form">
+                <div className="form-row">
+                  <div className="form-group form-group-full">
+                    <label>Email</label>
+                    <input
+                      type="email"
+                      placeholder="For order confirmation"
+                      value={checkoutEmail}
+                      onChange={e => setCheckoutEmail(e.target.value)}
+                      className="form-input"
+                      autoComplete="email"
+                      aria-label="Email for order updates"
+                    />
+                  </div>
+                </div>
                 <div className="form-row">
                   <div className="form-group form-group-full">
                     <label>Full name</label>
@@ -262,6 +277,7 @@ const Checkout = () => {
                     })),
                     product_id: items[0]?.product_id || items[0]?.id || '',
                     sms_consent: false,
+                    user_email: checkoutEmail.trim(),
                     shipping_cost: shipping.cost || 0,
                     shipping_address: {
                       name: address.name,

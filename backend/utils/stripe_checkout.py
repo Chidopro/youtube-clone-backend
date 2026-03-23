@@ -3,6 +3,11 @@ Stripe Checkout Session helpers — normalize shipping for order records.
 
 Webhook event payloads can omit parts of shipping_details.address; retrieving
 the Session by id returns the full object Stripe shows after payment.
+
+Stripe Checkout (especially Link) may put the full address on
+`collected_information.shipping_details` while top-level `shipping_details`
+only has postal_code + country — we merge both and merge with DB so we never
+overwrite a good address with a thin payload.
 """
 from __future__ import annotations
 
@@ -13,19 +18,37 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 
+def _to_plain(obj: Any) -> Any:
+    """Recursively convert Stripe SDK objects to JSON-safe plain dict/list."""
+    if obj is None:
+        return None
+    if isinstance(obj, (str, int, float, bool)):
+        return obj
+    if isinstance(obj, dict):
+        return {str(k): _to_plain(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_to_plain(x) for x in obj]
+    if hasattr(obj, "to_dict"):
+        try:
+            return _to_plain(obj.to_dict())
+        except Exception:
+            pass
+    return obj
+
+
 def session_obj_to_dict(session: Any) -> Dict[str, Any]:
-    """StripeObject or dict -> plain dict."""
+    """StripeObject or dict -> plain dict (nested-safe)."""
     if session is None:
         return {}
     if isinstance(session, dict):
-        return dict(session)
+        return _to_plain(dict(session))
     if hasattr(session, "to_dict"):
         try:
-            return dict(session.to_dict())
+            return _to_plain(session.to_dict())
         except Exception:
             pass
     try:
-        return dict(session)
+        return _to_plain(dict(session))
     except Exception:
         return {}
 
@@ -49,39 +72,84 @@ def fetch_full_checkout_session(session: Any, stripe_module: Any) -> Dict[str, A
         return d
 
 
-def build_shipping_address_payload(session_dict: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def _parse_maybe_json(val: Any) -> Any:
+    if isinstance(val, str) and val.strip():
+        try:
+            return json.loads(val)
+        except Exception:
+            return val
+    return val
+
+
+def _normalized_shipping_block(raw: Any) -> Dict[str, Any]:
+    raw = _parse_maybe_json(raw)
+    if not isinstance(raw, dict):
+        return {}
+    return raw
+
+
+def _merge_top_level_shipping_details(
+    legacy_sd: Dict[str, Any],
+    collected_sd: Dict[str, Any],
+) -> Dict[str, Any]:
     """
-    Build orders.shipping_address JSON from a Checkout Session dict.
-    Returns None if nothing useful was collected.
+    Combine Stripe's top-level `shipping_details` with
+    `collected_information.shipping_details`. Prefer non-empty values from
+    collected (Link / newer Checkout), then legacy.
+    """
+    leg_a = _normalized_shipping_block(legacy_sd.get("address") if legacy_sd else None)
+    col_a = _normalized_shipping_block(collected_sd.get("address") if collected_sd else None)
+
+    def pick_field(*keys: str) -> str:
+        for addr in (col_a, leg_a):
+            if not isinstance(addr, dict):
+                continue
+            for k in keys:
+                v = addr.get(k)
+                if v is None:
+                    continue
+                s = str(v).strip() if not isinstance(v, (int, float)) else str(v).strip()
+                if s:
+                    return s
+        return ""
+
+    name = ""
+    for block in (collected_sd, legacy_sd):
+        if isinstance(block, dict):
+            n = (block.get("name") or "").strip()
+            if n:
+                name = n
+                break
+
+    merged_addr = {
+        "line1": pick_field("line1", "line_1"),
+        "line2": pick_field("line2", "line_2"),
+        "city": pick_field("city"),
+        "state": pick_field("state"),
+        "postal_code": pick_field("postal_code", "postalCode", "zip"),
+        "country": pick_field("country"),
+    }
+    return {"name": name, "address": merged_addr}
+
+
+def build_stripe_shipping_address_payload(session_dict: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Build a canonical shipping_address dict from Stripe session fields only
+    (merges shipping_details + collected_information.shipping_details).
     """
     s = session_dict or {}
-    sd = s.get("shipping_details")
-    if isinstance(sd, str):
-        try:
-            sd = json.loads(sd)
-        except Exception:
-            sd = None
-    if not isinstance(sd, dict):
-        sd = {}
+    legacy_sd = _normalized_shipping_block(s.get("shipping_details"))
+    ci = _normalized_shipping_block(s.get("collected_information"))
+    collected_sd = _normalized_shipping_block(ci.get("shipping_details")) if ci else {}
 
-    addr = sd.get("address") or {}
-    if isinstance(addr, str):
-        try:
-            addr = json.loads(addr)
-        except Exception:
-            addr = {}
+    merged_sd = _merge_top_level_shipping_details(legacy_sd, collected_sd)
+
+    addr = merged_sd.get("address") or {}
     if not isinstance(addr, dict):
         addr = {}
 
-    ship_name = (sd.get("name") or "").strip()
-    cd = s.get("customer_details") or {}
-    if isinstance(cd, str):
-        try:
-            cd = json.loads(cd)
-        except Exception:
-            cd = {}
-    if not isinstance(cd, dict):
-        cd = {}
+    ship_name = (merged_sd.get("name") or "").strip()
+    cd = _normalized_shipping_block(s.get("customer_details"))
     if not ship_name:
         ship_name = (cd.get("name") or "").strip()
 
@@ -120,3 +188,84 @@ def build_shipping_address_payload(session_dict: Optional[Dict[str, Any]]) -> Op
         "country": country,
         "country_code": country_code,
     }
+
+
+def merge_shipping_address_records(
+    existing: Optional[Dict[str, Any]],
+    stripe_payload: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """
+    For each field, use Stripe when non-empty; otherwise keep the value from
+    the order row (e.g. address collected on ScreenMerch before redirect).
+    """
+    ex = _parse_maybe_json(existing)
+    if not isinstance(ex, dict):
+        ex = {}
+    sp = stripe_payload if isinstance(stripe_payload, dict) else {}
+
+    def pick(*keys: str) -> str:
+        for k in keys:
+            v = sp.get(k)
+            if v is not None and str(v).strip():
+                return str(v).strip()
+        for k in keys:
+            v = ex.get(k)
+            if v is not None and str(v).strip():
+                return str(v).strip()
+        return ""
+
+    postal = pick("zip", "postal_code") or pick("postal_code", "zip")
+    country_raw = pick("country", "country_code") or pick("country_code", "country")
+    country_code = ""
+    if country_raw:
+        country_code = country_raw.upper() if len(country_raw) == 2 else country_raw[:2].upper()
+
+    out = {
+        "name": pick("name"),
+        "line1": pick("line1", "address1", "address_line1"),
+        "line2": pick("line2", "address2", "address_line2"),
+        "city": pick("city"),
+        "state": pick("state", "state_code"),
+        "zip": postal,
+        "postal_code": postal,
+        "country": country_raw or country_code,
+        "country_code": country_code,
+    }
+
+    if not any(
+        [
+            out["name"],
+            out["line1"],
+            out["line2"],
+            out["city"],
+            out["state"],
+            postal,
+            country_code,
+        ]
+    ):
+        return None
+    return out
+
+
+# Backwards-compatible name used by webhooks
+def build_shipping_address_payload(session_dict: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    return build_stripe_shipping_address_payload(session_dict)
+
+
+def session_customer_email(session_dict: Optional[Dict[str, Any]]) -> str:
+    """Best-effort email from a Checkout Session dict (hosted checkout + Link)."""
+    s = session_dict or {}
+    cd = _normalized_shipping_block(s.get("customer_details"))
+    email = (cd.get("email") or "").strip()
+    if email:
+        return email
+    top = (s.get("customer_email") or "").strip()
+    if top:
+        return top
+    # Some API shapes nest customer
+    cust = _parse_maybe_json(s.get("customer"))
+    if isinstance(cust, dict):
+        em = (cust.get("email") or "").strip()
+        if em:
+            return em
+    return ""

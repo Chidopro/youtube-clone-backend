@@ -69,7 +69,12 @@ from services.order_email import (
     resend_attachments_from_builder,
 )
 from services.order_email import _fetch_image_as_base64 as fetch_screenshot_url
-from utils.stripe_checkout import fetch_full_checkout_session, build_shipping_address_payload
+from utils.stripe_checkout import (
+    fetch_full_checkout_session,
+    build_shipping_address_payload,
+    merge_shipping_address_records,
+    session_customer_email,
+)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -3910,10 +3915,12 @@ def stripe_webhook():
             # Get customer phone number from Stripe session
             customer_phone = session.get("customer_details", {}).get("phone", "")
             
-            # Get customer details from Stripe session
-            customer_details = session.get("customer_details", {})
+            # Get customer details from Stripe session (Link uses customer_email / collected shapes)
+            customer_details = session.get("customer_details", {}) or {}
+            if not isinstance(customer_details, dict):
+                customer_details = {}
             customer_name = customer_details.get("name", "Not provided")
-            customer_email = customer_details.get("email", "Not provided")
+            customer_email = session_customer_email(session) or (order_data.get("customer_email") or "") or "Not provided"
             
             # Log customer email extraction for debugging
             logger.info(f"📧 [WEBHOOK] ===== CUSTOMER EMAIL EXTRACTION DEBUG =====")
@@ -4173,9 +4180,19 @@ def stripe_webhook():
                 # Update customer_email in database if we have it from Stripe
                 if customer_email and customer_email != "Not provided":
                     update_data['customer_email'] = customer_email
-                ship_payload = build_shipping_address_payload(session)
-                if ship_payload:
-                    update_data['shipping_address'] = ship_payload
+                existing_ship = order_data.get("shipping_address")
+                if isinstance(existing_ship, str) and existing_ship.strip():
+                    try:
+                        existing_ship = json.loads(existing_ship)
+                    except Exception:
+                        existing_ship = {}
+                stripe_ship = build_shipping_address_payload(session)
+                merged_ship = merge_shipping_address_records(
+                    existing_ship if isinstance(existing_ship, dict) else {},
+                    stripe_ship,
+                )
+                if merged_ship:
+                    update_data["shipping_address"] = merged_ship
                 supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
                 logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
                 

@@ -1,6 +1,11 @@
 """Order processing routes Blueprint for ScreenMerch"""
 from flask import Blueprint, request, jsonify, render_template
-from utils.stripe_checkout import fetch_full_checkout_session, build_shipping_address_payload
+from utils.stripe_checkout import (
+    fetch_full_checkout_session,
+    build_shipping_address_payload,
+    merge_shipping_address_records,
+    session_customer_email,
+)
 import logging
 import json
 import uuid
@@ -1001,14 +1006,15 @@ def stripe_webhook():
                 if not isinstance(cart, list):
                     cart = []
 
-                # Get customer details from Stripe
-                customer_details = session.get("customer_details", {})
+                # Get customer details from Stripe (Link / hosted checkout can differ)
+                customer_details = session.get("customer_details", {}) or {}
+                if not isinstance(customer_details, dict):
+                    customer_details = {}
                 customer_name = customer_details.get("name", "Not provided")
-                customer_email = customer_details.get("email", "Not provided")
-                customer_phone = session.get("customer_details", {}).get("phone", "")
-                
-                if not customer_email or customer_email == "Not provided":
-                    customer_email = session.get("customer_email") or order_data.get("customer_email", "")
+                customer_email = session_customer_email(session) or (order_data.get("customer_email") or "")
+                if not customer_name or customer_name == "Not provided":
+                    customer_name = (customer_details.get("name") or "").strip() or "Not provided"
+                customer_phone = customer_details.get("phone", "") or ""
                 
                 # Shipping (normalized after optional Session.retrieve above)
                 shipping_details = session.get("shipping_details")
@@ -1148,12 +1154,22 @@ def stripe_webhook():
                             'stripe_session_id': session.get('id'),
                             'payment_intent_id': session.get('payment_intent')
                         }
-                        if customer_email and customer_email != "Not provided":
-                            update_data['customer_email'] = customer_email
-                        # Full shipping blob for admin / Printful (includes postal_code + country)
-                        ship_payload = build_shipping_address_payload(session)
-                        if ship_payload:
-                            update_data["shipping_address"] = ship_payload
+                        if customer_email and str(customer_email).strip():
+                            update_data['customer_email'] = str(customer_email).strip()
+                        # Merge Stripe (collected_information + shipping_details) with DB / form address
+                        existing_ship = order_data.get("shipping_address")
+                        if isinstance(existing_ship, str) and existing_ship.strip():
+                            try:
+                                existing_ship = json.loads(existing_ship)
+                            except Exception:
+                                existing_ship = {}
+                        stripe_ship = build_shipping_address_payload(session)
+                        merged_ship = merge_shipping_address_records(
+                            existing_ship if isinstance(existing_ship, dict) else {},
+                            stripe_ship,
+                        )
+                        if merged_ship:
+                            update_data["shipping_address"] = merged_ship
                         client.table('orders').update(update_data).eq('order_id', order_id).execute()
                         
                         # Ensure order is in processing queue
