@@ -69,6 +69,7 @@ from services.order_email import (
     resend_attachments_from_builder,
 )
 from services.order_email import _fetch_image_as_base64 as fetch_screenshot_url
+from utils.stripe_checkout import fetch_full_checkout_session, build_shipping_address_payload
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -3860,6 +3861,8 @@ def stripe_webhook():
         
         # Handle product orders
         if order_id:
+            # Webhook payload may omit full shipping_details.address; retrieve complete Session
+            session = fetch_full_checkout_session(session, stripe)
             try:
                 # First try to get order from database
                 db_result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
@@ -4170,6 +4173,9 @@ def stripe_webhook():
                 # Update customer_email in database if we have it from Stripe
                 if customer_email and customer_email != "Not provided":
                     update_data['customer_email'] = customer_email
+                ship_payload = build_shipping_address_payload(session)
+                if ship_payload:
+                    update_data['shipping_address'] = ship_payload
                 supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
                 logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
                 

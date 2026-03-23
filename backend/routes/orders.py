@@ -1,5 +1,6 @@
 """Order processing routes Blueprint for ScreenMerch"""
 from flask import Blueprint, request, jsonify, render_template
+from utils.stripe_checkout import fetch_full_checkout_session, build_shipping_address_payload
 import logging
 import json
 import uuid
@@ -939,6 +940,8 @@ def stripe_webhook():
         order_id = session.get("metadata", {}).get("order_id")
         
         if order_id:
+            # Webhook body can omit full address; retrieve session for complete shipping_details
+            session = fetch_full_checkout_session(session, stripe)
             try:
                 client = _get_supabase_client()
                 order_store = _get_order_store()
@@ -1007,11 +1010,13 @@ def stripe_webhook():
                 if not customer_email or customer_email == "Not provided":
                     customer_email = session.get("customer_email") or order_data.get("customer_email", "")
                 
-                # Get shipping address
+                # Shipping (normalized after optional Session.retrieve above)
                 shipping_details = session.get("shipping_details")
                 shipping_address = {}
-                if shipping_details:
-                    shipping_address = shipping_details.get("address", {})
+                if shipping_details and isinstance(shipping_details, dict):
+                    shipping_address = shipping_details.get("address") or {}
+                    if not isinstance(shipping_address, dict):
+                        shipping_address = {}
                 
                 # Calculate total
                 total_amount = sum(item.get('price', 0) for item in cart)
@@ -1145,19 +1150,10 @@ def stripe_webhook():
                         }
                         if customer_email and customer_email != "Not provided":
                             update_data['customer_email'] = customer_email
-                        # Persist shipping address from Stripe (same in test and live mode when shipping_address_collection is used)
-                        if shipping_details and shipping_address:
-                            addr = shipping_details.get("address") or shipping_address
-                            if addr:
-                                update_data['shipping_address'] = {
-                                    "name": customer_name or "",
-                                    "line1": addr.get("line1", ""),
-                                    "line2": addr.get("line2", ""),
-                                    "city": addr.get("city", ""),
-                                    "state": addr.get("state", ""),
-                                    "zip": addr.get("postal_code", ""),
-                                    "country_code": (addr.get("country") or "").upper()[:2] if addr.get("country") else "",
-                                }
+                        # Full shipping blob for admin / Printful (includes postal_code + country)
+                        ship_payload = build_shipping_address_payload(session)
+                        if ship_payload:
+                            update_data["shipping_address"] = ship_payload
                         client.table('orders').update(update_data).eq('order_id', order_id).execute()
                         
                         # Ensure order is in processing queue
@@ -1170,8 +1166,8 @@ def stripe_webhook():
                                 'priority': 0
                             }
                             admin_client.table('order_processing_queue').insert(queue_entry).execute()
-                except Exception:
-                    pass
+                except Exception as upd_err:
+                    logger.exception("Webhook: failed to update order %s: %s", order_id, upd_err)
             except Exception as e:
                 logger.error(f"Error processing order in webhook: {str(e)}")
         

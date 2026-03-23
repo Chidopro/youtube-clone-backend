@@ -438,7 +438,7 @@
                 </div>
                 <div class="info-item">
                     <div class="info-label">Customer Email</div>
-                    <div class="info-value">{{ order.cart[0].email if order.cart and order.cart[0].email else 'N/A' }}</div>
+                    <div class="info-value">{{ order.customer_email or (order.cart[0].email if order.cart and order.cart[0].email else '') or 'N/A' }}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Created</div>
@@ -447,14 +447,17 @@
                 <div class="info-item info-item-full">
                     <div class="info-label">Shipping Address</div>
                     <div class="info-value">
-                        {% if order.shipping_address and (order.shipping_address.name or order.shipping_address.line1 or order.shipping_address.zip) %}
-                            {% if order.shipping_address.name %}{{ order.shipping_address.name }}<br>{% endif %}
-                            {% if order.shipping_address.line1 %}{{ order.shipping_address.line1 }}<br>{% endif %}
-                            {% if order.shipping_address.line2 %}{{ order.shipping_address.line2 }}<br>{% endif %}
-                            {% if order.shipping_address.city or order.shipping_address.state or order.shipping_address.zip %}
-                                {{ order.shipping_address.city }}{% if order.shipping_address.state %}, {{ order.shipping_address.state }}{% endif %} {{ order.shipping_address.zip or '' }}<br>
+                        {% set sa = order.shipping_address %}
+                        {% set zip_pc = (sa.zip if sa else '') or (sa.postal_code if sa else '') %}
+                        {% set country_disp = (sa.country_code if sa else '') or (sa.country if sa else '') %}
+                        {% if sa and (sa.name or sa.line1 or zip_pc) %}
+                            {% if sa.name %}{{ sa.name }}<br>{% endif %}
+                            {% if sa.line1 %}{{ sa.line1 }}<br>{% endif %}
+                            {% if sa.line2 %}{{ sa.line2 }}<br>{% endif %}
+                            {% if sa.city or sa.state or zip_pc %}
+                                {{ sa.city or '' }}{% if sa.state %}, {{ sa.state }}{% endif %} {{ zip_pc }}<br>
                             {% endif %}
-                            {% if order.shipping_address.country_code %}{{ order.shipping_address.country_code }}{% endif %}
+                            {% if country_disp %}{{ country_disp }}{% endif %}
                         {% else %}
                             To be collected at checkout (Stripe may have collected it; check payment details)
                         {% endif %}
@@ -585,7 +588,7 @@
         function copyOrderInfo() {
             const orderInfo = `Order #{{ order_id[-8:].upper() }}
 Items: {{ order.cart|length }}
-Customer: {{ order.cart[0].email if order.cart and order.cart[0].email else 'N/A' }}
+Customer: {{ order.customer_email or (order.cart[0].email if order.cart and order.cart[0].email else '') or 'N/A' }}
 {% for item in order.cart %}
 - {{ item.product }} ({{ item.variants.color if item.variants else 'N/A' }}, {{ item.variants.size if item.variants else 'N/A' }})
   Video: {{ item.videoName if item.videoName else 'N/A' }}

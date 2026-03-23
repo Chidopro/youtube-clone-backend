@@ -1,6 +1,7 @@
 """Admin routes Blueprint for ScreenMerch"""
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, session
 from flask_cors import cross_origin
+import json
 import logging
 import os
 import re
@@ -1509,6 +1510,20 @@ def admin_order_detail(order_id):
                 except Exception:
                     pass
         
+        # Parse JSON columns when Supabase returns strings (shipping_address, cart)
+        cart = order_data.get("cart", [])
+        if isinstance(cart, str) and cart.strip():
+            try:
+                order_data["cart"] = json.loads(cart)
+            except Exception:
+                order_data["cart"] = []
+        sa = order_data.get("shipping_address")
+        if isinstance(sa, str) and sa.strip():
+            try:
+                order_data["shipping_address"] = json.loads(sa)
+            except Exception:
+                pass
+
         return render_template('admin_order_detail.html', order=order_data, order_id=order_id, admin_email=session.get('admin_email'))
     except Exception as e:
         logger.error(f"Error loading order detail: {str(e)}")
