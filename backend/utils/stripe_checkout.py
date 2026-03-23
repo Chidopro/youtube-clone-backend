@@ -66,7 +66,7 @@ def fetch_full_checkout_session(session: Any, stripe_module: Any) -> Dict[str, A
         try:
             full = stripe_module.checkout.Session.retrieve(
                 sid,
-                expand=["line_items.data.price"],
+                expand=["line_items.data.price", "customer"],
             )
         except Exception as expand_err:
             logger.info(
@@ -102,17 +102,18 @@ def _normalized_shipping_block(raw: Any) -> Dict[str, Any]:
 def _merge_top_level_shipping_details(
     legacy_sd: Dict[str, Any],
     collected_sd: Dict[str, Any],
+    billing_address: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
-    Combine Stripe's top-level `shipping_details` with
-    `collected_information.shipping_details`. Prefer non-empty values from
-    collected (Link / newer Checkout), then legacy.
+    Combine shipping_details, collected_information.shipping_details, and
+    customer_details.address when shipping objects are thin (Link).
     """
     leg_a = _normalized_shipping_block(legacy_sd.get("address") if legacy_sd else None)
     col_a = _normalized_shipping_block(collected_sd.get("address") if collected_sd else None)
+    bill_a = _normalized_shipping_block(billing_address)
 
     def pick_field(*keys: str) -> str:
-        for addr in (col_a, leg_a):
+        for addr in (col_a, leg_a, bill_a):
             if not isinstance(addr, dict):
                 continue
             for k in keys:
@@ -152,17 +153,20 @@ def build_stripe_shipping_address_payload(session_dict: Optional[Dict[str, Any]]
     legacy_sd = _normalized_shipping_block(s.get("shipping_details"))
     ci = _normalized_shipping_block(s.get("collected_information"))
     collected_sd = _normalized_shipping_block(ci.get("shipping_details")) if ci else {}
+    cd = _normalized_shipping_block(s.get("customer_details"))
+    cd_billing_addr = cd.get("address") if isinstance(cd.get("address"), dict) else {}
 
-    merged_sd = _merge_top_level_shipping_details(legacy_sd, collected_sd)
+    merged_sd = _merge_top_level_shipping_details(legacy_sd, collected_sd, cd_billing_addr)
 
     addr = merged_sd.get("address") or {}
     if not isinstance(addr, dict):
         addr = {}
 
     ship_name = (merged_sd.get("name") or "").strip()
-    cd = _normalized_shipping_block(s.get("customer_details"))
     if not ship_name:
         ship_name = (cd.get("name") or "").strip()
+    if not ship_name and isinstance(ci, dict):
+        ship_name = (ci.get("individual_name") or ci.get("business_name") or "").strip()
 
     line1 = (addr.get("line1") or addr.get("line_1") or "").strip()
     line2 = (addr.get("line2") or addr.get("line_2") or "").strip()
@@ -321,6 +325,11 @@ def session_customer_email(session_dict: Optional[Dict[str, Any]]) -> str:
     cust = _parse_maybe_json(s.get("customer"))
     if isinstance(cust, dict):
         em = (cust.get("email") or "").strip()
+        if em:
+            return em
+    ci = _normalized_shipping_block(s.get("collected_information"))
+    if isinstance(ci, dict):
+        em = (ci.get("email") or "").strip()
         if em:
             return em
     return ""

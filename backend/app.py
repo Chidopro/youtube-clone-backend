@@ -661,11 +661,25 @@ def format_timestamp(timestamp):
 
 # Add custom Jinja2 filters
 @app.template_filter('get_product_price')
-def get_product_price(product_name):
-    """Get the price of a product by name"""
+def get_product_price(product_name_or_item):
+    """Cart line dict or product name string → unit price for admin templates."""
+    name = product_name_or_item
+    if isinstance(product_name_or_item, dict):
+        name = product_name_or_item.get("product") or product_name_or_item.get("name")
+    if not name:
+        return 0.0
+    try:
+        line = float(product_name_or_item.get("price", 0)) if isinstance(product_name_or_item, dict) else 0.0
+    except (TypeError, ValueError):
+        line = 0.0
+    if line > 0:
+        return line
     for product in PRODUCTS:
-        if product['name'] == product_name:
-            return product['price']
+        if product["name"] == name:
+            return float(product.get("price") or 0)
+    for product in PRODUCTS:
+        if (product.get("name") or "").lower() == str(name).lower():
+            return float(product.get("price") or 0)
     return 0.0
 
 # Add this function after the existing get_product_price function (around line 125)
@@ -3869,9 +3883,15 @@ def stripe_webhook():
         if order_id:
             # Webhook payload may omit full shipping_details.address; retrieve complete Session
             session = fetch_full_checkout_session(session, stripe)
+            db_rw = supabase_admin if supabase_admin else supabase
+            if not supabase_admin:
+                logger.error(
+                    "Webhook: SUPABASE_SERVICE_ROLE_KEY missing — order UPDATE may be blocked by RLS "
+                    "(pending, no email/shipping in DB). Set service role secret on Fly."
+                )
             try:
                 # First try to get order from database
-                db_result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
+                db_result = db_rw.table('orders').select('*').eq('order_id', order_id).execute()
                 
                 if db_result.data:
                     order_data = db_result.data[0]
@@ -4198,7 +4218,7 @@ def stripe_webhook():
                 stripe_ship_cost = session_shipping_cost_usd(session)
                 if stripe_ship_cost is not None and stripe_ship_cost > 0:
                     update_data["shipping_cost"] = stripe_ship_cost
-                supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
+                db_rw.table('orders').update(update_data).eq('order_id', order_id).execute()
                 logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
                 
                 # Ensure order is added to processing queue (trigger should do this, but ensure it manually)

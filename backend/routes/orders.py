@@ -811,12 +811,12 @@ def create_checkout_session():
         if order_ts is not None and str(order_ts).strip():
             order_data["screenshot_timestamp"] = str(order_ts)
         
-        client = _get_supabase_client()
+        write_client = _get_supabase_admin() or _get_supabase_client()
         order_store = _get_order_store()
         
         try:
-            if client:
-                client.table('orders').insert(order_data).execute()
+            if write_client:
+                write_client.table('orders').insert(order_data).execute()
                 logger.info("Order %s stored in database (with screenshot: %s)", order_id, bool(checkout_screenshot))
         except Exception as e:
             logger.error("Failed to store order %s in database: %s", order_id, e)
@@ -949,12 +949,18 @@ def stripe_webhook():
             # Webhook body can omit full address; retrieve session for complete shipping_details
             session = fetch_full_checkout_session(session, stripe)
             try:
-                client = _get_supabase_client()
+                # Service role must update orders after payment (RLS blocks anon updates).
+                write_client = _get_supabase_admin() or _get_supabase_client()
+                if not _get_supabase_admin():
+                    logger.error(
+                        "Webhook: set SUPABASE_SERVICE_ROLE_KEY on Fly — anon client cannot UPDATE orders "
+                        "(email/shipping/status will not persist)."
+                    )
                 order_store = _get_order_store()
                 
                 # Get order from database
-                if client:
-                    db_result = client.table('orders').select('*').eq('order_id', order_id).execute()
+                if write_client:
+                    db_result = write_client.table('orders').select('*').eq('order_id', order_id).execute()
                     if db_result.data:
                         order_data = db_result.data[0]
                         cart = order_data.get("cart", [])
@@ -1088,9 +1094,8 @@ def stripe_webhook():
                                 if len(screenshot_for_db) > max_size:
                                     to_store = _compress_for_inline(screenshot_for_db, max_bytes=750000, max_width=800)
                                 if to_store and len(to_store) <= max_size:
-                                    client = _get_supabase_client()
-                                    if client:
-                                        client.table('orders').update({'selected_screenshot': to_store}).eq('order_id', order_id).execute()
+                                    if write_client:
+                                        write_client.table('orders').update({'selected_screenshot': to_store}).eq('order_id', order_id).execute()
                                         logger.info("Persisted screenshot to order for Print Quality page")
                                 elif not to_store:
                                     logger.warning("Screenshot too large and compression failed, Print Quality may not load it")
@@ -1148,7 +1153,7 @@ def stripe_webhook():
                 
                 # Update order status to 'paid' and persist Stripe shipping address if collected
                 try:
-                    if client:
+                    if write_client:
                         update_data = {
                             'status': 'paid',
                             'customer_phone': customer_phone,
@@ -1175,10 +1180,10 @@ def stripe_webhook():
                         stripe_ship_cost = session_shipping_cost_usd(session)
                         if stripe_ship_cost is not None and stripe_ship_cost > 0:
                             update_data["shipping_cost"] = stripe_ship_cost
-                        client.table('orders').update(update_data).eq('order_id', order_id).execute()
+                        write_client.table('orders').update(update_data).eq('order_id', order_id).execute()
                         
                         # Ensure order is in processing queue
-                        admin_client = _get_supabase_admin() or client
+                        admin_client = _get_supabase_admin() or write_client
                         queue_check = admin_client.table('order_processing_queue').select('id').eq('order_id', order_id).execute()
                         if not queue_check.data:
                             queue_entry = {
