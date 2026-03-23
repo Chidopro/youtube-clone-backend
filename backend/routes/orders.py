@@ -5,6 +5,7 @@ from utils.stripe_checkout import (
     build_shipping_address_payload,
     merge_shipping_address_records,
     session_customer_email,
+    session_shipping_cost_usd,
 )
 import logging
 import json
@@ -1154,8 +1155,9 @@ def stripe_webhook():
                             'stripe_session_id': session.get('id'),
                             'payment_intent_id': session.get('payment_intent')
                         }
-                        if customer_email and str(customer_email).strip():
-                            update_data['customer_email'] = str(customer_email).strip()
+                        em = str(customer_email).strip() if customer_email else ""
+                        if em and em.lower() != "not provided":
+                            update_data["customer_email"] = em
                         # Merge Stripe (collected_information + shipping_details) with DB / form address
                         existing_ship = order_data.get("shipping_address")
                         if isinstance(existing_ship, str) and existing_ship.strip():
@@ -1170,6 +1172,9 @@ def stripe_webhook():
                         )
                         if merged_ship:
                             update_data["shipping_address"] = merged_ship
+                        stripe_ship_cost = session_shipping_cost_usd(session)
+                        if stripe_ship_cost is not None and stripe_ship_cost > 0:
+                            update_data["shipping_cost"] = stripe_ship_cost
                         client.table('orders').update(update_data).eq('order_id', order_id).execute()
                         
                         # Ensure order is in processing queue

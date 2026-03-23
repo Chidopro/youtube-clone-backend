@@ -63,7 +63,18 @@ def fetch_full_checkout_session(session: Any, stripe_module: Any) -> Dict[str, A
     if not sid or not stripe_module:
         return d
     try:
-        full = stripe_module.checkout.Session.retrieve(sid)
+        try:
+            full = stripe_module.checkout.Session.retrieve(
+                sid,
+                expand=["line_items.data.price"],
+            )
+        except Exception as expand_err:
+            logger.info(
+                "checkout.Session.retrieve expand failed for %s, retrying plain: %s",
+                sid,
+                expand_err,
+            )
+            full = stripe_module.checkout.Session.retrieve(sid)
         out = session_obj_to_dict(full)
         logger.info("Fetched full Checkout Session %s for shipping merge", sid)
         return out
@@ -250,6 +261,50 @@ def merge_shipping_address_records(
 # Backwards-compatible name used by webhooks
 def build_shipping_address_payload(session_dict: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     return build_stripe_shipping_address_payload(session_dict)
+
+
+def session_shipping_cost_usd(session_dict: Optional[Dict[str, Any]]) -> Optional[float]:
+    """
+    Shipping amount in USD from a Checkout Session.
+    Uses total_details.amount_shipping when set; otherwise sums line items whose
+    description looks like shipping (Stripe line-item shipping).
+    """
+    s = _to_plain(session_dict or {})
+    td = s.get("total_details")
+    if isinstance(td, dict):
+        cents = td.get("amount_shipping")
+        if cents is not None:
+            try:
+                v = float(cents) / 100.0
+                if v > 0:
+                    return round(v, 2)
+            except (TypeError, ValueError):
+                pass
+
+    li = s.get("line_items")
+    data: list = []
+    if isinstance(li, dict):
+        data = list(li.get("data") or [])
+    elif isinstance(li, list):
+        data = li
+    total_cents = 0
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        desc = (item.get("description") or "").strip().lower()
+        if "shipping" not in desc:
+            continue
+        for k in ("amount_total", "amount_subtotal"):
+            raw = item.get(k)
+            if raw is not None:
+                try:
+                    total_cents += int(raw)
+                except (TypeError, ValueError):
+                    pass
+                break
+    if total_cents > 0:
+        return round(total_cents / 100.0, 2)
+    return None
 
 
 def session_customer_email(session_dict: Optional[Dict[str, Any]]) -> str:

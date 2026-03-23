@@ -1378,18 +1378,15 @@ def admin_orders():
                 if canonical:
                     return redirect(url_for("admin.admin_order_detail", order_id=canonical))
         
-        # Get orders from order_store (recent orders)
-        for order_id, order_data in order_store.items():
-            order_data['order_id'] = order_id
-            order_data['status'] = 'pending'
-            order_data['created_at'] = order_data.get('timestamp', 'N/A')
-            all_orders.append(order_data)
-        
-        # Get orders from database
+        # Load DB first so we know which order_ids are authoritative (avoid duplicate pending rows)
+        db_order_ids = set()
         try:
             client = _get_supabase_client()
             orders_result = client.table('orders').select('*').order('created_at', desc=True).execute()
             for order in orders_result.data:
+                oid = order.get('order_id')
+                if oid:
+                    db_order_ids.add(oid)
                 order_data = {
                     'order_id': order.get('order_id'),
                     'cart': order.get('cart', []),
@@ -1405,6 +1402,16 @@ def admin_orders():
                 all_orders.append(order_data)
         except Exception as db_error:
             logger.error(f"Database error loading orders: {str(db_error)}")
+
+        # In-memory orders only if not already in Supabase (store lacks paid/email/shipping)
+        for order_id, order_data in order_store.items():
+            if order_id in db_order_ids:
+                continue
+            order_data = dict(order_data)
+            order_data['order_id'] = order_id
+            order_data['status'] = 'pending'
+            order_data['created_at'] = order_data.get('timestamp', 'N/A')
+            all_orders.append(order_data)
         
         # Also get legacy sales data
         try:
@@ -1436,16 +1443,45 @@ def admin_orders():
         return jsonify({"error": "Failed to load orders"}), 500
 
 
+def _merge_order_store_cart_screenshots(order_data: dict, oid: str, order_store: dict) -> None:
+    """
+    In-memory order_store often has richer per-item screenshots than Postgres JSON.
+    Merge missing screenshot fields from store into order_data['cart'] (same length only).
+    """
+    if not order_store or oid not in order_store:
+        return
+    store_cart = order_store[oid].get("cart")
+    if not isinstance(store_cart, list) or not store_cart:
+        return
+    od_cart = order_data.get("cart") or []
+    if isinstance(od_cart, str) and od_cart.strip():
+        try:
+            od_cart = json.loads(od_cart)
+        except Exception:
+            od_cart = []
+    if not isinstance(od_cart, list) or len(od_cart) != len(store_cart):
+        return
+    for i, sc_item in enumerate(store_cart):
+        if i >= len(od_cart) or not isinstance(sc_item, dict) or not isinstance(od_cart[i], dict):
+            continue
+        for key in ("selected_screenshot", "screenshot", "img", "thumbnail"):
+            if sc_item.get(key) and not od_cart[i].get(key):
+                od_cart[i] = {**od_cart[i], key: sc_item[key]}
+    order_data["cart"] = od_cart
+
+
 @admin_bp.route("/admin/order/<order_id>")
 @admin_required()
 def admin_order_detail(order_id):
     """Detailed view of a specific order"""
     try:
         order_store = _get_order_store()
-        order_data = order_store.get(order_id)
-        
-        if not order_data:
-            client = _get_supabase_client()
+        order_data = None
+        client = _get_supabase_client()
+
+        # Prefer Supabase — source of truth after payment (email, address, shipping_cost, status).
+        # order_store alone omits shipping_cost / customer_email and stays "pending".
+        if client:
             try:
                 db_order, canonical_id = _fetch_order_row_by_lookup(client, order_id)
                 if db_order:
@@ -1457,17 +1493,21 @@ def admin_order_detail(order_id):
                         'video_title': db_order.get('video_title', 'Unknown Video'),
                         'creator_name': db_order.get('creator_name', 'Unknown Creator'),
                         'video_url': db_order.get('video_url', 'Not provided'),
-                        'shipping_cost': db_order.get('shipping_cost', 0),
+                        'shipping_cost': db_order.get('shipping_cost'),
                         'shipping_address': db_order.get('shipping_address'),
                         'customer_email': db_order.get('customer_email', ''),
                         'customer_phone': db_order.get('customer_phone', ''),
                         'total_amount': db_order.get('total_amount'),
                     }
-                else:
-                    return "Order not found", 404
+                    _merge_order_store_cart_screenshots(order_data, order_id, order_store)
             except Exception as db_error:
                 logger.error(f"Database error loading order {order_id}: {str(db_error)}")
                 return "Error loading order from database", 500
+
+        if not order_data:
+            order_data = order_store.get(order_id)
+            if not order_data:
+                return "Order not found", 404
         
         # Try to extract video metadata if missing
         if (order_data.get('video_title') == 'Unknown Video' or 

@@ -74,6 +74,7 @@ from utils.stripe_checkout import (
     build_shipping_address_payload,
     merge_shipping_address_records,
     session_customer_email,
+    session_shipping_cost_usd,
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -4178,8 +4179,9 @@ def stripe_webhook():
                     'payment_intent_id': session.get('payment_intent')
                 }
                 # Update customer_email in database if we have it from Stripe
-                if customer_email and customer_email != "Not provided":
-                    update_data['customer_email'] = customer_email
+                em = str(customer_email).strip() if customer_email else ""
+                if em and em.lower() != "not provided":
+                    update_data["customer_email"] = em
                 existing_ship = order_data.get("shipping_address")
                 if isinstance(existing_ship, str) and existing_ship.strip():
                     try:
@@ -4193,6 +4195,9 @@ def stripe_webhook():
                 )
                 if merged_ship:
                     update_data["shipping_address"] = merged_ship
+                stripe_ship_cost = session_shipping_cost_usd(session)
+                if stripe_ship_cost is not None and stripe_ship_cost > 0:
+                    update_data["shipping_cost"] = stripe_ship_cost
                 supabase.table('orders').update(update_data).eq('order_id', order_id).execute()
                 logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
                 

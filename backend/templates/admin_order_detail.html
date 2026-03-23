@@ -407,6 +407,7 @@
     <div class="container">
         <div class="order-header">
             <div class="order-info">
+                {% set sc = order.get('shipping_cost') if order is mapping else order.shipping_cost %}
                 <div class="info-item">
                     <div class="info-label">Order ID</div>
                     <div class="info-value">
@@ -430,11 +431,17 @@
                 </div>
                 <div class="info-item">
                     <div class="info-label">Shipping Cost</div>
-                    <div class="info-value">${{ "%.2f"|format(order.shipping_cost) if order.shipping_cost else 'Included' }}</div>
+                    <div class="info-value">
+                        {% if sc is not none %}
+                            ${{ "%.2f"|format(sc|float) }}
+                        {% else %}
+                            Included
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Total Value</div>
-                    <div class="info-value">${{ "%.2f"|format((order.cart|map(attribute='product')|map('get_product_price')|sum) + (order.shipping_cost or 0)) }}</div>
+                    <div class="info-value">${{ "%.2f"|format((order.cart|map(attribute='product')|map('get_product_price')|sum) + (sc|float if sc is not none else 0)) }}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Customer Email</div>
