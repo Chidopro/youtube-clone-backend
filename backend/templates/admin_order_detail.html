@@ -395,6 +395,17 @@
             line-height: 1.4;
         }
         
+        .screenshot-ts-raw {
+            color: #6c757d;
+            font-weight: 500;
+            font-size: 0.92em;
+        }
+        
+        .screenshot-ts-missing {
+            color: #856404;
+            font-style: italic;
+        }
+        
         .fulfillment-actions {
             background: white;
             border-radius: 10px;
@@ -607,6 +618,8 @@
         
         <div class="items-grid">
             {% for item in order.cart %}
+            {# Video frame in seconds: line item first, then order-level (checkout stores one global timestamp when line items omitted it) #}
+            {% set frame_ts = item.screenshot_timestamp|default(item.timestamp|default(order.screenshot_timestamp|default(none))) %}
             <div class="item-card">
                 <div class="item-header">
                     <div class="item-title">{{ item.product }}</div>
@@ -646,7 +659,7 @@
                                 <li><strong>Type:</strong> Video frame capture</li>
                                 <li><strong>Video:</strong> {{ screenshot.videoName if screenshot.videoName else (item.videoName if item.videoName else order.video_title) }}</li>
                                 <li><strong>Creator:</strong> {{ screenshot.creatorName if screenshot.creatorName else (item.creatorName if item.creatorName else order.creator_name) }}</li>
-                                <li><strong>Timestamp:</strong> {{ screenshot.timestamp|format_timestamp }}</li>
+                                <li><strong>Video position (frame):</strong> {{ screenshot.timestamp|format_timestamp }} <span class="screenshot-ts-raw">({{ screenshot.timestamp|round(2) }}s)</span></li>
                                 <li><strong>Video URL:</strong> <a href="{{ order.video_url if order.video_url else '#' }}" target="_blank" rel="noopener">{{ order.video_url if order.video_url else 'N/A' }}</a></li>
                             </ul>
                             {% if shot_img and (shot_img.startswith('http://') or shot_img.startswith('https://') or shot_img.startswith('data:image')) %}
@@ -670,9 +683,7 @@
                                 <li><strong>Type:</strong> Print artwork (same source as checkout &amp; email)</li>
                                 <li><strong>Video:</strong> {{ item.videoName if item.videoName else order.video_title }}</li>
                                 <li><strong>Creator:</strong> {{ item.creatorName if item.creatorName else order.creator_name }}</li>
-                                {% if item.timestamp %}
-                                <li><strong>Timestamp:</strong> {{ item.timestamp|format_timestamp }}</li>
-                                {% endif %}
+                                <li><strong>Video position (frame):</strong> {% if frame_ts is not none and frame_ts != '' %}{{ frame_ts|format_timestamp }} <span class="screenshot-ts-raw">({{ frame_ts }}s)</span>{% else %}<span class="screenshot-ts-missing">Not recorded</span>{% endif %}</li>
                                 <li><strong>Video URL:</strong> <a href="{{ order.video_url if order.video_url else '#' }}" target="_blank" rel="noopener">{{ order.video_url if order.video_url else 'N/A' }}</a></li>
                             </ul>
                             <div class="screenshot-preview-wrap">
@@ -690,6 +701,7 @@
                             <ul>
                                 <li><strong>Type:</strong> Print artwork</li>
                                 <li><strong>Video:</strong> {{ item.videoName if item.videoName else order.video_title }}</li>
+                                <li><strong>Video position (frame):</strong> {% if frame_ts is not none and frame_ts != '' %}{{ frame_ts|format_timestamp }} <span class="screenshot-ts-raw">({{ frame_ts }}s)</span>{% else %}<span class="screenshot-ts-missing">Not recorded</span>{% endif %}</li>
                             </ul>
                             <p class="screenshot-hint"><em>Artwork reference is stored but not in a displayable format here. Open Edit Tools or Print Quality for this order.</em></p>
                             <p class="screenshot-tools-links">

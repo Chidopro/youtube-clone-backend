@@ -260,7 +260,10 @@ const Checkout = () => {
         variants: { color: it.color || 'Default', size: it.size || 'Default' },
         price: it.price || 0,
         selected_screenshot: finalScreenshot,
-        note: it.note || ''
+        note: it.note || '',
+        // Video frame position (seconds) for admin / fulfillment — same as order-level screenshot_timestamp when single item
+        screenshot_timestamp: it.screenshot_timestamp ?? it.timestamp ?? screenshotTimestampFromStorage ?? null,
+        timestamp: it.screenshot_timestamp ?? it.timestamp ?? screenshotTimestampFromStorage ?? null,
       };
       if (it.toolSettings && typeof it.toolSettings === 'object') {
         cleanItem.toolSettings = it.toolSettings;
