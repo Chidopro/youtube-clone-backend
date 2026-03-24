@@ -3131,12 +3131,17 @@ def place_order():
         ts_val = data.get("screenshot_timestamp") or data.get("timestamp") or "Not provided"
         order_data["screenshot_timestamp"] = ts_val
 
-        # Try database first; fallback to in-memory store
+        # Try database first; fallback to in-memory store (service role avoids RLS blocking inserts)
+        orders_write = supabase_admin if supabase_admin else supabase
+        if not supabase_admin:
+            logger.warning(
+                "PLACE-ORDER: SUPABASE_SERVICE_ROLE_KEY missing — orders INSERT may fail under RLS"
+            )
         stored_in_db = False
         try:
             # Log what we're trying to save for debugging
             logger.info(f"💾 [PLACE-ORDER] Saving order to database with creator_user_id: {creator_user_id_from_subdomain}, subdomain: {subdomain_from_request}")
-            supabase.table('orders').insert(order_data).execute()
+            orders_write.table('orders').insert(order_data).execute()
             stored_in_db = True
             logger.info(f"✅ Order {order_id} stored in database with creator tracking")
         except Exception as db_error:
@@ -3657,15 +3662,20 @@ def create_checkout_session():
                     logger.warning(f"   ⚠️ Item {idx} has NO screenshot - selected_screenshot={screenshot_val}")
             
             # Store in database (retry without selected_screenshot if column does not exist yet)
+            orders_write = supabase_admin if supabase_admin else supabase
+            if not supabase_admin:
+                logger.warning(
+                    "CHECKOUT: SUPABASE_SERVICE_ROLE_KEY missing — orders INSERT may fail under RLS"
+                )
             try:
-                supabase.table('orders').insert(order_data).execute()
+                orders_write.table('orders').insert(order_data).execute()
                 logger.info(f"✅ Order {order_id} stored in database")
             except Exception as insert_err:
                 err_str = str(insert_err).lower()
                 if 'selected_screenshot' in err_str or 'screenshot_timestamp' in err_str or 'column' in err_str:
                     order_data_fallback = {k: v for k, v in order_data.items() if k not in ('selected_screenshot', 'screenshot_timestamp')}
                     try:
-                        supabase.table('orders').insert(order_data_fallback).execute()
+                        orders_write.table('orders').insert(order_data_fallback).execute()
                         logger.info(f"✅ Order {order_id} stored in database (run add_order_screenshot_column.sql to enable screenshot/timestamp columns)")
                     except Exception as retry_err:
                         raise retry_err
