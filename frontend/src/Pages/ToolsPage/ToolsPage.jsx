@@ -832,7 +832,7 @@ const ToolsPage = () => {
   const [productSelectClicked, setProductSelectClicked] = useState(false); // Track if product select has been clicked
   const [orderScreenshotsLoading, setOrderScreenshotsLoading] = useState(false);
   const [orderScreenshotsError, setOrderScreenshotsError] = useState(null);
-  // True when opened from admin email (Edit Tools link) → show Download. Init from URL so first paint is correct.
+  // True when opened from admin email (Edit Tools link). Init from URL so first paint is correct.
   const [isFromOrderEmail, setIsFromOrderEmail] = useState(() => {
     if (typeof window === 'undefined') return false;
     try {
@@ -1019,7 +1019,7 @@ const ToolsPage = () => {
           setCartProducts(mapped);
           setSelectedCartProductIndex(mapped.length > 0 ? 0 : null);
           setOrderScreenshotsError(null);
-          setIsFromOrderEmail(true); // Opened from admin email (Edit Tools link) → show Download, not Apply Edits
+          setIsFromOrderEmail(true); // Opened from admin email (Edit Tools link) → show 300 DPI actions, not Apply Edits
           // If any product is missing product image, fetch by name so we show product mockup (measure screenshot over print area)
           const missing = mapped.filter((item) => item.name && !item.productImage);
           if (missing.length > 0) {
@@ -3487,7 +3487,7 @@ const ToolsPage = () => {
 
           <div className="tools-actions">
             {(() => {
-              // Email Edit Tools link (order_id in URL): show 300 DPI + Order Details above Download
+              // Email Edit Tools link (order_id in URL): Generate 300 DPI, Order Details, Download Print Quality only (no extra "Download" — avoids confusion with preview resolution)
               const fromParams = searchParams.get('order_id');
               let fromUrl = false;
               if (typeof window !== 'undefined') {
@@ -3525,17 +3525,11 @@ const ToolsPage = () => {
                         className="tools-email-btn tools-email-btn-order"
                         onClick={handleDownloadPrintQuality}
                         disabled={!printQualityImageUrl}
+                        title="Downloads the 300 DPI file after you click Generate 300 DPI Image"
                       >
                         Download Print Quality Image
                       </button>
                     </div>
-                    <button 
-                      className="apply-edits-btn download-btn"
-                      onClick={handleDownload}
-                      disabled={!editedImageUrl && !imageUrl}
-                    >
-                      Download
-                    </button>
                   </>
                 );
               }

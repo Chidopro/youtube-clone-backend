@@ -356,6 +356,45 @@
             margin-top: 10px;
         }
         
+        .screenshot-preview-wrap {
+            margin-top: 12px;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .screenshot-preview-large {
+            max-width: 100%;
+            max-height: 420px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            vertical-align: middle;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            background: #fafafa;
+        }
+        
+        .screenshot-tools-links {
+            margin-top: 12px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .screenshot-tools-links a {
+            color: #0d47a1;
+            font-weight: 600;
+        }
+        
+        .screenshot-hint {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: #555;
+            line-height: 1.4;
+        }
+        
         .fulfillment-actions {
             background: white;
             border-radius: 10px;
@@ -597,53 +636,71 @@
                 {% endif %}
                 
                 <div class="screenshot-section">
-                    <div class="screenshot-title">📸 Screenshot Information</div>
-                    
+                    <div class="screenshot-title">📸 Artwork &amp; screenshot</div>
+                    {% set artwork = item.selected_screenshot or item.screenshot or item.img or item.thumbnail or '' %}
                     {% if item.screenshots and item.screenshots|length > 0 %}
                         {% for screenshot in item.screenshots %}
+                        {% set shot_img = screenshot.img if screenshot else '' %}
                         <div class="screenshot-info">
                             <ul>
-                                <li><strong>Type:</strong> Video Screenshot</li>
+                                <li><strong>Type:</strong> Video frame capture</li>
                                 <li><strong>Video:</strong> {{ screenshot.videoName if screenshot.videoName else (item.videoName if item.videoName else order.video_title) }}</li>
                                 <li><strong>Creator:</strong> {{ screenshot.creatorName if screenshot.creatorName else (item.creatorName if item.creatorName else order.creator_name) }}</li>
                                 <li><strong>Timestamp:</strong> {{ screenshot.timestamp|format_timestamp }}</li>
-                                <li><strong>Video URL:</strong> <a href="{{ order.video_url if order.video_url else 'N/A' }}" target="_blank">{{ order.video_url if order.video_url else 'N/A' }}</a></li>
-                                <li><strong>Reference:</strong> Use screenshot at {{ screenshot.timestamp|format_timestamp }} from video</li>
+                                <li><strong>Video URL:</strong> <a href="{{ order.video_url if order.video_url else '#' }}" target="_blank" rel="noopener">{{ order.video_url if order.video_url else 'N/A' }}</a></li>
                             </ul>
-                            {% if screenshot.img and not screenshot.img.startswith('data:image') %}
-                            <img src="{{ screenshot.img }}" alt="Screenshot" class="screenshot-image">
-                            {% else %}
-                            <p><em>📧 Screenshot not shown due to size - use timestamp reference above</em></p>
+                            {% if shot_img and (shot_img.startswith('http://') or shot_img.startswith('https://') or shot_img.startswith('data:image')) %}
+                            <div class="screenshot-preview-wrap">
+                                <img src="{{ shot_img }}" alt="Order artwork" class="screenshot-image screenshot-preview-large" loading="lazy">
+                            </div>
+                            {% elif shot_img %}
+                            <p class="screenshot-hint"><em>Artwork reference is stored but not in a displayable format in the browser.</em></p>
                             {% endif %}
+                            <p class="screenshot-tools-links">
+                                <a href="https://screenmerch.com/tools?order_id={{ order_id|urlencode }}" target="_blank" rel="noopener">Edit Tools</a>
+                                <span aria-hidden="true"> · </span>
+                                <a href="/print-quality?order_id={{ order_id|urlencode }}" target="_blank" rel="noopener">Print Quality</a>
+                            </p>
+                            <p class="screenshot-hint">Compare this image with <strong>Edit Tools</strong> for this order — it should match the loaded artwork.</p>
                         </div>
                         {% endfor %}
-                    {% elif item.img and item.img.startswith('data:image') %}
-                        <!-- This is a base64 screenshot, not a thumbnail -->
+                    {% elif artwork and (artwork.startswith('http://') or artwork.startswith('https://') or artwork.startswith('data:image')) %}
                         <div class="screenshot-info">
                             <ul>
-                                <li><strong>Type:</strong> Video Screenshot</li>
+                                <li><strong>Type:</strong> Print artwork (same source as checkout &amp; email)</li>
                                 <li><strong>Video:</strong> {{ item.videoName if item.videoName else order.video_title }}</li>
                                 <li><strong>Creator:</strong> {{ item.creatorName if item.creatorName else order.creator_name }}</li>
-                                <li><strong>Timestamp:</strong> {{ item.timestamp|format_timestamp if item.timestamp else 'N/A' }}</li>
-                                <li><strong>Video URL:</strong> <a href="{{ order.video_url if order.video_url else 'N/A' }}" target="_blank">{{ order.video_url if order.video_url else 'N/A' }}</a></li>
-                                <li><strong>Reference:</strong> Use screenshot at {{ item.timestamp|format_timestamp if item.timestamp else 'N/A' }} from video</li>
+                                {% if item.timestamp %}
+                                <li><strong>Timestamp:</strong> {{ item.timestamp|format_timestamp }}</li>
+                                {% endif %}
+                                <li><strong>Video URL:</strong> <a href="{{ order.video_url if order.video_url else '#' }}" target="_blank" rel="noopener">{{ order.video_url if order.video_url else 'N/A' }}</a></li>
                             </ul>
-                            <p><em>📧 Screenshot not shown due to size - use timestamp reference above</em></p>
+                            <div class="screenshot-preview-wrap">
+                                <img src="{{ artwork }}" alt="Order artwork for {{ item.product }}" class="screenshot-image screenshot-preview-large" loading="lazy">
+                            </div>
+                            <p class="screenshot-tools-links">
+                                <a href="https://screenmerch.com/tools?order_id={{ order_id|urlencode }}" target="_blank" rel="noopener">Edit Tools</a>
+                                <span aria-hidden="true"> · </span>
+                                <a href="/print-quality?order_id={{ order_id|urlencode }}" target="_blank" rel="noopener">Print Quality</a>
+                            </p>
+                            <p class="screenshot-hint">This is the image stored with the order. It should match what you see in <strong>Edit Tools</strong> for this order.</p>
                         </div>
-                    {% else %}
-                        <!-- This is likely a thumbnail URL -->
+                    {% elif artwork %}
                         <div class="screenshot-info">
                             <ul>
-                                <li><strong>Type:</strong> Video Thumbnail</li>
-                                <li><strong>Video:</strong> {{ item.videoName if item.videoName else 'N/A' }}</li>
-                                <li><strong>Creator:</strong> {{ item.creatorName if item.creatorName else 'N/A' }}</li>
-                                <li><strong>Reference:</strong> Use video thumbnail</li>
+                                <li><strong>Type:</strong> Print artwork</li>
+                                <li><strong>Video:</strong> {{ item.videoName if item.videoName else order.video_title }}</li>
                             </ul>
-                            {% if item.img and not item.img.startswith('data:image') %}
-                            <img src="{{ item.img }}" alt="Thumbnail" class="screenshot-image">
-                            {% else %}
-                            <p><em>📧 Thumbnail not shown due to size - use video reference above</em></p>
-                            {% endif %}
+                            <p class="screenshot-hint"><em>Artwork reference is stored but not in a displayable format here. Open Edit Tools or Print Quality for this order.</em></p>
+                            <p class="screenshot-tools-links">
+                                <a href="https://screenmerch.com/tools?order_id={{ order_id|urlencode }}" target="_blank" rel="noopener">Edit Tools</a>
+                                <span aria-hidden="true"> · </span>
+                                <a href="/print-quality?order_id={{ order_id|urlencode }}" target="_blank" rel="noopener">Print Quality</a>
+                            </p>
+                        </div>
+                    {% else %}
+                        <div class="screenshot-info">
+                            <p class="screenshot-hint"><em>No artwork image found on this line item. Check the order payload or open <a href="https://screenmerch.com/tools?order_id={{ order_id|urlencode }}" target="_blank" rel="noopener">Edit Tools</a> after loading the order.</em></p>
                         </div>
                     {% endif %}
                 </div>
@@ -697,7 +754,7 @@ Customer: {{ order.customer_email or (order.cart[0].email if order.cart and orde
   Screenshot: {{ screenshot.timestamp }}s from video
   {% endfor %}
   {% else %}
-  Screenshot: Use video thumbnail
+  Screenshot: see admin order page / Edit Tools
   {% endif %}
 {% endfor %}`;
             
