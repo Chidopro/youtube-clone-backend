@@ -35,7 +35,20 @@ const useIsMobile = () => {
     return { isMobile, isMobilePortrait };
 };
 
-const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots, setScreenshots, videoRef: propVideoRef, onVideoData, onScreenshotFunction, onVideoPlayed, onMakeMerch }) => {
+const PlayVideo = ({
+  videoId: propVideoId,
+  thumbnail,
+  setThumbnail,
+  screenshots,
+  setScreenshots,
+  videoRef: propVideoRef,
+  onVideoData,
+  onScreenshotFunction,
+  onVideoPlayed,
+  onMakeMerch,
+  screenshotTimestamps: screenshotTimestampsProp,
+  setScreenshotTimestamps: setScreenshotTimestampsProp,
+}) => {
     // Use prop if provided, otherwise fallback to URL param
     const params = useParams();
     const videoId = propVideoId || params.videoId;
@@ -92,8 +105,11 @@ const PlayVideo = ({ videoId: propVideoId, thumbnail, setThumbnail, screenshots,
     const [resizeDirection, setResizeDirection] = useState(null);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     
-    // Screenshot timestamps state
-    const [screenshotTimestamps, setScreenshotTimestamps] = useState([]);
+    // Screenshot timestamps (seconds in video). Parent can own state so "Make Merch" in Video.jsx saves real values.
+    const [screenshotTimestampsInternal, setScreenshotTimestampsInternal] = useState([]);
+    const screenshotTimestamps =
+      screenshotTimestampsProp !== undefined ? screenshotTimestampsProp : screenshotTimestampsInternal;
+    const setScreenshotTimestamps = setScreenshotTimestampsProp || setScreenshotTimestampsInternal;
     
     // Safe alert function to prevent rapid-fire alerts - DISABLED TO STOP LOOPS
     const safeAlert = useCallback((message) => {

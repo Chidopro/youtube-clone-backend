@@ -14,6 +14,8 @@ const Video = ({ sidebar }) => {
   // State for thumbnail/screenshots
   const [thumbnail, setThumbnail] = useState(null);
   const [screenshots, setScreenshots] = useState([]);
+  /** Seconds in video for each captured frame (aligned with PlayVideo); required for orders/admin timestamp */
+  const [screenshotTimestamps, setScreenshotTimestamps] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -237,13 +239,17 @@ const Video = ({ sidebar }) => {
       isLoggedIn: isLoggedIn
     });
     
-    // Always persist the current merch data so the product page can render (screenshot_timestamp for email)
+    // Always persist the current merch data so the product page can render (screenshot_timestamp for email/order)
     try {
+      const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : 0;
+      const frameSeconds =
+        screenshotTimestamps.length > 0 ? screenshotTimestamps[0] : screenshots.length > 0 ? 0 : currentTime;
       const merchData = {
         thumbnail,
         videoUrl: window.location.href,
         screenshots: screenshots.slice(0, 6),
-        screenshot_timestamp: 0,
+        screenshot_timestamp: frameSeconds,
+        timestamp: frameSeconds,
         videoTitle: videoData?.title || 'Unknown Video',
         creatorName: videoData?.channelTitle || 'Unknown Creator'
       };
@@ -467,6 +473,8 @@ const Video = ({ sidebar }) => {
                setThumbnail={setThumbnail}
                screenshots={screenshots} 
                setScreenshots={setScreenshots}
+               screenshotTimestamps={screenshotTimestamps}
+               setScreenshotTimestamps={setScreenshotTimestamps}
                videoRef={videoRef}
                onVideoData={setVideoData}
                onVideoPlayed={handleVideoPlayed}
