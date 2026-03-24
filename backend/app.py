@@ -659,6 +659,40 @@ def format_timestamp(timestamp):
         logger.error(f"❌ Error formatting timestamp {timestamp}: {str(e)}")
         return str(timestamp)
 
+
+@app.template_filter("format_order_datetime")
+def format_order_datetime(value):
+    """Admin order detail: ISO / DB timestamps → readable string."""
+    if value is None:
+        return "—"
+    from datetime import datetime, date, timezone
+
+    if isinstance(value, datetime):
+        dt = value
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+        return dt.strftime("%b %d, %Y · %H:%M UTC")
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value.strftime("%b %d, %Y")
+    s = str(value).strip()
+    if not s or s.lower() in ("n/a", "recent", "none"):
+        return s or "—"
+    try:
+        raw = s.replace("Z", "+00:00")
+        if "T" not in raw and len(raw) >= 10:
+            raw = raw[:10] + "T00:00:00+00:00"
+        dt = datetime.fromisoformat(raw)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+        return dt.strftime("%b %d, %Y · %H:%M UTC")
+    except Exception:
+        return s
+
+
 # Add custom Jinja2 filters
 @app.template_filter('get_product_price')
 def get_product_price(product_name_or_item):

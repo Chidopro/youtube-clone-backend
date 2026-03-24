@@ -102,35 +102,111 @@
         .order-header {
             background: white;
             border-radius: 10px;
-            padding: 20px;
+            padding: 24px;
             margin-bottom: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
+        .order-summary-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin: 0 0 16px 0;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e8e8e8;
+            letter-spacing: 0.02em;
+        }
+        
+        /* Top metrics: aligned grid, legible labels */
         .order-info {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px 20px;
+            margin-bottom: 24px;
         }
         
         .info-item {
-            text-align: center;
+            text-align: left;
+            min-width: 0;
         }
         
         .info-label {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 5px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #5c5c5c;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+            line-height: 1.3;
         }
         
         .info-value {
-            font-weight: bold;
-            color: #333;
-            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 1.05rem;
+            line-height: 1.35;
             display: flex;
             align-items: center;
-            gap: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-start;
+            word-break: break-word;
+        }
+        
+        /* Email + created + shipping: two-column layout on wide screens */
+        .order-summary-contact {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+            gap: 20px;
+            align-items: start;
+        }
+        
+        @media (max-width: 900px) {
+            .order-summary-contact {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .order-contact-card,
+        .order-shipping-card {
+            background: #f8f9fb;
+            border: 1px solid #e2e6ea;
+            border-radius: 10px;
+            padding: 16px 18px;
+            min-width: 0;
+        }
+        
+        .order-shipping-card .info-label {
+            margin-bottom: 10px;
+        }
+        
+        .address-block {
+            font-size: 1rem;
+            line-height: 1.55;
+            color: #222;
+            font-weight: 500;
+            text-align: left;
+        }
+        
+        .order-contact-card .info-label + .info-value {
+            margin-bottom: 14px;
+        }
+        
+        .order-contact-card .info-value:last-child {
+            margin-bottom: 0;
+        }
+        
+        .email-value {
+            font-size: 0.98rem;
+            font-weight: 600;
+            color: #0d47a1;
+        }
+        
+        .created-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #333;
+            font-variant-numeric: tabular-nums;
         }
         
         .print-quality-btn {
@@ -161,6 +237,11 @@
         .status-pending {
             background: #fff3cd;
             color: #856404;
+        }
+        
+        .status-paid {
+            background: #d4edda;
+            color: #155724;
         }
         
         .status-processing {
@@ -214,18 +295,23 @@
         }
         
         .detail-item {
-            text-align: center;
+            text-align: left;
+            min-width: 0;
         }
         
         .detail-label {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 5px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #5c5c5c;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
         }
         
         .detail-value {
-            font-weight: bold;
-            color: #333;
+            font-weight: 600;
+            color: #1a1a1a;
+            font-size: 1rem;
         }
         
         .screenshot-section {
@@ -406,8 +492,9 @@
     
     <div class="container">
         <div class="order-header">
+            {% set sc = order.get('shipping_cost') if order is mapping else order.shipping_cost %}
+            <h2 class="order-summary-title">Order summary</h2>
             <div class="order-info">
-                {% set sc = order.get('shipping_cost') if order is mapping else order.shipping_cost %}
                 <div class="info-item">
                     <div class="info-label">Order ID</div>
                     <div class="info-value">
@@ -443,17 +530,23 @@
                     <div class="info-label">Total Value</div>
                     <div class="info-value">${{ "%.2f"|format((order.cart|map(attribute='product')|map('get_product_price')|sum) + (sc|float if sc is not none else 0)) }}</div>
                 </div>
-                <div class="info-item">
-                    <div class="info-label">Customer Email</div>
-                    <div class="info-value">{{ order.customer_email or (order.cart[0].email if order.cart and order.cart[0].email else '') or 'N/A' }}</div>
-                </div>
-                <div class="info-item">
+            </div>
+            <div class="order-summary-contact">
+                <div class="order-contact-card">
+                    <div class="info-label">Customer email</div>
+                    <div class="info-value email-value">{{ order.customer_email or (order.cart[0].email if order.cart and order.cart[0].email else '') or 'N/A' }}</div>
                     <div class="info-label">Created</div>
-                    <div class="info-value">{{ order.created_at if order.created_at != 'N/A' else 'Recent' }}</div>
+                    <div class="info-value created-value">
+                        {% if order.created_at and order.created_at != 'N/A' %}
+                            {{ order.created_at|format_order_datetime }}
+                        {% else %}
+                            Recent
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="info-item info-item-full">
-                    <div class="info-label">Shipping Address</div>
-                    <div class="info-value">
+                <div class="order-shipping-card">
+                    <div class="info-label">Shipping address</div>
+                    <div class="address-block">
                         {% set sa = order.shipping_address %}
                         {% set zip_pc = (sa.zip if sa else '') or (sa.postal_code if sa else '') %}
                         {% set country_disp = (sa.country_code if sa else '') or (sa.country if sa else '') %}
