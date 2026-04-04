@@ -640,14 +640,48 @@ def _infer_us_state_from_zip(zip_code: str) -> str:
         return ""
 
 
+def _infer_ca_province_from_postal(postal_code: str) -> str:
+    """
+    Printful requires state_code for Canada (province). Zippopotam CA uses FSA only
+    (first 3 alnum chars, e.g. K1A from K1A 0B1), not full postal codes.
+    """
+    alnum = "".join(c for c in str(postal_code or "").upper() if c.isalnum())
+    if len(alnum) < 3:
+        return ""
+    fsa = alnum[:3]
+    try:
+        r = requests.get(f"https://api.zippopotam.us/ca/{fsa}", timeout=6)
+        if r.status_code != 200:
+            return ""
+        data = r.json()
+        places = data.get("places") or []
+        if not places:
+            return ""
+        p0 = places[0]
+        abbr = (p0.get("state abbreviation") or p0.get("state") or "").strip()
+        # CA provinces are 2 letters (ON, BC, …)
+        return abbr[:2].upper() if abbr else ""
+    except Exception as e:
+        logger.debug("Postal→province lookup failed for CA FSA %s: %s", fsa, e)
+        return ""
+
+
 def _resolve_state_code_for_shipping(shipping_address: dict, country: str, postal_code: str) -> str:
     state = (shipping_address.get("state_code") or shipping_address.get("state") or "").strip()
     if state:
         return state[:32]
-    if (country or "").upper() == "US" and postal_code:
+    cc = (country or "").strip().upper()
+    if cc == "CAN":
+        cc = "CA"
+    if cc == "US" and postal_code:
         inferred = _infer_us_state_from_zip(postal_code)
         if inferred:
             logger.info("📦 Inferred US state_code=%s from ZIP %s", inferred, postal_code)
+        return inferred
+    if cc == "CA" and postal_code:
+        inferred = _infer_ca_province_from_postal(postal_code)
+        if inferred:
+            logger.info("📦 Inferred CA province state_code=%s from postal %s", inferred, postal_code)
         return inferred
     return ""
 
