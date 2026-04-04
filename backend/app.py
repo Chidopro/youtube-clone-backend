@@ -6290,6 +6290,191 @@ def test_stripe():
             "stripe_key_configured": bool(os.getenv("STRIPE_SECRET_KEY"))
         }), 500
 
+@app.route("/test-printful", methods=["GET"])
+def test_printful():
+    try:
+        printful_api_key = os.getenv("PRINTFUL_API_KEY")
+
+        if not printful_api_key:
+            return jsonify({
+                "success": False,
+                "error": "PRINTFUL_API_KEY is missing from environment variables"
+            }), 500
+
+        headers = {
+            "Authorization": f"Bearer {printful_api_key}"
+        }
+
+        response = requests.get(
+            "https://api.printful.com/products",
+            headers=headers,
+            timeout=20
+        )
+
+        try:
+            response_data = response.json()
+        except Exception:
+            response_data = response.text
+
+        return jsonify({
+            "success": response.status_code == 200,
+            "status_code": response.status_code,
+            "response": response_data
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/printful/shipping-rates", methods=["POST"])
+def printful_shipping_rates():
+    try:
+        printful_api_key = os.getenv("PRINTFUL_API_KEY")
+
+        if not printful_api_key:
+            return jsonify({
+                "success": False,
+                "error": "PRINTFUL_API_KEY is missing from environment variables"
+            }), 500
+
+        data = request.get_json(silent=True) or {}
+
+        recipient = data.get("recipient")
+        items = data.get("items")
+        currency = data.get("currency", "USD")
+        locale = data.get("locale", "en_US")
+
+        if not recipient:
+            return jsonify({
+                "success": False,
+                "error": "recipient is required"
+            }), 400
+
+        if not items or not isinstance(items, list):
+            return jsonify({
+                "success": False,
+                "error": "items must be a non-empty list"
+            }), 400
+
+        headers = {
+            "Authorization": f"Bearer {printful_api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "recipient": recipient,
+            "items": items,
+            "currency": currency,
+            "locale": locale
+        }
+
+        response = requests.post(
+            "https://api.printful.com/shipping/rates",
+            json=payload,
+            headers=headers,
+            timeout=30
+        )
+
+        try:
+            response_data = response.json()
+        except Exception:
+            response_data = response.text
+
+        return jsonify({
+            "success": response.status_code == 200,
+            "status_code": response.status_code,
+            "printful_response": response_data
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route("/api/printful/shipping-rates/simple", methods=["POST"])
+def printful_shipping_rates_simple():
+    try:
+        printful_api_key = os.getenv("PRINTFUL_API_KEY")
+
+        if not printful_api_key:
+            return jsonify({
+                "success": False,
+                "error": "PRINTFUL_API_KEY is missing from environment variables"
+            }), 500
+
+        data = request.get_json(silent=True) or {}
+
+        country_code = data.get("country_code", "US")
+        state_code = data.get("state_code")
+        city = data.get("city", "Chatsworth")
+        zip_code = data.get("zip", "91311")
+        address1 = data.get("address1", "19749 Dearborn St")
+        phone = data.get("phone", "0000000000")
+        locale = data.get("locale", "en_US")
+        currency = data.get("currency", "USD")
+        variant_id = data.get("variant_id")
+        quantity = data.get("quantity", 1)
+
+        if not variant_id:
+            return jsonify({
+                "success": False,
+                "error": "variant_id is required"
+            }), 400
+
+        headers = {
+            "Authorization": f"Bearer {printful_api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "recipient": {
+                "address1": address1,
+                "city": city,
+                "country_code": country_code,
+                "zip": zip_code,
+                "phone": phone
+            },
+            "items": [
+                {
+                    "variant_id": int(variant_id),
+                    "quantity": int(quantity)
+                }
+            ],
+            "currency": currency,
+            "locale": locale
+        }
+
+        if state_code:
+            payload["recipient"]["state_code"] = state_code
+
+        response = requests.post(
+            "https://api.printful.com/shipping/rates",
+            json=payload,
+            headers=headers,
+            timeout=30
+        )
+
+        try:
+            response_data = response.json()
+        except Exception:
+            response_data = response.text
+
+        return jsonify({
+            "success": response.status_code == 200,
+            "status_code": response.status_code,
+            "payload_sent": payload,
+            "printful_response": response_data
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
 @app.route("/api/calculate-shipping", methods=["POST", "OPTIONS"])
 def calculate_shipping():
     """Calculate shipping cost for an order using Printify API"""
