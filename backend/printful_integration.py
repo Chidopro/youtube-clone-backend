@@ -375,11 +375,21 @@ class ScreenMerchPrintfulIntegration:
             # Format items for Printful shipping calculation
             shipping_items = []
             for item in items:
-                # Get variant_id from your product mapping or use a default
-                variant_id = item.get('printful_variant_id', 71)  # Default to basic t-shirt variant
+                vid = item.get('variant_id') or item.get('printful_variant_id') or item.get('printify_variant_id')
+                if vid is None:
+                    vid = 71
+                try:
+                    variant_id = int(vid)
+                except (TypeError, ValueError):
+                    variant_id = 71
+                q = item.get('quantity', item.get('qty', 1))
+                try:
+                    q = int(q)
+                except (TypeError, ValueError):
+                    q = 1
                 shipping_items.append({
                     "variant_id": variant_id,
-                    "quantity": item.get('quantity', 1)
+                    "quantity": max(1, q),
                 })
             
             shipping_payload = {
@@ -390,7 +400,8 @@ class ScreenMerchPrintfulIntegration:
                     "zip": recipient_data.get('zip', '')
                 },
                 "items": shipping_items,
-                "currency": "USD"
+                "currency": "USD",
+                "locale": "en_US",
             }
             
             # Call Printful shipping rates API

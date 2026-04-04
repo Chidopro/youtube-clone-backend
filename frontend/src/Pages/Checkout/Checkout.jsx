@@ -205,9 +205,9 @@ const Checkout = () => {
     }
   }, [items, address]);
 
-  // Auto-calculate shipping when ZIP is entered (with debounce)
+  // Auto-calculate shipping when ZIP is entered (with debounce). Do not auto-retry while error is shown.
   useEffect(() => {
-    if (address.zip && address.zip.trim() && address.zip.length >= 5 && !shipping.calculated && !shipping.loading && items.length > 0) {
+    if (address.zip && address.zip.trim() && address.zip.length >= 5 && !shipping.calculated && !shipping.loading && !shipping.error && items.length > 0) {
       console.log('⏱️ Auto-calculating shipping in 800ms for ZIP:', address.zip);
       const timer = setTimeout(() => {
         console.log('🚀 Triggering auto-calculate shipping...');
@@ -220,10 +220,11 @@ const Checkout = () => {
         zipLength: address.zip?.length,
         calculated: shipping.calculated,
         loading: shipping.loading,
+        error: !!shipping.error,
         itemsCount: items.length
       });
     }
-  }, [address.zip, items.length, shipping.calculated, shipping.loading, fetchShipping]);
+  }, [address.zip, items.length, shipping.calculated, shipping.loading, shipping.error, fetchShipping]);
 
   /** Run actual checkout (build payload, POST, redirect). Call after design modal "Continue" when all tools are No. */
   const runCheckout = useCallback(async (cartOverride = null) => {

@@ -618,6 +618,40 @@ def _parse_zip(shipping_address: dict) -> str:
     except Exception:
         return ""
 
+
+def _infer_us_state_from_zip(zip_code: str) -> str:
+    """Infer US state abbreviation from 5-digit ZIP (Printful often requires state_code)."""
+    digits = "".join(c for c in str(zip_code or "") if c.isdigit())[:5]
+    if len(digits) != 5:
+        return ""
+    try:
+        r = requests.get(f"https://api.zippopotam.us/us/{digits}", timeout=6)
+        if r.status_code != 200:
+            return ""
+        data = r.json()
+        places = data.get("places") or []
+        if not places:
+            return ""
+        p0 = places[0]
+        abbr = (p0.get("state abbreviation") or p0.get("state") or "").strip()
+        return abbr[:2].upper() if abbr else ""
+    except Exception as e:
+        logger.debug("ZIP→state lookup failed for %s: %s", digits, e)
+        return ""
+
+
+def _resolve_state_code_for_shipping(shipping_address: dict, country: str, postal_code: str) -> str:
+    state = (shipping_address.get("state_code") or shipping_address.get("state") or "").strip()
+    if state:
+        return state[:32]
+    if (country or "").upper() == "US" and postal_code:
+        inferred = _infer_us_state_from_zip(postal_code)
+        if inferred:
+            logger.info("📦 Inferred US state_code=%s from ZIP %s", inferred, postal_code)
+        return inferred
+    return ""
+
+
 # Template filter for formatting timestamps
 @app.template_filter('format_timestamp')
 def format_timestamp(timestamp):
@@ -883,6 +917,122 @@ else:
 
 # NEW: Initialize Printful integration
 printful_integration = ScreenMerchPrintfulIntegration()
+
+
+def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
+    """
+    Server-side Printful shipping for Stripe checkout. Same strategy as /api/calculate-shipping:
+    integration first (skip if fallback estimate), then direct /shipping/rates.
+    Returns (True, cost_float, method_name, None) or (False, None, None, error_message).
+    """
+    postal_code = _parse_zip(shipping_address)
+    country = (shipping_address.get("country_code") or "US").strip() or "US"
+    if not postal_code:
+        return False, None, None, "ZIP / Postal Code is required."
+    if not cart:
+        return False, None, None, "Cart is empty."
+
+    state_resolved = _resolve_state_code_for_shipping(shipping_address, country, postal_code)
+    printful_api_key = os.getenv("PRINTFUL_API_KEY")
+    if not printful_api_key:
+        return False, None, None, "Shipping service is not configured."
+
+    if hasattr(printful_integration, "calculate_shipping_rates"):
+        try:
+            recipient_data = {
+                "country_code": country,
+                "zip": postal_code,
+                "state_code": state_resolved,
+                "city": shipping_address.get("city", "") or "",
+            }
+            result = printful_integration.calculate_shipping_rates(recipient_data, cart)
+            if result and result.get("success") and not result.get("fallback"):
+                c = result.get("shipping_cost")
+                if c is not None and float(c) >= 0:
+                    return True, float(c), str(result.get("shipping_method") or "Standard Shipping"), None
+        except Exception as e:
+            logger.warning("checkout: Printful integration shipping failed: %s", e)
+
+    shipping_items = []
+    for item in cart:
+        vid = item.get("variant_id") or item.get("printful_variant_id") or item.get("printify_variant_id")
+        if vid is None:
+            vid = 71
+        try:
+            vid = int(vid)
+        except (TypeError, ValueError):
+            vid = 71
+        qty = item.get("quantity") or item.get("qty") or 1
+        try:
+            qty = int(qty)
+        except (TypeError, ValueError):
+            qty = 1
+        if qty < 1:
+            qty = 1
+        shipping_items.append({"variant_id": vid, "quantity": qty})
+
+    recipient = {
+        "country_code": country,
+        "zip": postal_code,
+        "state_code": state_resolved,
+        "city": shipping_address.get("city", "") or "",
+    }
+    a1 = shipping_address.get("address1") or shipping_address.get("line1") or ""
+    if a1:
+        recipient["address1"] = a1
+    ph = shipping_address.get("phone") or ""
+    if ph:
+        recipient["phone"] = ph
+
+    payload = {
+        "recipient": recipient,
+        "items": shipping_items,
+        "currency": "USD",
+        "locale": "en_US",
+    }
+    headers = {
+        "Authorization": f"Bearer {printful_api_key}",
+        "Content-Type": "application/json",
+    }
+    try:
+        response = requests.post(
+            "https://api.printful.com/shipping/rates",
+            json=payload,
+            headers=headers,
+            timeout=30,
+        )
+    except requests.RequestException as e:
+        return False, None, None, f"Shipping request failed: {e}"
+
+    if response.status_code != 200:
+        err_detail = response.text[:500]
+        try:
+            ej = response.json()
+            err_detail = ej.get("error", {}).get("message") or ej.get("message") or err_detail
+        except Exception:
+            pass
+        return False, None, None, "Unable to calculate shipping. Please verify your address."
+
+    try:
+        shipping_response = response.json()
+    except Exception:
+        return False, None, None, "Invalid response from shipping service."
+
+    rates_list = shipping_response.get("result") or []
+    if not rates_list:
+        return False, None, None, "No shipping rates available for this address."
+
+    standard_rate = None
+    for rate in rates_list:
+        if rate.get("id") == "STANDARD" or "standard" in (rate.get("name") or "").lower():
+            standard_rate = rate
+            break
+    rate = standard_rate or rates_list[0]
+    cost = rate.get("rate") or rate.get("cost") or rate.get("price")
+    if cost is None:
+        return False, None, None, "Could not determine shipping cost for this order."
+    return True, float(cost), rate.get("name") or "Shipping", None
+
 
 # Keep in-memory storage as fallback, but prioritize database
 product_data_store = {}
@@ -3510,15 +3660,18 @@ def create_checkout_session():
         
         shipping_address = addr_result
         logger.info(f"✅ Shipping address validated: {shipping_address}")
-        
-        # Ensure shipping_cost is a valid number
-        shipping_cost_raw = data.get("shipping_cost", 5.99)
-        try:
-            shipping_cost = float(shipping_cost_raw) if shipping_cost_raw is not None else 5.99
-            if shipping_cost < 0:
-                shipping_cost = 5.99
-        except (ValueError, TypeError):
-            shipping_cost = 5.99  # Default to $5.99 if invalid
+
+        merged_addr = dict(shipping_address)
+        raw_sa = data.get("shipping_address")
+        if isinstance(raw_sa, dict):
+            merged_addr.update(raw_sa)
+
+        ok_ship, ship_cost, ship_method, ship_err = compute_printful_shipping_for_checkout(merged_addr, cart)
+        if not ok_ship:
+            logger.error(f"❌ Checkout: Printful shipping failed: {ship_err}")
+            return jsonify({"error": ship_err or "Could not calculate shipping for this address."}), 400
+        shipping_cost = ship_cost
+        logger.info(f"📦 Checkout: Printful shipping ${shipping_cost} ({ship_method})")
 
         logger.info(f"🛒 Received checkout request - Cart: {cart}")
         logger.info(f"🛒 Cart type: {type(cart)}, Cart length: {len(cart) if isinstance(cart, list) else 'N/A'}")
@@ -6520,6 +6673,8 @@ def calculate_shipping():
         
         logger.info(f"📦 Calculating shipping for ZIP: {postal_code}, Country: {country}, Cart items: {len(cart)}")
         
+        state_resolved = _resolve_state_code_for_shipping(shipping_address, country, postal_code)
+
         # Try using Printful integration first (preferred method)
         if printful_api_key and hasattr(printful_integration, 'calculate_shipping_rates'):
             try:
@@ -6527,13 +6682,13 @@ def calculate_shipping():
                 recipient_data = {
                     'country_code': country,
                     'zip': postal_code,
-                    'state_code': shipping_address.get('state_code', ''),
+                    'state_code': state_resolved,
                     'city': shipping_address.get('city', '')
                 }
                 result = printful_integration.calculate_shipping_rates(recipient_data, cart)
                 logger.info(f"📦 Printful shipping result: {result}")
                 
-                if result and result.get('success'):
+                if result and result.get('success') and not result.get('fallback'):
                     return jsonify({
                         "success": True,
                         "shipping_cost": result.get('shipping_cost', 0),
@@ -6541,6 +6696,8 @@ def calculate_shipping():
                         "delivery_days": str(result.get('delivery_days', '5-7')),
                         "shipping_method": result.get('shipping_method', 'Standard Shipping')
                     })
+                if result and result.get('fallback'):
+                    logger.info("📦 Printful integration returned fallback estimate; using direct API for live rates")
             except Exception as e:
                 logger.error(f"📦 Printful integration failed: {str(e)}")
                 # Fall through to direct API call
@@ -6553,20 +6710,31 @@ def calculate_shipping():
             # Format items for Printful
             shipping_items = []
             for item in cart:
+                vid = item.get("variant_id") or item.get("printful_variant_id") or item.get("printify_variant_id") or 71
+                try:
+                    vid = int(vid)
+                except (TypeError, ValueError):
+                    vid = 71
+                q = item.get("quantity") or item.get("qty") or 1
+                try:
+                    q = int(q)
+                except (TypeError, ValueError):
+                    q = 1
                 shipping_items.append({
-                    "variant_id": item.get('variant_id', item.get('printful_variant_id', 71)),
-                    "quantity": item.get('quantity', 1)
+                    "variant_id": vid,
+                    "quantity": max(1, q),
                 })
             
             shipping_payload = {
                 "recipient": {
                     "country_code": country,
                     "zip": postal_code,
-                    "state_code": shipping_address.get('state_code', ''),
+                    "state_code": state_resolved,
                     "city": shipping_address.get('city', '')
                 },
                 "items": shipping_items,
-                "currency": "USD"
+                "currency": "USD",
+                "locale": "en_US"
             }
             
             headers = {
