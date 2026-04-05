@@ -49,6 +49,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Women's Ribbed Neck": 818,
     # Printful: Women's Ideal Racerback Tank Top | Next Level 1533 — ScreenMerch: "Fitted Racerback Tank".
     "Fitted Racerback Tank": 857,
+    # Printful: Women's Micro-Rib Tank Top | Bella Canvas 1012 — ScreenMerch: "Micro-Rib Tank Top".
+    "Micro-Rib Tank Top": 780,
     "Unisex Champion Hoodie": 842,
     "Baby Staple Tee": 305,
     "Toddler Jersey T-Shirt": 306,
