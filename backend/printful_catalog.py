@@ -30,6 +30,7 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Unisex T-Shirt": 71,
     # Printful: Men's Fitted T-Shirt | Next Level 3600 — ScreenMerch: "Mens Fitted T-Shirt".
     "Mens Fitted T-Shirt": 108,
+    # Printful: Men's Fitted Long Sleeve Shirt | Next Level 3601 — ScreenMerch: "Men's Fitted Long Sleeve".
     "Men's Fitted Long Sleeve": 116,
     # Printful: Unisex Oversized Garment-Dyed T-Shirt | Bella + Canvas 4810 — ScreenMerch: "Unisex Oversized T-Shirt".
     "Unisex Oversized T-Shirt": 880,
