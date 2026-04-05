@@ -93,6 +93,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "All-Over Print Drawstring": 262,
     # Printful: All-Over Print Large Tote Bag w/ Pocket — ScreenMerch: "All Over Print Tote Pocket".
     "All Over Print Tote Pocket": 274,
+    # Printful: All-Over Print Utility Crossbody Bag — ScreenMerch: "All-Over Print Utility Bag".
+    "All-Over Print Utility Bag": 744,
 }
 
 SIZE_TO_PRINTFUL: Dict[str, str] = {
