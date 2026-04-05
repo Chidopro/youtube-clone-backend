@@ -38,6 +38,7 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Men's Long Sleeve Shirt": 57,
     # Printful: Men's Staple Tank Top | Bella + Canvas 3480 — ScreenMerch: "Men's Tank Top".
     "Men's Tank Top": 248,
+    # Printful: Youth Staple Tee | Bella + Canvas 3001Y — ScreenMerch: "Kids Shirt".
     "Kids Shirt": 307,
     "Kids Long Sleeve": 511,
     "Youth Heavy Blend Hoodie": 689,
