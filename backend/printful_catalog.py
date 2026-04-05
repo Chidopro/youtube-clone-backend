@@ -83,6 +83,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Distressed Dad Hat": 396,
     # Printful: Closed-Back Structured Cap | Flexfit 6277 — ScreenMerch: "Closed Back Cap".
     "Closed Back Cap": 140,
+    # Printful: 5 Panel Trucker Cap | Yupoong 6006 — ScreenMerch: "Five Panel Trucker Hat".
+    "Five Panel Trucker Hat": 100,
 }
 
 SIZE_TO_PRINTFUL: Dict[str, str] = {
