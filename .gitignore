@@ -45,3 +45,6 @@ backend/.env
 # Frontend build / Netlify local plugin noise
 frontend/dist/
 frontend/.netlify/
+
+# Local nested copy of the project (not part of this repo)
+screenmerch/
