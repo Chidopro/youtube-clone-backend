@@ -44,6 +44,7 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Kids Long Sleeve": 511,
     # Printful: Youth Heavy Blend Hoodie | Gildan 18500B — ScreenMerch: "Youth Heavy Blend Hoodie".
     "Youth Heavy Blend Hoodie": 689,
+    # Printful: Youth Crew Neck Sweatshirt | Gildan 18000B — ScreenMerch: "Kids Sweatshirt".
     "Kids Sweatshirt": 677,
     # Printful: Unisex Pullover Hoodie | Bella + Canvas 3719 — ScreenMerch: "Unisex Pullover Hoodie".
     "Unisex Pullover Hoodie": 294,
