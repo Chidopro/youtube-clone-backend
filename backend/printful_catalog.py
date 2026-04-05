@@ -71,6 +71,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Baby Body Suit": 234,
     # Printful: Toddler Jersey T-Shirt | Rabbit Skins 3321 — ScreenMerch: "Toddler Jersey T-Shirt".
     "Toddler Jersey T-Shirt": 489,
+    # Printful: White Glossy Mug — ScreenMerch: "White Glossy Mug".
+    "White Glossy Mug": 19,
 }
 
 SIZE_TO_PRINTFUL: Dict[str, str] = {
