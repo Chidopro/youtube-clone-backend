@@ -9,6 +9,7 @@ import os
 
 # Import utilities
 from utils.helpers import _allow_origin
+from printful_catalog import attach_printful_catalog_data_list
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +181,12 @@ def get_browse_api():
         logger.info(f"📱 Mobile detection: {is_mobile}")
         
         filtered_products = _filter_products_by_category(category)
+
+        # Deep copy + attach Printful catalog variant maps (true variant IDs per color/size)
+        try:
+            filtered_products = attach_printful_catalog_data_list(filtered_products)
+        except Exception as ex:
+            logger.warning("Printful catalog enrichment skipped: %s", ex)
         
         # Ensure all products have a description field
         for product in filtered_products:
@@ -230,6 +237,11 @@ def get_product_api(product_id):
         logger.info(f"📂 API Product request - ID: {product_id}, Category: {category}")
         
         filtered_products = _filter_products_by_category(category)
+        try:
+            filtered_products = attach_printful_catalog_data_list(filtered_products)
+        except Exception as ex:
+            logger.warning("Printful catalog enrichment skipped: %s", ex)
+
         client = _get_supabase_client()
         
         # Try to get product from database

@@ -11,6 +11,11 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+# Used when no explicit Printful variant is on the cart line and name/color cannot be mapped.
+# 71 was a legacy placeholder and often triggers bogus "out of stock" from Printful.
+DEFAULT_PRINTFUL_SHIPPING_VARIANT_ID = 4012
+
+
 class PrintfulAPI:
     """Printful API wrapper for ScreenMerch integration"""
     
@@ -250,9 +255,62 @@ class ScreenMerchPrintfulIntegration:
                     "Black": 4012,
                     "White": 4013,
                     "Gray": 4014,
-                    "Pink": 4016
+                    "Pink": 4016,
+                    "Navy": 4015,
+                    "Red": 4012,
+                    "Athletic Heather": 4014,
                 },
                 "sizes": ["XS", "S", "M", "L"]
+            },
+            "Unisex T-Shirt": {
+                "variant_id": 4012,
+                "colors": {
+                    "Black": 4012,
+                    "White": 4013,
+                    "Navy": 4015,
+                    "Gray": 4014,
+                    "Black Heather": 4014,
+                    "Athletic Heather": 4014,
+                    "Dark Grey Heather": 4014,
+                    "Red": 4012,
+                },
+                "sizes": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]
+            },
+            "Mens Fitted T-Shirt": {
+                "variant_id": 4012,
+                "colors": {
+                    "Black": 4012,
+                    "White": 4013,
+                    "Heather Grey": 4014,
+                    "Royal Blue": 4015,
+                    "Midnight Navy": 4015,
+                    "Desert Pink": 4016,
+                },
+                "sizes": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]
+            },
+            "Unisex Oversized T-Shirt": {
+                "variant_id": 4012,
+                "colors": {
+                    "Washed Black": 4012,
+                    "Washed Maroon": 4012,
+                    "Washed Charcoal": 4014,
+                    "Khaki": 4012,
+                    "Light Washed Denim": 4015,
+                    "Vintage White": 4013,
+                },
+                "sizes": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]
+            },
+            "Youth Heavy Blend Hoodie": {
+                "variant_id": 4383,
+                "colors": {
+                    "Black": 4383,
+                    "Navy": 4386,
+                    "Royal": 4385,
+                    "White": 4384,
+                    "Dark Heather": 4385,
+                    "Carolina Blue": 4385,
+                },
+                "sizes": ["XS", "S", "M", "L", "XL"]
             },
             "Tote Bag": {
                 "variant_id": 1,
@@ -322,7 +380,91 @@ class ScreenMerchPrintfulIntegration:
                 "sizes": ["S", "M", "L", "XL"]
             }
         }
-    
+
+        # Normalize storefront names that differ slightly from product_mappings keys
+        self.product_name_aliases = {
+            "unisex classic tee": "Unisex Classic Tee",
+            "kids long sleeve": "Kids Long Sleeve",
+            "mens fitted t-shirt": "Mens Fitted T-Shirt",
+            "men's fitted t-shirt": "Mens Fitted T-Shirt",
+            "unisex t-shirt": "Unisex T-Shirt",
+            "unisex oversized t-shirt": "Unisex Oversized T-Shirt",
+            "youth heavy blend hoodie": "Youth Heavy Blend Hoodie",
+        }
+
+    def _canonical_product_mapping_key(self, name: str) -> Optional[str]:
+        if not name or not str(name).strip():
+            return None
+        n = str(name).strip()
+        low = n.lower()
+        if low in self.product_name_aliases:
+            return self.product_name_aliases[low]
+        if n in self.product_mappings:
+            return n
+        for k in self.product_mappings:
+            if k.lower() == low:
+                return k
+        return None
+
+    def resolve_printful_variant_for_item(self, item: dict) -> int:
+        """
+        Resolve a Printful catalog variant_id for shipping quotes. Cart lines from the
+        storefront often omit variant_id; without this, a bad default produced false OOS errors.
+        """
+        raw = item.get("variant_id") or item.get("printful_variant_id") or item.get("printify_variant_id")
+        if raw is not None:
+            try:
+                return int(raw)
+            except (TypeError, ValueError):
+                pass
+        variants = item.get("variants") if isinstance(item.get("variants"), dict) else {}
+        color = (item.get("color") or variants.get("color") or "").strip()
+        size = (item.get("size") or variants.get("size") or "").strip()
+        name = (item.get("product") or item.get("name") or "").strip()
+
+        # True catalog variant IDs (color × size) when PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME matches.
+        try:
+            from printful_catalog import catalog_product_id_for_product_name, lookup_catalog_variant_id
+        except ImportError:
+            catalog_product_id_for_product_name = None
+            lookup_catalog_variant_id = None
+
+        if catalog_product_id_for_product_name and lookup_catalog_variant_id and color and size:
+            cpid = item.get("printful_catalog_product_id")
+            if cpid is not None:
+                try:
+                    cpid = int(cpid)
+                except (TypeError, ValueError):
+                    cpid = None
+            if cpid is None and name:
+                cpid = catalog_product_id_for_product_name(name)
+            if cpid is not None:
+                vid = lookup_catalog_variant_id(cpid, color, size)
+                if vid is not None:
+                    return int(vid)
+
+        key = self._canonical_product_mapping_key(name)
+        if not key:
+            logger.warning(
+                "Printful shipping: no mapping for product name %r; using default variant %s",
+                name,
+                DEFAULT_PRINTFUL_SHIPPING_VARIANT_ID,
+            )
+            return DEFAULT_PRINTFUL_SHIPPING_VARIANT_ID
+        mapping = self.product_mappings.get(key) or {}
+        colors = mapping.get("colors") or {}
+        if color:
+            if color in colors:
+                return int(colors[color])
+            low = color.lower()
+            for c, vid in colors.items():
+                if str(c).lower() == low:
+                    return int(vid)
+        base = mapping.get("variant_id")
+        if base is not None:
+            return int(base)
+        return DEFAULT_PRINTFUL_SHIPPING_VARIANT_ID
+
     def create_automated_product(self, user_selection: dict) -> dict:
         """Create automated product in Printful"""
         try:
@@ -375,13 +517,7 @@ class ScreenMerchPrintfulIntegration:
             # Format items for Printful shipping calculation
             shipping_items = []
             for item in items:
-                vid = item.get('variant_id') or item.get('printful_variant_id') or item.get('printify_variant_id')
-                if vid is None:
-                    vid = 71
-                try:
-                    variant_id = int(vid)
-                except (TypeError, ValueError):
-                    variant_id = 71
+                variant_id = self.resolve_printful_variant_for_item(item)
                 q = item.get('quantity', item.get('qty', 1))
                 try:
                     q = int(q)

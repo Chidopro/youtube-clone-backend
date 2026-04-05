@@ -989,13 +989,7 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
 
     shipping_items = []
     for item in cart:
-        vid = item.get("variant_id") or item.get("printful_variant_id") or item.get("printify_variant_id")
-        if vid is None:
-            vid = 71
-        try:
-            vid = int(vid)
-        except (TypeError, ValueError):
-            vid = 71
+        vid = printful_integration.resolve_printful_variant_for_item(item)
         qty = item.get("quantity") or item.get("qty") or 1
         try:
             qty = int(qty)
@@ -6744,11 +6738,7 @@ def calculate_shipping():
             # Format items for Printful
             shipping_items = []
             for item in cart:
-                vid = item.get("variant_id") or item.get("printful_variant_id") or item.get("printify_variant_id") or 71
-                try:
-                    vid = int(vid)
-                except (TypeError, ValueError):
-                    vid = 71
+                vid = printful_integration.resolve_printful_variant_for_item(item)
                 q = item.get("quantity") or item.get("qty") or 1
                 try:
                     q = int(q)
@@ -6853,13 +6843,29 @@ def calculate_shipping():
                 error_detail = "Unknown error"
                 try:
                     error_data = response.json()
-                    error_detail = error_data.get('message', error_data.get('error', error_data.get('description', 'Unknown error')))
+                    err_obj = error_data.get("error") if isinstance(error_data.get("error"), dict) else {}
+                    error_detail = (
+                        err_obj.get("message")
+                        or error_data.get("message")
+                        or error_data.get("error")
+                        or error_data.get("description", "Unknown error")
+                    )
+                    if isinstance(error_detail, dict):
+                        error_detail = str(error_detail)
                     logger.error(f"📦 Printful error details: {error_data}")
-                except:
+                except Exception:
                     error_detail = response.text[:200] if response.text else "Unknown error"
+                detail_lower = str(error_detail).lower()
+                if "out of stock" in detail_lower:
+                    user_msg = (
+                        "We could not get a shipping quote for this cart. "
+                        "If this keeps happening, try removing the item and adding it again, or contact support."
+                    )
+                else:
+                    user_msg = f"Unable to calculate shipping. {error_detail}"
                 return jsonify({
                     "success": False,
-                    "error": f"Unable to calculate shipping: {error_detail}. Please verify your ZIP code and try again."
+                    "error": user_msg
                 }), response.status_code if response.status_code < 600 else 500
         
         # No API keys configured

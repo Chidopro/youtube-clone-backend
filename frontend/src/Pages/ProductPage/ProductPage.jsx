@@ -6,6 +6,7 @@ import { UserService } from '../../utils/userService';
 import { getBackendUrl } from '../../config/apiConfig';
 import { products } from '../../data/products';
 import { useCreator } from '../../contexts/CreatorContext';
+import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import './ProductPage.css';
 
 const IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
@@ -512,6 +513,7 @@ const ProductPage = ({ sidebar }) => {
       console.warn('Could not load video metadata from localStorage:', e);
     }
 
+    const printful_variant_id = resolvePrintfulVariantId(product, chosenColor, chosenSize);
     const item = {
       name: product?.name || 'Product',
       price: calculatePrice(product, index),
@@ -522,6 +524,8 @@ const ProductPage = ({ sidebar }) => {
       selected_screenshot: screenshotUrl,
       qty: 1,
       category: category || '', // womens, mens, kids = shirts (need portrait/landscape); others skip design modal
+      printful_catalog_product_id: product?.printful_catalog_product_id ?? null,
+      printful_variant_id: printful_variant_id != null ? printful_variant_id : undefined,
       // Include video metadata in cart item (screenshot_timestamp for email/Print Quality)
       ...videoMetadata
     };

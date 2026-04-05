@@ -3,6 +3,25 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
 import './Checkout.css';
 
+/** Turn API / thrown messages into short, non-technical copy for shoppers. */
+function humanizeShippingError(raw) {
+  if (raw == null || raw === '') {
+    return 'Something went wrong while getting shipping rates. Please try again.';
+  }
+  let s = String(raw);
+  const embedded = s.match(/['"]message['"]\s*:\s*['"]([^'"]+)['"]/);
+  if (embedded) s = embedded[1];
+  s = s.replace(/^Network error:\s*/i, '').replace(/\s*Please check your connection and try again\.?\s*$/i, '').trim();
+  if (/out of stock/i.test(s)) {
+    return (
+      'We could not get a shipping quote for these items. ' +
+      'That often happens when the wrong product code is sent—not because everything is actually sold out. ' +
+      'Try again in a moment, or contact support if it keeps happening.'
+    );
+  }
+  return s;
+}
+
 const Checkout = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -88,6 +107,13 @@ const Checkout = () => {
           printful_variant_id: it.printful_variant_id,
           printify_variant_id: it.printify_variant_id,
           quantity: it.qty || it.quantity || 1,
+          qty: it.qty || it.quantity || 1,
+          name: it.name,
+          product: it.product || it.name,
+          color: it.color,
+          size: it.size,
+          printful_catalog_product_id: it.printful_catalog_product_id,
+          variants: { color: it.color || 'Default', size: it.size || 'Default' },
         }))
       };
       console.log('🚀 Calling shipping API:', API_CONFIG.ENDPOINTS.CALCULATE_SHIPPING);
@@ -117,7 +143,7 @@ const Checkout = () => {
         } catch (e) {
           errorData = { error: errorText || `HTTP ${res.status}: ${res.statusText}` };
         }
-        throw new Error(errorData.error || `API returned status ${res.status}`);
+        throw new Error(humanizeShippingError(errorData.error || `API returned status ${res.status}`));
       }
       
       const data = await res.json();
@@ -160,7 +186,9 @@ const Checkout = () => {
           }, 100);
         } else {
           // Success response but invalid cost
-          const errorMsg = data?.error || `Invalid shipping cost received: ${data.shipping_cost}. Please verify your ZIP code and try again.`;
+          const errorMsg = humanizeShippingError(
+            data?.error || `Invalid shipping cost received: ${data.shipping_cost}. Please verify your ZIP code and try again.`
+          );
           console.error('❌ Shipping cost invalid:', shippingCost);
           console.error('❌ Full response:', data);
           const errorState = { 
@@ -175,7 +203,9 @@ const Checkout = () => {
         }
       } else {
         // Calculation failed or success is false
-        const errorMsg = data?.error || 'Unable to calculate shipping. Please verify your ZIP code and try again.';
+        const errorMsg = humanizeShippingError(
+          data?.error || 'Unable to calculate shipping. Please verify your ZIP code and try again.'
+        );
         console.error('❌ Shipping calculation failed:', errorMsg);
         console.error('❌ Response data:', data);
         console.error('❌ Response success field:', data?.success);
@@ -191,9 +221,10 @@ const Checkout = () => {
       }
     } catch (e) {
       // Network error - do not allow checkout
-      const errorMsg = e.message.includes('404') || e.message.includes('Not found')
-        ? 'Shipping API endpoint not found. The backend may not be deployed. Please contact support.'
-        : `Network error: ${e.message}. Please check your connection and try again.`;
+      const errorMsg =
+        e.message.includes('404') || e.message.includes('Not found')
+          ? 'Shipping API endpoint not found. The backend may not be deployed. Please contact support.'
+          : humanizeShippingError(e.message);
       console.error('❌ Shipping calculation exception:', e);
       const errorState = { 
         cost: 0, 
@@ -270,6 +301,7 @@ const Checkout = () => {
         variant_id: it.printful_variant_id || it.printify_variant_id || it.variant_id,
         printful_variant_id: it.printful_variant_id,
         printify_variant_id: it.printify_variant_id,
+        printful_catalog_product_id: it.printful_catalog_product_id,
         category: it.category,
         // Video frame position (seconds) for admin / fulfillment — same as order-level screenshot_timestamp when single item
         screenshot_timestamp: it.screenshot_timestamp ?? it.timestamp ?? screenshotTimestampFromStorage ?? null,
