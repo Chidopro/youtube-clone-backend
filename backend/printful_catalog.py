@@ -26,7 +26,9 @@ _nested_maps: Dict[int, Dict[str, Dict[str, int]]] = {}
 # Storefront product name -> Printful catalog product id (verified against Printful API).
 # Omit entries we have not matched to a catalog product; those keep using legacy heuristics.
 PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
+    # Printful: Unisex Staple T-Shirt | Bella + Canvas 3001 — ScreenMerch: "Unisex T-Shirt".
     "Unisex T-Shirt": 71,
+    # Printful: Men's Fitted T-Shirt | Next Level 3600 — ScreenMerch: "Mens Fitted T-Shirt".
     "Mens Fitted T-Shirt": 108,
     "Men's Fitted Long Sleeve": 116,
     "Unisex Oversized T-Shirt": 880,
