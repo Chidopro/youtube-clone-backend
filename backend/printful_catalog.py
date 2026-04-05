@@ -41,6 +41,7 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     # Printful: Youth Staple Tee | Bella + Canvas 3001Y — ScreenMerch: "Kids Shirt".
     "Kids Shirt": 307,
     "Kids Long Sleeve": 511,
+    # Printful: Youth Heavy Blend Hoodie | Gildan 18500B — ScreenMerch: "Youth Heavy Blend Hoodie".
     "Youth Heavy Blend Hoodie": 689,
     "Kids Sweatshirt": 677,
     # Printful: Unisex Pullover Hoodie | Bella + Canvas 3719 — ScreenMerch: "Unisex Pullover Hoodie".
