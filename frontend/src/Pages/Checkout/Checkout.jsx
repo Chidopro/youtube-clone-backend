@@ -83,8 +83,11 @@ const Checkout = () => {
           country_code: countryValue,
         },
         cart: items.map(it => ({
-          variant_id: it.printify_variant_id || it.printful_variant_id || 1,
-          quantity: it.qty || 1
+          // Printful API expects Printful variant IDs; prefer them over Printify.
+          variant_id: it.printful_variant_id || it.printify_variant_id || it.variant_id,
+          printful_variant_id: it.printful_variant_id,
+          printify_variant_id: it.printify_variant_id,
+          quantity: it.qty || it.quantity || 1,
         }))
       };
       console.log('🚀 Calling shipping API:', API_CONFIG.ENDPOINTS.CALCULATE_SHIPPING);
@@ -262,6 +265,12 @@ const Checkout = () => {
         price: it.price || 0,
         selected_screenshot: finalScreenshot,
         note: it.note || '',
+        qty: it.qty || it.quantity || 1,
+        quantity: it.qty || it.quantity || 1,
+        variant_id: it.printful_variant_id || it.printify_variant_id || it.variant_id,
+        printful_variant_id: it.printful_variant_id,
+        printify_variant_id: it.printify_variant_id,
+        category: it.category,
         // Video frame position (seconds) for admin / fulfillment — same as order-level screenshot_timestamp when single item
         screenshot_timestamp: it.screenshot_timestamp ?? it.timestamp ?? screenshotTimestampFromStorage ?? null,
         timestamp: it.screenshot_timestamp ?? it.timestamp ?? screenshotTimestampFromStorage ?? null,
