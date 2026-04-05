@@ -77,6 +77,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Travel Mug": 663,
     # Printful: Enamel Mug — ScreenMerch: "Enamel Mug".
     "Enamel Mug": 407,
+    # Printful: White Ceramic Mug with Color Inside — ScreenMerch: "Colored Mug".
+    "Colored Mug": 403,
 }
 
 SIZE_TO_PRINTFUL: Dict[str, str] = {
