@@ -65,6 +65,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Unisex Champion Hoodie": 842,
     # Printful: Baby Staple Tee | Bella + Canvas 3001B — ScreenMerch: "Baby Staple Tee".
     "Baby Staple Tee": 305,
+    # Printful: Baby Jersey T-Shirt | Rabbit Skins 3322 — ScreenMerch: "Baby Jersey T-Shirt".
+    "Baby Jersey T-Shirt": 854,
     # Printful: Baby Short Sleeve Bodysuit | Rabbit Skins 4400 — ScreenMerch: "Baby Body Suit".
     "Baby Body Suit": 234,
     # Printful: Toddler Jersey T-Shirt | Rabbit Skins 3321 — ScreenMerch: "Toddler Jersey T-Shirt".
