@@ -33,6 +33,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Youth Heavy Blend Hoodie": 689,
     "Kids Sweatshirt": 677,
     "Unisex Pullover Hoodie": 294,
+    # Storefront "Unisex Hoodie" copy matches Independent SS4500 (65/35, 8.5oz); not Bella 3710.
+    "Unisex Hoodie": 602,
     "Cropped Hoodie": 317,
     "Unisex Heavyweight T-Shirt": 586,
     "Women's Shirt": 360,
