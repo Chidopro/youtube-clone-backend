@@ -85,6 +85,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Closed Back Cap": 140,
     # Printful: 5 Panel Trucker Cap | Yupoong 6006 — ScreenMerch: "Five Panel Trucker Hat".
     "Five Panel Trucker Hat": 100,
+    # Same Printful catalog as trucker hat — ScreenMerch: "Five Panel Baseball Cap".
+    "Five Panel Baseball Cap": 100,
 }
 
 SIZE_TO_PRINTFUL: Dict[str, str] = {
