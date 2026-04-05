@@ -36,6 +36,7 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Kids Long Sleeve": 511,
     "Youth Heavy Blend Hoodie": 689,
     "Kids Sweatshirt": 677,
+    # Printful: Unisex Pullover Hoodie | Bella + Canvas 3719 — ScreenMerch: "Unisex Pullover Hoodie".
     "Unisex Pullover Hoodie": 294,
     # Storefront "Unisex Hoodie" copy matches Independent SS4500 (65/35, 8.5oz); not Bella 3710.
     "Unisex Hoodie": 602,
