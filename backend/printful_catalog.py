@@ -56,6 +56,7 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Fitted Racerback Tank": 857,
     # Printful: Women's Micro-Rib Tank Top | Bella Canvas 1012 — ScreenMerch: "Micro-Rib Tank Top".
     "Micro-Rib Tank Top": 780,
+    # Printful: Unisex Champion Powerblend Hoodie | S700 — ScreenMerch: "Unisex Champion Hoodie".
     "Unisex Champion Hoodie": 842,
     "Baby Staple Tee": 305,
     "Toddler Jersey T-Shirt": 306,
