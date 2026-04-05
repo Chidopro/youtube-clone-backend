@@ -3,6 +3,10 @@ Printful Catalog v2: true variant IDs per color × size for storefront products.
 
 Maps ScreenMerch product names to Printful catalog product IDs, then fetches
 /v2/catalog-products/{id}/catalog-variants (cached in memory).
+
+Keys in PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME MUST match the exact ``name`` field
+from ScreenMerch ``PRODUCTS`` in app.py (e.g. "Women's Shirt"), not necessarily
+the long Printful catalog title (e.g. "Women's Relaxed T-Shirt | Bella + Canvas 6400").
 """
 from __future__ import annotations
 
@@ -36,8 +40,14 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     # Storefront "Unisex Hoodie" copy matches Independent SS4500 (65/35, 8.5oz); not Bella 3710.
     "Unisex Hoodie": 602,
     "Cropped Hoodie": 317,
+    # Printful: Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717 — ScreenMerch: "Unisex Heavyweight T-Shirt".
     "Unisex Heavyweight T-Shirt": 586,
+    # Printful: Women's Relaxed T-Shirt | Bella + Canvas 6400 — ScreenMerch name is "Women's Shirt".
     "Women's Shirt": 360,
+    # Stanley/Stella SATU001; Printful title says "Unisex" — matches storefront organic ribbed tee colors.
+    "Women's Ribbed Neck": 818,
+    # Printful: Women's Ideal Racerback Tank Top | Next Level 1533 — ScreenMerch: "Fitted Racerback Tank".
+    "Fitted Racerback Tank": 857,
     "Unisex Champion Hoodie": 842,
     "Baby Staple Tee": 305,
     "Toddler Jersey T-Shirt": 306,
