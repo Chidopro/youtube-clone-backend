@@ -458,7 +458,7 @@ export const products = {
   },
   "unisexhoodie": {
     "name": "Unisex Hoodie",
-    "price": 37.95,
+    "price": 33.35,
     "description": "Comfortable unisex hoodie",
     "image": "/static/images/tested.png",
     "preview": "/static/images/testedpreview.png",

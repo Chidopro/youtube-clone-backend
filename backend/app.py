@@ -1548,19 +1548,19 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Hoodie",
-        "price": 32.99,
+        "price": 33.35,
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "mensunisexhoodiepreview.png",
-        "description": "Classic unisex hoodie with a front pouch pocket and matching flat drawstrings. The 100% cotton exterior makes this hoodie soft to the touch. What's more, if you go with custom prints, you can personalize the hoodie to your heart's content and maximize your branding thanks to the custom inside label. Use it to showcase your logo, strengthen customer loyalty, and boost your brand's visibility on the market. 65% ring-spun cotton, 35% polyester. Charcoal Heather is 60% ring-spun cotton, 40% polyester. Carbon Grey is 55% ring-spun cotton, 45% polyester. 100% cotton face. Fabric weight: 8.5 oz./yd.² (288.2 g/m²). Front pouch pocket. Self-fabric patch on the back. Matching flat drawstrings. 3-panel hood. Tear-away tag. Blank product sourced from Pakistan. Disclaimer: Please be aware that, for legal reasons, this product comes with a manufacturer's side tag attached. The tag is discreet and won't compromise your design's integrity. This product is made on demand. No minimums.",
+        "description": "Premium unisex pullover hoodie (Cotton Heritage M2580) with a front pouch pocket and matching flat drawstrings. The 100% cotton face keeps the exterior soft; customize with your prints and inside label. 65% ring-spun cotton, 35% polyester. Charcoal Heather is 60% ring-spun cotton, 40% polyester. Carbon Grey is 55% ring-spun cotton, 45% polyester. Fabric weight: 8.5 oz./yd.² (288.2 g/m²). Front pouch pocket. Self-fabric patch on the back. Matching flat drawstrings. 3-panel hood. Tear-away tag. Blank product sourced from Pakistan. This hoodie runs small—consider ordering one size up for a relaxed fit. Disclaimer: Please be aware that, for legal reasons, this product comes with a manufacturer's side tag attached. The tag is discreet and won't compromise your design's integrity. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy Blazer", "Carbon Grey", "White", "Maroon", "Charcoal Heather", "Vintage Black", "Forest Green", "Military Green", "Team Red", "Dusty Rose", "Sky Blue", "Purple", "Team Royal"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $32.99
-            "M": 0,       # Base price $32.99
-            "L": 0,       # Base price $32.99
-            "XL": 0,      # Base price $32.99
-            "XXL": 1.65,  # +$1.65 = $34.64
-            "XXXL": 3.30  # +$3.30 = $36.29
+            "S": 0,       # Base price $33.35
+            "M": 0,       # Base price $33.35
+            "L": 0,       # Base price $33.35
+            "XL": 0,      # Base price $33.35
+            "XXL": 1.65,  # +$1.65 = $35.00
+            "XXXL": 3.30  # +$3.30 = $36.65
         }
     },
     {

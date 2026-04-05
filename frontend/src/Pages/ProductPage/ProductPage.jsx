@@ -236,7 +236,7 @@ const ProductPage = ({ sidebar }) => {
     
     // Map product names to actual product data from backend (using exact filenames from PRODUCTS list)
     const productImageMap = {
-      "Unisex Hoodie": { filename: "tested.png", preview: "testedpreview.png", price: 36.95 },
+      "Unisex Hoodie": { filename: "tested.png", preview: "testedpreview.png", price: 33.35 },
       "Men's Tank Top": { filename: "random.png", preview: "randompreview.png", price: 24.23 },
       "Mens Fitted T-Shirt": { filename: "mensfittedtshirt.png", preview: "mensfittedtshirtpreview.png", price: 26.58 },
       "Men's Fitted Long Sleeve": { filename: "mensfittedlongsleeve.png", preview: "mensfittedlongsleevepreview.png", price: 29.33 },
