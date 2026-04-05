@@ -79,6 +79,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Enamel Mug": 407,
     # Printful: White Ceramic Mug with Color Inside — ScreenMerch: "Colored Mug".
     "Colored Mug": 403,
+    # Printful: Distressed Dad Hat | Otto Cap 104-1018 — ScreenMerch: "Distressed Dad Hat".
+    "Distressed Dad Hat": 396,
 }
 
 SIZE_TO_PRINTFUL: Dict[str, str] = {
