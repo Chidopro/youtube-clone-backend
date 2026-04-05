@@ -81,6 +81,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Colored Mug": 403,
     # Printful: Distressed Dad Hat | Otto Cap 104-1018 — ScreenMerch: "Distressed Dad Hat".
     "Distressed Dad Hat": 396,
+    # Printful: Closed-Back Structured Cap | Flexfit 6277 — ScreenMerch: "Closed Back Cap".
+    "Closed Back Cap": 140,
 }
 
 SIZE_TO_PRINTFUL: Dict[str, str] = {

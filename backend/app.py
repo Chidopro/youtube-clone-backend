@@ -2053,7 +2053,7 @@ PRODUCTS = [
     },
     {
         "name": "Closed Back Cap",
-        "price": 25.19,
+        "price": 22.91,
         "filename": "closedbackcap.png",
         "main_image": "closedbackcap.png",
         "preview_image": "hatsclosedbackcappreview.png",

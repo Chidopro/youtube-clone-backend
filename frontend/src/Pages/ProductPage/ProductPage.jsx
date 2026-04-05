@@ -269,7 +269,7 @@ const ProductPage = ({ sidebar }) => {
       "All Over Print Tote Pocket": { filename: "largecanvasbag.png", preview: "largecanvasbagpreview.png", price: 33.41 },
       "All-Over Print Crossbody Bag": { filename: "crossbodybag.png", preview: "crossbodybagpreview.png", price: 28.95 },
       "Distressed Dad Hat": { filename: "distresseddadhat.png", preview: "distresseddadhatpreview.png", price: 24.95 },
-      "Closed Back Cap": { filename: "closedbackcap.png", preview: "hatsclosedbackcappreview.png", price: 25.19 },
+      "Closed Back Cap": { filename: "closedbackcap.png", preview: "hatsclosedbackcappreview.png", price: 22.91 },
       "Five Panel Trucker Hat": { filename: "fivepaneltruckerhat.png", preview: "fivepaneltruckerhatpreview.png", price: 24.95 },
       "Five Panel Baseball Cap": { filename: "youthbaseballcap.png", preview: "youthbaseballcappreview.png", price: 24.95 },
       "White Glossy Mug": { filename: "mug1.png", preview: "mug1preview.png", price: 15.95 },

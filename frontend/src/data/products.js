@@ -1683,7 +1683,7 @@ export const products = {
   },
   "closedbackcap": {
     "name": "Closed Back Cap",
-    "price": 25.19,
+    "price": 22.91,
     "description": "Closed back cap",
     "image": "/static/images/closedbackcap.png",
     "preview": "/static/images/hatsclosedbackcappreview.png",
