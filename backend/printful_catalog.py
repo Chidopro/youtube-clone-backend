@@ -34,6 +34,7 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Men's Fitted Long Sleeve": 116,
     # Printful: Unisex Oversized Garment-Dyed T-Shirt | Bella + Canvas 4810 — ScreenMerch: "Unisex Oversized T-Shirt".
     "Unisex Oversized T-Shirt": 880,
+    # Printful: Unisex Long Sleeve Shirt | Gildan 2400 — ScreenMerch: "Men's Long Sleeve Shirt".
     "Men's Long Sleeve Shirt": 57,
     # Printful: Men's Staple Tank Top | Bella + Canvas 3480 — ScreenMerch: "Men's Tank Top".
     "Men's Tank Top": 248,
