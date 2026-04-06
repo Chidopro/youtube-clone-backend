@@ -2889,15 +2889,6 @@ def send_order():
                         "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
                     }), 400
             
-            # Check Women's Crop Top availability
-            if product_name == "Women's Crop Top":
-                # Bubblegum is out of stock
-                if color == "Bubblegum":
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
-                    }), 400
-            
             # Check Unisex T-Shirt availability
             if product_name == "Unisex T-Shirt":
                 # Colors not available in XS
@@ -3202,15 +3193,6 @@ def place_order():
                     return jsonify({
                         "success": False,
                         "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
-                    }), 400
-            
-            # Check Women's Crop Top availability
-            if product_name == "Women's Crop Top":
-                # Bubblegum is out of stock
-                if color == "Bubblegum":
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
                     }), 400
             
             # Check Unisex T-Shirt availability
@@ -3647,14 +3629,6 @@ def create_checkout_session():
                 if color == "Peach" and size != "XL":
                     return jsonify({
                         "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
-                    }), 400
-            
-            # Check Women's Crop Top availability
-            if product_name == "Women's Crop Top":
-                # Bubblegum is out of stock
-                if color == "Bubblegum":
-                    return jsonify({
-                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
                     }), 400
             
             # Check Unisex T-Shirt availability
