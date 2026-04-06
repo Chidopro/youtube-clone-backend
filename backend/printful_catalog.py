@@ -109,6 +109,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Hardcover Bound Notebook": 682,
     # Printful: Cork-Back Coaster — ScreenMerch: "Coasters".
     "Coasters": 611,
+    # Printful: All-Over Print Apron — ScreenMerch: "Apron".
+    "Apron": 894,
 }
 
 SIZE_TO_PRINTFUL: Dict[str, str] = {
