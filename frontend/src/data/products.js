@@ -1843,7 +1843,7 @@ export const products = {
           "Orchid": true,
           "Ecru": true,
           "White": true,
-          "Bubblegum": false,
+          "Bubblegum": true,
           "Bone": true,
           "Mineral": true,
           "Natural": true
@@ -1855,7 +1855,7 @@ export const products = {
           "Orchid": true,
           "Ecru": true,
           "White": true,
-          "Bubblegum": false,
+          "Bubblegum": true,
           "Bone": true,
           "Mineral": true,
           "Natural": true
@@ -1867,7 +1867,7 @@ export const products = {
           "Orchid": true,
           "Ecru": true,
           "White": true,
-          "Bubblegum": false,
+          "Bubblegum": true,
           "Bone": true,
           "Mineral": true,
           "Natural": true
@@ -1879,7 +1879,7 @@ export const products = {
           "Orchid": true,
           "Ecru": true,
           "White": true,
-          "Bubblegum": false,
+          "Bubblegum": true,
           "Bone": true,
           "Mineral": true,
           "Natural": true
@@ -1891,7 +1891,7 @@ export const products = {
           "Orchid": true,
           "Ecru": true,
           "White": true,
-          "Bubblegum": false,
+          "Bubblegum": true,
           "Bone": true,
           "Mineral": true,
           "Natural": true

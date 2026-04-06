@@ -48,3 +48,10 @@ frontend/.netlify/
 
 # Local nested copy of the project (not part of this repo)
 screenmerch/
+
+# Editor / manual snapshots (use git history instead of committing these)
+*.bak
+backend/app_backup*.py
+backend/app_working_backup.py
+backend/app_original*
+backend/app_temp.py

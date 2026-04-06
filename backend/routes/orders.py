@@ -231,11 +231,6 @@ def _validate_product_availability(cart):
             if color == "Peach" and size != "XL":
                 return False, f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
         
-        # Women's Crop Top restrictions
-        if product_name == "Women's Crop Top":
-            if color == "Bubblegum":
-                return False, f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
-        
         # Unisex T-Shirt restrictions
         if product_name == "Unisex T-Shirt":
             unavailable_in_xs = [
