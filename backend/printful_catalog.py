@@ -117,6 +117,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Bandana": 630,
     # Printful: Jigsaw Puzzle with Tin — ScreenMerch: "Jigsaw Puzzle with Tin".
     "Jigsaw Puzzle with Tin": 906,
+    # Printful: Die-Cut Magnets — ScreenMerch: "Die-Cut Magnets".
+    "Die-Cut Magnets": 656,
 }
 
 SIZE_TO_PRINTFUL: Dict[str, str] = {
