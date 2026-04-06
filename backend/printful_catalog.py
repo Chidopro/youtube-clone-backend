@@ -111,6 +111,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Coasters": 611,
     # Printful: All-Over Print Apron — ScreenMerch: "Apron".
     "Apron": 894,
+    # Printful: Kiss-Cut Stickers — ScreenMerch: "Kiss-Cut Stickers".
+    "Kiss-Cut Stickers": 358,
 }
 
 SIZE_TO_PRINTFUL: Dict[str, str] = {
