@@ -99,6 +99,8 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Pet Bowl All-Over Print": 678,
     # Printful: Pet Bandana Collar — ScreenMerch: "Pet Bandana Collar".
     "Pet Bandana Collar": 902,
+    # Printful: Pet Leash — ScreenMerch: "All Over Print Leash".
+    "All Over Print Leash": 745,
 }
 
 SIZE_TO_PRINTFUL: Dict[str, str] = {
