@@ -598,7 +598,11 @@ def require_shipping_address(payload):
         return False, "ZIP / Postal Code is required."
     if not country:
         country = "US"  # Default to US
-    return True, {"zip": zip_code, "country_code": country}
+    out = {"zip": zip_code, "country_code": country}
+    state = (addr.get("state_code") or addr.get("state") or "").strip()
+    if state:
+        out["state_code"] = state[:32]
+    return True, out
 
 # Helper function to parse ZIP code from shipping_address dict
 def _parse_zip(shipping_address: dict) -> str:
