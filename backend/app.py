@@ -619,25 +619,79 @@ def _parse_zip(shipping_address: dict) -> str:
         return ""
 
 
+# Open-Meteo geocoder: fallback when Zippopotam is slow/unreachable from hosting (e.g. Fly.io).
+_US_ADMIN1_TO_STATE_ABBR = {
+    "alabama": "AL", "alaska": "AK", "american samoa": "AS", "arizona": "AZ", "arkansas": "AR",
+    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
+    "district of columbia": "DC", "florida": "FL", "georgia": "GA", "guam": "GU", "hawaii": "HI",
+    "idaho": "ID", "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD", "massachusetts": "MA",
+    "michigan": "MI", "minnesota": "MN", "mississippi": "MS", "missouri": "MO", "montana": "MT",
+    "nebraska": "NE", "nevada": "NV", "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM",
+    "new york": "NY", "north carolina": "NC", "north dakota": "ND", "northern mariana islands": "MP",
+    "ohio": "OH", "oklahoma": "OK", "oregon": "OR", "pennsylvania": "PA", "puerto rico": "PR",
+    "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", "tennessee": "TN",
+    "texas": "TX", "utah": "UT", "vermont": "VT", "virginia": "VA", "u.s. virgin islands": "VI",
+    "us virgin islands": "VI", "washington": "WA", "west virginia": "WV", "wisconsin": "WI",
+    "wyoming": "WY",
+}
+
+
+def _infer_us_state_open_meteo(digits: str) -> str:
+    """Resolve ZIP → state via Open-Meteo (no API key). Prefer rows that list this ZIP in postcodes."""
+    try:
+        r = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params={"name": digits, "country": "US", "count": 10},
+            timeout=12,
+        )
+        if r.status_code != 200:
+            return ""
+        rows = (r.json() or {}).get("results") or []
+        best = None
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            pcs = row.get("postcodes") or []
+            if isinstance(pcs, list) and digits in pcs:
+                best = row
+                break
+            if best is None:
+                best = row
+        if not best:
+            return ""
+        admin1 = (best.get("admin1") or "").strip().lower()
+        return _US_ADMIN1_TO_STATE_ABBR.get(admin1, "")[:2]
+    except Exception as e:
+        logger.debug("Open-Meteo ZIP→state failed for %s: %s", digits, e)
+        return ""
+
+
 def _infer_us_state_from_zip(zip_code: str) -> str:
-    """Infer US state abbreviation from 5-digit ZIP (Printful often requires state_code)."""
+    """Infer US state abbreviation from 5-digit ZIP (Printful requires state_code for /shipping/rates)."""
     digits = "".join(c for c in str(zip_code or "") if c.isdigit())[:5]
     if len(digits) != 5:
         return ""
-    try:
-        r = requests.get(f"https://api.zippopotam.us/us/{digits}", timeout=6)
-        if r.status_code != 200:
-            return ""
-        data = r.json()
-        places = data.get("places") or []
-        if not places:
-            return ""
-        p0 = places[0]
-        abbr = (p0.get("state abbreviation") or p0.get("state") or "").strip()
-        return abbr[:2].upper() if abbr else ""
-    except Exception as e:
-        logger.debug("ZIP→state lookup failed for %s: %s", digits, e)
-        return ""
+    for attempt in range(3):
+        try:
+            r = requests.get(f"https://api.zippopotam.us/us/{digits}", timeout=12)
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            places = data.get("places") or []
+            if not places:
+                continue
+            p0 = places[0]
+            abbr = (p0.get("state abbreviation") or p0.get("state") or "").strip()
+            got = abbr[:2].upper() if abbr else ""
+            if got:
+                return got
+        except Exception as e:
+            logger.debug("Zippopotam ZIP→state attempt %s for %s: %s", attempt + 1, digits, e)
+    om = _infer_us_state_open_meteo(digits)
+    if om:
+        logger.info("📦 Inferred US state_code=%s from ZIP %s via Open-Meteo fallback", om, digits)
+    return om
 
 
 def _infer_ca_province_from_postal(postal_code: str) -> str:
@@ -6830,7 +6884,12 @@ def calculate_shipping():
                 except Exception:
                     error_detail = response.text[:200] if response.text else "Unknown error"
                 detail_lower = str(error_detail).lower()
-                if "out of stock" in detail_lower:
+                if "state code" in detail_lower and "missing" in detail_lower:
+                    user_msg = (
+                        "We could not look up your state from the ZIP code. "
+                        "Try re-entering your ZIP or contact support."
+                    )
+                elif "out of stock" in detail_lower:
                     user_msg = (
                         "We could not get a shipping quote for this cart. "
                         "If this keeps happening, try removing the item and adding it again, or contact support."
