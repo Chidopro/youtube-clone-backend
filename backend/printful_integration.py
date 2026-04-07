@@ -410,19 +410,15 @@ class ScreenMerchPrintfulIntegration:
         """
         Resolve a Printful catalog variant_id for shipping quotes. Cart lines from the
         storefront often omit variant_id; without this, a bad default produced false OOS errors.
+
+        Order: catalog (name/color/size) first so stale client IDs never override; then only
+        printful_variant_id / variant_id (Printful catalog IDs only).
         """
-        raw = item.get("variant_id") or item.get("printful_variant_id") or item.get("printify_variant_id")
-        if raw is not None:
-            try:
-                return int(raw)
-            except (TypeError, ValueError):
-                pass
         variants = item.get("variants") if isinstance(item.get("variants"), dict) else {}
         color = (item.get("color") or variants.get("color") or "").strip()
         size = (item.get("size") or variants.get("size") or "").strip()
         name = (item.get("product") or item.get("name") or "").strip()
 
-        # True catalog variant IDs (color × size) when PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME matches.
         try:
             from printful_catalog import catalog_product_id_for_product_name, lookup_catalog_variant_id
         except ImportError:
@@ -449,6 +445,16 @@ class ScreenMerchPrintfulIntegration:
                     color,
                     size,
                 )
+
+        for _key in ("printful_variant_id", "variant_id"):
+            raw = item.get(_key)
+            if raw is not None:
+                try:
+                    n = int(raw)
+                    if n > 0:
+                        return n
+                except (TypeError, ValueError):
+                    pass
 
         key = self._canonical_product_mapping_key(name)
         if not key:

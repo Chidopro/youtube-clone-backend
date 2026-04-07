@@ -6690,7 +6690,7 @@ def printful_shipping_rates_simple():
 
 @app.route("/api/calculate-shipping", methods=["POST", "OPTIONS"])
 def calculate_shipping():
-    """Calculate shipping cost for an order using Printify API"""
+    """Calculate shipping cost for an order via Printful /shipping/rates."""
     logger.info("📦 /api/calculate-shipping endpoint called")
     logger.info(f"📦 Request method: {request.method}")
     logger.info(f"📦 Request URL: {request.url}")
@@ -6906,7 +6906,7 @@ def calculate_shipping():
                 }), response.status_code if response.status_code < 600 else 500
         
         # No API keys configured
-        logger.error("📦 Neither PRINTFUL_API_KEY nor PRINTIFY_API_KEY is configured")
+        logger.error("📦 PRINTFUL_API_KEY is not configured")
         return jsonify({
             "success": False,
             "error": "Shipping calculation service is not configured. Please contact support."

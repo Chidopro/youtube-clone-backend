@@ -121,10 +121,8 @@ const Checkout = () => {
           ...(stateVal ? { state_code: stateVal } : {}),
         },
         cart: items.map(it => ({
-          // Printful API expects Printful variant IDs; prefer them over Printify.
-          variant_id: it.printful_variant_id || it.printify_variant_id || it.variant_id,
+          variant_id: it.printful_variant_id ?? it.variant_id,
           printful_variant_id: it.printful_variant_id,
-          printify_variant_id: it.printify_variant_id,
           quantity: it.qty || it.quantity || 1,
           qty: it.qty || it.quantity || 1,
           name: it.name,
@@ -322,9 +320,8 @@ const Checkout = () => {
         note: it.note || '',
         qty: it.qty || it.quantity || 1,
         quantity: it.qty || it.quantity || 1,
-        variant_id: it.printful_variant_id || it.printify_variant_id || it.variant_id,
+        variant_id: it.printful_variant_id ?? it.variant_id,
         printful_variant_id: it.printful_variant_id,
-        printify_variant_id: it.printify_variant_id,
         printful_catalog_product_id: it.printful_catalog_product_id,
         category: it.category,
         // Video frame position (seconds) for admin / fulfillment — same as order-level screenshot_timestamp when single item
