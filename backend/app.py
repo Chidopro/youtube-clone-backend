@@ -6719,10 +6719,8 @@ def calculate_shipping():
                 "error": "No cart items provided"
             }), 400
         
-        # Check for API key
         printful_api_key = os.getenv("PRINTFUL_API_KEY")
-        printify_api_key = os.getenv("PRINTIFY_API_KEY")
-        
+
         # Parse ZIP code using robust helper
         postal_code = _parse_zip(shipping_address)
         if not postal_code:
