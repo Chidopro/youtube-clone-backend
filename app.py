@@ -3753,6 +3753,57 @@ def _printful_variant_id_for_cart_line(item: dict) -> int:
     return 4012
 
 
+def _consolidated_printful_shipping_items_root(cart: list) -> list:
+    """One row per variant_id; sums qty across cart lines (matches backend Printful behavior)."""
+    from collections import defaultdict
+
+    if hasattr(printful_integration, "build_consolidated_shipping_items"):
+        return printful_integration.build_consolidated_shipping_items(cart)
+    counts = defaultdict(int)
+    for item in cart:
+        vid = _printful_variant_id_for_cart_line(item)
+        q = item.get("quantity") or item.get("qty") or 1
+        try:
+            q = int(q)
+        except (TypeError, ValueError):
+            q = 1
+        counts[int(vid)] += max(1, q)
+    return [{"variant_id": v, "quantity": q} for v, q in sorted(counts.items())]
+
+
+def adjust_printful_shipping_quote(quoted_usd):
+    """Same as backend: optional SHIPPING_MARKUP_PERCENT, SHIPPING_SURCHARGE_USD, SHIPPING_FLOOR_USD."""
+    try:
+        x = float(quoted_usd)
+    except (TypeError, ValueError):
+        return 0.0
+    if x < 0:
+        x = 0.0
+    raw = x
+    pct = os.getenv("SHIPPING_MARKUP_PERCENT")
+    if pct is not None and str(pct).strip() != "":
+        try:
+            x = x * (1.0 + float(pct) / 100.0)
+        except ValueError:
+            pass
+    sur = os.getenv("SHIPPING_SURCHARGE_USD")
+    if sur is not None and str(sur).strip() != "":
+        try:
+            x = x + float(sur)
+        except ValueError:
+            pass
+    fl = os.getenv("SHIPPING_FLOOR_USD")
+    if fl is not None and str(fl).strip() != "":
+        try:
+            x = max(x, float(fl))
+        except ValueError:
+            pass
+    out = round(x, 2)
+    if out != round(raw, 2):
+        logger.info("📦 Shipping store adjustment: Printful quote=%s -> charged=%s", raw, out)
+    return out
+
+
 @app.route("/api/calculate-shipping", methods=["POST", "OPTIONS"])
 def calculate_shipping():
     """Calculate shipping via Printful only (POST https://api.printful.com/shipping/rates)."""
@@ -3799,7 +3850,7 @@ def calculate_shipping():
                 if result and result.get('success') and not result.get('fallback'):
                     return jsonify({
                         "success": True,
-                        "shipping_cost": result.get('shipping_cost', 0),
+                        "shipping_cost": adjust_printful_shipping_quote(result.get('shipping_cost', 0)),
                         "currency": result.get('currency', 'USD'),
                         "delivery_days": str(result.get('delivery_days', '5-7')),
                         "shipping_method": result.get('shipping_method', 'Standard Shipping')
@@ -3810,15 +3861,7 @@ def calculate_shipping():
                 logger.error(f"📦 Printful integration failed: {str(e)}")
 
         if printful_api_key:
-            shipping_items = []
-            for item in cart:
-                vid = _printful_variant_id_for_cart_line(item)
-                q = item.get("quantity") or item.get("qty") or 1
-                try:
-                    q = int(q)
-                except (TypeError, ValueError):
-                    q = 1
-                shipping_items.append({"variant_id": vid, "quantity": max(1, q)})
+            shipping_items = _consolidated_printful_shipping_items_root(cart)
 
             shipping_payload = {
                 "recipient": {
@@ -3864,7 +3907,7 @@ def calculate_shipping():
                                 }), 400
                             return jsonify({
                                 "success": True,
-                                "shipping_cost": float(cost),
+                                "shipping_cost": adjust_printful_shipping_quote(cost),
                                 "currency": "USD",
                                 "delivery_days": str(rate.get('minDeliveryDays', rate.get('estimated_days', '5-7'))),
                                 "shipping_method": rate.get('name', 'Standard Shipping')

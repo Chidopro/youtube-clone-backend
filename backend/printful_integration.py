@@ -4,6 +4,7 @@ import requests
 import base64
 import uuid
 import logging
+from collections import defaultdict
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
 
@@ -524,22 +525,28 @@ class ScreenMerchPrintfulIntegration:
                 "error": str(e)
             }
     
+    def build_consolidated_shipping_items(self, cart: list) -> List[dict]:
+        """
+        One line per Printful variant_id with total quantity. Sending duplicate
+        variant rows can produce incorrect (sometimes lower) totals from /shipping/rates.
+        """
+        counts = defaultdict(int)
+        for item in cart:
+            vid = self.resolve_printful_variant_for_item(item)
+            q = item.get("quantity") or item.get("qty") or 1
+            try:
+                q = int(q)
+            except (TypeError, ValueError):
+                q = 1
+            counts[int(vid)] += max(1, q)
+        out = [{"variant_id": v, "quantity": q} for v, q in sorted(counts.items())]
+        logger.info("Printful shipping items (consolidated): %s", out)
+        return out
+
     def calculate_shipping_rates(self, recipient_data: dict, items: list) -> dict:
         """Calculate shipping rates for given items and destination"""
         try:
-            # Format items for Printful shipping calculation
-            shipping_items = []
-            for item in items:
-                variant_id = self.resolve_printful_variant_for_item(item)
-                q = item.get('quantity', item.get('qty', 1))
-                try:
-                    q = int(q)
-                except (TypeError, ValueError):
-                    q = 1
-                shipping_items.append({
-                    "variant_id": variant_id,
-                    "quantity": max(1, q),
-                })
+            shipping_items = self.build_consolidated_shipping_items(items)
             
             shipping_payload = {
                 "recipient": {

@@ -1011,6 +1011,52 @@ else:
 printful_integration = ScreenMerchPrintfulIntegration()
 
 
+def adjust_printful_shipping_quote(quoted_usd):
+    """
+    Optional store-level tuning on top of Printful's /shipping/rates quote (Fly secrets / .env).
+    Order: apply SHIPPING_MARKUP_PERCENT to quote, add SHIPPING_SURCHARGE_USD, then SHIPPING_FLOOR_USD.
+    Unset or empty = skip that step (no change by default).
+
+    Examples to close a ~$1 gap vs Printful's public table:
+      SHIPPING_SURCHARGE_USD=1.25
+      or SHIPPING_MARKUP_PERCENT=12
+      or SHIPPING_FLOOR_USD=10.99
+    """
+    try:
+        x = float(quoted_usd)
+    except (TypeError, ValueError):
+        return 0.0
+    if x < 0:
+        x = 0.0
+    raw = x
+
+    pct = os.getenv("SHIPPING_MARKUP_PERCENT")
+    if pct is not None and str(pct).strip() != "":
+        try:
+            x = x * (1.0 + float(pct) / 100.0)
+        except ValueError:
+            pass
+
+    sur = os.getenv("SHIPPING_SURCHARGE_USD")
+    if sur is not None and str(sur).strip() != "":
+        try:
+            x = x + float(sur)
+        except ValueError:
+            pass
+
+    fl = os.getenv("SHIPPING_FLOOR_USD")
+    if fl is not None and str(fl).strip() != "":
+        try:
+            x = max(x, float(fl))
+        except ValueError:
+            pass
+
+    out = round(x, 2)
+    if out != round(raw, 2):
+        logger.info("📦 Shipping store adjustment: Printful quote=%s -> charged=%s", raw, out)
+    return out
+
+
 def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
     """
     Server-side Printful shipping for Stripe checkout. Same strategy as /api/calculate-shipping:
@@ -1041,21 +1087,11 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
             if result and result.get("success") and not result.get("fallback"):
                 c = result.get("shipping_cost")
                 if c is not None and float(c) >= 0:
-                    return True, float(c), str(result.get("shipping_method") or "Standard Shipping"), None
+                    return True, adjust_printful_shipping_quote(c), str(result.get("shipping_method") or "Standard Shipping"), None
         except Exception as e:
             logger.warning("checkout: Printful integration shipping failed: %s", e)
 
-    shipping_items = []
-    for item in cart:
-        vid = printful_integration.resolve_printful_variant_for_item(item)
-        qty = item.get("quantity") or item.get("qty") or 1
-        try:
-            qty = int(qty)
-        except (TypeError, ValueError):
-            qty = 1
-        if qty < 1:
-            qty = 1
-        shipping_items.append({"variant_id": vid, "quantity": qty})
+    shipping_items = printful_integration.build_consolidated_shipping_items(cart)
 
     recipient = {
         "country_code": country,
@@ -1117,7 +1153,7 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
     cost = rate.get("rate") or rate.get("cost") or rate.get("price")
     if cost is None:
         return False, None, None, "Could not determine shipping cost for this order."
-    return True, float(cost), rate.get("name") or "Shipping", None
+    return True, adjust_printful_shipping_quote(cost), rate.get("name") or "Shipping", None
 
 
 # Keep in-memory storage as fallback, but prioritize database
@@ -6747,9 +6783,10 @@ def calculate_shipping():
                 logger.info(f"📦 Printful shipping result: {result}")
                 
                 if result and result.get('success') and not result.get('fallback'):
+                    sc = result.get('shipping_cost', 0)
                     return jsonify({
                         "success": True,
-                        "shipping_cost": result.get('shipping_cost', 0),
+                        "shipping_cost": adjust_printful_shipping_quote(sc),
                         "currency": result.get('currency', 'USD'),
                         "delivery_days": str(result.get('delivery_days', '5-7')),
                         "shipping_method": result.get('shipping_method', 'Standard Shipping')
@@ -6765,20 +6802,8 @@ def calculate_shipping():
             logger.info("📦 Using direct Printful API for shipping calculation")
             printful_base_url = "https://api.printful.com"
             
-            # Format items for Printful
-            shipping_items = []
-            for item in cart:
-                vid = printful_integration.resolve_printful_variant_for_item(item)
-                q = item.get("quantity") or item.get("qty") or 1
-                try:
-                    q = int(q)
-                except (TypeError, ValueError):
-                    q = 1
-                shipping_items.append({
-                    "variant_id": vid,
-                    "quantity": max(1, q),
-                })
-            
+            shipping_items = printful_integration.build_consolidated_shipping_items(cart)
+
             shipping_payload = {
                 "recipient": {
                     "country_code": country,
@@ -6844,7 +6869,7 @@ def calculate_shipping():
                             logger.info(f"📦 Shipping cost calculated: {cost}")
                             return jsonify({
                                 "success": True,
-                                "shipping_cost": float(cost),
+                                "shipping_cost": adjust_printful_shipping_quote(cost),
                                 "currency": "USD",
                                 "delivery_days": str(rate.get('minDeliveryDays', rate.get('estimated_days', '5-7'))),
                                 "shipping_method": rate.get('name', 'Standard Shipping')
