@@ -13,6 +13,7 @@ from __future__ import annotations
 import copy
 import logging
 import os
+import re
 import threading
 from typing import Any, Dict, List, Optional
 
@@ -123,6 +124,15 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Die-Cut Magnets": 656,
 }
 
+# When storefront ``color`` labels differ from Printful catalog variant ``color`` strings.
+# Key: catalog product id. Inner key: storefront color (matched case-insensitively).
+CATALOG_COLOR_ALIASES: Dict[int, Dict[str, str]] = {
+    # API uses "White (glossy)"; storefront uses "White".
+    906: {"White": "White (glossy)"},
+}
+
+JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID = 906
+
 SIZE_TO_PRINTFUL: Dict[str, str] = {
     "XXL": "2XL",
     "XXXL": "3XL",
@@ -141,6 +151,34 @@ def normalize_printful_size(size: str) -> str:
         return size
     s = str(size).strip()
     return SIZE_TO_PRINTFUL.get(s, s)
+
+
+def _apply_catalog_color_aliases(catalog_product_id: int, color: str) -> str:
+    aliases = CATALOG_COLOR_ALIASES.get(catalog_product_id, {})
+    if not color or not aliases:
+        return color
+    c = str(color).strip()
+    if c in aliases:
+        return aliases[c]
+    cl = c.lower()
+    for k, v in aliases.items():
+        if str(k).lower() == cl:
+            return v
+    return c
+
+
+def _jigsaw_tin_variant_id_for_store_size(store_size: str, by_color: Dict[str, int]) -> Optional[int]:
+    """Store uses long labels; Printful uses e.g. 40″×28″ (2000 pcs). Match on (N pcs)."""
+    if not store_size or not by_color:
+        return None
+    m = re.search(r"(\d+)\s*pcs", str(store_size), re.I)
+    if not m:
+        return None
+    needle = f"({m.group(1)} pcs)"
+    for sk, vid in by_color.items():
+        if needle in str(sk):
+            return int(vid)
+    return None
 
 
 def catalog_product_id_for_product_name(name: str) -> Optional[int]:
@@ -220,7 +258,7 @@ def lookup_catalog_variant_id(
     if not color or not size:
         return None
 
-    color = str(color).strip()
+    color = _apply_catalog_color_aliases(catalog_product_id, str(color).strip())
     size = str(size).strip()
     sizes_try: List[str] = []
     for s in (size, normalize_printful_size(size)):
@@ -249,6 +287,11 @@ def lookup_catalog_variant_id(
         for sk, vid in by_color.items():
             if str(sk).lower() == szl:
                 return int(vid)
+
+    if catalog_product_id == JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID:
+        jvid = _jigsaw_tin_variant_id_for_store_size(size, by_color)
+        if jvid is not None:
+            return jvid
     return None
 
 
