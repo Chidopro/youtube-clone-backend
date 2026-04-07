@@ -19,6 +19,8 @@ export function normalizePrintfulSize(size) {
 }
 
 const JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID = 906;
+/** Must match backend printful_catalog.NO_COLOR_BUCKET_KEY */
+const PRINTFUL_NO_COLOR_KEY = '__printful_no_color__';
 
 /**
  * Printful catalog 906: color is "White (glossy)"; sizes look like 40″×28″ (2000 pcs).
@@ -69,6 +71,9 @@ export function resolvePrintfulVariantId(product, color, size) {
     const key = Object.keys(map).find((k) => String(k).toLowerCase() === lower);
     if (key) byColor = map[key];
   }
+  if (!byColor && map[PRINTFUL_NO_COLOR_KEY]) {
+    byColor = map[PRINTFUL_NO_COLOR_KEY];
+  }
   if (!byColor || typeof byColor !== 'object') return null;
 
   const trySizes = [rawSize, altSize].filter((s, i, a) => s && a.indexOf(s) === i);
@@ -81,6 +86,21 @@ export function resolvePrintfulVariantId(product, color, size) {
     if (String(sk).toLowerCase() === sl) {
       const v = byColor[sk];
       if (v != null && v !== '') return Number(v);
+    }
+  }
+  const norm = (s) =>
+    String(s)
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/[\u2033\u201c\u201d"'*]/g, '')
+      .replace(/\u00d7/g, 'x');
+  const nRaw = norm(rawSize);
+  if (nRaw) {
+    for (const sk of Object.keys(byColor)) {
+      if (norm(sk) === nRaw) {
+        const v = byColor[sk];
+        if (v != null && v !== '') return Number(v);
+      }
     }
   }
   return null;

@@ -133,6 +133,9 @@ CATALOG_COLOR_ALIASES: Dict[int, Dict[str, str]] = {
 
 JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID = 906
 
+# Printful sometimes returns empty ``color`` on catalog variants (e.g. greeting card 568).
+NO_COLOR_BUCKET_KEY = "__printful_no_color__"
+
 SIZE_TO_PRINTFUL: Dict[str, str] = {
     "XXL": "2XL",
     "XXXL": "3XL",
@@ -165,6 +168,39 @@ def _apply_catalog_color_aliases(catalog_product_id: int, color: str) -> str:
         if str(k).lower() == cl:
             return v
     return c
+
+
+def _normalize_size_loose(size: str) -> str:
+    """Compare storefront vs catalog labels (quotes, × vs x, spaces)."""
+    if not size:
+        return ""
+    t = str(size).strip().lower()
+    t = re.sub(r"\s+", "", t)
+    for u in ("\u2033", "\u201c", "\u201d", '"', "'"):
+        t = t.replace(u, "")
+    t = t.replace("\u00d7", "x").replace("*", "x")
+    return t
+
+
+def _match_size_in_bucket(requested: str, by_size: Dict[str, int]) -> Optional[int]:
+    """Exact key, case-insensitive, then loose normalization match."""
+    if not requested or not by_size:
+        return None
+    req = str(requested).strip()
+    sizes_try = [req, normalize_printful_size(req)]
+    for sz in sizes_try:
+        if sz and sz in by_size:
+            return int(by_size[sz])
+    rl = req.lower()
+    for sk, vid in by_size.items():
+        if str(sk).lower() == rl:
+            return int(vid)
+    nreq = _normalize_size_loose(req)
+    if nreq:
+        for sk, vid in by_size.items():
+            if _normalize_size_loose(str(sk)) == nreq:
+                return int(vid)
+    return None
 
 
 def _jigsaw_tin_variant_id_for_store_size(store_size: str, by_color: Dict[str, int]) -> Optional[int]:
@@ -218,9 +254,10 @@ def _fetch_catalog_variants_nested(catalog_product_id: int) -> Dict[str, Dict[st
             vid = v.get("id")
             color = (v.get("color") or "").strip()
             size = (v.get("size") or "").strip()
-            if not color or not size or vid is None:
+            if not size or vid is None:
                 continue
-            out.setdefault(color, {})[size] = int(vid)
+            color_key = color if color else NO_COLOR_BUCKET_KEY
+            out.setdefault(color_key, {})[size] = int(vid)
         offset += limit
         paging = body.get("paging") or {}
         total = paging.get("total")
@@ -255,38 +292,32 @@ def lookup_catalog_variant_id(
         logger.warning("Variant map load failed for catalog_product_id=%s: %s", catalog_product_id, e)
         return None
 
-    if not color or not size:
+    if not size:
         return None
 
-    color = _apply_catalog_color_aliases(catalog_product_id, str(color).strip())
+    color_in = str(color or "").strip()
+    color = _apply_catalog_color_aliases(catalog_product_id, color_in)
     size = str(size).strip()
     sizes_try: List[str] = []
     for s in (size, normalize_printful_size(size)):
         if s and s not in sizes_try:
             sizes_try.append(s)
 
-    by_color = m.get(color)
-    if by_color is None:
+    by_color = m.get(color) if color else None
+    if by_color is None and color_in:
         cl = color.lower()
         for k in m:
             if str(k).lower() == cl:
                 by_color = m[k]
                 break
+    if not by_color and NO_COLOR_BUCKET_KEY in m:
+        by_color = m[NO_COLOR_BUCKET_KEY]
     if not by_color:
         return None
 
-    for sz in sizes_try:
-        if sz in by_color:
-            return int(by_color[sz])
-    sl = size.lower()
-    for sk, vid in by_color.items():
-        if str(sk).lower() == sl:
-            return int(vid)
-    for sz in sizes_try:
-        szl = sz.lower()
-        for sk, vid in by_color.items():
-            if str(sk).lower() == szl:
-                return int(vid)
+    matched = _match_size_in_bucket(size, by_color)
+    if matched is not None:
+        return matched
 
     if catalog_product_id == JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID:
         jvid = _jigsaw_tin_variant_id_for_store_size(size, by_color)
@@ -308,7 +339,14 @@ def attach_printful_catalog_data(product: Dict[str, Any]) -> Dict[str, Any]:
     if not os.getenv("PRINTFUL_API_KEY"):
         return out
     try:
-        out["printful_variant_map"] = get_nested_variant_map(int(pid))
+        nested = get_nested_variant_map(int(pid))
+        # Frontend matches on storefront color (e.g. "White"); catalog may only have no-color bucket.
+        if NO_COLOR_BUCKET_KEY in nested:
+            bucket = nested[NO_COLOR_BUCKET_KEY]
+            for alias in ("White", "Default", "Black"):
+                if alias not in nested:
+                    nested[alias] = dict(bucket)
+        out["printful_variant_map"] = nested
     except Exception as e:
         logger.warning("attach_printful_catalog_data(%s): %s", name, e)
     return out

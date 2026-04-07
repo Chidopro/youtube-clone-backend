@@ -442,6 +442,13 @@ class ScreenMerchPrintfulIntegration:
                 vid = lookup_catalog_variant_id(cpid, color, size)
                 if vid is not None:
                     return int(vid)
+                logger.warning(
+                    "Printful shipping: catalog variant lookup miss catalog_id=%s product=%r color=%r size=%r",
+                    cpid,
+                    name,
+                    color,
+                    size,
+                )
 
         key = self._canonical_product_mapping_key(name)
         if not key:
