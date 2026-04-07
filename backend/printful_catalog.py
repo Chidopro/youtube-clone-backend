@@ -133,6 +133,11 @@ CATALOG_COLOR_ALIASES: Dict[int, Dict[str, str]] = {
 
 JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID = 906
 
+# Catalog products whose variant ``size`` is an ounce label (11 oz / 15oz / etc.). If string
+# matching misses, we match on the numeric ounce value so shipping uses the real mug variant
+# (not the DEFAULT_PRINTFUL_SHIPPING_VARIANT_ID t-shirt fallback → unrealistically low rates).
+MUG_OZ_CATALOG_PRODUCT_IDS = frozenset({19, 403, 407, 663})
+
 # Printful sometimes returns empty ``color`` on catalog variants (e.g. greeting card 568).
 NO_COLOR_BUCKET_KEY = "__printful_no_color__"
 
@@ -200,6 +205,19 @@ def _match_size_in_bucket(requested: str, by_size: Dict[str, int]) -> Optional[i
         for sk, vid in by_size.items():
             if _normalize_size_loose(str(sk)) == nreq:
                 return int(vid)
+    return None
+
+
+def _match_mug_oz_size(requested: str, by_size: Dict[str, int]) -> Optional[int]:
+    """Match storefront '15 oz' to catalog '15oz' / '15 Oz' by ounce number."""
+    m = re.search(r"(\d+)\s*oz\b", str(requested), re.I)
+    if not m or not by_size:
+        return None
+    oz = m.group(1)
+    for sk, vid in by_size.items():
+        sm = re.search(r"(\d+)\s*oz\b", str(sk), re.I)
+        if sm and sm.group(1) == oz:
+            return int(vid)
     return None
 
 
@@ -318,6 +336,11 @@ def lookup_catalog_variant_id(
     matched = _match_size_in_bucket(size, by_color)
     if matched is not None:
         return matched
+
+    if catalog_product_id in MUG_OZ_CATALOG_PRODUCT_IDS:
+        mug_vid = _match_mug_oz_size(size, by_color)
+        if mug_vid is not None:
+            return mug_vid
 
     if catalog_product_id == JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID:
         jvid = _jigsaw_tin_variant_id_for_store_size(size, by_color)
