@@ -479,6 +479,22 @@ class ScreenMerchPrintfulIntegration:
             return int(base)
         return DEFAULT_PRINTFUL_SHIPPING_VARIANT_ID
 
+    def normalize_store_cart_item_for_printful(self, item: dict) -> dict:
+        """
+        Merge nested storefront ``variants`` (color/size) onto top-level keys so
+        ``resolve_printful_variant_for_item`` and catalog lookup match checkout.
+        """
+        if not isinstance(item, dict):
+            return {}
+        variants = item.get("variants") if isinstance(item.get("variants"), dict) else {}
+        out = dict(item)
+        out["product"] = (item.get("product") or item.get("name") or "").strip() or out.get("product", "")
+        if not (str(out.get("color") or "")).strip():
+            out["color"] = (variants.get("color") or "").strip()
+        if not (str(out.get("size") or "")).strip():
+            out["size"] = (variants.get("size") or "").strip()
+        return out
+
     def create_automated_product(self, user_selection: dict) -> dict:
         """Create automated product in Printful"""
         try:

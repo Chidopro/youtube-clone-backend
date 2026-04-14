@@ -135,26 +135,27 @@ def register_worker_portal_routes(app, supabase, supabase_admin, printful_integr
                     "error": f"Failed to upload image to Printful: {str(e)}"
                 }), 500
             
-            # Step 4: Prepare Printful order items
+            # Step 4: Prepare Printful order items (same variant resolution as checkout /shipping/rates)
             printful_items = []
+            shipping_cart = []
             for item in cart:
-                product_name = item.get('product', 'Unknown Product')
-                color = (item.get('variants') or {}).get('color', 'Black')
-                size = (item.get('variants') or {}).get('size', 'M')
-                quantity = item.get('quantity', 1)
-                
-                # Map product to Printful variant ID
-                # This uses the product_mappings from printful_integration
+                norm = printful_integration.normalize_store_cart_item_for_printful(item)
+                shipping_cart.append(norm)
+                quantity = norm.get("quantity", 1)
                 try:
-                    variant_id = printful_integration._get_variant_id(product_name, color, size)
-                except Exception as e:
-                    logger.warning(f"⚠️ [WORKER_PORTAL] Error getting variant ID: {str(e)}")
-                    variant_id = None
-                
-                if not variant_id:
-                    logger.warning(f"⚠️ [WORKER_PORTAL] No variant mapping for {product_name} {color} {size}, using default")
-                    variant_id = 4012  # Default to basic t-shirt
-                
+                    quantity = int(quantity)
+                except (TypeError, ValueError):
+                    quantity = 1
+                quantity = max(1, quantity)
+                variant_id = printful_integration.resolve_printful_variant_for_item(norm)
+                logger.info(
+                    "📦 [WORKER_PORTAL] line product=%r color=%r size=%r -> variant_id=%s qty=%s",
+                    norm.get("product"),
+                    norm.get("color"),
+                    norm.get("size"),
+                    variant_id,
+                    quantity,
+                )
                 printful_items.append({
                     "variant_id": variant_id,
                     "quantity": quantity,
@@ -174,29 +175,77 @@ def register_worker_portal_routes(app, supabase, supabase_admin, printful_integr
                     "country_code": order.get('shipping_country', 'US'),
                     "zip": order.get('shipping_postal_code', '')
                 }
+
+            # Same live STANDARD quote Printful uses for fulfillment (for records + retail_costs alignment)
+            pf_shipping_quote = None
+            try:
+                zip_code = (
+                    shipping_address.get("zip")
+                    or shipping_address.get("postal_code")
+                    or shipping_address.get("zip_code")
+                    or ""
+                )
+                recipient_data = {
+                    "country_code": (shipping_address.get("country_code") or "US").strip() or "US",
+                    "zip": str(zip_code).strip(),
+                    "state_code": (shipping_address.get("state_code") or shipping_address.get("state") or "").strip(),
+                    "city": (shipping_address.get("city") or "").strip(),
+                }
+                if recipient_data["zip"]:
+                    ship_live = printful_integration.calculate_shipping_rates(recipient_data, shipping_cart)
+                    if ship_live and ship_live.get("success") and not ship_live.get("fallback"):
+                        pf_shipping_quote = float(ship_live.get("shipping_cost") or 0)
+                        logger.info(
+                            "📦 [WORKER_PORTAL] Printful /shipping/rates STANDARD=%s (cart lines=%s)",
+                            pf_shipping_quote,
+                            len(shipping_cart),
+                        )
+                    else:
+                        logger.warning("📦 [WORKER_PORTAL] Live shipping quote unavailable: %s", ship_live)
+                else:
+                    logger.warning("📦 [WORKER_PORTAL] No ZIP on order; skipping live Printful shipping quote")
+            except Exception as ship_ex:
+                logger.warning("📦 [WORKER_PORTAL] Live shipping quote failed: %s", ship_ex)
             
             # Step 6: Create order in Printful
             # IMPORTANT: confirm=true automatically charges your Printful account's stored payment method
             # Workers never see or need access to credit card information
             logger.info(f"📦 [WORKER_PORTAL] Creating order in Printful...")
             try:
+                try:
+                    cust_ship = float(order.get("shipping_cost") or 0)
+                except (TypeError, ValueError):
+                    cust_ship = 0.0
+                try:
+                    total_amt = float(order.get("total_amount") or 0)
+                except (TypeError, ValueError):
+                    total_amt = 0.0
+                subtotal_products = total_amt - cust_ship
+                # retail_costs = what the customer actually paid (Stripe); fulfillment is billed separately by Printful
+                ship_zip = (
+                    shipping_address.get("zip")
+                    or shipping_address.get("postal_code")
+                    or shipping_address.get("zip_code")
+                    or ""
+                )
                 order_payload = {
                     "recipient": {
                         "name": shipping_address.get('name', 'Customer'),
                         "address1": shipping_address.get('address1', ''),
                         "address2": shipping_address.get('address2', ''),
                         "city": shipping_address.get('city', ''),
-                        "state_code": shipping_address.get('state_code', ''),
+                        "state_code": shipping_address.get('state_code', '') or shipping_address.get('state', ''),
                         "country_code": shipping_address.get('country_code', 'US'),
-                        "zip": shipping_address.get('zip', '')
+                        "zip": str(ship_zip).strip(),
                     },
                     "items": printful_items,
                     "shipping": "STANDARD",
                     "confirm": True,  # Automatically confirm and charge stored payment method
                     "retail_costs": {
                         "currency": "USD",
-                        "subtotal": str(order.get('total_amount', 0) - order.get('shipping_cost', 0)),
-                        "total": str(order.get('total_amount', 0))
+                        "subtotal": str(round(subtotal_products, 2)),
+                        "shipping": str(round(cust_ship, 2)),
+                        "total": str(round(total_amt, 2)),
                     }
                 }
                 
@@ -223,22 +272,42 @@ def register_worker_portal_routes(app, supabase, supabase_admin, printful_integr
                         }).eq('id', queue_id).execute()
                     
                     # Step 8: Log to processing history
+                    hist_notes = f"Printful Order: {printful_order_id}."
+                    if pf_shipping_quote is not None:
+                        hist_notes += f" Printful STANDARD shipping quote: ${pf_shipping_quote:.2f}."
+                    if worker_notes:
+                        hist_notes += f" {worker_notes}"
                     supabase.table('processing_history').insert({
                         'order_id': order_id,
                         'queue_id': queue_id if queue_result.data else None,
                         'status': 'completed',
                         'processed_image_url': printful_image_url,
                         'processing_time_seconds': processing_time,
-                        'notes': f"Printful Order: {printful_order_id}. {worker_notes}"
+                        'notes': hist_notes.strip(),
                     }).execute()
                     
-                    # Step 9: Update order in database with Printful order ID
-                    supabase.table('orders').update({
+                    # Step 9: Printful order id + live shipping quote (does not overwrite Stripe totals)
+                    order_upd = {
                         'printful_order_id': str(printful_order_id),
                         'printful_order_status': printful_order_status,
                         'status': 'fulfilled',
                         'updated_at': datetime.utcnow().isoformat()
-                    }).eq('order_id', order_id).execute()
+                    }
+                    if pf_shipping_quote is not None:
+                        order_upd['printful_shipping_quote_usd'] = round(pf_shipping_quote, 2)
+                    try:
+                        supabase.table('orders').update(order_upd).eq('order_id', order_id).execute()
+                    except Exception as dbu:
+                        logger.warning(
+                            "📦 [WORKER_PORTAL] orders.update (printful_shipping_quote_usd may need migration): %s",
+                            dbu,
+                        )
+                        supabase.table('orders').update({
+                            'printful_order_id': str(printful_order_id),
+                            'printful_order_status': printful_order_status,
+                            'status': 'fulfilled',
+                            'updated_at': datetime.utcnow().isoformat()
+                        }).eq('order_id', order_id).execute()
                     
                     # Return success response
                     response = jsonify({
