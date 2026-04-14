@@ -581,32 +581,51 @@ class ScreenMerchPrintfulIntegration:
             
             if shipping_rates and 'result' in shipping_rates:
                 rates = shipping_rates['result']
-                
-                # Find the standard shipping rate
+                if not isinstance(rates, list):
+                    rates = []
+
+                def _rate_id(r):
+                    rid = r.get("id") if isinstance(r, dict) else None
+                    return str(rid or "").strip().upper()
+
+                # Find the standard shipping rate (avoid KeyError if Printful omits id)
                 standard_rate = None
                 for rate in rates:
-                    if rate['id'] == 'STANDARD':
+                    if not isinstance(rate, dict):
+                        continue
+                    rid = _rate_id(rate)
+                    if rid == "STANDARD" or "standard" in str(rate.get("name") or "").lower():
                         standard_rate = rate
                         break
-                
+
                 if standard_rate:
                     return {
                         "success": True,
-                        "shipping_cost": float(standard_rate['rate']),
+                        "shipping_cost": float(standard_rate.get("rate") or standard_rate.get("cost") or 0),
                         "currency": "USD",
-                        "delivery_days": standard_rate.get('minDeliveryDays', 5),
-                        "all_rates": rates
+                        "delivery_days": standard_rate.get("minDeliveryDays", 5),
+                        "shipping_method": standard_rate.get("name") or "Standard Shipping",
+                        "all_rates": rates,
                     }
-                else:
-                    # Fallback to first available rate
-                    if rates:
-                        fallback_rate = rates[0]
+                # Fallback to first available rate with a numeric cost
+                for rate in rates:
+                    if not isinstance(rate, dict):
+                        continue
+                    raw = rate.get("rate") or rate.get("cost") or rate.get("price")
+                    if raw is None:
+                        continue
+                    try:
+                        amt = float(raw)
+                    except (TypeError, ValueError):
+                        continue
+                    if amt >= 0:
                         return {
                             "success": True,
-                            "shipping_cost": float(fallback_rate['rate']),
+                            "shipping_cost": amt,
                             "currency": "USD",
-                            "delivery_days": fallback_rate.get('minDeliveryDays', 5),
-                            "all_rates": rates
+                            "delivery_days": rate.get("minDeliveryDays", 5),
+                            "shipping_method": rate.get("name") or "Shipping",
+                            "all_rates": rates,
                         }
             
             # Fallback to default rates if API fails

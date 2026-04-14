@@ -210,13 +210,30 @@ def _match_size_in_bucket(requested: str, by_size: Dict[str, int]) -> Optional[i
 
 def _match_mug_oz_size(requested: str, by_size: Dict[str, int]) -> Optional[int]:
     """Match storefront '15 oz' to catalog '15oz' / '15 Oz' by ounce number."""
-    m = re.search(r"(\d+)\s*oz\b", str(requested), re.I)
+    m = re.search(r"(\d+)\s*oz", str(requested), re.I)
     if not m or not by_size:
         return None
     oz = m.group(1)
     for sk, vid in by_size.items():
-        sm = re.search(r"(\d+)\s*oz\b", str(sk), re.I)
+        sm = re.search(r"(\d+)\s*oz", str(sk), re.I)
         if sm and sm.group(1) == oz:
+            return int(vid)
+    return None
+
+
+def _lookup_mug_variant_by_oz_any_color(
+    catalog_product_id: int,
+    size: str,
+    nested: Dict[str, Dict[str, int]],
+) -> Optional[int]:
+    """If color bucket misses (e.g. catalog label differs), find any variant whose size label matches oz."""
+    if catalog_product_id not in MUG_OZ_CATALOG_PRODUCT_IDS or not nested:
+        return None
+    for _ck, by_size in nested.items():
+        if not isinstance(by_size, dict):
+            continue
+        vid = _match_mug_oz_size(size, by_size)
+        if vid is not None:
             return int(vid)
     return None
 
@@ -341,6 +358,9 @@ def lookup_catalog_variant_id(
         mug_vid = _match_mug_oz_size(size, by_color)
         if mug_vid is not None:
             return mug_vid
+        mug_any = _lookup_mug_variant_by_oz_any_color(catalog_product_id, size, m)
+        if mug_any is not None:
+            return mug_any
 
     if catalog_product_id == JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID:
         jvid = _jigsaw_tin_variant_id_for_store_size(size, by_color)

@@ -6790,6 +6790,7 @@ def calculate_shipping():
         
         state_resolved = _resolve_state_code_for_shipping(shipping_address, country, postal_code)
 
+        last_integration_success = None
         # Try using Printful integration first (preferred method)
         if printful_api_key and hasattr(printful_integration, 'calculate_shipping_rates'):
             try:
@@ -6802,7 +6803,9 @@ def calculate_shipping():
                 }
                 result = printful_integration.calculate_shipping_rates(recipient_data, cart)
                 logger.info(f"📦 Printful shipping result: {result}")
-                
+                if result and result.get("success"):
+                    last_integration_success = result
+
                 if result and result.get('success') and not result.get('fallback'):
                     sc = result.get('shipping_cost', 0)
                     return jsonify({
@@ -6870,7 +6873,8 @@ def calculate_shipping():
                             # Find standard shipping or use first available
                             standard_rate = None
                             for rate in rates_list:
-                                if rate.get('id') == 'STANDARD' or 'standard' in rate.get('name', '').lower():
+                                rid = str(rate.get("id") or "").upper()
+                                if rid == "STANDARD" or "standard" in (rate.get("name") or "").lower():
                                     standard_rate = rate
                                     break
                             
@@ -6944,6 +6948,30 @@ def calculate_shipping():
                     )
                 else:
                     user_msg = f"Unable to calculate shipping. {error_detail}"
+
+                if (
+                    last_integration_success
+                    and last_integration_success.get("success")
+                    and response.status_code == 400
+                ):
+                    try:
+                        sc_fb = float(last_integration_success.get("shipping_cost") or 0)
+                    except (TypeError, ValueError):
+                        sc_fb = 0.0
+                    if sc_fb > 0:
+                        logger.warning(
+                            "📦 Direct Printful /shipping/rates failed (%s); using integration quote=%s",
+                            response.status_code,
+                            sc_fb,
+                        )
+                        return jsonify({
+                            "success": True,
+                            "shipping_cost": apply_printful_shipping_pipeline(sc_fb, cart, country),
+                            "currency": last_integration_success.get("currency", "USD"),
+                            "delivery_days": str(last_integration_success.get("delivery_days", "5-7")),
+                            "shipping_method": last_integration_success.get("shipping_method") or "Standard Shipping",
+                        })
+
                 return jsonify({
                     "success": False,
                     "error": user_msg
