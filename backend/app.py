@@ -1010,11 +1010,17 @@ else:
 # NEW: Initialize Printful integration
 printful_integration = ScreenMerchPrintfulIntegration()
 
+try:
+    from printful_shipping_buckets import blend_api_with_table_floor as _blend_printful_table_shipping
+except ImportError:
+    _blend_printful_table_shipping = None
+
 
 def adjust_printful_shipping_quote(quoted_usd):
     """
     Optional store-level tuning on top of Printful's /shipping/rates quote (Fly secrets / .env).
-    Order: apply SHIPPING_MARKUP_PERCENT to quote, add SHIPPING_SURCHARGE_USD, then SHIPPING_FLOOR_USD.
+    Order (after optional table blend — see apply_printful_shipping_pipeline):
+    apply SHIPPING_MARKUP_PERCENT to quote, add SHIPPING_SURCHARGE_USD, then SHIPPING_FLOOR_USD.
     Unset or empty = skip that step (no change by default).
 
     Examples to close a ~$1 gap vs Printful's public table:
@@ -1057,6 +1063,21 @@ def adjust_printful_shipping_quote(quoted_usd):
     return out
 
 
+def apply_printful_shipping_pipeline(api_usd, cart, country_code):
+    """
+    Live Printful quote, then optional max(API, US table estimate) when
+    SHIPPING_TABLE_FLOOR_ENABLED=1, then adjust_printful_shipping_quote (markup / surcharge / floor).
+    """
+    blended = api_usd
+    if _blend_printful_table_shipping is not None:
+        try:
+            blended = _blend_printful_table_shipping(float(api_usd), cart or [], country_code or "US")
+        except Exception as e:
+            logger.warning("📦 Shipping table floor skipped: %s", e)
+            blended = api_usd
+    return adjust_printful_shipping_quote(blended)
+
+
 def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
     """
     Server-side Printful shipping for Stripe checkout. Same strategy as /api/calculate-shipping:
@@ -1087,7 +1108,7 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
             if result and result.get("success") and not result.get("fallback"):
                 c = result.get("shipping_cost")
                 if c is not None and float(c) >= 0:
-                    return True, adjust_printful_shipping_quote(c), str(result.get("shipping_method") or "Standard Shipping"), None
+                    return True, apply_printful_shipping_pipeline(c, cart, country), str(result.get("shipping_method") or "Standard Shipping"), None
         except Exception as e:
             logger.warning("checkout: Printful integration shipping failed: %s", e)
 
@@ -1153,7 +1174,7 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
     cost = rate.get("rate") or rate.get("cost") or rate.get("price")
     if cost is None:
         return False, None, None, "Could not determine shipping cost for this order."
-    return True, adjust_printful_shipping_quote(cost), rate.get("name") or "Shipping", None
+    return True, apply_printful_shipping_pipeline(cost, cart, country), rate.get("name") or "Shipping", None
 
 
 # Keep in-memory storage as fallback, but prioritize database
@@ -6786,7 +6807,7 @@ def calculate_shipping():
                     sc = result.get('shipping_cost', 0)
                     return jsonify({
                         "success": True,
-                        "shipping_cost": adjust_printful_shipping_quote(sc),
+                        "shipping_cost": apply_printful_shipping_pipeline(sc, cart, country),
                         "currency": result.get('currency', 'USD'),
                         "delivery_days": str(result.get('delivery_days', '5-7')),
                         "shipping_method": result.get('shipping_method', 'Standard Shipping')
@@ -6869,7 +6890,7 @@ def calculate_shipping():
                             logger.info(f"📦 Shipping cost calculated: {cost}")
                             return jsonify({
                                 "success": True,
-                                "shipping_cost": adjust_printful_shipping_quote(cost),
+                                "shipping_cost": apply_printful_shipping_pipeline(cost, cart, country),
                                 "currency": "USD",
                                 "delivery_days": str(rate.get('minDeliveryDays', rate.get('estimated_days', '5-7'))),
                                 "shipping_method": rate.get('name', 'Standard Shipping')

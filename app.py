@@ -27,6 +27,11 @@ import google.auth
 # NEW: Import Printful integration
 from printful_integration import ScreenMerchPrintfulIntegration
 
+try:
+    from printful_shipping_buckets import blend_api_with_table_floor as _blend_printful_table_shipping
+except ImportError:
+    _blend_printful_table_shipping = None
+
 # NEW: Import video screenshot capture
 from video_screenshot import screenshot_capture
 
@@ -3804,6 +3809,18 @@ def adjust_printful_shipping_quote(quoted_usd):
     return out
 
 
+def apply_printful_shipping_pipeline(api_usd, cart, country_code):
+    """Optional max(API, US table estimate) then markup / surcharge / floor."""
+    blended = api_usd
+    if _blend_printful_table_shipping is not None:
+        try:
+            blended = _blend_printful_table_shipping(float(api_usd), cart or [], country_code or "US")
+        except Exception as e:
+            logger.warning("📦 Shipping table floor skipped: %s", e)
+            blended = api_usd
+    return adjust_printful_shipping_quote(blended)
+
+
 @app.route("/api/calculate-shipping", methods=["POST", "OPTIONS"])
 def calculate_shipping():
     """Calculate shipping via Printful only (POST https://api.printful.com/shipping/rates)."""
@@ -3850,7 +3867,7 @@ def calculate_shipping():
                 if result and result.get('success') and not result.get('fallback'):
                     return jsonify({
                         "success": True,
-                        "shipping_cost": adjust_printful_shipping_quote(result.get('shipping_cost', 0)),
+                        "shipping_cost": apply_printful_shipping_pipeline(result.get('shipping_cost', 0), cart, country),
                         "currency": result.get('currency', 'USD'),
                         "delivery_days": str(result.get('delivery_days', '5-7')),
                         "shipping_method": result.get('shipping_method', 'Standard Shipping')
@@ -3907,7 +3924,7 @@ def calculate_shipping():
                                 }), 400
                             return jsonify({
                                 "success": True,
-                                "shipping_cost": adjust_printful_shipping_quote(cost),
+                                "shipping_cost": apply_printful_shipping_pipeline(cost, cart, country),
                                 "currency": "USD",
                                 "delivery_days": str(rate.get('minDeliveryDays', rate.get('estimated_days', '5-7'))),
                                 "shipping_method": rate.get('name', 'Standard Shipping')
