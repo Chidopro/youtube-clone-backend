@@ -302,16 +302,40 @@ class ScreenMerchPrintfulIntegration:
                 "sizes": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]
             },
             "Youth Heavy Blend Hoodie": {
-                "variant_id": 4383,
+                # Gildan 18500B catalog 689 — fallback when catalog API misses (real IDs, not BC 3710).
+                "variant_id": 17261,
                 "colors": {
-                    "Black": 4383,
-                    "Navy": 4386,
-                    "Royal": 4385,
-                    "White": 4384,
-                    "Dark Heather": 4385,
-                    "Carolina Blue": 4385,
+                    "Black": 17261,
+                    "Navy": 17266,
+                    "Royal": 17271,
+                    "White": 17286,
+                    "Dark Heather": 22311,
+                    "Carolina Blue": 22312,
+                    "Sport Grey": 17281,
+                    "Light Pink": 17290,
                 },
                 "sizes": ["XS", "S", "M", "L", "XL"]
+            },
+            "Unisex Pullover Hoodie": {
+                "variant_id": 9227,
+                "colors": {
+                    "Black": 9227,
+                    "White": 9221,
+                    "Athletic Heather": 9233,
+                    "Heather Navy": 9251,
+                    "Heather Forest": 9245,
+                    "Forest": 34407,
+                    "Maroon": 34417,
+                    "True Royal": 34402,
+                    "Team Purple": 34412,
+                    "Lilac": 34422,
+                },
+                "sizes": ["S", "M", "L", "XL", "2XL"]
+            },
+            "White Glossy Mug": {
+                "variant_id": 4830,
+                "colors": {"White": 4830},
+                "sizes": ["11 oz", "15 oz", "20 oz"]
             },
             "Tote Bag": {
                 "variant_id": 1,

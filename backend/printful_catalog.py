@@ -129,9 +129,55 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
 CATALOG_COLOR_ALIASES: Dict[int, Dict[str, str]] = {
     # API uses "White (glossy)"; storefront uses "White".
     906: {"White": "White (glossy)"},
+    # White Glossy Mug (catalog 19): storefront "White" → Printful color label.
+    19: {"White": "White (glossy)"},
 }
 
 JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID = 906
+
+# Gildan 18500B Youth Heavy Blend Hoodie — Printful catalog sizes use YXS/YS/YM/YL/YXL.
+YOUTH_HEAVY_BLEND_HOODIE_CATALOG_ID = 689
+GILDAN_18500B_YOUTH_SIZE: Dict[str, str] = {
+    "XS": "YXS",
+    "S": "YS",
+    "M": "YM",
+    "L": "YL",
+    "XL": "YXL",
+}
+
+# Bella+Canvas pullovers / similar — some catalogs spell S/M/L as Small/Medium/Large.
+# (689 youth Gildan uses YS/YM… only; do not add "Small" here.)
+HOODIE_CATALOG_IDS_ALT_SIZE_WORDS = frozenset({294, 380, 317})
+
+
+def _sizes_for_catalog_lookup(catalog_product_id: int, size: str) -> List[str]:
+    """Ordered size candidates for variant map keys (youth Gildan, spelled-out sizes)."""
+    sz = str(size or "").strip()
+    out: List[str] = []
+    for cand in (sz, normalize_printful_size(sz)):
+        if cand and cand not in out:
+            out.append(cand)
+    if catalog_product_id == YOUTH_HEAVY_BLEND_HOODIE_CATALOG_ID:
+        # Catalog v2 for 18500B often uses XS/S/M/L/XL like adult labels; some feeds use YXS/YS….
+        # Try storefront letter sizes first, then Y-prefixed aliases.
+        y = GILDAN_18500B_YOUTH_SIZE.get(sz)
+        if y and y not in out:
+            out.append(y)
+    if catalog_product_id in HOODIE_CATALOG_IDS_ALT_SIZE_WORDS:
+        spell = {
+            "S": "Small",
+            "M": "Medium",
+            "L": "Large",
+            "XL": "XLarge",
+        }
+        if sz in spell and spell[sz] not in out:
+            out.append(spell[sz])
+        if sz.upper() == "XL":
+            for x in ("X-Large", "2XL"):
+                if x not in out:
+                    out.append(x)
+    return out
+
 
 # Catalog products whose variant ``size`` is an ounce label (11 oz / 15oz / etc.). If string
 # matching misses, we match on the numeric ounce value so shipping uses the real mug variant
@@ -333,26 +379,34 @@ def lookup_catalog_variant_id(
     color_in = str(color or "").strip()
     color = _apply_catalog_color_aliases(catalog_product_id, color_in)
     size = str(size).strip()
-    sizes_try: List[str] = []
-    for s in (size, normalize_printful_size(size)):
-        if s and s not in sizes_try:
-            sizes_try.append(s)
 
     by_color = m.get(color) if color else None
     if by_color is None and color_in:
-        cl = color.lower()
+        cl = color_in.lower()
         for k in m:
             if str(k).lower() == cl:
                 by_color = m[k]
                 break
+    # Storefront "Black" vs catalog "Black / Navy / …" (Bella hoodies, mugs, etc.)
+    if by_color is None and color_in:
+        cl = color_in.strip().lower()
+        best_k = None
+        for k in m:
+            kl = str(k).lower()
+            if kl.startswith(cl + "/") or kl.startswith(cl + " ") or kl == cl:
+                if best_k is None or len(str(k)) < len(str(best_k)):
+                    best_k = k
+        if best_k is not None:
+            by_color = m[best_k]
     if not by_color and NO_COLOR_BUCKET_KEY in m:
         by_color = m[NO_COLOR_BUCKET_KEY]
     if not by_color:
         return None
 
-    matched = _match_size_in_bucket(size, by_color)
-    if matched is not None:
-        return matched
+    for sz in _sizes_for_catalog_lookup(catalog_product_id, size):
+        matched = _match_size_in_bucket(sz, by_color)
+        if matched is not None:
+            return matched
 
     if catalog_product_id in MUG_OZ_CATALOG_PRODUCT_IDS:
         mug_vid = _match_mug_oz_size(size, by_color)
