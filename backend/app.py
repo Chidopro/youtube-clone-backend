@@ -72,9 +72,12 @@ from services.order_email import _fetch_image_as_base64 as fetch_screenshot_url
 from utils.stripe_checkout import (
     fetch_full_checkout_session,
     build_shipping_address_payload,
+    build_stripe_customer_shipping_for_tax,
     merge_shipping_address_records,
+    session_amount_total_usd,
     session_customer_email,
     session_shipping_cost_usd,
+    session_tax_usd,
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -4058,6 +4061,7 @@ def create_checkout_session():
                         "name": item.get("product"),
                     },
                     "unit_amount": unit_amount,
+                    "tax_behavior": "exclusive",
                 },
                 "quantity": 1,
             })
@@ -4071,6 +4075,7 @@ def create_checkout_session():
                         "name": "Shipping",
                     },
                     "unit_amount": int(shipping_cost * 100),
+                    "tax_behavior": "exclusive",
                 },
                 "quantity": 1,
             })
@@ -4092,7 +4097,9 @@ def create_checkout_session():
         else:
             # Default to main domain
             base_url = 'https://screenmerch.com'
-        
+
+        user_email = (data.get("user_email") or data.get("customer_email") or "").strip()
+
         # Pre-populate customer email if available from frontend
         session_params = {
             "payment_method_types": ["card"],
@@ -4112,13 +4119,46 @@ def create_checkout_session():
                 "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
             }
         }
+
+        # Stripe Tax: exclusive line items + ship-to for jurisdiction (Dashboard: enable Tax, set origin).
+        use_stripe_tax = os.getenv("STRIPE_AUTOMATIC_TAX_ENABLED", "true").lower() in ("1", "true", "yes")
+        if use_stripe_tax:
+            raw_sa = data.get("shipping_address")
+            ship_for_tax = build_stripe_customer_shipping_for_tax(shipping_address, raw_sa)
+            try:
+                if ship_for_tax:
+                    cust_kw: dict = {"shipping": ship_for_tax}
+                    if user_email:
+                        cust_kw["email"] = user_email
+                    cust = stripe.Customer.create(**cust_kw)
+                    session_params["customer"] = cust.id
+                    session_params["customer_update"] = {"shipping": "auto", "name": "auto"}
+                    session_params["automatic_tax"] = {"enabled": True}
+                    logger.info("Stripe Tax: automatic_tax enabled (Customer ship-to from checkout)")
+                else:
+                    session_params["shipping_address_collection"] = {
+                        "allowed_countries": [
+                            "US", "CA", "GB", "AU", "DE", "FR", "IT", "ES", "NL", "BE", "AT", "CH", "IE", "NZ",
+                        ]
+                    }
+                    session_params["automatic_tax"] = {"enabled": True}
+                    logger.info(
+                        "Stripe Tax: automatic_tax enabled with shipping_address_collection (no Customer ship-to)"
+                    )
+            except stripe.error.StripeError as tax_err:
+                logger.error("Stripe Tax / Customer setup failed: %s", tax_err)
+                return jsonify({
+                    "error": "Tax calculation could not be started. Enable Stripe Tax in the Stripe Dashboard "
+                    "(Tax → Settings) and set your business address, or set STRIPE_AUTOMATIC_TAX_ENABLED=false "
+                    "temporarily.",
+                    "details": str(tax_err),
+                }), 500
         
-        # Pre-populate customer email if available (user can still edit it in Stripe)
-        user_email = data.get("user_email", data.get("customer_email", ""))
-        if user_email and user_email.strip():
-            session_params["customer_email"] = user_email.strip()
+        # Pre-populate customer email when not using a Customer object (Stripe sets email on Customer when created).
+        if user_email and "customer" not in session_params:
+            session_params["customer_email"] = user_email
             logger.info(f"📧 [CHECKOUT] Pre-populating customer email in Stripe session: {user_email}")
-        else:
+        elif not user_email:
             logger.info(f"📧 [CHECKOUT] No customer email provided - Stripe will collect it during checkout (email_collection enabled)")
         
         # Ensure we're using test mode Stripe key
@@ -4311,8 +4351,17 @@ def stripe_webhook():
                 postal_code = "Not provided"
                 country = "Not provided"
             
-            # Calculate total amount
-            total_amount = sum(item.get('price', 0) for item in cart)
+            # Total for emails / records: use Stripe amount_total when present (includes tax after automatic_tax).
+            paid_total = session_amount_total_usd(session)
+            tax_paid = session_tax_usd(session)
+            if tax_paid is not None and tax_paid > 0:
+                logger.info(f"💰 [WEBHOOK] Stripe tax on session: ${tax_paid:.2f}")
+            if paid_total is not None:
+                total_amount = paid_total
+                logger.info(f"💰 [WEBHOOK] Using session amount_total for order total: ${total_amount:.2f}")
+            else:
+                total_amount = sum(item.get('price', 0) for item in cart)
+                logger.info(f"💰 [WEBHOOK] Session amount_total missing; subtotal from cart lines: ${total_amount:.2f}")
             
             # If DB order has no screenshot, try order_store (same Fly instance may have it from create_checkout_session)
             has_screenshot = order_data.get("selected_screenshot") or (cart and (cart[0].get("selected_screenshot") or cart[0].get("screenshot") or cart[0].get("img") or cart[0].get("thumbnail")))
@@ -4532,6 +4581,10 @@ def stripe_webhook():
                 stripe_ship_cost = session_shipping_cost_usd(session)
                 if stripe_ship_cost is not None and stripe_ship_cost > 0:
                     update_data["shipping_cost"] = stripe_ship_cost
+                if paid_total is not None:
+                    update_data["total_amount"] = paid_total
+                if tax_paid is not None:
+                    update_data["tax_amount"] = tax_paid
                 db_rw.table('orders').update(update_data).eq('order_id', order_id).execute()
                 logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
                 

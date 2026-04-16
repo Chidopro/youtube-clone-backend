@@ -311,6 +311,92 @@ def session_shipping_cost_usd(session_dict: Optional[Dict[str, Any]]) -> Optiona
     return None
 
 
+def session_amount_total_usd(session_dict: Optional[Dict[str, Any]]) -> Optional[float]:
+    """Total charged (subtotal + shipping + tax) in USD when Stripe reports amount_total."""
+    s = _to_plain(session_dict or {})
+    raw = s.get("amount_total")
+    if raw is None:
+        return None
+    try:
+        v = float(raw) / 100.0
+        return round(v, 2) if v > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def session_tax_usd(session_dict: Optional[Dict[str, Any]]) -> Optional[float]:
+    """Sales tax in USD from total_details.amount_tax (Checkout with automatic_tax)."""
+    s = _to_plain(session_dict or {})
+    td = s.get("total_details")
+    if not isinstance(td, dict):
+        return None
+    cents = td.get("amount_tax")
+    if cents is None:
+        return None
+    try:
+        v = float(cents) / 100.0
+        return round(v, 2) if v >= 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def build_stripe_customer_shipping_for_tax(
+    addr_norm: Optional[Dict[str, Any]],
+    raw_addr: Any,
+) -> Optional[Dict[str, Any]]:
+    """
+    Build Stripe Customer ``shipping`` for automatic tax (ship-to jurisdiction).
+
+    ScreenMerch validates ZIP + country before checkout; line1/city may be absent
+    until webhook merges Stripe Link fields — we still send postal + country + state.
+    """
+    raw = _parse_maybe_json(raw_addr)
+    if not isinstance(raw, dict):
+        raw = {}
+    norm = addr_norm if isinstance(addr_norm, dict) else {}
+
+    country = norm.get("country_code") or raw.get("country_code") or raw.get("country") or "US"
+    country = str(country).strip().upper()
+    if len(country) > 2:
+        country = country[:2]
+    if not country:
+        country = "US"
+
+    postal = (
+        norm.get("zip")
+        or raw.get("zip")
+        or raw.get("postal_code")
+        or raw.get("postalCode")
+        or ""
+    )
+    postal = str(postal).strip()
+    if not postal:
+        return None
+
+    state = (norm.get("state_code") or raw.get("state_code") or raw.get("state") or "").strip()
+    city = (raw.get("city") or "").strip()
+    line1 = (raw.get("line1") or raw.get("address_line1") or raw.get("street") or "").strip()
+    if not line1:
+        line1 = "\u2014"  # em dash placeholder; full lines merged on webhook
+
+    name = (raw.get("name") or raw.get("full_name") or "").strip() or "Customer"
+
+    addr: Dict[str, Any] = {
+        "line1": line1[:200],
+        "postal_code": postal[:12],
+        "country": country,
+    }
+    if city:
+        addr["city"] = city[:100]
+    if state:
+        addr["state"] = state[:30]
+    line2 = (raw.get("line2") or raw.get("address_line2") or "").strip()
+    if line2:
+        addr["line2"] = line2[:200]
+
+    return {"name": name[:256], "address": addr}
+
+
 def session_customer_email(session_dict: Optional[Dict[str, Any]]) -> str:
     """Best-effort email from a Checkout Session dict (hosted checkout + Link)."""
     s = session_dict or {}
