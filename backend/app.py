@@ -69,6 +69,7 @@ from services.order_email import (
     resend_attachments_from_builder,
 )
 from services.order_email import _fetch_image_as_base64 as fetch_screenshot_url
+from checkout_countries import CHECKOUT_ALLOWED_COUNTRIES
 from utils.stripe_checkout import (
     fetch_full_checkout_session,
     build_shipping_address_payload,
@@ -4120,30 +4121,40 @@ def create_checkout_session():
             }
         }
 
-        # Stripe Tax: exclusive line items + ship-to for jurisdiction (Dashboard: enable Tax, set origin).
+        # Stripe Tax: exclusive line items + addresses for jurisdiction (Dashboard: enable Tax, registrations, origin).
+        # Link often labels tax as "determined by billing information" until a full billing address exists — require it
+        # when automatic tax is on. Physical goods: also collect shipping so tax can follow ship-to when Stripe uses it.
         use_stripe_tax = os.getenv("STRIPE_AUTOMATIC_TAX_ENABLED", "true").lower() in ("1", "true", "yes")
         if use_stripe_tax:
             raw_sa = data.get("shipping_address")
             ship_for_tax = build_stripe_customer_shipping_for_tax(shipping_address, raw_sa)
             try:
+                session_params["billing_address_collection"] = "required"
+                session_params["automatic_tax"] = {"enabled": True}
                 if ship_for_tax:
                     cust_kw: dict = {"shipping": ship_for_tax}
                     if user_email:
                         cust_kw["email"] = user_email
                     cust = stripe.Customer.create(**cust_kw)
                     session_params["customer"] = cust.id
-                    session_params["customer_update"] = {"shipping": "auto", "name": "auto"}
-                    session_params["automatic_tax"] = {"enabled": True}
-                    logger.info("Stripe Tax: automatic_tax enabled (Customer ship-to from checkout)")
+                    session_params["customer_update"] = {
+                        "shipping": "auto",
+                        "name": "auto",
+                        "address": "auto",
+                    }
+                    session_params["shipping_address_collection"] = {
+                        "allowed_countries": list(CHECKOUT_ALLOWED_COUNTRIES),
+                    }
+                    logger.info(
+                        "Stripe Tax: automatic_tax + billing_address_collection required + shipping collection "
+                        "(Customer ship-to prefilled)"
+                    )
                 else:
                     session_params["shipping_address_collection"] = {
-                        "allowed_countries": [
-                            "US", "CA", "GB", "AU", "DE", "FR", "IT", "ES", "NL", "BE", "AT", "CH", "IE", "NZ",
-                        ]
+                        "allowed_countries": list(CHECKOUT_ALLOWED_COUNTRIES),
                     }
-                    session_params["automatic_tax"] = {"enabled": True}
                     logger.info(
-                        "Stripe Tax: automatic_tax enabled with shipping_address_collection (no Customer ship-to)"
+                        "Stripe Tax: automatic_tax with shipping_address_collection (no Customer ship-to)"
                     )
             except stripe.error.StripeError as tax_err:
                 logger.error("Stripe Tax / Customer setup failed: %s", tax_err)

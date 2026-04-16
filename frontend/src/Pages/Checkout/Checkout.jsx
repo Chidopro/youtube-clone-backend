@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
-import { US_STATE_OPTIONS, CA_PROVINCE_OPTIONS } from '../../data/shippingRegions';
+import { US_STATE_OPTIONS, CA_PROVINCE_OPTIONS, CHECKOUT_COUNTRY_OPTIONS } from '../../data/shippingRegions';
 import './Checkout.css';
 
 /** ZIP/postal + state/province (Printful requires state_code for US & Canada). */
@@ -521,11 +521,9 @@ const Checkout = () => {
                       className="form-select"
                       aria-label="Country"
                     >
-                      <option value="US">United States</option>
-                      <option value="CA">Canada</option>
-                      <option value="GB">United Kingdom</option>
-                      <option value="AU">Australia</option>
-                      <option value="DE">Germany</option>
+                      {CHECKOUT_COUNTRY_OPTIONS.map(({ code, name }) => (
+                        <option key={code} value={code}>{name}</option>
+                      ))}
                     </select>
                   </div>
                   {(address.country_code === 'US' || address.country_code === 'CA') && (
