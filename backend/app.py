@@ -1100,6 +1100,7 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
     if not printful_api_key:
         return False, None, None, "Shipping service is not configured."
 
+    last_integration_result = None
     if hasattr(printful_integration, "calculate_shipping_rates"):
         try:
             recipient_data = {
@@ -1109,6 +1110,8 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
                 "city": shipping_address.get("city", "") or "",
             }
             result = printful_integration.calculate_shipping_rates(recipient_data, cart)
+            if result and result.get("success"):
+                last_integration_result = result
             if result and result.get("success") and not result.get("fallback"):
                 c = result.get("shipping_cost")
                 if c is not None and float(c) >= 0:
@@ -1158,6 +1161,32 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
             err_detail = ej.get("error", {}).get("message") or ej.get("message") or err_detail
         except Exception:
             pass
+        logger.error(
+            "checkout: Printful direct /shipping/rates failed status=%s detail=%s",
+            response.status_code,
+            err_detail,
+        )
+        # Match /api/calculate-shipping: when integration already returned a usable quote
+        # (including fallback $6.99) but direct Printful rejects the payload (often 400),
+        # still allow checkout so the UI and server stay consistent.
+        if (
+            last_integration_result
+            and last_integration_result.get("success")
+            and response.status_code == 400
+        ):
+            try:
+                sc_fb = float(last_integration_result.get("shipping_cost") or 0)
+            except (TypeError, ValueError):
+                sc_fb = 0.0
+            if sc_fb > 0:
+                logger.warning(
+                    "checkout: using integration shipping quote=%s (fallback=%s) after direct Printful 400",
+                    sc_fb,
+                    bool(last_integration_result.get("fallback")),
+                )
+                return True, apply_printful_shipping_pipeline(sc_fb, cart, country), str(
+                    last_integration_result.get("shipping_method") or "Standard Shipping"
+                ), None
         return False, None, None, "Unable to calculate shipping. Please verify your address."
 
     try:
