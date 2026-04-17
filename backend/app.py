@@ -3737,6 +3737,50 @@ def success():
     
     return render_template('success.html')
 
+
+def stripe_product_tax_code_for_line_item(item: dict) -> str:
+    """
+    Stripe Tax product tax codes for Checkout ``price_data.product_data``.
+    See https://docs.stripe.com/tax/tax-codes — apparel vs children's vs general tangible.
+    Env overrides optional: STRIPE_TAX_CODE_APPAREL, STRIPE_TAX_CODE_CHILDRENS_APPAREL, STRIPE_TAX_CODE_HARD_GOODS.
+    """
+    name = (item.get("product") or item.get("name") or "").strip().lower()
+    hard = (
+        "mug",
+        "enamel",
+        "travel mug",
+        "coaster",
+        "tote",
+        "drawstring",
+        "laptop sleeve",
+        "sticker",
+        "magnet",
+        "puzzle",
+        "notebook",
+        "greeting card",
+        "apron",
+        "bowl",
+        "bandana",
+        "leash",
+        "collar",
+        "pet bowl",
+        "trucker",
+        "dad hat",
+        "baseball cap",
+        "closed back cap",
+        "jigsaw",
+        "kiss-cut",
+        "hardcover",
+        "greeting",
+        "phone case",
+    )
+    if any(k in name for k in hard):
+        return os.getenv("STRIPE_TAX_CODE_HARD_GOODS", "txcd_99999999")
+    if any(k in name for k in ("kid", "baby", "toddler", "youth")):
+        return os.getenv("STRIPE_TAX_CODE_CHILDRENS_APPAREL", "txcd_30011200")
+    return os.getenv("STRIPE_TAX_CODE_APPAREL", "txcd_30011000")
+
+
 @app.route("/create-checkout-session", methods=["POST", "OPTIONS"])  # legacy path
 @app.route("/api/create-checkout-session", methods=["POST", "OPTIONS"])  # CORS-covered API path
 def create_checkout_session():
@@ -4104,6 +4148,7 @@ def create_checkout_session():
                     "currency": "usd",
                     "product_data": {
                         "name": item.get("product"),
+                        "tax_code": stripe_product_tax_code_for_line_item(item),
                     },
                     "unit_amount": unit_amount,
                     "tax_behavior": "exclusive",
@@ -4113,7 +4158,10 @@ def create_checkout_session():
 
         # Add shipping cost as a separate line item
         if shipping_cost and shipping_cost > 0:
-            ship_product = {"name": "Estimated shipping" if ship_is_estimate else "Shipping"}
+            ship_product = {
+                "name": "Estimated shipping" if ship_is_estimate else "Shipping",
+                "tax_code": os.getenv("STRIPE_TAX_CODE_SHIPPING", "txcd_92010001"),
+            }
             if ship_is_estimate:
                 ship_product["description"] = (
                     "Quote may differ slightly from the final carrier charge (a few cents or dollars)."
