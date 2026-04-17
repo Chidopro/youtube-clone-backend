@@ -44,7 +44,14 @@ const Checkout = () => {
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [subtotal, setSubtotal] = useState(0);
-  const [shipping, setShipping] = useState({ cost: 0, method: 'Standard Shipping', loading: false, error: '', calculated: false });
+  const [shipping, setShipping] = useState({
+    cost: 0,
+    method: 'Standard Shipping',
+    loading: false,
+    error: '',
+    calculated: false,
+    isEstimate: false,
+  });
   const [address, setAddress] = useState({ country_code: 'US', zip: '', state_code: '' });
   const shippingRef = useRef(shipping);
   // Design preferences modal – per-item (orientation + tools) so each cart item can have its own style
@@ -107,7 +114,7 @@ const Checkout = () => {
 
   const fetchShipping = useCallback(async () => {
     if (items.length === 0) return;
-    setShipping(s => ({ ...s, loading: true, error: '' }));
+    setShipping(s => ({ ...s, loading: true, error: '', isEstimate: false }));
     try {
       // Ensure clean ZIP and country (same format as checkout)
       const zipValue = String(address.zip || '').trim();
@@ -187,12 +194,13 @@ const Checkout = () => {
         
         if (!isNaN(shippingCost) && shippingCost > 0) {
           console.log('✅ Shipping calculated successfully:', shippingCost);
-          const newShippingState = { 
-            cost: shippingCost, 
-            method: data.shipping_method || data.method || 'Standard Shipping', 
-            loading: false, 
-            error: '', 
-            calculated: true 
+          const newShippingState = {
+            cost: shippingCost,
+            method: data.shipping_method || data.method || 'Standard Shipping',
+            loading: false,
+            error: '',
+            calculated: true,
+            isEstimate: Boolean(data.is_shipping_estimate),
           };
           console.log('✅ Setting shipping state:', newShippingState);
           setShipping(newShippingState);
@@ -243,12 +251,13 @@ const Checkout = () => {
           ? 'Shipping API endpoint not found. The backend may not be deployed. Please contact support.'
           : humanizeShippingError(e.message);
       console.error('❌ Shipping calculation exception:', e);
-      const errorState = { 
-        cost: 0, 
-        method: '', 
-        loading: false, 
-        error: errorMsg, 
-        calculated: false 
+      const errorState = {
+        cost: 0,
+        method: '',
+        loading: false,
+        error: errorMsg,
+        calculated: false,
+        isEstimate: false,
       };
       setShipping(errorState);
       shippingRef.current = errorState;
@@ -556,7 +565,7 @@ const Checkout = () => {
                           return;
                         }
                         // Clear any previous errors before calculating
-                        setShipping(s => ({ ...s, error: '', loading: true }));
+                        setShipping(s => ({ ...s, error: '', loading: true, isEstimate: false }));
                         fetchShipping();
                       }}
                       id="calc-shipping-btn" 
@@ -635,8 +644,15 @@ const Checkout = () => {
                     marginTop: '10px',
                     border: '1px solid #c3e6cb'
                   }}>
-                    <div className="shipping-method">✓ {shipping.method}</div>
-                  <div className="shipping-cost">${shipping.cost.toFixed(2)}</div>
+                    <div className="shipping-method">
+                      ✓ {shipping.isEstimate ? 'Estimated shipping' : shipping.method}
+                    </div>
+                    <div className="shipping-cost">${shipping.cost.toFixed(2)}</div>
+                    {shipping.isEstimate && (
+                      <div style={{ fontSize: '0.85rem', marginTop: '8px', lineHeight: 1.4, opacity: 0.95 }}>
+                        Final carrier charge may be a few cents or dollars different. You will see the same line on Stripe checkout.
+                      </div>
+                    )}
                 </div>
                 )}
                 {!shipping.calculated && !shipping.loading && !shipping.error && address.zip && address.zip.trim() && (
@@ -885,6 +901,11 @@ const Checkout = () => {
         </div>
       )}
 
+    </div>
+  );
+};
+
+export default Checkout;
     </div>
   );
 };

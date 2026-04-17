@@ -1086,19 +1086,20 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
     """
     Server-side Printful shipping for Stripe checkout. Same strategy as /api/calculate-shipping:
     integration first (skip if fallback estimate), then direct /shipping/rates.
-    Returns (True, cost_float, method_name, None) or (False, None, None, error_message).
+    Returns (ok, cost_float, method_name, err_or_none, is_estimate).
+    is_estimate is True when the amount is a store fallback / integration rescue, not a live Printful /shipping/rates row.
     """
     postal_code = _parse_zip(shipping_address)
     country = (shipping_address.get("country_code") or "US").strip() or "US"
     if not postal_code:
-        return False, None, None, "ZIP / Postal Code is required."
+        return False, None, None, "ZIP / Postal Code is required.", False
     if not cart:
-        return False, None, None, "Cart is empty."
+        return False, None, None, "Cart is empty.", False
 
     state_resolved = _resolve_state_code_for_shipping(shipping_address, country, postal_code)
     printful_api_key = os.getenv("PRINTFUL_API_KEY")
     if not printful_api_key:
-        return False, None, None, "Shipping service is not configured."
+        return False, None, None, "Shipping service is not configured.", False
 
     last_integration_result = None
     if hasattr(printful_integration, "calculate_shipping_rates"):
@@ -1115,7 +1116,13 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
             if result and result.get("success") and not result.get("fallback"):
                 c = result.get("shipping_cost")
                 if c is not None and float(c) >= 0:
-                    return True, apply_printful_shipping_pipeline(c, cart, country), str(result.get("shipping_method") or "Standard Shipping"), None
+                    return (
+                        True,
+                        apply_printful_shipping_pipeline(c, cart, country),
+                        str(result.get("shipping_method") or "Standard Shipping"),
+                        None,
+                        False,
+                    )
         except Exception as e:
             logger.warning("checkout: Printful integration shipping failed: %s", e)
 
@@ -1152,7 +1159,7 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
             timeout=30,
         )
     except requests.RequestException as e:
-        return False, None, None, f"Shipping request failed: {e}"
+        return False, None, None, f"Shipping request failed: {e}", False
 
     if response.status_code != 200:
         err_detail = response.text[:500]
@@ -1184,19 +1191,23 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
                     sc_fb,
                     bool(last_integration_result.get("fallback")),
                 )
-                return True, apply_printful_shipping_pipeline(sc_fb, cart, country), str(
-                    last_integration_result.get("shipping_method") or "Standard Shipping"
-                ), None
-        return False, None, None, "Unable to calculate shipping. Please verify your address."
+                return (
+                    True,
+                    apply_printful_shipping_pipeline(sc_fb, cart, country),
+                    str(last_integration_result.get("shipping_method") or "Standard Shipping"),
+                    None,
+                    True,
+                )
+        return False, None, None, "Unable to calculate shipping. Please verify your address.", False
 
     try:
         shipping_response = response.json()
     except Exception:
-        return False, None, None, "Invalid response from shipping service."
+        return False, None, None, "Invalid response from shipping service.", False
 
     rates_list = shipping_response.get("result") or []
     if not rates_list:
-        return False, None, None, "No shipping rates available for this address."
+        return False, None, None, "No shipping rates available for this address.", False
 
     standard_rate = None
     for rate in rates_list:
@@ -1206,8 +1217,8 @@ def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
     rate = standard_rate or rates_list[0]
     cost = rate.get("rate") or rate.get("cost") or rate.get("price")
     if cost is None:
-        return False, None, None, "Could not determine shipping cost for this order."
-    return True, apply_printful_shipping_pipeline(cost, cart, country), rate.get("name") or "Shipping", None
+        return False, None, None, "Could not determine shipping cost for this order.", False
+    return True, apply_printful_shipping_pipeline(cost, cart, country), rate.get("name") or "Shipping", None, False
 
 
 # Keep in-memory storage as fallback, but prioritize database
@@ -3816,12 +3827,16 @@ def create_checkout_session():
         if isinstance(raw_sa, dict):
             merged_addr.update(raw_sa)
 
-        ok_ship, ship_cost, ship_method, ship_err = compute_printful_shipping_for_checkout(merged_addr, cart)
+        ok_ship, ship_cost, ship_method, ship_err, ship_is_estimate = compute_printful_shipping_for_checkout(
+            merged_addr, cart
+        )
         if not ok_ship:
             logger.error(f"❌ Checkout: Printful shipping failed: {ship_err}")
             return jsonify({"error": ship_err or "Could not calculate shipping for this address."}), 400
         shipping_cost = ship_cost
-        logger.info(f"📦 Checkout: Printful shipping ${shipping_cost} ({ship_method})")
+        logger.info(
+            f"📦 Checkout: Printful shipping ${shipping_cost} ({ship_method}) estimate={ship_is_estimate}"
+        )
 
         logger.info(f"🛒 Received checkout request - Cart: {cart}")
         logger.info(f"🛒 Cart type: {type(cart)}, Cart length: {len(cart) if isinstance(cart, list) else 'N/A'}")
@@ -4098,18 +4113,21 @@ def create_checkout_session():
 
         # Add shipping cost as a separate line item
         if shipping_cost and shipping_cost > 0:
+            ship_product = {"name": "Estimated shipping" if ship_is_estimate else "Shipping"}
+            if ship_is_estimate:
+                ship_product["description"] = (
+                    "Quote may differ slightly from the final carrier charge (a few cents or dollars)."
+                )
             line_items.append({
                 "price_data": {
                     "currency": "usd",
-                    "product_data": {
-                        "name": "Shipping",
-                    },
+                    "product_data": ship_product,
                     "unit_amount": int(shipping_cost * 100),
                     "tax_behavior": "exclusive",
                 },
                 "quantity": 1,
             })
-            logger.info(f"🚚 Added shipping cost: ${shipping_cost}")
+            logger.info(f"🚚 Added shipping cost: ${shipping_cost} (estimate={ship_is_estimate})")
 
         logger.info(f"🛒 Created line items: {line_items}")
         if not line_items:
@@ -4146,7 +4164,8 @@ def create_checkout_session():
                 "order_id": order_id,  # Only store the small order ID in Stripe
                 "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
                 "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
-                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
+                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                "shipping_is_estimate": "true" if ship_is_estimate else "false",
             }
         }
 
@@ -6906,7 +6925,8 @@ def calculate_shipping():
                         "shipping_cost": apply_printful_shipping_pipeline(sc, cart, country),
                         "currency": result.get('currency', 'USD'),
                         "delivery_days": str(result.get('delivery_days', '5-7')),
-                        "shipping_method": result.get('shipping_method', 'Standard Shipping')
+                        "shipping_method": result.get('shipping_method', 'Standard Shipping'),
+                        "is_shipping_estimate": False,
                     })
                 if result and result.get('fallback'):
                     logger.info("📦 Printful integration returned fallback estimate; using direct API for live rates")
@@ -6990,7 +7010,8 @@ def calculate_shipping():
                                 "shipping_cost": apply_printful_shipping_pipeline(cost, cart, country),
                                 "currency": "USD",
                                 "delivery_days": str(rate.get('minDeliveryDays', rate.get('estimated_days', '5-7'))),
-                                "shipping_method": rate.get('name', 'Standard Shipping')
+                                "shipping_method": rate.get('name', 'Standard Shipping'),
+                                "is_shipping_estimate": False,
                             })
                         else:
                             logger.error(f"📦 No shipping rates found in Printful response")
@@ -7063,6 +7084,7 @@ def calculate_shipping():
                             "currency": last_integration_success.get("currency", "USD"),
                             "delivery_days": str(last_integration_success.get("delivery_days", "5-7")),
                             "shipping_method": last_integration_success.get("shipping_method") or "Standard Shipping",
+                            "is_shipping_estimate": True,
                         })
 
                 return jsonify({
