@@ -572,8 +572,13 @@ class ScreenMerchPrintfulIntegration:
         """
         counts = defaultdict(int)
         for item in cart:
-            vid = self.resolve_printful_variant_for_item(item)
-            q = item.get("quantity") or item.get("qty") or 1
+            if not isinstance(item, dict):
+                continue
+            norm = self.normalize_store_cart_item_for_printful(item)
+            if not norm:
+                continue
+            vid = self.resolve_printful_variant_for_item(norm)
+            q = norm.get("quantity") or norm.get("qty") or 1
             try:
                 q = int(q)
             except (TypeError, ValueError):
