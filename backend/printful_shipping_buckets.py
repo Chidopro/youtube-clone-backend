@@ -4,7 +4,8 @@ US flat-rate table estimates aligned with Printful's public Standard shipping ma
 Used as a floor against live ``/shipping/rates`` so heavy or mixed carts cannot
 collapse to shirt-tier quotes when the API bundles aggressively.
 
-Enable with env SHIPPING_TABLE_FLOOR_ENABLED=1 (or true/yes).
+Default: **on** for US (unset env). Set ``SHIPPING_TABLE_FLOOR_ENABLED=0`` (or false/off) to disable
+and use the raw Printful API amount only.
 
 Non-US destinations return 0 (no table floor; API only).
 """
@@ -118,6 +119,17 @@ def _truthy_env(name: str) -> bool:
     return str(v).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _shipping_table_floor_wanted() -> bool:
+    """
+    US table blend (max of API vs table) is on unless explicitly turned off.
+    Prevents mixed carts (e.g. apparel + mug) from sticking at low single-tier API quotes.
+    """
+    v = os.getenv("SHIPPING_TABLE_FLOOR_ENABLED")
+    if v is None or not str(v).strip():
+        return True
+    return str(v).strip().lower() not in ("0", "false", "no", "off")
+
+
 def _us_holiday_40c_enabled() -> bool:
     """Printful US $0.40 surcharge window (Oct 15 – Jan 17), calendar wrap."""
     if not _truthy_env("SHIPPING_TABLE_INCLUDE_US_HOLIDAY_40C"):
@@ -188,7 +200,7 @@ def printful_table_shipping_floor_usd(cart: List[dict], country_code: str) -> fl
     Lower-bound style estimate from Printful's US Standard table (not a live carrier quote).
     Returns 0 when disabled, unknown country, or empty cart after filtering.
     """
-    if not _truthy_env("SHIPPING_TABLE_FLOOR_ENABLED"):
+    if not _shipping_table_floor_wanted():
         return 0.0
     cc = (country_code or "US").strip().upper()
     if cc not in ("US", "USA"):
@@ -213,7 +225,7 @@ def printful_table_shipping_floor_usd(cart: List[dict], country_code: str) -> fl
 
 
 def blend_api_with_table_floor(api_usd: float, cart: List[dict], country_code: str) -> float:
-    """max(API, table_estimate) when enabled; otherwise API unchanged."""
+    """max(API, table_estimate) for US when table floor is wanted; otherwise API unchanged."""
     try:
         api_f = float(api_usd)
     except (TypeError, ValueError):
