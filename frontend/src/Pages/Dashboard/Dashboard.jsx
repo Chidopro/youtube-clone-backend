@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import './Dashboard.css';
 import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
@@ -7,6 +7,7 @@ import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../utils/userService';
 import { getBackendUrl } from '../../config/apiConfig';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
+import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.jsx';
 // Force Netlify rebuild
 
 
@@ -1379,6 +1380,14 @@ const Dashboard = ({ sidebar }) => {
                 >
                     🎨 Personalization
                 </button>
+                {userProfile?.role === 'creator' && (
+                    <button
+                        className={`tab-button ${activeTab === 'umbrella' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('umbrella')}
+                    >
+                        ☂️ Umbrella
+                    </button>
+                )}
             </div>
 
             {/* Tab Content */}
@@ -1959,6 +1968,19 @@ const Dashboard = ({ sidebar }) => {
                 {activeTab === 'personalization' && (
                     <div className="personalization-tab">
                         <PersonalizationSettings />
+                    </div>
+                )}
+
+                {activeTab === 'umbrella' && userProfile?.role === 'creator' && (
+                    <div className="umbrella-tab">
+                        <div className="section-header">
+                            <h2>Umbrella network</h2>
+                            <p className="payout-main-description">
+                                Manage invites and approved collaborators. Pending responses also appear under{' '}
+                                <Link to="/channel-invites">Channel invites</Link> for each user.
+                            </p>
+                        </div>
+                        <ChannelUmbrella />
                     </div>
                 )}
 

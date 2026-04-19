@@ -1,0 +1,81 @@
+.channel-umbrella {
+  padding: 8px 0 32px;
+}
+
+.channel-umbrella h2 {
+  font-size: 1.15rem;
+  margin: 24px 0 10px;
+}
+
+.channel-umbrella .hint {
+  color: #aaa;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  max-width: 640px;
+  line-height: 1.45;
+}
+
+.channel-umbrella-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.channel-umbrella-form input {
+  flex: 1 1 220px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+}
+
+.channel-umbrella-form button {
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: #3ea6ff;
+  color: #0f0f0f;
+  font-weight: 600;
+}
+
+.channel-umbrella-msg {
+  font-size: 0.9rem;
+  margin: 8px 0;
+}
+
+.channel-umbrella-msg.error {
+  color: #ff7b72;
+}
+
+.channel-umbrella-msg.ok {
+  color: #7ee787;
+}
+
+.channel-umbrella-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.channel-umbrella-row button.btn-cancel-invite {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.channel-umbrella-row button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

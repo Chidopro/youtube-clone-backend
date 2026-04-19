@@ -1,58 +1,15 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
-import { US_STATE_OPTIONS, CA_PROVINCE_OPTIONS, CHECKOUT_COUNTRY_OPTIONS } from '../../data/shippingRegions';
 import './Checkout.css';
-
-/** ZIP/postal + state/province (Printful requires state_code for US & Canada). */
-function isShippingAddressReady(address) {
-  const z = String(address?.zip || '').trim();
-  const cc = String(address?.country_code || 'US').trim();
-  if (!z) return false;
-  if (cc === 'US') {
-    if (!String(address?.state_code || '').trim()) return false;
-    return z.replace(/\D/g, '').length >= 5;
-  }
-  if (cc === 'CA') {
-    if (!String(address?.state_code || '').trim()) return false;
-    return z.replace(/[^A-Za-z0-9]/g, '').length >= 6;
-  }
-  return z.length >= 4;
-}
-
-/** Turn API / thrown messages into short, non-technical copy for shoppers. */
-function humanizeShippingError(raw) {
-  if (raw == null || raw === '') {
-    return 'Something went wrong while getting shipping rates. Please try again.';
-  }
-  let s = String(raw);
-  const embedded = s.match(/['"]message['"]\s*:\s*['"]([^'"]+)['"]/);
-  if (embedded) s = embedded[1];
-  s = s.replace(/^Network error:\s*/i, '').replace(/\s*Please check your connection and try again\.?\s*$/i, '').trim();
-  if (/out of stock/i.test(s)) {
-    return (
-      'We could not get a shipping quote for these items. ' +
-      'That often happens when the wrong product code is sent—not because everything is actually sold out. ' +
-      'Try again in a moment, or contact support if it keeps happening.'
-    );
-  }
-  return s;
-}
 
 const Checkout = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [subtotal, setSubtotal] = useState(0);
-  const [shipping, setShipping] = useState({
-    cost: 0,
-    method: 'Standard Shipping',
-    loading: false,
-    error: '',
-    calculated: false,
-    isEstimate: false,
-  });
-  const [address, setAddress] = useState({ country_code: 'US', zip: '', state_code: '' });
+  const [shipping, setShipping] = useState({ cost: 0, method: 'Standard Shipping', loading: false, error: '', calculated: false });
+  const [address, setAddress] = useState({ country_code: 'US', zip: '' });
   const shippingRef = useRef(shipping);
   // Design preferences modal – per-item (orientation + tools) so each cart item can have its own style
   const [showDesignModal, setShowDesignModal] = useState(false);
@@ -114,30 +71,20 @@ const Checkout = () => {
 
   const fetchShipping = useCallback(async () => {
     if (items.length === 0) return;
-    setShipping(s => ({ ...s, loading: true, error: '', isEstimate: false }));
+    setShipping(s => ({ ...s, loading: true, error: '' }));
     try {
       // Ensure clean ZIP and country (same format as checkout)
       const zipValue = String(address.zip || '').trim();
       const countryValue = String(address.country_code || 'US').trim();
       
-      const stateVal = String(address.state_code || '').trim();
       const payload = {
         shipping_address: {
           zip: zipValue,
           country_code: countryValue,
-          ...(stateVal ? { state_code: stateVal } : {}),
         },
         cart: items.map(it => ({
-          variant_id: it.printful_variant_id ?? it.variant_id,
-          printful_variant_id: it.printful_variant_id,
-          quantity: it.qty || it.quantity || 1,
-          qty: it.qty || it.quantity || 1,
-          name: it.name,
-          product: it.product || it.name,
-          color: it.color,
-          size: it.size,
-          printful_catalog_product_id: it.printful_catalog_product_id,
-          variants: { color: it.color || 'Default', size: it.size || 'Default' },
+          variant_id: it.printify_variant_id || it.printful_variant_id || 1,
+          quantity: it.qty || 1
         }))
       };
       console.log('🚀 Calling shipping API:', API_CONFIG.ENDPOINTS.CALCULATE_SHIPPING);
@@ -167,7 +114,7 @@ const Checkout = () => {
         } catch (e) {
           errorData = { error: errorText || `HTTP ${res.status}: ${res.statusText}` };
         }
-        throw new Error(humanizeShippingError(errorData.error || `API returned status ${res.status}`));
+        throw new Error(errorData.error || `API returned status ${res.status}`);
       }
       
       const data = await res.json();
@@ -194,13 +141,12 @@ const Checkout = () => {
         
         if (!isNaN(shippingCost) && shippingCost > 0) {
           console.log('✅ Shipping calculated successfully:', shippingCost);
-          const newShippingState = {
-            cost: shippingCost,
-            method: data.shipping_method || data.method || 'Standard Shipping',
-            loading: false,
-            error: '',
-            calculated: true,
-            isEstimate: Boolean(data.is_shipping_estimate),
+          const newShippingState = { 
+            cost: shippingCost, 
+            method: data.shipping_method || data.method || 'Standard Shipping', 
+            loading: false, 
+            error: '', 
+            calculated: true 
           };
           console.log('✅ Setting shipping state:', newShippingState);
           setShipping(newShippingState);
@@ -211,9 +157,7 @@ const Checkout = () => {
           }, 100);
         } else {
           // Success response but invalid cost
-          const errorMsg = humanizeShippingError(
-            data?.error || `Invalid shipping cost received: ${data.shipping_cost}. Please verify your ZIP code and try again.`
-          );
+          const errorMsg = data?.error || `Invalid shipping cost received: ${data.shipping_cost}. Please verify your ZIP code and try again.`;
           console.error('❌ Shipping cost invalid:', shippingCost);
           console.error('❌ Full response:', data);
           const errorState = { 
@@ -228,9 +172,7 @@ const Checkout = () => {
         }
       } else {
         // Calculation failed or success is false
-        const errorMsg = humanizeShippingError(
-          data?.error || 'Unable to calculate shipping. Please verify your ZIP code and try again.'
-        );
+        const errorMsg = data?.error || 'Unable to calculate shipping. Please verify your ZIP code and try again.';
         console.error('❌ Shipping calculation failed:', errorMsg);
         console.error('❌ Response data:', data);
         console.error('❌ Response success field:', data?.success);
@@ -246,18 +188,16 @@ const Checkout = () => {
       }
     } catch (e) {
       // Network error - do not allow checkout
-      const errorMsg =
-        e.message.includes('404') || e.message.includes('Not found')
-          ? 'Shipping API endpoint not found. The backend may not be deployed. Please contact support.'
-          : humanizeShippingError(e.message);
+      const errorMsg = e.message.includes('404') || e.message.includes('Not found')
+        ? 'Shipping API endpoint not found. The backend may not be deployed. Please contact support.'
+        : `Network error: ${e.message}. Please check your connection and try again.`;
       console.error('❌ Shipping calculation exception:', e);
-      const errorState = {
-        cost: 0,
-        method: '',
-        loading: false,
-        error: errorMsg,
-        calculated: false,
-        isEstimate: false,
+      const errorState = { 
+        cost: 0, 
+        method: '', 
+        loading: false, 
+        error: errorMsg, 
+        calculated: false 
       };
       setShipping(errorState);
       shippingRef.current = errorState;
@@ -265,14 +205,9 @@ const Checkout = () => {
     }
   }, [items, address]);
 
-  // Re-run shipping when destination changes (ZIP / state / country).
+  // Auto-calculate shipping when ZIP is entered (with debounce)
   useEffect(() => {
-    setShipping(s => (s.calculated || s.error ? { ...s, calculated: false, cost: 0, error: '' } : s));
-  }, [address.zip, address.state_code, address.country_code]);
-
-  // Auto-calculate shipping when ZIP is entered (with debounce). Do not auto-retry while error is shown.
-  useEffect(() => {
-    if (isShippingAddressReady(address) && !shipping.calculated && !shipping.loading && !shipping.error && items.length > 0) {
+    if (address.zip && address.zip.trim() && address.zip.length >= 5 && !shipping.calculated && !shipping.loading && items.length > 0) {
       console.log('⏱️ Auto-calculating shipping in 800ms for ZIP:', address.zip);
       const timer = setTimeout(() => {
         console.log('🚀 Triggering auto-calculate shipping...');
@@ -285,11 +220,10 @@ const Checkout = () => {
         zipLength: address.zip?.length,
         calculated: shipping.calculated,
         loading: shipping.loading,
-        error: !!shipping.error,
         itemsCount: items.length
       });
     }
-  }, [address, items.length, shipping.calculated, shipping.loading, shipping.error, fetchShipping]);
+  }, [address.zip, items.length, shipping.calculated, shipping.loading, fetchShipping]);
 
   /** Run actual checkout (build payload, POST, redirect). Call after design modal "Continue" when all tools are No. */
   const runCheckout = useCallback(async (cartOverride = null) => {
@@ -327,12 +261,6 @@ const Checkout = () => {
         price: it.price || 0,
         selected_screenshot: finalScreenshot,
         note: it.note || '',
-        qty: it.qty || it.quantity || 1,
-        quantity: it.qty || it.quantity || 1,
-        variant_id: it.printful_variant_id ?? it.variant_id,
-        printful_variant_id: it.printful_variant_id,
-        printful_catalog_product_id: it.printful_catalog_product_id,
-        category: it.category,
         // Video frame position (seconds) for admin / fulfillment — same as order-level screenshot_timestamp when single item
         screenshot_timestamp: it.screenshot_timestamp ?? it.timestamp ?? screenshotTimestampFromStorage ?? null,
         timestamp: it.screenshot_timestamp ?? it.timestamp ?? screenshotTimestampFromStorage ?? null,
@@ -343,12 +271,7 @@ const Checkout = () => {
       return cleanItem;
     });
 
-    const stateVal = String(address.state_code || '').trim();
-    const shippingAddress = {
-      zip: zipValue,
-      country_code: countryValue,
-      ...(stateVal ? { state_code: stateVal } : {}),
-    };
+    const shippingAddress = { zip: zipValue, country_code: countryValue };
     const userEmail = searchParams.get('email') || localStorage.getItem('user_email') || '';
     const payload = {
       shipping_address: shippingAddress,
@@ -514,7 +437,7 @@ const Checkout = () => {
                     <label>ZIP / Postal Code</label>
                     <input 
                       type="text" 
-                      placeholder={address.country_code === 'CA' ? 'e.g. K1A 0B1' : 'Enter ZIP code'} 
+                      placeholder="Enter ZIP code" 
                       value={address.zip} 
                       onChange={e => setAddress(a => ({ ...a, zip: e.target.value }))}
                       className="form-input"
@@ -526,50 +449,32 @@ const Checkout = () => {
                     <label>Country</label>
                     <select 
                       value={address.country_code} 
-                      onChange={e => setAddress(a => ({ ...a, country_code: e.target.value, state_code: '' }))}
+                      onChange={e => setAddress(a => ({ ...a, country_code: e.target.value }))}
                       className="form-select"
                       aria-label="Country"
                     >
-                      {CHECKOUT_COUNTRY_OPTIONS.map(({ code, name }) => (
-                        <option key={code} value={code}>{name}</option>
-                      ))}
+                      <option value="US">United States</option>
+                      <option value="CA">Canada</option>
+                      <option value="GB">United Kingdom</option>
+                      <option value="AU">Australia</option>
+                      <option value="DE">Germany</option>
                     </select>
                   </div>
-                  {(address.country_code === 'US' || address.country_code === 'CA') && (
-                    <div className="form-group">
-                      <label>{address.country_code === 'CA' ? 'Province' : 'State'}</label>
-                      <select
-                        value={address.state_code}
-                        onChange={e => setAddress(a => ({ ...a, state_code: e.target.value }))}
-                        className="form-select"
-                        aria-label={address.country_code === 'CA' ? 'Province' : 'State'}
-                      >
-                        <option value="">Select {address.country_code === 'CA' ? 'province' : 'state'}…</option>
-                        {(address.country_code === 'CA' ? CA_PROVINCE_OPTIONS : US_STATE_OPTIONS).map((o) => (
-                          <option key={o.code} value={o.code}>{o.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
                   <div className="form-group">
                     <label>&nbsp;</label>
                     <button 
                       className="btn-primary" 
                       onClick={() => {
-                        if (!isShippingAddressReady(address)) {
-                          if ((address.country_code === 'US' || address.country_code === 'CA') && !String(address.state_code || '').trim()) {
-                            alert(`⚠️ Please select your ${address.country_code === 'CA' ? 'province' : 'state'} (required for shipping quotes).`);
-                          } else {
-                            alert('⚠️ Please enter a valid ZIP / postal code.');
-                          }
+                        if (!address.zip || !address.zip.trim()) {
+                          alert('⚠️ Please enter your ZIP / Postal Code first.');
                           return;
                         }
                         // Clear any previous errors before calculating
-                        setShipping(s => ({ ...s, error: '', loading: true, isEstimate: false }));
+                        setShipping(s => ({ ...s, error: '', loading: true }));
                         fetchShipping();
                       }}
                       id="calc-shipping-btn" 
-                      disabled={shipping.loading || !isShippingAddressReady(address)}
+                      disabled={shipping.loading || !address.zip || !address.zip.trim()}
                       style={{
                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         color: 'white',
@@ -580,17 +485,17 @@ const Checkout = () => {
                         borderRadius: '12px',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
-                        cursor: (shipping.loading || !isShippingAddressReady(address)) ? 'not-allowed' : 'pointer',
-                        opacity: (shipping.loading || !isShippingAddressReady(address)) ? 0.6 : 1
+                        cursor: (shipping.loading || !address.zip || !address.zip.trim()) ? 'not-allowed' : 'pointer',
+                        opacity: (shipping.loading || !address.zip || !address.zip.trim()) ? 0.6 : 1
                       }}
                       onMouseEnter={(e) => {
-                        if (!shipping.loading && isShippingAddressReady(address)) {
+                        if (!shipping.loading && address.zip && address.zip.trim()) {
                           e.target.style.transform = 'translateY(-3px)';
                           e.target.style.boxShadow = '0 12px 48px rgba(102, 126, 234, 0.4)';
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (!shipping.loading && isShippingAddressReady(address)) {
+                        if (!shipping.loading && address.zip && address.zip.trim()) {
                           e.target.style.transform = 'translateY(0)';
                           e.target.style.boxShadow = '0 8px 32px rgba(102, 126, 234, 0.3)';
                         }
@@ -644,15 +549,8 @@ const Checkout = () => {
                     marginTop: '10px',
                     border: '1px solid #c3e6cb'
                   }}>
-                    <div className="shipping-method">
-                      ✓ {shipping.isEstimate ? 'Estimated shipping' : shipping.method}
-                    </div>
-                    <div className="shipping-cost">${shipping.cost.toFixed(2)}</div>
-                    {shipping.isEstimate && (
-                      <div style={{ fontSize: '0.85rem', marginTop: '8px', lineHeight: 1.4, opacity: 0.95 }}>
-                        Final carrier charge may be a few cents or dollars different. You will see the same line on Stripe checkout.
-                      </div>
-                    )}
+                    <div className="shipping-method">✓ {shipping.method}</div>
+                  <div className="shipping-cost">${shipping.cost.toFixed(2)}</div>
                 </div>
                 )}
                 {!shipping.calculated && !shipping.loading && !shipping.error && address.zip && address.zip.trim() && (
@@ -662,9 +560,7 @@ const Checkout = () => {
                     fontSize: '0.9rem',
                     textAlign: 'center'
                   }}>
-                    {(address.country_code === 'US' || address.country_code === 'CA') && !String(address.state_code || '').trim()
-                      ? `⚠️ Select your ${address.country_code === 'CA' ? 'province' : 'state'} for shipping (required).`
-                      : '⚠️ Click "Calculate Shipping" or wait for auto-calculation...'}
+                    ⚠️ Click "Calculate Shipping" or wait for auto-calculation...
                   </div>
                 )}
               </div>
@@ -693,13 +589,13 @@ const Checkout = () => {
               </button>
               <button 
                 className="btn-primary btn-large" 
-                disabled={!isShippingAddressReady(address) || shipping.loading || isCheckoutLoading}
+                disabled={!address.zip || !address.zip.trim() || shipping.loading || isCheckoutLoading}
                 style={{
-                  opacity: (!isShippingAddressReady(address) || shipping.loading || isCheckoutLoading) ? 0.5 : 1,
-                  cursor: (!isShippingAddressReady(address) || shipping.loading || isCheckoutLoading) ? 'not-allowed' : 'pointer'
+                  opacity: (!address.zip || !address.zip.trim() || shipping.loading || isCheckoutLoading) ? 0.5 : 1,
+                  cursor: (!address.zip || !address.zip.trim() || shipping.loading || isCheckoutLoading) ? 'not-allowed' : 'pointer'
                 }}
-                title={!isShippingAddressReady(address)
-                  ? 'Enter ZIP and state/province (US & Canada)'
+                title={!address.zip || !address.zip.trim() 
+                  ? 'Please enter ZIP code' 
                   : shipping.loading
                   ? 'Calculating shipping...'
                   : 'Ready to checkout'}
@@ -715,8 +611,8 @@ const Checkout = () => {
                 const zipInput = document.querySelector('input[aria-label="ZIP or Postal Code"]');
                 const zipValue = String(zipInput?.value ?? address.zip ?? '').trim();
                 const countryValue = String(address.country_code || 'US').trim();
-                if (!isShippingAddressReady({ ...address, zip: zipValue })) {
-                  alert('⚠️ Please enter a valid ZIP / postal code and select state or province if required.');
+                if (!zipValue) {
+                  alert('⚠️ Please enter your ZIP / Postal Code before proceeding.');
                   return;
                 }
                 if (shipping.loading) {
@@ -901,11 +797,6 @@ const Checkout = () => {
         </div>
       )}
 
-    </div>
-  );
-};
-
-export default Checkout;
     </div>
   );
 };

@@ -4,18 +4,12 @@ import requests
 import base64
 import uuid
 import logging
-from collections import defaultdict
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-
-# Used when no explicit Printful variant is on the cart line and name/color cannot be mapped.
-# 71 was a legacy placeholder and often triggers bogus "out of stock" from Printful.
-DEFAULT_PRINTFUL_SHIPPING_VARIANT_ID = 4012
-
 
 class PrintfulAPI:
     """Printful API wrapper for ScreenMerch integration"""
@@ -256,86 +250,9 @@ class ScreenMerchPrintfulIntegration:
                     "Black": 4012,
                     "White": 4013,
                     "Gray": 4014,
-                    "Pink": 4016,
-                    "Navy": 4015,
-                    "Red": 4012,
-                    "Athletic Heather": 4014,
+                    "Pink": 4016
                 },
                 "sizes": ["XS", "S", "M", "L"]
-            },
-            "Unisex T-Shirt": {
-                "variant_id": 4012,
-                "colors": {
-                    "Black": 4012,
-                    "White": 4013,
-                    "Navy": 4015,
-                    "Gray": 4014,
-                    "Black Heather": 4014,
-                    "Athletic Heather": 4014,
-                    "Dark Grey Heather": 4014,
-                    "Red": 4012,
-                },
-                "sizes": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]
-            },
-            "Mens Fitted T-Shirt": {
-                "variant_id": 4012,
-                "colors": {
-                    "Black": 4012,
-                    "White": 4013,
-                    "Heather Grey": 4014,
-                    "Royal Blue": 4015,
-                    "Midnight Navy": 4015,
-                    "Desert Pink": 4016,
-                },
-                "sizes": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]
-            },
-            "Unisex Oversized T-Shirt": {
-                "variant_id": 4012,
-                "colors": {
-                    "Washed Black": 4012,
-                    "Washed Maroon": 4012,
-                    "Washed Charcoal": 4014,
-                    "Khaki": 4012,
-                    "Light Washed Denim": 4015,
-                    "Vintage White": 4013,
-                },
-                "sizes": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]
-            },
-            "Youth Heavy Blend Hoodie": {
-                # Gildan 18500B catalog 689 — fallback when catalog API misses (real IDs, not BC 3710).
-                "variant_id": 17261,
-                "colors": {
-                    "Black": 17261,
-                    "Navy": 17266,
-                    "Royal": 17271,
-                    "White": 17286,
-                    "Dark Heather": 22311,
-                    "Carolina Blue": 22312,
-                    "Sport Grey": 17281,
-                    "Light Pink": 17290,
-                },
-                "sizes": ["XS", "S", "M", "L", "XL"]
-            },
-            "Unisex Pullover Hoodie": {
-                "variant_id": 9227,
-                "colors": {
-                    "Black": 9227,
-                    "White": 9221,
-                    "Athletic Heather": 9233,
-                    "Heather Navy": 9251,
-                    "Heather Forest": 9245,
-                    "Forest": 34407,
-                    "Maroon": 34417,
-                    "True Royal": 34402,
-                    "Team Purple": 34412,
-                    "Lilac": 34422,
-                },
-                "sizes": ["S", "M", "L", "XL", "2XL"]
-            },
-            "White Glossy Mug": {
-                "variant_id": 4830,
-                "colors": {"White": 4830},
-                "sizes": ["11 oz", "15 oz", "20 oz"]
             },
             "Tote Bag": {
                 "variant_id": 1,
@@ -405,120 +322,7 @@ class ScreenMerchPrintfulIntegration:
                 "sizes": ["S", "M", "L", "XL"]
             }
         }
-
-        # Normalize storefront names that differ slightly from product_mappings keys
-        self.product_name_aliases = {
-            "unisex classic tee": "Unisex Classic Tee",
-            "kids long sleeve": "Kids Long Sleeve",
-            "mens fitted t-shirt": "Mens Fitted T-Shirt",
-            "men's fitted t-shirt": "Mens Fitted T-Shirt",
-            "unisex t-shirt": "Unisex T-Shirt",
-            "unisex oversized t-shirt": "Unisex Oversized T-Shirt",
-            "youth heavy blend hoodie": "Youth Heavy Blend Hoodie",
-        }
-
-    def _canonical_product_mapping_key(self, name: str) -> Optional[str]:
-        if not name or not str(name).strip():
-            return None
-        n = str(name).strip()
-        low = n.lower()
-        if low in self.product_name_aliases:
-            return self.product_name_aliases[low]
-        if n in self.product_mappings:
-            return n
-        for k in self.product_mappings:
-            if k.lower() == low:
-                return k
-        return None
-
-    def resolve_printful_variant_for_item(self, item: dict) -> int:
-        """
-        Resolve a Printful catalog variant_id for shipping quotes. Cart lines from the
-        storefront often omit variant_id; without this, a bad default produced false OOS errors.
-
-        Order: catalog (name/color/size) first so stale client IDs never override; then only
-        printful_variant_id / variant_id (Printful catalog IDs only).
-        """
-        variants = item.get("variants") if isinstance(item.get("variants"), dict) else {}
-        color = (item.get("color") or variants.get("color") or "").strip()
-        size = (item.get("size") or variants.get("size") or "").strip()
-        name = (item.get("product") or item.get("name") or "").strip()
-
-        try:
-            from printful_catalog import catalog_product_id_for_product_name, lookup_catalog_variant_id
-        except ImportError:
-            catalog_product_id_for_product_name = None
-            lookup_catalog_variant_id = None
-
-        if catalog_product_id_for_product_name and lookup_catalog_variant_id and color and size:
-            cpid = item.get("printful_catalog_product_id")
-            if cpid is not None:
-                try:
-                    cpid = int(cpid)
-                except (TypeError, ValueError):
-                    cpid = None
-            if cpid is None and name:
-                cpid = catalog_product_id_for_product_name(name)
-            if cpid is not None:
-                vid = lookup_catalog_variant_id(cpid, color, size)
-                if vid is not None:
-                    return int(vid)
-                logger.warning(
-                    "Printful shipping: catalog variant lookup miss catalog_id=%s product=%r color=%r size=%r",
-                    cpid,
-                    name,
-                    color,
-                    size,
-                )
-
-        for _key in ("printful_variant_id", "variant_id"):
-            raw = item.get(_key)
-            if raw is not None:
-                try:
-                    n = int(raw)
-                    if n > 0:
-                        return n
-                except (TypeError, ValueError):
-                    pass
-
-        key = self._canonical_product_mapping_key(name)
-        if not key:
-            logger.warning(
-                "Printful shipping: no mapping for product name %r; using default variant %s",
-                name,
-                DEFAULT_PRINTFUL_SHIPPING_VARIANT_ID,
-            )
-            return DEFAULT_PRINTFUL_SHIPPING_VARIANT_ID
-        mapping = self.product_mappings.get(key) or {}
-        colors = mapping.get("colors") or {}
-        if color:
-            if color in colors:
-                return int(colors[color])
-            low = color.lower()
-            for c, vid in colors.items():
-                if str(c).lower() == low:
-                    return int(vid)
-        base = mapping.get("variant_id")
-        if base is not None:
-            return int(base)
-        return DEFAULT_PRINTFUL_SHIPPING_VARIANT_ID
-
-    def normalize_store_cart_item_for_printful(self, item: dict) -> dict:
-        """
-        Merge nested storefront ``variants`` (color/size) onto top-level keys so
-        ``resolve_printful_variant_for_item`` and catalog lookup match checkout.
-        """
-        if not isinstance(item, dict):
-            return {}
-        variants = item.get("variants") if isinstance(item.get("variants"), dict) else {}
-        out = dict(item)
-        out["product"] = (item.get("product") or item.get("name") or "").strip() or out.get("product", "")
-        if not (str(out.get("color") or "")).strip():
-            out["color"] = (variants.get("color") or "").strip()
-        if not (str(out.get("size") or "")).strip():
-            out["size"] = (variants.get("size") or "").strip()
-        return out
-
+    
     def create_automated_product(self, user_selection: dict) -> dict:
         """Create automated product in Printful"""
         try:
@@ -565,33 +369,18 @@ class ScreenMerchPrintfulIntegration:
                 "error": str(e)
             }
     
-    def build_consolidated_shipping_items(self, cart: list) -> List[dict]:
-        """
-        One line per Printful variant_id with total quantity. Sending duplicate
-        variant rows can produce incorrect (sometimes lower) totals from /shipping/rates.
-        """
-        counts = defaultdict(int)
-        for item in cart:
-            if not isinstance(item, dict):
-                continue
-            norm = self.normalize_store_cart_item_for_printful(item)
-            if not norm:
-                continue
-            vid = self.resolve_printful_variant_for_item(norm)
-            q = norm.get("quantity") or norm.get("qty") or 1
-            try:
-                q = int(q)
-            except (TypeError, ValueError):
-                q = 1
-            counts[int(vid)] += max(1, q)
-        out = [{"variant_id": v, "quantity": q} for v, q in sorted(counts.items())]
-        logger.info("Printful shipping items (consolidated): %s", out)
-        return out
-
     def calculate_shipping_rates(self, recipient_data: dict, items: list) -> dict:
         """Calculate shipping rates for given items and destination"""
         try:
-            shipping_items = self.build_consolidated_shipping_items(items)
+            # Format items for Printful shipping calculation
+            shipping_items = []
+            for item in items:
+                # Get variant_id from your product mapping or use a default
+                variant_id = item.get('printful_variant_id', 71)  # Default to basic t-shirt variant
+                shipping_items.append({
+                    "variant_id": variant_id,
+                    "quantity": item.get('quantity', 1)
+                })
             
             shipping_payload = {
                 "recipient": {
@@ -601,8 +390,7 @@ class ScreenMerchPrintfulIntegration:
                     "zip": recipient_data.get('zip', '')
                 },
                 "items": shipping_items,
-                "currency": "USD",
-                "locale": "en_US",
+                "currency": "USD"
             }
             
             # Call Printful shipping rates API
@@ -610,51 +398,32 @@ class ScreenMerchPrintfulIntegration:
             
             if shipping_rates and 'result' in shipping_rates:
                 rates = shipping_rates['result']
-                if not isinstance(rates, list):
-                    rates = []
-
-                def _rate_id(r):
-                    rid = r.get("id") if isinstance(r, dict) else None
-                    return str(rid or "").strip().upper()
-
-                # Find the standard shipping rate (avoid KeyError if Printful omits id)
+                
+                # Find the standard shipping rate
                 standard_rate = None
                 for rate in rates:
-                    if not isinstance(rate, dict):
-                        continue
-                    rid = _rate_id(rate)
-                    if rid == "STANDARD" or "standard" in str(rate.get("name") or "").lower():
+                    if rate['id'] == 'STANDARD':
                         standard_rate = rate
                         break
-
+                
                 if standard_rate:
                     return {
                         "success": True,
-                        "shipping_cost": float(standard_rate.get("rate") or standard_rate.get("cost") or 0),
+                        "shipping_cost": float(standard_rate['rate']),
                         "currency": "USD",
-                        "delivery_days": standard_rate.get("minDeliveryDays", 5),
-                        "shipping_method": standard_rate.get("name") or "Standard Shipping",
-                        "all_rates": rates,
+                        "delivery_days": standard_rate.get('minDeliveryDays', 5),
+                        "all_rates": rates
                     }
-                # Fallback to first available rate with a numeric cost
-                for rate in rates:
-                    if not isinstance(rate, dict):
-                        continue
-                    raw = rate.get("rate") or rate.get("cost") or rate.get("price")
-                    if raw is None:
-                        continue
-                    try:
-                        amt = float(raw)
-                    except (TypeError, ValueError):
-                        continue
-                    if amt >= 0:
+                else:
+                    # Fallback to first available rate
+                    if rates:
+                        fallback_rate = rates[0]
                         return {
                             "success": True,
-                            "shipping_cost": amt,
+                            "shipping_cost": float(fallback_rate['rate']),
                             "currency": "USD",
-                            "delivery_days": rate.get("minDeliveryDays", 5),
-                            "shipping_method": rate.get("name") or "Shipping",
-                            "all_rates": rates,
+                            "delivery_days": fallback_rate.get('minDeliveryDays', 5),
+                            "all_rates": rates
                         }
             
             # Fallback to default rates if API fails

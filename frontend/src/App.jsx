@@ -8,6 +8,7 @@ import Upload from "./Pages/Upload/Upload";
 import Profile from "./Pages/Profile/Profile";
 import ApproveSubscription from "./Pages/ApproveSubscription/ApproveSubscription";
 import Dashboard from "./Pages/Dashboard/Dashboard";
+import ChannelInvites from "./Pages/ChannelInvites/ChannelInvites";
 import SubscriptionTiers from "./Pages/SubscriptionTiers/SubscriptionTiers";
 import SubscriptionSuccess from "./Pages/SubscriptionSuccess/SubscriptionSuccess";
 import OrderSuccess from "./Pages/OrderSuccess/OrderSuccess";
@@ -273,6 +274,7 @@ const App = () => {
                 <Route path="/profile/:username" element={<Profile sidebar={sidebar} />} />
                 <Route path="/approve-subscription" element={<ApproveSubscription />} />
                 <Route path="/dashboard" element={<Dashboard sidebar={sidebar} />} />
+                <Route path="/channel-invites" element={<ChannelInvites />} />
                 <Route path="/subscription-tiers" element={<SubscriptionTiers />} />
                 <Route path="/subscription-success" element={<SubscriptionSuccess />} />
                 <Route path="/success" element={<OrderSuccess />} />

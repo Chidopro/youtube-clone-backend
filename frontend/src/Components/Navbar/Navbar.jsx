@@ -897,6 +897,27 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                             Dashboard
                                         </button>
                                     )}
+                                    {!isOrderProcessingAdmin && (
+                                        <button
+                                            className="dropdown-item"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setDropdownOpen(false);
+                                                navigate('/channel-invites');
+                                            }}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                width: '100%',
+                                                textAlign: 'left',
+                                                padding: '8px 16px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Channel invites
+                                        </button>
+                                    )}
                                     {/* Show Admin Portal for all admins (order processing admins and full admins) */}
                                     {(isOrderProcessingAdmin || isFullAdmin) && (
                                         <button

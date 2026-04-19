@@ -69,16 +69,12 @@ from services.order_email import (
     resend_attachments_from_builder,
 )
 from services.order_email import _fetch_image_as_base64 as fetch_screenshot_url
-from checkout_countries import CHECKOUT_ALLOWED_COUNTRIES
 from utils.stripe_checkout import (
     fetch_full_checkout_session,
     build_shipping_address_payload,
-    build_stripe_customer_shipping_for_tax,
     merge_shipping_address_records,
-    session_amount_total_usd,
     session_customer_email,
     session_shipping_cost_usd,
-    session_tax_usd,
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -602,11 +598,7 @@ def require_shipping_address(payload):
         return False, "ZIP / Postal Code is required."
     if not country:
         country = "US"  # Default to US
-    out = {"zip": zip_code, "country_code": country}
-    state = (addr.get("state_code") or addr.get("state") or "").strip()
-    if state:
-        out["state_code"] = state[:32]
-    return True, out
+    return True, {"zip": zip_code, "country_code": country}
 
 # Helper function to parse ZIP code from shipping_address dict
 def _parse_zip(shipping_address: dict) -> str:
@@ -625,128 +617,6 @@ def _parse_zip(shipping_address: dict) -> str:
         return str(raw).strip()
     except Exception:
         return ""
-
-
-# Open-Meteo geocoder: fallback when Zippopotam is slow/unreachable from hosting (e.g. Fly.io).
-_US_ADMIN1_TO_STATE_ABBR = {
-    "alabama": "AL", "alaska": "AK", "american samoa": "AS", "arizona": "AZ", "arkansas": "AR",
-    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
-    "district of columbia": "DC", "florida": "FL", "georgia": "GA", "guam": "GU", "hawaii": "HI",
-    "idaho": "ID", "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
-    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD", "massachusetts": "MA",
-    "michigan": "MI", "minnesota": "MN", "mississippi": "MS", "missouri": "MO", "montana": "MT",
-    "nebraska": "NE", "nevada": "NV", "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM",
-    "new york": "NY", "north carolina": "NC", "north dakota": "ND", "northern mariana islands": "MP",
-    "ohio": "OH", "oklahoma": "OK", "oregon": "OR", "pennsylvania": "PA", "puerto rico": "PR",
-    "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", "tennessee": "TN",
-    "texas": "TX", "utah": "UT", "vermont": "VT", "virginia": "VA", "u.s. virgin islands": "VI",
-    "us virgin islands": "VI", "washington": "WA", "west virginia": "WV", "wisconsin": "WI",
-    "wyoming": "WY",
-}
-
-
-def _infer_us_state_open_meteo(digits: str) -> str:
-    """Resolve ZIP → state via Open-Meteo (no API key). Prefer rows that list this ZIP in postcodes."""
-    try:
-        r = requests.get(
-            "https://geocoding-api.open-meteo.com/v1/search",
-            params={"name": digits, "country": "US", "count": 10},
-            timeout=12,
-        )
-        if r.status_code != 200:
-            return ""
-        rows = (r.json() or {}).get("results") or []
-        best = None
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            pcs = row.get("postcodes") or []
-            if isinstance(pcs, list) and digits in pcs:
-                best = row
-                break
-            if best is None:
-                best = row
-        if not best:
-            return ""
-        admin1 = (best.get("admin1") or "").strip().lower()
-        return _US_ADMIN1_TO_STATE_ABBR.get(admin1, "")[:2]
-    except Exception as e:
-        logger.debug("Open-Meteo ZIP→state failed for %s: %s", digits, e)
-        return ""
-
-
-def _infer_us_state_from_zip(zip_code: str) -> str:
-    """Infer US state abbreviation from 5-digit ZIP (Printful requires state_code for /shipping/rates)."""
-    digits = "".join(c for c in str(zip_code or "") if c.isdigit())[:5]
-    if len(digits) != 5:
-        return ""
-    for attempt in range(3):
-        try:
-            r = requests.get(f"https://api.zippopotam.us/us/{digits}", timeout=12)
-            if r.status_code != 200:
-                continue
-            data = r.json()
-            places = data.get("places") or []
-            if not places:
-                continue
-            p0 = places[0]
-            abbr = (p0.get("state abbreviation") or p0.get("state") or "").strip()
-            got = abbr[:2].upper() if abbr else ""
-            if got:
-                return got
-        except Exception as e:
-            logger.debug("Zippopotam ZIP→state attempt %s for %s: %s", attempt + 1, digits, e)
-    om = _infer_us_state_open_meteo(digits)
-    if om:
-        logger.info("📦 Inferred US state_code=%s from ZIP %s via Open-Meteo fallback", om, digits)
-    return om
-
-
-def _infer_ca_province_from_postal(postal_code: str) -> str:
-    """
-    Printful requires state_code for Canada (province). Zippopotam CA uses FSA only
-    (first 3 alnum chars, e.g. K1A from K1A 0B1), not full postal codes.
-    """
-    alnum = "".join(c for c in str(postal_code or "").upper() if c.isalnum())
-    if len(alnum) < 3:
-        return ""
-    fsa = alnum[:3]
-    try:
-        r = requests.get(f"https://api.zippopotam.us/ca/{fsa}", timeout=6)
-        if r.status_code != 200:
-            return ""
-        data = r.json()
-        places = data.get("places") or []
-        if not places:
-            return ""
-        p0 = places[0]
-        abbr = (p0.get("state abbreviation") or p0.get("state") or "").strip()
-        # CA provinces are 2 letters (ON, BC, …)
-        return abbr[:2].upper() if abbr else ""
-    except Exception as e:
-        logger.debug("Postal→province lookup failed for CA FSA %s: %s", fsa, e)
-        return ""
-
-
-def _resolve_state_code_for_shipping(shipping_address: dict, country: str, postal_code: str) -> str:
-    state = (shipping_address.get("state_code") or shipping_address.get("state") or "").strip()
-    if state:
-        return state[:32]
-    cc = (country or "").strip().upper()
-    if cc == "CAN":
-        cc = "CA"
-    if cc == "US" and postal_code:
-        inferred = _infer_us_state_from_zip(postal_code)
-        if inferred:
-            logger.info("📦 Inferred US state_code=%s from ZIP %s", inferred, postal_code)
-        return inferred
-    if cc == "CA" and postal_code:
-        inferred = _infer_ca_province_from_postal(postal_code)
-        if inferred:
-            logger.info("📦 Inferred CA province state_code=%s from postal %s", inferred, postal_code)
-        return inferred
-    return ""
-
 
 # Template filter for formatting timestamps
 @app.template_filter('format_timestamp')
@@ -1013,213 +883,6 @@ else:
 
 # NEW: Initialize Printful integration
 printful_integration = ScreenMerchPrintfulIntegration()
-
-try:
-    from printful_shipping_buckets import blend_api_with_table_floor as _blend_printful_table_shipping
-except ImportError:
-    _blend_printful_table_shipping = None
-
-
-def adjust_printful_shipping_quote(quoted_usd):
-    """
-    Optional store-level tuning on top of Printful's /shipping/rates quote (Fly secrets / .env).
-    Order (after optional table blend — see apply_printful_shipping_pipeline):
-    apply SHIPPING_MARKUP_PERCENT to quote, add SHIPPING_SURCHARGE_USD, then SHIPPING_FLOOR_USD.
-    Unset or empty = skip that step (no change by default).
-
-    Examples to close a ~$1 gap vs Printful's public table:
-      SHIPPING_SURCHARGE_USD=1.25
-      or SHIPPING_MARKUP_PERCENT=12
-      or SHIPPING_FLOOR_USD=10.99
-    """
-    try:
-        x = float(quoted_usd)
-    except (TypeError, ValueError):
-        return 0.0
-    if x < 0:
-        x = 0.0
-    raw = x
-
-    pct = os.getenv("SHIPPING_MARKUP_PERCENT")
-    if pct is not None and str(pct).strip() != "":
-        try:
-            x = x * (1.0 + float(pct) / 100.0)
-        except ValueError:
-            pass
-
-    sur = os.getenv("SHIPPING_SURCHARGE_USD")
-    if sur is not None and str(sur).strip() != "":
-        try:
-            x = x + float(sur)
-        except ValueError:
-            pass
-
-    fl = os.getenv("SHIPPING_FLOOR_USD")
-    if fl is not None and str(fl).strip() != "":
-        try:
-            x = max(x, float(fl))
-        except ValueError:
-            pass
-
-    out = round(x, 2)
-    if out != round(raw, 2):
-        logger.info("📦 Shipping store adjustment: Printful quote=%s -> charged=%s", raw, out)
-    return out
-
-
-def apply_printful_shipping_pipeline(api_usd, cart, country_code):
-    """
-    Live Printful quote, then optional max(API, US table estimate) when
-    SHIPPING_TABLE_FLOOR_ENABLED=1, then adjust_printful_shipping_quote (markup / surcharge / floor).
-    """
-    blended = api_usd
-    if _blend_printful_table_shipping is not None:
-        try:
-            blended = _blend_printful_table_shipping(float(api_usd), cart or [], country_code or "US")
-        except Exception as e:
-            logger.warning("📦 Shipping table floor skipped: %s", e)
-            blended = api_usd
-    return adjust_printful_shipping_quote(blended)
-
-
-def compute_printful_shipping_for_checkout(shipping_address: dict, cart: list):
-    """
-    Server-side Printful shipping for Stripe checkout. Same strategy as /api/calculate-shipping:
-    integration first (skip if fallback estimate), then direct /shipping/rates.
-    Returns (ok, cost_float, method_name, err_or_none, is_estimate).
-    is_estimate is True when the amount is a store fallback / integration rescue, not a live Printful /shipping/rates row.
-    """
-    postal_code = _parse_zip(shipping_address)
-    country = (shipping_address.get("country_code") or "US").strip() or "US"
-    if not postal_code:
-        return False, None, None, "ZIP / Postal Code is required.", False
-    if not cart:
-        return False, None, None, "Cart is empty.", False
-
-    state_resolved = _resolve_state_code_for_shipping(shipping_address, country, postal_code)
-    printful_api_key = os.getenv("PRINTFUL_API_KEY")
-    if not printful_api_key:
-        return False, None, None, "Shipping service is not configured.", False
-
-    last_integration_result = None
-    if hasattr(printful_integration, "calculate_shipping_rates"):
-        try:
-            recipient_data = {
-                "country_code": country,
-                "zip": postal_code,
-                "state_code": state_resolved,
-                "city": shipping_address.get("city", "") or "",
-            }
-            result = printful_integration.calculate_shipping_rates(recipient_data, cart)
-            if result and result.get("success"):
-                last_integration_result = result
-            if result and result.get("success") and not result.get("fallback"):
-                c = result.get("shipping_cost")
-                if c is not None and float(c) >= 0:
-                    return (
-                        True,
-                        apply_printful_shipping_pipeline(c, cart, country),
-                        str(result.get("shipping_method") or "Standard Shipping"),
-                        None,
-                        False,
-                    )
-        except Exception as e:
-            logger.warning("checkout: Printful integration shipping failed: %s", e)
-
-    shipping_items = printful_integration.build_consolidated_shipping_items(cart)
-
-    recipient = {
-        "country_code": country,
-        "zip": postal_code,
-        "state_code": state_resolved,
-        "city": shipping_address.get("city", "") or "",
-    }
-    a1 = shipping_address.get("address1") or shipping_address.get("line1") or ""
-    if a1:
-        recipient["address1"] = a1
-    ph = shipping_address.get("phone") or ""
-    if ph:
-        recipient["phone"] = ph
-
-    payload = {
-        "recipient": recipient,
-        "items": shipping_items,
-        "currency": "USD",
-        "locale": "en_US",
-    }
-    headers = {
-        "Authorization": f"Bearer {printful_api_key}",
-        "Content-Type": "application/json",
-    }
-    try:
-        response = requests.post(
-            "https://api.printful.com/shipping/rates",
-            json=payload,
-            headers=headers,
-            timeout=30,
-        )
-    except requests.RequestException as e:
-        return False, None, None, f"Shipping request failed: {e}", False
-
-    if response.status_code != 200:
-        err_detail = response.text[:500]
-        try:
-            ej = response.json()
-            err_detail = ej.get("error", {}).get("message") or ej.get("message") or err_detail
-        except Exception:
-            pass
-        logger.error(
-            "checkout: Printful direct /shipping/rates failed status=%s detail=%s",
-            response.status_code,
-            err_detail,
-        )
-        # Match /api/calculate-shipping: when integration already returned a usable quote
-        # (including fallback $6.99) but direct Printful rejects the payload (often 400),
-        # still allow checkout so the UI and server stay consistent.
-        if (
-            last_integration_result
-            and last_integration_result.get("success")
-            and response.status_code == 400
-        ):
-            try:
-                sc_fb = float(last_integration_result.get("shipping_cost") or 0)
-            except (TypeError, ValueError):
-                sc_fb = 0.0
-            if sc_fb > 0:
-                logger.warning(
-                    "checkout: using integration shipping quote=%s (fallback=%s) after direct Printful 400",
-                    sc_fb,
-                    bool(last_integration_result.get("fallback")),
-                )
-                return (
-                    True,
-                    apply_printful_shipping_pipeline(sc_fb, cart, country),
-                    str(last_integration_result.get("shipping_method") or "Standard Shipping"),
-                    None,
-                    True,
-                )
-        return False, None, None, "Unable to calculate shipping. Please verify your address.", False
-
-    try:
-        shipping_response = response.json()
-    except Exception:
-        return False, None, None, "Invalid response from shipping service.", False
-
-    rates_list = shipping_response.get("result") or []
-    if not rates_list:
-        return False, None, None, "No shipping rates available for this address.", False
-
-    standard_rate = None
-    for rate in rates_list:
-        if rate.get("id") == "STANDARD" or "standard" in (rate.get("name") or "").lower():
-            standard_rate = rate
-            break
-    rate = standard_rate or rates_list[0]
-    cost = rate.get("rate") or rate.get("cost") or rate.get("price")
-    if cost is None:
-        return False, None, None, "Could not determine shipping cost for this order.", False
-    return True, apply_printful_shipping_pipeline(cost, cart, country), rate.get("name") or "Shipping", None, False
-
 
 # Keep in-memory storage as fallback, but prioritize database
 product_data_store = {}
@@ -1707,19 +1370,19 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Hoodie",
-        "price": 33.35,
+        "price": 32.99,
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "mensunisexhoodiepreview.png",
-        "description": "Premium unisex pullover hoodie (Cotton Heritage M2580) with a front pouch pocket and matching flat drawstrings. The 100% cotton face keeps the exterior soft; customize with your prints and inside label. 65% ring-spun cotton, 35% polyester. Charcoal Heather is 60% ring-spun cotton, 40% polyester. Carbon Grey is 55% ring-spun cotton, 45% polyester. Fabric weight: 8.5 oz./yd.² (288.2 g/m²). Front pouch pocket. Self-fabric patch on the back. Matching flat drawstrings. 3-panel hood. Tear-away tag. Blank product sourced from Pakistan. This hoodie runs small—consider ordering one size up for a relaxed fit. Disclaimer: Please be aware that, for legal reasons, this product comes with a manufacturer's side tag attached. The tag is discreet and won't compromise your design's integrity. This product is made on demand. No minimums.",
+        "description": "Classic unisex hoodie with a front pouch pocket and matching flat drawstrings. The 100% cotton exterior makes this hoodie soft to the touch. What's more, if you go with custom prints, you can personalize the hoodie to your heart's content and maximize your branding thanks to the custom inside label. Use it to showcase your logo, strengthen customer loyalty, and boost your brand's visibility on the market. 65% ring-spun cotton, 35% polyester. Charcoal Heather is 60% ring-spun cotton, 40% polyester. Carbon Grey is 55% ring-spun cotton, 45% polyester. 100% cotton face. Fabric weight: 8.5 oz./yd.² (288.2 g/m²). Front pouch pocket. Self-fabric patch on the back. Matching flat drawstrings. 3-panel hood. Tear-away tag. Blank product sourced from Pakistan. Disclaimer: Please be aware that, for legal reasons, this product comes with a manufacturer's side tag attached. The tag is discreet and won't compromise your design's integrity. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy Blazer", "Carbon Grey", "White", "Maroon", "Charcoal Heather", "Vintage Black", "Forest Green", "Military Green", "Team Red", "Dusty Rose", "Sky Blue", "Purple", "Team Royal"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $33.35
-            "M": 0,       # Base price $33.35
-            "L": 0,       # Base price $33.35
-            "XL": 0,      # Base price $33.35
-            "XXL": 1.65,  # +$1.65 = $35.00
-            "XXXL": 3.30  # +$3.30 = $36.65
+            "S": 0,       # Base price $32.99
+            "M": 0,       # Base price $32.99
+            "L": 0,       # Base price $32.99
+            "XL": 0,      # Base price $32.99
+            "XXL": 1.65,  # +$1.65 = $34.64
+            "XXXL": 3.30  # +$3.30 = $36.29
         }
     },
     {
@@ -2212,7 +1875,7 @@ PRODUCTS = [
     },
     {
         "name": "Closed Back Cap",
-        "price": 22.91,
+        "price": 25.19,
         "filename": "closedbackcap.png",
         "main_image": "closedbackcap.png",
         "preview_image": "hatsclosedbackcappreview.png",
@@ -3048,6 +2711,15 @@ def send_order():
                         "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
                     }), 400
             
+            # Check Women's Crop Top availability
+            if product_name == "Women's Crop Top":
+                # Bubblegum is out of stock
+                if color == "Bubblegum":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
+                    }), 400
+            
             # Check Unisex T-Shirt availability
             if product_name == "Unisex T-Shirt":
                 # Colors not available in XS
@@ -3352,6 +3024,15 @@ def place_order():
                     return jsonify({
                         "success": False,
                         "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
+                    }), 400
+            
+            # Check Women's Crop Top availability
+            if product_name == "Women's Crop Top":
+                # Bubblegum is out of stock
+                if color == "Bubblegum":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
                     }), 400
             
             # Check Unisex T-Shirt availability
@@ -3737,50 +3418,6 @@ def success():
     
     return render_template('success.html')
 
-
-def stripe_product_tax_code_for_line_item(item: dict) -> str:
-    """
-    Stripe Tax product tax codes for Checkout ``price_data.product_data``.
-    See https://docs.stripe.com/tax/tax-codes — apparel vs children's vs general tangible.
-    Env overrides optional: STRIPE_TAX_CODE_APPAREL, STRIPE_TAX_CODE_CHILDRENS_APPAREL, STRIPE_TAX_CODE_HARD_GOODS.
-    """
-    name = (item.get("product") or item.get("name") or "").strip().lower()
-    hard = (
-        "mug",
-        "enamel",
-        "travel mug",
-        "coaster",
-        "tote",
-        "drawstring",
-        "laptop sleeve",
-        "sticker",
-        "magnet",
-        "puzzle",
-        "notebook",
-        "greeting card",
-        "apron",
-        "bowl",
-        "bandana",
-        "leash",
-        "collar",
-        "pet bowl",
-        "trucker",
-        "dad hat",
-        "baseball cap",
-        "closed back cap",
-        "jigsaw",
-        "kiss-cut",
-        "hardcover",
-        "greeting",
-        "phone case",
-    )
-    if any(k in name for k in hard):
-        return os.getenv("STRIPE_TAX_CODE_HARD_GOODS", "txcd_99999999")
-    if any(k in name for k in ("kid", "baby", "toddler", "youth")):
-        return os.getenv("STRIPE_TAX_CODE_CHILDRENS_APPAREL", "txcd_30011200")
-    return os.getenv("STRIPE_TAX_CODE_APPAREL", "txcd_30011000")
-
-
 @app.route("/create-checkout-session", methods=["POST", "OPTIONS"])  # legacy path
 @app.route("/api/create-checkout-session", methods=["POST", "OPTIONS"])  # CORS-covered API path
 def create_checkout_session():
@@ -3834,6 +3471,14 @@ def create_checkout_session():
                         "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
                     }), 400
             
+            # Check Women's Crop Top availability
+            if product_name == "Women's Crop Top":
+                # Bubblegum is out of stock
+                if color == "Bubblegum":
+                    return jsonify({
+                        "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
+                    }), 400
+            
             # Check Unisex T-Shirt availability
             if product_name == "Unisex T-Shirt":
                 # Colors not available in XS
@@ -3865,22 +3510,15 @@ def create_checkout_session():
         
         shipping_address = addr_result
         logger.info(f"✅ Shipping address validated: {shipping_address}")
-
-        merged_addr = dict(shipping_address)
-        raw_sa = data.get("shipping_address")
-        if isinstance(raw_sa, dict):
-            merged_addr.update(raw_sa)
-
-        ok_ship, ship_cost, ship_method, ship_err, ship_is_estimate = compute_printful_shipping_for_checkout(
-            merged_addr, cart
-        )
-        if not ok_ship:
-            logger.error(f"❌ Checkout: Printful shipping failed: {ship_err}")
-            return jsonify({"error": ship_err or "Could not calculate shipping for this address."}), 400
-        shipping_cost = ship_cost
-        logger.info(
-            f"📦 Checkout: Printful shipping ${shipping_cost} ({ship_method}) estimate={ship_is_estimate}"
-        )
+        
+        # Ensure shipping_cost is a valid number
+        shipping_cost_raw = data.get("shipping_cost", 5.99)
+        try:
+            shipping_cost = float(shipping_cost_raw) if shipping_cost_raw is not None else 5.99
+            if shipping_cost < 0:
+                shipping_cost = 5.99
+        except (ValueError, TypeError):
+            shipping_cost = 5.99  # Default to $5.99 if invalid
 
         logger.info(f"🛒 Received checkout request - Cart: {cart}")
         logger.info(f"🛒 Cart type: {type(cart)}, Cart length: {len(cart) if isinstance(cart, list) else 'N/A'}")
@@ -4148,34 +3786,25 @@ def create_checkout_session():
                     "currency": "usd",
                     "product_data": {
                         "name": item.get("product"),
-                        "tax_code": stripe_product_tax_code_for_line_item(item),
                     },
                     "unit_amount": unit_amount,
-                    "tax_behavior": "exclusive",
                 },
                 "quantity": 1,
             })
 
         # Add shipping cost as a separate line item
         if shipping_cost and shipping_cost > 0:
-            ship_product = {
-                "name": "Estimated shipping" if ship_is_estimate else "Shipping",
-                "tax_code": os.getenv("STRIPE_TAX_CODE_SHIPPING", "txcd_92010001"),
-            }
-            if ship_is_estimate:
-                ship_product["description"] = (
-                    "Quote may differ slightly from the final carrier charge (a few cents or dollars)."
-                )
             line_items.append({
                 "price_data": {
                     "currency": "usd",
-                    "product_data": ship_product,
+                    "product_data": {
+                        "name": "Shipping",
+                    },
                     "unit_amount": int(shipping_cost * 100),
-                    "tax_behavior": "exclusive",
                 },
                 "quantity": 1,
             })
-            logger.info(f"🚚 Added shipping cost: ${shipping_cost} (estimate={ship_is_estimate})")
+            logger.info(f"🚚 Added shipping cost: ${shipping_cost}")
 
         logger.info(f"🛒 Created line items: {line_items}")
         if not line_items:
@@ -4193,9 +3822,7 @@ def create_checkout_session():
         else:
             # Default to main domain
             base_url = 'https://screenmerch.com'
-
-        user_email = (data.get("user_email") or data.get("customer_email") or "").strip()
-
+        
         # Pre-populate customer email if available from frontend
         session_params = {
             "payment_method_types": ["card"],
@@ -4212,60 +3839,16 @@ def create_checkout_session():
                 "order_id": order_id,  # Only store the small order ID in Stripe
                 "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
                 "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
-                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
-                "shipping_is_estimate": "true" if ship_is_estimate else "false",
+                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
             }
         }
-
-        # Stripe Tax: exclusive line items + addresses for jurisdiction (Dashboard: enable Tax, registrations, origin).
-        # Link often labels tax as "determined by billing information" until a full billing address exists — require it
-        # when automatic tax is on. Physical goods: also collect shipping so tax can follow ship-to when Stripe uses it.
-        use_stripe_tax = os.getenv("STRIPE_AUTOMATIC_TAX_ENABLED", "true").lower() in ("1", "true", "yes")
-        if use_stripe_tax:
-            raw_sa = data.get("shipping_address")
-            ship_for_tax = build_stripe_customer_shipping_for_tax(shipping_address, raw_sa)
-            try:
-                session_params["billing_address_collection"] = "required"
-                session_params["automatic_tax"] = {"enabled": True}
-                if ship_for_tax:
-                    cust_kw: dict = {"shipping": ship_for_tax}
-                    if user_email:
-                        cust_kw["email"] = user_email
-                    cust = stripe.Customer.create(**cust_kw)
-                    session_params["customer"] = cust.id
-                    session_params["customer_update"] = {
-                        "shipping": "auto",
-                        "name": "auto",
-                        "address": "auto",
-                    }
-                    session_params["shipping_address_collection"] = {
-                        "allowed_countries": list(CHECKOUT_ALLOWED_COUNTRIES),
-                    }
-                    logger.info(
-                        "Stripe Tax: automatic_tax + billing_address_collection required + shipping collection "
-                        "(Customer ship-to prefilled)"
-                    )
-                else:
-                    session_params["shipping_address_collection"] = {
-                        "allowed_countries": list(CHECKOUT_ALLOWED_COUNTRIES),
-                    }
-                    logger.info(
-                        "Stripe Tax: automatic_tax with shipping_address_collection (no Customer ship-to)"
-                    )
-            except stripe.error.StripeError as tax_err:
-                logger.error("Stripe Tax / Customer setup failed: %s", tax_err)
-                return jsonify({
-                    "error": "Tax calculation could not be started. Enable Stripe Tax in the Stripe Dashboard "
-                    "(Tax → Settings) and set your business address, or set STRIPE_AUTOMATIC_TAX_ENABLED=false "
-                    "temporarily.",
-                    "details": str(tax_err),
-                }), 500
         
-        # Pre-populate customer email when not using a Customer object (Stripe sets email on Customer when created).
-        if user_email and "customer" not in session_params:
-            session_params["customer_email"] = user_email
+        # Pre-populate customer email if available (user can still edit it in Stripe)
+        user_email = data.get("user_email", data.get("customer_email", ""))
+        if user_email and user_email.strip():
+            session_params["customer_email"] = user_email.strip()
             logger.info(f"📧 [CHECKOUT] Pre-populating customer email in Stripe session: {user_email}")
-        elif not user_email:
+        else:
             logger.info(f"📧 [CHECKOUT] No customer email provided - Stripe will collect it during checkout (email_collection enabled)")
         
         # Ensure we're using test mode Stripe key
@@ -4458,17 +4041,8 @@ def stripe_webhook():
                 postal_code = "Not provided"
                 country = "Not provided"
             
-            # Total for emails / records: use Stripe amount_total when present (includes tax after automatic_tax).
-            paid_total = session_amount_total_usd(session)
-            tax_paid = session_tax_usd(session)
-            if tax_paid is not None and tax_paid > 0:
-                logger.info(f"💰 [WEBHOOK] Stripe tax on session: ${tax_paid:.2f}")
-            if paid_total is not None:
-                total_amount = paid_total
-                logger.info(f"💰 [WEBHOOK] Using session amount_total for order total: ${total_amount:.2f}")
-            else:
-                total_amount = sum(item.get('price', 0) for item in cart)
-                logger.info(f"💰 [WEBHOOK] Session amount_total missing; subtotal from cart lines: ${total_amount:.2f}")
+            # Calculate total amount
+            total_amount = sum(item.get('price', 0) for item in cart)
             
             # If DB order has no screenshot, try order_store (same Fly instance may have it from create_checkout_session)
             has_screenshot = order_data.get("selected_screenshot") or (cart and (cart[0].get("selected_screenshot") or cart[0].get("screenshot") or cart[0].get("img") or cart[0].get("thumbnail")))
@@ -4688,10 +4262,6 @@ def stripe_webhook():
                 stripe_ship_cost = session_shipping_cost_usd(session)
                 if stripe_ship_cost is not None and stripe_ship_cost > 0:
                     update_data["shipping_cost"] = stripe_ship_cost
-                if paid_total is not None:
-                    update_data["total_amount"] = paid_total
-                if tax_paid is not None:
-                    update_data["tax_amount"] = tax_paid
                 db_rw.table('orders').update(update_data).eq('order_id', order_id).execute()
                 logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
                 
@@ -6907,7 +6477,7 @@ def printful_shipping_rates_simple():
 
 @app.route("/api/calculate-shipping", methods=["POST", "OPTIONS"])
 def calculate_shipping():
-    """Calculate shipping cost for an order via Printful /shipping/rates."""
+    """Calculate shipping cost for an order using Printify API"""
     logger.info("📦 /api/calculate-shipping endpoint called")
     logger.info(f"📦 Request method: {request.method}")
     logger.info(f"📦 Request URL: {request.url}")
@@ -6936,8 +6506,10 @@ def calculate_shipping():
                 "error": "No cart items provided"
             }), 400
         
+        # Check for API key
         printful_api_key = os.getenv("PRINTFUL_API_KEY")
-
+        printify_api_key = os.getenv("PRINTIFY_API_KEY")
+        
         # Parse ZIP code using robust helper
         postal_code = _parse_zip(shipping_address)
         if not postal_code:
@@ -6948,9 +6520,6 @@ def calculate_shipping():
         
         logger.info(f"📦 Calculating shipping for ZIP: {postal_code}, Country: {country}, Cart items: {len(cart)}")
         
-        state_resolved = _resolve_state_code_for_shipping(shipping_address, country, postal_code)
-
-        last_integration_success = None
         # Try using Printful integration first (preferred method)
         if printful_api_key and hasattr(printful_integration, 'calculate_shipping_rates'):
             try:
@@ -6958,26 +6527,20 @@ def calculate_shipping():
                 recipient_data = {
                     'country_code': country,
                     'zip': postal_code,
-                    'state_code': state_resolved,
+                    'state_code': shipping_address.get('state_code', ''),
                     'city': shipping_address.get('city', '')
                 }
                 result = printful_integration.calculate_shipping_rates(recipient_data, cart)
                 logger.info(f"📦 Printful shipping result: {result}")
-                if result and result.get("success"):
-                    last_integration_success = result
-
-                if result and result.get('success') and not result.get('fallback'):
-                    sc = result.get('shipping_cost', 0)
+                
+                if result and result.get('success'):
                     return jsonify({
                         "success": True,
-                        "shipping_cost": apply_printful_shipping_pipeline(sc, cart, country),
+                        "shipping_cost": result.get('shipping_cost', 0),
                         "currency": result.get('currency', 'USD'),
                         "delivery_days": str(result.get('delivery_days', '5-7')),
-                        "shipping_method": result.get('shipping_method', 'Standard Shipping'),
-                        "is_shipping_estimate": False,
+                        "shipping_method": result.get('shipping_method', 'Standard Shipping')
                     })
-                if result and result.get('fallback'):
-                    logger.info("📦 Printful integration returned fallback estimate; using direct API for live rates")
             except Exception as e:
                 logger.error(f"📦 Printful integration failed: {str(e)}")
                 # Fall through to direct API call
@@ -6987,18 +6550,23 @@ def calculate_shipping():
             logger.info("📦 Using direct Printful API for shipping calculation")
             printful_base_url = "https://api.printful.com"
             
-            shipping_items = printful_integration.build_consolidated_shipping_items(cart)
-
+            # Format items for Printful
+            shipping_items = []
+            for item in cart:
+                shipping_items.append({
+                    "variant_id": item.get('variant_id', item.get('printful_variant_id', 71)),
+                    "quantity": item.get('quantity', 1)
+                })
+            
             shipping_payload = {
                 "recipient": {
                     "country_code": country,
                     "zip": postal_code,
-                    "state_code": state_resolved,
+                    "state_code": shipping_address.get('state_code', ''),
                     "city": shipping_address.get('city', '')
                 },
                 "items": shipping_items,
-                "currency": "USD",
-                "locale": "en_US"
+                "currency": "USD"
             }
             
             headers = {
@@ -7034,8 +6602,7 @@ def calculate_shipping():
                             # Find standard shipping or use first available
                             standard_rate = None
                             for rate in rates_list:
-                                rid = str(rate.get("id") or "").upper()
-                                if rid == "STANDARD" or "standard" in (rate.get("name") or "").lower():
+                                if rate.get('id') == 'STANDARD' or 'standard' in rate.get('name', '').lower():
                                     standard_rate = rate
                                     break
                             
@@ -7055,11 +6622,10 @@ def calculate_shipping():
                             logger.info(f"📦 Shipping cost calculated: {cost}")
                             return jsonify({
                                 "success": True,
-                                "shipping_cost": apply_printful_shipping_pipeline(cost, cart, country),
+                                "shipping_cost": float(cost),
                                 "currency": "USD",
                                 "delivery_days": str(rate.get('minDeliveryDays', rate.get('estimated_days', '5-7'))),
-                                "shipping_method": rate.get('name', 'Standard Shipping'),
-                                "is_shipping_estimate": False,
+                                "shipping_method": rate.get('name', 'Standard Shipping')
                             })
                         else:
                             logger.error(f"📦 No shipping rates found in Printful response")
@@ -7085,63 +6651,17 @@ def calculate_shipping():
                 error_detail = "Unknown error"
                 try:
                     error_data = response.json()
-                    err_obj = error_data.get("error") if isinstance(error_data.get("error"), dict) else {}
-                    error_detail = (
-                        err_obj.get("message")
-                        or error_data.get("message")
-                        or error_data.get("error")
-                        or error_data.get("description", "Unknown error")
-                    )
-                    if isinstance(error_detail, dict):
-                        error_detail = str(error_detail)
+                    error_detail = error_data.get('message', error_data.get('error', error_data.get('description', 'Unknown error')))
                     logger.error(f"📦 Printful error details: {error_data}")
-                except Exception:
+                except:
                     error_detail = response.text[:200] if response.text else "Unknown error"
-                detail_lower = str(error_detail).lower()
-                if "state code" in detail_lower and "missing" in detail_lower:
-                    user_msg = (
-                        "We could not look up your state from the ZIP code. "
-                        "Try re-entering your ZIP or contact support."
-                    )
-                elif "out of stock" in detail_lower:
-                    user_msg = (
-                        "We could not get a shipping quote for this cart. "
-                        "If this keeps happening, try removing the item and adding it again, or contact support."
-                    )
-                else:
-                    user_msg = f"Unable to calculate shipping. {error_detail}"
-
-                if (
-                    last_integration_success
-                    and last_integration_success.get("success")
-                    and response.status_code == 400
-                ):
-                    try:
-                        sc_fb = float(last_integration_success.get("shipping_cost") or 0)
-                    except (TypeError, ValueError):
-                        sc_fb = 0.0
-                    if sc_fb > 0:
-                        logger.warning(
-                            "📦 Direct Printful /shipping/rates failed (%s); using integration quote=%s",
-                            response.status_code,
-                            sc_fb,
-                        )
-                        return jsonify({
-                            "success": True,
-                            "shipping_cost": apply_printful_shipping_pipeline(sc_fb, cart, country),
-                            "currency": last_integration_success.get("currency", "USD"),
-                            "delivery_days": str(last_integration_success.get("delivery_days", "5-7")),
-                            "shipping_method": last_integration_success.get("shipping_method") or "Standard Shipping",
-                            "is_shipping_estimate": True,
-                        })
-
                 return jsonify({
                     "success": False,
-                    "error": user_msg
+                    "error": f"Unable to calculate shipping: {error_detail}. Please verify your ZIP code and try again."
                 }), response.status_code if response.status_code < 600 else 500
         
         # No API keys configured
-        logger.error("📦 PRINTFUL_API_KEY is not configured")
+        logger.error("📦 Neither PRINTFUL_API_KEY nor PRINTIFY_API_KEY is configured")
         return jsonify({
             "success": False,
             "error": "Shipping calculation service is not configured. Please contact support."
@@ -7461,6 +6981,411 @@ def upload_favorite():
         return jsonify({"success": True, "favorite": result.data[0]}), 200
     except Exception as e:
         logger.exception("upload_favorite: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def _validate_x_user_id_session():
+    """Same auth as /api/users/me. Returns (user_id, None) or (None, (jsonify(...), status))."""
+    token = request.cookies.get("sm_session")
+    if not token and request.headers.get("X-Session-Token"):
+        token = request.headers.get("X-Session-Token").strip()
+    if not token and request.headers.get("Authorization"):
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:].strip()
+    user_id_from_session = _resolve_session_token(token) if token else None
+    if not user_id_from_session:
+        user_id_from_session = _allow_origin_user_id()
+    if not user_id_from_session:
+        return None, (jsonify({"success": False, "error": "Authentication required"}), 401)
+    user_id = (request.headers.get("X-User-Id") or "").strip()
+    if not user_id:
+        return None, (jsonify({"success": False, "error": "X-User-Id header is required"}), 401)
+    if str(user_id_from_session) != user_id:
+        return None, (jsonify({"success": False, "error": "Forbidden"}), 403)
+    return user_id, None
+
+
+def _cf_user_row(user_id):
+    if not supabase_admin:
+        return None
+    r = supabase_admin.table("users").select("id, role, username, display_name, email").eq("id", user_id).limit(1).execute()
+    return (r.data or [None])[0]
+
+
+def _cf_find_user_by_identifier(raw):
+    """Resolve invitee or channel owner by email (exact, case-insensitive) or username (case-insensitive)."""
+    if not supabase_admin:
+        return None
+    s = (raw or "").strip()
+    if not s:
+        return None
+    if "@" in s:
+        r = supabase_admin.table("users").select("id, role, username, display_name, email").ilike("email", s).limit(5).execute()
+        rows = r.data or []
+        low = s.lower()
+        for row in rows:
+            if (row.get("email") or "").lower() == low:
+                return row
+        return rows[0] if len(rows) == 1 else None
+    r = supabase_admin.table("users").select("id, role, username, display_name, email").ilike("username", s).limit(10).execute()
+    rows = r.data or []
+    for row in rows:
+        if (row.get("username") or "").lower() == s.lower():
+            return row
+    return rows[0] if len(rows) == 1 else None
+
+
+def _cf_attach_user_summaries(rows, id_key):
+    if not rows or not supabase_admin:
+        return rows
+    ids = list({row.get(id_key) for row in rows if row.get(id_key)})
+    if not ids:
+        return rows
+    users_by_id = {}
+    for uid in ids:
+        u = _cf_user_row(uid)
+        if u:
+            users_by_id[uid] = {
+                "id": u.get("id"),
+                "username": u.get("username"),
+                "display_name": u.get("display_name"),
+            }
+    out = []
+    for row in rows:
+        d = dict(row)
+        d["user"] = users_by_id.get(row.get(id_key))
+        out.append(d)
+    return out
+
+
+def _cf_ensure_subscription(channel_owner_id, friend_id):
+    if not supabase_admin:
+        return False, "Server not configured"
+    ex = (
+        supabase_admin.table("subscriptions")
+        .select("id")
+        .eq("channel_id", channel_owner_id)
+        .eq("subscriber_id", friend_id)
+        .limit(1)
+        .execute()
+    )
+    if ex.data:
+        return True, None
+    try:
+        supabase_admin.table("subscriptions").insert(
+            {"channel_id": channel_owner_id, "subscriber_id": friend_id}
+        ).execute()
+        return True, None
+    except Exception as e:
+        logger.exception("channel_friends subscription insert: %s", e)
+        return False, str(e)
+
+
+@app.route("/api/channel-friends/inbox", methods=["GET", "OPTIONS"])
+def channel_friends_inbox():
+    """Pending items: invites to you as friend, and join-requests to you as channel owner."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        inv = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("friend_id", user_id)
+            .eq("invited_by", "creator")
+            .eq("status", "pending")
+            .execute()
+        )
+        req = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", user_id)
+            .eq("invited_by", "friend")
+            .eq("status", "pending")
+            .execute()
+        )
+        invites = _cf_attach_user_summaries(inv.data or [], "channel_owner_id")
+        requests_in = _cf_attach_user_summaries(req.data or [], "friend_id")
+        return jsonify({"success": True, "creator_invites": invites, "friend_requests": requests_in}), 200
+    except Exception as e:
+        logger.exception("channel_friends_inbox: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/channel-friends/outgoing", methods=["GET", "OPTIONS"])
+def channel_friends_outgoing():
+    """Creator: pending invites you sent (invited_by=creator)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can view outgoing umbrella invites"}), 403
+        r = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", user_id)
+            .eq("invited_by", "creator")
+            .eq("status", "pending")
+            .execute()
+        )
+        rows = _cf_attach_user_summaries(r.data or [], "friend_id")
+        return jsonify({"success": True, "pending": rows}), 200
+    except Exception as e:
+        logger.exception("channel_friends_outgoing: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/channel-friends/members", methods=["GET", "OPTIONS"])
+def channel_friends_members():
+    """Creator: approved umbrella rows (canonical membership also has subscriptions)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can list umbrella members"}), 403
+        r = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", user_id)
+            .eq("status", "approved")
+            .execute()
+        )
+        rows = _cf_attach_user_summaries(r.data or [], "friend_id")
+        return jsonify({"success": True, "members": rows}), 200
+    except Exception as e:
+        logger.exception("channel_friends_members: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/channel-friends/invite", methods=["POST", "OPTIONS"])
+def channel_friends_invite():
+    """Creator invites a user by username or email (pending until they accept)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can send umbrella invites"}), 403
+        data = request.get_json() or {}
+        ident = (data.get("username_or_email") or data.get("identifier") or "").strip()
+        invitee = _cf_find_user_by_identifier(ident)
+        if not invitee:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        friend_id = invitee.get("id")
+        if str(friend_id) == str(user_id):
+            return jsonify({"success": False, "error": "You cannot invite yourself"}), 400
+        existing = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", user_id)
+            .eq("friend_id", friend_id)
+            .limit(1)
+            .execute()
+        )
+        now_iso = datetime.now(timezone.utc).isoformat()
+        row = (existing.data or [None])[0]
+        if row and row.get("status") == "approved":
+            return jsonify({"success": False, "error": "Already an umbrella member"}), 400
+        if row and row.get("status") == "pending":
+            return jsonify({"success": True, "row": row, "message": "Invite already pending"}), 200
+        payload = {
+            "channel_owner_id": user_id,
+            "friend_id": friend_id,
+            "status": "pending",
+            "invited_by": "creator",
+            "updated_at": now_iso,
+        }
+        if row and row.get("status") == "rejected":
+            up = supabase_admin.table("channel_friends").update(payload).eq("id", row["id"]).execute()
+            out = (up.data or [row])[0]
+            return jsonify({"success": True, "row": out}), 200
+        payload["created_at"] = now_iso
+        ins = supabase_admin.table("channel_friends").insert(payload).execute()
+        if not ins.data:
+            return jsonify({"success": False, "error": "Failed to create invite"}), 500
+        return jsonify({"success": True, "row": ins.data[0]}), 200
+    except Exception as e:
+        logger.exception("channel_friends_invite: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/channel-friends/request", methods=["POST", "OPTIONS"])
+def channel_friends_request():
+    """Ask to join a creator's umbrella (pending until they accept)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        data = request.get_json() or {}
+        ident = (data.get("channel_username_or_email") or data.get("username_or_email") or "").strip()
+        owner = _cf_find_user_by_identifier(ident)
+        if not owner:
+            return jsonify({"success": False, "error": "Channel owner not found"}), 404
+        if owner.get("role") != "creator":
+            return jsonify({"success": False, "error": "That user is not a creator"}), 400
+        channel_owner_id = owner.get("id")
+        if str(channel_owner_id) == str(user_id):
+            return jsonify({"success": False, "error": "You cannot request your own channel"}), 400
+        existing = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", channel_owner_id)
+            .eq("friend_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        now_iso = datetime.now(timezone.utc).isoformat()
+        row = (existing.data or [None])[0]
+        if row and row.get("status") == "approved":
+            return jsonify({"success": False, "error": "Already a member"}), 400
+        if row and row.get("status") == "pending":
+            return jsonify({"success": True, "row": row, "message": "Request already pending"}), 200
+        payload = {
+            "channel_owner_id": channel_owner_id,
+            "friend_id": user_id,
+            "status": "pending",
+            "invited_by": "friend",
+            "updated_at": now_iso,
+        }
+        if row and row.get("status") == "rejected":
+            up = supabase_admin.table("channel_friends").update(payload).eq("id", row["id"]).execute()
+            out = (up.data or [row])[0]
+            return jsonify({"success": True, "row": out}), 200
+        payload["created_at"] = now_iso
+        ins = supabase_admin.table("channel_friends").insert(payload).execute()
+        if not ins.data:
+            return jsonify({"success": False, "error": "Failed to create request"}), 500
+        return jsonify({"success": True, "row": ins.data[0]}), 200
+    except Exception as e:
+        logger.exception("channel_friends_request: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/channel-friends/respond", methods=["POST", "OPTIONS"])
+def channel_friends_respond():
+    """
+    Accept or reject a pending row. Actor must be the pending responder:
+    - invited_by=creator → friend (friend_id) responds
+    - invited_by=friend → channel_owner responds
+    On accept: set approved and ensure subscriptions row exists.
+    """
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        data = request.get_json() or {}
+        channel_owner_id = (data.get("channel_owner_id") or "").strip()
+        friend_id = (data.get("friend_id") or "").strip()
+        action = (data.get("action") or "").strip().lower()
+        if action not in ("accept", "reject"):
+            return jsonify({"success": False, "error": "action must be accept or reject"}), 400
+        if not channel_owner_id or not friend_id:
+            return jsonify({"success": False, "error": "channel_owner_id and friend_id are required"}), 400
+        r = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", channel_owner_id)
+            .eq("friend_id", friend_id)
+            .limit(1)
+            .execute()
+        )
+        row = (r.data or [None])[0]
+        if not row:
+            return jsonify({"success": False, "error": "Request not found"}), 404
+        if row.get("status") != "pending":
+            return jsonify({"success": False, "error": "This request is no longer pending"}), 400
+        invited_by = row.get("invited_by") or "creator"
+        if invited_by == "creator":
+            if str(user_id) != str(friend_id):
+                return jsonify({"success": False, "error": "Only the invited user can respond"}), 403
+        else:
+            if str(user_id) != str(channel_owner_id):
+                return jsonify({"success": False, "error": "Only the channel owner can respond"}), 403
+        now_iso = datetime.now(timezone.utc).isoformat()
+        new_status = "approved" if action == "accept" else "rejected"
+        if new_status == "approved":
+            ok, sub_err = _cf_ensure_subscription(channel_owner_id, friend_id)
+            if not ok:
+                return jsonify({"success": False, "error": sub_err or "Could not add subscription"}), 500
+        up = (
+            supabase_admin.table("channel_friends")
+            .update({"status": new_status, "updated_at": now_iso})
+            .eq("id", row["id"])
+            .execute()
+        )
+        out = (up.data or [None])[0] or {**row, "status": new_status}
+        return jsonify({"success": True, "row": out}), 200
+    except Exception as e:
+        logger.exception("channel_friends_respond: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/channel-friends/cancel", methods=["POST", "OPTIONS"])
+def channel_friends_cancel():
+    """Creator cancels a pending invite they sent (invited_by=creator)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can cancel invites"}), 403
+        data = request.get_json() or {}
+        friend_id = (data.get("friend_id") or "").strip()
+        if not friend_id:
+            return jsonify({"success": False, "error": "friend_id is required"}), 400
+        r = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", user_id)
+            .eq("friend_id", friend_id)
+            .eq("invited_by", "creator")
+            .eq("status", "pending")
+            .limit(1)
+            .execute()
+        )
+        row = (r.data or [None])[0]
+        if not row:
+            return jsonify({"success": False, "error": "No pending invite found"}), 404
+        now_iso = datetime.now(timezone.utc).isoformat()
+        supabase_admin.table("channel_friends").delete().eq("id", row["id"]).execute()
+        return jsonify({"success": True, "deleted_id": row["id"], "updated_at": now_iso}), 200
+    except Exception as e:
+        logger.exception("channel_friends_cancel: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

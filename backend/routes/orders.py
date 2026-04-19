@@ -231,6 +231,11 @@ def _validate_product_availability(cart):
             if color == "Peach" and size != "XL":
                 return False, f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
         
+        # Women's Crop Top restrictions
+        if product_name == "Women's Crop Top":
+            if color == "Bubblegum":
+                return False, f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
+        
         # Unisex T-Shirt restrictions
         if product_name == "Unisex T-Shirt":
             unavailable_in_xs = [
@@ -694,8 +699,231 @@ def send_order():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# /create-checkout-session and /api/create-checkout-session are implemented only in app.py
-# so a single handler runs (Printful-backed shipping, Stripe line items).
+@orders_bp.route("/create-checkout-session", methods=["POST", "OPTIONS"])
+@orders_bp.route("/api/create-checkout-session", methods=["POST", "OPTIONS"])
+def create_checkout_session():
+    """Create Stripe checkout session"""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    
+    try:
+        data = read_json()
+        cart = data.get("cart", [])
+        product_id = data.get("product_id")
+        sms_consent = data.get("sms_consent", False)
+        
+        # Validate product availability
+        is_valid, error_msg = _validate_product_availability(cart)
+        if not is_valid:
+            response = jsonify({"error": error_msg})
+            return _allow_origin(response), 400
+        
+        # Validate shipping address
+        ok, addr_result = require_shipping_address(data)
+        if not ok:
+            response = jsonify({"error": addr_result})
+            return _allow_origin(response), 400
+        
+        shipping_address = addr_result
+        
+        # Ensure shipping_cost is valid
+        shipping_cost_raw = data.get("shipping_cost", 5.99)
+        try:
+            shipping_cost = float(shipping_cost_raw) if shipping_cost_raw is not None else 5.99
+            if shipping_cost < 0:
+                shipping_cost = 5.99
+        except (ValueError, TypeError):
+            shipping_cost = 5.99
+        
+        if not cart or not isinstance(cart, list):
+            response = jsonify({"error": "Cart is empty or invalid"})
+            return _allow_origin(response), 400
+        
+        # Generate order ID
+        full_uuid = str(uuid.uuid4())
+        order_id = f"ORD-{full_uuid[:8].upper()}"
+        total_amount = sum(item.get('price', 0) for item in cart) + shipping_cost
+        
+        # Get screenshot from cart items
+        checkout_screenshot = None
+        for item in cart:
+            screenshot = item.get("selected_screenshot") or item.get("screenshot") or item.get("img") or item.get("thumbnail")
+            if screenshot and isinstance(screenshot, str) and screenshot.strip():
+                checkout_screenshot = screenshot
+                break
+        
+        # Fallback to top-level payload
+        if not checkout_screenshot:
+            checkout_screenshot = data.get("selected_screenshot") or data.get("thumbnail") or data.get("screenshot")
+        
+        # Enrich cart items
+        enriched_cart = []
+        for item in cart:
+            enriched_item = item.copy()
+            item_screenshot = (item.get("selected_screenshot") or item.get("screenshot") or 
+                             item.get("img") or item.get("thumbnail") or checkout_screenshot)
+            enriched_item.update({
+                "videoName": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+                "creatorName": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                "timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
+                "selected_screenshot": item_screenshot
+            })
+            enriched_cart.append(enriched_item)
+        
+        # Extract subdomain
+        creator_user_id_from_subdomain = None
+        subdomain_from_request = None
+        try:
+            origin = request.headers.get('Origin', '')
+            if origin and origin.endswith('.screenmerch.com') and origin.startswith('https://'):
+                parsed = urlparse(origin)
+                hostname = parsed.netloc
+                subdomain_from_request = hostname.replace('.screenmerch.com', '').lower()
+                if subdomain_from_request and subdomain_from_request != 'www':
+                    client = _get_supabase_admin()
+                    if client:
+                        creator_result = client.table('users').select('id, display_name').eq('subdomain', subdomain_from_request).limit(1).execute()
+                        if creator_result.data and len(creator_result.data) > 0:
+                            creator_user_id_from_subdomain = creator_result.data[0]['id']
+        except Exception:
+            pass
+        
+        # Store order in database
+        order_data = {
+            "order_id": order_id,
+            "cart": enriched_cart,
+            "sms_consent": sms_consent,
+            "customer_email": data.get("user_email", ""),
+            "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+            "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+            "creator_user_id": creator_user_id_from_subdomain,
+            "subdomain": subdomain_from_request,
+            "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
+            "total_amount": total_amount,
+            "shipping_cost": shipping_cost,
+            "shipping_address": shipping_address,
+            "status": "pending"
+        }
+        
+        if checkout_screenshot:
+            order_data["selected_screenshot"] = checkout_screenshot
+        order_ts = data.get("screenshot_timestamp") or data.get("timestamp")
+        if order_ts is not None and str(order_ts).strip():
+            order_data["screenshot_timestamp"] = str(order_ts)
+        
+        write_client = _get_supabase_admin() or _get_supabase_client()
+        order_store = _get_order_store()
+        
+        try:
+            if write_client:
+                write_client.table('orders').insert(order_data).execute()
+                logger.info("Order %s stored in database (with screenshot: %s)", order_id, bool(checkout_screenshot))
+        except Exception as e:
+            logger.error("Failed to store order %s in database: %s", order_id, e)
+        
+        # Keep in-memory backup (include selected_screenshot so webhook/get-order-screenshot can use it)
+        order_store[order_id] = {
+            "cart": enriched_cart,
+            "sms_consent": sms_consent,
+            "shipping_address": shipping_address,
+            "timestamp": data.get("timestamp"),
+            "order_id": order_id,
+            "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+            "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+            "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
+            "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
+            "status": "pending",
+            "created_at": data.get("created_at", "Recent")
+        }
+        if checkout_screenshot:
+            order_store[order_id]["selected_screenshot"] = checkout_screenshot
+        
+        # Build Stripe line items
+        products = _get_products_list()
+        line_items = []
+        for item in cart:
+            item_price = item.get('price')
+            if item_price and item_price > 0:
+                unit_amount = int(item_price * 100)
+            else:
+                product_info = next((p for p in products if p.get("name") == item.get("product")), None)
+                if not product_info:
+                    product_info = next((p for p in products if p.get("name", "").lower() == item.get("product", "").lower()), None)
+                if not product_info:
+                    continue
+                unit_amount = int(product_info.get("price", 0) * 100)
+            
+            line_items.append({
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": item.get("product", "Item")},
+                    "unit_amount": unit_amount,
+                },
+                "quantity": 1,
+            })
+        
+        if shipping_cost and shipping_cost > 0:
+            line_items.append({
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": "Shipping"},
+                    "unit_amount": int(shipping_cost * 100),
+                },
+                "quantity": 1,
+            })
+        
+        if not line_items:
+            response = jsonify({"error": "No valid items in cart to check out."})
+            return _allow_origin(response), 400
+        
+        # Detect origin/subdomain
+        origin = request.headers.get('Origin', 'https://screenmerch.com')
+        if origin and origin.startswith('https://') and origin.endswith('.screenmerch.com'):
+            base_url = origin
+        else:
+            base_url = 'https://screenmerch.com'
+        
+        # Create Stripe session
+        try:
+            _ensure_stripe_test_mode()
+        except ValueError as e:
+            response = jsonify({"error": "Payment system configuration error", "details": str(e)})
+            return _allow_origin(response), 500
+        
+        session_params = {
+            "payment_method_types": ["card"],
+            "mode": "payment",
+            "line_items": line_items,
+            "success_url": f"{base_url}/order-success?order_id={order_id}",
+            "cancel_url": f"{base_url}/checkout/{product_id or ''}",
+            "phone_number_collection": {"enabled": True},
+            "shipping_address_collection": {"allowed_countries": ["US", "CA", "GB", "AU", "DE"]},
+            "payment_intent_data": {"statement_descriptor": "ScreenMerch"},
+            "metadata": {
+                "order_id": order_id,
+                "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
+                "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
+                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
+            }
+        }
+        
+        # Pre-populate customer email if available
+        user_email = data.get("user_email", data.get("customer_email", ""))
+        if user_email and user_email.strip():
+            session_params["customer_email"] = user_email.strip()
+        
+        session = stripe.checkout.Session.create(**session_params)
+        response = jsonify({"url": session.url})
+        return _allow_origin(response), 200
+        
+    except stripe.error.StripeError as e:
+        logger.error(f"❌ Stripe error: {str(e)}")
+        response = jsonify({"error": "Payment processing error", "details": str(e)})
+        return _allow_origin(response), 500
+    except Exception as e:
+        logger.error(f"❌ Error creating checkout session: {str(e)}")
+        response = jsonify({"error": "Failed to create checkout session", "details": str(e)})
+        return _allow_origin(response), 500
 
 
 @orders_bp.route("/webhook", methods=["POST"])
@@ -1176,7 +1404,98 @@ def test_order_email():
         return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
-# /api/calculate-shipping is implemented only in app.py (Printful + US state inference).
+@orders_bp.route("/api/calculate-shipping", methods=["POST", "OPTIONS"])
+def calculate_shipping():
+    """Calculate shipping cost for an order"""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    
+    try:
+        data = request.get_json()
+        shipping_address = data.get('shipping_address', {})
+        country = shipping_address.get('country_code', 'US')
+        cart = data.get('cart', [])
+        
+        if not cart:
+            return jsonify({
+                "success": False,
+                "error": "No cart items provided"
+            }), 400
+        
+        postal_code = _parse_zip(shipping_address)
+        if not postal_code:
+            return jsonify({
+                "success": False,
+                "error": "ZIP / Postal Code is required for shipping calculation"
+            }), 400
+        
+        # Try Printful API
+        printful_api_key = _get_config('PRINTFUL_API_KEY')
+        if printful_api_key:
+            try:
+                shipping_items = []
+                for item in cart:
+                    shipping_items.append({
+                        "variant_id": item.get('variant_id', item.get('printful_variant_id', 71)),
+                        "quantity": item.get('quantity', 1)
+                    })
+                
+                shipping_payload = {
+                    "recipient": {
+                        "country_code": country,
+                        "zip": postal_code,
+                        "state_code": shipping_address.get('state_code', ''),
+                        "city": shipping_address.get('city', '')
+                    },
+                    "items": shipping_items,
+                    "currency": "USD"
+                }
+                
+                headers = {
+                    'Authorization': f'Bearer {printful_api_key}',
+                    'Content-Type': 'application/json'
+                }
+                
+                response = requests.post(
+                    "https://api.printful.com/shipping/rates",
+                    json=shipping_payload,
+                    headers=headers,
+                    timeout=10
+                )
+                
+                if response.status_code == 200:
+                    shipping_response = response.json()
+                    if 'result' in shipping_response:
+                        rates_list = shipping_response['result']
+                        if rates_list and len(rates_list) > 0:
+                            rate = rates_list[0]
+                            cost = rate.get('rate') or rate.get('cost') or rate.get('price')
+                            if cost:
+                                return jsonify({
+                                    "success": True,
+                                    "shipping_cost": float(cost),
+                                    "currency": "USD",
+                                    "delivery_days": str(rate.get('minDeliveryDays', '5-7')),
+                                    "shipping_method": rate.get('name', 'Standard Shipping')
+                                })
+            except Exception:
+                pass
+        
+        # Fallback: default shipping cost
+        return jsonify({
+            "success": True,
+            "shipping_cost": 5.99,
+            "currency": "USD",
+            "delivery_days": "5-7",
+            "shipping_method": "Standard Shipping"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error calculating shipping: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": f"Shipping calculation failed: {str(e)}"
+        }), 500
 
 
 @orders_bp.route("/api/printful/create-order", methods=["POST"])

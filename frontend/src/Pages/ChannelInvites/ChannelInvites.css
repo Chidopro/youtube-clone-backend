@@ -1,0 +1,104 @@
+.channel-invites-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.channel-invites-page h1 {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+.channel-invites-page .sub {
+  color: #888;
+  font-size: 0.95rem;
+  margin-bottom: 24px;
+}
+
+.channel-invites-section {
+  margin-bottom: 32px;
+}
+
+.channel-invites-section h2 {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+
+.channel-invites-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.channel-invites-card .meta {
+  font-size: 0.9rem;
+}
+
+.channel-invites-card .actions {
+  display: flex;
+  gap: 8px;
+}
+
+.channel-invites-card button {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.channel-invites-card .btn-accept {
+  background: #3ea6ff;
+  color: #0f0f0f;
+}
+
+.channel-invites-card .btn-reject,
+.channel-invites-card .btn-muted {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.channel-invites-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.channel-invites-form input {
+  flex: 1 1 200px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.3);
+  color: inherit;
+}
+
+.channel-invites-form button {
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: #3ea6ff;
+  color: #0f0f0f;
+  font-weight: 600;
+}
+
+.channel-invites-msg {
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
+
+.channel-invites-msg.error {
+  color: #ff7b72;
+}
+
+.channel-invites-msg.ok {
+  color: #7ee787;
+}

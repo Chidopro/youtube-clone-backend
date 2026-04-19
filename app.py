@@ -27,11 +27,6 @@ import google.auth
 # NEW: Import Printful integration
 from printful_integration import ScreenMerchPrintfulIntegration
 
-try:
-    from printful_shipping_buckets import blend_api_with_table_floor as _blend_printful_table_shipping
-except ImportError:
-    _blend_printful_table_shipping = None
-
 # NEW: Import video screenshot capture
 from video_screenshot import screenshot_capture
 
@@ -1906,7 +1901,7 @@ def send_order():
                     <br>
                     <hr>
                     <h2>🖨️ Print Quality Images</h2>
-                    <p><strong>For Printful fulfillment:</strong></p>
+                    <p><strong>For Printify Upload:</strong></p>
                     <p><strong>Option 1 - Auto-load (with order ID):</strong> <a href="https://screenmerch.fly.dev/print-quality?order_id={order_id}">Generate Print Quality Images</a></p>
                     <p><strong>Option 2 - Standalone Tool (Recommended - no CORS issues):</strong> <a href="https://screenmerch.fly.dev/image-enhancer" target="_blank">Open Standalone Image Enhancer</a></p>
                     <p style="background: #e7f3ff; padding: 15px; border-radius: 5px; margin: 15px 0;">
@@ -3608,414 +3603,121 @@ def test_stripe():
             "stripe_key_configured": bool(os.getenv("STRIPE_SECRET_KEY"))
         }), 500
 
-
-# --- Printful /shipping/rates helpers (US & CA need state_code; ZIP inference when omitted) ---
-def _parse_zip(shipping_address: dict) -> str:
-    """Parse ZIP/postal from shipping_address dict (multiple field names)."""
-    if not shipping_address:
-        return ""
-    raw = (
-        shipping_address.get("zip")
-        or shipping_address.get("postal_code")
-        or shipping_address.get("postcode")
-        or shipping_address.get("postalCode")
-        or shipping_address.get("ZIP")
-        or ""
-    )
-    try:
-        return str(raw).strip()
-    except Exception:
-        return ""
-
-
-_US_ADMIN1_TO_STATE_ABBR = {
-    "alabama": "AL", "alaska": "AK", "american samoa": "AS", "arizona": "AZ", "arkansas": "AR",
-    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
-    "district of columbia": "DC", "florida": "FL", "georgia": "GA", "guam": "GU", "hawaii": "HI",
-    "idaho": "ID", "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
-    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD", "massachusetts": "MA",
-    "michigan": "MI", "minnesota": "MN", "mississippi": "MS", "missouri": "MO", "montana": "MT",
-    "nebraska": "NE", "nevada": "NV", "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM",
-    "new york": "NY", "north carolina": "NC", "north dakota": "ND", "northern mariana islands": "MP",
-    "ohio": "OH", "oklahoma": "OK", "oregon": "OR", "pennsylvania": "PA", "puerto rico": "PR",
-    "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", "tennessee": "TN",
-    "texas": "TX", "utah": "UT", "vermont": "VT", "virginia": "VA", "u.s. virgin islands": "VI",
-    "us virgin islands": "VI", "washington": "WA", "west virginia": "WV", "wisconsin": "WI",
-    "wyoming": "WY",
-}
-
-
-def _infer_us_state_open_meteo(digits: str) -> str:
-    try:
-        r = requests.get(
-            "https://geocoding-api.open-meteo.com/v1/search",
-            params={"name": digits, "country": "US", "count": 10},
-            timeout=12,
-        )
-        if r.status_code != 200:
-            return ""
-        rows = (r.json() or {}).get("results") or []
-        best = None
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            pcs = row.get("postcodes") or []
-            if isinstance(pcs, list) and digits in pcs:
-                best = row
-                break
-            if best is None:
-                best = row
-        if not best:
-            return ""
-        admin1 = (best.get("admin1") or "").strip().lower()
-        return _US_ADMIN1_TO_STATE_ABBR.get(admin1, "")[:2]
-    except Exception as e:
-        logger.debug("Open-Meteo ZIP→state failed for %s: %s", digits, e)
-        return ""
-
-
-def _infer_us_state_from_zip(zip_code: str) -> str:
-    digits = "".join(c for c in str(zip_code or "") if c.isdigit())[:5]
-    if len(digits) != 5:
-        return ""
-    for attempt in range(3):
-        try:
-            r = requests.get(f"https://api.zippopotam.us/us/{digits}", timeout=12)
-            if r.status_code != 200:
-                continue
-            data = r.json()
-            places = data.get("places") or []
-            if not places:
-                continue
-            p0 = places[0]
-            abbr = (p0.get("state abbreviation") or p0.get("state") or "").strip()
-            got = abbr[:2].upper() if abbr else ""
-            if got:
-                return got
-        except Exception as e:
-            logger.debug("Zippopotam ZIP→state attempt %s for %s: %s", attempt + 1, digits, e)
-    om = _infer_us_state_open_meteo(digits)
-    if om:
-        logger.info("📦 Inferred US state_code=%s from ZIP %s via Open-Meteo fallback", om, digits)
-    return om
-
-
-def _infer_ca_province_from_postal(postal_code: str) -> str:
-    alnum = "".join(c for c in str(postal_code or "").upper() if c.isalnum())
-    if len(alnum) < 3:
-        return ""
-    fsa = alnum[:3]
-    try:
-        r = requests.get(f"https://api.zippopotam.us/ca/{fsa}", timeout=6)
-        if r.status_code != 200:
-            return ""
-        data = r.json()
-        places = data.get("places") or []
-        if not places:
-            return ""
-        p0 = places[0]
-        abbr = (p0.get("state abbreviation") or p0.get("state") or "").strip()
-        return abbr[:2].upper() if abbr else ""
-    except Exception as e:
-        logger.debug("Postal→province lookup failed for CA FSA %s: %s", fsa, e)
-        return ""
-
-
-def _resolve_state_code_for_shipping(shipping_address: dict, country: str, postal_code: str) -> str:
-    state = (shipping_address.get("state_code") or shipping_address.get("state") or "").strip()
-    if state:
-        return state[:32]
-    cc = (country or "").strip().upper()
-    if cc == "CAN":
-        cc = "CA"
-    if cc == "US" and postal_code:
-        inferred = _infer_us_state_from_zip(postal_code)
-        if inferred:
-            logger.info("📦 Inferred US state_code=%s from ZIP %s", inferred, postal_code)
-        return inferred
-    if cc == "CA" and postal_code:
-        inferred = _infer_ca_province_from_postal(postal_code)
-        if inferred:
-            logger.info("📦 Inferred CA province state_code=%s from postal %s", inferred, postal_code)
-        return inferred
-    return ""
-
-
-def _printful_variant_id_for_cart_line(item: dict) -> int:
-    """Prefer backend-style catalog resolver when present; else Printful IDs from the line only."""
-    if hasattr(printful_integration, "resolve_printful_variant_for_item"):
-        return printful_integration.resolve_printful_variant_for_item(item)
-    for key in ("printful_variant_id", "variant_id"):
-        raw = item.get(key)
-        if raw is not None:
-            try:
-                n = int(raw)
-                if n > 0:
-                    return n
-            except (TypeError, ValueError):
-                pass
-    logger.warning("Shipping: no Printful variant on line %s; using default 4012", item.get("product") or item.get("name"))
-    return 4012
-
-
-def _consolidated_printful_shipping_items_root(cart: list) -> list:
-    """One row per variant_id; sums qty across cart lines (matches backend Printful behavior)."""
-    from collections import defaultdict
-
-    if hasattr(printful_integration, "build_consolidated_shipping_items"):
-        return printful_integration.build_consolidated_shipping_items(cart)
-    counts = defaultdict(int)
-    for item in cart:
-        vid = _printful_variant_id_for_cart_line(item)
-        q = item.get("quantity") or item.get("qty") or 1
-        try:
-            q = int(q)
-        except (TypeError, ValueError):
-            q = 1
-        counts[int(vid)] += max(1, q)
-    return [{"variant_id": v, "quantity": q} for v, q in sorted(counts.items())]
-
-
-def adjust_printful_shipping_quote(quoted_usd):
-    """Same as backend: optional SHIPPING_MARKUP_PERCENT, SHIPPING_SURCHARGE_USD, SHIPPING_FLOOR_USD."""
-    try:
-        x = float(quoted_usd)
-    except (TypeError, ValueError):
-        return 0.0
-    if x < 0:
-        x = 0.0
-    raw = x
-    pct = os.getenv("SHIPPING_MARKUP_PERCENT")
-    if pct is not None and str(pct).strip() != "":
-        try:
-            x = x * (1.0 + float(pct) / 100.0)
-        except ValueError:
-            pass
-    sur = os.getenv("SHIPPING_SURCHARGE_USD")
-    if sur is not None and str(sur).strip() != "":
-        try:
-            x = x + float(sur)
-        except ValueError:
-            pass
-    fl = os.getenv("SHIPPING_FLOOR_USD")
-    if fl is not None and str(fl).strip() != "":
-        try:
-            x = max(x, float(fl))
-        except ValueError:
-            pass
-    out = round(x, 2)
-    if out != round(raw, 2):
-        logger.info("📦 Shipping store adjustment: Printful quote=%s -> charged=%s", raw, out)
-    return out
-
-
-def apply_printful_shipping_pipeline(api_usd, cart, country_code):
-    """Optional max(API, US table estimate) then markup / surcharge / floor."""
-    blended = api_usd
-    if _blend_printful_table_shipping is not None:
-        try:
-            blended = _blend_printful_table_shipping(float(api_usd), cart or [], country_code or "US")
-        except Exception as e:
-            logger.warning("📦 Shipping table floor skipped: %s", e)
-            blended = api_usd
-    return adjust_printful_shipping_quote(blended)
-
-
 @app.route("/api/calculate-shipping", methods=["POST", "OPTIONS"])
 def calculate_shipping():
-    """Calculate shipping via Printful only (POST https://api.printful.com/shipping/rates)."""
-    logger.info("📦 /api/calculate-shipping (Printful)")
+    """Calculate shipping cost for an order using Printify API"""
     if request.method == "OPTIONS":
         response = jsonify(success=True)
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         return response
-
+    
     try:
         data = request.get_json()
+        
+        # Get shipping address from frontend
         shipping_address = data.get('shipping_address', {})
         country = shipping_address.get('country_code', 'US')
+        postal_code = shipping_address.get('zip', '')
+        
+        # Get cart items from frontend
         cart = data.get('cart', [])
-
+        
         if not cart:
-            return jsonify({"success": False, "error": "No cart items provided"}), 400
-
-        printful_api_key = os.getenv("PRINTFUL_API_KEY")
-        postal_code = _parse_zip(shipping_address)
-        if not postal_code:
             return jsonify({
                 "success": False,
-                "error": "ZIP / Postal Code is required for shipping calculation"
+                "error": "No cart items provided"
             }), 400
+        
+        # Printify API configuration (read from environment)
+        printify_api_key = os.getenv("PRINTIFY_API_KEY") or os.getenv("PRINTFUL_API_KEY")
+        printify_base_url = "https://api.printify.com/v1"
 
-        logger.info(
-            "📦 Printful shipping: ZIP=%s country=%s items=%s",
-            postal_code, country, len(cart),
-        )
-        state_resolved = _resolve_state_code_for_shipping(shipping_address, country, postal_code)
-
-        last_integration_success = None
-        if printful_api_key and hasattr(printful_integration, 'calculate_shipping_rates'):
-            try:
-                recipient_data = {
-                    'country_code': country,
-                    'zip': postal_code,
-                    'state_code': state_resolved,
-                    'city': shipping_address.get('city', '')
-                }
-                result = printful_integration.calculate_shipping_rates(recipient_data, cart)
-                if result and result.get("success"):
-                    last_integration_success = result
-                if result and result.get('success') and not result.get('fallback'):
-                    return jsonify({
-                        "success": True,
-                        "shipping_cost": apply_printful_shipping_pipeline(result.get('shipping_cost', 0), cart, country),
-                        "currency": result.get('currency', 'USD'),
-                        "delivery_days": str(result.get('delivery_days', '5-7')),
-                        "shipping_method": result.get('shipping_method', 'Standard Shipping')
-                    })
-                if result and result.get('fallback'):
-                    logger.info("📦 Printful integration fallback; trying direct /shipping/rates")
-            except Exception as e:
-                logger.error(f"📦 Printful integration failed: {str(e)}")
-
-        if printful_api_key:
-            shipping_items = _consolidated_printful_shipping_items_root(cart)
-
-            shipping_payload = {
-                "recipient": {
-                    "country_code": country,
-                    "zip": postal_code,
-                    "state_code": state_resolved,
-                    "city": shipping_address.get('city', '')
-                },
-                "items": shipping_items,
-                "currency": "USD",
-                "locale": "en_US"
-            }
-            headers = {
-                'Authorization': f'Bearer {printful_api_key}',
-                'Content-Type': 'application/json'
-            }
-            logger.info("📦 POST %s", "https://api.printful.com/shipping/rates")
-            pf_response = requests.post(
-                "https://api.printful.com/shipping/rates",
-                json=shipping_payload,
-                headers=headers,
-                timeout=10
-            )
-            logger.info("📦 Printful status=%s body[:500]=%s", pf_response.status_code, pf_response.text[:500])
-
-            if pf_response.status_code == 200:
-                try:
-                    shipping_response = pf_response.json()
-                    if 'result' in shipping_response:
-                        rates_list = shipping_response['result']
-                        if rates_list and len(rates_list) > 0:
-                            standard_rate = None
-                            for rate in rates_list:
-                                rid = str(rate.get("id") or "").upper()
-                                if rid == "STANDARD" or "standard" in (rate.get("name") or "").lower():
-                                    standard_rate = rate
-                                    break
-                            rate = standard_rate or rates_list[0]
-                            cost = rate.get('rate') or rate.get('cost') or rate.get('price')
-                            if cost is None or cost == 0:
-                                return jsonify({
-                                    "success": False,
-                                    "error": "Unable to calculate shipping cost. Please verify your ZIP code and try again."
-                                }), 400
-                            return jsonify({
-                                "success": True,
-                                "shipping_cost": apply_printful_shipping_pipeline(cost, cart, country),
-                                "currency": "USD",
-                                "delivery_days": str(rate.get('minDeliveryDays', rate.get('estimated_days', '5-7'))),
-                                "shipping_method": rate.get('name', 'Standard Shipping')
-                            })
-                        return jsonify({
-                            "success": False,
-                            "error": "No shipping rates available for this location. Please verify your ZIP code or contact support."
-                        }), 400
-                    return jsonify({
-                        "success": False,
-                        "error": "Invalid response from shipping API. Please try again."
-                    }), 500
-                except Exception as parse_error:
-                    logger.error(f"📦 Parse error: {parse_error}")
-                    return jsonify({
-                        "success": False,
-                        "error": f"Error parsing shipping rates response: {str(parse_error)}"
-                    }), 500
-
-            error_detail = "Unknown error"
-            try:
-                error_data = pf_response.json()
-                err_obj = error_data.get("error") if isinstance(error_data.get("error"), dict) else {}
-                error_detail = (
-                    err_obj.get("message")
-                    or error_data.get("message")
-                    or error_data.get("error")
-                    or error_data.get("description", "Unknown error")
-                )
-                if isinstance(error_detail, dict):
-                    error_detail = str(error_detail)
-            except Exception:
-                error_detail = pf_response.text[:200] if pf_response.text else "Unknown error"
-            detail_lower = str(error_detail).lower()
-            if "state code" in detail_lower and "missing" in detail_lower:
-                user_msg = (
-                    "We could not look up your state from the ZIP code. "
-                    "Try re-entering your ZIP or contact support."
-                )
-            elif "out of stock" in detail_lower:
-                user_msg = (
-                    "We could not get a shipping quote for this cart. "
-                    "If this keeps happening, try removing the item and adding it again, or contact support."
-                )
-            else:
-                user_msg = f"Unable to calculate shipping. {error_detail}"
-
-            if (
-                last_integration_success
-                and last_integration_success.get("success")
-                and pf_response.status_code == 400
-            ):
-                try:
-                    sc_fb = float(last_integration_success.get("shipping_cost") or 0)
-                except (TypeError, ValueError):
-                    sc_fb = 0.0
-                if sc_fb > 0:
-                    logger.warning(
-                        "📦 Direct Printful /shipping/rates failed (%s); using integration quote=%s",
-                        pf_response.status_code,
-                        sc_fb,
-                    )
-                    return jsonify({
-                        "success": True,
-                        "shipping_cost": apply_printful_shipping_pipeline(sc_fb, cart, country),
-                        "currency": last_integration_success.get("currency", "USD"),
-                        "delivery_days": str(last_integration_success.get("delivery_days", "5-7")),
-                        "shipping_method": last_integration_success.get("shipping_method") or "Standard Shipping",
-                    })
-
+        if not printify_api_key:
+            logger.error("PRINTIFY_API_KEY/PRINTFUL_API_KEY is not configured")
+            # Fallback to default shipping without attempting external call
             return jsonify({
-                "success": False,
-                "error": user_msg
-            }), pf_response.status_code if pf_response.status_code < 600 else 500
-
-        logger.error("📦 PRINTFUL_API_KEY is not configured")
-        return jsonify({
-            "success": False,
-            "error": "Shipping calculation service is not configured. Please contact support."
-        }), 500
-
+                "success": True,
+                "shipping_cost": 5.99,
+                "currency": "USD",
+                "delivery_days": "5-7",
+                "shipping_method": "Standard Shipping",
+                "fallback": True
+            })
+        
+        # Calculate shipping using Printify API
+        shipping_data = {
+            "line_items": [],
+            "shipping_address": {
+                "country": country,
+                "postal_code": postal_code
+            }
+        }
+        
+        # Convert cart items to Printify format
+        for item in cart:
+            shipping_data["line_items"].append({
+                "variant_id": item.get('variant_id', 1),
+                "quantity": item.get('quantity', 1)
+            })
+        
+        # Make request to Printify shipping API
+        headers = {
+            'Authorization': f'Bearer {printify_api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        response = requests.post(
+            f"{printify_base_url}/shipping/rates",
+            json=shipping_data,
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            shipping_rates = response.json()
+            
+            # Get the first available shipping rate
+            if shipping_rates and len(shipping_rates) > 0:
+                rate = shipping_rates[0]
+                return jsonify({
+                    "success": True,
+                    "shipping_cost": rate.get('cost', 5.99),
+                    "currency": "USD",
+                    "delivery_days": rate.get('estimated_days', '5-7'),
+                    "shipping_method": rate.get('name', 'Standard Shipping')
+                })
+            else:
+                # Fallback if no rates available
+                return jsonify({
+                    "success": True,
+                    "shipping_cost": 5.99,
+                    "currency": "USD",
+                    "delivery_days": "5-7",
+                    "shipping_method": "Standard Shipping"
+                })
+        else:
+            logger.error(f"Printify API error: {response.status_code} - {response.text}")
+            # Fallback to default shipping
+            return jsonify({
+                "success": True,
+                "shipping_cost": 5.99,
+                "currency": "USD",
+                "delivery_days": "5-7",
+                "shipping_method": "Standard Shipping"
+            })
+        
     except Exception as e:
         logger.error(f"Error calculating shipping: {str(e)}")
+        # Fallback to default shipping
         return jsonify({
-            "success": False,
-            "error": f"Shipping calculation failed: {str(e)}. Please verify your ZIP code and try again."
-        }), 500
+            "success": True,
+            "shipping_cost": 5.99,
+            "currency": "USD",
+            "delivery_days": "5-7",
+            "shipping_method": "Standard Shipping"
+        })
 
 @app.route("/api/test-email-config", methods=["GET"])
 def test_email_config():
