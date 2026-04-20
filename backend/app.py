@@ -7766,16 +7766,35 @@ def favorite_lists_sales_summary():
         for key, agg in by_list.items():
             lid = agg["favorite_list_id"]
             meta = lists_map.get(str(lid)) if lid else None
+            if lid and meta:
+                bucket = "named"
+                display_name = (meta.get("display_name") or meta.get("slug") or "Favorites page").strip() or "Favorites page"
+                slug_out = meta.get("slug")
+            elif lid and not meta:
+                bucket = "orphan"
+                display_name = "Removed or unknown favorites page"
+                slug_out = None
+            else:
+                bucket = "none"
+                display_name = "Not attributed (no favorites page in session)"
+                slug_out = None
             out.append(
                 {
                     "favorite_list_id": lid,
-                    "display_name": (meta or {}).get("display_name") if meta else "Storefront (no list)",
-                    "slug": (meta or {}).get("slug") if meta else None,
+                    "bucket": bucket,
+                    "display_name": display_name,
+                    "slug": slug_out,
                     "order_count": agg["order_count"],
                     "total_amount": round(agg["total_amount"], 2),
                 }
             )
-        out.sort(key=lambda x: (x["display_name"] or "").lower())
+
+        def _sales_row_sort_key(row):
+            b = row.get("bucket") or "named"
+            bucket_order = {"named": 0, "orphan": 1, "none": 2}.get(b, 0)
+            return (bucket_order, (row.get("display_name") or "").lower())
+
+        out.sort(key=_sales_row_sort_key)
         return jsonify({"success": True, "by_list": out}), 200
     except Exception as e:
         logger.exception("favorite_lists_sales_summary: %s", e)

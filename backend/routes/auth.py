@@ -208,8 +208,16 @@ def auth_login():
                         domain=domain, path="/",
                         secure=True, httponly=True, samesite="None", max_age=7*24*3600
                     )
-                    # Store token -> user_id for /api/users/me validation (in-memory; single instance)
+                    # Store token -> user_id for /api/users/me validation (in-memory + DB for multi-instance Fly)
                     current_app.config.setdefault("session_token_store", {})[token] = user.get("id")
+                    try:
+                        import importlib
+
+                        _app = importlib.import_module("app")
+                        if hasattr(_app, "_persist_session_token"):
+                            _app._persist_session_token(token, str(user.get("id")))
+                    except Exception as pe:
+                        logger.warning("[LOGIN] Persist session token: %s", pe)
                     return resp
                 else:
                     response = jsonify({"success": False, "error": "Invalid email or password"})
@@ -942,6 +950,14 @@ def auth_verify_email():
                 secure=True, httponly=True, samesite="None", max_age=7*24*3600
             )
             current_app.config.setdefault("session_token_store", {})[token] = user_id
+            try:
+                import importlib
+
+                _app = importlib.import_module("app")
+                if hasattr(_app, "_persist_session_token"):
+                    _app._persist_session_token(token, str(user_id))
+            except Exception as pe:
+                logger.warning("[verify-email] Persist session token: %s", pe)
             return resp
         else:
             response = jsonify({"success": False, "error": "Failed to verify email"})

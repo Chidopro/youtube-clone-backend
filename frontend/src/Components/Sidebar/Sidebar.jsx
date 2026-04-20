@@ -4,7 +4,7 @@ import home from '../../assets/home.png'
 import { Link, useLocation } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
 import { useCreator } from '../../contexts/CreatorContext';
-import { getSubdomain } from '../../utils/subdomainService';
+import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { fetchPublicFavoriteLists } from '../../utils/favoriteListsApi';
 
 const Sidebar = ({sidebar, category, setCategory}) => {
@@ -17,8 +17,13 @@ const Sidebar = ({sidebar, category, setCategory}) => {
   const location = useLocation();
   const { currentCreator } = useCreator();
 
-  // Fetch ScreenMerch creators from backend so list works on main and all subdomains (bypasses RLS)
+  // Creator directory: main site only (screenmerch.com). Subdomains keep Favorites (+ optional channel tools elsewhere).
   useEffect(() => {
+    if (isCreatorStorefrontHostname()) {
+      setSubscribers([]);
+      setLoadingSubs(false);
+      return;
+    }
     const fetchCreators = async () => {
       setLoadingSubs(true);
       try {
@@ -32,7 +37,6 @@ const Sidebar = ({sidebar, category, setCategory}) => {
             avatar: c.avatar,
             subdomain: c.subdomain || '',
           }));
-          // Only show creators that have a usable link (subdomain or username); hide "phantom" entries that go nowhere
           const linkable = mapped.filter(
             c => (c.subdomain && c.subdomain.trim()) || (c.username && c.username.trim())
           );
@@ -114,6 +118,7 @@ const Sidebar = ({sidebar, category, setCategory}) => {
           <hr />
         </div>
       )}
+      {!isCreatorStorefrontHostname() && (
       <div className="subscribed-list">
         <h3 style={{ cursor: 'pointer' }} onClick={() => setShowSubs(s => !s)}>
           CREATORS {showSubs ? '▲' : '▼'}
@@ -157,6 +162,7 @@ const Sidebar = ({sidebar, category, setCategory}) => {
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

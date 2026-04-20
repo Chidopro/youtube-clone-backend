@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { API_CONFIG } from '../../config/apiConfig';
+import { API_CONFIG, apiJoin } from '../../config/apiConfig';
 import './Checkout.css';
 
 const Checkout = () => {
@@ -87,10 +87,10 @@ const Checkout = () => {
           quantity: it.qty || 1
         }))
       };
-      console.log('🚀 Calling shipping API:', API_CONFIG.ENDPOINTS.CALCULATE_SHIPPING);
+      console.log('🚀 Calling shipping API:', apiJoin('/api/calculate-shipping'));
       console.log('🚀 Payload:', payload);
       
-      const res = await fetch(API_CONFIG.ENDPOINTS.CALCULATE_SHIPPING, {
+      const res = await fetch(apiJoin('/api/calculate-shipping'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -101,7 +101,7 @@ const Checkout = () => {
       
       // Handle 404 errors specifically
       if (res.status === 404) {
-        throw new Error(`Shipping API endpoint not found (404). Please verify the backend is deployed and the endpoint exists at: ${API_CONFIG.ENDPOINTS.CALCULATE_SHIPPING}`);
+        throw new Error(`Shipping API endpoint not found (404). Please verify the backend is deployed and the endpoint exists at: ${apiJoin('/api/calculate-shipping')}`);
       }
       
       // Handle other error statuses
@@ -301,7 +301,7 @@ const Checkout = () => {
     setIsCheckoutLoading(true);
     const payloadJSON = JSON.stringify(payload);
     try {
-      const res = await fetch(API_CONFIG.ENDPOINTS.CREATE_CHECKOUT_SESSION, {
+      const res = await fetch(apiJoin('/api/create-checkout-session'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: payloadJSON,
@@ -325,7 +325,7 @@ const Checkout = () => {
         window.location.href = data.url;
         return;
       }
-      const res2 = await fetch(API_CONFIG.ENDPOINTS.PLACE_ORDER, {
+      const res2 = await fetch(apiJoin('/api/place-order'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: payloadJSON,

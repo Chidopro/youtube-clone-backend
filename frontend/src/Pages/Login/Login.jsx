@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
-import { API_CONFIG } from '../../config/apiConfig';
+import { getBackendUrl } from '../../config/apiConfig';
 import { supabase } from '../../supabaseClient';
 import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend } from '../../utils/userService';
+import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import './Login.css';
 
-// Helper function to check if we're on a subdomain
-const isSubdomain = () => {
-  const hostname = window.location.hostname;
-  return hostname !== 'screenmerch.com' && hostname !== 'www.screenmerch.com';
-};
-
-const BACKEND_URL =
-  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
-  (typeof process !== 'undefined' && process.env && process.env.REACT_APP_BACKEND_URL) ||
-  "https://screenmerch.fly.dev"; // final fallback
+/** On *.screenmerch.com storefronts, full reload keeps the user on this host (avoids rare SPA/cookie edge cases). */
+function goAfterAuth(pathWithQuery, navigateFn, navOptions) {
+  if (typeof window !== 'undefined' && isCreatorStorefrontHostname() && !navOptions?.state) {
+    const path = pathWithQuery.startsWith('/') ? pathWithQuery : `/${pathWithQuery}`;
+    window.location.replace(`${window.location.origin}${path}`);
+    return;
+  }
+  navigateFn(pathWithQuery, navOptions);
+}
 
 const Login = () => {
   const navigate = useNavigate();
@@ -80,16 +80,16 @@ const Login = () => {
         const userRole = user.role || 'customer';
         
         if (returnTo === 'merch') {
-          navigate('/merchandise', { replace: true });
+          goAfterAuth('/merchandise', navigate, { replace: true });
         } else if (returnTo === 'subscription-success') {
-          navigate('/subscription-success', { replace: true });
+          goAfterAuth('/subscription-success', navigate, { replace: true });
         } else if (userRole === 'customer') {
           // Always redirect to home page for customers
           console.log('🔄 Already logged in as customer, redirecting to home');
-          navigate('/', { replace: true });
+          goAfterAuth('/', navigate, { replace: true });
         } else {
           // Creators and admins go to dashboard
-          navigate('/dashboard', { replace: true });
+          goAfterAuth('/dashboard', navigate, { replace: true });
         }
       } catch (error) {
         console.error('Error parsing user data:', error);
@@ -122,8 +122,11 @@ const Login = () => {
     }
   }, [searchParams]);
 
-  // Always return absolute API URL (no more relative proxy assumption)
-  const apiUrl = (endpoint) => `${BACKEND_URL}${endpoint}`;
+  const apiUrl = (endpoint) => {
+    const base = getBackendUrl();
+    if (!base) return endpoint;
+    return `${String(base).replace(/\/$/, '')}${endpoint}`;
+  };
 
   // Customer (make a purchase) signup: email only → backend sends confirmation email to set password
   const handleCustomerEmailSubmit = async (e) => {
@@ -193,11 +196,11 @@ const Login = () => {
 
       const response = await fetch(url, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        // If you move to cookie sessions, also add: credentials: 'include'
         body: JSON.stringify(requestBody)
       });
 
@@ -241,7 +244,7 @@ const Login = () => {
           }
         } else {
           // Most likely the 404 HTML page from the frontend host
-          throw new Error(`Could not reach auth API (HTTP ${response.status}). Check BACKEND_URL.`);
+          throw new Error(`Could not reach auth API (HTTP ${response.status}). Check deployment and /api proxy.`);
         }
       }
 
@@ -366,9 +369,9 @@ const Login = () => {
         } else {
           setTimeout(() => {
             if (pendingPaypalEmail || pendingTaxId) {
-              navigate('/subscription-success');
+              goAfterAuth('/subscription-success', navigate, { replace: true });
             } else {
-              navigate('/payment-setup?ref=new_user');
+              goAfterAuth('/payment-setup?ref=new_user', navigate, { replace: true });
             }
           }, 1000);
         }
@@ -376,7 +379,7 @@ const Login = () => {
         // Login mode - check user role to redirect appropriately
         console.log('✅ Login successful, preparing redirect...', {
           userRole: data?.user?.role,
-          isSubdomain: isSubdomain(),
+          creatorStorefront: isCreatorStorefrontHostname(),
           returnTo: returnTo
         });
         
@@ -384,18 +387,18 @@ const Login = () => {
           const userRole = data?.user?.role || 'customer';
           if (returnTo === 'merch') {
             console.log('🔄 Redirecting to merchandise');
-            navigate('/merchandise', { replace: true });
+            goAfterAuth('/merchandise', navigate, { replace: true });
           } else if (returnTo === 'subscription-success') {
             console.log('🔄 Redirecting to subscription success');
-            navigate('/subscription-success', { replace: true });
+            goAfterAuth('/subscription-success', navigate, { replace: true });
           } else if (userRole === 'customer') {
             // Always redirect to home page for customers
             console.log('🔄 Customer login, redirecting to home page');
-            navigate('/', { replace: true }); // Use replace to avoid back button issues
+            goAfterAuth('/', navigate, { replace: true });
           } else {
             // Creators and admins stay on homepage after login
             console.log('🔄 Creator/Admin login, staying on homepage');
-            navigate('/', { replace: true });
+            goAfterAuth('/', navigate, { replace: true });
           }
         }, 700);
       }

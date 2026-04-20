@@ -59,9 +59,34 @@ export const API_CONFIG = {
   }
 };
 
-/** Single source for backend base URL - use this instead of hardcoding screenmerch.fly.dev */
+/**
+ * Base URL for API calls. On any screenmerch.com host (apex, www, or creator subdomain), use
+ * same-origin relative URLs so Netlify's /api → Fly proxy runs in first-party context and
+ * Set-Cookie can target .screenmerch.com. Direct fly.dev calls from subdomains break session cookies.
+ */
 export function getBackendUrl() {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'development') {
+    return API_CONFIG.BASE_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const host = (window.location.hostname || '').toLowerCase();
+    if (
+      host === 'screenmerch.com' ||
+      host === 'www.screenmerch.com' ||
+      (host.endsWith('.screenmerch.com') && host.length > 'screenmerch.com'.length)
+    ) {
+      return '';
+    }
+  }
   return API_CONFIG.BASE_URL;
+}
+
+/** Absolute or same-origin path for /api/... calls (subdomains use /api via Netlify proxy). */
+export function apiJoin(path) {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  const b = getBackendUrl();
+  if (!b) return p;
+  return `${String(b).replace(/\/$/, '')}${p}`;
 }
 
 export const getEndpoint = (endpoint, params = {}) => {

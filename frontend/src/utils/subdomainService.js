@@ -11,6 +11,17 @@ const BACKEND_URL =
  * Get current subdomain from window location
  * @returns {string|null} Subdomain or null if on main domain
  */
+/**
+ * True on creator storefront hosts like https://filialsons.screenmerch.com (not apex or www).
+ * Prefer this over getSubdomain() alone for UI that must hide on "main" site only.
+ */
+export const isCreatorStorefrontHostname = () => {
+  if (typeof window === 'undefined') return false;
+  const h = (window.location.hostname || '').toLowerCase();
+  if (h === 'screenmerch.com' || h === 'www.screenmerch.com') return false;
+  return h.endsWith('.screenmerch.com');
+};
+
 export const getSubdomain = () => {
   const hostname = window.location.hostname;
   const parts = hostname.split('.');

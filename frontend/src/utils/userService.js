@@ -68,11 +68,12 @@ export async function fetchMyProfileFromBackend(userId) {
             }
           } catch (_) {}
         }
-        console.log('[THANKYOU] Redirecting to main domain HOME (no thank-you user)');
-        localStorage.removeItem('user');
-        localStorage.removeItem('auth_token');
+        // Subdomain storefront: never send users to apex. Session cookie may be host-only; callers use localStorage fallback.
+        console.warn('[userService] /api/users/me returned 401 on creator subdomain — staying on this host (no redirect to screenmerch.com)');
+        try {
+          localStorage.removeItem('auth_token');
+        } catch (_) {}
       } catch (_) {}
-      window.location.replace('https://screenmerch.com');
       return null;
     }
     if (!res.ok) return null;

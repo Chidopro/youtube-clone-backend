@@ -112,12 +112,16 @@ const ChannelUmbrella = () => {
 
   return (
     <div className="channel-umbrella">
-      <p className="hint">
-        Invite collaborators to your umbrella network by username or email. They must accept before the link is active.
-        To remove someone after they are approved, contact ScreenMerch support. Payouts to friends are handled by you off-platform.
-      </p>
+      <section className="channel-umbrella-section" aria-labelledby="umbrella-collab-heading">
+        <h2 id="umbrella-collab-heading" className="channel-umbrella-section-title">
+          Collaborators
+        </h2>
+        <p className="hint">
+          Invite collaborators to your umbrella network by username or email. They must accept before the link is active.
+          To remove someone after they are approved, contact ScreenMerch support. Payouts to friends are handled by you off-platform.
+        </p>
 
-      <h2>Invite by username or email</h2>
+      <h3 className="channel-umbrella-subheading">Invite by username or email</h3>
       <form className="channel-umbrella-form" onSubmit={sendInvite}>
         <input
           type="text"
@@ -156,38 +160,43 @@ const ChannelUmbrella = () => {
           <span>{labelFor(row.user)}</span>
         </div>
       ))}
+      </section>
 
-      <h2>Sales by favorite page</h2>
-      <p className="hint">
-        Orders are attributed to the public favorite page the buyer had open when they checked out (main page or an extra page you created in Dashboard → Favorites).
-      </p>
-      {salesLoading ? <p>Loading…</p> : null}
-      {salesError ? <p className="channel-umbrella-msg error">{salesError}</p> : null}
-      {!salesLoading && !salesError && salesByList.length === 0 ? (
-        <p className="hint">No orders yet, or order data has no list attribution.</p>
-      ) : null}
-      {!salesLoading && !salesError && salesByList.length > 0 ? (
-        <table className="channel-umbrella-sales-table">
-          <thead>
-            <tr>
-              <th>Page</th>
-              <th>Slug</th>
-              <th>Orders</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {salesByList.map((row) => (
-              <tr key={String(row.favorite_list_id ?? row.slug ?? row.display_name)}>
-                <td>{row.display_name || '—'}</td>
-                <td>{row.slug || '—'}</td>
-                <td>{row.order_count}</td>
-                <td>${Number(row.total_amount || 0).toFixed(2)}</td>
+      <section className="channel-umbrella-section" aria-labelledby="umbrella-sales-heading">
+        <h2 id="umbrella-sales-heading" className="channel-umbrella-section-title">
+          Sales by favorite page
+        </h2>
+        <p className="hint">
+          Orders are attributed to the public favorite page the buyer had open when they checked out (main page or an extra page you created in Dashboard → Favorites).
+        </p>
+        {salesLoading ? <p>Loading…</p> : null}
+        {salesError ? <p className="channel-umbrella-msg error">{salesError}</p> : null}
+        {!salesLoading && !salesError && salesByList.length === 0 ? (
+          <p className="hint">No orders yet, or order data has no list attribution.</p>
+        ) : null}
+        {!salesLoading && !salesError && salesByList.length > 0 ? (
+          <table className="channel-umbrella-sales-table">
+            <thead>
+              <tr>
+                <th>Page</th>
+                <th>Slug</th>
+                <th>Orders</th>
+                <th>Total</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : null}
+            </thead>
+            <tbody>
+              {salesByList.map((row) => (
+                <tr key={String(row.favorite_list_id ?? row.slug ?? row.display_name)}>
+                  <td>{row.display_name || '—'}</td>
+                  <td>{row.slug || '—'}</td>
+                  <td>{row.order_count}</td>
+                  <td>${Number(row.total_amount || 0).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
+      </section>
     </div>
   );
 };

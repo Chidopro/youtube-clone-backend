@@ -143,13 +143,33 @@ def _cookie_domain():
 
 
 def get_cookie_domain():
-    host = request.host.lower()
-    if "screenmerch.com" in host:
-        return ".screenmerch.com"
-    elif "localhost" in host:
+    """
+    Cookie Domain for sm_session. When the API is hit via Fly (request.host=*.fly.dev) but the
+    browser is on a creator subdomain (Origin / X-Forwarded-Host), we must still use .screenmerch.com
+    so the storefront receives the cookie.
+    """
+    host = (request.host or "").lower()
+    forwarded = (request.headers.get("X-Forwarded-Host") or "").split(",")[0].strip().lower()
+    origin = (request.headers.get("Origin") or "").strip()
+    origin_host = ""
+    if origin:
+        try:
+            from urllib.parse import urlparse
+
+            origin_host = (urlparse(origin).hostname or "").lower()
+        except Exception:
+            origin_host = ""
+
+    # Prefer Origin host first so creator subdomains win over proxy Host (fly.dev) or stale X-Forwarded-Host.
+    for candidate in (origin_host, forwarded, host):
+        if not candidate:
+            continue
+        if candidate.endswith(".screenmerch.com") or candidate in ("screenmerch.com", "www.screenmerch.com"):
+            return ".screenmerch.com"
+
+    if "localhost" in host:
         return None
-    else:
-        return ".screenmerch.fly.dev"
+    return ".screenmerch.fly.dev"
 
 
 def _allow_origin(resp):

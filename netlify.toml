@@ -23,8 +23,8 @@
   to = "https://screenmerch.fly.dev/api/:splat"
   status = 200
   force = true
-  [redirects.headers]
-    X-Forwarded-Host = "screenmerch.com"
+  # Do not set X-Forwarded-Host to apex — it hides the real host (e.g. filialsons.screenmerch.com)
+  # from upstream logic. The browser still sends Origin; backend uses Origin for cookies / redirects.
 
 # SPA routing so /product/:id works (incl. mobile)
 [[redirects]]

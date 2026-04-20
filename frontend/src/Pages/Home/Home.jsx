@@ -71,6 +71,14 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         }
         const rows = data.favorites || [];
         setFavoritesCount(rows.length);
+        if (data.list?.id) {
+          try {
+            localStorage.setItem('sm_favorite_list_id', data.list.id);
+            localStorage.setItem('sm_favorite_list_slug', data.list.slug || 'owner');
+          } catch (_) {
+            /* ignore */
+          }
+        }
         if (rows.length > 0) {
           setFavoritesPreview(rows.slice(0, 4).map((f) => f.image_url || f.thumbnail_url).filter(Boolean));
         } else {
