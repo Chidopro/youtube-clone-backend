@@ -288,6 +288,11 @@ const Checkout = () => {
     };
     if (selectedScreenshot) payload.selected_screenshot = selectedScreenshot;
 
+    try {
+      const flid = localStorage.getItem('sm_favorite_list_id');
+      if (flid && flid.trim()) payload.favorite_list_id = flid.trim();
+    } catch (_) { /* ignore */ }
+
     if (!payload.shipping_address?.zip) {
       alert('⚠️ Error: Shipping address is missing. Please refresh and try again.');
       return;

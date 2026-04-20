@@ -100,7 +100,31 @@ def _ensure_stripe_test_mode():
         logger.warning("⚠️ Using non-test Stripe key - ensure this is intentional")
 
 
-def _record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=None):
+def _resolve_favorite_list_id_for_order(data, creator_user_id_from_subdomain):
+    """Attribution: list must exist and belong to the subdomain creator. Returns UUID str or None."""
+    if not creator_user_id_from_subdomain or not data:
+        return None
+    raw = data.get("favorite_list_id") or data.get("favoriteListId")
+    if not raw:
+        return None
+    try:
+        uuid.UUID(str(raw))
+    except (ValueError, TypeError, AttributeError):
+        return None
+    client = _get_supabase_admin() or _get_supabase_client()
+    if not client:
+        return None
+    try:
+        r = client.table("creator_favorite_lists").select("id, owner_user_id").eq("id", str(raw)).limit(1).execute()
+        row = (r.data or [None])[0]
+        if not row or str(row.get("owner_user_id")) != str(creator_user_id_from_subdomain):
+            return None
+        return str(row["id"])
+    except Exception:
+        return None
+
+
+def _record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=None, favorite_list_id=None):
     """Record a sale in the database"""
     from datetime import datetime
     
@@ -174,10 +198,20 @@ def _record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=N
         "friend_id": friend_id,
         "channel_id": channel_id
     }
-    
+    if favorite_list_id:
+        sale_data["favorite_list_id"] = favorite_list_id
+
     try:
         if client:
-            client.table('sales').insert(sale_data).execute()
+            try:
+                client.table('sales').insert(sale_data).execute()
+            except Exception as ins_err:
+                err_s = str(ins_err).lower()
+                if "favorite_list_id" in err_s and "column" in err_s:
+                    sale_data.pop("favorite_list_id", None)
+                    client.table('sales').insert(sale_data).execute()
+                else:
+                    raise
             
             # Create creator earnings if creator_user_id exists
             if creator_user_id:
@@ -355,6 +389,8 @@ def place_order():
         except Exception:
             pass
         
+        favorite_list_id = _resolve_favorite_list_id_for_order(data, creator_user_id_from_subdomain)
+
         # Prepare order data
         order_data = {
             "order_id": order_id,
@@ -371,17 +407,28 @@ def place_order():
             "shipping_address": shipping_address,
             "status": "pending",
         }
+        if favorite_list_id:
+            order_data["favorite_list_id"] = favorite_list_id
         
         if top_level_screenshot:
             order_data["selected_screenshot"] = top_level_screenshot
         
-        # Store in database
-        client = _get_supabase_client()
+        # Store in database (prefer service role so inserts succeed)
+        write_client = _get_supabase_admin() or _get_supabase_client()
         stored_in_db = False
         try:
-            if client:
-                client.table('orders').insert(order_data).execute()
-                stored_in_db = True
+            if write_client:
+                try:
+                    write_client.table('orders').insert(order_data).execute()
+                    stored_in_db = True
+                except Exception as insert_err:
+                    err_s = str(insert_err).lower()
+                    if "favorite_list_id" in err_s and ("column" in err_s or "schema" in err_s):
+                        order_data.pop("favorite_list_id", None)
+                        write_client.table('orders').insert(order_data).execute()
+                        stored_in_db = True
+                    else:
+                        raise
         except Exception as db_error:
             logger.error(f"❌ Failed to store order in database: {str(db_error)}")
         
@@ -401,6 +448,8 @@ def place_order():
             "created_at": data.get("created_at", "Recent"),
             "shipping_address": shipping_address,
         }
+        if favorite_list_id:
+            order_store[order_id]["favorite_list_id"] = favorite_list_id
         
         # Send admin notification email
         resend_api_key = _get_config('RESEND_API_KEY')
@@ -553,6 +602,8 @@ def send_order():
         except Exception:
             pass
         
+        favorite_list_id = _resolve_favorite_list_id_for_order(data, creator_user_id_from_subdomain)
+
         # Store order
         order_store = _get_order_store()
         order_store[order_id] = {
@@ -568,6 +619,8 @@ def send_order():
             "status": "pending",
             "created_at": data.get("created_at", "Recent")
         }
+        if favorite_list_id:
+            order_store[order_id]["favorite_list_id"] = favorite_list_id
         
         # Record sales
         for item in cart:
@@ -575,7 +628,7 @@ def send_order():
             item['video_title'] = data.get('video_title', '')
             item['creator_name'] = data.get('creator_name', '')
             item['screenshot_timestamp'] = data.get('screenshot_timestamp', '')
-            _record_sale(item, user_id=creator_user_id_from_subdomain, order_id=order_id)
+            _record_sale(item, user_id=creator_user_id_from_subdomain, order_id=order_id, favorite_list_id=favorite_list_id)
         
         # Send email notification
         resend_api_key = _get_config('RESEND_API_KEY')
@@ -788,6 +841,8 @@ def create_checkout_session():
         except Exception:
             pass
         
+        favorite_list_id = _resolve_favorite_list_id_for_order(data, creator_user_id_from_subdomain)
+
         # Store order in database
         order_data = {
             "order_id": order_id,
@@ -804,6 +859,8 @@ def create_checkout_session():
             "shipping_address": shipping_address,
             "status": "pending"
         }
+        if favorite_list_id:
+            order_data["favorite_list_id"] = favorite_list_id
         
         if checkout_screenshot:
             order_data["selected_screenshot"] = checkout_screenshot
@@ -816,8 +873,17 @@ def create_checkout_session():
         
         try:
             if write_client:
-                write_client.table('orders').insert(order_data).execute()
-                logger.info("Order %s stored in database (with screenshot: %s)", order_id, bool(checkout_screenshot))
+                try:
+                    write_client.table('orders').insert(order_data).execute()
+                    logger.info("Order %s stored in database (with screenshot: %s)", order_id, bool(checkout_screenshot))
+                except Exception as insert_err:
+                    err_s = str(insert_err).lower()
+                    if "favorite_list_id" in err_s and ("column" in err_s or "schema" in err_s):
+                        order_data.pop("favorite_list_id", None)
+                        write_client.table('orders').insert(order_data).execute()
+                        logger.info("Order %s stored without favorite_list_id (column missing)", order_id)
+                    else:
+                        raise
         except Exception as e:
             logger.error("Failed to store order %s in database: %s", order_id, e)
         
@@ -837,6 +903,8 @@ def create_checkout_session():
         }
         if checkout_screenshot:
             order_store[order_id]["selected_screenshot"] = checkout_screenshot
+        if favorite_list_id:
+            order_store[order_id]["favorite_list_id"] = favorite_list_id
         
         # Build Stripe line items
         products = _get_products_list()
@@ -903,7 +971,8 @@ def create_checkout_session():
                 "order_id": order_id,
                 "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
                 "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
-                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
+                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                **({"favorite_list_id": str(favorite_list_id)} if favorite_list_id else {}),
             }
         }
         
@@ -1049,10 +1118,11 @@ def stripe_webhook():
                             pass
                 
                 # Record sales
+                fl_attribution = order_data.get("favorite_list_id")
                 for item in cart:
                     item['video_title'] = order_data.get('video_title', 'Unknown Video')
                     item['creator_name'] = order_data.get('creator_name', 'Unknown Creator')
-                    _record_sale(item, user_id=creator_user_id, order_id=order_id)
+                    _record_sale(item, user_id=creator_user_id, order_id=order_id, favorite_list_id=fl_attribution)
                 
                 # Send admin notification email (single source: build_admin_order_email — one screenshot, Print Quality link, no admin login)
                 resend_api_key = _get_config('RESEND_API_KEY')
@@ -1243,8 +1313,9 @@ def success():
                             except Exception:
                                 pass
                     
+                    fl_attribution = order_data.get("favorite_list_id")
                     for item in cart:
-                        _record_sale(item, user_id=creator_user_id, order_id=order_id)
+                        _record_sale(item, user_id=creator_user_id, order_id=order_id, favorite_list_id=fl_attribution)
             
             return render_template('success.html')
         except Exception as e:

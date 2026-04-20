@@ -79,3 +79,28 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.channel-umbrella-sales-table {
+  width: 100%;
+  max-width: 640px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+
+.channel-umbrella-sales-table th,
+.channel-umbrella-sales-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.channel-umbrella-sales-table th {
+  color: #aaa;
+  font-weight: 600;
+}
+
+.channel-umbrella-sales-table td:nth-child(3),
+.channel-umbrella-sales-table td:nth-child(4) {
+  text-align: right;
+}

@@ -302,6 +302,7 @@ const App = () => {
                 <Route path="/admin-signup" element={<AdminSignup />} />
                 <Route path="/creator-thank-you" element={<CreatorThankYou />} />
                 <Route path="/favorites" element={<Favorites sidebar={sidebar} />} />
+                <Route path="/favorites/:listSlug" element={<Favorites sidebar={sidebar} />} />
                 {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
               </Routes>
             </div>

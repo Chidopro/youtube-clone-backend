@@ -1,46 +1,57 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
-import { getBackendUrl } from '../../config/apiConfig';
+import { getSubdomain } from '../../utils/subdomainService';
+import { fetchPublicFavoritesByList } from '../../utils/favoriteListsApi';
 import './Favorites.css';
 
 const Favorites = ({ sidebar }) => {
   const navigate = useNavigate();
+  const { listSlug } = useParams();
   const { currentCreator } = useCreator();
   const [favorites, setFavorites] = useState([]);
+  const [listMeta, setListMeta] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const effectiveSlug = (listSlug || 'owner').toLowerCase();
 
   useEffect(() => {
-    const fetchFavorites = async () => {
-      if (!currentCreator?.id) {
+    const run = async () => {
+      const sub = getSubdomain();
+      if (!sub || !currentCreator?.id) {
         setLoading(false);
+        setFavorites([]);
+        setError('');
         return;
       }
 
       setLoading(true);
+      setError('');
       try {
-        const { data: userFavorites, error } = await supabase
-          .from('creator_favorites')
-          .select('*')
-          .eq('user_id', currentCreator.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching favorites:', error);
+        const { ok, data } = await fetchPublicFavoritesByList(sub, effectiveSlug);
+        if (!ok || !data.success) {
+          setError(data?.error || 'Could not load favorites');
           setFavorites([]);
+          setListMeta(null);
         } else {
-          setFavorites(userFavorites || []);
+          setListMeta(data.list || null);
+          setFavorites(data.favorites || []);
+          if (data.list?.id) {
+            try {
+              localStorage.setItem('sm_favorite_list_id', data.list.id);
+              localStorage.setItem('sm_favorite_list_slug', data.list.slug || effectiveSlug);
+            } catch (_) {}
+          }
         }
-      } catch (err) {
-        console.error('Error fetching favorites:', err);
+      } catch (e) {
+        setError(e.message || 'Network error');
         setFavorites([]);
       }
       setLoading(false);
     };
-
-    fetchFavorites();
-  }, [currentCreator?.id]);
+    run();
+  }, [currentCreator?.id, effectiveSlug]);
 
   const handleMakeMerch = async (favorite) => {
     const imageUrl = favorite.image_url || favorite.thumbnail_url;
@@ -49,7 +60,6 @@ const Favorites = ({ sidebar }) => {
       return;
     }
 
-    // Set pending_merch_data which ProductPage reads for screenshot selection
     const merchData = {
       thumbnail: imageUrl,
       screenshots: [imageUrl],
@@ -60,9 +70,10 @@ const Favorites = ({ sidebar }) => {
     localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
     localStorage.setItem('creator_favorites_mode', 'false');
 
-    // Navigate to category selection page first
     navigate('/merchandise');
   };
+
+  const pageTitle = listMeta?.display_name || `${currentCreator?.display_name || 'Creator'}'s Favorites`;
 
   if (loading) {
     return (
@@ -75,22 +86,28 @@ const Favorites = ({ sidebar }) => {
   return (
     <div className={`favorites-page ${sidebar ? '' : 'large-container'}`}>
       <div className="favorites-header">
-        <button className="favorites-back-btn" onClick={() => navigate('/')}>
+        <button type="button" className="favorites-back-btn" onClick={() => navigate('/')}>
           ← Back
         </button>
-        <h1>⭐ {currentCreator?.display_name || 'Creator'}'s Favorites</h1>
+        <h1>⭐ {pageTitle}</h1>
         <p className="favorites-subtitle">
-          {favorites.length} favorite{favorites.length !== 1 ? 's' : ''} curated by the creator
+          {error ? <span style={{ color: '#c00' }}>{error}</span> : (
+            <>
+              {favorites.length} favorite{favorites.length !== 1 ? 's' : ''} on this page
+            </>
+          )}
         </p>
       </div>
 
-      {favorites.length === 0 ? (
+      {favorites.length === 0 && !error ? (
         <div className="favorites-empty">
           <div className="favorites-empty-icon">⭐</div>
           <h2>No favorites yet</h2>
-          <p>The creator hasn't added any favorites yet. Check back later!</p>
+          <p>The creator hasn&apos;t added any favorites to this page yet. Check back later!</p>
         </div>
-      ) : (
+      ) : null}
+
+      {favorites.length > 0 ? (
         <div className="favorites-grid">
           {favorites.map((favorite) => (
             <div className="favorites-card" key={favorite.id}>
@@ -104,6 +121,7 @@ const Favorites = ({ sidebar }) => {
                 <h3>{favorite.title || 'Untitled'}</h3>
                 {favorite.description && <p>{favorite.description}</p>}
                 <button
+                  type="button"
                   className="favorites-make-merch-btn"
                   onClick={() => handleMakeMerch(favorite)}
                 >
@@ -113,7 +131,7 @@ const Favorites = ({ sidebar }) => {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

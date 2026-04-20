@@ -5,6 +5,7 @@ import './Home.css'
 import { useNavigate, Link } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
+import { fetchPublicFavoritesByList } from '../../utils/favoriteListsApi';
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
 import API_CONFIG from '../../config/apiConfig';
 import { mockVideos } from '../../mockVideos';
@@ -52,33 +53,28 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     fetchVideos();
   }, [category, currentCreator?.id]);
 
-  // Fetch favorites count and preview for the Favorites card
+  // Fetch favorites count and preview for the Favorites card (primary list on subdomain)
   useEffect(() => {
     const fetchFavorites = async () => {
-      if (!currentCreator?.id) {
+      const sub = getSubdomain();
+      if (!sub || !currentCreator?.id) {
         setFavoritesCount(0);
         setFavoritesPreview(null);
         return;
       }
       try {
-        const { data, error } = await supabase
-          .from('creator_favorites')
-          .select('id, image_url, thumbnail_url')
-          .eq('user_id', currentCreator.id)
-          .order('created_at', { ascending: false })
-          .limit(4);
-        
-        if (error) {
-          console.error('Error fetching favorites preview:', error);
+        const { ok, data } = await fetchPublicFavoritesByList(sub, 'owner');
+        if (!ok || !data.success) {
           setFavoritesCount(0);
           setFavoritesPreview(null);
+          return;
+        }
+        const rows = data.favorites || [];
+        setFavoritesCount(rows.length);
+        if (rows.length > 0) {
+          setFavoritesPreview(rows.slice(0, 4).map((f) => f.image_url || f.thumbnail_url).filter(Boolean));
         } else {
-          setFavoritesCount(data?.length || 0);
-          if (data && data.length > 0) {
-            setFavoritesPreview(data.map(f => f.image_url || f.thumbnail_url).filter(Boolean));
-          } else {
-            setFavoritesPreview(null);
-          }
+          setFavoritesPreview(null);
         }
       } catch (err) {
         console.error('Error fetching favorites:', err);

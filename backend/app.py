@@ -6975,12 +6975,97 @@ def upload_favorite():
             "image_url": public_url,
             "thumbnail_url": public_url,
         }
-        result = supabase_admin.table("creator_favorites").insert(insert_data).execute()
+        list_id_form = (request.form.get("list_id") or "").strip()
+        try:
+            pid = _fl_ensure_primary_list(user_id)
+            target_list = None
+            if list_id_form:
+                chk = (
+                    supabase_admin.table("creator_favorite_lists")
+                    .select("id")
+                    .eq("id", list_id_form)
+                    .eq("owner_user_id", user_id)
+                    .limit(1)
+                    .execute()
+                )
+                if chk.data:
+                    target_list = chk.data[0]["id"]
+            if not target_list and pid:
+                target_list = pid
+            if target_list:
+                insert_data["list_id"] = target_list
+        except Exception as list_err:
+            logger.warning("upload_favorite list attach skipped: %s", list_err)
+
+        try:
+            result = supabase_admin.table("creator_favorites").insert(insert_data).execute()
+        except Exception as ins_err:
+            if "list_id" in str(ins_err).lower() and ("column" in str(ins_err).lower() or "schema" in str(ins_err).lower()):
+                insert_data.pop("list_id", None)
+                result = supabase_admin.table("creator_favorites").insert(insert_data).execute()
+            else:
+                raise
         if not result.data or len(result.data) == 0:
             return jsonify({"success": False, "error": "Failed to save favorite"}), 500
         return jsonify({"success": True, "favorite": result.data[0]}), 200
     except Exception as e:
         logger.exception("upload_favorite: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/favorites/move-list", methods=["POST", "OPTIONS"])
+def favorite_move_list():
+    """Move a creator_favorites row to another list owned by the same creator (service role)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can move favorites"}), 403
+        data = request.get_json() or {}
+        fav_id = (data.get("favorite_id") or data.get("id") or "").strip()
+        new_list_id = (data.get("list_id") or "").strip()
+        if not fav_id or not new_list_id:
+            return jsonify({"success": False, "error": "favorite_id and list_id are required"}), 400
+        fr = (
+            supabase_admin.table("creator_favorites")
+            .select("id,user_id,list_id")
+            .eq("id", fav_id)
+            .limit(1)
+            .execute()
+        )
+        row = (fr.data or [None])[0]
+        if not row or str(row.get("user_id")) != str(user_id):
+            return jsonify({"success": False, "error": "Favorite not found"}), 404
+        lr = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("id")
+            .eq("id", new_list_id)
+            .eq("owner_user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if not lr.data:
+            return jsonify({"success": False, "error": "List not found"}), 404
+        up = (
+            supabase_admin.table("creator_favorites")
+            .update({"list_id": new_list_id})
+            .eq("id", fav_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        out = (up.data or [None])[0]
+        if not out:
+            q = supabase_admin.table("creator_favorites").select("*").eq("id", fav_id).limit(1).execute()
+            out = (q.data or [None])[0]
+        return jsonify({"success": True, "favorite": out}), 200
+    except Exception as e:
+        logger.exception("favorite_move_list: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -7386,6 +7471,314 @@ def channel_friends_cancel():
         return jsonify({"success": True, "deleted_id": row["id"], "updated_at": now_iso}), 200
     except Exception as e:
         logger.exception("channel_friends_cancel: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def _fl_slugify(raw):
+    s = (raw or "").strip().lower()
+    s = re.sub(r"[^a-z0-9-]+", "-", s)
+    s = re.sub(r"-+", "-", s).strip("-")
+    return s[:64] if s else ""
+
+
+def _fl_ensure_primary_list(owner_id):
+    """Create primary 'owner' list if missing; attach orphan favorites to it."""
+    if not supabase_admin:
+        return None
+    r = (
+        supabase_admin.table("creator_favorite_lists")
+        .select("id")
+        .eq("owner_user_id", owner_id)
+        .eq("is_primary", True)
+        .limit(1)
+        .execute()
+    )
+    if r.data:
+        pid = r.data[0]["id"]
+    else:
+        u = supabase_admin.table("users").select("display_name,username").eq("id", owner_id).limit(1).execute()
+        label = "Favorites"
+        if u.data:
+            label = (u.data[0].get("display_name") or u.data[0].get("username") or "Favorites") + " (owner)"
+        ins = (
+            supabase_admin.table("creator_favorite_lists")
+            .insert(
+                {
+                    "owner_user_id": owner_id,
+                    "slug": "owner",
+                    "display_name": label[:120],
+                    "sort_order": 0,
+                    "is_primary": True,
+                }
+            )
+            .execute()
+        )
+        if not ins.data:
+            return None
+        pid = ins.data[0]["id"]
+    try:
+        supabase_admin.table("creator_favorites").update({"list_id": pid}).eq("user_id", owner_id).is_("list_id", "null").execute()
+    except Exception:
+        pass
+    return pid
+
+
+@app.route("/api/favorite-lists/mine", methods=["GET", "OPTIONS"])
+def favorite_lists_mine():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can manage favorite pages"}), 403
+        _fl_ensure_primary_list(user_id)
+        lr = supabase_admin.table("creator_favorite_lists").select("*").eq("owner_user_id", user_id).execute()
+        lists = lr.data or []
+        lists.sort(key=lambda L: (0 if L.get("is_primary") else 1, L.get("sort_order") or 0, (L.get("display_name") or "").lower()))
+        return jsonify({"success": True, "lists": lists}), 200
+    except Exception as e:
+        logger.exception("favorite_lists_mine: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/favorite-lists", methods=["POST", "OPTIONS"])
+def favorite_lists_create():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can create favorite pages"}), 403
+        _fl_ensure_primary_list(user_id)
+        data = request.get_json() or {}
+        display_name = (data.get("display_name") or "").strip()
+        if not display_name:
+            return jsonify({"success": False, "error": "display_name is required"}), 400
+        slug_in = data.get("slug")
+        slug = _fl_slugify(slug_in) if slug_in else _fl_slugify(display_name)
+        if not slug or slug == "owner":
+            return jsonify({"success": False, "error": "Invalid or reserved slug"}), 400
+        ex = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("id")
+            .eq("owner_user_id", user_id)
+            .eq("slug", slug)
+            .limit(1)
+            .execute()
+        )
+        if ex.data:
+            return jsonify({"success": False, "error": "Slug already in use"}), 400
+        mx = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("sort_order")
+            .eq("owner_user_id", user_id)
+            .order("sort_order", desc=True)
+            .limit(1)
+            .execute()
+        )
+        next_ord = 1 + int((mx.data or [{}])[0].get("sort_order") or 0)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        ins = (
+            supabase_admin.table("creator_favorite_lists")
+            .insert(
+                {
+                    "owner_user_id": user_id,
+                    "slug": slug,
+                    "display_name": display_name[:120],
+                    "sort_order": next_ord,
+                    "is_primary": False,
+                    "created_at": now_iso,
+                    "updated_at": now_iso,
+                }
+            )
+            .execute()
+        )
+        if not ins.data:
+            return jsonify({"success": False, "error": "Insert failed"}), 500
+        return jsonify({"success": True, "list": ins.data[0]}), 200
+    except Exception as e:
+        logger.exception("favorite_lists_create: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/favorite-lists/delete", methods=["POST", "OPTIONS"])
+def favorite_lists_delete():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        data = request.get_json() or {}
+        lid = (data.get("id") or "").strip()
+        if not lid:
+            return jsonify({"success": False, "error": "id is required"}), 400
+        r = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("*")
+            .eq("id", lid)
+            .eq("owner_user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        row = (r.data or [None])[0]
+        if not row:
+            return jsonify({"success": False, "error": "List not found"}), 404
+        if row.get("is_primary"):
+            return jsonify({"success": False, "error": "Cannot delete the primary owner list"}), 400
+        primary_id = _fl_ensure_primary_list(user_id)
+        moved_count = 0
+        if primary_id:
+            try:
+                mov = (
+                    supabase_admin.table("creator_favorites")
+                    .update({"list_id": primary_id})
+                    .eq("list_id", lid)
+                    .eq("user_id", user_id)
+                    .execute()
+                )
+                moved_count = len(mov.data or [])
+            except Exception as mv_err:
+                logger.warning("favorite_lists_delete reassign: %s", mv_err)
+        supabase_admin.table("creator_favorite_lists").delete().eq("id", lid).execute()
+        return jsonify({"success": True, "moved_favorites_to_main": moved_count}), 200
+    except Exception as e:
+        logger.exception("favorite_lists_delete: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/public/favorite-lists", methods=["GET", "OPTIONS"])
+def public_favorite_lists():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        sub = (request.args.get("subdomain") or "").strip().lower()
+        if not sub or sub == "www":
+            return jsonify({"success": False, "error": "subdomain is required"}), 400
+        cr = supabase_admin.table("users").select("id").eq("subdomain", sub).limit(1).execute()
+        if not cr.data:
+            return jsonify({"success": True, "lists": []}), 200
+        owner_id = cr.data[0]["id"]
+        _fl_ensure_primary_list(owner_id)
+        lr = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("id, slug, display_name, is_primary, sort_order")
+            .eq("owner_user_id", owner_id)
+            .execute()
+        )
+        lists = lr.data or []
+        lists.sort(key=lambda L: (0 if L.get("is_primary") else 1, L.get("sort_order") or 0, (L.get("display_name") or "").lower()))
+        return jsonify({"success": True, "lists": lists}), 200
+    except Exception as e:
+        logger.exception("public_favorite_lists: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/public/favorites-by-list", methods=["GET", "OPTIONS"])
+def public_favorites_by_list():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        sub = (request.args.get("subdomain") or "").strip().lower()
+        slug = (request.args.get("list_slug") or "owner").strip().lower() or "owner"
+        if not sub or sub == "www":
+            return jsonify({"success": False, "error": "subdomain is required"}), 400
+        cr = supabase_admin.table("users").select("id").eq("subdomain", sub).limit(1).execute()
+        if not cr.data:
+            return jsonify({"success": False, "error": "Creator not found"}), 404
+        owner_id = cr.data[0]["id"]
+        lr = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("*")
+            .eq("owner_user_id", owner_id)
+            .eq("slug", slug)
+            .limit(1)
+            .execute()
+        )
+        row = (lr.data or [None])[0]
+        if not row:
+            return jsonify({"success": False, "error": "List not found"}), 404
+        fr = (
+            supabase_admin.table("creator_favorites")
+            .select("*")
+            .eq("list_id", row["id"])
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return jsonify({"success": True, "list": row, "favorites": fr.data or []}), 200
+    except Exception as e:
+        logger.exception("public_favorites_by_list: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/favorite-lists/sales-summary", methods=["GET", "OPTIONS"])
+def favorite_lists_sales_summary():
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can view sales summary"}), 403
+        ords = (
+            supabase_admin.table("orders")
+            .select("order_id, favorite_list_id, total_amount, status, created_at")
+            .eq("creator_user_id", user_id)
+            .execute()
+        )
+        rows = ords.data or []
+        by_list = {}
+        for o in rows:
+            lid = o.get("favorite_list_id")
+            key = str(lid) if lid else "__none__"
+            if key not in by_list:
+                by_list[key] = {"favorite_list_id": lid, "order_count": 0, "total_amount": 0.0}
+            by_list[key]["order_count"] += 1
+            try:
+                by_list[key]["total_amount"] += float(o.get("total_amount") or 0)
+            except (TypeError, ValueError):
+                pass
+        lists_map = {}
+        lr = supabase_admin.table("creator_favorite_lists").select("id, display_name, slug").eq("owner_user_id", user_id).execute()
+        for L in lr.data or []:
+            lists_map[str(L["id"])] = L
+        out = []
+        for key, agg in by_list.items():
+            lid = agg["favorite_list_id"]
+            meta = lists_map.get(str(lid)) if lid else None
+            out.append(
+                {
+                    "favorite_list_id": lid,
+                    "display_name": (meta or {}).get("display_name") if meta else "Storefront (no list)",
+                    "slug": (meta or {}).get("slug") if meta else None,
+                    "order_count": agg["order_count"],
+                    "total_amount": round(agg["total_amount"], 2),
+                }
+            )
+        out.sort(key=lambda x: (x["display_name"] or "").lower())
+        return jsonify({"success": True, "by_list": out}), 200
+    except Exception as e:
+        logger.exception("favorite_lists_sales_summary: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

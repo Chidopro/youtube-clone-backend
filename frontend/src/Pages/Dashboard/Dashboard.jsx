@@ -6,6 +6,7 @@ import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../utils/userService';
 import { getBackendUrl } from '../../config/apiConfig';
+import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.jsx';
 // Force Netlify rebuild
@@ -81,6 +82,13 @@ const Dashboard = ({ sidebar }) => {
     const [payoutLoading, setPayoutLoading] = useState(false);
     const [payoutMessage, setPayoutMessage] = useState('');
     const [favorites, setFavorites] = useState([]);
+    const [favoritePages, setFavoritePages] = useState([]);
+    const [selectedFavoriteListId, setSelectedFavoriteListId] = useState(null);
+    const [newPageName, setNewPageName] = useState('');
+    const [newPageSlug, setNewPageSlug] = useState('');
+    const [savingFavoritePage, setSavingFavoritePage] = useState(false);
+    const [movingFavoriteId, setMovingFavoriteId] = useState(null);
+    const selectedFavoriteListIdRef = useRef(null);
     const [uploadingFavorite, setUploadingFavorite] = useState(false);
     const [showFavoriteModal, setShowFavoriteModal] = useState(false);
     const [showPasteHint, setShowPasteHint] = useState(false);
@@ -241,16 +249,6 @@ const Dashboard = ({ sidebar }) => {
                         setVideos(userVideos);
                     }
                     
-                    // Fetch user's favorites
-                    const { data: userFavorites, error: favoritesError } = await supabase
-                        .from('creator_favorites')
-                        .select('*')
-                        .eq('user_id', user.id)
-                        .order('created_at', { ascending: false });
-                    
-                    if (userFavorites) {
-                        setFavorites(userFavorites);
-                    }
                 } else {
                     // For Google OAuth users without database ID, show empty videos
                     setVideos([]);
@@ -266,6 +264,162 @@ const Dashboard = ({ sidebar }) => {
         };
         fetchUserData();
     }, [navigate]);
+
+    const reloadFavoritesForList = async (userId, listId) => {
+        if (!userId || !listId) {
+            setFavorites([]);
+            return;
+        }
+        const { data, error } = await supabase
+            .from('creator_favorites')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('list_id', listId)
+            .order('created_at', { ascending: false });
+        if (error) {
+            console.error('Favorites fetch:', error);
+            setFavorites([]);
+        } else {
+            setFavorites(data || []);
+        }
+    };
+
+    useEffect(() => {
+        selectedFavoriteListIdRef.current = selectedFavoriteListId;
+    }, [selectedFavoriteListId]);
+
+    useEffect(() => {
+        if (activeTab !== 'favorites' || !user?.id || userProfile?.role !== 'creator') return;
+        let cancelled = false;
+        (async () => {
+            const { ok, data } = await favoriteListsJson('/api/favorite-lists/mine');
+            if (cancelled) return;
+            if (ok && data?.lists?.length) {
+                setFavoritePages(data.lists);
+                const primary = data.lists.find((l) => l.is_primary) || data.lists[0];
+                const prev = selectedFavoriteListIdRef.current;
+                const nextId =
+                    prev && data.lists.some((l) => l.id === prev) ? prev : primary?.id || null;
+                setSelectedFavoriteListId(nextId);
+                if (nextId) await reloadFavoritesForList(user.id, nextId);
+            } else {
+                setFavoritePages([]);
+                setFavorites([]);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [activeTab, user?.id, userProfile?.role]);
+
+    const handleFavoriteListChange = (listId) => {
+        if (!user?.id || !listId) return;
+        setSelectedFavoriteListId(listId);
+        reloadFavoritesForList(user.id, listId);
+    };
+
+    const handleCreateFavoritePage = async () => {
+        const name = newPageName.trim();
+        if (!name) {
+            alert('Enter a display name for the new page.');
+            return;
+        }
+        setSavingFavoritePage(true);
+        try {
+            const body = { display_name: name };
+            const slug = newPageSlug.trim();
+            if (slug) body.slug = slug;
+            const { ok, data } = await favoriteListsJson('/api/favorite-lists', {
+                method: 'POST',
+                body: JSON.stringify(body),
+            });
+            if (!ok || !data?.success) {
+                alert(data?.error || 'Could not create page');
+                return;
+            }
+            const created = data.list;
+            setFavoritePages((prev) => [...prev, created].sort((a, b) => {
+                const ap = a.is_primary ? 0 : 1;
+                const bp = b.is_primary ? 0 : 1;
+                if (ap !== bp) return ap - bp;
+                return (a.sort_order || 0) - (b.sort_order || 0);
+            }));
+            setNewPageName('');
+            setNewPageSlug('');
+            if (created?.id && user?.id) {
+                setSelectedFavoriteListId(created.id);
+                await reloadFavoritesForList(user.id, created.id);
+            }
+        } catch (e) {
+            console.error(e);
+            alert(e.message || 'Could not create page');
+        } finally {
+            setSavingFavoritePage(false);
+        }
+    };
+
+    const handleMoveFavoriteToList = async (favorite, targetListId) => {
+        if (!user?.id || !targetListId) return;
+        const cur = favorite.list_id != null ? String(favorite.list_id) : '';
+        if (cur === String(targetListId)) return;
+        setMovingFavoriteId(favorite.id);
+        try {
+            const { ok, data } = await favoriteListsJson('/api/favorites/move-list', {
+                method: 'POST',
+                body: JSON.stringify({ favorite_id: favorite.id, list_id: targetListId }),
+            });
+            if (!ok || !data?.success) {
+                alert(data?.error || 'Could not move item to that page');
+                return;
+            }
+            if (String(targetListId) === String(selectedFavoriteListId)) {
+                setFavorites((prev) =>
+                    prev.map((f) => (f.id === favorite.id ? { ...f, list_id: targetListId } : f))
+                );
+            } else {
+                setFavorites((prev) => prev.filter((f) => f.id !== favorite.id));
+            }
+        } catch (e) {
+            console.error(e);
+            alert(e.message || 'Could not move item');
+        } finally {
+            setMovingFavoriteId(null);
+        }
+    };
+
+    const handleDeleteFavoritePage = async () => {
+        const row = favoritePages.find((l) => l.id === selectedFavoriteListId);
+        if (!row || row.is_primary) return;
+        const n = favorites.length;
+        const msg =
+            n > 0
+                ? `Delete favorite page "${row.display_name}"? The ${n} item(s) on this page will move to your main favorites page. This page’s public link will stop working.`
+                : `Delete favorite page "${row.display_name}"? This page’s public link will stop working.`;
+        if (!window.confirm(msg)) {
+            return;
+        }
+        setSavingFavoritePage(true);
+        try {
+            const { ok, data } = await favoriteListsJson('/api/favorite-lists/delete', {
+                method: 'POST',
+                body: JSON.stringify({ id: row.id }),
+            });
+            if (!ok || !data?.success) {
+                alert(data?.error || 'Could not delete page');
+                return;
+            }
+            const nextLists = favoritePages.filter((l) => l.id !== row.id);
+            setFavoritePages(nextLists);
+            const fallback = nextLists.find((l) => l.is_primary) || nextLists[0];
+            const nextId = fallback?.id || null;
+            setSelectedFavoriteListId(nextId);
+            if (nextId && user?.id) await reloadFavoritesForList(user.id, nextId);
+            else setFavorites([]);
+        } catch (e) {
+            console.error(e);
+            alert(e.message || 'Could not delete page');
+        } finally {
+            setSavingFavoritePage(false);
+        }
+    };
 
     useEffect(() => {
         const fetchCurrentUser = async () => {
@@ -619,6 +773,7 @@ const Dashboard = ({ sidebar }) => {
                 formData.append('title', newFavorite.title);
                 if (newFavorite.description) formData.append('description', newFavorite.description);
                 formData.append('channel_title', channelTitle);
+                if (selectedFavoriteListId) formData.append('list_id', selectedFavoriteListId);
                 const headers = { 'X-User-Id': userId };
                 let sessionToken = typeof localStorage !== 'undefined' && localStorage.getItem('auth_token');
                 if (!sessionToken) sessionToken = await claimSessionTokenIfNeeded(userId);
@@ -693,7 +848,8 @@ const Dashboard = ({ sidebar }) => {
                 title: newFavorite.title,
                 description: newFavorite.description || null,
                 image_url: publicUrl,
-                thumbnail_url: publicUrl
+                thumbnail_url: publicUrl,
+                ...(selectedFavoriteListId ? { list_id: selectedFavoriteListId } : {}),
             };
             
             const { data, error } = await supabase
@@ -711,7 +867,8 @@ const Dashboard = ({ sidebar }) => {
                         title: newFavorite.title,
                         description: newFavorite.description || null,
                         image_url: publicUrl,
-                        thumbnail_url: publicUrl
+                        thumbnail_url: publicUrl,
+                        ...(selectedFavoriteListId ? { list_id: selectedFavoriteListId } : {}),
                     };
                     const { data: retryData_result, error: retryError } = await supabase
                         .from('creator_favorites')
@@ -1488,7 +1645,59 @@ const Dashboard = ({ sidebar }) => {
                                 + Add Favorite
                             </button>
                         </div>
-                        <p className="paste-hint">Paste from FrameSnag (Ctrl+V) to add a captured image.</p>
+                        {userProfile?.role === 'creator' && favoritePages.length > 0 && (
+                            <div className="favorite-pages-toolbar">
+                                <label className="favorite-pages-label" htmlFor="dashboard-fav-list-select">Favorite page</label>
+                                <select
+                                    id="dashboard-fav-list-select"
+                                    className="favorite-pages-select"
+                                    value={selectedFavoriteListId || ''}
+                                    onChange={(e) => handleFavoriteListChange(e.target.value)}
+                                >
+                                    {favoritePages.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.display_name || p.slug}
+                                            {p.is_primary ? ' (main)' : ` — /favorites/${p.slug}`}
+                                        </option>
+                                    ))}
+                                </select>
+                                {favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_primary === false && (
+                                    <button
+                                        type="button"
+                                        className="cancel-btn favorite-page-delete"
+                                        disabled={savingFavoritePage}
+                                        onClick={handleDeleteFavoritePage}
+                                    >
+                                        Delete page
+                                    </button>
+                                )}
+                                <div className="favorite-pages-new">
+                                    <input
+                                        type="text"
+                                        placeholder="New page name"
+                                        value={newPageName}
+                                        onChange={(e) => setNewPageName(e.target.value)}
+                                        className="favorite-pages-input"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="URL slug (optional)"
+                                        value={newPageSlug}
+                                        onChange={(e) => setNewPageSlug(e.target.value)}
+                                        className="favorite-pages-input"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="save-btn"
+                                        disabled={savingFavoritePage || !newPageName.trim()}
+                                        onClick={handleCreateFavoritePage}
+                                    >
+                                        {savingFavoritePage ? '…' : 'Create page'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        <p className="paste-hint">Paste from FrameSnag (Ctrl+V) to add a captured image. New uploads go to the favorite page selected above.</p>
 
                         {/* Prominent hint when sent from FrameSnag */}
                         {showPasteHint && (
@@ -1547,6 +1756,28 @@ const Dashboard = ({ sidebar }) => {
                                             {favorite.description && <p>{favorite.description}</p>}
                                             <span className="video-views">{new Date(favorite.created_at).toLocaleDateString()}</span>
                                         </div>
+                                        {userProfile?.role === 'creator' && favoritePages.length > 0 && (
+                                            <div className="favorite-card-page-row">
+                                                <label htmlFor={`fav-list-${favorite.id}`}>Page</label>
+                                                <select
+                                                    id={`fav-list-${favorite.id}`}
+                                                    className="favorite-card-list-select"
+                                                    value={String(favorite.list_id || selectedFavoriteListId || favoritePages[0]?.id || '')}
+                                                    disabled={movingFavoriteId === favorite.id || savingFavoritePage}
+                                                    onChange={(e) => {
+                                                        const v = e.target.value;
+                                                        handleMoveFavoriteToList(favorite, v);
+                                                    }}
+                                                >
+                                                    {favoritePages.map((p) => (
+                                                        <option key={p.id} value={p.id}>
+                                                            {p.display_name || p.slug}
+                                                            {p.is_primary ? ' (main)' : ''}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
                                         <button 
                                             className="make-merch-btn-favorite-dashboard"
                                             onClick={(e) => {

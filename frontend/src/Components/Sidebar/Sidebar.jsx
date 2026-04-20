@@ -3,12 +3,19 @@ import './Sidebar.css'
 import home from '../../assets/home.png'
 import { Link, useLocation } from 'react-router-dom';
 import { API_CONFIG } from '../../config/apiConfig';
+import { useCreator } from '../../contexts/CreatorContext';
+import { getSubdomain } from '../../utils/subdomainService';
+import { fetchPublicFavoriteLists } from '../../utils/favoriteListsApi';
 
 const Sidebar = ({sidebar, category, setCategory}) => {
   const [showSubs, setShowSubs] = useState(true);
   const [subscribers, setSubscribers] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(true);
+  const [favLists, setFavLists] = useState([]);
+  const [loadingFavLists, setLoadingFavLists] = useState(false);
+  const [showFav, setShowFav] = useState(true);
   const location = useLocation();
+  const { currentCreator } = useCreator();
 
   // Fetch ScreenMerch creators from backend so list works on main and all subdomains (bypasses RLS)
   useEffect(() => {
@@ -43,6 +50,31 @@ const Sidebar = ({sidebar, category, setCategory}) => {
     fetchCreators();
   }, []);
 
+  useEffect(() => {
+    const sub = getSubdomain();
+    if (!sub || !currentCreator?.id) {
+      setFavLists([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadingFavLists(true);
+      try {
+        const { ok, data } = await fetchPublicFavoriteLists(sub);
+        if (!cancelled && ok && data?.success && Array.isArray(data.lists) && data.lists.length > 0) {
+          setFavLists(data.lists);
+        } else if (!cancelled) {
+          setFavLists([]);
+        }
+      } catch (_) {
+        if (!cancelled) setFavLists([]);
+      } finally {
+        if (!cancelled) setLoadingFavLists(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentCreator?.id]);
+
   return (
     <div className={`sidebar ${sidebar ? "" : "small-sidebar"}`}>
       <div className="shortcut-links">
@@ -51,6 +83,37 @@ const Sidebar = ({sidebar, category, setCategory}) => {
         </Link>
         <hr />
       </div>
+      {favLists.length > 0 && (
+        <div className="subscribed-list" style={{ marginBottom: 8 }}>
+          <h3 style={{ cursor: 'pointer' }} onClick={() => setShowFav((s) => !s)}>
+            Favorites {showFav ? '▲' : '▼'}
+          </h3>
+          {showFav && (
+            <div className="subscribers-list">
+              {loadingFavLists ? (
+                <div className="loading-subs">Loading…</div>
+              ) : (
+                favLists.map((L) => (
+                  <Link
+                    key={L.id}
+                    to={L.slug === 'owner' ? '/favorites' : `/favorites/${encodeURIComponent(L.slug)}`}
+                    className={`side-link subscriber-item ${location.pathname === '/favorites' && L.slug === 'owner' ? 'active' : ''} ${location.pathname === `/favorites/${L.slug}` ? 'active' : ''}`}
+                    onClick={() => setCategory(0)}
+                  >
+                    <div className="subscriber-info">
+                      <p className={`subscriber-name ${L.is_primary ? 'favorites-owner-row' : ''}`}>
+                        {L.display_name || L.slug}
+                        {L.is_primary ? ' ★' : ''}
+                      </p>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+          )}
+          <hr />
+        </div>
+      )}
       <div className="subscribed-list">
         <h3 style={{ cursor: 'pointer' }} onClick={() => setShowSubs(s => !s)}>
           CREATORS {showSubs ? '▲' : '▼'}
