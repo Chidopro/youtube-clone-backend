@@ -249,8 +249,8 @@ const SubscriptionTiers = () => {
                     <p>No monthly fees—preview a representative product and your per-sale payout.</p>
                 </div>
 
-                <div className="tier-comparison-grid">
-                    <div className="tier-card current free-creator-plan-card">
+                <div className="tier-comparison-grid calculator-pair-grid">
+                    <div className="tier-card current free-creator-plan-card calculator-pair-card">
                         <div className="tier-header">
                             <h5>Free Creator Plan</h5>
                             <p className="free-plan-subtitle">Start earning from your videos with no monthly fees.</p>
@@ -265,9 +265,8 @@ const SubscriptionTiers = () => {
                         <ul className="free-plan-benefits">
                             <li>No inventory to manage</li>
                             <li>No shipping to handle</li>
-                            <li>No monthly subscription cost</li>
-                            <li>Clear per-sale creator payouts</li>
                         </ul>
+                        <div className="calculator-left-spacer" aria-hidden="true" />
                         <div className="tier-savings earnings-bottom">
                             <span className="savings-amount">${annualCreatorEarnings.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                             <span className="savings-label">Annual Creator Earnings 🔥</span>
@@ -285,7 +284,7 @@ const SubscriptionTiers = () => {
                     </div>
 
                     <div
-                        className="tier-card breakdown-card"
+                        className="tier-card breakdown-card calculator-pair-card"
                         data-calculator-product-id={selectedProduct.productId}
                         data-calculator-product-key={selectedProduct.key}
                     >
@@ -325,6 +324,10 @@ const SubscriptionTiers = () => {
                                     }}
                                 />
                             </div>
+                            <ul className="earnings-right-benefits" aria-label="Plan highlights">
+                                <li>No monthly subscription cost</li>
+                                <li>Clear per-sale creator payouts</li>
+                            </ul>
                             <div className="creator-earnings-hero">
                                 <div className="creator-earnings-hero-label">Creator Earnings</div>
                                 <div className="creator-earnings-hero-value">
