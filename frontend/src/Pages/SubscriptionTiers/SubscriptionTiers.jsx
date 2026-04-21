@@ -18,8 +18,30 @@ const getImgBase = () => {
 };
 
 /**
+ * Build absolute image URLs for the calculator. Each entry in imageAttempts is either
+ * a filename under /static/images/ on the API host, or a same-origin path (e.g. /mug.png on Netlify).
+ */
+function buildCalculatorImageUrls(product) {
+    const base = getImgBase();
+    const attempts = product.imageAttempts?.length
+        ? product.imageAttempts
+        : ['placeholder.png'];
+    const urls = attempts.map((entry) => {
+        if (entry.startsWith('/')) return entry;
+        if (entry.startsWith('http://') || entry.startsWith('https://')) return entry;
+        return `${base}/${entry}`;
+    });
+    const placeholderUrl = `${base}/placeholder.png`;
+    if (urls[urls.length - 1] !== placeholderUrl) {
+        urls.push(placeholderUrl);
+    }
+    return urls;
+}
+
+/**
  * Representative products for the earnings preview (edit prices anytime).
  * productId: stable id for editors / future wiring (matches products.js keys where noted).
+ * imageAttempts: try in order — main catalog PNGs on Fly often exist when *preview* variants do not.
  */
 const CALCULATOR_PRODUCTS = [
     {
@@ -28,7 +50,7 @@ const CALCULATOR_PRODUCTS = [
         productName: 'Unisex Hoodie',
         category: "Men's",
         productId: 'unisexhoodie',
-        imageFile: 'testedpreview.png',
+        imageAttempts: ['tested.png', 'testedpreview.png'],
         sellingPrice: 44.99,
         baseCost: 28.5,
         creatorEarnings: 12.0,
@@ -39,7 +61,7 @@ const CALCULATOR_PRODUCTS = [
         productName: "Women's Shirt",
         category: "Women's",
         productId: "women'sshirt",
-        imageFile: 'womenshirtpreview.png',
+        imageAttempts: ['womenshirtpreview.png', 'womensshirtpreview.png', 'womensshirt.png'],
         sellingPrice: 36.99,
         baseCost: 22.0,
         creatorEarnings: 10.5,
@@ -50,7 +72,7 @@ const CALCULATOR_PRODUCTS = [
         productName: 'Closed Back Cap',
         category: 'Hats',
         productId: 'closedbackcap',
-        imageFile: 'hatsclosedbackcappreview.png',
+        imageAttempts: ['hatsclosedbackcappreview.png', 'closedbackcap.png'],
         sellingPrice: 27.99,
         baseCost: 15.0,
         creatorEarnings: 8.0,
@@ -61,7 +83,7 @@ const CALCULATOR_PRODUCTS = [
         productName: 'All Over Print Tote Pocket',
         category: 'Bags',
         productId: 'all_over_print_tote_pocket',
-        imageFile: 'largecanvasbagpreview.png',
+        imageAttempts: ['largecanvasbag.png', 'largecanvasbagpreview.png'],
         sellingPrice: 39.99,
         baseCost: 24.0,
         creatorEarnings: 11.0,
@@ -72,7 +94,7 @@ const CALCULATOR_PRODUCTS = [
         productName: 'White Glossy Mug',
         category: 'Mugs',
         productId: 'white_glossy_mug_printful_tbd',
-        imageFile: 'mug1preview.png',
+        imageAttempts: ['mug1.png', 'mug1preview.png', '/mug.png'],
         sellingPrice: 23.99,
         baseCost: 12.44,
         creatorEarnings: 6.0,
@@ -93,10 +115,19 @@ const SubscriptionTiers = () => {
     const monthlyCreatorEarnings = MONTHLY_UNITS_SOLD_EXAMPLE * selectedProduct.creatorEarnings;
     const annualCreatorEarnings = monthlyCreatorEarnings * 12;
 
-    const productImageUrl = useMemo(() => {
-        const file = selectedProduct.imageFile || 'placeholder.png';
-        return `${getImgBase()}/${file}`;
-    }, [selectedProduct]);
+    const calculatorImageUrls = useMemo(
+        () => buildCalculatorImageUrls(selectedProduct),
+        [selectedProduct]
+    );
+
+    const [calculatorImageIndex, setCalculatorImageIndex] = useState(0);
+
+    useEffect(() => {
+        setCalculatorImageIndex(0);
+    }, [selectedProductKey]);
+
+    const calculatorImageSrc = calculatorImageUrls[Math.min(calculatorImageIndex, calculatorImageUrls.length - 1)]
+        || `${getImgBase()}/placeholder.png`;
 
     const [currentUser, setCurrentUser] = useState(null);
     const [, setUserSubscription] = useState(null);
@@ -282,12 +313,14 @@ const SubscriptionTiers = () => {
                         <div className="item-breakdown-container-vertical">
                             <div className="product-visual-centered">
                                 <img
-                                    src={productImageUrl}
+                                    src={calculatorImageSrc}
                                     alt={selectedProduct.productName}
                                     className="product-image-centered"
-                                    onError={(e) => {
-                                        e.currentTarget.onerror = null;
-                                        e.currentTarget.src = `${getImgBase()}/placeholder.png`;
+                                    onError={() => {
+                                        setCalculatorImageIndex((i) => {
+                                            if (i + 1 < calculatorImageUrls.length) return i + 1;
+                                            return i;
+                                        });
                                     }}
                                 />
                             </div>
