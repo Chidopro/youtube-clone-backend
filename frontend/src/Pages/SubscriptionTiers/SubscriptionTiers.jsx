@@ -41,7 +41,7 @@ function buildCalculatorImageUrls(product) {
 /**
  * Representative products for the earnings preview (edit prices anytime).
  * productId: stable id for editors / future wiring (matches products.js keys where noted).
- * imageAttempts: try in order — main catalog PNGs on Fly often exist when *preview* variants do not.
+ * imageAttempts: filenames must match backend/static (see app.py product catalog main_image / preview_image).
  */
 const CALCULATOR_PRODUCTS = [
     {
@@ -50,7 +50,7 @@ const CALCULATOR_PRODUCTS = [
         productName: 'Unisex Hoodie',
         category: "Men's",
         productId: 'unisexhoodie',
-        imageAttempts: ['tested.png', 'testedpreview.png'],
+        imageAttempts: ['tested.png', 'mensunisexhoodiepreview.png'],
         sellingPrice: 44.99,
         baseCost: 28.5,
         creatorEarnings: 12.0,
@@ -72,7 +72,7 @@ const CALCULATOR_PRODUCTS = [
         productName: 'Closed Back Cap',
         category: 'Hats',
         productId: 'closedbackcap',
-        imageAttempts: ['hatsclosedbackcappreview.png', 'closedbackcap.png'],
+        imageAttempts: ['closedbackcap.png', 'hatsclosedbackcappreview.png'],
         sellingPrice: 27.99,
         baseCost: 15.0,
         creatorEarnings: 8.0,
@@ -83,7 +83,7 @@ const CALCULATOR_PRODUCTS = [
         productName: 'All Over Print Tote Pocket',
         category: 'Bags',
         productId: 'all_over_print_tote_pocket',
-        imageAttempts: ['largecanvasbag.png', 'largecanvasbagpreview.png'],
+        imageAttempts: ['largecanvasbag.png', 'bagsalloverprinttotepocketpreview.png'],
         sellingPrice: 39.99,
         baseCost: 24.0,
         creatorEarnings: 11.0,
@@ -313,6 +313,7 @@ const SubscriptionTiers = () => {
                         <div className="item-breakdown-container-vertical">
                             <div className="product-visual-centered">
                                 <img
+                                    key={`${selectedProductKey}-${calculatorImageIndex}`}
                                     src={calculatorImageSrc}
                                     alt={selectedProduct.productName}
                                     className="product-image-centered"
