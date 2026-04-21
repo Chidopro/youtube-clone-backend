@@ -266,7 +266,6 @@ const SubscriptionTiers = () => {
                             <li>No inventory to manage</li>
                             <li>No shipping to handle</li>
                         </ul>
-                        <div className="calculator-left-spacer" aria-hidden="true" />
                         <div className="tier-savings earnings-bottom">
                             <span className="savings-amount">${annualCreatorEarnings.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                             <span className="savings-label">Annual Creator Earnings 🔥</span>

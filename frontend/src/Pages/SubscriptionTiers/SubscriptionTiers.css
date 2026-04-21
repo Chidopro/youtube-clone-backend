@@ -1708,6 +1708,19 @@
     font-weight: 900;
 }
 
+/* Match right column rhythm: icon / gap / checklist / gap → annual bar */
+.free-creator-plan-card .tier-icon-container {
+    margin-top: 15px;
+}
+
+.free-creator-plan-card .free-plan-benefits {
+    margin-top: 18px;
+}
+
+.free-creator-plan-card .tier-savings.earnings-bottom {
+    margin-top: 18px !important;
+}
+
 /* Moved from left column: sits under product image, above per-sale earnings */
 .earnings-right-benefits {
     list-style: none;
@@ -1739,21 +1752,18 @@
     font-weight: 900;
 }
 
-.free-creator-plan-card.calculator-pair-card .calculator-left-spacer {
-    flex: 1 1 auto;
-    min-height: 0;
-    width: 100%;
-}
-
 @media (max-width: 768px) {
-    .free-creator-plan-card.calculator-pair-card .calculator-left-spacer {
-        flex: 0 0 auto;
-        min-height: 8px;
-    }
-
     .free-creator-plan-card > .tier-header,
     .breakdown-card > .earn-per-sale-header {
         min-height: 0;
+    }
+}
+
+/* Pin Apply CTA to card bottom; keep annual earnings bar up with per-sale bar */
+@media (min-width: 769px) {
+    .free-creator-plan-card.calculator-pair-card > .tier-content-centered {
+        margin-top: auto;
+        padding-top: 12px;
     }
 }
 
