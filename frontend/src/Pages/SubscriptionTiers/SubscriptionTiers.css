@@ -1629,3 +1629,202 @@
         font-size: 0.9rem;
     }
 }
+
+/* —— Earnings calculator refresh (product-type dropdown, hero payout) —— */
+
+.metrics-footnote {
+    margin: 20px 0 0;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #6c757d;
+    line-height: 1.5;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.free-creator-plan-card .tier-header h5 {
+    font-size: 1.75rem !important;
+}
+
+.free-plan-subtitle {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #495057;
+    line-height: 1.45;
+    max-width: 340px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.free-plan-benefits {
+    list-style: none;
+    padding: 0 8px;
+    margin: 16px 0 0;
+    text-align: left;
+    width: 100%;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.free-plan-benefits li {
+    position: relative;
+    padding: 10px 0 10px 28px;
+    font-size: 1.05rem;
+    color: #495057;
+    font-weight: 600;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.free-plan-benefits li:last-child {
+    border-bottom: none;
+}
+
+.free-plan-benefits li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #28a745;
+    font-weight: 900;
+}
+
+.apply-creator-btn {
+    margin-top: 8px;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 50px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 8px 24px rgba(40, 167, 69, 0.35);
+}
+
+.apply-creator-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(40, 167, 69, 0.45);
+}
+
+.apply-creator-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.earn-per-sale-header {
+    text-align: center;
+}
+
+.earn-per-sale-title {
+    margin: 0 0 12px 0;
+    font-size: 1.65rem;
+    font-weight: 900;
+    color: #2d3748;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+.earn-per-sale-product-line {
+    margin: 0 0 16px;
+    font-size: 1.05rem;
+    color: #495057;
+    line-height: 1.4;
+}
+
+.earn-per-sale-name {
+    font-weight: 800;
+    color: #333;
+}
+
+.earn-per-sale-meta {
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.calculator-select-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6c757d;
+    margin-bottom: 8px;
+}
+
+.calculator-product-select {
+    display: block;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #333;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+}
+
+.calculator-product-select:focus {
+    outline: none;
+    border-color: #ffc107;
+    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.35);
+}
+
+.creator-earnings-hero {
+    width: 100%;
+    max-width: 100%;
+    background: linear-gradient(145deg, #c8f5d4 0%, #8fd99a 45%, #28a745 100%);
+    border: 4px solid #1e7e34;
+    border-radius: 20px;
+    padding: 28px 22px 32px;
+    box-shadow: 0 14px 36px rgba(40, 167, 69, 0.45);
+    text-align: center;
+    margin: 10px auto 8px;
+}
+
+.creator-earnings-hero-label {
+    font-size: 0.95rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #145523;
+    margin-bottom: 10px;
+}
+
+.creator-earnings-hero-value {
+    font-size: clamp(2.25rem, 5vw, 3.25rem);
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+}
+
+.creator-earnings-per {
+    font-size: clamp(1.1rem, 3vw, 1.45rem);
+    font-weight: 800;
+    letter-spacing: 0;
+    opacity: 0.95;
+}
+
+.calculator-trust-disclaimer {
+    margin: 18px auto 0;
+    max-width: 420px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: #868e96;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .creator-earnings-hero {
+        padding: 22px 16px 26px;
+    }
+}
