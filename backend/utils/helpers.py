@@ -93,6 +93,7 @@ def require_shipping_address(payload):
     if not country:
         country = "US"  # Default to US
     # Pass through full address when provided (for ScreenMerch UI and Printful)
+    state_val = (addr.get("state_code") or addr.get("state") or "").strip()
     result = {
         "zip": zip_code,
         "country_code": country,
@@ -100,7 +101,8 @@ def require_shipping_address(payload):
         "line1": (addr.get("line1") or addr.get("address1") or addr.get("address_line1") or "").strip(),
         "line2": (addr.get("line2") or addr.get("address2") or addr.get("address_line2") or "").strip(),
         "city": (addr.get("city") or "").strip(),
-        "state": (addr.get("state") or addr.get("state_code") or "").strip(),
+        "state": state_val,
+        "state_code": state_val,
     }
     return True, result
 

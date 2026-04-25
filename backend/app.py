@@ -598,7 +598,13 @@ def require_shipping_address(payload):
         return False, "ZIP / Postal Code is required."
     if not country:
         country = "US"  # Default to US
-    return True, {"zip": zip_code, "country_code": country}
+    state_val = (addr.get("state_code") or addr.get("state") or "").strip()
+    return True, {
+        "zip": zip_code,
+        "country_code": country,
+        "state": state_val,
+        "state_code": state_val,
+    }
 
 # Helper function to parse ZIP code from shipping_address dict
 def _parse_zip(shipping_address: dict) -> str:
@@ -6517,6 +6523,9 @@ def calculate_shipping():
                 "success": False,
                 "error": "ZIP / Postal Code is required for shipping calculation"
             }), 400
+
+        _state_raw = shipping_address.get("state_code") or shipping_address.get("state") or ""
+        recipient_state = str(_state_raw).strip().upper()[:32] if _state_raw else ""
         
         logger.info(f"📦 Calculating shipping for ZIP: {postal_code}, Country: {country}, Cart items: {len(cart)}")
         
@@ -6527,8 +6536,8 @@ def calculate_shipping():
                 recipient_data = {
                     'country_code': country,
                     'zip': postal_code,
-                    'state_code': shipping_address.get('state_code', ''),
-                    'city': shipping_address.get('city', '')
+                    'state_code': recipient_state,
+                    'city': (shipping_address.get("city") or "").strip(),
                 }
                 result = printful_integration.calculate_shipping_rates(recipient_data, cart)
                 logger.info(f"📦 Printful shipping result: {result}")
@@ -6553,17 +6562,33 @@ def calculate_shipping():
             # Format items for Printful
             shipping_items = []
             for item in cart:
+                vid = item.get("variant_id")
+                if vid is None:
+                    vid = item.get("printful_variant_id")
+                if vid is None:
+                    vid = item.get("printify_variant_id", 71)
+                qty = item.get("quantity")
+                if qty is None:
+                    qty = item.get("qty", 1)
+                try:
+                    qty = max(1, int(qty))
+                except (TypeError, ValueError):
+                    qty = 1
+                try:
+                    vid_int = int(vid) if vid is not None else 71
+                except (TypeError, ValueError):
+                    vid_int = 71
                 shipping_items.append({
-                    "variant_id": item.get('variant_id', item.get('printful_variant_id', 71)),
-                    "quantity": item.get('quantity', 1)
+                    "variant_id": vid_int,
+                    "quantity": qty
                 })
             
             shipping_payload = {
                 "recipient": {
                     "country_code": country,
                     "zip": postal_code,
-                    "state_code": shipping_address.get('state_code', ''),
-                    "city": shipping_address.get('city', '')
+                    "state_code": recipient_state,
+                    "city": (shipping_address.get("city") or "").strip(),
                 },
                 "items": shipping_items,
                 "currency": "USD"

@@ -1499,6 +1499,9 @@ def calculate_shipping():
                 "success": False,
                 "error": "ZIP / Postal Code is required for shipping calculation"
             }), 400
+
+        _state_raw = shipping_address.get("state_code") or shipping_address.get("state") or ""
+        recipient_state = str(_state_raw).strip().upper()[:32] if _state_raw else ""
         
         # Try Printful API
         printful_api_key = _get_config('PRINTFUL_API_KEY')
@@ -1506,17 +1509,33 @@ def calculate_shipping():
             try:
                 shipping_items = []
                 for item in cart:
+                    vid = item.get("variant_id")
+                    if vid is None:
+                        vid = item.get("printful_variant_id")
+                    if vid is None:
+                        vid = item.get("printify_variant_id")
+                    qty = item.get("quantity")
+                    if qty is None:
+                        qty = item.get("qty", 1)
+                    try:
+                        qty = max(1, int(qty))
+                    except (TypeError, ValueError):
+                        qty = 1
+                    try:
+                        vid_int = int(vid) if vid is not None and str(vid).strip() != "" else 71
+                    except (TypeError, ValueError):
+                        vid_int = 71
                     shipping_items.append({
-                        "variant_id": item.get('variant_id', item.get('printful_variant_id', 71)),
-                        "quantity": item.get('quantity', 1)
+                        "variant_id": vid_int,
+                        "quantity": qty
                     })
                 
                 shipping_payload = {
                     "recipient": {
                         "country_code": country,
                         "zip": postal_code,
-                        "state_code": shipping_address.get('state_code', ''),
-                        "city": shipping_address.get('city', '')
+                        "state_code": recipient_state,
+                        "city": (shipping_address.get("city") or "").strip(),
                     },
                     "items": shipping_items,
                     "currency": "USD"
@@ -1539,7 +1558,12 @@ def calculate_shipping():
                     if 'result' in shipping_response:
                         rates_list = shipping_response['result']
                         if rates_list and len(rates_list) > 0:
-                            rate = rates_list[0]
+                            standard_rate = None
+                            for r in rates_list:
+                                if r.get("id") == "STANDARD" or "standard" in (r.get("name") or "").lower():
+                                    standard_rate = r
+                                    break
+                            rate = standard_rate or rates_list[0]
                             cost = rate.get('rate') or rate.get('cost') or rate.get('price')
                             if cost:
                                 return jsonify({
@@ -1549,10 +1573,25 @@ def calculate_shipping():
                                     "delivery_days": str(rate.get('minDeliveryDays', '5-7')),
                                     "shipping_method": rate.get('name', 'Standard Shipping')
                                 })
-            except Exception:
-                pass
+                    else:
+                        logger.warning(
+                            "Printful shipping/rates 200 but no result: %s",
+                            shipping_response.get("error") or shipping_response,
+                        )
+                else:
+                    logger.warning(
+                        "Printful shipping/rates HTTP %s: %s",
+                        response.status_code,
+                        (response.text or "")[:500],
+                    )
+            except Exception as e:
+                logger.warning("Printful shipping/rates request failed: %s", e)
         
         # Fallback: default shipping cost
+        logger.warning(
+            "calculate-shipping using fallback $5.99 (Printful unavailable or no rates); cart_lines=%s",
+            len(cart),
+        )
         return jsonify({
             "success": True,
             "shipping_cost": 5.99,

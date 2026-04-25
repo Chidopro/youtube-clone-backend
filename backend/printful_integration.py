@@ -375,11 +375,26 @@ class ScreenMerchPrintfulIntegration:
             # Format items for Printful shipping calculation
             shipping_items = []
             for item in items:
-                # Get variant_id from your product mapping or use a default
-                variant_id = item.get('printful_variant_id', 71)  # Default to basic t-shirt variant
+                # Checkout POST uses variant_id; cart JSON often uses printful_variant_id — honor both.
+                raw_vid = item.get("variant_id")
+                if raw_vid is None:
+                    raw_vid = item.get("printful_variant_id")
+                if raw_vid is None:
+                    raw_vid = item.get("printify_variant_id")
+                try:
+                    variant_id = int(raw_vid) if raw_vid is not None and str(raw_vid).strip() != "" else 71
+                except (TypeError, ValueError):
+                    variant_id = 71
+                qty_raw = item.get("quantity")
+                if qty_raw is None:
+                    qty_raw = item.get("qty", 1)
+                try:
+                    quantity = max(1, int(qty_raw))
+                except (TypeError, ValueError):
+                    quantity = 1
                 shipping_items.append({
                     "variant_id": variant_id,
-                    "quantity": item.get('quantity', 1)
+                    "quantity": quantity
                 })
             
             shipping_payload = {
