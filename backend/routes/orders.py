@@ -27,6 +27,7 @@ from services.order_email import (
     get_order_screenshot as get_screenshot_for_order,
     _compress_for_inline,
 )
+from printful_catalog import catalog_product_id_for_product_name, lookup_catalog_variant_id
 
 logger = logging.getLogger(__name__)
 
@@ -1668,18 +1669,26 @@ def check_variant_availability():
                 "action": "Please choose a different color, size, or product.",
             }), 200
 
+        resolved_vid = None
         try:
-            variant_id = int(variant_id)
+            if variant_id is not None and str(variant_id).strip() != "":
+                resolved_vid = int(variant_id)
         except (TypeError, ValueError):
-            variant_id = None
-        if not variant_id:
+            resolved_vid = None
+        # Browse API payloads often omit printful_variant_map; resolve server-side from catalog.
+        if not resolved_vid and size:
+            cat_id = catalog_product_id_for_product_name(product)
+            if cat_id:
+                resolved_vid = lookup_catalog_variant_id(int(cat_id), color or "", size)
+        if not resolved_vid:
+            # Cannot map to a Printful variant — do not falsely mark out of stock.
             return jsonify({
                 "success": True,
-                "available": False,
-                "code": "OUT_OF_STOCK",
-                "error": "This variant is not available. Please choose a different color or size.",
-                "action": "Please choose a different color, size, or product.",
+                "available": True,
+                "variant_lookup_skipped": True,
             }), 200
+
+        variant_id = resolved_vid
 
         printful_api_key = _get_config('PRINTFUL_API_KEY')
         if not printful_api_key:

@@ -492,7 +492,13 @@ const ProductPage = ({ sidebar }) => {
   };
 
   const checkSelectionAvailability = async (product, index, color, size) => {
-    const variantId = resolvePrintfulVariantId(product, color, size);
+    const effectiveColor = (color && String(color).trim())
+      ? String(color).trim()
+      : (selectedColors[index] || product?.options?.color?.[0] || product?.options?.handle_color?.[0] || '');
+    const effectiveSize = (size && String(size).trim())
+      ? String(size).trim()
+      : (selectedSizes[index] || product?.options?.size?.[0] || 'One Size');
+    const variantId = resolvePrintfulVariantId(product, effectiveColor, effectiveSize);
     const nextReqId = (availabilityReqSeqByIndex.current[index] || 0) + 1;
     availabilityReqSeqByIndex.current[index] = nextReqId;
     setVariantAvailability((prev) => ({
@@ -506,8 +512,8 @@ const ProductPage = ({ sidebar }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           product: product?.name || '',
-          color: color || '',
-          size: size || '',
+          color: effectiveColor,
+          size: effectiveSize,
           variant_id: variantId,
         }),
       });
