@@ -1638,6 +1638,99 @@ def calculate_shipping():
         }), 500
 
 
+@orders_bp.route("/api/check-variant-availability", methods=["POST", "OPTIONS"])
+def check_variant_availability():
+    """Check if a selected product/color/size is currently available before checkout."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+
+    try:
+        data = request.get_json() or {}
+        product = str(data.get("product") or "").strip()
+        color = str(data.get("color") or "").strip()
+        size = str(data.get("size") or "").strip()
+        variant_id = data.get("variant_id")
+
+        if not product:
+            return jsonify({"success": False, "error": "Product is required."}), 400
+
+        # First apply local rule-based availability restrictions.
+        ok_rules, msg = _validate_product_availability([{
+            "product": product,
+            "variants": {"color": color, "size": size},
+        }])
+        if not ok_rules:
+            return jsonify({
+                "success": True,
+                "available": False,
+                "code": "OUT_OF_STOCK",
+                "error": msg,
+                "action": "Please choose a different color, size, or product.",
+            }), 200
+
+        try:
+            variant_id = int(variant_id)
+        except (TypeError, ValueError):
+            variant_id = None
+        if not variant_id:
+            return jsonify({
+                "success": True,
+                "available": False,
+                "code": "OUT_OF_STOCK",
+                "error": "This variant is not available. Please choose a different color or size.",
+                "action": "Please choose a different color, size, or product.",
+            }), 200
+
+        printful_api_key = _get_config('PRINTFUL_API_KEY')
+        if not printful_api_key:
+            return jsonify({
+                "success": False,
+                "error": "Live availability check is temporarily unavailable."
+            }), 503
+
+        shipping_payload = {
+            "recipient": {
+                "country_code": "US",
+                "zip": "10001",
+                "state_code": "NY",
+                "city": "New York",
+            },
+            "items": [{"variant_id": variant_id, "quantity": 1}],
+            "currency": "USD",
+        }
+        headers = {
+            'Authorization': f'Bearer {printful_api_key}',
+            'Content-Type': 'application/json',
+        }
+        response = requests.post(
+            "https://api.printful.com/shipping/rates",
+            json=shipping_payload,
+            headers=headers,
+            timeout=10,
+        )
+        body_text = (response.text or "")
+        if response.status_code == 200:
+            return jsonify({"success": True, "available": True})
+        if response.status_code == 400 and "out of stock" in body_text.lower():
+            return jsonify({
+                "success": True,
+                "available": False,
+                "code": "OUT_OF_STOCK",
+                "error": f"{product} ({color} / {size}) is currently out of stock.",
+                "action": "Please choose a different color, size, or product.",
+            }), 200
+        return jsonify({
+            "success": False,
+            "error": "Unable to verify availability right now. Please try again.",
+        }), 503
+    except Exception as e:
+        logger.error("check-variant-availability failed: %s", e)
+        return jsonify({
+            "success": False,
+            "error": "Availability check failed. Please try again."
+        }), 500
+
+
 @orders_bp.route("/api/printful/create-order", methods=["POST"])
 def create_printful_order():
     """Create order in Printful automatically"""

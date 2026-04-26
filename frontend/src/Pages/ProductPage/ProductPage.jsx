@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import ToolsPage from '../ToolsPage/ToolsPage';
 import { supabase } from '../../supabaseClient';
@@ -54,6 +54,8 @@ const ProductPage = ({ sidebar }) => {
   const [selectedScreenshotUrl, setSelectedScreenshotUrl] = useState(null);
   const [selectedColors, setSelectedColors] = useState({});
   const [selectedSizes, setSelectedSizes] = useState({});
+  const [variantAvailability, setVariantAvailability] = useState({});
+  const availabilityReqSeqByIndex = useRef({});
   const [cartItems, setCartItems] = useState(() => {
     try {
       const raw = localStorage.getItem('cart_items');
@@ -489,9 +491,56 @@ const ProductPage = ({ sidebar }) => {
     try { localStorage.setItem('cart_items', JSON.stringify(items)); } catch (e) {}
   };
 
-  const handleAddToCart = (product, index) => {
+  const checkSelectionAvailability = async (product, index, color, size) => {
+    const variantId = resolvePrintfulVariantId(product, color, size);
+    const nextReqId = (availabilityReqSeqByIndex.current[index] || 0) + 1;
+    availabilityReqSeqByIndex.current[index] = nextReqId;
+    setVariantAvailability((prev) => ({
+      ...prev,
+      [index]: { checking: true, available: true, message: '' },
+    }));
+    try {
+      const apiBase = getBackendUrl().replace(/\/$/, '');
+      const res = await fetch(`${apiBase}/api/check-variant-availability`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          product: product?.name || '',
+          color: color || '',
+          size: size || '',
+          variant_id: variantId,
+        }),
+      });
+      let data = {};
+      try { data = await res.json(); } catch (_) {}
+      if (availabilityReqSeqByIndex.current[index] !== nextReqId) return true;
+      if (res.ok && data?.success && data?.available === false) {
+        const msg = data?.error || 'This selection is currently unavailable. Please choose another option.';
+        setVariantAvailability((prev) => ({
+          ...prev,
+          [index]: { checking: false, available: false, message: msg },
+        }));
+        return false;
+      }
+      setVariantAvailability((prev) => ({
+        ...prev,
+        [index]: { checking: false, available: true, message: '' },
+      }));
+      return true;
+    } catch (e) {
+      setVariantAvailability((prev) => ({
+        ...prev,
+        [index]: { checking: false, available: true, message: '' },
+      }));
+      return true;
+    }
+  };
+
+  const handleAddToCart = async (product, index) => {
     const chosenColor = selectedColors[index] || (product?.options?.color?.[0] || 'Default');
     const chosenSize = selectedSizes[index] || (product?.options?.size?.[0] || 'One Size');
+    const isAvailable = await checkSelectionAvailability(product, index, chosenColor, chosenSize);
+    if (!isAvailable) return;
     // Use the URL stored when user clicked a screenshot so we send the exact image they selected (not thumbnail by mistake)
     const screenshotUrl = selectedScreenshotUrl || getSelectedScreenshotUrl();
 
@@ -1240,7 +1289,7 @@ const ProductPage = ({ sidebar }) => {
                         <select 
                           className="color-select"
                           value={selectedColors[index] || product.options?.color?.[0] || ''}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const newSelectedColors = { ...selectedColors };
                             const newColor = e.target.value;
                             newSelectedColors[index] = newColor;
@@ -1253,6 +1302,9 @@ const ProductPage = ({ sidebar }) => {
                               const newSelectedSizes = { ...selectedSizes };
                               newSelectedSizes[index] = availableSizes[0];
                               setSelectedSizes(newSelectedSizes);
+                              await checkSelectionAvailability(product, index, newColor, availableSizes[0]);
+                            } else {
+                              await checkSelectionAvailability(product, index, newColor, currentSize || '');
                             }
                           }}
                         >
@@ -1310,10 +1362,13 @@ const ProductPage = ({ sidebar }) => {
                           <select 
                             className="size-select"
                             value={displaySize}
-                            onChange={(e) => {
+                            onChange={async (e) => {
                               const newSelectedSizes = { ...selectedSizes };
-                              newSelectedSizes[index] = e.target.value;
+                              const nextSize = e.target.value;
+                              newSelectedSizes[index] = nextSize;
                               setSelectedSizes(newSelectedSizes);
+                              const nextColor = selectedColors[index] || product.options?.color?.[0] || product.options?.handle_color?.[0];
+                              await checkSelectionAvailability(product, index, nextColor, nextSize);
                             }}
                           >
                             {availableSizes.map((size, sizeIndex) => (
@@ -1327,11 +1382,15 @@ const ProductPage = ({ sidebar }) => {
                     })()}
                   </div>
                   
+                  {variantAvailability[index]?.message && !variantAvailability[index]?.available && (
+                    <div className="variant-unavailable-note">{variantAvailability[index].message}</div>
+                  )}
                   <button 
                     className="add-to-cart-btn"
+                    disabled={variantAvailability[index]?.checking || variantAvailability[index]?.available === false}
                     onClick={() => handleAddToCart(product, index)}
                   >
-                    Add to Cart
+                    {variantAvailability[index]?.checking ? 'Checking...' : 'Add to Cart'}
                   </button>
                 </div>
               ))}
