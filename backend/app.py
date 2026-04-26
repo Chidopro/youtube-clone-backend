@@ -3518,13 +3518,13 @@ def create_checkout_session():
         logger.info(f"✅ Shipping address validated: {shipping_address}")
         
         # Ensure shipping_cost is a valid number
-        shipping_cost_raw = data.get("shipping_cost", 5.99)
+        shipping_cost_raw = data.get("shipping_cost", 0)
         try:
-            shipping_cost = float(shipping_cost_raw) if shipping_cost_raw is not None else 5.99
+            shipping_cost = float(shipping_cost_raw) if shipping_cost_raw is not None else 0
             if shipping_cost < 0:
-                shipping_cost = 5.99
+                shipping_cost = 0
         except (ValueError, TypeError):
-            shipping_cost = 5.99  # Default to $5.99 if invalid
+            shipping_cost = 0  # Default to $0 if invalid
 
         logger.info(f"🛒 Received checkout request - Cart: {cart}")
         logger.info(f"🛒 Cart type: {type(cart)}, Cart length: {len(cart) if isinstance(cart, list) else 'N/A'}")

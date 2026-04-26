@@ -780,13 +780,13 @@ def create_checkout_session():
         shipping_address = addr_result
         
         # Ensure shipping_cost is valid
-        shipping_cost_raw = data.get("shipping_cost", 5.99)
+        shipping_cost_raw = data.get("shipping_cost", 0)
         try:
-            shipping_cost = float(shipping_cost_raw) if shipping_cost_raw is not None else 5.99
+            shipping_cost = float(shipping_cost_raw) if shipping_cost_raw is not None else 0
             if shipping_cost < 0:
-                shipping_cost = 5.99
+                shipping_cost = 0
         except (ValueError, TypeError):
-            shipping_cost = 5.99
+            shipping_cost = 0
         
         if not cart or not isinstance(cart, list):
             response = jsonify({"error": "Cart is empty or invalid"})
@@ -1505,6 +1505,12 @@ def calculate_shipping():
         
         # Try Printful API
         printful_api_key = _get_config('PRINTFUL_API_KEY')
+        if not printful_api_key:
+            logger.error("calculate-shipping unavailable: PRINTFUL_API_KEY is not configured")
+            return jsonify({
+                "success": False,
+                "error": "Live shipping is temporarily unavailable. Please try again shortly."
+            }), 503
         if printful_api_key:
             try:
                 shipping_items = []
@@ -1587,18 +1593,15 @@ def calculate_shipping():
             except Exception as e:
                 logger.warning("Printful shipping/rates request failed: %s", e)
         
-        # Fallback: default shipping cost
-        logger.warning(
-            "calculate-shipping using fallback $5.99 (Printful unavailable or no rates); cart_lines=%s",
-            len(cart),
+        # Do not silently use a fixed fallback rate; caller must retry.
+        logger.error(
+            "calculate-shipping failed to fetch live rates; cart_lines=%s zip=%s country=%s state=%s",
+            len(cart), postal_code, country, recipient_state,
         )
         return jsonify({
-            "success": True,
-            "shipping_cost": 5.99,
-            "currency": "USD",
-            "delivery_days": "5-7",
-            "shipping_method": "Standard Shipping"
-        })
+            "success": False,
+            "error": "Unable to fetch live shipping rates right now. Please retry in a moment."
+        }), 503
         
     except Exception as e:
         logger.error(f"Error calculating shipping: {str(e)}")
