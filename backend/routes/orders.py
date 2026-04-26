@@ -34,6 +34,20 @@ logger = logging.getLogger(__name__)
 orders_bp = Blueprint('orders', __name__)
 
 
+def _line_out_of_stock_message(item: dict) -> str:
+    """Human-readable cart line label for shipping/availability errors."""
+    name = str(item.get("product") or item.get("name") or "Item").strip()
+    color = str(item.get("color") or "").strip()
+    size = str(item.get("size") or "").strip()
+    if color and size:
+        return f"{name} ({color} / {size})"
+    if color:
+        return f"{name} ({color})"
+    if size:
+        return f"{name} ({size})"
+    return name
+
+
 def register_orders_routes(app, supabase, supabase_admin, order_store, products_list, config):
     """
     Register order routes with the Flask app
@@ -1590,6 +1604,19 @@ def calculate_shipping():
                         response.status_code,
                         (response.text or "")[:500],
                     )
+                    try:
+                        body_text = (response.text or "").lower()
+                        if response.status_code == 400 and "out of stock" in body_text:
+                            unavailable_items = [_line_out_of_stock_message(it) for it in cart]
+                            return jsonify({
+                                "success": False,
+                                "code": "OUT_OF_STOCK",
+                                "error": "One or more selected variants are out of stock.",
+                                "unavailable_items": unavailable_items,
+                                "action": "Please choose a different color, size, or product and try again.",
+                            }), 409
+                    except Exception as out_err:
+                        logger.warning("Out-of-stock handling failed: %s", out_err)
             except Exception as e:
                 logger.warning("Printful shipping/rates request failed: %s", e)
         

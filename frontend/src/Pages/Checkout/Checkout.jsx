@@ -109,6 +109,9 @@ const Checkout = () => {
           const qty = it.qty ?? it.quantity ?? 1;
           const line = {
             quantity: typeof qty === 'number' && !Number.isNaN(qty) ? Math.max(1, Math.floor(qty)) : 1,
+            product: it.product || it.name || 'Item',
+            color: it.color || '',
+            size: it.size || '',
           };
           if (vid != null && vid !== '') {
             const n = Number(vid);
@@ -146,6 +149,12 @@ const Checkout = () => {
           errorData = JSON.parse(errorText);
         } catch (e) {
           errorData = { error: errorText || `HTTP ${res.status}: ${res.statusText}` };
+        }
+        if (errorData?.code === 'OUT_OF_STOCK') {
+          const itemsList = Array.isArray(errorData.unavailable_items) ? errorData.unavailable_items : [];
+          const details = itemsList.length > 0 ? ` ${itemsList.join(', ')}.` : '';
+          const action = errorData.action || 'Please choose a different color, size, or product.';
+          throw new Error(`Some selected items are out of stock.${details} ${action}`);
         }
         throw new Error(errorData.error || `API returned status ${res.status}`);
       }
@@ -221,9 +230,12 @@ const Checkout = () => {
       }
     } catch (e) {
       // Network error - do not allow checkout
-      const errorMsg = e.message.includes('404') || e.message.includes('Not found')
+      const msg = String(e?.message || '');
+      const errorMsg = msg.toLowerCase().includes('out of stock')
+        ? msg
+        : msg.includes('404') || msg.includes('Not found')
         ? 'Shipping API endpoint not found. The backend may not be deployed. Please contact support.'
-        : `Network error: ${e.message}. Please check your connection and try again.`;
+        : `Network error: ${msg}. Please check your connection and try again.`;
       console.error('❌ Shipping calculation exception:', e);
       const errorState = { 
         cost: 0, 
