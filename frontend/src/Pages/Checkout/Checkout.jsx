@@ -272,7 +272,9 @@ const Checkout = () => {
         itemsCount: items.length
       });
     }
-  }, [address.zip, address.country_code, address.state_code, items.length, shipping.calculated, shipping.loading, fetchShipping]);
+  // Do not list shipping.loading here: when a quote fails, loading→false while calculated stays false,
+  // which would retrigger this effect and spam /api/calculate-shipping (blinking error banner).
+  }, [address.zip, address.country_code, address.state_code, items.length, shipping.calculated, fetchShipping]);
 
   /** Run actual checkout (build payload, POST, redirect). Call after design modal "Continue" when all tools are No. */
   const runCheckout = useCallback(async (cartOverride = null) => {
