@@ -150,11 +150,16 @@ const Checkout = () => {
         } catch (e) {
           errorData = { error: errorText || `HTTP ${res.status}: ${res.statusText}` };
         }
-        if (errorData?.code === 'OUT_OF_STOCK') {
+        if (errorData?.code === 'OUT_OF_STOCK' || errorData?.code === 'SHIPPING_QUOTE_REJECTED') {
           const itemsList = Array.isArray(errorData.unavailable_items) ? errorData.unavailable_items : [];
+          const primary = errorData.error || (
+            errorData?.code === 'OUT_OF_STOCK'
+              ? 'Some selected items are out of stock.'
+              : 'Shipping could not be calculated for this cart.'
+          );
           const details = itemsList.length > 0 ? ` ${itemsList.join(', ')}.` : '';
-          const action = errorData.action || 'Please choose a different color, size, or product.';
-          throw new Error(`Some selected items are out of stock.${details} ${action}`);
+          const action = errorData.action || 'Please try again or adjust your cart.';
+          throw new Error(`${primary}${details} ${action}`.trim());
         }
         throw new Error(errorData.error || `API returned status ${res.status}`);
       }
@@ -231,7 +236,12 @@ const Checkout = () => {
     } catch (e) {
       // Network error - do not allow checkout
       const msg = String(e?.message || '');
-      const errorMsg = msg.toLowerCase().includes('out of stock')
+      const m = msg.toLowerCase();
+      const isBizError = m.includes('out of stock')
+        || m.includes('print partner')
+        || m.includes('could not quote')
+        || m.includes('could not calculate shipping');
+      const errorMsg = isBizError
         ? msg
         : msg.includes('404') || msg.includes('Not found')
         ? 'Shipping API endpoint not found. The backend may not be deployed. Please contact support.'

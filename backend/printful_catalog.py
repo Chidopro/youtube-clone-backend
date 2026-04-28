@@ -149,6 +149,21 @@ GILDAN_18500B_YOUTH_SIZE: Dict[str, str] = {
 # (689 youth Gildan uses YS/YM… only; do not add "Small" here.)
 HOODIE_CATALOG_IDS_ALT_SIZE_WORDS = frozenset({294, 380, 317})
 
+# Bella youth tees (3001Y, 3501Y): Printful catalog often labels sizes YXS/YS/YM/YL while the storefront uses XS/S/M/L.
+YOUTH_BELLA_STYLE_CATALOG_IDS = frozenset({307, 511})
+
+
+def _youth_bella_letter_size_alternates(sz: str) -> List[str]:
+    letter = str(sz or "").strip()
+    m = {
+        "XS": ("YXS",),
+        "S": ("YS",),
+        "M": ("YM",),
+        "L": ("YL",),
+        "XL": ("YXL",),
+    }
+    return [x for x in m.get(letter, ()) if x]
+
 
 def _sizes_for_catalog_lookup(catalog_product_id: int, size: str) -> List[str]:
     """Ordered size candidates for variant map keys (youth Gildan, spelled-out sizes)."""
@@ -176,6 +191,11 @@ def _sizes_for_catalog_lookup(catalog_product_id: int, size: str) -> List[str]:
             for x in ("X-Large", "2XL"):
                 if x not in out:
                     out.append(x)
+    if catalog_product_id in YOUTH_BELLA_STYLE_CATALOG_IDS:
+        for existing in list(out):
+            for alt in _youth_bella_letter_size_alternates(existing):
+                if alt not in out:
+                    out.append(alt)
     return out
 
 

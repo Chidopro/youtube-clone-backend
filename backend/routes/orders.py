@@ -61,9 +61,20 @@ def _resolve_printful_variant_for_shipping_line(item: dict) -> int:
     """
     Resolve Printful catalog variant id for /shipping/rates.
 
-    Checkout often omits printful_variant_id; defaulting every line to 71 breaks quotes
-    and can surface misleading bulk out-of-stock errors from Printful.
+    Prefer live catalog lookup from product name + color + size so stale ``printify_variant_id``
+    or wrong client IDs cannot override correct Printful catalog variants.
+
+    If the product is not in ``PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME`` or lookup fails, fall back
+    to explicit ids, then catalog id 71 (legacy last resort).
     """
+    pname = str(item.get("product") or item.get("name") or "").strip()
+    color, size = _shipping_line_color_size(item)
+    cat_id = catalog_product_id_for_product_name(pname)
+    if cat_id and size:
+        looked = lookup_catalog_variant_id(int(cat_id), color, size)
+        if looked is not None:
+            return int(looked)
+
     vid = item.get("variant_id")
     if vid is None:
         vid = item.get("printful_variant_id")
@@ -74,18 +85,45 @@ def _resolve_printful_variant_for_shipping_line(item: dict) -> int:
             return int(vid)
     except (TypeError, ValueError):
         pass
-    pname = str(item.get("product") or item.get("name") or "").strip()
-    color, size = _shipping_line_color_size(item)
-    cat_id = catalog_product_id_for_product_name(pname)
-    if cat_id and size:
-        looked = lookup_catalog_variant_id(int(cat_id), color, size)
-        if looked is not None:
-            return int(looked)
+
     logger.warning(
         "calculate-shipping: could not resolve variant for line name=%r color=%r size=%r; using fallback 71",
         pname, color, size,
     )
     return 71
+
+
+def _variant_ids_from_printful_error(obj) -> set:
+    """Best-effort extract catalog variant ids from a Printful JSON error body."""
+    found = set()
+
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                lk = str(k).lower()
+                if lk in ("variant_id", "catalog_variant_id") and isinstance(v, (int, str)):
+                    try:
+                        found.add(int(v))
+                    except (TypeError, ValueError):
+                        pass
+                elif lk in ("variant_ids", "variants", "items") and isinstance(v, list):
+                    for x in v:
+                        if isinstance(x, int):
+                            found.add(x)
+                        elif isinstance(x, dict):
+                            for ik, iv in x.items():
+                                if str(ik).lower() in ("variant_id", "catalog_variant_id") and isinstance(iv, (int, str)):
+                                    try:
+                                        found.add(int(iv))
+                                    except (TypeError, ValueError):
+                                        pass
+                walk(v)
+        elif isinstance(o, list):
+            for x in o:
+                walk(x)
+
+    walk(obj)
+    return found
 
 
 def register_orders_routes(app, supabase, supabase_admin, order_store, products_list, config):
@@ -1568,6 +1606,7 @@ def calculate_shipping():
         if printful_api_key:
             try:
                 shipping_items = []
+                resolved_variant_by_line = []
                 for item in cart:
                     qty = item.get("quantity")
                     if qty is None:
@@ -1577,6 +1616,7 @@ def calculate_shipping():
                     except (TypeError, ValueError):
                         qty = 1
                     vid_int = _resolve_printful_variant_for_shipping_line(item)
+                    resolved_variant_by_line.append(vid_int)
                     shipping_items.append({
                         "variant_id": vid_int,
                         "quantity": qty
@@ -1639,13 +1679,35 @@ def calculate_shipping():
                     try:
                         body_text = (response.text or "").lower()
                         if response.status_code == 400 and "out of stock" in body_text:
-                            unavailable_items = [_line_out_of_stock_message(it) for it in cart]
+                            err_json = None
+                            try:
+                                err_json = response.json()
+                            except Exception:
+                                err_json = {}
+                            bad_ids = _variant_ids_from_printful_error(err_json)
+                            unavailable_items = []
+                            if bad_ids:
+                                for it, vid_sent in zip(cart, resolved_variant_by_line):
+                                    if vid_sent in bad_ids:
+                                        unavailable_items.append(_line_out_of_stock_message(it))
+                            if unavailable_items:
+                                return jsonify({
+                                    "success": False,
+                                    "code": "OUT_OF_STOCK",
+                                    "error": "One or more selected variants are out of stock.",
+                                    "unavailable_items": unavailable_items,
+                                    "action": "Please choose a different color, size, or product and try again.",
+                                }), 409
                             return jsonify({
                                 "success": False,
-                                "code": "OUT_OF_STOCK",
-                                "error": "One or more selected variants are out of stock.",
-                                "unavailable_items": unavailable_items,
-                                "action": "Please choose a different color, size, or product and try again.",
+                                "code": "SHIPPING_QUOTE_REJECTED",
+                                "error": (
+                                    "Our print partner could not quote shipping for this cart. "
+                                    "That often means a variant mismatch or a temporary stock check—not that every "
+                                    "item is sold out. Try another size or color, or remove one item at a time."
+                                ),
+                                "unavailable_items": [],
+                                "action": "Try adjusting your cart, then click Calculate Shipping again.",
                             }), 409
                     except Exception as out_err:
                         logger.warning("Out-of-stock handling failed: %s", out_err)
