@@ -49,6 +49,45 @@ def _line_out_of_stock_message(item: dict) -> str:
     return name
 
 
+def _shipping_line_color_size(item: dict) -> tuple:
+    """Color/size from flat cart fields or nested ``variants`` (Stripe-style lines)."""
+    v = item.get("variants") if isinstance(item.get("variants"), dict) else {}
+    color = str(item.get("color") or v.get("color") or "").strip()
+    size = str(item.get("size") or v.get("size") or "").strip()
+    return color, size
+
+
+def _resolve_printful_variant_for_shipping_line(item: dict) -> int:
+    """
+    Resolve Printful catalog variant id for /shipping/rates.
+
+    Checkout often omits printful_variant_id; defaulting every line to 71 breaks quotes
+    and can surface misleading bulk out-of-stock errors from Printful.
+    """
+    vid = item.get("variant_id")
+    if vid is None:
+        vid = item.get("printful_variant_id")
+    if vid is None:
+        vid = item.get("printify_variant_id")
+    try:
+        if vid is not None and str(vid).strip() != "":
+            return int(vid)
+    except (TypeError, ValueError):
+        pass
+    pname = str(item.get("product") or item.get("name") or "").strip()
+    color, size = _shipping_line_color_size(item)
+    cat_id = catalog_product_id_for_product_name(pname)
+    if cat_id and size:
+        looked = lookup_catalog_variant_id(int(cat_id), color, size)
+        if looked is not None:
+            return int(looked)
+    logger.warning(
+        "calculate-shipping: could not resolve variant for line name=%r color=%r size=%r; using fallback 71",
+        pname, color, size,
+    )
+    return 71
+
+
 def register_orders_routes(app, supabase, supabase_admin, order_store, products_list, config):
     """
     Register order routes with the Flask app
@@ -1530,11 +1569,6 @@ def calculate_shipping():
             try:
                 shipping_items = []
                 for item in cart:
-                    vid = item.get("variant_id")
-                    if vid is None:
-                        vid = item.get("printful_variant_id")
-                    if vid is None:
-                        vid = item.get("printify_variant_id")
                     qty = item.get("quantity")
                     if qty is None:
                         qty = item.get("qty", 1)
@@ -1542,10 +1576,7 @@ def calculate_shipping():
                         qty = max(1, int(qty))
                     except (TypeError, ValueError):
                         qty = 1
-                    try:
-                        vid_int = int(vid) if vid is not None and str(vid).strip() != "" else 71
-                    except (TypeError, ValueError):
-                        vid_int = 71
+                    vid_int = _resolve_printful_variant_for_shipping_line(item)
                     shipping_items.append({
                         "variant_id": vid_int,
                         "quantity": qty
