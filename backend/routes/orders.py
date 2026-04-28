@@ -1742,23 +1742,22 @@ def calculate_shipping():
                                 return jsonify({
                                     "success": False,
                                     "code": "OUT_OF_STOCK",
-                                    "error": "One or more selected variants are out of stock.",
+                                    "error": "These selections could not be confirmed for delivery.",
                                     "unavailable_items": unavailable_items,
-                                    "action": "Please choose a different color, size, or product and try again.",
+                                    "action": "Try different colors or sizes, then calculate shipping again.",
                                 }), 409
+                            logger.warning(
+                                "calculate-shipping: Printful rejected quote (often fixable server-side); "
+                                "status=%s body_snip=%r — if using a Printful account API key, set PRINTFUL_STORE_ID on the host.",
+                                response.status_code,
+                                (response.text or "")[:800],
+                            )
                             return jsonify({
                                 "success": False,
                                 "code": "SHIPPING_QUOTE_REJECTED",
-                                "error": (
-                                    "Our print partner could not quote shipping for this cart. "
-                                    "That often means a variant mismatch or a temporary stock check—not that every "
-                                    "item is sold out. If you use a Printful account-level API token, set the "
-                                    "PRINTFUL_STORE_ID secret (numeric store id from the Printful dashboard) — "
-                                    "without it, shipping quotes often fail. Otherwise try another size or "
-                                    "remove one item at a time."
-                                ),
+                                "error": "Shipping could not be calculated. Check your ZIP code and state, then try again.",
                                 "unavailable_items": [],
-                                "action": "Try adjusting your cart, then click Calculate Shipping again.",
+                                "action": "If it still fails, try removing one item or different options.",
                             }), 409
                     except Exception as out_err:
                         logger.warning("Out-of-stock handling failed: %s", out_err)
@@ -1772,14 +1771,14 @@ def calculate_shipping():
         )
         return jsonify({
             "success": False,
-            "error": "Unable to fetch live shipping rates right now. Please retry in a moment."
+            "error": "Shipping is temporarily unavailable. Please try again in a moment."
         }), 503
         
     except Exception as e:
         logger.error(f"Error calculating shipping: {str(e)}")
         return jsonify({
             "success": False,
-            "error": f"Shipping calculation failed: {str(e)}"
+            "error": "Something went wrong while calculating shipping. Please try again."
         }), 500
 
 
@@ -1851,14 +1850,10 @@ def check_variant_availability():
             "items": [{"variant_id": variant_id, "quantity": 1}],
             "currency": "USD",
         }
-        headers = {
-            'Authorization': f'Bearer {printful_api_key}',
-            'Content-Type': 'application/json',
-        }
         response = requests.post(
             "https://api.printful.com/shipping/rates",
             json=shipping_payload,
-            headers=headers,
+            headers=printful_request_headers(printful_api_key, json_body=True),
             timeout=10,
         )
         body_text = (response.text or "")
@@ -1869,8 +1864,8 @@ def check_variant_availability():
                 "success": True,
                 "available": False,
                 "code": "OUT_OF_STOCK",
-                "error": f"{product} ({color} / {size}) is currently out of stock.",
-                "action": "Please choose a different color, size, or product.",
+                "error": f"This option may not be available right now: {product} ({color} / {size}).",
+                "action": "Try another color or size.",
             }), 200
         return jsonify({
             "success": False,

@@ -150,16 +150,23 @@ const Checkout = () => {
         } catch (e) {
           errorData = { error: errorText || `HTTP ${res.status}: ${res.statusText}` };
         }
-        if (errorData?.code === 'OUT_OF_STOCK' || errorData?.code === 'SHIPPING_QUOTE_REJECTED') {
-          const itemsList = Array.isArray(errorData.unavailable_items) ? errorData.unavailable_items : [];
-          const primary = errorData.error || (
-            errorData?.code === 'OUT_OF_STOCK'
-              ? 'Some selected items are out of stock.'
-              : 'Shipping could not be calculated for this cart.'
+        if (errorData?.code === 'SHIPPING_QUOTE_REJECTED') {
+          throw new Error(
+            'Shipping could not be calculated. Check your ZIP code and state, then tap Calculate Shipping again. '
+            + 'If it keeps failing, try removing one item or different sizes or colors.'
           );
-          const details = itemsList.length > 0 ? ` ${itemsList.join(', ')}.` : '';
-          const action = errorData.action || 'Please try again or adjust your cart.';
-          throw new Error(`${primary}${details} ${action}`.trim());
+        }
+        if (errorData?.code === 'OUT_OF_STOCK') {
+          const itemsList = Array.isArray(errorData.unavailable_items) ? errorData.unavailable_items : [];
+          if (itemsList.length > 0) {
+            throw new Error(
+              `These options could not be used for shipping: ${itemsList.join(', ')}. `
+              + 'Pick different sizes or colors, then calculate shipping again.'
+            );
+          }
+          throw new Error(
+            'Shipping could not be calculated. Check your ZIP code and state, then try again.'
+          );
         }
         throw new Error(errorData.error || `API returned status ${res.status}`);
       }
@@ -237,9 +244,9 @@ const Checkout = () => {
       // Network error - do not allow checkout
       const msg = String(e?.message || '');
       const m = msg.toLowerCase();
-      const isBizError = m.includes('out of stock')
-        || m.includes('print partner')
-        || m.includes('could not quote')
+      const isBizError = m.includes('shipping could not be calculated')
+        || m.includes('these options could not be used')
+        || m.includes('out of stock')
         || m.includes('could not calculate shipping');
       const errorMsg = isBizError
         ? msg
