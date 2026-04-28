@@ -28,8 +28,11 @@ from services.order_email import (
     _compress_for_inline,
 )
 from printful_catalog import (
+    MUG_OZ_CATALOG_PRODUCT_IDS,
+    PRINTFUL_PLACEHOLDER_ART_URL,
     catalog_product_id_for_product_name,
     lookup_catalog_variant_id,
+    printful_request_headers,
     try_v2_shipping_rates,
 )
 
@@ -1640,10 +1643,12 @@ def calculate_shipping():
                         qty = 1
                     vid_int = _resolve_printful_variant_for_shipping_line(item)
                     line_variant_qty.append((vid_int, qty))
-                    shipping_items.append({
-                        "variant_id": vid_int,
-                        "quantity": qty
-                    })
+                    pname = str(item.get("product") or item.get("name") or "").strip()
+                    cat_for_line = catalog_product_id_for_product_name(pname)
+                    row = {"variant_id": vid_int, "quantity": qty}
+                    if cat_for_line and int(cat_for_line) in MUG_OZ_CATALOG_PRODUCT_IDS:
+                        row["files"] = [{"url": PRINTFUL_PLACEHOLDER_ART_URL}]
+                    shipping_items.append(row)
 
                 shipping_payload = {
                     "recipient": recipient_clean,
@@ -1651,10 +1656,7 @@ def calculate_shipping():
                     "currency": "USD"
                 }
 
-                headers = {
-                    'Authorization': f'Bearer {printful_api_key}',
-                    'Content-Type': 'application/json'
-                }
+                headers = printful_request_headers(printful_api_key, json_body=True)
 
                 response = requests.post(
                     "https://api.printful.com/shipping/rates",
@@ -1750,7 +1752,10 @@ def calculate_shipping():
                                 "error": (
                                     "Our print partner could not quote shipping for this cart. "
                                     "That often means a variant mismatch or a temporary stock check—not that every "
-                                    "item is sold out. Try another size or color, or remove one item at a time."
+                                    "item is sold out. If you use a Printful account-level API token, set the "
+                                    "PRINTFUL_STORE_ID secret (numeric store id from the Printful dashboard) — "
+                                    "without it, shipping quotes often fail. Otherwise try another size or "
+                                    "remove one item at a time."
                                 ),
                                 "unavailable_items": [],
                                 "action": "Try adjusting your cart, then click Calculate Shipping again.",

@@ -329,7 +329,7 @@ def _fetch_catalog_variants_nested(catalog_product_id: int) -> Dict[str, Dict[st
     if not api_key:
         raise RuntimeError("PRINTFUL_API_KEY not set")
 
-    headers = {"Authorization": f"Bearer {api_key}"}
+    headers = printful_request_headers(api_key)
     out: Dict[str, Dict[str, int]] = {}
     offset = 0
     limit = 100
@@ -453,6 +453,22 @@ _variant_detail_cache: Dict[int, Dict[str, Any]] = {}
 PRINTFUL_PLACEHOLDER_ART_URL = "https://www.printful.com/static/images/layout/printful-logo.png"
 
 
+def printful_request_headers(api_key: str, *, json_body: bool = False) -> Dict[str, str]:
+    """
+    Authorization + optional X-PF-Store-Id.
+
+    Account-level API tokens often require ``PRINTFUL_STORE_ID`` for shipping and catalog calls;
+    without it Printful may return misleading errors (e.g. stock-related 400s).
+    """
+    h: Dict[str, str] = {"Authorization": f"Bearer {api_key}"}
+    if json_body:
+        h["Content-Type"] = "application/json"
+    store_id = os.getenv("PRINTFUL_STORE_ID", "").strip()
+    if store_id:
+        h["X-PF-Store-Id"] = store_id
+    return h
+
+
 def get_catalog_variant_v2_detail(catalog_variant_id: int, api_key: str) -> Optional[Dict[str, Any]]:
     """Single catalog variant (placement_dimensions, catalog_product_id)."""
     vid = int(catalog_variant_id)
@@ -465,7 +481,7 @@ def get_catalog_variant_v2_detail(catalog_variant_id: int, api_key: str) -> Opti
     try:
         r = requests.get(
             f"https://api.printful.com/v2/catalog-variants/{vid}",
-            headers={"Authorization": f"Bearer {api_key}"},
+            headers=printful_request_headers(api_key),
             timeout=30,
         )
         if r.status_code != 200:
@@ -505,8 +521,10 @@ def _placement_and_technique_for_v2_shipping(catalog_variant_id: int, api_key: s
                 placement_names.append(str(d["placement"]).strip())
 
     if cat_pid in MUG_OZ_CATALOG_PRODUCT_IDS:
-        p = placement_names[0] if placement_names else "default"
-        return p, "sublimation"
+        # Mugs: prefer API placement string when present; avoid inventing names Printful rejects.
+        if placement_names:
+            return placement_names[0], "sublimation"
+        return "default", "sublimation"
 
     if "front_large" in placement_names:
         return "front_large", "dtg"
@@ -517,19 +535,37 @@ def _placement_and_technique_for_v2_shipping(catalog_variant_id: int, api_key: s
     return "front_large", "dtg"
 
 
-def try_v2_shipping_rates(
-    api_key: str,
-    recipient: Dict[str, Any],
-    lines: List[Tuple[int, int]],
-    currency: str = "USD",
-) -> Optional[Dict[str, Any]]:
-    """
-    Printful POST /v2/shipping-rates — aligned with current catalog + placements.
+def _catalog_product_id_for_variant_id(catalog_variant_id: int, api_key: str) -> int:
+    d = get_catalog_variant_v2_detail(catalog_variant_id, api_key)
+    if not d:
+        return 0
+    try:
+        return int(d.get("catalog_product_id") or 0)
+    except (TypeError, ValueError):
+        return 0
 
-    Use when legacy POST /shipping/rates fails (often misleading ``out of stock`` on newer catalog IDs).
-    """
-    if not api_key or not lines:
-        return None
+
+def _v2_order_item_dict(v_int: int, q_int: int, placement: str, technique: str) -> Dict[str, Any]:
+    return {
+        "source": "catalog",
+        "catalog_variant_id": v_int,
+        "quantity": q_int,
+        "placements": [
+            {
+                "placement": placement,
+                "technique": technique,
+                "print_area_type": "simple",
+                "layers": [{"type": "file", "url": PRINTFUL_PLACEHOLDER_ART_URL}],
+            }
+        ],
+    }
+
+
+def _build_v2_order_items(
+    lines: List[Tuple[int, int]],
+    api_key: str,
+    mug_override: Optional[Tuple[str, str]],
+) -> List[Dict[str, Any]]:
     order_items: List[Dict[str, Any]] = []
     for vid, qty in lines:
         try:
@@ -538,41 +574,18 @@ def try_v2_shipping_rates(
         except (TypeError, ValueError):
             continue
         pl, tech = _placement_and_technique_for_v2_shipping(v_int, api_key)
-        order_items.append(
-            {
-                "source": "catalog",
-                "catalog_variant_id": v_int,
-                "quantity": q_int,
-                "placements": [
-                    {
-                        "placement": pl,
-                        "technique": tech,
-                        "print_area_type": "simple",
-                        "layers": [{"type": "file", "url": PRINTFUL_PLACEHOLDER_ART_URL}],
-                    }
-                ],
-            }
-        )
-    if not order_items:
+        cat_pid = _catalog_product_id_for_variant_id(v_int, api_key)
+        if mug_override is not None and cat_pid in MUG_OZ_CATALOG_PRODUCT_IDS:
+            pl, tech = mug_override[0], mug_override[1]
+        order_items.append(_v2_order_item_dict(v_int, q_int, pl, tech))
+    return order_items
+
+
+def _parse_v2_shipping_rates_response(payload: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(payload, dict):
         return None
-    body = {"recipient": recipient, "order_items": order_items, "currency": currency or "USD"}
-    try:
-        r = requests.post(
-            "https://api.printful.com/v2/shipping-rates",
-            json=body,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            timeout=25,
-        )
-    except Exception as e:
-        logger.warning("v2/shipping-rates request failed: %s", e)
-        return None
-    if r.status_code != 200:
-        logger.warning("v2/shipping-rates HTTP %s: %s", r.status_code, (r.text or "")[:500])
-        return None
-    payload = r.json()
     rows = payload.get("data") or []
     if not isinstance(rows, list) or not rows:
-        logger.warning("v2/shipping-rates empty data: %s", (str(payload)[:400]))
         return None
     standard = None
     for row in rows:
@@ -603,6 +616,87 @@ def try_v2_shipping_rates(
         "shipping_method": str(name),
         "delivery_days": delivery,
     }
+
+
+def try_v2_shipping_rates(
+    api_key: str,
+    recipient: Dict[str, Any],
+    lines: List[Tuple[int, int]],
+    currency: str = "USD",
+) -> Optional[Dict[str, Any]]:
+    """
+    Printful POST /v2/shipping-rates — aligned with current catalog + placements.
+
+    Use when legacy POST /shipping/rates fails (often misleading ``out of stock`` on newer catalog IDs).
+    Retries mug lines with alternate placement/technique pairs when the first attempt fails.
+    """
+    if not api_key or not lines:
+        return None
+
+    has_mug_line = False
+    for vid, _ in lines:
+        try:
+            if _catalog_product_id_for_variant_id(int(vid), api_key) in MUG_OZ_CATALOG_PRODUCT_IDS:
+                has_mug_line = True
+                break
+        except (TypeError, ValueError):
+            continue
+
+    strategies: List[Optional[Tuple[str, str]]] = [None]
+    if has_mug_line:
+        strategies.extend(
+            [
+                ("default", "sublimation"),
+                ("wrap", "sublimation"),
+                ("wraparound", "sublimation"),
+                ("default", "digital"),
+                ("wrap", "digital"),
+            ]
+        )
+
+    seen_strat = set()
+    for strat in strategies:
+        key = strat if strat is None else (strat[0], strat[1])
+        if key in seen_strat:
+            continue
+        seen_strat.add(key)
+
+        order_items = _build_v2_order_items(lines, api_key, strat)
+        if not order_items:
+            continue
+        body = {"recipient": recipient, "order_items": order_items, "currency": currency or "USD"}
+        try:
+            r = requests.post(
+                "https://api.printful.com/v2/shipping-rates",
+                json=body,
+                headers=printful_request_headers(api_key, json_body=True),
+                timeout=25,
+            )
+        except Exception as e:
+            logger.warning("v2/shipping-rates request failed: %s", e)
+            continue
+        if r.status_code != 200:
+            logger.warning(
+                "v2/shipping-rates HTTP %s strat=%s body=%s",
+                r.status_code,
+                strat,
+                (r.text or "")[:500],
+            )
+            continue
+        try:
+            payload = r.json()
+        except Exception:
+            continue
+        parsed = _parse_v2_shipping_rates_response(payload)
+        if parsed:
+            if strat is not None:
+                logger.info(
+                    "v2/shipping-rates succeeded with mug strategy placement=%s technique=%s",
+                    strat[0],
+                    strat[1],
+                )
+            return parsed
+    return None
 
 
 def attach_printful_catalog_data(product: Dict[str, Any]) -> Dict[str, Any]:
