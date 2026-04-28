@@ -27,7 +27,11 @@ from services.order_email import (
     get_order_screenshot as get_screenshot_for_order,
     _compress_for_inline,
 )
-from printful_catalog import catalog_product_id_for_product_name, lookup_catalog_variant_id
+from printful_catalog import (
+    catalog_product_id_for_product_name,
+    lookup_catalog_variant_id,
+    try_v2_shipping_rates,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +95,22 @@ def _resolve_printful_variant_for_shipping_line(item: dict) -> int:
         pname, color, size,
     )
     return 71
+
+
+def _recipient_for_printful_shipping(shipping_address: dict, country: str, postal_code: str, recipient_state: str) -> dict:
+    """Recipient for Printful APIs; omit empty strings (some clients send city: '')."""
+    r: dict = {"country_code": country}
+    if postal_code:
+        r["zip"] = postal_code
+    if recipient_state:
+        r["state_code"] = recipient_state
+    city = (shipping_address.get("city") or "").strip()
+    if city:
+        r["city"] = city
+    a1 = (shipping_address.get("address1") or "").strip()
+    if a1:
+        r["address1"] = a1
+    return r
 
 
 def _variant_ids_from_printful_error(obj) -> set:
@@ -1605,8 +1625,11 @@ def calculate_shipping():
             }), 503
         if printful_api_key:
             try:
+                recipient_clean = _recipient_for_printful_shipping(
+                    shipping_address, country, postal_code, recipient_state
+                )
                 shipping_items = []
-                resolved_variant_by_line = []
+                line_variant_qty = []
                 for item in cart:
                     qty = item.get("quantity")
                     if qty is None:
@@ -1616,35 +1639,32 @@ def calculate_shipping():
                     except (TypeError, ValueError):
                         qty = 1
                     vid_int = _resolve_printful_variant_for_shipping_line(item)
-                    resolved_variant_by_line.append(vid_int)
+                    line_variant_qty.append((vid_int, qty))
                     shipping_items.append({
                         "variant_id": vid_int,
                         "quantity": qty
                     })
-                
+
                 shipping_payload = {
-                    "recipient": {
-                        "country_code": country,
-                        "zip": postal_code,
-                        "state_code": recipient_state,
-                        "city": (shipping_address.get("city") or "").strip(),
-                    },
+                    "recipient": recipient_clean,
                     "items": shipping_items,
                     "currency": "USD"
                 }
-                
+
                 headers = {
                     'Authorization': f'Bearer {printful_api_key}',
                     'Content-Type': 'application/json'
                 }
-                
+
                 response = requests.post(
                     "https://api.printful.com/shipping/rates",
                     json=shipping_payload,
                     headers=headers,
                     timeout=10
                 )
-                
+
+                resolved_variant_by_line = [vid for vid, _q in line_variant_qty]
+
                 if response.status_code == 200:
                     shipping_response = response.json()
                     if 'result' in shipping_response:
@@ -1670,12 +1690,38 @@ def calculate_shipping():
                             "Printful shipping/rates 200 but no result: %s",
                             shipping_response.get("error") or shipping_response,
                         )
+                    v2_ok = try_v2_shipping_rates(
+                        printful_api_key, recipient_clean, line_variant_qty, "USD"
+                    )
+                    if v2_ok:
+                        return jsonify({
+                            "success": True,
+                            "shipping_cost": float(v2_ok["shipping_cost"]),
+                            "currency": "USD",
+                            "delivery_days": str(v2_ok.get("delivery_days", "5-7")),
+                            "shipping_method": v2_ok.get("shipping_method", "Standard Shipping"),
+                        })
                 else:
                     logger.warning(
                         "Printful shipping/rates HTTP %s: %s",
                         response.status_code,
                         (response.text or "")[:500],
                     )
+                    v2_ok = try_v2_shipping_rates(
+                        printful_api_key, recipient_clean, line_variant_qty, "USD"
+                    )
+                    if v2_ok:
+                        logger.info(
+                            "Using Printful v2/shipping-rates after legacy /shipping/rates HTTP %s",
+                            response.status_code,
+                        )
+                        return jsonify({
+                            "success": True,
+                            "shipping_cost": float(v2_ok["shipping_cost"]),
+                            "currency": "USD",
+                            "delivery_days": str(v2_ok.get("delivery_days", "5-7")),
+                            "shipping_method": v2_ok.get("shipping_method", "Standard Shipping"),
+                        })
                     try:
                         body_text = (response.text or "").lower()
                         if response.status_code == 400 and "out of stock" in body_text:

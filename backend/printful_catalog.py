@@ -15,7 +15,7 @@ import logging
 import os
 import re
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
@@ -353,6 +353,8 @@ def _fetch_catalog_variants_nested(catalog_product_id: int) -> Dict[str, Dict[st
             if not isinstance(v, dict):
                 continue
             vid = v.get("id")
+            if vid is None:
+                vid = v.get("catalog_variant_id")
             color = (v.get("color") or "").strip()
             size = (v.get("size") or "").strip()
             if not size or vid is None:
@@ -441,6 +443,166 @@ def lookup_catalog_variant_id(
         if jvid is not None:
             return jvid
     return None
+
+
+# Cached GET /v2/catalog-variants/{id} for placement + v2 shipping fallback.
+_variant_detail_lock = threading.Lock()
+_variant_detail_cache: Dict[int, Dict[str, Any]] = {}
+
+# Printful-hosted placeholder art (required by v2 shipping-rates for catalog items).
+PRINTFUL_PLACEHOLDER_ART_URL = "https://www.printful.com/static/images/layout/printful-logo.png"
+
+
+def get_catalog_variant_v2_detail(catalog_variant_id: int, api_key: str) -> Optional[Dict[str, Any]]:
+    """Single catalog variant (placement_dimensions, catalog_product_id)."""
+    vid = int(catalog_variant_id)
+    with _variant_detail_lock:
+        cached = _variant_detail_cache.get(vid)
+    if cached is not None:
+        return cached
+    if not api_key:
+        return None
+    try:
+        r = requests.get(
+            f"https://api.printful.com/v2/catalog-variants/{vid}",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=30,
+        )
+        if r.status_code != 200:
+            logger.warning(
+                "GET v2/catalog-variants/%s failed status=%s body=%s",
+                vid,
+                r.status_code,
+                (r.text or "")[:350],
+            )
+            return None
+        body = r.json()
+        data = body.get("data")
+        if not isinstance(data, dict):
+            return None
+        with _variant_detail_lock:
+            _variant_detail_cache[vid] = data
+        return data
+    except Exception as e:
+        logger.warning("GET v2/catalog-variants/%s: %s", vid, e)
+        return None
+
+
+def _placement_and_technique_for_v2_shipping(catalog_variant_id: int, api_key: str) -> tuple[str, str]:
+    """Derive placement + technique for POST /v2/shipping-rates from catalog variant metadata."""
+    detail = get_catalog_variant_v2_detail(catalog_variant_id, api_key)
+    cat_pid = 0
+    if detail:
+        try:
+            cat_pid = int(detail.get("catalog_product_id") or 0)
+        except (TypeError, ValueError):
+            cat_pid = 0
+
+    placement_names: List[str] = []
+    if detail and isinstance(detail.get("placement_dimensions"), list):
+        for d in detail["placement_dimensions"]:
+            if isinstance(d, dict) and d.get("placement"):
+                placement_names.append(str(d["placement"]).strip())
+
+    if cat_pid in MUG_OZ_CATALOG_PRODUCT_IDS:
+        p = placement_names[0] if placement_names else "default"
+        return p, "sublimation"
+
+    if "front_large" in placement_names:
+        return "front_large", "dtg"
+    if "front" in placement_names:
+        return "front", "dtg"
+    if placement_names:
+        return placement_names[0], "dtg"
+    return "front_large", "dtg"
+
+
+def try_v2_shipping_rates(
+    api_key: str,
+    recipient: Dict[str, Any],
+    lines: List[Tuple[int, int]],
+    currency: str = "USD",
+) -> Optional[Dict[str, Any]]:
+    """
+    Printful POST /v2/shipping-rates — aligned with current catalog + placements.
+
+    Use when legacy POST /shipping/rates fails (often misleading ``out of stock`` on newer catalog IDs).
+    """
+    if not api_key or not lines:
+        return None
+    order_items: List[Dict[str, Any]] = []
+    for vid, qty in lines:
+        try:
+            v_int = int(vid)
+            q_int = max(1, int(qty))
+        except (TypeError, ValueError):
+            continue
+        pl, tech = _placement_and_technique_for_v2_shipping(v_int, api_key)
+        order_items.append(
+            {
+                "source": "catalog",
+                "catalog_variant_id": v_int,
+                "quantity": q_int,
+                "placements": [
+                    {
+                        "placement": pl,
+                        "technique": tech,
+                        "print_area_type": "simple",
+                        "layers": [{"type": "file", "url": PRINTFUL_PLACEHOLDER_ART_URL}],
+                    }
+                ],
+            }
+        )
+    if not order_items:
+        return None
+    body = {"recipient": recipient, "order_items": order_items, "currency": currency or "USD"}
+    try:
+        r = requests.post(
+            "https://api.printful.com/v2/shipping-rates",
+            json=body,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            timeout=25,
+        )
+    except Exception as e:
+        logger.warning("v2/shipping-rates request failed: %s", e)
+        return None
+    if r.status_code != 200:
+        logger.warning("v2/shipping-rates HTTP %s: %s", r.status_code, (r.text or "")[:500])
+        return None
+    payload = r.json()
+    rows = payload.get("data") or []
+    if not isinstance(rows, list) or not rows:
+        logger.warning("v2/shipping-rates empty data: %s", (str(payload)[:400]))
+        return None
+    standard = None
+    for row in rows:
+        if isinstance(row, dict) and str(row.get("shipping") or "").upper() == "STANDARD":
+            standard = row
+            break
+    row = standard or rows[0]
+    if not isinstance(row, dict):
+        return None
+    rate_raw = row.get("rate") or row.get("shipping_cost")
+    if rate_raw is None:
+        return None
+    try:
+        cost = float(rate_raw)
+    except (TypeError, ValueError):
+        return None
+    name = row.get("shipping_method_name") or row.get("name") or "Standard Shipping"
+    mind = row.get("min_delivery_days")
+    maxd = row.get("max_delivery_days")
+    if mind is not None and maxd is not None:
+        delivery = f"{mind}-{maxd}"
+    elif mind is not None:
+        delivery = str(mind)
+    else:
+        delivery = "5-7"
+    return {
+        "shipping_cost": cost,
+        "shipping_method": str(name),
+        "delivery_days": delivery,
+    }
 
 
 def attach_printful_catalog_data(product: Dict[str, Any]) -> Dict[str, Any]:
