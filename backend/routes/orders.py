@@ -1757,7 +1757,8 @@ def calculate_shipping():
                                 "code": "SHIPPING_QUOTE_REJECTED",
                                 "error": "Shipping could not be calculated. Check your ZIP code and state, then try again.",
                                 "unavailable_items": [],
-                                "action": "If it still fails, try removing one item or different options.",
+                                # No line-level stock mapping — do not imply catalog OOS (often API/store config).
+                                "action": "Please try again in a moment. If this continues, contact support.",
                             }), 409
                     except Exception as out_err:
                         logger.warning("Out-of-stock handling failed: %s", out_err)

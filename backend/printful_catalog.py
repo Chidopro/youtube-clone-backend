@@ -135,6 +135,10 @@ CATALOG_COLOR_ALIASES: Dict[int, Dict[str, str]] = {
 
 JIGSAW_PUZZLE_WITH_TIN_CATALOG_ID = 906
 
+# Printful caps / hats fulfilled as embroidery (not DTG). Wrong technique breaks v2/shipping-rates
+# and legacy /shipping/rates often returns a misleading "out of stock" for valid variants.
+HAT_EMBROIDERY_CATALOG_PRODUCT_IDS = frozenset({100, 140, 396})
+
 # Gildan 18500B Youth Heavy Blend Hoodie — Printful catalog sizes use YXS/YS/YM/YL/YXL.
 YOUTH_HEAVY_BLEND_HOODIE_CATALOG_ID = 689
 GILDAN_18500B_YOUTH_SIZE: Dict[str, str] = {
@@ -525,6 +529,12 @@ def _placement_and_technique_for_v2_shipping(catalog_variant_id: int, api_key: s
         if placement_names:
             return placement_names[0], "sublimation"
         return "default", "sublimation"
+
+    if cat_pid in HAT_EMBROIDERY_CATALOG_PRODUCT_IDS:
+        for p in placement_names:
+            if "embroidery" in p.lower():
+                return p, "embroidery"
+        return "embroidery_front", "embroidery"
 
     if "front_large" in placement_names:
         return "front_large", "dtg"

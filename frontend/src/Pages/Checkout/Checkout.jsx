@@ -151,10 +151,16 @@ const Checkout = () => {
           errorData = { error: errorText || `HTTP ${res.status}: ${res.statusText}` };
         }
         if (errorData?.code === 'SHIPPING_QUOTE_REJECTED') {
-          throw new Error(
-            'Shipping could not be calculated. Check your ZIP code and state, then tap Calculate Shipping again. '
-            + 'If it keeps failing, try removing one item or different sizes or colors.'
-          );
+          const u = Array.isArray(errorData.unavailable_items) ? errorData.unavailable_items : [];
+          const base = (errorData.error && String(errorData.error).trim())
+            || 'Shipping could not be calculated. Check your ZIP code and state, then tap Calculate Shipping again.';
+          if (u.length > 0) {
+            throw new Error(
+              `${base} If it keeps failing, try different options for: ${u.join(', ')}.`
+            );
+          }
+          const action = (errorData.action && String(errorData.action).trim()) || '';
+          throw new Error(action ? `${base} ${action}` : base);
         }
         if (errorData?.code === 'OUT_OF_STOCK') {
           const itemsList = Array.isArray(errorData.unavailable_items) ? errorData.unavailable_items : [];
