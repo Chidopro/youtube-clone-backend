@@ -35,6 +35,7 @@ from printful_catalog import (
     printful_request_headers,
     try_v2_shipping_rates,
 )
+from printful_shipping_buckets import printful_table_shipping_floor_usd
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +148,39 @@ def _variant_ids_from_printful_error(obj) -> set:
 
     walk(obj)
     return found
+
+
+def _us_printful_table_fallback_if_enabled(cart: list, country_code: str) -> dict | None:
+    """
+    If Printful live /shipping/rates and v2 both fail, US orders can still get a
+    reasonable Standard estimate from the same bucket table as SHIPPING_TABLE_FLOOR.
+
+    Disable with SHIPPING_TABLE_FALLBACK_ON_API_FAIL=0|false|off.
+    Returns a JSON-serializable dict for jsonify(), or None.
+    """
+    v = os.getenv("SHIPPING_TABLE_FALLBACK_ON_API_FAIL")
+    if v is not None and str(v).strip().lower() in ("0", "false", "no", "off"):
+        return None
+    cc = (country_code or "US").strip().upper()
+    if cc == "USA":
+        cc = "US"
+    if cc != "US":
+        return None
+    est = printful_table_shipping_floor_usd(cart, "US")
+    if est <= 0:
+        return None
+    logger.info(
+        "calculate-shipping: US table fallback $%.2f (live Printful quote unavailable; cart has bucketed products)",
+        est,
+    )
+    return {
+        "success": True,
+        "shipping_cost": float(est),
+        "currency": "USD",
+        "delivery_days": "5-7",
+        "shipping_method": "Standard Shipping (estimated)",
+        "quote_source": "us_printful_table_estimate",
+    }
 
 
 def register_orders_routes(app, supabase, supabase_admin, order_store, products_list, config):
@@ -1703,6 +1737,9 @@ def calculate_shipping():
                             "delivery_days": str(v2_ok.get("delivery_days", "5-7")),
                             "shipping_method": v2_ok.get("shipping_method", "Standard Shipping"),
                         })
+                    fb = _us_printful_table_fallback_if_enabled(cart, country)
+                    if fb:
+                        return jsonify(fb)
                 else:
                     logger.warning(
                         "Printful shipping/rates HTTP %s: %s",
@@ -1724,6 +1761,9 @@ def calculate_shipping():
                             "delivery_days": str(v2_ok.get("delivery_days", "5-7")),
                             "shipping_method": v2_ok.get("shipping_method", "Standard Shipping"),
                         })
+                    fb = _us_printful_table_fallback_if_enabled(cart, country)
+                    if fb:
+                        return jsonify(fb)
                     try:
                         body_text = (response.text or "").lower()
                         if response.status_code == 400 and "out of stock" in body_text:
@@ -1752,6 +1792,9 @@ def calculate_shipping():
                                 response.status_code,
                                 (response.text or "")[:800],
                             )
+                            fb = _us_printful_table_fallback_if_enabled(cart, country)
+                            if fb:
+                                return jsonify(fb)
                             return jsonify({
                                 "success": False,
                                 "code": "SHIPPING_QUOTE_REJECTED",
@@ -1765,7 +1808,9 @@ def calculate_shipping():
             except Exception as e:
                 logger.warning("Printful shipping/rates request failed: %s", e)
         
-        # Do not silently use a fixed fallback rate; caller must retry.
+        fb = _us_printful_table_fallback_if_enabled(cart, country)
+        if fb:
+            return jsonify(fb)
         logger.error(
             "calculate-shipping failed to fetch live rates; cart_lines=%s zip=%s country=%s state=%s",
             len(cart), postal_code, country, recipient_state,
