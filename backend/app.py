@@ -1286,7 +1286,7 @@ PRODUCTS = [
     # Products with both COLOR and SIZE options
     {
         "name": "Unisex T-Shirt",
-        "price": 19.59,
+        "price": 21.59,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "preview_image": "mensunisextshirtpreview.png",
@@ -1306,7 +1306,7 @@ PRODUCTS = [
     },
     {
         "name": "Mens Fitted T-Shirt",
-        "price": 22.11,
+        "price": 24.11,
         "filename": "mensfittedtshirt.png",
         "main_image": "mensfittedtshirt.png",
         "preview_image": "mensfittedtshirtpreview.png",
@@ -1325,7 +1325,7 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Oversized T-Shirt",
-        "price": 24.02,
+        "price": 26.02,
         "filename": "unisexoversizedtshirt.png",
         "main_image": "unisexoversizedtshirt.png",
         "preview_image": "mensunisexoversizedtshirtpreview.png",
@@ -1343,7 +1343,7 @@ PRODUCTS = [
     },
     {
         "name": "Men's Tank Top",
-        "price": 21.87,
+        "price": 23.87,
         "filename": "menstanktoppreview.png",
         "main_image": "menstanktoppreview.png",
         "preview_image": "menstanktoppreview.png",
@@ -1360,7 +1360,7 @@ PRODUCTS = [
     },
     {
         "name": "Men's Fitted Long Sleeve",
-        "price": 26.49,
+        "price": 28.49,
         "filename": "mensfittedlongsleeve.png",
         "main_image": "mensfittedlongsleeve.png",
         "preview_image": "mensfittedlongsleeveshirtpreview.png",
@@ -1376,7 +1376,7 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Hoodie",
-        "price": 32.99,
+        "price": 34.99,
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "mensunisexhoodiepreview.png",
@@ -1393,7 +1393,7 @@ PRODUCTS = [
     },
     {
         "name": "Cropped Hoodie",
-        "price": 38.27,
+        "price": 40.27,
         "filename": "croppedhoodie.png",
         "main_image": "croppedhoodie.png",
         "preview_image": "womenscroppedhoodiepreview.png",
@@ -1409,7 +1409,7 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Champion Hoodie",
-        "price": 39.75,
+        "price": 41.75,
         "filename": "hoodiechampion.png",
         "main_image": "hoodiechampion.png",
         "preview_image": "mensunisexchampionhoodiepreview.png",
@@ -1426,7 +1426,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's Ribbed Neck",
-        "price": 23.13,
+        "price": 25.13,
         "filename": "womensribbedneck.png",
         "main_image": "womensribbedneck.png",
         "preview_image": "womensribbedneckpreview.png",
@@ -1445,7 +1445,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's Shirt",
-        "price": 20.99,
+        "price": 22.99,
         "filename": "womensshirt.png",
         "main_image": "womensshirt.png",
         "preview_image": "womenshirtpreview.png",
@@ -1462,7 +1462,7 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Heavyweight T-Shirt",
-        "price": 22.19,
+        "price": 24.19,
         "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
         "preview_image": "womenshdshirtpreview.png",
@@ -1480,7 +1480,7 @@ PRODUCTS = [
     },
     {
         "name": "Kids Shirt",
-        "price": 19.79,
+        "price": 21.79,
         "filename": "kidsshirtpreview.png",
         "main_image": "kidsshirtpreview.png",
         "preview_image": "kidsshirtpreview.png",
@@ -1496,7 +1496,7 @@ PRODUCTS = [
     },
     {
         "name": "Youth Heavy Blend Hoodie",
-        "price": 27.16,
+        "price": 29.16,
         "filename": "kidhoodie.png",
         "main_image": "kidhoodie.png",
         "preview_image": "kidsyouthheavyblendhoodiepreview.png",
@@ -1512,7 +1512,7 @@ PRODUCTS = [
     },
     {
         "name": "Kids Long Sleeve",
-        "price": 23.99,
+        "price": 25.99,
         "filename": "kidlongsleeve.png",
         "main_image": "kidlongsleeve.png",
         "preview_image": "kidslongsleevepreview.png",
@@ -1526,7 +1526,7 @@ PRODUCTS = [
     },
     {
         "name": "Kids Sweatshirt",
-        "price": 24.13,
+        "price": 26.13,
         "filename": "kidssweatshirt.png",
         "main_image": "kidssweatshirt.png",
         "preview_image": "kidssweatshirtpreview.png",
@@ -1542,7 +1542,7 @@ PRODUCTS = [
     },
     {
         "name": "Baby Body Suit",
-        "price": 19.27,
+        "price": 21.27,
         "filename": "youthalloverprintswimsuit.png",
         "main_image": "youthalloverprintswimsuit.png",
         "preview_image": "kidsbabybodysuitpreview.png",
@@ -1557,7 +1557,7 @@ PRODUCTS = [
     },
     {
         "name": "Toddler Jersey T-Shirt",
-        "price": 18.75,
+        "price": 20.75,
         "filename": "toddlerjerseytshirt.png",
         "main_image": "toddlerjerseytshirt.png",
         "preview_image": "kidstoddlerjerseytshirtpreview.png",
@@ -1572,7 +1572,7 @@ PRODUCTS = [
     },
     {
         "name": "Baby Staple Tee",
-        "price": 20.40,
+        "price": 22.40,
         "filename": "babystapletshirt.png",
         "main_image": "babystapletshirt.png",
         "preview_image": "kidsbabystapleteepreview.png",
@@ -1586,7 +1586,7 @@ PRODUCTS = [
     },
     {
         "name": "Baby Jersey T-Shirt",
-        "price": 18.75,
+        "price": 20.75,
         "filename": "toddlershortsleevet.png",
         "main_image": "toddlershortsleevet.png",
         "preview_image": "kidsbabyjerseytshirtpreview.png",
@@ -1601,7 +1601,7 @@ PRODUCTS = [
     },
     {
         "name": "Laptop Sleeve",
-        "price": 28.73,
+        "price": 30.73,
         "filename": "laptopsleeve.png",
         "main_image": "laptopsleeve.png",
         "preview_image": "bagslaptopsleevepreview.png",
@@ -1614,7 +1614,7 @@ PRODUCTS = [
     },
     {
         "name": "All-Over Print Drawstring",
-        "price": 23.64,
+        "price": 25.64,
         "filename": "drawstringbag.png",
         "main_image": "drawstringbag.png",
         "preview_image": "bagsalloverprintdrawstringpreview.png",
@@ -1626,7 +1626,7 @@ PRODUCTS = [
     },
     {
         "name": "All Over Print Tote Pocket",
-        "price": 25.55,
+        "price": 27.55,
         "filename": "largecanvasbag.png",
         "main_image": "largecanvasbag.png",
         "preview_image": "bagsalloverprinttotepocketpreview.png",
@@ -1704,7 +1704,7 @@ PRODUCTS = [
     },
     {
         "name": "Pet Bowl All-Over Print",
-        "price": 29.65,
+        "price": 31.65,
         "filename": "dogbowl.png",
         "main_image": "dogbowl.png",
         "preview_image": "petspetbowlalloverprintpreview.png",
@@ -1717,7 +1717,7 @@ PRODUCTS = [
     },
     {
         "name": "Pet Bandana Collar",
-        "price": 21.78,
+        "price": 23.78,
         "filename": "scarfcollar.png",
         "main_image": "scarfcollar.png",
         "preview_image": "petspetbandanacollarpreview.png",
@@ -1761,7 +1761,7 @@ PRODUCTS = [
     },
     {
         "name": "All Over Print Leash",
-        "price": 24.90,
+        "price": 26.90,
         "filename": "leash.png",
         "main_image": "leash.png",
         "preview_image": "petsalloverprintleash.png",
@@ -1773,7 +1773,7 @@ PRODUCTS = [
     },
     {
         "name": "All Over Print Collar",
-        "price": 23.08,
+        "price": 25.08,
         "filename": "collar.png",
         "main_image": "collar.png",
         "preview_image": "petsalloverprintcollarpreview.png",
@@ -1801,7 +1801,7 @@ PRODUCTS = [
     },
     {
         "name": "Men's Long Sleeve Shirt",
-        "price": 20.79,
+        "price": 22.79,
         "filename": "menslongsleeve.png",
         "main_image": "menslongsleeve.png",
         "preview_image": "menslongsleevepreview.png",
@@ -1819,7 +1819,7 @@ PRODUCTS = [
     },
     {
         "name": "Fitted Racerback Tank",
-        "price": 19.31,
+        "price": 21.31,
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.png",
@@ -1836,7 +1836,7 @@ PRODUCTS = [
     },
     {
         "name": "Unisex Pullover Hoodie",
-        "price": 37.97,
+        "price": 39.97,
         "filename": "unisexpulloverhoodie.png",
         "main_image": "unisexpulloverhoodie.png",
         "preview_image": "womensunisexpulloverhoodiepreview.png",
@@ -1852,7 +1852,7 @@ PRODUCTS = [
     },
     {
         "name": "Micro-Rib Tank Top",
-        "price": 23.31,
+        "price": 25.31,
         "filename": "womenstee.png",
         "main_image": "womenstee.png",
         "preview_image": "womensmicroribtanktoppreview.png",
@@ -1869,7 +1869,7 @@ PRODUCTS = [
     },
     {
         "name": "Distressed Dad Hat",
-        "price": 21.89,
+        "price": 23.89,
         "filename": "distresseddadhat.png",
         "main_image": "distresseddadhat.png",
         "preview_image": "hatsdistresseddadhatpreview.png",
@@ -1881,7 +1881,7 @@ PRODUCTS = [
     },
     {
         "name": "Closed Back Cap",
-        "price": 25.19,
+        "price": 27.19,
         "filename": "closedbackcap.png",
         "main_image": "closedbackcap.png",
         "preview_image": "hatsclosedbackcappreview.png",
@@ -1893,7 +1893,7 @@ PRODUCTS = [
     },
     {
         "name": "Five Panel Trucker Hat",
-        "price": 22.71,
+        "price": 24.71,
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
         "preview_image": "hatsfivepaneltruckerhatpreview.png",
@@ -1919,7 +1919,7 @@ PRODUCTS = [
     },
     {
         "name": "Five Panel Baseball Cap",
-        "price": 19.96,
+        "price": 21.96,
         "filename": "youthbaseballcap.png",
         "main_image": "youthbaseballcap.png",
         "preview_image": "hatsfivepanelbaseballhatpreview.png",
@@ -1931,7 +1931,7 @@ PRODUCTS = [
     },
     {
         "name": "White Glossy Mug",
-        "price": 14.95,
+        "price": 16.95,
         "filename": "mug1.png",
         "main_image": "mug1.png",
         "preview_image": "mugwhiteglossymugpreview.png",
@@ -1945,7 +1945,7 @@ PRODUCTS = [
     },
     {
         "name": "Travel Mug",
-        "price": 28.48,
+        "price": 30.48,
         "filename": "travelmug.png",
         "main_image": "travelmug.png",
         "preview_image": "mugtravelmugpreview.png",
@@ -1958,7 +1958,7 @@ PRODUCTS = [
     },
     {
         "name": "Enamel Mug",
-        "price": 19.82,
+        "price": 21.82,
         "filename": "enamalmug.png",
         "main_image": "enamalmug.png",
         "preview_image": "mugenamelmugpreview.png",
@@ -1970,7 +1970,7 @@ PRODUCTS = [
     },
     {
         "name": "Colored Mug",
-        "price": 16.49,
+        "price": 18.49,
         "filename": "coloredmug.png",
         "main_image": "coloredmug.png",
         "preview_image": "mugcoloredmugpreview.png",
@@ -1983,7 +1983,7 @@ PRODUCTS = [
     },
     {
         "name": "All-Over Print Utility Bag",
-        "price": 28.57,
+        "price": 30.57,
         "filename": "crossbodybag.png",
         "main_image": "crossbodybag.png",
         "preview_image": "bagsalloverprintutilitybagpreview.png",
@@ -1995,7 +1995,7 @@ PRODUCTS = [
     },
     {
         "name": "Women's Crop Top",
-        "price": 26.01,
+        "price": 28.01,
         "filename": "womens-crop-top.png",
         "main_image": "womens-crop-top.png",
         "preview_image": "womenscroptoppreview.png",
@@ -2012,7 +2012,7 @@ PRODUCTS = [
     },
     {
         "name": "Pajama Shorts",
-        "price": 32.56,
+        "price": 34.56,
         "filename": "womens-crop-top.png",
         "main_image": "womens-crop-top.png",
         "preview_image": "womenscroptoppreview.png",
