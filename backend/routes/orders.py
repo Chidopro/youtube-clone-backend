@@ -4,8 +4,16 @@ from utils.stripe_checkout import (
     fetch_full_checkout_session,
     build_shipping_address_payload,
     merge_shipping_address_records,
+    session_amount_total_usd,
     session_customer_email,
     session_shipping_cost_usd,
+    session_tax_usd,
+)
+from utils.stripe_tax_checkout import (
+    apply_automatic_tax_to_checkout_session,
+    shipping_tax_product_data,
+    stripe_product_tax_code_for_line_item,
+    tax_line_item_price_data,
 )
 import logging
 import json
@@ -1071,21 +1079,22 @@ def create_checkout_session():
                 unit_amount = int(product_info.get("price", 0) * 100)
             
             line_items.append({
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {"name": item.get("product", "Item")},
-                    "unit_amount": unit_amount,
-                },
+                "price_data": tax_line_item_price_data(
+                    {
+                        "name": item.get("product", "Item"),
+                        "tax_code": stripe_product_tax_code_for_line_item(item),
+                    },
+                    unit_amount,
+                ),
                 "quantity": 1,
             })
         
         if shipping_cost and shipping_cost > 0:
             line_items.append({
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {"name": "Shipping"},
-                    "unit_amount": int(shipping_cost * 100),
-                },
+                "price_data": tax_line_item_price_data(
+                    shipping_tax_product_data("Shipping"),
+                    int(shipping_cost * 100),
+                ),
                 "quantity": 1,
             })
         
@@ -1107,6 +1116,8 @@ def create_checkout_session():
             response = jsonify({"error": "Payment system configuration error", "details": str(e)})
             return _allow_origin(response), 500
         
+        user_email = (data.get("user_email") or data.get("customer_email") or "").strip()
+
         session_params = {
             "payment_method_types": ["card"],
             "mode": "payment",
@@ -1114,7 +1125,6 @@ def create_checkout_session():
             "success_url": f"{base_url}/order-success?order_id={order_id}",
             "cancel_url": f"{base_url}/checkout/{product_id or ''}",
             "phone_number_collection": {"enabled": True},
-            "shipping_address_collection": {"allowed_countries": ["US", "CA", "GB", "AU", "DE"]},
             "payment_intent_data": {"statement_descriptor": "ScreenMerch"},
             "metadata": {
                 "order_id": order_id,
@@ -1124,12 +1134,22 @@ def create_checkout_session():
                 **({"favorite_list_id": str(favorite_list_id)} if favorite_list_id else {}),
             }
         }
-        
-        # Pre-populate customer email if available
-        user_email = data.get("user_email", data.get("customer_email", ""))
-        if user_email and user_email.strip():
-            session_params["customer_email"] = user_email.strip()
-        
+
+        session_params, tax_err = apply_automatic_tax_to_checkout_session(
+            session_params,
+            shipping_address,
+            data.get("shipping_address"),
+            user_email,
+            stripe,
+            logger,
+        )
+        if tax_err:
+            response = jsonify({"error": tax_err})
+            return _allow_origin(response), 500
+
+        if user_email and "customer" not in session_params:
+            session_params["customer_email"] = user_email
+
         session = stripe.checkout.Session.create(**session_params)
         response = jsonify({"url": session.url})
         return _allow_origin(response), 200
@@ -1249,8 +1269,14 @@ def stripe_webhook():
                     if not isinstance(shipping_address, dict):
                         shipping_address = {}
                 
-                # Calculate total
-                total_amount = sum(item.get('price', 0) for item in cart)
+                paid_total = session_amount_total_usd(session)
+                tax_paid = session_tax_usd(session)
+                if tax_paid is not None and tax_paid > 0:
+                    logger.info("Webhook: Stripe tax on session: $%.2f", tax_paid)
+                if paid_total is not None:
+                    total_amount = paid_total
+                else:
+                    total_amount = sum(item.get('price', 0) for item in cart)
                 
                 # Get creator_user_id
                 creator_user_id = order_data.get('creator_user_id')
@@ -1399,6 +1425,10 @@ def stripe_webhook():
                         stripe_ship_cost = session_shipping_cost_usd(session)
                         if stripe_ship_cost is not None and stripe_ship_cost > 0:
                             update_data["shipping_cost"] = stripe_ship_cost
+                        if paid_total is not None:
+                            update_data["total_amount"] = paid_total
+                        if tax_paid is not None:
+                            update_data["tax_amount"] = tax_paid
                         write_client.table('orders').update(update_data).eq('order_id', order_id).execute()
                         
                         # Ensure order is in processing queue

@@ -73,8 +73,16 @@ from utils.stripe_checkout import (
     fetch_full_checkout_session,
     build_shipping_address_payload,
     merge_shipping_address_records,
+    session_amount_total_usd,
     session_customer_email,
     session_shipping_cost_usd,
+    session_tax_usd,
+)
+from utils.stripe_tax_checkout import (
+    apply_automatic_tax_to_checkout_session,
+    shipping_tax_product_data,
+    stripe_product_tax_code_for_line_item,
+    tax_line_item_price_data,
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -3788,26 +3796,23 @@ def create_checkout_session():
                 unit_amount = int(product_info["price"] * 100)
             
             line_items.append({
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {
+                "price_data": tax_line_item_price_data(
+                    {
                         "name": item.get("product"),
+                        "tax_code": stripe_product_tax_code_for_line_item(item),
                     },
-                    "unit_amount": unit_amount,
-                },
+                    unit_amount,
+                ),
                 "quantity": 1,
             })
 
         # Add shipping cost as a separate line item
         if shipping_cost and shipping_cost > 0:
             line_items.append({
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {
-                        "name": "Shipping",
-                    },
-                    "unit_amount": int(shipping_cost * 100),
-                },
+                "price_data": tax_line_item_price_data(
+                    shipping_tax_product_data("Shipping"),
+                    int(shipping_cost * 100),
+                ),
                 "quantity": 1,
             })
             logger.info(f"🚚 Added shipping cost: ${shipping_cost}")
@@ -3829,7 +3834,8 @@ def create_checkout_session():
             # Default to main domain
             base_url = 'https://screenmerch.com'
         
-        # Pre-populate customer email if available from frontend
+        user_email = (data.get("user_email") or data.get("customer_email") or "").strip()
+
         session_params = {
             "payment_method_types": ["card"],
             "mode": "payment",
@@ -3848,14 +3854,26 @@ def create_checkout_session():
                 "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
             }
         }
-        
-        # Pre-populate customer email if available (user can still edit it in Stripe)
-        user_email = data.get("user_email", data.get("customer_email", ""))
-        if user_email and user_email.strip():
-            session_params["customer_email"] = user_email.strip()
+
+        session_params, tax_err = apply_automatic_tax_to_checkout_session(
+            session_params,
+            shipping_address,
+            data.get("shipping_address"),
+            user_email,
+            stripe,
+            logger,
+        )
+        if tax_err:
+            response = jsonify({"error": tax_err})
+            origin = request.headers.get('Origin', '*')
+            response.headers.add('Vary', 'Origin')
+            return response, 500
+
+        if user_email and "customer" not in session_params:
+            session_params["customer_email"] = user_email
             logger.info(f"📧 [CHECKOUT] Pre-populating customer email in Stripe session: {user_email}")
-        else:
-            logger.info(f"📧 [CHECKOUT] No customer email provided - Stripe will collect it during checkout (email_collection enabled)")
+        elif not user_email:
+            logger.info("📧 [CHECKOUT] No customer email provided — Stripe will collect at checkout")
         
         # Ensure we're using test mode Stripe key
         try:
@@ -4047,8 +4065,16 @@ def stripe_webhook():
                 postal_code = "Not provided"
                 country = "Not provided"
             
-            # Calculate total amount
-            total_amount = sum(item.get('price', 0) for item in cart)
+            paid_total = session_amount_total_usd(session)
+            tax_paid = session_tax_usd(session)
+            if tax_paid is not None and tax_paid > 0:
+                logger.info(f"💰 [WEBHOOK] Stripe tax on session: ${tax_paid:.2f}")
+            if paid_total is not None:
+                total_amount = paid_total
+                logger.info(f"💰 [WEBHOOK] Using session amount_total (incl. tax): ${total_amount:.2f}")
+            else:
+                total_amount = sum(item.get('price', 0) for item in cart)
+                logger.info(f"💰 [WEBHOOK] Session amount_total missing; cart subtotal: ${total_amount:.2f}")
             
             # If DB order has no screenshot, try order_store (same Fly instance may have it from create_checkout_session)
             has_screenshot = order_data.get("selected_screenshot") or (cart and (cart[0].get("selected_screenshot") or cart[0].get("screenshot") or cart[0].get("img") or cart[0].get("thumbnail")))
@@ -4268,6 +4294,10 @@ def stripe_webhook():
                 stripe_ship_cost = session_shipping_cost_usd(session)
                 if stripe_ship_cost is not None and stripe_ship_cost > 0:
                     update_data["shipping_cost"] = stripe_ship_cost
+                if paid_total is not None:
+                    update_data["total_amount"] = paid_total
+                if tax_paid is not None:
+                    update_data["tax_amount"] = tax_paid
                 db_rw.table('orders').update(update_data).eq('order_id', order_id).execute()
                 logger.info(f"✅ Updated order {order_id} status to 'paid' in database")
                 
