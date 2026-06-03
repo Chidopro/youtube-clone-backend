@@ -1,9 +1,9 @@
 """
-One-time migration: set creator_share = $7 and platform_fee = $3 for all
+One-time migration: set creator_share and platform_fee from payout.py for all
 creator_earnings rows that are standard products (not cards/stickers/magnets).
 
-Historical rows were created with 70%/30% of sale amount; this corrects them
-to the $10 markup split ($7 creator / $3 platform per sale).
+Historical rows may use an older split; this corrects them to the current
+standard markup split ($6 creator / $6 platform per sale on $12 markup).
 
 Run from repo root: python -m backend.scripts.migrate_earnings_to_markup_split
 Or from backend/: python scripts/migrate_earnings_to_markup_split.py
@@ -58,7 +58,7 @@ def main():
         print("No rows to update (all are cards/stickers/magnets or table empty).")
         return
 
-    print(f"Updating {len(to_update)} creator_earnings rows to $7 / $3 per sale...")
+    print(f"Updating {len(to_update)} creator_earnings rows to ${CREATOR_SHARE_PER_MARKUP_SALE} / ${PLATFORM_FEE_PER_MARKUP_SALE} per sale...")
     updated = 0
     for u in to_update:
         try:

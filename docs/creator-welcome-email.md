@@ -22,7 +22,7 @@ You get your own store link (yourname.screenmerch.com) where only your videos sh
 
 We invite you to sign in and check out the products we offer — from women's and men's to kids, mugs, bags, hats, and more (stickers, magnets, greeting cards, and more). You'll see prices and colors for each item so you know exactly what your fans can order.
 
-Fans pick a moment from your video, capture a screenshot, and put it on any product. Every screenshot is processed for 300 DPI print quality. You earn $7 per sale on most items; we handle printing and shipping.
+Fans pick a moment from your video, capture a screenshot, and put it on any product. Every screenshot is processed for 300 DPI print quality. You earn $6 per sale on most items; we handle printing and shipping.
 
 **Next steps:** Sign in, browse the catalog, set your subdomain, upload your videos, and share your link.
 

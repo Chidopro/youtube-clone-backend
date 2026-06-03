@@ -1,22 +1,29 @@
+# Dependencies (installed in Dockerfile from requirements.txt)
 node_modules
+**/node_modules
 .pnp
 **/.pnp.js
 
-coverage
+# Netlify CLI/plugins — not used on Fly (~130MB+)
+.netlify
+**/.netlify
 
-build
-dist
+# Python caches
+__pycache__
+**/__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.mypy_cache
+.ruff_cache
+venv
+.venv
+env
 
+# Git / IDE / OS
+.git
+.gitignore
 **/.DS_Store
-**/.env.local
-**/.env.development.local
-**/.env.test.local
-**/.env.production.local
-
-**/npm-debug.log*
-**/yarn-debug.log*
-**/yarn-error.log*
-
 **/.vscode/*
 !**/.vscode/extensions.json
 **/.idea
@@ -25,4 +32,25 @@ dist
 **/*.njsproj
 **/*.sln
 **/*.sw?
+
+# Env files (use fly secrets)
+.env
+.env.*
+!.env.example
+
+# Build artifacts & coverage
+coverage
+build
+dist
+htmlcov
+
+# Logs & local media (not needed in production image)
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+*.log
 **/*.mp4
+
+# Docs / dev-only (optional slimming)
+*.md
+!README.md

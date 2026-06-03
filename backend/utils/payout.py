@@ -1,15 +1,16 @@
 """
 Precise payout calculations for ScreenMerch.
 
-- Most products: $10.00 markup per sale → Creator $7.00, ScreenMerch $3.00 (exact).
+- Most products: $12.00 markup per sale → Creator $6.00, ScreenMerch $6.00 (50/50).
 - Cards, stickers, magnets: different pricing (TBD); currently 70% creator / 30% platform.
 """
 
 # Standard markup split per unit (exact dollars)
-CREATOR_SHARE_PER_MARKUP_SALE = 7.00
-PLATFORM_FEE_PER_MARKUP_SALE = 3.00
+STANDARD_MARKUP_PER_SALE = 12.00
+CREATOR_SHARE_PER_MARKUP_SALE = 6.00
+PLATFORM_FEE_PER_MARKUP_SALE = 6.00
 
-# Products that do NOT use the $10 markup; pricing TBD (cards, stickers, magnets)
+# Products that do NOT use the standard markup; pricing TBD (cards, stickers, magnets)
 PRODUCTS_WITHOUT_STANDARD_MARKUP = frozenset([
     "Greeting Card",
     "Kiss-Cut Stickers",
@@ -21,7 +22,7 @@ def get_payout_for_sale(product_name, sale_amount, quantity=1):
     """
     Return (creator_share, platform_fee) in dollars, rounded to 2 decimals.
 
-    - For products with standard $10 markup: $7.00 to creator, $3.00 to platform per unit.
+    - For products with standard $12 markup: $6.00 to creator, $6.00 to platform per unit.
     - For cards, stickers, magnets: 70% / 30% of sale amount (to be updated later).
     """
     product_name = (product_name or "").strip()
@@ -37,7 +38,7 @@ def get_payout_for_sale(product_name, sale_amount, quantity=1):
         platform_fee = round(total * 0.30, 2)
         return (creator_share, platform_fee)
 
-    # Standard $10 markup: exact $7 / $3 per unit
+    # Standard $12 markup: exact $6 / $6 per unit
     creator_share = round(CREATOR_SHARE_PER_MARKUP_SALE * qty, 2)
     platform_fee = round(PLATFORM_FEE_PER_MARKUP_SALE * qty, 2)
     return (creator_share, platform_fee)

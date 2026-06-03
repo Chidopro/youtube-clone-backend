@@ -171,8 +171,12 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     <>
       <div className={`container ${sidebar ? "" : " large-container"}`}>
         {/* Launch banner: under navbar, above purple bar */}
-        <Link to="/release" className="home-launch-banner" aria-label="Launch message">
-          The Creator Revolution Has a Storefront February 28, 2026
+        <Link
+          to="/release"
+          className="home-launch-banner"
+          aria-label="Launch announcement: creator storefronts and $6 per sale on most products"
+        >
+          The Creator Revolution Has a Storefront — $6 Per Sale on Most Products · Feb 28, 2026
         </Link>
 
         {/* User Flow Section */}

@@ -30,7 +30,7 @@ const Release = () => {
           <li>A personalized subdomain (yourname.screenmerch.com)</li>
           <li>Full branding control — logo, colors, favicon, and metadata</li>
           <li>A dashboard to manage videos, analytics, and payouts</li>
-          <li>$7 per sale on most products</li>
+          <li>$6 per sale on most products</li>
           <li>Secure payment processing and global fulfillment handled behind the scenes</li>
         </ul>
         <p>Fans don&apos;t leave the creator&apos;s world.<br />They stay inside the creator&apos;s brand.</p>

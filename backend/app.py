@@ -2639,7 +2639,7 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
                 # Check if user is a creator
                 user_result = client_to_use.table('users').select('role').eq('id', creator_user_id).single().execute()
                 if user_result.data and user_result.data.get('role') == 'creator':
-                    # Precise payout: $10 markup = $7 creator / $3 platform per sale; cards/stickers/magnets use 70/30 (TBD)
+                    # Precise payout: $12 markup = $6 creator / $6 platform per sale; cards/stickers/magnets use 70/30 (TBD)
                     from utils.payout import get_payout_for_sale
                     product_name = sale_data.get('product_name') or item.get('product') or ''
                     quantity = item.get('quantity', 1)

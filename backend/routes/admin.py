@@ -233,7 +233,7 @@ def _send_creator_welcome_email(creator_email):
 
   <p style="font-weight: 600; margin-bottom: 8px;">Here's how it works:</p>
   <p style="margin-bottom: 16px;">Your fans pick a moment from your video, capture a screenshot, and place it on the product of their choice. Every screenshot is automatically processed for high-quality 300 DPI printing.</p>
-  <p style="margin-bottom: 20px;">You earn $7 per sale on most items (excluding greeting cards, stickers, and magnets). We handle the payment processing, printing, and shipping — so you can focus on creating content.</p>
+  <p style="margin-bottom: 20px;">You earn $6 per sale on most items (excluding greeting cards, stickers, and magnets). We handle the payment processing, printing, and shipping — so you can focus on creating content.</p>
 
   <p style="font-weight: 600; margin-bottom: 12px;">Next Steps:</p>
   <ul style="margin: 0 0 20px 0; padding-left: 22px;">
@@ -278,7 +278,7 @@ Here's how it works:
 
 Your fans pick a moment from your video, capture a screenshot, and place it on the product of their choice. Every screenshot is automatically processed for high-quality 300 DPI printing.
 
-You earn $7 per sale on most items (excluding greeting cards, stickers, and magnets). We handle the payment processing, printing, and shipping — so you can focus on creating content.
+You earn $6 per sale on most items (excluding greeting cards, stickers, and magnets). We handle the payment processing, printing, and shipping — so you can focus on creating content.
 
 Next Steps:
 
