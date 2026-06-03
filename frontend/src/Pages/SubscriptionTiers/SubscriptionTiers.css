@@ -150,7 +150,11 @@
 
 .metrics-header {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
+}
+
+.metrics-header h3 {
+    margin: 0;
 }
 
 .metrics-header h3 {
@@ -251,10 +255,25 @@
     min-height: 0;
 }
 
-.tier-card.breakdown-card.calculator-pair-card > .item-breakdown-container-vertical {
+.calculator-pair-body {
+    display: flex;
+    flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
-    justify-content: flex-start;
+}
+
+.tier-card.breakdown-card.calculator-pair-card > .item-breakdown-container-vertical.calculator-pair-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.calculator-pair-earnings-bar {
+    margin-top: auto !important;
+}
+
+.tier-card.breakdown-card .item-breakdown-container-vertical.calculator-pair-body {
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .tier-card {
@@ -314,10 +333,10 @@
     border-radius: 30px;
 }
 
-.tier-card.breakdown-card .tier-header.breakdown-header-aligned {
+.tier-card.breakdown-card .tier-header.breakdown-header-aligned.calculator-pair-header {
     border-bottom: 3px solid #ffc107;
-    margin-bottom: 40px;
-    padding-bottom: 25px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
     text-align: center;
     position: relative;
 }
@@ -347,7 +366,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: 15px;
+    margin-top: 0;
 }
 
 .tier-card.breakdown-card .product-image-centered {
@@ -451,10 +470,10 @@
     border-bottom: 2px solid #e9ecef;
 }
 
-.tier-card.current .tier-header {
+.tier-card.current .tier-header.calculator-pair-header {
     border-bottom: 3px solid #667eea !important;
-    margin-bottom: 40px !important;
-    padding-bottom: 25px !important;
+    margin-bottom: 20px !important;
+    padding-bottom: 14px !important;
 }
 
 .tier-header h5 {
@@ -1661,16 +1680,25 @@
     margin-right: auto;
 }
 
-.free-creator-plan-card .tier-header h5 {
-    font-size: 1.75rem !important;
+.calculator-pair-header {
+    text-align: center;
 }
 
-.free-plan-subtitle {
+.calculator-pair-header .calculator-card-title {
+    margin: 0 0 8px 0 !important;
+    font-size: 1.75rem !important;
+    font-weight: 800 !important;
+    color: #495057 !important;
+    line-height: 1.2;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.calculator-card-subtitle {
     margin: 0;
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: #495057;
-    line-height: 1.45;
+    font-size: 1rem;
+    font-weight: 400;
+    color: #6c757d;
+    line-height: 1.4;
     max-width: 340px;
     margin-left: auto;
     margin-right: auto;
@@ -1718,7 +1746,7 @@
 }
 
 .free-creator-plan-card .tier-savings.earnings-bottom {
-    margin-top: 18px !important;
+    margin-top: auto !important;
 }
 
 /* Moved from left column: sits under product image, above per-sale earnings */
@@ -1733,8 +1761,8 @@
 
 .earnings-right-benefits li {
     position: relative;
-    padding: 8px 0 8px 28px;
-    font-size: 1rem;
+    padding: 10px 0 10px 28px;
+    font-size: 1.05rem;
     color: #495057;
     font-weight: 600;
     border-bottom: 1px solid #f0e6c8;
@@ -1753,8 +1781,8 @@
 }
 
 @media (max-width: 768px) {
-    .free-creator-plan-card > .tier-header,
-    .breakdown-card > .earn-per-sale-header {
+    .free-creator-plan-card > .calculator-pair-header,
+    .breakdown-card > .calculator-pair-header {
         min-height: 0;
     }
 }
@@ -1769,13 +1797,19 @@
 
 /* Align header divider lines between the two cards (desktop) */
 @media (min-width: 769px) {
-    .free-creator-plan-card > .tier-header,
-    .breakdown-card > .earn-per-sale-header {
-        min-height: 15.5rem;
+    .free-creator-plan-card > .calculator-pair-header,
+    .breakdown-card > .calculator-pair-header {
+        min-height: 5.5rem;
         display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: flex-start;
         box-sizing: border-box;
+    }
+
+    .breakdown-card > .calculator-pair-header--compact {
+        min-height: 5.5rem;
+        padding-bottom: 14px;
     }
 }
 
@@ -1802,36 +1836,6 @@
     opacity: 0.65;
     cursor: not-allowed;
     transform: none;
-}
-
-.earn-per-sale-header {
-    text-align: center;
-}
-
-.earn-per-sale-title {
-    margin: 0 0 12px 0;
-    font-size: 1.65rem;
-    font-weight: 900;
-    color: #2d3748;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-}
-
-.earn-per-sale-product-line {
-    margin: 0 0 16px;
-    font-size: 1.05rem;
-    color: #495057;
-    line-height: 1.4;
-}
-
-.earn-per-sale-name {
-    font-weight: 800;
-    color: #333;
-}
-
-.earn-per-sale-meta {
-    font-weight: 600;
-    color: #6c757d;
 }
 
 .calculator-select-label {

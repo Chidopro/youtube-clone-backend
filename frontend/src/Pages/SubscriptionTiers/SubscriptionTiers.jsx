@@ -122,8 +122,7 @@ const SubscriptionTiers = () => {
             <div className="tiers-header">
                 <h1>💰 Creator Earnings Calculator</h1>
                 <p>
-                    Earn a fixed amount on most products—no monthly fees. Example below uses a coffee mug;
-                    the same per-sale payout applies across our standard catalog.
+                    See how much you can earn from your content with one of dozens of products—fixed per-sale payouts and no monthly fees.
                 </p>
                 {!currentUser && (
                     <button
@@ -145,10 +144,6 @@ const SubscriptionTiers = () => {
             <div className="performance-metrics">
                 <div className="metrics-header">
                     <h3>📊 Example Creator Performance</h3>
-                    <p>
-                        Illustration using {MONTHLY_UNITS_SOLD_EXAMPLE} monthly sales at $
-                        {CREATOR_PAYOUT_PER_SALE.toFixed(2)} per sale on most products.
-                    </p>
                 </div>
                 <div className="metrics-grid">
                     <div className="metric-card">
@@ -177,10 +172,11 @@ const SubscriptionTiers = () => {
 
                 <div className="tier-comparison-grid calculator-pair-grid">
                     <div className="tier-card current free-creator-plan-card calculator-pair-card">
-                        <div className="tier-header">
-                            <h5>Free Creator Plan</h5>
-                            <p className="free-plan-subtitle">Start earning from your videos with no monthly fees.</p>
+                        <div className="tier-header calculator-pair-header">
+                            <h5 className="calculator-card-title">Free Creator Plan</h5>
+                            <p className="calculator-card-subtitle">Start earning from your videos.</p>
                         </div>
+                        <div className="calculator-pair-body">
                         <div className="tier-icon-container">
                             <img
                                 src="/passive-icon.png"
@@ -192,9 +188,10 @@ const SubscriptionTiers = () => {
                             <li>No inventory to manage</li>
                             <li>No shipping to handle</li>
                         </ul>
-                        <div className="tier-savings earnings-bottom">
+                        <div className="tier-savings earnings-bottom calculator-pair-earnings-bar">
                             <span className="savings-amount">${annualCreatorEarnings.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                             <span className="savings-label">Annual Creator Earnings 🔥</span>
+                        </div>
                         </div>
                         <div className="tier-content-centered">
                             <button
@@ -212,14 +209,10 @@ const SubscriptionTiers = () => {
                         className="tier-card breakdown-card calculator-pair-card"
                         data-calculator-product-id={EXAMPLE_MUG.productId}
                     >
-                        <div className="tier-header breakdown-header-aligned earn-per-sale-header">
-                            <h2 className="earn-per-sale-title">What You Earn Per Sale</h2>
-                            <p className="earn-per-sale-product-line">
-                                <span className="earn-per-sale-name">{EXAMPLE_MUG.productName}</span>
-                                <span className="earn-per-sale-meta"> · example product</span>
-                            </p>
+                        <div className="tier-header breakdown-header-aligned calculator-pair-header calculator-pair-header--compact">
+                            <h5 className="calculator-card-title">What You Earn Per Sale</h5>
                         </div>
-                        <div className="item-breakdown-container-vertical">
+                        <div className="item-breakdown-container-vertical calculator-pair-body">
                             <div className="product-visual-centered">
                                 <img
                                     key={calculatorImageIndex}
@@ -236,19 +229,18 @@ const SubscriptionTiers = () => {
                             </div>
                             <ul className="earnings-right-benefits" aria-label="Plan highlights">
                                 <li>No monthly subscription cost</li>
-                                <li>${CREATOR_PAYOUT_PER_SALE.toFixed(2)} per sale on most products</li>
                                 <li>We handle fulfillment—you focus on content</li>
                             </ul>
-                            <div className="creator-earnings-hero">
+                            <div className="creator-earnings-hero calculator-pair-earnings-bar">
                                 <div className="creator-earnings-hero-label">Creator Earnings</div>
                                 <div className="creator-earnings-hero-value">
                                     ${CREATOR_PAYOUT_PER_SALE.toFixed(2)} <span className="creator-earnings-per">per sale</span>
                                 </div>
                             </div>
-                            <p className="calculator-trust-disclaimer">
-                                Same fixed payout on most catalog items. Specialty products (greeting cards, stickers, magnets) may differ.
-                            </p>
                         </div>
+                        <p className="calculator-trust-disclaimer">
+                            Fixed payout on most catalog items. Greeting cards, stickers, and magnets may differ.
+                        </p>
                     </div>
                 </div>
             </div>
