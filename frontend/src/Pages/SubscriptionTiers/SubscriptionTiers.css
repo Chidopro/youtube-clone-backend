@@ -269,6 +269,14 @@
 
 .calculator-pair-earnings-bar {
     margin-top: auto !important;
+    width: 100%;
+    min-height: 148px;
+    padding: 24px 20px !important;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 .tier-card.breakdown-card .item-breakdown-container-vertical.calculator-pair-body {
@@ -319,10 +327,11 @@
 }
 
 .tier-card.breakdown-card {
-    border-color: #ffc107;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 252, 235, 0.98) 100%);
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 249, 255, 0.98) 100%);
     border-width: 3px;
-    box-shadow: 0 20px 50px rgba(255, 193, 7, 0.25);
+    border-style: solid;
+    box-shadow: 0 20px 50px rgba(102, 126, 234, 0.25);
 }
 
 .tier-card.breakdown-card .tier-fee {
@@ -334,7 +343,7 @@
 }
 
 .tier-card.breakdown-card .tier-header.breakdown-header-aligned.calculator-pair-header {
-    border-bottom: 3px solid #ffc107;
+    border-bottom: 3px solid #667eea;
     margin-bottom: 20px;
     padding-bottom: 14px;
     text-align: center;
@@ -372,8 +381,8 @@
 .tier-card.breakdown-card .product-image-centered {
     width: 200px;
     height: 200px;
-    border: 4px solid #ffc107;
-    box-shadow: 0 10px 30px rgba(255, 193, 7, 0.4);
+    border: 4px solid #28a745;
+    box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
     border-radius: 12px;
     object-fit: contain;
     background: white;
@@ -458,9 +467,14 @@
     font-size: 1.2rem;
 }
 
-.tier-card:hover {
+.tier-card:not(.breakdown-card):hover {
     transform: translateY(-8px) scale(1.02);
     box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+}
+
+.tier-card.breakdown-card:hover {
+    transform: none;
+    box-shadow: 0 20px 50px rgba(102, 126, 234, 0.25);
 }
 
 .tier-header {
@@ -678,12 +692,11 @@
 
 .tier-savings.earnings-bottom {
     margin-top: 30px !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 0 !important;
     background: linear-gradient(135deg, #d4edda, #c3e6cb) !important;
     border: 3px solid #28a745 !important;
     border-radius: 16px !important;
     box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3) !important;
-    padding: 25px 20px !important;
 }
 
 .tier-card.current .tier-savings .savings-amount {
@@ -1765,7 +1778,7 @@
     font-size: 1.05rem;
     color: #495057;
     font-weight: 600;
-    border-bottom: 1px solid #f0e6c8;
+    border-bottom: 1px solid #e9ecef;
 }
 
 .earnings-right-benefits li:last-child {
@@ -1787,11 +1800,25 @@
     }
 }
 
-/* Pin Apply CTA to card bottom; keep annual earnings bar up with per-sale bar */
+/* Pin Apply CTA to card bottom; equal footer height keeps earnings bars aligned */
 @media (min-width: 769px) {
+    .free-creator-plan-card.calculator-pair-card > .tier-content-centered,
+    .breakdown-card.calculator-pair-card > .calculator-trust-disclaimer {
+        flex-shrink: 0;
+        min-height: 72px;
+        box-sizing: border-box;
+    }
+
     .free-creator-plan-card.calculator-pair-card > .tier-content-centered {
-        margin-top: auto;
+        margin-top: 0;
         padding-top: 12px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+    }
+
+    .breakdown-card.calculator-pair-card > .calculator-trust-disclaimer {
+        margin-top: 12px;
     }
 }
 
@@ -1875,11 +1902,10 @@
     max-width: 100%;
     background: linear-gradient(145deg, #c8f5d4 0%, #8fd99a 45%, #28a745 100%);
     border: 4px solid #1e7e34;
-    border-radius: 20px;
-    padding: 28px 22px 32px;
+    border-radius: 16px;
     box-shadow: 0 14px 36px rgba(40, 167, 69, 0.45);
     text-align: center;
-    margin: 4px auto 8px;
+    margin: 0;
 }
 
 .creator-earnings-hero-label {
@@ -1917,7 +1943,8 @@
 }
 
 @media (max-width: 768px) {
-    .creator-earnings-hero {
-        padding: 22px 16px 26px;
+    .calculator-pair-earnings-bar {
+        min-height: 132px;
+        padding: 20px 16px !important;
     }
 }
