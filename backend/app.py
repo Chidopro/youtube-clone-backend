@@ -86,6 +86,7 @@ from utils.stripe_tax_checkout import (
     stripe_product_tax_code_for_line_item,
     tax_line_item_price_data,
 )
+from utils.auth_sync import ensure_auth_user_for_public_user
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -5554,6 +5555,13 @@ def get_my_profile():
         if not result.data or len(result.data) == 0:
             return jsonify({"error": "User not found"}), 404
         user = result.data[0]
+        user_email = (user.get("email") or "").strip().lower()
+        if user_email and supabase_admin:
+            auth_ok, auth_err = ensure_auth_user_for_public_user(
+                supabase_admin, user_id, user_email
+            )
+            if not auth_ok:
+                logger.warning("get_my_profile: auth.users sync failed for %s: %s", user_id, auth_err)
         # Return only keys that exist and are in safe list (no extra columns leaked)
         out = {k: user.get(k) for k in USER_PROFILE_SAFE_FIELDS if k in user}
         return jsonify(out), 200
@@ -6862,13 +6870,28 @@ def upload_favorite():
             return err[0], err[1]
         if not supabase_admin:
             return jsonify({"success": False, "error": "Server upload not configured"}), 503
-        user_chk = supabase_admin.table("users").select("id").eq("id", user_id).limit(1).execute()
+        user_chk = supabase_admin.table("users").select("id, email").eq("id", user_id).limit(1).execute()
         if not user_chk.data:
             logger.error("upload_favorite: user_id %s missing from users after auth", user_id)
             return jsonify(
                 {
                     "success": False,
                     "error": "Your account could not be found. Please sign out and sign in again with your invited email.",
+                }
+            ), 400
+        user_email = (
+            (request.form.get("email") or request.headers.get("X-User-Email") or "").strip().lower()
+            or (user_chk.data[0].get("email") or "").strip().lower()
+        )
+        auth_ok, auth_sync_err = ensure_auth_user_for_public_user(
+            supabase_admin, user_id, user_email
+        )
+        if not auth_ok:
+            logger.error("upload_favorite: auth.users sync failed for %s (%s): %s", user_id, user_email, auth_sync_err)
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Your account could not be synced. Please sign out and sign in again, or contact support.",
                 }
             ), 400
         title = (request.form.get("title") or "").strip()
@@ -6962,7 +6985,7 @@ def upload_favorite():
             return jsonify(
                 {
                     "success": False,
-                    "error": "Your account could not be found. Please sign out, open your invite link again, and sign in.",
+                    "error": "Your account could not be found in Supabase Auth. Please sign out and sign in again with your invited email.",
                 }
             ), 400
         return jsonify({"success": False, "error": "Upload failed. Please try again."}), 500
@@ -8150,6 +8173,9 @@ def umbrella_invites_login_accept():
                     }
                 ), 401
             return jsonify({"success": False, "error": "Invalid email or password"}), 401
+        ensure_auth_user_for_public_user(
+            supabase_admin, user.get("id"), invited_email, password=password
+        )
         ok, err, owner_sub = _umbrella_process_invite_token(invite_token, invited_email, user)
         if not ok:
             return jsonify({"success": False, "error": err or "Invite could not be completed"}), 400
@@ -8207,8 +8233,9 @@ def umbrella_invites_signup_email():
                     "updated_at": "now()",
                 }
             ).eq("id", user.get("id")).execute()
+            ensure_auth_user_for_public_user(supabase_admin, user.get("id"), invited_email)
         else:
-            supabase_admin.table("users").insert(
+            ins = supabase_admin.table("users").insert(
                 {
                     "email": invited_email,
                     "role": "creator",
@@ -8218,6 +8245,10 @@ def umbrella_invites_signup_email():
                     "token_expiry": token_expiry,
                 }
             ).execute()
+            if ins.data:
+                ensure_auth_user_for_public_user(
+                    supabase_admin, ins.data[0].get("id"), invited_email
+                )
         verification_link = (
             f"{verify_origin}/verify-email?token={quote(verification_token, safe='')}"
             f"&email={quote(invited_email, safe='')}"

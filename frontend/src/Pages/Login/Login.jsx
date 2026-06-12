@@ -257,6 +257,10 @@ const Login = () => {
       const data = await response.json();
 
       if (data?.token) localStorage.setItem('auth_token', data.token);
+      try {
+        const { supabase } = await import('../../supabaseClient.js');
+        await supabase.auth.signOut();
+      } catch (_) {}
       if (data?.user) {
         // For email/password login, fetch full user profile from backend (safe fields only)
         if (data.user.id && !data.user.user_metadata) {

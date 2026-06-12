@@ -159,6 +159,13 @@ def auth_login():
                 
                 if password_match:
                     logger.info(f"✅ [LOGIN] User {email} logged in successfully")
+                    try:
+                        from utils.auth_sync import ensure_auth_user_for_public_user
+                        ensure_auth_user_for_public_user(
+                            client, user.get("id"), email, password=password
+                        )
+                    except Exception as sync_err:
+                        logger.warning("[LOGIN] auth.users sync: %s", sync_err)
                     response = jsonify({
                         "success": True, 
                         "message": "Login successful",
@@ -927,6 +934,13 @@ def auth_verify_email():
         update_result = client.table('users').update(update_data).eq('id', user.get('id')).execute()
         
         if update_result.data:
+            try:
+                from utils.auth_sync import ensure_auth_user_for_public_user
+                ensure_auth_user_for_public_user(
+                    client, update_result.data[0].get('id'), email, password=password
+                )
+            except Exception as sync_err:
+                logger.warning("[verify-email] auth.users sync: %s", sync_err)
             token = str(uuid.uuid4())
             user_id = str(update_result.data[0].get('id'))
             row = update_result.data[0]
