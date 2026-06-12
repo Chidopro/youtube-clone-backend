@@ -450,6 +450,12 @@ nav{
     100% { transform: rotate(360deg); }
 }
 
+.user-profile-menu {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
 .user-profile-container {
     position: relative;
     cursor: pointer;

@@ -122,7 +122,7 @@ const SubscriptionTiers = () => {
             <div className="tiers-header">
                 <h1>💰 Creator Earnings Calculator</h1>
                 <p>
-                    See how much you can earn from your content with one of dozens of products—fixed per-sale payouts and no monthly fees.
+                    See how much you can earn from your content with just coffee mugs. One of dozens of products to choose from.
                 </p>
                 {!currentUser && (
                     <button
@@ -209,8 +209,9 @@ const SubscriptionTiers = () => {
                         className="tier-card breakdown-card calculator-pair-card"
                         data-calculator-product-id={EXAMPLE_MUG.productId}
                     >
-                        <div className="tier-header breakdown-header-aligned calculator-pair-header calculator-pair-header--compact">
+                        <div className="tier-header breakdown-header-aligned calculator-pair-header">
                             <h5 className="calculator-card-title">What You Earn Per Sale</h5>
+                            <p className="calculator-card-subtitle">White Glossy Mug Example</p>
                         </div>
                         <div className="item-breakdown-container-vertical calculator-pair-body">
                             <div className="product-visual-centered">
@@ -229,7 +230,7 @@ const SubscriptionTiers = () => {
                             </div>
                             <ul className="earnings-right-benefits" aria-label="Plan highlights">
                                 <li>No monthly subscription cost</li>
-                                <li>We handle fulfillment—you focus on content</li>
+                                <li>We handle fulfillment</li>
                             </ul>
                             <div className="creator-earnings-hero calculator-pair-earnings-bar">
                                 <div className="creator-earnings-hero-label">Creator Earnings</div>

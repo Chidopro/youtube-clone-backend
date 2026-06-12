@@ -31,6 +31,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isOrderProcessingAdmin, setIsOrderProcessingAdmin] = useState(false);
     const [isFullAdmin, setIsFullAdmin] = useState(false);
+    /** Order-processing-only admins see Admin Portal only; master admins keep Dashboard + Channel invites */
+    const adminPortalOnlyMenu = isOrderProcessingAdmin && !isFullAdmin;
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -436,7 +438,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                 // Mobile: Use a small delay to allow the button click to process first
                 setTimeout(() => {
                     // Check if click is outside the user profile container and dropdown
-                    const isClickInside = event.target.closest('.user-profile-container') ||
+                    const isClickInside = event.target.closest('.user-profile-menu') ||
+                        event.target.closest('.user-profile-container') ||
                         event.target.closest('.user-dropdown');
                     if (dropdownOpen && !isClickInside) {
                         console.log('🔄 Closing dropdown - clicked outside (mobile)');
@@ -445,7 +448,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                 }, 10);
             } else {
                 // Desktop: Use capture phase (original behavior)
-                const isClickInside = event.target.closest('.user-profile-container') ||
+                const isClickInside = event.target.closest('.user-profile-menu') ||
+                    event.target.closest('.user-profile-container') ||
                     event.target.closest('.user-dropdown');
                 if (dropdownOpen && !isClickInside) {
                     console.log('🔄 Closing dropdown - clicked outside (desktop)');
@@ -717,12 +721,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 {console.log('🎨 Rendering creator profile for:', user?.display_name ?? user?.user_metadata?.name ?? user?.email ?? 'user')}
                                 {console.log('🔍 Full user object:', user)}
                                 {console.log('🔍 User role:', user?.role, 'User status:', user?.status)}
-                                <button
-                                    className="subscribe-btn"
-                                    onClick={handleSignUpClick}
-                                >
-                                    Sign Up
-                                </button>
+                                <div className="user-profile-menu">
                                 <button
                                     className="user-profile-container"
                                     type="button"
@@ -870,12 +869,10 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                         }}
                                     />
                                 </button>
-                                {console.log('🔽 Dropdown state:', dropdownOpen, 'Class:', `user-dropdown ${dropdownOpen ? 'open' : ''}`)}
                                 <div className={`user-dropdown ${dropdownOpen ? 'open' : ''}`}>
-                                    <p>Signed in as <strong>{user?.user_metadata?.name || user?.display_name}</strong></p>
+                                    <p>Signed in as <strong>{user?.user_metadata?.name || user?.display_name || user?.email}</strong></p>
                                     <hr />
-                                    {/* Only show Dashboard if NOT order processing admin (order processing admins should only see Admin Portal) */}
-                                    {!isOrderProcessingAdmin && (
+                                    {!adminPortalOnlyMenu && (
                                         <button
                                             className="dropdown-item"
                                             onClick={(e) => {
@@ -897,7 +894,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                             Dashboard
                                         </button>
                                     )}
-                                    {!isOrderProcessingAdmin && (
+                                    {!adminPortalOnlyMenu && (
                                         <button
                                             className="dropdown-item"
                                             onClick={(e) => {
@@ -942,7 +939,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                         </button>
                                     )}
                                     {/* Only show Delete Account if NOT order processing admin */}
-                                    {!isOrderProcessingAdmin && (
+                                    {!adminPortalOnlyMenu && (
                                         <button
                                             onClick={(e) => {
                                                 e.preventDefault();
@@ -973,6 +970,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                     >
                                         Logout
                                     </button>
+                                </div>
                                 </div>
                             </>
                     ) : oauthProcessing ? (

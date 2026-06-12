@@ -174,9 +174,9 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         <Link
           to="/release"
           className="home-launch-banner"
-          aria-label="Launch announcement: creator storefronts and $6 per sale on most products"
+          aria-label="Launch announcement: The Content Creator Revolution Now Has a Storefront"
         >
-          The Creator Revolution Has a Storefront — $6 Per Sale on Most Products · Feb 28, 2026
+          The Content Creator Revolution Now Has a Storefront.
         </Link>
 
         {/* User Flow Section */}

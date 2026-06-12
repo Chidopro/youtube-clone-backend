@@ -1,5 +1,6 @@
 .channel-umbrella {
   padding: 8px 0 32px;
+  color: #212529;
 }
 
 .channel-umbrella-section {
@@ -8,24 +9,27 @@
 
 .channel-umbrella-section-title {
   margin-top: 0;
+  color: #212529;
 }
 
 .channel-umbrella-subheading {
   font-size: 1rem;
   margin: 16px 0 8px;
   font-weight: 600;
+  color: #212529;
 }
 
 .channel-umbrella h2 {
   font-size: 1.15rem;
   margin: 24px 0 10px;
+  color: #212529;
 }
 
 .channel-umbrella .hint {
-  color: #aaa;
+  color: #6c757d;
   font-size: 0.9rem;
   margin-bottom: 16px;
-  max-width: 640px;
+  max-width: 720px;
   line-height: 1.45;
 }
 
@@ -40,9 +44,9 @@
   flex: 1 1 220px;
   padding: 10px 12px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(0, 0, 0, 0.25);
-  color: inherit;
+  border: 1px solid #ced4da;
+  background: #fff;
+  color: #212529;
 }
 
 .channel-umbrella-form button {
@@ -55,38 +59,137 @@
   font-weight: 600;
 }
 
+.channel-umbrella-form button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .channel-umbrella-msg {
   font-size: 0.9rem;
   margin: 8px 0;
 }
 
 .channel-umbrella-msg.error {
-  color: #ff7b72;
+  color: #dc3545;
 }
 
 .channel-umbrella-msg.ok {
-  color: #7ee787;
+  color: #198754;
+}
+
+.channel-umbrella-msg.ok a {
+  color: #0d6efd;
+  text-decoration: underline;
 }
 
 .channel-umbrella-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 12px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #dee2e6;
   border-radius: 8px;
   margin-bottom: 8px;
+  background: #fff;
 }
 
-.channel-umbrella-row button.btn-cancel-invite {
-  padding: 6px 12px;
+.channel-umbrella-row-main {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.channel-umbrella-row-label {
+  display: block;
+  font-weight: 600;
+  color: #212529;
+  word-break: break-word;
+}
+
+.channel-umbrella-row-meta {
+  display: block;
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+.channel-umbrella-row-link {
+  margin-top: 8px;
+}
+
+.channel-umbrella-row-link input {
+  width: 100%;
+  max-width: 480px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  background: #f8f9fa;
+  color: #212529;
+  font-size: 0.8rem;
+}
+
+.channel-umbrella-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.channel-umbrella-row button.btn-cancel-invite,
+.channel-umbrella-row button.btn-copy-invite,
+.channel-umbrella-row button.btn-delete-invite {
+  padding: 8px 14px;
   font-size: 0.85rem;
   border-radius: 6px;
   border: none;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.12);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.channel-umbrella-row button.btn-copy-invite {
+  background: #667eea;
   color: #fff;
+}
+
+.channel-umbrella-row button.btn-delete-invite,
+.channel-umbrella-row button.btn-cancel-invite {
+  background: #dc3545;
+  color: #fff;
+}
+
+.channel-umbrella-row button:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.channel-umbrella-invite-url {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 16px;
+  max-width: 720px;
+  align-items: center;
+}
+
+.channel-umbrella-invite-url input {
+  flex: 1 1 200px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  background: #f8f9fa;
+  color: #212529;
+  font-size: 0.85rem;
+}
+
+.channel-umbrella-invite-url button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: #667eea;
+  color: #fff;
+  font-weight: 600;
 }
 
 .channel-umbrella-row button:disabled {
@@ -96,21 +199,22 @@
 
 .channel-umbrella-sales-table {
   width: 100%;
-  max-width: 640px;
+  max-width: 720px;
   border-collapse: collapse;
   font-size: 0.9rem;
   margin-top: 8px;
+  background: #fff;
 }
 
 .channel-umbrella-sales-table th,
 .channel-umbrella-sales-table td {
   text-align: left;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid #dee2e6;
 }
 
 .channel-umbrella-sales-table th {
-  color: #aaa;
+  color: #6c757d;
   font-weight: 600;
 }
 

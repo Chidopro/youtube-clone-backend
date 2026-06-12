@@ -116,13 +116,14 @@ export class AdminService {
       console.log('🔐 AdminService: Backend admin check result:', result);
       
       if (result.success) {
-        // Cache the result
+        const adminRole = result.admin_role ?? result.adminRole ?? null;
+        // Cache the result (backend returns snake_case)
         adminStatusCache = {
-          isAdmin: result.isAdmin || false,
-          isFullAdmin: result.isFullAdmin || false,
-          isMasterAdmin: result.isMasterAdmin || false,
-          isOrderProcessingAdmin: result.isOrderProcessingAdmin || false,
-          adminRole: result.adminRole || null
+          isAdmin: !!(result.is_admin ?? result.isAdmin),
+          isFullAdmin: !!(result.is_full_admin ?? result.isFullAdmin),
+          isMasterAdmin: adminRole === 'master_admin',
+          isOrderProcessingAdmin: !!(result.is_order_processing_admin ?? result.isOrderProcessingAdmin),
+          adminRole,
         };
         adminStatusCacheTime = now;
         return adminStatusCache;

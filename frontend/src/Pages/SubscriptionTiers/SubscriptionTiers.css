@@ -253,6 +253,16 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
+    transform: none !important;
+}
+
+.calculator-pair-card::before {
+    display: none;
+}
+
+.calculator-pair-card:hover {
+    transform: none !important;
+    box-shadow: 0 20px 50px rgba(102, 126, 234, 0.25);
 }
 
 .calculator-pair-body {
@@ -1697,13 +1707,10 @@
     text-align: center;
 }
 
-.calculator-pair-header .calculator-card-title {
+.calculator-pair-header .calculator-card-title,
+.tier-card.current .tier-header.calculator-pair-header h5.calculator-card-title,
+.tier-card.breakdown-card .tier-header.calculator-pair-header h5.calculator-card-title {
     margin: 0 0 8px 0 !important;
-    font-size: 1.75rem !important;
-    font-weight: 800 !important;
-    color: #495057 !important;
-    line-height: 1.2;
-    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
 .calculator-card-subtitle {
@@ -1749,9 +1756,18 @@
     font-weight: 900;
 }
 
-/* Match right column rhythm: icon / gap / checklist / gap → annual bar */
-.free-creator-plan-card .tier-icon-container {
+.calculator-pair-header .calculator-card-title {
+    font-size: 1.75rem !important;
+    font-weight: 800 !important;
+    color: #495057 !important;
+    line-height: 1.2;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+.calculator-pair-body > .tier-icon-container,
+.tier-card.breakdown-card .calculator-pair-body > .product-visual-centered {
     margin-top: 15px;
+    margin-bottom: 0;
 }
 
 .free-creator-plan-card .free-plan-benefits {
@@ -1812,8 +1828,9 @@
     .free-creator-plan-card.calculator-pair-card > .tier-content-centered {
         margin-top: 0;
         padding-top: 12px;
+        width: 100%;
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: center;
     }
 
@@ -1838,6 +1855,12 @@
         min-height: 5.5rem;
         padding-bottom: 14px;
     }
+}
+
+.free-creator-plan-card > .tier-content-centered {
+    width: 100%;
+    align-items: center;
+    justify-content: center;
 }
 
 .apply-creator-btn {

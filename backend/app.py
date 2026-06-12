@@ -24,6 +24,8 @@ import sys
 from functools import wraps
 import bcrypt
 import re
+import secrets
+from datetime import datetime, timezone, timedelta
 
 # Google OAuth imports
 from google.auth.transport.requests import Request
@@ -324,7 +326,10 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 def _allow_origin_user_id():
     """If request is from our frontend and X-User-Id exists in DB, return user_id; else None. Use only when session auth failed."""
     origin = (request.headers.get("Origin") or "").strip()
-    if origin not in ("https://screenmerch.com", "https://www.screenmerch.com"):
+    allowed = origin in ("https://screenmerch.com", "https://www.screenmerch.com") or (
+        origin.startswith("https://") and origin.endswith(".screenmerch.com")
+    )
+    if not allowed:
         return None
     user_id = (request.headers.get("X-User-Id") or request.form.get("user_id") or request.args.get("user_id") or "").strip()
     if not user_id:
@@ -339,6 +344,46 @@ def _allow_origin_user_id():
     except Exception:
         pass
     return None
+
+
+def _authenticate_x_user_id():
+    """
+    Validate X-User-Id against session. Prefer X-Session-Token when it matches X-User-Id
+    so subdomain dashboard works after a separate login on *.screenmerch.com even if a
+    shared .screenmerch.com cookie belongs to another account.
+    Returns (user_id, None) or (None, (response, status)).
+    """
+    user_id = (request.headers.get("X-User-Id") or request.form.get("user_id") or request.args.get("user_id") or "").strip()
+    if not user_id:
+        return None, (jsonify({"success": False, "error": "X-User-Id header is required"}), 401)
+
+    def _token_user(tok):
+        return _resolve_session_token(tok) if tok else None
+
+    header_tok = (request.headers.get("X-Session-Token") or "").strip()
+    header_uid = _token_user(header_tok)
+    if header_uid and str(header_uid) == str(user_id):
+        return user_id, None
+
+    cookie_tok = (request.cookies.get("sm_session") or "").strip()
+    cookie_uid = _token_user(cookie_tok)
+    if cookie_uid and str(cookie_uid) == str(user_id):
+        return user_id, None
+
+    auth = request.headers.get("Authorization", "")
+    bearer_tok = auth[7:].strip() if auth.startswith("Bearer ") else ""
+    bearer_uid = _token_user(bearer_tok)
+    if bearer_uid and str(bearer_uid) == str(user_id):
+        return user_id, None
+
+    origin_uid = _allow_origin_user_id()
+    if origin_uid and str(origin_uid) == str(user_id):
+        return user_id, None
+
+    if header_uid or cookie_uid or bearer_uid:
+        return None, (jsonify({"success": False, "error": "Forbidden"}), 403)
+    return None, (jsonify({"success": False, "error": "Authentication required"}), 401)
+
 
 def _cors_allow_origin():
     """Return Origin if allowed for CORS, else https://screenmerch.com. No dependency on later app code."""
@@ -525,6 +570,63 @@ def _persist_session_token(token, user_id):
             logger.info("Persisted session token to DB for user %s", user_id)
     except Exception as e:
         logger.warning("Could not persist session to DB (table may not exist): %s", e)
+
+
+def _active_session_token():
+    return (
+        (request.headers.get("X-Session-Token") or "").strip()
+        or (request.cookies.get("sm_session") or "").strip()
+        or ""
+    )
+
+
+def _repair_session_user_id(old_user_id, new_user_id):
+    """Point the current session token at the real users-table id (fixes stale Supabase Auth ids)."""
+    tok = _active_session_token()
+    if not tok or not new_user_id:
+        return
+    old_s = str(old_user_id or "")
+    new_s = str(new_user_id)
+    if old_s == new_s:
+        return
+    store = app.config.get("session_token_store") or {}
+    if str(store.get(tok, "")) == old_s:
+        store[tok] = new_s
+        app.config["session_token_store"] = store
+    try:
+        admin = globals().get("supabase_admin")
+        if admin is not None:
+            admin.table(USER_SESSIONS_TABLE).update({"user_id": new_s}).eq("token", tok).execute()
+    except Exception as e:
+        logger.debug("repair_session_user_id DB update: %s", e)
+    logger.warning("Repaired session user_id %s -> %s", old_s, new_s)
+
+
+def _resolve_users_table_user_id(session_user_id, repair_session=True, email_hint=None):
+    """
+    Return a users.id that exists in public.users.
+    If the session user_id is missing (e.g. stale Supabase Auth uuid), resolve by email.
+    """
+    if not supabase_admin or not session_user_id:
+        return None
+    sid = str(session_user_id).strip()
+    row = supabase_admin.table("users").select("id").eq("id", sid).limit(1).execute()
+    if row.data:
+        return str(row.data[0]["id"])
+    email = (
+        (email_hint or "").strip().lower()
+        or (request.headers.get("X-User-Email") or "").strip().lower()
+        or (request.form.get("email") or "").strip().lower()
+    )
+    if not email:
+        return None
+    by_email = supabase_admin.table("users").select("id, email").eq("email", email).limit(1).execute()
+    if not by_email.data:
+        return None
+    real_id = str(by_email.data[0]["id"])
+    if repair_session:
+        _repair_session_user_id(sid, real_id)
+    return real_id
 
 def _oauth_redirect_with_session(redirect_url, user_id):
     """Build redirect response and set sm_session cookie so /api/users/me works after OAuth.
@@ -5435,24 +5537,18 @@ def get_my_profile():
     if request.method == "OPTIONS":
         return jsonify(success=True)
     try:
-        token = request.cookies.get("sm_session")
-        if not token and request.headers.get("X-Session-Token"):
-            token = request.headers.get("X-Session-Token").strip()
-        if not token and request.headers.get("Authorization"):
-            auth = request.headers.get("Authorization", "")
-            if auth.startswith("Bearer "):
-                token = auth[7:].strip()
-        user_id_from_session = _resolve_session_token(token) if token else None
-        if not user_id_from_session:
-            user_id_from_session = _allow_origin_user_id()
-        if not user_id_from_session:
-            return jsonify({"error": "Authentication required (valid session cookie)"}), 401
-        user_id = request.headers.get("X-User-Id") or request.args.get("user_id")
-        if not user_id or not str(user_id).strip():
-            return jsonify({"error": "X-User-Id header or user_id query is required"}), 401
-        user_id = str(user_id).strip()
-        if str(user_id_from_session) != user_id:
-            return jsonify({"error": "Forbidden"}), 403
+        user_id, err = _authenticate_x_user_id()
+        if err is not None:
+            resp, status = err
+            if status == 401:
+                return jsonify({"error": "Authentication required (valid session cookie)"}), 401
+            if status == 403:
+                return jsonify({"error": "Forbidden"}), 403
+            return resp, status
+        resolved_id = _resolve_users_table_user_id(user_id)
+        if not resolved_id:
+            return jsonify({"error": "User not found"}), 404
+        user_id = resolved_id
         client_to_use = supabase_admin if supabase_admin else supabase
         result = client_to_use.table("users").select(",".join(USER_PROFILE_SAFE_FIELDS)).eq("id", user_id).limit(1).execute()
         if not result.data or len(result.data) == 0:
@@ -6738,24 +6834,13 @@ MAX_FAVORITE_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 
 
 def _validate_favorites_session():
-    """Same auth as get_my_profile: require sm_session (or X-Session-Token) and X-User-Id matching. Returns (user_id, error_response)."""
-    token = request.cookies.get("sm_session")
-    if not token and request.headers.get("X-Session-Token"):
-        token = request.headers.get("X-Session-Token").strip()
-    if not token and request.headers.get("Authorization"):
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            token = auth[7:].strip()
-    user_id_from_session = _resolve_session_token(token) if token else None
-    if not user_id_from_session:
-        user_id_from_session = _allow_origin_user_id()
-    if not user_id_from_session:
-        return None, (jsonify({"success": False, "error": "Authentication required (valid session cookie)"}), 401)
-    user_id = (request.form.get("user_id") or request.headers.get("X-User-Id") or "").strip()
-    if not user_id:
-        return None, (jsonify({"success": False, "error": "X-User-Id or user_id is required"}), 401)
-    if str(user_id_from_session) != user_id:
-        return None, (jsonify({"success": False, "error": "Forbidden"}), 403)
+    """Same auth as get_my_profile: require session matching X-User-Id. Returns (user_id, error_response)."""
+    user_id, err = _authenticate_x_user_id()
+    if err is not None:
+        resp, status = err
+        if status == 401:
+            return None, (jsonify({"success": False, "error": "Authentication required (valid session cookie)"}), 401)
+        return None, err
     return user_id, None
 
 
@@ -6768,11 +6853,24 @@ def upload_favorite():
     if request.method == "OPTIONS":
         return jsonify(success=True)
     try:
-        user_id, err = _validate_favorites_session()
+        session_user_id = (
+            (request.headers.get("X-User-Id") or "").strip()
+            or (request.form.get("user_id") or "").strip()
+        )
+        user_id, err = _authenticate_upload_user()
         if err is not None:
             return err[0], err[1]
         if not supabase_admin:
             return jsonify({"success": False, "error": "Server upload not configured"}), 503
+        user_chk = supabase_admin.table("users").select("id").eq("id", user_id).limit(1).execute()
+        if not user_chk.data:
+            logger.error("upload_favorite: user_id %s missing from users after auth", user_id)
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Your account could not be found. Please sign out and sign in again with your invited email.",
+                }
+            ), 400
         title = (request.form.get("title") or "").strip()
         if not title:
             return jsonify({"success": False, "error": "title is required"}), 400
@@ -6816,21 +6914,28 @@ def upload_favorite():
         }
         list_id_form = (request.form.get("list_id") or "").strip()
         try:
-            pid = _fl_ensure_primary_list(user_id)
             target_list = None
-            if list_id_form:
-                chk = (
-                    supabase_admin.table("creator_favorite_lists")
-                    .select("id")
-                    .eq("id", list_id_form)
-                    .eq("owner_user_id", user_id)
-                    .limit(1)
-                    .execute()
-                )
-                if chk.data:
-                    target_list = chk.data[0]["id"]
-            if not target_list and pid:
-                target_list = pid
+            if _is_umbrella_collaborator_only(user_id):
+                membership = _cf_approved_umbrella_membership(user_id)
+                owner_id = (membership or {}).get("channel_owner_id")
+                if owner_id:
+                    u_row = _cf_user_row(user_id)
+                    target_list = _fl_ensure_umbrella_member_list(owner_id, user_id, _umbrella_collaborator_label(u_row))
+            else:
+                pid = _fl_ensure_primary_list(user_id)
+                if list_id_form:
+                    chk = (
+                        supabase_admin.table("creator_favorite_lists")
+                        .select("id")
+                        .eq("id", list_id_form)
+                        .eq("owner_user_id", user_id)
+                        .limit(1)
+                        .execute()
+                    )
+                    if chk.data:
+                        target_list = chk.data[0]["id"]
+                if not target_list and pid:
+                    target_list = pid
             if target_list:
                 insert_data["list_id"] = target_list
         except Exception as list_err:
@@ -6846,10 +6951,21 @@ def upload_favorite():
                 raise
         if not result.data or len(result.data) == 0:
             return jsonify({"success": False, "error": "Failed to save favorite"}), 500
-        return jsonify({"success": True, "favorite": result.data[0]}), 200
+        payload = {"success": True, "favorite": result.data[0], "user_id": user_id}
+        if str(session_user_id) != str(user_id):
+            payload["user_id_corrected"] = True
+        return jsonify(payload), 200
     except Exception as e:
         logger.exception("upload_favorite: %s", e)
-        return jsonify({"success": False, "error": str(e)}), 500
+        err_text = str(e)
+        if "creator_favorites_user_id_fkey" in err_text or "is not present in table \"users\"" in err_text:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Your account could not be found. Please sign out, open your invite link again, and sign in.",
+                }
+            ), 400
+        return jsonify({"success": False, "error": "Upload failed. Please try again."}), 500
 
 
 @app.route("/api/favorites/move-list", methods=["POST", "OPTIONS"])
@@ -6910,30 +7026,129 @@ def favorite_move_list():
 
 def _validate_x_user_id_session():
     """Same auth as /api/users/me. Returns (user_id, None) or (None, (jsonify(...), status))."""
-    token = request.cookies.get("sm_session")
-    if not token and request.headers.get("X-Session-Token"):
-        token = request.headers.get("X-Session-Token").strip()
-    if not token and request.headers.get("Authorization"):
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            token = auth[7:].strip()
-    user_id_from_session = _resolve_session_token(token) if token else None
-    if not user_id_from_session:
-        user_id_from_session = _allow_origin_user_id()
-    if not user_id_from_session:
+    return _authenticate_x_user_id()
+
+
+def _authenticated_users_id():
+    """Validate session and return users-table id (repairs stale Supabase Auth ids via X-User-Email)."""
+    user_id, err = _validate_x_user_id_session()
+    if err is not None:
+        return None, err
+    resolved = _resolve_users_table_user_id(user_id)
+    if resolved:
+        return resolved, None
+    email = (request.headers.get("X-User-Email") or request.form.get("email") or "").strip().lower()
+    if email and supabase_admin:
+        by_email = supabase_admin.table("users").select("id").eq("email", email).limit(1).execute()
+        if by_email.data:
+            real_id = str(by_email.data[0]["id"])
+            _repair_session_user_id(user_id, real_id)
+            logger.warning("Authenticated via email fallback: %s -> %s", user_id, real_id)
+            return real_id, None
+    return None, (jsonify({"success": False, "error": "User not found"}), 404)
+
+
+def _authenticate_upload_user():
+    """
+    Multipart upload auth: email + session token in form body (Netlify proxy may drop custom headers).
+    Returns users.id that exists in public.users.
+    """
+    email = (request.form.get("email") or request.headers.get("X-User-Email") or "").strip().lower()
+    tok = (
+        (request.form.get("session_token") or "").strip()
+        or (request.headers.get("X-Session-Token") or "").strip()
+        or (request.cookies.get("sm_session") or "").strip()
+    )
+    if not tok:
         return None, (jsonify({"success": False, "error": "Authentication required"}), 401)
-    user_id = (request.headers.get("X-User-Id") or "").strip()
-    if not user_id:
-        return None, (jsonify({"success": False, "error": "X-User-Id header is required"}), 401)
-    if str(user_id_from_session) != user_id:
-        return None, (jsonify({"success": False, "error": "Forbidden"}), 403)
-    return user_id, None
+    tok_uid = _resolve_session_token(tok)
+    if not tok_uid:
+        return None, (jsonify({"success": False, "error": "Session expired — please sign in again"}), 401)
+    if email and supabase_admin:
+        by_email = supabase_admin.table("users").select("id").eq("email", email).limit(1).execute()
+        if by_email.data:
+            real_id = str(by_email.data[0]["id"])
+            _repair_session_user_id(tok_uid, real_id)
+            return real_id, None
+    resolved = _resolve_users_table_user_id(tok_uid)
+    if resolved:
+        return resolved, None
+    return None, (
+        jsonify(
+            {
+                "success": False,
+                "error": "Your account could not be found. Please sign out and sign in again with your invited email.",
+            }
+        ),
+        400,
+    )
+
+
+def _umbrella_collaborator_label(user_row):
+    """Public nickname for umbrella favorites (never expose raw email)."""
+    name = ((user_row or {}).get("display_name") or (user_row or {}).get("username") or "").strip()
+    if name and "@" not in name:
+        return name[:80]
+    local = ((user_row or {}).get("email") or "").split("@")[0].strip()
+    if local and len(local) >= 2:
+        return local[:80].title()
+    return "Collaborator"
+
+
+def _umbrella_member_list_for_user(user_id, owner_id=None):
+    """Return the collaborator favorites list row for an umbrella member."""
+    if not supabase_admin or not user_id:
+        return None
+    membership = _cf_approved_umbrella_membership(user_id)
+    oid = owner_id or (membership or {}).get("channel_owner_id")
+    if not oid:
+        return None
+    u = _cf_user_row(user_id)
+    _fl_ensure_umbrella_member_list(oid, user_id, _umbrella_collaborator_label(u))
+    lr = (
+        supabase_admin.table("creator_favorite_lists")
+        .select("*")
+        .eq("owner_user_id", user_id)
+        .eq("storefront_owner_id", oid)
+        .limit(1)
+        .execute()
+    )
+    return (lr.data or [None])[0]
+
+
+def _is_umbrella_collaborator_only(user_id):
+    """True when user is an approved umbrella member without their own storefront subdomain."""
+    me = _cf_user_row(user_id)
+    if not me:
+        email = (request.headers.get("X-User-Email") or "").strip().lower()
+        if email and supabase_admin:
+            r = supabase_admin.table("users").select("id, role, subdomain, email").eq("email", email).limit(1).execute()
+            if r.data:
+                me = r.data[0]
+                user_id = me.get("id")
+    if not me or me.get("role") != "creator":
+        return False
+    if (me.get("subdomain") or "").strip():
+        return False
+    if _cf_approved_umbrella_membership(user_id):
+        return True
+    if me.get("email") and supabase_admin:
+        r = supabase_admin.table("users").select("id").eq("email", (me.get("email") or "").strip().lower()).limit(1).execute()
+        if r.data:
+            return _cf_approved_umbrella_membership(r.data[0]["id"]) is not None
+    return False
 
 
 def _cf_user_row(user_id):
     if not supabase_admin:
         return None
-    r = supabase_admin.table("users").select("id, role, username, display_name, email").eq("id", user_id).limit(1).execute()
+    r = (
+        supabase_admin.table("users")
+        .select("id, role, username, display_name, email, subdomain")
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
+    )
     return (r.data or [None])[0]
 
 
@@ -6963,24 +7178,329 @@ def _cf_find_user_by_identifier(raw):
 def _cf_attach_user_summaries(rows, id_key):
     if not rows or not supabase_admin:
         return rows
-    ids = list({row.get(id_key) for row in rows if row.get(id_key)})
+    ids = list({str(row.get(id_key)) for row in rows if row.get(id_key)})
     if not ids:
         return rows
     users_by_id = {}
-    for uid in ids:
-        u = _cf_user_row(uid)
-        if u:
+    try:
+        r = (
+            supabase_admin.table("users")
+            .select("id, username, display_name, email")
+            .in_("id", ids)
+            .execute()
+        )
+        for u in r.data or []:
+            uid = str(u.get("id"))
             users_by_id[uid] = {
                 "id": u.get("id"),
                 "username": u.get("username"),
                 "display_name": u.get("display_name"),
+                "email": u.get("email"),
             }
+    except Exception:
+        for uid in ids:
+            u = _cf_user_row(uid)
+            if u:
+                users_by_id[str(u.get("id"))] = {
+                    "id": u.get("id"),
+                    "username": u.get("username"),
+                    "display_name": u.get("display_name"),
+                    "email": u.get("email"),
+                }
     out = []
     for row in rows:
         d = dict(row)
-        d["user"] = users_by_id.get(row.get(id_key))
+        fk = str(row.get(id_key)) if row.get(id_key) else None
+        d["user"] = users_by_id.get(fk) if fk else None
         out.append(d)
     return out
+
+
+def _cf_is_storefront_owner(user_id, subdomain=None):
+    """True if this user owns the given subdomain (or any subdomain if subdomain omitted)."""
+    u = _cf_user_row(user_id)
+    if not u:
+        return False
+    sub = (u.get("subdomain") or "").strip().lower()
+    if not sub:
+        return False
+    if subdomain:
+        return sub == (subdomain or "").strip().lower()
+    return True
+
+
+def _cf_approved_umbrella_membership(friend_id):
+    """First approved umbrella row where user is the invited friend."""
+    if not supabase_admin or not friend_id:
+        return None
+    r = (
+        supabase_admin.table("channel_friends")
+        .select("*")
+        .eq("friend_id", friend_id)
+        .eq("status", "approved")
+        .eq("invited_by", "creator")
+        .limit(1)
+        .execute()
+    )
+    return (r.data or [None])[0]
+
+
+def _umbrella_invite_row_by_token(token):
+    if not supabase_admin or not token:
+        return None
+    r = (
+        supabase_admin.table("umbrella_email_invites")
+        .select("*")
+        .eq("token", token)
+        .limit(1)
+        .execute()
+    )
+    return (r.data or [None])[0]
+
+
+def _umbrella_owner_subdomain(owner_id):
+    u = _cf_user_row(owner_id)
+    if not u:
+        return None
+    sub = (u.get("subdomain") or "").strip().lower()
+    return sub or None
+
+
+def _umbrella_build_join_url(owner_id, token):
+    sub = _umbrella_owner_subdomain(owner_id)
+    if not sub:
+        return None
+    return f"https://{sub}.screenmerch.com/join?token={quote(token)}"
+
+
+def _umbrella_create_or_get_email_invite(channel_owner_id, raw_email):
+    """
+    Email umbrella invites always use a join link (new or existing ScreenMerch accounts).
+    Returns (payload_dict, None) or (None, error_message).
+    """
+    if not supabase_admin:
+        return None, "Server not configured"
+    email = (raw_email or "").strip().lower()
+    if not email or "@" not in email:
+        return None, "A valid email address is required"
+    owner_sub = _umbrella_owner_subdomain(channel_owner_id)
+    if not owner_sub:
+        return None, "Set up your subdomain in Personalization before sending email invites"
+    token = secrets.token_urlsafe(32)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    expires_at = (datetime.now(timezone.utc) + timedelta(days=14)).isoformat()
+    try:
+        pend = (
+            supabase_admin.table("umbrella_email_invites")
+            .select("id")
+            .eq("channel_owner_id", channel_owner_id)
+            .eq("invited_email", email)
+            .eq("status", "pending")
+            .limit(1)
+            .execute()
+        )
+        if pend.data:
+            tok_row = (
+                supabase_admin.table("umbrella_email_invites")
+                .select("token")
+                .eq("id", pend.data[0]["id"])
+                .limit(1)
+                .execute()
+            )
+            token = (tok_row.data or [{}])[0].get("token") or token
+            invite_url = _umbrella_build_join_url(channel_owner_id, token)
+            return (
+                {
+                    "success": True,
+                    "email_invite": True,
+                    "invite_url": invite_url,
+                    "message": "Invite already pending for this email. Share the join link below.",
+                },
+                None,
+            )
+        ins = (
+            supabase_admin.table("umbrella_email_invites")
+            .insert(
+                {
+                    "channel_owner_id": channel_owner_id,
+                    "invited_email": email,
+                    "token": token,
+                    "status": "pending",
+                    "created_at": now_iso,
+                    "expires_at": expires_at,
+                    "updated_at": now_iso,
+                }
+            )
+            .execute()
+        )
+        if not ins.data:
+            return None, "Could not create email invite"
+        invite_url = _umbrella_build_join_url(channel_owner_id, token)
+        return (
+            {
+                "success": True,
+                "email_invite": True,
+                "invite_url": invite_url,
+                "message": "Join link created. Copy and send it to your collaborator (works for new and existing accounts).",
+            },
+            None,
+        )
+    except Exception as email_err:
+        logger.exception("umbrella email invite: %s", email_err)
+        return None, "Email invite storage is not configured. Run umbrella_email_invites.sql in Supabase."
+
+
+def _fl_ensure_umbrella_member_list(storefront_owner_id, member_user_id, display_name=None):
+    """Create a public favorites page for an umbrella member on the owner's subdomain."""
+    if not supabase_admin or not storefront_owner_id or not member_user_id:
+        return None
+    u = _cf_user_row(member_user_id)
+    label = (display_name or _umbrella_collaborator_label(u)).strip()
+    base_slug = _fl_slugify(label) or f"member-{str(member_user_id)[:8]}"
+    if base_slug == "owner":
+        base_slug = f"member-{str(member_user_id)[:8]}"
+    slug = base_slug
+    n = 1
+    while True:
+        ex = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("id")
+            .eq("owner_user_id", member_user_id)
+            .eq("slug", slug)
+            .limit(1)
+            .execute()
+        )
+        if not ex.data:
+            break
+        n += 1
+        slug = f"{base_slug}-{n}"[:64]
+    ex_store = (
+        supabase_admin.table("creator_favorite_lists")
+        .select("id")
+        .eq("owner_user_id", member_user_id)
+        .eq("storefront_owner_id", storefront_owner_id)
+        .limit(1)
+        .execute()
+    )
+    if ex_store.data:
+        return ex_store.data[0]["id"]
+    now_iso = datetime.now(timezone.utc).isoformat()
+    try:
+        ins = (
+            supabase_admin.table("creator_favorite_lists")
+            .insert(
+                {
+                    "owner_user_id": member_user_id,
+                    "storefront_owner_id": storefront_owner_id,
+                    "slug": slug,
+                    "display_name": (label if label.endswith("Favorites") else (label + " Favorites"))[:120],
+                    "sort_order": 100,
+                    "is_primary": False,
+                    "created_at": now_iso,
+                    "updated_at": now_iso,
+                }
+            )
+            .execute()
+        )
+        if ins.data:
+            return ins.data[0]["id"]
+    except Exception as e:
+        logger.warning("umbrella member list create skipped: %s", e)
+    return None
+
+
+def _cf_complete_umbrella_membership(channel_owner_id, friend_id):
+    """Subscription link + favorites page on owner's subdomain."""
+    ok, sub_err = _cf_ensure_subscription(channel_owner_id, friend_id)
+    if not ok:
+        return False, sub_err or "Could not add subscription"
+    _fl_ensure_primary_list(channel_owner_id)
+    try:
+        supabase_admin.table("creator_favorite_lists").update(
+            {"storefront_owner_id": channel_owner_id}
+        ).eq("owner_user_id", channel_owner_id).eq("is_primary", True).is_("storefront_owner_id", "null").execute()
+    except Exception:
+        pass
+    u = _cf_user_row(friend_id)
+    name = (u or {}).get("display_name") or (u or {}).get("username") or "Collaborator"
+    _fl_ensure_umbrella_member_list(channel_owner_id, friend_id, name)
+    return True, None
+
+
+def _umbrella_finalize_email_invite(invite_row, user_id):
+    if not invite_row or not supabase_admin:
+        return False, "Invalid invite"
+    owner_id = invite_row.get("channel_owner_id")
+    ok, err = _cf_complete_umbrella_membership(owner_id, user_id)
+    if not ok:
+        return False, err
+    now_iso = datetime.now(timezone.utc).isoformat()
+    supabase_admin.table("umbrella_email_invites").update(
+        {"status": "accepted", "accepted_user_id": user_id, "updated_at": now_iso}
+    ).eq("id", invite_row["id"]).execute()
+    return True, None
+
+
+def _umbrella_process_invite_token(invite_token, google_email, user):
+    """
+    Validate email invite token, ensure channel_friends approved row, complete membership.
+    Returns (success, error_message, owner_subdomain).
+    """
+    if not invite_token or not supabase_admin:
+        return False, "Invalid invite link", None
+    row = _umbrella_invite_row_by_token(invite_token.strip())
+    if not row:
+        return False, "Invite not found", None
+    if row.get("status") != "pending":
+        return False, "This invite is no longer active", None
+    exp = row.get("expires_at")
+    if exp:
+        try:
+            exp_dt = datetime.fromisoformat(str(exp).replace("Z", "+00:00"))
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > exp_dt:
+                supabase_admin.table("umbrella_email_invites").update(
+                    {"status": "expired", "updated_at": datetime.now(timezone.utc).isoformat()}
+                ).eq("id", row["id"]).execute()
+                return False, "This invite has expired", None
+        except Exception:
+            pass
+    invited = (row.get("invited_email") or "").strip().lower()
+    if invited != (google_email or "").strip().lower():
+        return False, "Sign in with the email address that received the invite", None
+    owner_id = row.get("channel_owner_id")
+    friend_id = user.get("id")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    existing = (
+        supabase_admin.table("channel_friends")
+        .select("*")
+        .eq("channel_owner_id", owner_id)
+        .eq("friend_id", friend_id)
+        .limit(1)
+        .execute()
+    )
+    cf = (existing.data or [None])[0]
+    if cf and cf.get("status") == "approved":
+        ok, err = _umbrella_finalize_email_invite(row, friend_id)
+        sub = _umbrella_owner_subdomain(owner_id)
+        return (ok, err, sub) if ok else (False, err, None)
+    payload = {
+        "channel_owner_id": owner_id,
+        "friend_id": friend_id,
+        "status": "approved",
+        "invited_by": "creator",
+        "updated_at": now_iso,
+    }
+    if cf:
+        supabase_admin.table("channel_friends").update(payload).eq("id", cf["id"]).execute()
+    else:
+        payload["created_at"] = now_iso
+        supabase_admin.table("channel_friends").insert(payload).execute()
+    ok, err = _umbrella_finalize_email_invite(row, friend_id)
+    if not ok:
+        return False, err, None
+    return True, None, _umbrella_owner_subdomain(owner_id)
 
 
 def _cf_ensure_subscription(channel_owner_id, friend_id):
@@ -7064,7 +7584,28 @@ def channel_friends_outgoing():
             .execute()
         )
         rows = _cf_attach_user_summaries(r.data or [], "friend_id")
-        return jsonify({"success": True, "pending": rows}), 200
+        email_pending = []
+        try:
+            er = (
+                supabase_admin.table("umbrella_email_invites")
+                .select("id, invited_email, created_at, expires_at, token")
+                .eq("channel_owner_id", user_id)
+                .eq("status", "pending")
+                .execute()
+            )
+            for inv in er.data or []:
+                email_pending.append(
+                    {
+                        "id": inv.get("id"),
+                        "invited_email": inv.get("invited_email"),
+                        "created_at": inv.get("created_at"),
+                        "expires_at": inv.get("expires_at"),
+                        "invite_url": _umbrella_build_join_url(user_id, inv.get("token")),
+                    }
+                )
+        except Exception as email_pending_err:
+            logger.exception("channel_friends_outgoing email_pending: %s", email_pending_err)
+        return jsonify({"success": True, "pending": rows, "email_pending": email_pending}), 200
     except Exception as e:
         logger.exception("channel_friends_outgoing: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
@@ -7114,6 +7655,12 @@ def channel_friends_invite():
             return jsonify({"success": False, "error": "Only creators can send umbrella invites"}), 403
         data = request.get_json() or {}
         ident = (data.get("username_or_email") or data.get("identifier") or "").strip()
+        if "@" in ident:
+            payload, err = _umbrella_create_or_get_email_invite(user_id, ident)
+            if err:
+                status = 503 if "not configured" in err.lower() else 400
+                return jsonify({"success": False, "error": err}), status
+            return jsonify(payload), 200
         invitee = _cf_find_user_by_identifier(ident)
         if not invitee:
             return jsonify({"success": False, "error": "User not found"}), 404
@@ -7133,7 +7680,15 @@ def channel_friends_invite():
         if row and row.get("status") == "approved":
             return jsonify({"success": False, "error": "Already an umbrella member"}), 400
         if row and row.get("status") == "pending":
-            return jsonify({"success": True, "row": row, "message": "Invite already pending"}), 200
+            return jsonify(
+                {
+                    "success": True,
+                    "row": row,
+                    "existing_user": True,
+                    "invited_email": (invitee.get("email") or ident).strip().lower() if "@" in ident else None,
+                    "message": "Invite already pending. They accept under Channel invites when signed in to that account.",
+                }
+            ), 200
         payload = {
             "channel_owner_id": user_id,
             "friend_id": friend_id,
@@ -7149,7 +7704,15 @@ def channel_friends_invite():
         ins = supabase_admin.table("channel_friends").insert(payload).execute()
         if not ins.data:
             return jsonify({"success": False, "error": "Failed to create invite"}), 500
-        return jsonify({"success": True, "row": ins.data[0]}), 200
+        return jsonify(
+            {
+                "success": True,
+                "row": ins.data[0],
+                "existing_user": True,
+                "invited_email": (invitee.get("email") or ident).strip().lower() if "@" in ident else None,
+                "message": "Invite sent to an existing ScreenMerch account. They accept under Channel invites (no join link).",
+            }
+        ), 200
     except Exception as e:
         logger.exception("channel_friends_invite: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
@@ -7258,9 +7821,9 @@ def channel_friends_respond():
         now_iso = datetime.now(timezone.utc).isoformat()
         new_status = "approved" if action == "accept" else "rejected"
         if new_status == "approved":
-            ok, sub_err = _cf_ensure_subscription(channel_owner_id, friend_id)
+            ok, sub_err = _cf_complete_umbrella_membership(channel_owner_id, friend_id)
             if not ok:
-                return jsonify({"success": False, "error": sub_err or "Could not add subscription"}), 500
+                return jsonify({"success": False, "error": sub_err or "Could not complete umbrella membership"}), 500
         up = (
             supabase_admin.table("channel_friends")
             .update({"status": new_status, "updated_at": now_iso})
@@ -7313,6 +7876,406 @@ def channel_friends_cancel():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/channel-friends/cancel-email-invite", methods=["POST", "OPTIONS"])
+def channel_friends_cancel_email_invite():
+    """Creator revokes a pending email invite."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can cancel email invites"}), 403
+        data = request.get_json() or {}
+        invite_id = (data.get("invite_id") or data.get("id") or "").strip()
+        if not invite_id:
+            return jsonify({"success": False, "error": "invite_id is required"}), 400
+        r = (
+            supabase_admin.table("umbrella_email_invites")
+            .select("id")
+            .eq("id", invite_id)
+            .eq("channel_owner_id", user_id)
+            .eq("status", "pending")
+            .limit(1)
+            .execute()
+        )
+        if not r.data:
+            return jsonify({"success": False, "error": "Pending email invite not found"}), 404
+        now_iso = datetime.now(timezone.utc).isoformat()
+        supabase_admin.table("umbrella_email_invites").update(
+            {"status": "revoked", "updated_at": now_iso}
+        ).eq("id", invite_id).execute()
+        return jsonify({"success": True, "revoked_id": invite_id}), 200
+    except Exception as e:
+        logger.exception("channel_friends_cancel_email_invite: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/channel-friends/my-umbrella-status", methods=["GET", "OPTIONS"])
+def channel_friends_my_umbrella_status():
+    """Whether the logged-in user is a storefront owner and/or umbrella collaborator."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _authenticated_users_id()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        is_storefront_owner = bool((me.get("subdomain") or "").strip())
+        membership = _cf_approved_umbrella_membership(user_id)
+        is_umbrella_member = membership is not None and not is_storefront_owner
+        owner = None
+        if membership:
+            owner = _cf_user_row(membership.get("channel_owner_id"))
+        return jsonify(
+            {
+                "success": True,
+                "is_storefront_owner": is_storefront_owner,
+                "is_umbrella_member": is_umbrella_member,
+                "is_umbrella_only": is_umbrella_member,
+                "channel_owner_id": membership.get("channel_owner_id") if membership else None,
+                "channel_owner_name": (owner or {}).get("display_name") or (owner or {}).get("username"),
+                "storefront_subdomain": (owner or {}).get("subdomain") if membership else me.get("subdomain"),
+            }
+        ), 200
+    except Exception as e:
+        logger.exception("channel_friends_my_umbrella_status: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/umbrella-invites/validate", methods=["GET", "OPTIONS"])
+def umbrella_invites_validate():
+    """Public: validate invite token for subdomain join page."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        token = (request.args.get("token") or "").strip()
+        if not token:
+            return jsonify({"success": False, "error": "token is required"}), 400
+        row = _umbrella_invite_row_by_token(token)
+        if not row or row.get("status") != "pending":
+            return jsonify({"success": False, "error": "Invite not found or no longer active"}), 404
+        exp = row.get("expires_at")
+        if exp:
+            try:
+                exp_dt = datetime.fromisoformat(str(exp).replace("Z", "+00:00"))
+                if exp_dt.tzinfo is None:
+                    exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+                if datetime.now(timezone.utc) > exp_dt:
+                    return jsonify({"success": False, "error": "This invite has expired"}), 410
+            except Exception:
+                pass
+        owner = _cf_user_row(row.get("channel_owner_id"))
+        sub = _umbrella_owner_subdomain(row.get("channel_owner_id"))
+        return jsonify(
+            {
+                "success": True,
+                "invited_email": row.get("invited_email"),
+                "owner_name": (owner or {}).get("display_name") or (owner or {}).get("username") or "Creator",
+                "subdomain": sub,
+                "invite_url": _umbrella_build_join_url(row.get("channel_owner_id"), token),
+            }
+        ), 200
+    except Exception as e:
+        logger.exception("umbrella_invites_validate: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def _umbrella_public_user_dict(user):
+    if not user:
+        return {}
+    return {
+        "id": user.get("id"),
+        "email": user.get("email"),
+        "display_name": user.get("display_name"),
+        "role": user.get("role", "creator"),
+        "status": user.get("status", "active"),
+        "profile_image_url": user.get("profile_image_url"),
+        "cover_image_url": user.get("cover_image_url"),
+        "bio": user.get("bio"),
+        "subdomain": user.get("subdomain"),
+    }
+
+
+def _umbrella_json_with_session(user, redirect_url=None, session_token=None):
+    """JSON login response with sm_session cookie (umbrella email/password flows)."""
+    token = (session_token or str(uuid.uuid4())).strip()
+    user_id = str(user.get("id"))
+    store = app.config.get("session_token_store") or {}
+    store[token] = user_id
+    app.config["session_token_store"] = store
+    _persist_session_token(token, user_id)
+    payload = {
+        "success": True,
+        "message": "Invite accepted",
+        "user": _umbrella_public_user_dict(user),
+        "token": token,
+    }
+    if redirect_url:
+        payload["redirect_url"] = redirect_url
+    resp = make_response(jsonify(payload), 200)
+    domain = _cookie_domain()
+    resp.set_cookie(
+        "sm_session",
+        token,
+        domain=domain,
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="None",
+        max_age=7 * 24 * 3600,
+    )
+    return resp
+
+
+def _umbrella_verify_user_password(user, password):
+    stored_password = (user or {}).get("password_hash") or ""
+    if not stored_password or not password:
+        return False
+    try:
+        stored_password_trimmed = stored_password.strip()
+        if stored_password_trimmed.startswith("$2b$") or stored_password_trimmed.startswith("$2a$"):
+            return bcrypt.checkpw(password.encode("utf-8"), stored_password_trimmed.encode("utf-8"))
+        return password.strip() == stored_password_trimmed
+    except Exception:
+        return False
+
+
+def _umbrella_upgrade_collaborator(user_id):
+    if not supabase_admin or not user_id:
+        return None
+    try:
+        supabase_admin.table("users").update(
+            {"status": "active", "role": "creator", "updated_at": "now()"}
+        ).eq("id", user_id).execute()
+    except Exception:
+        pass
+    return _cf_user_row(user_id)
+
+
+def _umbrella_dashboard_url(owner_subdomain):
+    sub = (owner_subdomain or "").strip().lower()
+    if sub:
+        return f"https://{sub}.screenmerch.com/dashboard?tab=favorites"
+    return "https://screenmerch.com/dashboard?tab=favorites"
+
+
+def _umbrella_send_verification_email(to_email, verification_link, owner_name):
+    if not RESEND_API_KEY:
+        logger.warning("[umbrella signup-email] RESEND_API_KEY not set")
+        return False
+    link_escaped = verification_link.replace("&", "&amp;")
+    owner_label = owner_name or "a creator"
+    html = f"""
+    <!DOCTYPE html>
+    <html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2>Accept your ScreenMerch collaborator invite</h2>
+      <p>You were invited to upload favorites on {owner_label}&apos;s storefront.</p>
+      <p><a href="{link_escaped}" style="color: #2563eb; font-weight: bold;">Set your password and accept the invite</a></p>
+      <p style="font-size: 12px; word-break: break-all;"><a href="{link_escaped}">{verification_link}</a></p>
+      <p style="font-size: 12px; color: #666;">This link expires in 72 hours.</p>
+    </body></html>
+    """
+    try:
+        r = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "from": RESEND_FROM,
+                "to": to_email,
+                "subject": f"Set your password — join {owner_label} on ScreenMerch",
+                "html": html,
+            },
+            timeout=30,
+        )
+        if r.status_code in (200, 201, 202):
+            return True
+        logger.warning("[umbrella signup-email] Resend failed status=%s body=%s", r.status_code, r.text[:300])
+    except Exception as e:
+        logger.exception("[umbrella signup-email] send failed: %s", e)
+    return False
+
+
+@app.route("/api/umbrella-invites/login-accept", methods=["POST", "OPTIONS"])
+def umbrella_invites_login_accept():
+    """Sign in with invited email + password and accept umbrella invite (non-Google path)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        data = read_json()
+        invite_token = (data.get("invite_token") or data.get("token") or "").strip()
+        password = data.get("password") or ""
+        if not invite_token or not password:
+            return jsonify({"success": False, "error": "Invite token and password are required"}), 400
+        row = _umbrella_invite_row_by_token(invite_token)
+        if not row or row.get("status") != "pending":
+            return jsonify({"success": False, "error": "Invite not found or no longer active"}), 404
+        invited_email = (row.get("invited_email") or "").strip().lower()
+        if not invited_email:
+            return jsonify({"success": False, "error": "Invalid invite"}), 400
+        result = supabase_admin.table("users").select("*").eq("email", invited_email).limit(1).execute()
+        if not result.data:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "No account for this email yet. Use “Create account with this email” below.",
+                    "code": "no_account",
+                }
+            ), 404
+        user = result.data[0]
+        user_status = user.get("status") or "active"
+        if user_status in ("suspended", "banned"):
+            return jsonify({"success": False, "error": f"Your account has been {user_status}."}), 403
+        if user_status == "pending" and user.get("role") == "creator":
+            return jsonify({"success": False, "error": "Your creator account is pending approval."}), 403
+        if not _umbrella_verify_user_password(user, password):
+            if not user.get("password_hash"):
+                return jsonify(
+                    {
+                        "success": False,
+                        "error": "This email has no password yet. Create an account with this email or use Google if it is a Google account.",
+                        "code": "no_password",
+                    }
+                ), 401
+            return jsonify({"success": False, "error": "Invalid email or password"}), 401
+        ok, err, owner_sub = _umbrella_process_invite_token(invite_token, invited_email, user)
+        if not ok:
+            return jsonify({"success": False, "error": err or "Invite could not be completed"}), 400
+        user = _umbrella_upgrade_collaborator(user.get("id")) or user
+        user["role"] = "creator"
+        user["status"] = "active"
+        dash_url = _umbrella_dashboard_url(owner_sub)
+        return _umbrella_json_with_session(user, redirect_url=dash_url)
+    except Exception as e:
+        logger.exception("umbrella_invites_login_accept: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/umbrella-invites/signup-email", methods=["POST", "OPTIONS"])
+def umbrella_invites_signup_email():
+    """Send verification email for invited address (Proton/Yahoo/etc.). Role=creator on verify+accept."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        data = read_json()
+        invite_token = (data.get("invite_token") or data.get("token") or "").strip()
+        if not invite_token:
+            return jsonify({"success": False, "error": "Invite token is required"}), 400
+        row = _umbrella_invite_row_by_token(invite_token)
+        if not row or row.get("status") != "pending":
+            return jsonify({"success": False, "error": "Invite not found or no longer active"}), 404
+        invited_email = (row.get("invited_email") or "").strip().lower()
+        if not invited_email:
+            return jsonify({"success": False, "error": "Invalid invite"}), 400
+        owner = _cf_user_row(row.get("channel_owner_id"))
+        owner_name = (owner or {}).get("display_name") or (owner or {}).get("username") or "Creator"
+        owner_sub = _umbrella_owner_subdomain(row.get("channel_owner_id"))
+        verify_origin = f"https://{owner_sub}.screenmerch.com" if owner_sub else "https://screenmerch.com"
+        verification_token = str(uuid.uuid4())
+        token_expiry = (datetime.now(timezone.utc) + timedelta(hours=72)).isoformat()
+        existing = supabase_admin.table("users").select("*").eq("email", invited_email).limit(1).execute()
+        if existing.data:
+            user = existing.data[0]
+            if user.get("password_hash") and user.get("email_verified"):
+                return jsonify(
+                    {
+                        "success": False,
+                        "error": "An account already exists for this email. Sign in with your password below.",
+                        "code": "use_login",
+                    }
+                ), 409
+            supabase_admin.table("users").update(
+                {
+                    "email_verification_token": verification_token,
+                    "token_expiry": token_expiry,
+                    "role": "creator",
+                    "status": "active",
+                    "updated_at": "now()",
+                }
+            ).eq("id", user.get("id")).execute()
+        else:
+            supabase_admin.table("users").insert(
+                {
+                    "email": invited_email,
+                    "role": "creator",
+                    "status": "active",
+                    "email_verified": False,
+                    "email_verification_token": verification_token,
+                    "token_expiry": token_expiry,
+                }
+            ).execute()
+        verification_link = (
+            f"{verify_origin}/verify-email?token={quote(verification_token, safe='')}"
+            f"&email={quote(invited_email, safe='')}"
+            f"&invite_token={quote(invite_token, safe='')}"
+        )
+        sent = _umbrella_send_verification_email(invited_email, verification_link, owner_name)
+        if not sent and not RESEND_API_KEY:
+            return jsonify({"success": False, "error": "Email service is not configured. Contact support."}), 503
+        return jsonify(
+            {
+                "success": True,
+                "message": "Check your email to set a password and accept the invite.",
+                "email_sent": bool(sent),
+            }
+        ), 200
+    except Exception as e:
+        logger.exception("umbrella_invites_signup_email: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/umbrella-invites/accept", methods=["POST", "OPTIONS"])
+def umbrella_invites_accept():
+    """Complete umbrella invite for an authenticated user (after verify-email or existing session)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        data = read_json()
+        invite_token = (data.get("invite_token") or data.get("token") or "").strip()
+        if not invite_token:
+            return jsonify({"success": False, "error": "Invite token is required"}), 400
+        session_tok = (
+            (request.headers.get("X-Session-Token") or "").strip()
+            or (request.cookies.get("sm_session") or "").strip()
+            or (data.get("token") or "").strip()
+        )
+        user_id = _resolve_session_token(session_tok) if session_tok else None
+        if not user_id:
+            return jsonify({"success": False, "error": "Authentication required"}), 401
+        user = _cf_user_row(user_id)
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        ok, err, owner_sub = _umbrella_process_invite_token(
+            invite_token, (user.get("email") or "").strip().lower(), user
+        )
+        if not ok:
+            return jsonify({"success": False, "error": err or "Invite could not be completed"}), 400
+        user = _umbrella_upgrade_collaborator(user_id) or user
+        user["role"] = "creator"
+        user["status"] = "active"
+        dash_url = _umbrella_dashboard_url(owner_sub)
+        return _umbrella_json_with_session(user, redirect_url=dash_url, session_token=session_tok or None)
+    except Exception as e:
+        logger.exception("umbrella_invites_accept: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 def _fl_slugify(raw):
     s = (raw or "").strip().lower()
     s = re.sub(r"[^a-z0-9-]+", "-", s)
@@ -7334,6 +8297,12 @@ def _fl_ensure_primary_list(owner_id):
     )
     if r.data:
         pid = r.data[0]["id"]
+        try:
+            supabase_admin.table("creator_favorite_lists").update(
+                {"storefront_owner_id": owner_id}
+            ).eq("id", pid).is_("storefront_owner_id", "null").execute()
+        except Exception:
+            pass
     else:
         u = supabase_admin.table("users").select("display_name,username").eq("id", owner_id).limit(1).execute()
         label = "Favorites"
@@ -7344,6 +8313,7 @@ def _fl_ensure_primary_list(owner_id):
             .insert(
                 {
                     "owner_user_id": owner_id,
+                    "storefront_owner_id": owner_id,
                     "slug": "owner",
                     "display_name": label[:120],
                     "sort_order": 0,
@@ -7367,7 +8337,7 @@ def favorite_lists_mine():
     if request.method == "OPTIONS":
         return jsonify(success=True)
     try:
-        user_id, err = _validate_x_user_id_session()
+        user_id, err = _authenticated_users_id()
         if err is not None:
             return err[0], err[1]
         if not supabase_admin:
@@ -7375,13 +8345,90 @@ def favorite_lists_mine():
         me = _cf_user_row(user_id)
         if not me or me.get("role") != "creator":
             return jsonify({"success": False, "error": "Only creators can manage favorite pages"}), 403
-        _fl_ensure_primary_list(user_id)
-        lr = supabase_admin.table("creator_favorite_lists").select("*").eq("owner_user_id", user_id).execute()
-        lists = lr.data or []
+        umbrella_only = _is_umbrella_collaborator_only(user_id)
+        owner_name = None
+        if umbrella_only:
+            membership = _cf_approved_umbrella_membership(user_id)
+            owner_id = (membership or {}).get("channel_owner_id")
+            if owner_id:
+                owner = _cf_user_row(owner_id)
+                owner_name = (owner or {}).get("display_name") or (owner or {}).get("username")
+                member_list = _umbrella_member_list_for_user(user_id, owner_id)
+                lists = [member_list] if member_list else []
+            else:
+                lists = []
+        else:
+            _fl_ensure_primary_list(user_id)
+            lr = supabase_admin.table("creator_favorite_lists").select("*").eq("owner_user_id", user_id).execute()
+            lists = lr.data or []
         lists.sort(key=lambda L: (0 if L.get("is_primary") else 1, L.get("sort_order") or 0, (L.get("display_name") or "").lower()))
-        return jsonify({"success": True, "lists": lists}), 200
+        return jsonify(
+            {
+                "success": True,
+                "lists": lists,
+                "is_umbrella_only": umbrella_only,
+                "owner_name": owner_name,
+                "collaborator_email": (me.get("email") or "").strip().lower() or None,
+                "user_id": user_id,
+            }
+        ), 200
     except Exception as e:
         logger.exception("favorite_lists_mine: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/favorite-lists/rename", methods=["POST", "OPTIONS"])
+def favorite_lists_rename():
+    """Update display name for a favorite page owned by the current user."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _authenticated_users_id()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can rename favorite pages"}), 403
+        data = request.get_json() or {}
+        list_id = (data.get("list_id") or data.get("id") or "").strip()
+        display_name = (data.get("display_name") or "").strip()
+        if not display_name:
+            return jsonify({"success": False, "error": "display_name is required"}), 400
+        if _is_umbrella_collaborator_only(user_id):
+            member_list = _umbrella_member_list_for_user(user_id)
+            if not member_list:
+                return jsonify({"success": False, "error": "Collaborator favorites page not found"}), 404
+            list_id = member_list["id"]
+        elif not list_id:
+            return jsonify({"success": False, "error": "list_id is required"}), 400
+        else:
+            row = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("*")
+                .eq("id", list_id)
+                .eq("owner_user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            if not row.data:
+                return jsonify({"success": False, "error": "Favorite page not found"}), 404
+            lst = row.data[0]
+            if lst.get("is_primary"):
+                return jsonify({"success": False, "error": "Cannot rename the main storefront page here"}), 400
+        now_iso = datetime.now(timezone.utc).isoformat()
+        upd = (
+            supabase_admin.table("creator_favorite_lists")
+            .update({"display_name": display_name[:120], "updated_at": now_iso})
+            .eq("id", list_id)
+            .execute()
+        )
+        if not upd.data:
+            return jsonify({"success": False, "error": "Update failed"}), 500
+        return jsonify({"success": True, "list": upd.data[0]}), 200
+    except Exception as e:
+        logger.exception("favorite_lists_rename: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -7513,15 +8560,31 @@ def public_favorite_lists():
             return jsonify({"success": True, "lists": []}), 200
         owner_id = cr.data[0]["id"]
         _fl_ensure_primary_list(owner_id)
-        lr = (
-            supabase_admin.table("creator_favorite_lists")
-            .select("id, slug, display_name, is_primary, sort_order")
-            .eq("owner_user_id", owner_id)
-            .execute()
-        )
-        lists = lr.data or []
+        try:
+            lr = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("id, slug, display_name, is_primary, sort_order, owner_user_id")
+                .eq("storefront_owner_id", owner_id)
+                .execute()
+            )
+            lists = lr.data or []
+        except Exception:
+            lr = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("id, slug, display_name, is_primary, sort_order, owner_user_id")
+                .eq("owner_user_id", owner_id)
+                .execute()
+            )
+            lists = lr.data or []
         lists.sort(key=lambda L: (0 if L.get("is_primary") else 1, L.get("sort_order") or 0, (L.get("display_name") or "").lower()))
-        return jsonify({"success": True, "lists": lists}), 200
+        safe_lists = []
+        for L in lists:
+            dn = (L.get("display_name") or L.get("slug") or "Favorites").strip()
+            if "@" in dn:
+                owner_u = _cf_user_row(L.get("owner_user_id"))
+                dn = _umbrella_collaborator_label(owner_u) + (" Favorites" if "Favorites" not in dn else "")
+            safe_lists.append({**L, "display_name": dn[:120]})
+        return jsonify({"success": True, "lists": safe_lists}), 200
     except Exception as e:
         logger.exception("public_favorite_lists: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
@@ -7542,14 +8605,24 @@ def public_favorites_by_list():
         if not cr.data:
             return jsonify({"success": False, "error": "Creator not found"}), 404
         owner_id = cr.data[0]["id"]
-        lr = (
-            supabase_admin.table("creator_favorite_lists")
-            .select("*")
-            .eq("owner_user_id", owner_id)
-            .eq("slug", slug)
-            .limit(1)
-            .execute()
-        )
+        try:
+            lr = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("*")
+                .eq("storefront_owner_id", owner_id)
+                .eq("slug", slug)
+                .limit(1)
+                .execute()
+            )
+        except Exception:
+            lr = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("*")
+                .eq("owner_user_id", owner_id)
+                .eq("slug", slug)
+                .limit(1)
+                .execute()
+            )
         row = (lr.data or [None])[0]
         if not row:
             return jsonify({"success": False, "error": "List not found"}), 404
@@ -7598,7 +8671,10 @@ def favorite_lists_sales_summary():
             except (TypeError, ValueError):
                 pass
         lists_map = {}
-        lr = supabase_admin.table("creator_favorite_lists").select("id, display_name, slug").eq("owner_user_id", user_id).execute()
+        try:
+            lr = supabase_admin.table("creator_favorite_lists").select("id, display_name, slug").eq("storefront_owner_id", user_id).execute()
+        except Exception:
+            lr = supabase_admin.table("creator_favorite_lists").select("id, display_name, slug").eq("owner_user_id", user_id).execute()
         for L in lr.data or []:
             lists_map[str(L["id"])] = L
         out = []
@@ -9483,10 +10559,12 @@ def google_login():
         import base64
         import json
         flow = request.args.get('flow') or ''
+        invite_token = (request.args.get('invite_token') or '').strip()
         state_data = {
             'state': state,
             'return_url': frontend_origin,
-            'flow': flow
+            'flow': flow,
+            'invite_token': invite_token,
         }
         encoded_state = base64.urlsafe_b64encode(json.dumps(state_data).encode()).decode()
         
@@ -9537,6 +10615,7 @@ def google_callback():
         # Decode return_url and flow from state parameter (if encoded)
         frontend_origin_from_state = None
         flow_from_state = None
+        invite_token_from_state = None
         if state:
             try:
                 import base64
@@ -9547,8 +10626,11 @@ def google_callback():
                     frontend_origin_from_state = state_data['return_url']
                     logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Decoded return_url from state: {frontend_origin_from_state}")
                 flow_from_state = state_data.get('flow') if isinstance(state_data, dict) else None
+                invite_token_from_state = (state_data.get('invite_token') or '').strip() if isinstance(state_data, dict) else None
                 if flow_from_state:
                     logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Decoded flow from state: {flow_from_state}")
+                if invite_token_from_state:
+                    logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Decoded umbrella invite token from state")
                 # Use the original state for verification
                 state = state_data.get('state', state) if isinstance(state_data, dict) else state
             except (ValueError, json.JSONDecodeError, Exception) as e:
@@ -9737,13 +10819,14 @@ def google_callback():
                 logger.error(f"Error checking creator limit: {str(limit_error)}")
                 # Continue with signup if limit check fails (fail open for now)
 
-            # Create new user with creator role and pending status (admin client required - ensures record appears in master admin pending list)
+            # Create new user with creator role (pending for public signup, active for umbrella invite)
+            is_umbrella_signup = flow_from_state == 'umbrella_invite' and invite_token_from_state
             new_user = {
                 'id': str(uuid.uuid4()),
                 'email': google_email,
                 'display_name': google_name,
                 'role': 'creator',
-                'status': 'pending',  # Creators need admin approval
+                'status': 'active' if is_umbrella_signup else 'pending',
                 'created_at': datetime.utcnow().isoformat(),
                 'profile_image_url': google_picture or None,
             }
@@ -9785,8 +10868,8 @@ def google_callback():
                     redirect_url = f"{frontend_url}?login=error&message={quote('Sign-up could not be saved. Please try again or contact support.')}"
                     return redirect(redirect_url)
             
-            # Send admin notification email for new creator signup (same MAIL_TO as order notifications, e.g. chidopro@proton.me)
-            if user and MAIL_TO and RESEND_API_KEY:
+            # Send admin notification email for new creator signup (skip for umbrella invite flow)
+            if user and not is_umbrella_signup and MAIL_TO and RESEND_API_KEY:
                 try:
                     logger.info(f"📧 [OAUTH CREATOR] Sending admin notification to {MAIL_TO} for new creator {google_email}")
                     admin_email_data = {
@@ -9829,8 +10912,8 @@ def google_callback():
                 if user and (not MAIL_TO or not RESEND_API_KEY):
                     logger.warning(f"⚠️ [OAUTH CREATOR] Admin email not sent: MAIL_TO={'SET' if MAIL_TO else 'NOT SET'}, RESEND_API_KEY={'SET' if RESEND_API_KEY else 'NOT SET'}. Set both in Fly.io Secrets to receive new creator signup notifications.")
             
-            # Send confirmation email to the new creator (runs whenever RESEND is set, regardless of MAIL_TO)
-            if user and RESEND_API_KEY and google_email:
+            # Send confirmation email to the new creator (skip for umbrella invite flow)
+            if user and not is_umbrella_signup and RESEND_API_KEY and google_email:
                 try:
                     creator_confirm_data = {
                         "from": RESEND_FROM,
@@ -9921,6 +11004,33 @@ def google_callback():
         user_data_json = json.dumps(user_data)
         user_data_encoded = quote(user_data_json)
         
+        # Umbrella invite: auto-approve membership and send to favorites dashboard on subdomain
+        if flow_from_state == 'umbrella_invite' and invite_token_from_state:
+            ok, err, owner_sub = _umbrella_process_invite_token(invite_token_from_state, google_email, user)
+            if not ok:
+                err_base = frontend_origin_from_state or session.get('oauth_return_url') or "https://screenmerch.com"
+                if not err_base.startswith('http'):
+                    err_base = f"https://{err_base}"
+                return redirect(f"{err_base}?login=error&message={quote(err or 'Invite could not be completed')}")
+            try:
+                supabase_admin.table('users').update(
+                    {'status': 'active', 'role': 'creator', 'updated_at': 'now()'}
+                ).eq('id', user.get('id')).execute()
+                user['status'] = 'active'
+                user['role'] = 'creator'
+            except Exception:
+                pass
+            user_data['status'] = 'active'
+            user_data['role'] = 'creator'
+            user_data_encoded = quote(json.dumps(user_data))
+            sub = owner_sub or _umbrella_owner_subdomain(
+                (_umbrella_invite_row_by_token(invite_token_from_state) or {}).get('channel_owner_id')
+            )
+            dash_url = f"https://{sub}.screenmerch.com/dashboard?tab=favorites" if sub else (frontend_origin_from_state or "https://screenmerch.com/dashboard?tab=favorites")
+            redirect_url = f"{dash_url}&login=success&user={user_data_encoded}" if '?' in dash_url else f"{dash_url}?login=success&user={user_data_encoded}"
+            logger.info(f"✅ [GOOGLE OAUTH CALLBACK] umbrella_invite complete → {dash_url[:80]}")
+            return _oauth_redirect_with_session(redirect_url, user.get('id'))
+        
         # NEW CREATOR SIGNUP: Always redirect to thank-you on main domain and exit before any subdomain logic.
         # User started on screenmerch.com → must land on screenmerch.com/creator-thank-you, never testcreator.
         if user.get('status') == 'pending':
@@ -9993,8 +11103,13 @@ def google_callback():
             frontend_url = f"https://{session_subdomain}.screenmerch.com"
             frontend_url_set = True
             logger.info(f"🔍 [GOOGLE OAUTH CALLBACK] Using subdomain from session return_url (PRIORITY 1): {frontend_url}")
-            # Update user's subdomain in database for future logins (if different)
-            if user_subdomain != session_subdomain:
+            # Only subdomain owners get subdomain written to their user row (not umbrella collaborators)
+            try:
+                reg = supabase_admin.table('users').select('id').eq('subdomain', session_subdomain).limit(1).execute()
+                is_registered_owner = reg.data and str(reg.data[0]['id']) == str(user.get('id'))
+            except Exception:
+                is_registered_owner = _cf_is_storefront_owner(user.get('id'), session_subdomain)
+            if is_registered_owner and user_subdomain != session_subdomain:
                 try:
                     update_client = supabase_admin if supabase_admin else supabase
                     update_result = update_client.table('users').update({'subdomain': session_subdomain}).eq('id', user.get('id')).execute()

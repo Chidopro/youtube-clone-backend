@@ -9,8 +9,13 @@ import { getBackendUrl } from '../../config/apiConfig';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.jsx';
+import { channelFriendsJson } from '../../utils/channelFriendsApi';
 // Force Netlify rebuild
 
+function umbrellaDefaultPageName(email) {
+    const local = (email || '').split('@')[0].trim();
+    return local ? `${local.charAt(0).toUpperCase()}${local.slice(1)} Favorites` : 'My Favorites';
+}
 
 const Dashboard = ({ sidebar }) => {
     const [user, setUser] = useState(null);
@@ -35,6 +40,7 @@ const Dashboard = ({ sidebar }) => {
     const [isEditingAvatar, setIsEditingAvatar] = useState(false);
     const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState('videos');
+    const [umbrellaOnly, setUmbrellaOnly] = useState(false);
 
     // Open tab when URL has ?tab= (e.g. from navbar logo edit or FrameSnag "Add to Favorites")
     useEffect(() => {
@@ -46,9 +52,32 @@ const Dashboard = ({ sidebar }) => {
         }
     }, [searchParams]);
 
-    // Paste-from-FrameSnag: when on Favorites tab, accept pasted image and open Add Favorite modal
     useEffect(() => {
-        if (activeTab !== 'favorites') return;
+        if (!user?.id || userProfile?.role !== 'creator') {
+            setUmbrellaOnly(false);
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            try {
+                const { ok, data } = await channelFriendsJson('/api/channel-friends/my-umbrella-status', { method: 'GET' });
+                if (cancelled) return;
+                if (ok && data?.is_umbrella_only) {
+                    setUmbrellaOnly(true);
+                    setActiveTab('favorites');
+                } else {
+                    setUmbrellaOnly(false);
+                }
+            } catch (_) {
+                if (!cancelled) setUmbrellaOnly(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [user?.id, userProfile?.role]);
+
+    // Paste-from-FrameSnag: storefront owners only (umbrella collaborators upload manually)
+    useEffect(() => {
+        if (activeTab !== 'favorites' || umbrellaOnly) return;
         const handlePaste = (e) => {
             const items = e.clipboardData?.items;
             if (!items) return;
@@ -72,7 +101,7 @@ const Dashboard = ({ sidebar }) => {
         };
         document.addEventListener('paste', handlePaste);
         return () => document.removeEventListener('paste', handlePaste);
-    }, [activeTab]);
+    }, [activeTab, umbrellaOnly]);
 
     const [currentUser, setCurrentUser] = useState(null);
     const [payoutData, setPayoutData] = useState({
@@ -86,6 +115,8 @@ const Dashboard = ({ sidebar }) => {
     const [selectedFavoriteListId, setSelectedFavoriteListId] = useState(null);
     const [newPageName, setNewPageName] = useState('');
     const [newPageSlug, setNewPageSlug] = useState('');
+    const [umbrellaPageName, setUmbrellaPageName] = useState('');
+    const [umbrellaOwnerName, setUmbrellaOwnerName] = useState('');
     const [savingFavoritePage, setSavingFavoritePage] = useState(false);
     const [movingFavoriteId, setMovingFavoriteId] = useState(null);
     const selectedFavoriteListIdRef = useRef(null);
@@ -193,6 +224,7 @@ const Dashboard = ({ sidebar }) => {
                     // CRITICAL: Update localStorage with latest database values
                     const updatedUser = {
                         ...user,
+                        id: profile.id || user.id,
                         profile_image_url: finalProfileImageUrl,
                         cover_image_url: finalCoverImageUrl,
                         display_name: profile.display_name || user.display_name || user.user_metadata?.name || '',
@@ -294,14 +326,33 @@ const Dashboard = ({ sidebar }) => {
         (async () => {
             const { ok, data } = await favoriteListsJson('/api/favorite-lists/mine');
             if (cancelled) return;
+            if (data?.is_umbrella_only) {
+                setUmbrellaOnly(true);
+                setUmbrellaOwnerName(data.owner_name || '');
+            }
+            if (data?.user_id && data.user_id !== user.id) {
+                const merged = { ...user, id: data.user_id };
+                localStorage.setItem('user', JSON.stringify(merged));
+                setUser(merged);
+            }
+            const listUserId = data?.user_id || user.id;
             if (ok && data?.lists?.length) {
                 setFavoritePages(data.lists);
-                const primary = data.lists.find((l) => l.is_primary) || data.lists[0];
+                const collabList = data.lists.find((l) => l.storefront_owner_id) || null;
+                const primary = data.is_umbrella_only
+                    ? collabList
+                    : (data.lists.find((l) => l.is_primary) || data.lists[0]);
                 const prev = selectedFavoriteListIdRef.current;
                 const nextId =
-                    prev && data.lists.some((l) => l.id === prev) ? prev : primary?.id || null;
+                    prev && data.lists.some((l) => l.id === prev && (!data.is_umbrella_only || l.storefront_owner_id))
+                        ? prev
+                        : primary?.id || null;
                 setSelectedFavoriteListId(nextId);
-                if (nextId) await reloadFavoritesForList(user.id, nextId);
+                if (data.is_umbrella_only && primary) {
+                    const rawName = (primary.display_name || '').replace(/\s*\(owner\)\s*/gi, ' ').trim();
+                    setUmbrellaPageName(rawName || umbrellaDefaultPageName(user?.email));
+                }
+                if (nextId && listUserId) await reloadFavoritesForList(listUserId, nextId);
             } else {
                 setFavoritePages([]);
                 setFavorites([]);
@@ -314,6 +365,37 @@ const Dashboard = ({ sidebar }) => {
         if (!user?.id || !listId) return;
         setSelectedFavoriteListId(listId);
         reloadFavoritesForList(user.id, listId);
+    };
+
+    const handleSaveUmbrellaPageName = async () => {
+        const name = umbrellaPageName.trim();
+        const collabList = favoritePages.find((l) => l.storefront_owner_id) || favoritePages[0];
+        const listId = collabList?.id || selectedFavoriteListId;
+        if (!name) {
+            alert('Enter a page name (this nickname appears in the storefront menu — not your email).');
+            return;
+        }
+        setSavingFavoritePage(true);
+        try {
+            const { ok, data } = await favoriteListsJson('/api/favorite-lists/rename', {
+                method: 'POST',
+                body: JSON.stringify({ list_id: listId, display_name: name }),
+            });
+            if (!ok || !data?.success) {
+                alert(data?.error || 'Could not save page name');
+                return;
+            }
+            const updated = data.list;
+            setFavoritePages((prev) =>
+                prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+            );
+            setUmbrellaPageName(updated.display_name || name);
+        } catch (e) {
+            console.error(e);
+            alert(e.message || 'Could not save page name');
+        } finally {
+            setSavingFavoritePage(false);
+        }
     };
 
     const handleCreateFavoritePage = async () => {
@@ -699,60 +781,64 @@ const Dashboard = ({ sidebar }) => {
             return;
         }
 
-        // Try to get user ID from Supabase Auth first
-        let userId = null;
-        let authError = null;
-        
-        const { data: { user: supabaseUser }, error: authErr } = await supabase.auth.getUser();
-        
-        if (supabaseUser && supabaseUser.id) {
-            userId = supabaseUser.id;
-            console.log('Using Supabase Auth user ID:', userId);
-        } else {
-            authError = authErr;
-            console.log('No Supabase Auth session, checking for Google OAuth user...');
-            
-            // Try to get user ID from users table (for Google OAuth users)
-            const isAuthenticated = localStorage.getItem('isAuthenticated');
-            const userData = localStorage.getItem('user');
-            
-            if (isAuthenticated === 'true' && userData) {
-                try {
-                    const googleUser = JSON.parse(userData);
-                    console.log('Found Google OAuth user:', googleUser);
-                    
-                    // Use id from OAuth redirect if backend sent it (Google OAuth callback includes user.id)
-                    if (googleUser.id) {
-                        userId = googleUser.id;
-                        console.log('Using user ID from Google OAuth session:', userId);
-                    } else if (googleUser.email) {
-                        // Fallback: find user in users table by email (may fail due to RLS if no Supabase session)
-                        const { data: userRecord, error: userError } = await supabase
-                            .from('users')
-                            .select('id')
-                            .eq('email', googleUser.email)
-                            .single();
-                        
-                        if (userRecord && userRecord.id) {
-                            userId = userRecord.id;
-                            console.log('Found user ID from users table:', userId);
-                        } else {
-                            console.error('User not found in users table:', userError);
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error parsing Google OAuth user:', e);
-                }
+        // Prefer Flask/backend session user id (Google OAuth + umbrella email/password).
+        // Stale Supabase Auth sessions must not override the users-table id.
+        let userId = user?.id || null;
+        const isFlaskAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+        const storedUserRaw = localStorage.getItem('user');
+        let storedUser = null;
+        if (storedUserRaw) {
+            try {
+                storedUser = JSON.parse(storedUserRaw);
+            } catch (_) {
+                storedUser = null;
             }
         }
-        
+        if (!userId && storedUser?.id) {
+            userId = storedUser.id;
+            console.log('Using user ID from localStorage session:', userId);
+        }
+
+        const { data: { user: supabaseUser }, error: authErr } = await supabase.auth.getUser();
+
+        if (!userId && supabaseUser?.id) {
+            userId = supabaseUser.id;
+            console.log('Using Supabase Auth user ID:', userId);
+        } else if (!userId && storedUser?.email) {
+            const { data: userRecord, error: userError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('email', storedUser.email)
+                .maybeSingle();
+            if (userRecord?.id) {
+                userId = userRecord.id;
+                console.log('Found user ID from users table by email:', userId);
+            } else {
+                console.error('User not found in users table:', userError);
+            }
+        }
+
         if (!userId) {
-            console.error('Auth error:', authError);
-            alert('Authentication required. Please ensure you are logged in. If you are using Google OAuth, you may need to sign in through Supabase Auth to upload favorites.');
+            console.error('Auth error:', authErr);
+            alert('Authentication required. Please sign in again from your invite link.');
             return;
         }
 
-        const useBackendUpload = !supabaseUser; // Google OAuth users: no Supabase session, use backend so storage/RLS works
+        const useBackendUpload = isFlaskAuthenticated || !supabaseUser;
+        const accountEmail = (user?.email || storedUser?.email || supabaseUser?.email || '').trim().toLowerCase();
+        if (useBackendUpload && !accountEmail) {
+            alert('Your session is missing your email. Please sign out and sign in again with your invited email.');
+            return;
+        }
+        if (accountEmail && userId) {
+            const synced = await fetchMyProfileFromBackend(userId);
+            if (synced?.id && synced.id !== userId) {
+                userId = synced.id;
+                const merged = { ...(storedUser || user || {}), ...synced, id: synced.id };
+                localStorage.setItem('user', JSON.stringify(merged));
+                setUser(merged);
+            }
+        }
 
         try {
             setUploadingFavorite(true);
@@ -773,10 +859,13 @@ const Dashboard = ({ sidebar }) => {
                 formData.append('title', newFavorite.title);
                 if (newFavorite.description) formData.append('description', newFavorite.description);
                 formData.append('channel_title', channelTitle);
+                if (accountEmail) formData.append('email', accountEmail);
                 if (selectedFavoriteListId) formData.append('list_id', selectedFavoriteListId);
-                const headers = { 'X-User-Id': userId };
                 let sessionToken = typeof localStorage !== 'undefined' && localStorage.getItem('auth_token');
                 if (!sessionToken) sessionToken = await claimSessionTokenIfNeeded(userId);
+                if (sessionToken) formData.append('session_token', sessionToken);
+                const headers = { 'X-User-Id': userId };
+                if (accountEmail) headers['X-User-Email'] = accountEmail;
                 if (sessionToken) headers['X-Session-Token'] = sessionToken;
                 const res = await fetch(`${getBackendUrl()}/api/favorites/upload`, {
                     method: 'POST',
@@ -791,6 +880,11 @@ const Dashboard = ({ sidebar }) => {
                     return;
                 }
                 if (json.success && json.favorite) {
+                    if (json.user_id && json.user_id !== userId) {
+                        const merged = { ...(storedUser || user || {}), id: json.user_id };
+                        localStorage.setItem('user', JSON.stringify(merged));
+                        setUser(merged);
+                    }
                     setFavorites(prev => [json.favorite, ...prev]);
                     setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
                     setShowFavoriteModal(false);
@@ -1501,21 +1595,24 @@ const Dashboard = ({ sidebar }) => {
 
             {/* Tab Navigation */}
             <div className="dashboard-tabs">
+                {!umbrellaOnly && (
                 <button 
                     className={`tab-button ${activeTab === 'videos' ? 'active' : ''}`}
                     onClick={() => setActiveTab('videos')}
                 >
                     📹 Videos ({videos.length})
                 </button>
+                )}
                 <button 
                     className={`tab-button ${activeTab === 'favorites' ? 'active' : ''}`}
                     onClick={() => {
-                        console.log('Favorites tab clicked');
                         setActiveTab('favorites');
                     }}
                 >
                     ⭐ Favorites ({favorites.length})
                 </button>
+                {!umbrellaOnly && (
+                <>
                 <button 
                     className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
                     onClick={() => {
@@ -1544,6 +1641,8 @@ const Dashboard = ({ sidebar }) => {
                     >
                         ☂️ Umbrella
                     </button>
+                )}
+                </>
                 )}
             </div>
 
@@ -1645,7 +1744,37 @@ const Dashboard = ({ sidebar }) => {
                                 + Add Favorite
                             </button>
                         </div>
-                        {userProfile?.role === 'creator' && favoritePages.length > 0 && (
+                        {userProfile?.role === 'creator' && umbrellaOnly && favoritePages.length > 0 && (
+                            <div className="umbrella-fav-page-bar">
+                                <div className="umbrella-fav-page-intro">
+                                    <p>
+                                        Your favorites on <strong>{umbrellaOwnerName || 'this storefront'}</strong>.
+                                        Choose a <strong>nickname</strong> for your page — customers see this in the
+                                        Favorites menu, not your email.
+                                    </p>
+                                </div>
+                                <label className="favorite-pages-label" htmlFor="umbrella-page-name">Page nickname</label>
+                                <div className="umbrella-fav-page-row">
+                                    <input
+                                        id="umbrella-page-name"
+                                        type="text"
+                                        className="favorite-pages-input umbrella-page-name-input"
+                                        placeholder="e.g. Alan's Picks"
+                                        value={umbrellaPageName}
+                                        onChange={(e) => setUmbrellaPageName(e.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="save-btn"
+                                        disabled={savingFavoritePage || !umbrellaPageName.trim()}
+                                        onClick={handleSaveUmbrellaPageName}
+                                    >
+                                        {savingFavoritePage ? 'Saving…' : 'Save name'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        {userProfile?.role === 'creator' && !umbrellaOnly && favoritePages.length > 0 && (
                             <div className="favorite-pages-toolbar">
                                 <label className="favorite-pages-label" htmlFor="dashboard-fav-list-select">Favorite page</label>
                                 <select
@@ -1697,17 +1826,20 @@ const Dashboard = ({ sidebar }) => {
                                 </div>
                             </div>
                         )}
+                        {!umbrellaOnly && (
                         <p className="paste-hint">Paste from FrameSnag (Ctrl+V) to add a captured image. New uploads go to the favorite page selected above.</p>
+                        )}
 
                         {/* Prominent hint when sent from FrameSnag */}
-                        {showPasteHint && (
+                        {!umbrellaOnly && showPasteHint && (
                             <div className="framesnag-paste-banner">
                                 <span>📋 You were sent here from FrameSnag. <strong>Press Ctrl+V</strong> (or Cmd+V on Mac) to add your screenshot to favorites.</span>
                                 <button type="button" className="framesnag-paste-banner-dismiss" onClick={() => setShowPasteHint(false)} aria-label="Dismiss">×</button>
                             </div>
                         )}
 
-                        {/* FrameSnag Promo Section */}
+                        {/* FrameSnag — storefront owners only */}
+                        {!umbrellaOnly && (
                         <div className="framesnag-promo-section">
                             <div className="framesnag-promo-content">
                                 <div className="framesnag-promo-text">
@@ -1738,8 +1870,9 @@ const Dashboard = ({ sidebar }) => {
                                 </a>
                             </div>
                         </div>
-                        
-                        {favorites.length > 0 ? (
+                        )}
+
+                                                {favorites.length > 0 ? (
                             <div className="dashboard-video-grid">
                                 {favorites.map(favorite => (
                                     <div 
@@ -1756,7 +1889,7 @@ const Dashboard = ({ sidebar }) => {
                                             {favorite.description && <p>{favorite.description}</p>}
                                             <span className="video-views">{new Date(favorite.created_at).toLocaleDateString()}</span>
                                         </div>
-                                        {userProfile?.role === 'creator' && favoritePages.length > 0 && (
+                                        {userProfile?.role === 'creator' && !umbrellaOnly && favoritePages.length > 1 && (
                                             <div className="favorite-card-page-row">
                                                 <label htmlFor={`fav-list-${favorite.id}`}>Page</label>
                                                 <select

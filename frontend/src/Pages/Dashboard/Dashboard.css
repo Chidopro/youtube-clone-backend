@@ -3049,6 +3049,34 @@
     margin: -8px 0 16px 0;
 }
 
+.umbrella-fav-page-bar {
+    margin: 0 0 20px;
+    padding: 16px 18px;
+    background: #f8f9ff;
+    border: 1px solid #d8dcff;
+    border-radius: 12px;
+    text-align: left;
+}
+
+.umbrella-fav-page-intro p {
+    margin: 0 0 12px;
+    color: #495057;
+    font-size: 0.95rem;
+    line-height: 1.45;
+}
+
+.umbrella-fav-page-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.umbrella-page-name-input {
+    flex: 1 1 220px;
+    min-width: 200px;
+}
+
 .favorite-pages-toolbar {
     display: flex;
     flex-wrap: wrap;

@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import './SignUpChoiceModal.css';
 
 const SignUpChoiceModal = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
+    const hideCreatorSignUp = isCreatorStorefrontHostname();
 
     if (!isOpen) return null;
 
@@ -28,10 +30,16 @@ const SignUpChoiceModal = ({ isOpen, onClose }) => {
                 >
                     ×
                 </button>
-                <h2 id="signup-choice-title" className="signup-choice-heading">Join ScreenMerch</h2>
-                <p className="signup-choice-subheading">Choose how you want to get started</p>
+                <h2 id="signup-choice-title" className="signup-choice-heading">
+                    {hideCreatorSignUp ? 'Create an account' : 'Join ScreenMerch'}
+                </h2>
+                <p className="signup-choice-subheading">
+                    {hideCreatorSignUp
+                        ? 'Sign up to browse merch and order from this creator storefront.'
+                        : 'Choose how you want to get started'}
+                </p>
 
-                <div className="signup-choice-split">
+                <div className={`signup-choice-split${hideCreatorSignUp ? ' signup-choice-split--customer-only' : ''}`}>
                     <button
                         type="button"
                         className="signup-choice-panel signup-choice-customer"
@@ -49,6 +57,8 @@ const SignUpChoiceModal = ({ isOpen, onClose }) => {
                         <span className="signup-choice-cta">Sign up as customer →</span>
                     </button>
 
+                    {!hideCreatorSignUp && (
+                    <>
                     <div className="signup-choice-divider" aria-hidden="true">
                         <span>or</span>
                     </div>
@@ -70,6 +80,8 @@ const SignUpChoiceModal = ({ isOpen, onClose }) => {
                         <p>Start selling merch from your content. Free to join—set up your channel and earn from every sale.</p>
                         <span className="signup-choice-cta">Sign up as creator →</span>
                     </button>
+                    </>
+                    )}
                 </div>
             </div>
         </div>

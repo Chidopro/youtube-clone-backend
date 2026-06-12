@@ -16,16 +16,19 @@ const VerifyEmail = () => {
   const [message, setMessage] = useState(null);
   const [token, setToken] = useState(null);
   const [email, setEmail] = useState(null);
+  const [inviteToken, setInviteToken] = useState(null);
   const [resendLoading, setResendLoading] = useState(false);
 
   useEffect(() => {
     const tokenParam = (searchParams.get('token') || '').trim();
     const emailParam = (searchParams.get('email') || '').trim().toLowerCase();
+    const inviteParam = (searchParams.get('invite_token') || '').trim();
     if (!tokenParam || !emailParam) {
       setMessage({ type: 'error', text: 'Invalid verification link. Please check your email and try again.' });
     } else {
       setToken(tokenParam);
       setEmail(emailParam);
+      setInviteToken(inviteParam || null);
     }
   }, [searchParams]);
 
@@ -95,17 +98,54 @@ const VerifyEmail = () => {
       const data = await response.json();
 
       if (data?.token) localStorage.setItem('auth_token', data.token);
-      if (data?.user) localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('isAuthenticated', 'true');
+      if (data?.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('isAuthenticated', 'true');
+      }
 
-      // So App.jsx keeps user on home and does not redirect to creator-thank-you or elsewhere
+      // Umbrella collaborator invite: complete membership after password is set
+      if (inviteToken) {
+        try {
+          const acceptRes = await fetch(`${BACKEND_URL}/api/umbrella-invites/accept`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              ...(data?.token ? { 'X-Session-Token': data.token } : {}),
+            },
+            body: JSON.stringify({ invite_token: inviteToken, token: data?.token }),
+          });
+          const acceptData = await acceptRes.json().catch(() => ({}));
+          if (acceptRes.ok && acceptData.success) {
+            if (acceptData.token) localStorage.setItem('auth_token', acceptData.token);
+            if (acceptData.user) {
+              localStorage.setItem('user', JSON.stringify(acceptData.user));
+              localStorage.setItem('isAuthenticated', 'true');
+            }
+            setMessage({ type: 'success', text: 'Password set and invite accepted! Redirecting to your dashboard…' });
+            const dest = acceptData.redirect_url || `${window.location.origin}/dashboard?tab=favorites`;
+            setTimeout(() => {
+              window.location.replace(dest);
+            }, 800);
+            return;
+          }
+          throw new Error(acceptData.error || 'Invite could not be completed.');
+        } catch (acceptErr) {
+          setMessage({
+            type: 'error',
+            text: acceptErr?.message || 'Password was set but the invite could not be completed. Return to your join link and sign in.',
+          });
+          return;
+        }
+      }
+
       try {
         sessionStorage.setItem('from_password_set', '1');
       } catch (_) {}
 
       setMessage({ type: 'success', text: 'Email verified and password set successfully! Redirecting to home...' });
 
-      // Always send user to homepage after password set (full-page redirect)
       const homeUrl = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin + '/' : '/';
       setTimeout(() => {
         window.location.replace(homeUrl);
@@ -122,11 +162,17 @@ const VerifyEmail = () => {
     setResendLoading(true);
     setMessage(null);
     try {
-      const r = await fetch(`${BACKEND_URL}/api/auth/signup/email-only`, {
+      const endpoint = inviteToken
+        ? `${BACKEND_URL}/api/umbrella-invites/signup-email`
+        : `${BACKEND_URL}/api/auth/signup/email-only`;
+      const body = inviteToken
+        ? { invite_token: inviteToken }
+        : { email: email.trim().toLowerCase() };
+      const r = await fetch(endpoint, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() })
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(body),
       });
       const data = r.ok ? await r.json().catch(() => ({})) : {};
       if (r.ok && data.success) {
@@ -146,7 +192,9 @@ const VerifyEmail = () => {
       <div className="verify-email-card">
         <h2 className="verify-email-title">Set Your Password</h2>
         <p className="verify-email-subtitle">
-          Please create a password to complete your account setup
+          {inviteToken
+            ? 'Create a password to accept your collaborator invite.'
+            : 'Please create a password to complete your account setup'}
         </p>
 
         {message && (
