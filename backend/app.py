@@ -6879,21 +6879,43 @@ def upload_favorite():
                     "error": "Your account could not be found. Please sign out and sign in again with your invited email.",
                 }
             ), 400
-        user_email = (
-            (request.form.get("email") or request.headers.get("X-User-Email") or "").strip().lower()
-            or (user_chk.data[0].get("email") or "").strip().lower()
+        list_id_form = (request.form.get("list_id") or "").strip()
+        favorite_user_id, target_list = _fl_resolve_favorite_upload(user_id, list_id_form)
+        if list_id_form and not target_list:
+            return jsonify({"success": False, "error": "Favorite page not found or not allowed"}), 400
+        fav_row = (
+            supabase_admin.table("users")
+            .select("id, email, display_name, username")
+            .eq("id", favorite_user_id)
+            .limit(1)
+            .execute()
         )
+        if not fav_row.data:
+            return jsonify({"success": False, "error": "Favorite page owner not found"}), 400
+        fav_user = fav_row.data[0]
+        fav_email = (fav_user.get("email") or "").strip().lower()
         auth_ok, auth_sync_err = ensure_auth_user_for_public_user(
-            supabase_admin, user_id, user_email
+            supabase_admin, favorite_user_id, fav_email
         )
         if not auth_ok:
-            logger.error("upload_favorite: auth.users sync failed for %s (%s): %s", user_id, user_email, auth_sync_err)
+            logger.error(
+                "upload_favorite: auth.users sync failed for %s (%s): %s",
+                favorite_user_id,
+                fav_email,
+                auth_sync_err,
+            )
             return jsonify(
                 {
                     "success": False,
                     "error": "Your account could not be synced. Please sign out and sign in again, or contact support.",
                 }
             ), 400
+        if str(favorite_user_id) != str(user_id):
+            owner_email = (
+                (request.form.get("email") or request.headers.get("X-User-Email") or "").strip().lower()
+                or (user_chk.data[0].get("email") or "").strip().lower()
+            )
+            ensure_auth_user_for_public_user(supabase_admin, user_id, owner_email)
         title = (request.form.get("title") or "").strip()
         if not title:
             return jsonify({"success": False, "error": "title is required"}), 400
@@ -6910,16 +6932,13 @@ def upload_favorite():
         description = (request.form.get("description") or "").strip() or None
         channel_title = (request.form.get("channel_title") or "").strip()
         if not channel_title:
-            row = supabase_admin.table("users").select("display_name, username").eq("id", user_id).limit(1).execute()
-            if row.data and len(row.data) > 0:
-                r = row.data[0]
-                channel_title = (r.get("display_name") or r.get("username") or "Unknown")
-            else:
-                channel_title = "Unknown"
+            channel_title = (
+                fav_user.get("display_name") or fav_user.get("username") or "Unknown"
+            )
         ext = (file.filename.split(".")[-1] or "png").lower().replace(" ", "")[:10]
         if ext not in ("png", "jpg", "jpeg", "gif", "webp"):
             ext = "png"
-        path = f"{user_id}/favorites/{int(time.time() * 1000)}.{ext}"
+        path = f"{favorite_user_id}/favorites/{int(time.time() * 1000)}.{ext}"
         file_bytes = file.read()
         supabase_admin.storage.from_(FAVORITES_BUCKET).upload(
             path=path,
@@ -6928,37 +6947,14 @@ def upload_favorite():
         )
         public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{path}"
         insert_data = {
-            "user_id": user_id,
+            "user_id": favorite_user_id,
             "channelTitle": channel_title,
             "title": title,
             "description": description,
             "image_url": public_url,
             "thumbnail_url": public_url,
         }
-        list_id_form = (request.form.get("list_id") or "").strip()
         try:
-            target_list = None
-            if _is_umbrella_collaborator_only(user_id):
-                membership = _cf_approved_umbrella_membership(user_id)
-                owner_id = (membership or {}).get("channel_owner_id")
-                if owner_id:
-                    u_row = _cf_user_row(user_id)
-                    target_list = _fl_ensure_umbrella_member_list(owner_id, user_id, _umbrella_collaborator_label(u_row))
-            else:
-                pid = _fl_ensure_primary_list(user_id)
-                if list_id_form:
-                    chk = (
-                        supabase_admin.table("creator_favorite_lists")
-                        .select("id")
-                        .eq("id", list_id_form)
-                        .eq("owner_user_id", user_id)
-                        .limit(1)
-                        .execute()
-                    )
-                    if chk.data:
-                        target_list = chk.data[0]["id"]
-                if not target_list and pid:
-                    target_list = pid
             if target_list:
                 insert_data["list_id"] = target_list
         except Exception as list_err:
@@ -6974,9 +6970,16 @@ def upload_favorite():
                 raise
         if not result.data or len(result.data) == 0:
             return jsonify({"success": False, "error": "Failed to save favorite"}), 500
-        payload = {"success": True, "favorite": result.data[0], "user_id": user_id}
+        payload = {
+            "success": True,
+            "favorite": result.data[0],
+            "user_id": favorite_user_id,
+            "uploaded_by": user_id,
+        }
         if str(session_user_id) != str(user_id):
             payload["user_id_corrected"] = True
+        if str(favorite_user_id) != str(user_id):
+            payload["collaborator_upload"] = True
         return jsonify(payload), 200
     except Exception as e:
         logger.exception("upload_favorite: %s", e)
@@ -6993,7 +6996,7 @@ def upload_favorite():
 
 @app.route("/api/favorites/move-list", methods=["POST", "OPTIONS"])
 def favorite_move_list():
-    """Move a creator_favorites row to another list owned by the same creator (service role)."""
+    """Move a creator_favorites row to another list (own page or umbrella collaborator page)."""
     if request.method == "OPTIONS":
         return jsonify(success=True)
     try:
@@ -7018,23 +7021,20 @@ def favorite_move_list():
             .execute()
         )
         row = (fr.data or [None])[0]
-        if not row or str(row.get("user_id")) != str(user_id):
+        if not row or not _fl_storefront_can_access_favorite_user(user_id, row.get("user_id")):
             return jsonify({"success": False, "error": "Favorite not found"}), 404
-        lr = (
-            supabase_admin.table("creator_favorite_lists")
-            .select("id")
-            .eq("id", new_list_id)
-            .eq("owner_user_id", user_id)
-            .limit(1)
-            .execute()
-        )
-        if not lr.data:
+        source_user_id = str(row.get("user_id"))
+        target_user_id, target_list_id = _fl_resolve_owner_target_list(user_id, new_list_id)
+        if not target_list_id:
             return jsonify({"success": False, "error": "List not found"}), 404
+        update_payload = {"list_id": target_list_id}
+        if target_user_id != source_user_id:
+            update_payload["user_id"] = target_user_id
         up = (
             supabase_admin.table("creator_favorites")
-            .update({"list_id": new_list_id})
+            .update(update_payload)
             .eq("id", fav_id)
-            .eq("user_id", user_id)
+            .eq("user_id", source_user_id)
             .execute()
         )
         out = (up.data or [None])[0]
@@ -7137,6 +7137,123 @@ def _umbrella_member_list_for_user(user_id, owner_id=None):
         .execute()
     )
     return (lr.data or [None])[0]
+
+
+def _fl_storefront_collaborator_lists(storefront_owner_id):
+    """Favorite list rows for approved umbrella members on this storefront (for owner FrameSnag targeting)."""
+    if not supabase_admin or not storefront_owner_id:
+        return []
+    r = (
+        supabase_admin.table("channel_friends")
+        .select("friend_id")
+        .eq("channel_owner_id", storefront_owner_id)
+        .eq("status", "approved")
+        .execute()
+    )
+    out = []
+    for row in r.data or []:
+        fid = row.get("friend_id")
+        if not fid:
+            continue
+        member_list = _umbrella_member_list_for_user(fid, storefront_owner_id)
+        if not member_list:
+            continue
+        entry = dict(member_list)
+        entry["is_collaborator_page"] = True
+        u = _cf_user_row(fid)
+        entry["member_label"] = _umbrella_collaborator_label(u)
+        out.append(entry)
+    out.sort(key=lambda L: (L.get("display_name") or L.get("member_label") or "").lower())
+    return out
+
+
+def _fl_resolve_owner_target_list(auth_user_id, list_id):
+    """
+    Resolve creator_favorites.user_id and list_id when a storefront owner picks a list.
+    Own lists use auth_user_id; umbrella collaborator lists use the member's user_id.
+    Returns (favorite_user_id, target_list_id) or (None, None).
+    """
+    lid = (list_id or "").strip()
+    if not lid or not supabase_admin:
+        return None, None
+    collab = (
+        supabase_admin.table("creator_favorite_lists")
+        .select("id, owner_user_id, storefront_owner_id")
+        .eq("id", lid)
+        .eq("storefront_owner_id", auth_user_id)
+        .limit(1)
+        .execute()
+    )
+    if collab.data:
+        member_id = collab.data[0].get("owner_user_id")
+        approved = (
+            supabase_admin.table("channel_friends")
+            .select("id")
+            .eq("channel_owner_id", auth_user_id)
+            .eq("friend_id", member_id)
+            .eq("status", "approved")
+            .limit(1)
+            .execute()
+        )
+        if approved.data:
+            return str(member_id), collab.data[0]["id"]
+    own = (
+        supabase_admin.table("creator_favorite_lists")
+        .select("id")
+        .eq("id", lid)
+        .eq("owner_user_id", auth_user_id)
+        .limit(1)
+        .execute()
+    )
+    if own.data:
+        return str(auth_user_id), own.data[0]["id"]
+    return None, None
+
+
+def _fl_storefront_can_access_favorite_user(storefront_owner_id, favorite_user_id):
+    """True when storefront owner owns the favorite or it belongs to an approved umbrella member."""
+    fav_uid = str(favorite_user_id or "")
+    if fav_uid == str(storefront_owner_id):
+        return True
+    if not supabase_admin:
+        return False
+    approved = (
+        supabase_admin.table("channel_friends")
+        .select("id")
+        .eq("channel_owner_id", storefront_owner_id)
+        .eq("friend_id", fav_uid)
+        .eq("status", "approved")
+        .limit(1)
+        .execute()
+    )
+    return bool(approved.data)
+
+
+def _fl_resolve_favorite_upload(auth_user_id, list_id_form):
+    """
+    Resolve creator_favorites.user_id and list_id for an upload.
+    Storefront owners may target an umbrella member list (FrameSnag Phase 2).
+    Returns (favorite_user_id, target_list_id).
+    """
+    if _is_umbrella_collaborator_only(auth_user_id):
+        membership = _cf_approved_umbrella_membership(auth_user_id)
+        owner_id = (membership or {}).get("channel_owner_id")
+        if owner_id:
+            u_row = _cf_user_row(auth_user_id)
+            target_list = _fl_ensure_umbrella_member_list(
+                owner_id, auth_user_id, _umbrella_collaborator_label(u_row)
+            )
+            return str(auth_user_id), target_list
+        return str(auth_user_id), None
+
+    lid = (list_id_form or "").strip()
+    if lid:
+        fav_uid, resolved_lid = _fl_resolve_owner_target_list(auth_user_id, lid)
+        if resolved_lid:
+            return fav_uid, resolved_lid
+
+    pid = _fl_ensure_primary_list(auth_user_id)
+    return str(auth_user_id), pid
 
 
 def _is_umbrella_collaborator_only(user_id):
@@ -8391,8 +8508,17 @@ def favorite_lists_mine():
         else:
             _fl_ensure_primary_list(user_id)
             lr = supabase_admin.table("creator_favorite_lists").select("*").eq("owner_user_id", user_id).execute()
-            lists = lr.data or []
-        lists.sort(key=lambda L: (0 if L.get("is_primary") else 1, L.get("sort_order") or 0, (L.get("display_name") or "").lower()))
+            lists = [dict(L) for L in (lr.data or [])]
+            collab_lists = _fl_storefront_collaborator_lists(user_id)
+            lists.extend(collab_lists)
+        lists.sort(
+            key=lambda L: (
+                1 if L.get("is_collaborator_page") else 0,
+                0 if L.get("is_primary") else 1,
+                L.get("sort_order") or 0,
+                (L.get("display_name") or "").lower(),
+            )
+        )
         return jsonify(
             {
                 "success": True,
@@ -8401,6 +8527,9 @@ def favorite_lists_mine():
                 "owner_name": owner_name,
                 "collaborator_email": (me.get("email") or "").strip().lower() or None,
                 "user_id": user_id,
+                "has_collaborator_pages": bool(
+                    not umbrella_only and any(L.get("is_collaborator_page") for L in lists)
+                ),
             }
         ), 200
     except Exception as e:

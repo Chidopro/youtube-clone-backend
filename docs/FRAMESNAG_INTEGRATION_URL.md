@@ -8,6 +8,14 @@ When the creator clicks **"Add to Favorites"** in the FrameSnag extension, open 
 https://screenmerch.com/dashboard?tab=favorites
 ```
 
+Optional query param when saving to an umbrella collaborator page (Phase 2):
+
+```
+https://filialsons.screenmerch.com/dashboard?tab=favorites&list_id=<uuid>
+```
+
+FrameSnag reads `list_id` from extension storage, synced automatically when the creator visits the Favorites tab on their storefront dashboard and picks **Save to (FrameSnag + uploads)**.
+
 **Why:** The creator Favorites **management** page (where they add/edit favorites) is the **Dashboard** with the Favorites tab. The route `/favorites` is the public view of a creator's favorites (e.g. on a subdomain). So FrameSnag should open the dashboard with the Favorites tab selected.
 
 ## Update in FrameSnag

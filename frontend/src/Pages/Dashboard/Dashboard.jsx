@@ -45,6 +45,14 @@ const Dashboard = ({ sidebar }) => {
     // Open tab when URL has ?tab= (e.g. from navbar logo edit or FrameSnag "Add to Favorites")
     useEffect(() => {
         const tab = searchParams.get('tab');
+        const listIdParam = (searchParams.get('list_id') || '').trim();
+        if (listIdParam) {
+            selectedFavoriteListIdRef.current = listIdParam;
+            setSelectedFavoriteListId(listIdParam);
+            try {
+                localStorage.setItem('screenmerch_framesnag_list_id', listIdParam);
+            } catch (_) {}
+        }
         if (tab === 'personalization') setActiveTab('personalization');
         if (tab === 'favorites') {
             setActiveTab('favorites');
@@ -297,15 +305,17 @@ const Dashboard = ({ sidebar }) => {
         fetchUserData();
     }, [navigate]);
 
-    const reloadFavoritesForList = async (userId, listId) => {
+    const reloadFavoritesForList = async (userId, listId, pages = favoritePages) => {
         if (!userId || !listId) {
             setFavorites([]);
             return;
         }
+        const page = pages.find((p) => p.id === listId);
+        const favUserId = page?.is_collaborator_page ? page.owner_user_id : userId;
         const { data, error } = await supabase
             .from('creator_favorites')
             .select('*')
-            .eq('user_id', userId)
+            .eq('user_id', favUserId)
             .eq('list_id', listId)
             .order('created_at', { ascending: false });
         if (error) {
@@ -314,6 +324,14 @@ const Dashboard = ({ sidebar }) => {
         } else {
             setFavorites(data || []);
         }
+    };
+
+    const persistFramesnagListTarget = (listId) => {
+        if (!listId) return;
+        try {
+            localStorage.setItem('screenmerch_framesnag_list_id', listId);
+            localStorage.setItem('screenmerch_framesnag_origin', window.location.origin);
+        } catch (_) {}
     };
 
     useEffect(() => {
@@ -341,18 +359,31 @@ const Dashboard = ({ sidebar }) => {
                 const collabList = data.lists.find((l) => l.storefront_owner_id) || null;
                 const primary = data.is_umbrella_only
                     ? collabList
-                    : (data.lists.find((l) => l.is_primary) || data.lists[0]);
+                    : (data.lists.find((l) => l.is_primary) || data.lists.find((l) => !l.is_collaborator_page) || data.lists[0]);
+                const urlListId = (searchParams.get('list_id') || '').trim();
+                let storedListId = '';
+                try {
+                    storedListId = localStorage.getItem('screenmerch_framesnag_list_id') || '';
+                } catch (_) {}
+                const preferredListId = urlListId || storedListId;
                 const prev = selectedFavoriteListIdRef.current;
                 const nextId =
-                    prev && data.lists.some((l) => l.id === prev && (!data.is_umbrella_only || l.storefront_owner_id))
+                    preferredListId && data.lists.some((l) => l.id === preferredListId)
+                        ? preferredListId
+                        : prev && data.lists.some((l) => l.id === prev && (!data.is_umbrella_only || l.storefront_owner_id))
                         ? prev
                         : primary?.id || null;
                 setSelectedFavoriteListId(nextId);
+                if (nextId) persistFramesnagListTarget(nextId);
                 if (data.is_umbrella_only && primary) {
                     const rawName = (primary.display_name || '').replace(/\s*\(owner\)\s*/gi, ' ').trim();
                     setUmbrellaPageName(rawName || umbrellaDefaultPageName(user?.email));
                 }
-                if (nextId && listUserId) await reloadFavoritesForList(listUserId, nextId);
+                if (nextId && listUserId) {
+                    const page = data.lists.find((l) => l.id === nextId);
+                    const favUserId = page?.is_collaborator_page ? page.owner_user_id : listUserId;
+                    await reloadFavoritesForList(favUserId, nextId, data.lists);
+                }
             } else {
                 setFavoritePages([]);
                 setFavorites([]);
@@ -364,7 +395,10 @@ const Dashboard = ({ sidebar }) => {
     const handleFavoriteListChange = (listId) => {
         if (!user?.id || !listId) return;
         setSelectedFavoriteListId(listId);
-        reloadFavoritesForList(user.id, listId);
+        persistFramesnagListTarget(listId);
+        const page = favoritePages.find((p) => p.id === listId);
+        const favUserId = page?.is_collaborator_page ? page.owner_user_id : user.id;
+        reloadFavoritesForList(favUserId, listId);
     };
 
     const handleSaveUmbrellaPageName = async () => {
@@ -880,7 +914,7 @@ const Dashboard = ({ sidebar }) => {
                     return;
                 }
                 if (json.success && json.favorite) {
-                    if (json.user_id && json.user_id !== userId) {
+                    if (json.user_id && json.user_id !== userId && !json.collaborator_upload) {
                         const merged = { ...(storedUser || user || {}), id: json.user_id };
                         localStorage.setItem('user', JSON.stringify(merged));
                         setUser(merged);
@@ -1776,21 +1810,36 @@ const Dashboard = ({ sidebar }) => {
                         )}
                         {userProfile?.role === 'creator' && !umbrellaOnly && favoritePages.length > 0 && (
                             <div className="favorite-pages-toolbar">
-                                <label className="favorite-pages-label" htmlFor="dashboard-fav-list-select">Favorite page</label>
+                                <label className="favorite-pages-label" htmlFor="dashboard-fav-list-select">Save to (FrameSnag + uploads)</label>
                                 <select
                                     id="dashboard-fav-list-select"
                                     className="favorite-pages-select"
                                     value={selectedFavoriteListId || ''}
                                     onChange={(e) => handleFavoriteListChange(e.target.value)}
                                 >
-                                    {favoritePages.map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.display_name || p.slug}
-                                            {p.is_primary ? ' (main)' : ` — /favorites/${p.slug}`}
-                                        </option>
-                                    ))}
+                                    {favoritePages.some((p) => !p.is_collaborator_page) && (
+                                        <optgroup label="Your pages">
+                                            {favoritePages.filter((p) => !p.is_collaborator_page).map((p) => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.display_name || p.slug}
+                                                    {p.is_primary ? ' (main)' : ` — /favorites/${p.slug}`}
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    )}
+                                    {favoritePages.some((p) => p.is_collaborator_page) && (
+                                        <optgroup label="Umbrella collaborators">
+                                            {favoritePages.filter((p) => p.is_collaborator_page).map((p) => (
+                                                <option key={p.id} value={p.id}>
+                                                    {(p.member_label || p.display_name || p.slug).replace(/\s*Favorites\s*$/i, '').trim()}
+                                                    {' — collaborator page'}
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    )}
                                 </select>
-                                {favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_primary === false && (
+                                {favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_primary === false
+                                    && !favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_collaborator_page && (
                                     <button
                                         type="button"
                                         className="cancel-btn favorite-page-delete"
@@ -1827,7 +1876,10 @@ const Dashboard = ({ sidebar }) => {
                             </div>
                         )}
                         {!umbrellaOnly && (
-                        <p className="paste-hint">Paste from FrameSnag (Ctrl+V) to add a captured image. New uploads go to the favorite page selected above.</p>
+                        <p className="paste-hint">
+                            Paste from FrameSnag (Ctrl+V) to add a captured image. Uploads go to the page selected above
+                            {favoritePages.some((p) => p.is_collaborator_page) ? ' — including umbrella collaborator pages.' : '.'}
+                        </p>
                         )}
 
                         {/* Prominent hint when sent from FrameSnag */}
