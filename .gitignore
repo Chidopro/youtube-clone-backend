@@ -45,6 +45,11 @@ backend/.env
 # Frontend build / Netlify local plugin noise
 frontend/dist/
 frontend/.netlify/
+.netlify/
+backend/.netlify/
+
+# Local FrameSnag full checkout (nested git + server); use framesnag-extension/lite/
+framesnag-extension/FrameSnag Lite Current Good Yes Checkout/
 
 # Local nested copy of the project (not part of this repo)
 screenmerch/
