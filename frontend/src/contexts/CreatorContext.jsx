@@ -44,8 +44,10 @@ export const CreatorProvider = ({ children }) => {
           custom_meta_title: creator.custom_meta_title,
           custom_meta_description: creator.custom_meta_description,
           display_name: creator.display_name,
+          subdomain: creator.subdomain,
           personalization_enabled: creator.personalization_enabled,
-          profile_image_url: creator.profile_image_url
+          profile_image_url: creator.profile_image_url,
+          cover_image_url: creator.cover_image_url || creator.banner_url,
         };
         
         console.log('🎨 Creator settings from API:', userData);
@@ -76,37 +78,6 @@ export const CreatorProvider = ({ children }) => {
             document.documentElement.style.setProperty('--secondary-color', secondaryColor);
             console.log('✅ Set --secondary-color to:', secondaryColor);
           }
-          
-          // Force style recalculation by temporarily modifying and restoring display
-          const html = document.documentElement;
-          const originalDisplay = html.style.display;
-          html.style.display = 'none';
-          html.offsetHeight; // Trigger reflow
-          html.style.display = originalDisplay;
-          
-          // Also trigger a repaint on body
-          const body = document.body;
-          if (body) {
-            body.style.display = 'none';
-            body.offsetHeight;
-            body.style.display = '';
-          }
-          
-          // Force all elements using CSS variables to update
-          const style = document.createElement('style');
-          style.textContent = `
-            * {
-              --primary-color: ${primaryColor} !important;
-              --secondary-color: ${secondaryColor} !important;
-            }
-          `;
-          document.head.appendChild(style);
-          // Remove after a brief moment to let browser process
-          setTimeout(() => {
-            if (style.parentNode) {
-              style.parentNode.removeChild(style);
-            }
-          }, 100);
           
           // Update favicon
           if (userData.custom_favicon_url) {

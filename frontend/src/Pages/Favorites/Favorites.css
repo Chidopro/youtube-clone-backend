@@ -1,15 +1,59 @@
+.favorites-channel-header {
+  width: 100%;
+  margin-bottom: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.page-top-banner .favorites-channel-header {
+  margin-top: 0;
+}
+
+.favorites-channel-header .channel-header {
+  margin-bottom: 0;
+  border-bottom: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.favorites-channel-header .channel-avatar-container {
+  display: none;
+}
+
+.favorites-channel-header--wide .channel-cover-container {
+  height: 260px;
+}
+
 .favorites-page {
-  padding: 20px 30px;
+  padding: 24px 30px 40px;
   max-width: 1400px;
   margin: 0 auto;
 }
 
 .favorites-page.large-container {
-  padding: 20px 50px;
+  padding: 24px 50px 40px;
 }
 
-.favorites-header {
-  margin-bottom: 30px;
+.favorites-toolbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.favorites-toolbar-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.favorites-page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 6px 0;
+}
+
+.favorites-error {
+  color: #c00;
 }
 
 .favorites-back-btn {
@@ -28,13 +72,6 @@
 
 .favorites-back-btn:hover {
   color: #000;
-}
-
-.favorites-header h1 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0 0 8px 0;
 }
 
 .favorites-subtitle {
@@ -167,8 +204,12 @@
     padding: 15px 20px;
   }
 
-  .favorites-header h1 {
-    font-size: 22px;
+  .favorites-page-title {
+    font-size: 20px;
+  }
+
+  .favorites-channel-header--wide .channel-cover-container {
+    height: 200px;
   }
 
   .favorites-grid {

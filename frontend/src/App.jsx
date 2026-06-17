@@ -239,12 +239,15 @@ const App = () => {
   // Hide main sidebar for third tier profile pages
   const shouldShowSidebar = sidebar && !(currentProfileTier?.isThirdTier);
   
+  const isFavoritesPage = /^\/favorites(\/|$)/.test(location.pathname);
+
   console.log('🚀 App.jsx rendering - current path:', location.pathname);
   
   return (
     <CreatorProvider>
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <Navbar setSidebar={setSidebar} resetCategory={resetCategory} />
+        <div id="page-top-banner" className="page-top-banner" aria-hidden={!isFavoritesPage} />
         <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}>
           {shouldShowSidebar && (
           <Sidebar sidebar={sidebar} category={category} setCategory={setCategory} />
@@ -266,7 +269,10 @@ const App = () => {
               }}
             />
           )}
-          <div className="main-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div
+            className={`main-content-area${isFavoritesPage ? ' main-content-area--favorites' : ''}`}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+          >
             <div className="main-content-inner" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'visible' }}>
               <Routes>
                 <Route path="/" element={<Home sidebar={sidebar} category={category} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />} />

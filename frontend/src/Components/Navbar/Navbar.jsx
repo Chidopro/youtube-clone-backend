@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import './Navbar.css'
 import menu_icon from '../../assets/menu.png'
 import logo from '../../assets/screenmerch_logo.png.png'
@@ -33,6 +34,10 @@ const Navbar = ({ setSidebar, resetCategory }) => {
     const [isFullAdmin, setIsFullAdmin] = useState(false);
     /** Order-processing-only admins see Admin Portal only; master admins keep Dashboard + Channel invites */
     const adminPortalOnlyMenu = isOrderProcessingAdmin && !isFullAdmin;
+    const profileToggleLockRef = useRef(false);
+    const dropdownOpenRef = useRef(false);
+    const profileMenuRef = useRef(null);
+    const [dropdownPosition, setDropdownPosition] = useState(null);
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -428,51 +433,26 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         };
     }, []);
 
-    // Close dropdown when clicking outside
+    // Close dropdown when clicking outside (only while open)
     useEffect(() => {
-        // Detect if mobile device
-        const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+        dropdownOpenRef.current = dropdownOpen;
+    }, [dropdownOpen]);
+
+    useEffect(() => {
+        if (!dropdownOpen) return undefined;
 
         const handleClickOutside = (event) => {
-            if (isMobile) {
-                // Mobile: Use a small delay to allow the button click to process first
-                setTimeout(() => {
-                    // Check if click is outside the user profile container and dropdown
-                    const isClickInside = event.target.closest('.user-profile-menu') ||
-                        event.target.closest('.user-profile-container') ||
-                        event.target.closest('.user-dropdown');
-                    if (dropdownOpen && !isClickInside) {
-                        console.log('🔄 Closing dropdown - clicked outside (mobile)');
-                        setDropdownOpen(false);
-                    }
-                }, 10);
-            } else {
-                // Desktop: Use capture phase (original behavior)
-                const isClickInside = event.target.closest('.user-profile-menu') ||
-                    event.target.closest('.user-profile-container') ||
-                    event.target.closest('.user-dropdown');
-                if (dropdownOpen && !isClickInside) {
-                    console.log('🔄 Closing dropdown - clicked outside (desktop)');
-                    setDropdownOpen(false);
-                }
-            }
-        };
-
-        const handleEscapeKey = (event) => {
-            if (event.key === 'Escape' && dropdownOpen) {
-                console.log('🔄 Closing dropdown - Escape key');
+            if (profileToggleLockRef.current) return;
+            if (
+                !event.target.closest('.user-profile-menu') &&
+                !event.target.closest('.user-dropdown--portal')
+            ) {
                 setDropdownOpen(false);
             }
         };
 
-        // Mobile: bubble phase, Desktop: capture phase (original)
-        document.addEventListener('click', handleClickOutside, !isMobile);
-        document.addEventListener('keydown', handleEscapeKey);
-
-        return () => {
-            document.removeEventListener('click', handleClickOutside, !isMobile);
-            document.removeEventListener('keydown', handleEscapeKey);
-        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
     }, [dropdownOpen]);
 
     // Enrich user with role/status from backend so pencil (edit logo) and upload show for creators
@@ -636,9 +616,143 @@ const Navbar = ({ setSidebar, resetCategory }) => {
         }
     };
 
+    const toggleProfileDropdown = (e) => {
+        if (e) {
+            e.stopPropagation();
+        }
+        profileToggleLockRef.current = true;
+        setDropdownOpen((prev) => !prev);
+        window.setTimeout(() => {
+            profileToggleLockRef.current = false;
+        }, 400);
+    };
+
+    useEffect(() => {
+        const handleEscapeKey = (event) => {
+            if (event.key === 'Escape' && dropdownOpenRef.current) {
+                setDropdownOpen(false);
+            }
+        };
+        document.addEventListener('keydown', handleEscapeKey);
+        return () => document.removeEventListener('keydown', handleEscapeKey);
+    }, []);
+
+    useEffect(() => {
+        if (!dropdownOpen) {
+            setDropdownPosition(null);
+            return undefined;
+        }
+
+        const updatePosition = () => {
+            const trigger = profileMenuRef.current?.querySelector('.user-profile-container');
+            if (!trigger) return;
+            const rect = trigger.getBoundingClientRect();
+            setDropdownPosition({
+                top: rect.bottom + 6,
+                right: Math.max(10, window.innerWidth - rect.right),
+            });
+        };
+
+        updatePosition();
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [dropdownOpen]);
+
+    const renderProfileDropdown = () => {
+        if (!dropdownOpen || !dropdownPosition || !user) return null;
+
+        const menu = (
+            <div
+                className="user-dropdown user-dropdown--portal open"
+                style={{
+                    top: `${dropdownPosition.top}px`,
+                    right: `${dropdownPosition.right}px`,
+                }}
+                role="menu"
+            >
+                <p>Signed in as <strong>{user?.user_metadata?.name || user?.display_name || user?.email}</strong></p>
+                <hr />
+                {!adminPortalOnlyMenu && (
+                    <button
+                        className="dropdown-item"
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDropdownOpen(false);
+                            navigate('/dashboard');
+                        }}
+                    >
+                        Dashboard
+                    </button>
+                )}
+                {!adminPortalOnlyMenu && (
+                    <button
+                        className="dropdown-item"
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDropdownOpen(false);
+                            navigate('/channel-invites');
+                        }}
+                    >
+                        Channel invites
+                    </button>
+                )}
+                {(isOrderProcessingAdmin || isFullAdmin) && (
+                    <button
+                        className="dropdown-item"
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDropdownOpen(false);
+                            navigate('/admin');
+                        }}
+                    >
+                        Admin Portal
+                    </button>
+                )}
+                {!adminPortalOnlyMenu && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDropdownOpen(false);
+                            handleDeleteAccount();
+                        }}
+                        className="dropdown-item delete-account-btn"
+                    >
+                        Delete Account
+                    </button>
+                )}
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDropdownOpen(false);
+                        handleLogout();
+                    }}
+                    className="dropdown-item"
+                >
+                    Logout
+                </button>
+            </div>
+        );
+
+        return createPortal(menu, document.body);
+    };
+
     return (
         <>
-            <nav className='flex-div'>
+            <nav className={`flex-div${dropdownOpen ? ' nav-dropdown-active' : ''}`}>
                 <div className="nav-left flex-div">
                     <img
                         src={menu_icon}
@@ -692,10 +806,10 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                             <Link to="/upload"><img src={upload_icon} alt="Upload" /></Link>
                         ) : oauthProcessing ? (
                             console.log('🎥 OAuth processing - hiding upload button') ||
-                            <div style={{ width: '24px', height: '24px' }}></div> // Placeholder to maintain layout
+                            <div className="nav-upload-spacer" aria-hidden="true" />
                         ) : (
                             console.log('🎥 No creator user - hiding upload button. User:', user, 'Role:', user?.role, 'Status:', user?.status) ||
-                            <div style={{ width: '24px', height: '24px' }}></div> // Hide upload for regular users
+                            <div className="nav-upload-spacer" aria-hidden="true" />
                         )}
                         {loading ? (
                             <div className="loading-spinner-navbar"></div>
@@ -721,95 +835,34 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                 {console.log('🎨 Rendering creator profile for:', user?.display_name ?? user?.user_metadata?.name ?? user?.email ?? 'user')}
                                 {console.log('🔍 Full user object:', user)}
                                 {console.log('🔍 User role:', user?.role, 'User status:', user?.status)}
-                                <div className="user-profile-menu">
+                                <button
+                                    type="button"
+                                    className="subscribe-btn"
+                                    onClick={handleSignUpClick}
+                                >
+                                    Sign Up
+                                </button>
+                                <div className="user-profile-menu" ref={profileMenuRef}>
                                 <button
                                     className="user-profile-container"
                                     type="button"
-                                    onClick={(e) => {
-                                        console.log('🖱️ Container clicked, current dropdown state:', dropdownOpen);
-                                        e.stopPropagation();
-                                        const newState = !dropdownOpen;
-                                        console.log('🖱️ Setting dropdown to:', newState);
-                                        setDropdownOpen(newState);
-                                    }}
-                                    onTouchStart={(e) => {
-                                        // Mobile: use same pattern as menu icon
-                                        console.log('👆 Container touched, current dropdown state:', dropdownOpen);
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        const newState = !dropdownOpen;
-                                        console.log('👆 Setting dropdown to:', newState);
-                                        setDropdownOpen(newState);
-                                    }}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        padding: 0,
-                                        cursor: 'pointer',
-                                        touchAction: 'manipulation',
-                                        WebkitTapHighlightColor: 'transparent',
-                                        borderRadius: '50%',
-                                        WebkitBorderRadius: '50%',
-                                        overflow: 'visible', /* Allow dropdown to show */
-                                        outline: 'none'
-                                    }}
+                                    aria-label="Account menu"
+                                    aria-expanded={dropdownOpen}
+                                    onClick={toggleProfileDropdown}
                                 >
                                     <img
                                         key={`profile-img-${user?.id || 'unknown'}-${userProfile?.profile_image_url || user?.profile_image_url || user?.picture || 'default'}`}
                                         className='user-profile'
                                         src={(() => {
-                                            // Prioritize profile_image_url from user object (sent by backend), then userProfile, then user_metadata
-                                            // Check all possible sources in order of priority
                                             const imageUrl = user?.profile_image_url ||
                                                 user?.picture ||
                                                 userProfile?.profile_image_url ||
                                                 user?.user_metadata?.picture ||
                                                 '/default-avatar.svg';
-
-                                            // Debug logging
-                                            console.log('🖼️ [NAVBAR] Resolving profile image URL:', {
-                                                'user?.profile_image_url': user?.profile_image_url,
-                                                'user?.picture': user?.picture,
-                                                'userProfile?.profile_image_url': userProfile?.profile_image_url,
-                                                'user?.user_metadata?.picture': user?.user_metadata?.picture,
-                                                'final URL': imageUrl
-                                            });
-
                                             return imageUrl;
                                         })()}
                                         alt={user?.user_metadata?.name || user?.display_name || user?.name || 'User'}
-                                        onClick={(e) => {
-                                            console.log('🖱️ Image clicked, current dropdown state:', dropdownOpen);
-                                            e.stopPropagation();
-                                            const newState = !dropdownOpen;
-                                            console.log('🖱️ Image: Setting dropdown to:', newState);
-                                            setDropdownOpen(newState);
-                                        }}
-                                        onTouchStart={(e) => {
-                                            // Mobile: use same pattern as menu icon
-                                            console.log('👆 Image touched, current dropdown state:', dropdownOpen);
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            const newState = !dropdownOpen;
-                                            console.log('👆 Image: Setting dropdown to:', newState);
-                                            setDropdownOpen(newState);
-                                        }}
-                                        style={{
-                                            cursor: 'pointer',
-                                            pointerEvents: 'auto',
-                                            userSelect: 'none',
-                                            WebkitUserSelect: 'none',
-                                            display: 'block',
-                                            borderRadius: '50%',
-                                            WebkitBorderRadius: '50%',
-                                            objectFit: 'cover',
-                                            WebkitAppearance: 'none',
-                                            width: '35px',
-                                            height: '35px',
-                                            backgroundColor: 'transparent', // Ensure no background color interferes
-                                            zIndex: 1, // Ensure image is above any background
-                                            position: 'relative' // Ensure proper stacking context
-                                        }}
+                                        draggable={false}
                                         onError={(e) => {
                                             if (!e.target.dataset.fallbackUsed) {
                                                 console.log('🖼️ [NAVBAR] Image failed to load!');
@@ -869,108 +922,6 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                                         }}
                                     />
                                 </button>
-                                <div className={`user-dropdown ${dropdownOpen ? 'open' : ''}`}>
-                                    <p>Signed in as <strong>{user?.user_metadata?.name || user?.display_name || user?.email}</strong></p>
-                                    <hr />
-                                    {!adminPortalOnlyMenu && (
-                                        <button
-                                            className="dropdown-item"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                console.log('🔗 Navigating to Dashboard');
-                                                setDropdownOpen(false);
-                                                navigate('/dashboard');
-                                            }}
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                width: '100%',
-                                                textAlign: 'left',
-                                                padding: '8px 16px',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            Dashboard
-                                        </button>
-                                    )}
-                                    {!adminPortalOnlyMenu && (
-                                        <button
-                                            className="dropdown-item"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setDropdownOpen(false);
-                                                navigate('/channel-invites');
-                                            }}
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                width: '100%',
-                                                textAlign: 'left',
-                                                padding: '8px 16px',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            Channel invites
-                                        </button>
-                                    )}
-                                    {/* Show Admin Portal for all admins (order processing admins and full admins) */}
-                                    {(isOrderProcessingAdmin || isFullAdmin) && (
-                                        <button
-                                            className="dropdown-item"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                console.log('🔗 Navigating to Admin Portal');
-                                                setDropdownOpen(false);
-                                                navigate('/admin');
-                                            }}
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                width: '100%',
-                                                textAlign: 'left',
-                                                padding: '8px 16px',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            Admin Portal
-                                        </button>
-                                    )}
-                                    {/* Only show Delete Account if NOT order processing admin */}
-                                    {!adminPortalOnlyMenu && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setDropdownOpen(false);
-                                                handleDeleteAccount();
-                                            }}
-                                            className="dropdown-item delete-account-btn"
-                                        >
-                                            Delete Account
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            setDropdownOpen(false);
-                                            handleLogout();
-                                        }}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            width: '100%',
-                                            textAlign: 'left',
-                                            padding: '8px 16px',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        Logout
-                                    </button>
-                                </div>
                                 </div>
                             </>
                     ) : oauthProcessing ? (
@@ -998,6 +949,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                     </div>
                 </div>
             </nav>
+
+            {renderProfileDropdown()}
 
             <SubscriptionModal
                 isOpen={isSubscriptionModalOpen}
