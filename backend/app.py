@@ -6744,6 +6744,7 @@ def get_subdomain_creator(subdomain):
                     "logo_url": creator.get('custom_logo_url'),  # Use custom_logo_url from database
                     "custom_logo_url": creator.get('custom_logo_url'),  # Also include as custom_logo_url for clarity
                     "banner_url": creator.get('banner_url'),
+                    "cover_image_url": creator.get('cover_image_url') or creator.get('banner_url'),
                     "profile_image_url": creator.get('profile_image_url'),
                     "custom_favicon_url": creator.get('custom_favicon_url'),
                     "custom_meta_title": creator.get('custom_meta_title'),
@@ -8577,6 +8578,17 @@ def favorite_lists_rename():
             lst = row.data[0]
             if lst.get("is_primary"):
                 return jsonify({"success": False, "error": "Cannot rename the main storefront page here"}), 400
+        name_key = display_name.lower()
+        dup_q = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("id, display_name")
+            .eq("owner_user_id", user_id)
+            .neq("id", list_id)
+            .execute()
+        )
+        for dup_row in dup_q.data or []:
+            if (dup_row.get("display_name") or "").strip().lower() == name_key:
+                return jsonify({"success": False, "error": "A page with this name already exists"}), 400
         now_iso = datetime.now(timezone.utc).isoformat()
         upd = (
             supabase_admin.table("creator_favorite_lists")
@@ -8610,6 +8622,16 @@ def favorite_lists_create():
         display_name = (data.get("display_name") or "").strip()
         if not display_name:
             return jsonify({"success": False, "error": "display_name is required"}), 400
+        existing_names = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("id, display_name")
+            .eq("owner_user_id", user_id)
+            .execute()
+        )
+        name_key = display_name.lower()
+        for row in existing_names.data or []:
+            if (row.get("display_name") or "").strip().lower() == name_key:
+                return jsonify({"success": False, "error": "A page with this name already exists"}), 400
         slug_in = data.get("slug")
         slug = _fl_slugify(slug_in) if slug_in else _fl_slugify(display_name)
         if not slug or slug == "owner":

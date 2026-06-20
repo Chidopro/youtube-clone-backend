@@ -3079,20 +3079,43 @@
 
 .favorite-pages-toolbar {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px 14px;
-    margin-bottom: 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
     padding: 14px 16px;
     background: #f6f7f9;
     border-radius: 10px;
     border: 1px solid #e8eaed;
 }
 
+.favorites-tab-controls {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.favorites-upload-btn {
+    flex-shrink: 0;
+    align-self: flex-start;
+}
+
+.favorite-pages-choose-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+}
+
 .favorite-pages-label {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #333;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #222;
+    white-space: nowrap;
 }
 
 .favorite-pages-select {
@@ -3111,11 +3134,10 @@
 
 .favorite-pages-new {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
-    margin-top: 4px;
 }
 
 .favorite-pages-input {
@@ -3125,6 +3147,12 @@
     border-radius: 8px;
     border: 1px solid #ccc;
     font-size: 0.95rem;
+}
+
+.favorite-pages-input--name {
+    flex: 0 1 220px;
+    max-width: 240px;
+    min-width: 160px;
 }
 
 .favorite-card-page-row {

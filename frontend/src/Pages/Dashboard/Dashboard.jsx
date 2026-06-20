@@ -17,6 +17,38 @@ function umbrellaDefaultPageName(email) {
     return local ? `${local.charAt(0).toUpperCase()}${local.slice(1)} Favorites` : 'My Favorites';
 }
 
+function cleanFavoritePageNickname(raw) {
+    return (raw || '')
+        .replace(/\s*\(owner\)\s*/gi, ' ')
+        .replace(/\s*—?\s*collaborator\s*page\s*/gi, ' ')
+        .replace(/\s*Umbrella\s*Page\s*$/i, '')
+        .replace(/\s*Favorites\s*$/i, '')
+        .trim();
+}
+
+function favoritePageSelectLabel(page) {
+    if (!page) return 'Favorites';
+    if (page.is_collaborator_page) {
+        const nick = cleanFavoritePageNickname(page.member_label || page.display_name || page.slug);
+        return nick ? `${nick} Umbrella Page` : 'Umbrella Page';
+    }
+    if (page.is_primary) {
+        return 'Main Creator Page';
+    }
+    return cleanFavoritePageNickname(page.display_name) || page.slug || 'Favorites';
+}
+
+function favoritePageNameTaken(pages, name, { ignoreListId } = {}) {
+    const target = (name || '').trim().toLowerCase();
+    if (!target) return false;
+    return (pages || []).some((p) => {
+        if (ignoreListId && p.id === ignoreListId) return false;
+        const display = (p.display_name || '').trim().toLowerCase();
+        const label = favoritePageSelectLabel(p).trim().toLowerCase();
+        return display === target || label === target;
+    });
+}
+
 const Dashboard = ({ sidebar }) => {
     const [user, setUser] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
@@ -122,7 +154,6 @@ const Dashboard = ({ sidebar }) => {
     const [favoritePages, setFavoritePages] = useState([]);
     const [selectedFavoriteListId, setSelectedFavoriteListId] = useState(null);
     const [newPageName, setNewPageName] = useState('');
-    const [newPageSlug, setNewPageSlug] = useState('');
     const [umbrellaPageName, setUmbrellaPageName] = useState('');
     const [umbrellaOwnerName, setUmbrellaOwnerName] = useState('');
     const [savingFavoritePage, setSavingFavoritePage] = useState(false);
@@ -409,6 +440,10 @@ const Dashboard = ({ sidebar }) => {
             alert('Enter a page name (this nickname appears in the storefront menu — not your email).');
             return;
         }
+        if (favoritePageNameTaken(favoritePages, name, { ignoreListId: listId })) {
+            alert('That page name is already in use. Choose a different nickname.');
+            return;
+        }
         setSavingFavoritePage(true);
         try {
             const { ok, data } = await favoriteListsJson('/api/favorite-lists/rename', {
@@ -438,11 +473,13 @@ const Dashboard = ({ sidebar }) => {
             alert('Enter a display name for the new page.');
             return;
         }
+        if (favoritePageNameTaken(favoritePages, name)) {
+            alert('A page with this name already exists. Choose a different name.');
+            return;
+        }
         setSavingFavoritePage(true);
         try {
             const body = { display_name: name };
-            const slug = newPageSlug.trim();
-            if (slug) body.slug = slug;
             const { ok, data } = await favoriteListsJson('/api/favorite-lists', {
                 method: 'POST',
                 body: JSON.stringify(body),
@@ -459,7 +496,6 @@ const Dashboard = ({ sidebar }) => {
                 return (a.sort_order || 0) - (b.sort_order || 0);
             }));
             setNewPageName('');
-            setNewPageSlug('');
             if (created?.id && user?.id) {
                 setSelectedFavoriteListId(created.id);
                 await reloadFavoritesForList(user.id, created.id);
@@ -1766,18 +1802,7 @@ const Dashboard = ({ sidebar }) => {
                 {/* Favorites Tab */}
                 {activeTab === 'favorites' && (
                     <div className="favorites-tab">
-                        <div className="section-header">
-                            <h2>⭐ Your Favorites ({favorites.length})</h2>
-                            <button 
-                                className="add-favorite-btn"
-                                onClick={() => {
-                                    setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
-                                    setShowFavoriteModal(true);
-                                }}
-                            >
-                                + Add Favorite
-                            </button>
-                        </div>
+                        <div className="favorites-tab-controls">
                         {userProfile?.role === 'creator' && umbrellaOnly && favoritePages.length > 0 && (
                             <div className="umbrella-fav-page-bar">
                                 <div className="umbrella-fav-page-intro">
@@ -1810,59 +1835,52 @@ const Dashboard = ({ sidebar }) => {
                         )}
                         {userProfile?.role === 'creator' && !umbrellaOnly && favoritePages.length > 0 && (
                             <div className="favorite-pages-toolbar">
-                                <label className="favorite-pages-label" htmlFor="dashboard-fav-list-select">Save to (FrameSnag + uploads)</label>
-                                <select
-                                    id="dashboard-fav-list-select"
-                                    className="favorite-pages-select"
-                                    value={selectedFavoriteListId || ''}
-                                    onChange={(e) => handleFavoriteListChange(e.target.value)}
-                                >
-                                    {favoritePages.some((p) => !p.is_collaborator_page) && (
-                                        <optgroup label="Your pages">
-                                            {favoritePages.filter((p) => !p.is_collaborator_page).map((p) => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.display_name || p.slug}
-                                                    {p.is_primary ? ' (main)' : ` — /favorites/${p.slug}`}
-                                                </option>
-                                            ))}
-                                        </optgroup>
-                                    )}
-                                    {favoritePages.some((p) => p.is_collaborator_page) && (
-                                        <optgroup label="Umbrella collaborators">
-                                            {favoritePages.filter((p) => p.is_collaborator_page).map((p) => (
-                                                <option key={p.id} value={p.id}>
-                                                    {(p.member_label || p.display_name || p.slug).replace(/\s*Favorites\s*$/i, '').trim()}
-                                                    {' — collaborator page'}
-                                                </option>
-                                            ))}
-                                        </optgroup>
-                                    )}
-                                </select>
-                                {favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_primary === false
-                                    && !favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_collaborator_page && (
-                                    <button
-                                        type="button"
-                                        className="cancel-btn favorite-page-delete"
-                                        disabled={savingFavoritePage}
-                                        onClick={handleDeleteFavoritePage}
+                                <div className="favorite-pages-choose-row">
+                                    <label className="favorite-pages-label" htmlFor="dashboard-fav-list-select">Choose Favorites Page</label>
+                                    <select
+                                        id="dashboard-fav-list-select"
+                                        className="favorite-pages-select"
+                                        value={selectedFavoriteListId || ''}
+                                        onChange={(e) => handleFavoriteListChange(e.target.value)}
                                     >
-                                        Delete page
-                                    </button>
-                                )}
+                                        {favoritePages.some((p) => !p.is_collaborator_page) && (
+                                            <optgroup label="Your pages">
+                                                {favoritePages.filter((p) => !p.is_collaborator_page).map((p) => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {favoritePageSelectLabel(p)}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        )}
+                                        {favoritePages.some((p) => p.is_collaborator_page) && (
+                                            <optgroup label="Umbrella collaborators">
+                                                {favoritePages.filter((p) => p.is_collaborator_page).map((p) => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {favoritePageSelectLabel(p)}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        )}
+                                    </select>
+                                    {favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_primary === false
+                                        && !favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_collaborator_page && (
+                                        <button
+                                            type="button"
+                                            className="cancel-btn favorite-page-delete"
+                                            disabled={savingFavoritePage}
+                                            onClick={handleDeleteFavoritePage}
+                                        >
+                                            Delete page
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="favorite-pages-new">
                                     <input
                                         type="text"
                                         placeholder="New page name"
                                         value={newPageName}
                                         onChange={(e) => setNewPageName(e.target.value)}
-                                        className="favorite-pages-input"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="URL slug (optional)"
-                                        value={newPageSlug}
-                                        onChange={(e) => setNewPageSlug(e.target.value)}
-                                        className="favorite-pages-input"
+                                        className="favorite-pages-input favorite-pages-input--name"
                                     />
                                     <button
                                         type="button"
@@ -1875,6 +1893,17 @@ const Dashboard = ({ sidebar }) => {
                                 </div>
                             </div>
                         )}
+                            <button
+                                type="button"
+                                className="add-favorite-btn favorites-upload-btn"
+                                onClick={() => {
+                                    setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+                                    setShowFavoriteModal(true);
+                                }}
+                            >
+                                Upload
+                            </button>
+                        </div>
                         {!umbrellaOnly && (
                         <p className="paste-hint">
                             Paste from FrameSnag (Ctrl+V) to add a captured image. Uploads go to the page selected above
@@ -1956,8 +1985,7 @@ const Dashboard = ({ sidebar }) => {
                                                 >
                                                     {favoritePages.map((p) => (
                                                         <option key={p.id} value={p.id}>
-                                                            {p.display_name || p.slug}
-                                                            {p.is_primary ? ' (main)' : ''}
+                                                            {favoritePageSelectLabel(p)}
                                                         </option>
                                                     ))}
                                                 </select>
