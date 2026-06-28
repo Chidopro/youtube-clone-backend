@@ -3,6 +3,7 @@
   margin-bottom: 0;
   position: relative;
   z-index: 1;
+  --favorites-banner-height: 195px;
 }
 
 .page-top-banner .favorites-channel-header {
@@ -15,12 +16,33 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-.favorites-channel-header .channel-avatar-container {
-  display: none;
+.favorites-channel-header .channel-cover-container {
+  height: var(--favorites-banner-height);
+  max-height: var(--favorites-banner-height);
+  min-height: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  overflow: hidden;
+}
+
+.favorites-channel-header .channel-cover-photo {
+  width: 100%;
+  height: 100%;
+  max-height: var(--favorites-banner-height);
+  object-fit: cover;
+  object-position: center center;
 }
 
 .favorites-channel-header--wide .channel-cover-container {
-  height: 260px;
+  height: var(--favorites-banner-height);
+  max-height: var(--favorites-banner-height);
+}
+
+.favorites-channel-header--mobile,
+.favorites-channel-header--mobile .channel-header,
+.favorites-channel-header--mobile .channel-cover-container {
+  height: 150px;
+  max-height: 150px;
+  overflow: hidden;
 }
 
 .favorites-page {
@@ -35,7 +57,7 @@
 
 .favorites-toolbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
   margin-bottom: 28px;
 }
@@ -46,38 +68,46 @@
 }
 
 .favorites-page-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 24px;
   font-weight: 700;
   color: #1a1a1a;
-  margin: 0 0 6px 0;
+  margin: 0;
+}
+
+.favorites-heart-icon {
+  color: #e53935;
+  font-size: 26px;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .favorites-error {
   color: #c00;
+  font-size: 14px;
+  margin: 8px 0 0 0;
 }
 
 .favorites-back-btn {
   background: none;
   border: none;
-  color: #666;
-  font-size: 16px;
+  color: #444;
+  font-size: 26px;
+  line-height: 1;
   cursor: pointer;
-  padding: 8px 0;
-  margin-bottom: 10px;
+  padding: 6px 10px;
   display: flex;
   align-items: center;
-  gap: 5px;
-  transition: color 0.2s;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+  border-radius: 8px;
 }
 
 .favorites-back-btn:hover {
   color: #000;
-}
-
-.favorites-subtitle {
-  font-size: 16px;
-  color: #666;
-  margin: 0;
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .favorites-loading {
@@ -102,6 +132,8 @@
 .favorites-empty-icon {
   font-size: 64px;
   margin-bottom: 20px;
+  color: #e53935;
+  line-height: 1;
 }
 
 .favorites-empty h2 {
@@ -199,17 +231,26 @@
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
+  .favorites-channel-header,
+  .favorites-channel-header--wide,
+  .favorites-channel-header--mobile {
+    --favorites-banner-height: 150px;
+  }
+
+  #page-top-banner .favorites-channel-header .channel-header,
+  #page-top-banner .favorites-channel-header .channel-cover-container {
+    height: 150px !important;
+    max-height: 150px !important;
+    overflow: hidden !important;
+  }
+
   .favorites-page {
     padding: 15px 20px;
   }
 
   .favorites-page-title {
     font-size: 20px;
-  }
-
-  .favorites-channel-header--wide .channel-cover-container {
-    height: 200px;
   }
 
   .favorites-grid {

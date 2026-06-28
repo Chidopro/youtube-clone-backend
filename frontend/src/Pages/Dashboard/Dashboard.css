@@ -19,326 +19,6 @@
     color: #666;
 }
 
-/* Channel Header - Cheedo V Style */
-.channel-header {
-    position: relative;
-    width: 100%;
-    background: #fff;
-    border-bottom: 1px solid #e3e3e3;
-}
-
-.channel-cover-container {
-    position: relative;
-    width: 100%;
-    height: 300px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    overflow: hidden;
-}
-
-.channel-cover-photo {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.edit-cover-section {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1001;
-}
-
-.cover-edit-backdrop {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.3);
-    z-index: 1000;
-}
-
-.cover-edit-overlay {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1002;
-    background: #fff;
-    border-radius: 18px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-    padding: 36px 32px 32px 32px;
-    min-width: 340px;
-    min-height: 180px;
-    max-width: 95vw;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.cover-edit-close-btn {
-    position: absolute;
-    top: 16px;
-    right: 20px;
-    background: none;
-    border: none;
-    font-size: 28px;
-    color: #888;
-    cursor: pointer;
-    z-index: 1003;
-    padding: 0 8px;
-    line-height: 1;
-    transition: color 0.2s;
-}
-
-.cover-edit-close-btn:hover {
-    color: #c00;
-}
-
-.cover-edit-controls {
-    background: rgba(255, 255, 255, 0.95);
-    padding: 30px;
-    border-radius: 12px;
-    text-align: center;
-    max-width: 400px;
-    width: 90%;
-}
-
-.cover-edit-controls h3 {
-    margin: 0 0 20px 0;
-    color: #333;
-    font-size: 1.3rem;
-}
-
-.file-upload-section {
-    width: 100%;
-    margin-bottom: 15px;
-}
-
-.file-input {
-    display: none;
-}
-
-.file-upload-btn {
-    display: inline-block;
-    width: 100%;
-    padding: 15px 20px;
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-align: center;
-    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
-}
-
-.file-upload-btn:hover {
-    background: linear-gradient(135deg, #0056b3, #004494);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
-}
-
-.file-upload-btn:disabled {
-    background: #6c757d;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.edit-tip {
-    margin: 0;
-    color: #666;
-    font-size: 0.9rem;
-    font-style: italic;
-}
-
-.channel-info-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
-    padding: 40px 30px 20px;
-    color: white;
-    display: flex;
-    align-items: flex-end;
-    gap: 20px;
-}
-
-.channel-avatar-container {
-    flex-shrink: 0;
-}
-
-.channel-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    border: 4px solid white;
-    object-fit: cover;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-.edit-avatar-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-}
-
-.image-edit-controls {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-}
-
-.channel-avatar.editing {
-    border: 3px solid rgba(255, 255, 255, 0.8);
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
-}
-
-.avatar-upload-section {
-    margin-top: 10px;
-}
-
-.avatar-upload-btn {
-    background: rgba(255, 255, 255, 0.9);
-    color: #333;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    display: inline-block;
-}
-
-.avatar-upload-btn:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.avatar-upload-btn:disabled {
-    background: rgba(200, 200, 200, 0.9);
-    cursor: not-allowed;
-    transform: none;
-}
-
-.channel-details {
-    flex: 1;
-}
-
-.channel-name {
-    font-size: 2rem;
-    font-weight: 700;
-    margin: 0 0 5px 0;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-.channel-username {
-    font-size: 1rem;
-    opacity: 0.9;
-    margin: 0 0 8px 0;
-}
-
-.channel-bio {
-    font-size: 0.95rem;
-    opacity: 0.95;
-    margin: 0 0 10px 0;
-    max-width: 500px;
-}
-
-
-
-.edit-details-section {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-width: 400px;
-}
-
-.edit-input {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 0.9rem;
-    background: rgba(255, 255, 255, 0.9);
-}
-
-.edit-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-}
-
-.edit-textarea {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 0.9rem;
-    background: rgba(255, 255, 255, 0.9);
-    resize: vertical;
-    min-height: 60px;
-}
-
-.edit-controls {
-    flex-shrink: 0;
-}
-
-.edit-btn {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    padding: 8px 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-}
-
-.edit-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.8);
-}
-
-.edit-buttons {
-    display: flex;
-    gap: 10px;
-}
-
-.save-btn {
-    background: #28a745;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: 500;
-}
-
-.cancel-btn {
-    background: #6c757d;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: 500;
-}
-
-
-
 /* Videos Section */
 .user-videos-section {
     background: white;
@@ -597,21 +277,9 @@
     color: #0056b3;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
     .dashboard-container {
         padding: 0;
-    }
-
-    .channel-info-overlay {
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 20px 15px;
-    }
-
-    .channel-name {
-        font-size: 1.5rem;
     }
 
     .dashboard-video-grid {
@@ -765,44 +433,24 @@
     margin-bottom: 0;
 }
 
-.cover-image-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-}
-
-.avatar-with-edit {
-    position: relative;
-    display: inline-block;
-}
-
-.corner-edit-icon {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: rgba(255,255,255,0.9);
+.save-btn {
+    background: #28a745;
+    color: white;
     border: none;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    font-size: 16px;
+    padding: 8px 16px;
+    border-radius: 5px;
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    opacity: 0;
-    transition: opacity 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    font-weight: 500;
 }
 
-.cover-image-container:hover .corner-edit-icon,
-.avatar-with-edit:hover .corner-edit-icon {
-    opacity: 1;
-}
-
-.corner-edit-icon:hover {
-    background: rgba(255,255,255,1);
-    transform: scale(1.1);
+.cancel-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 500;
 }
 
 /* Tab System */

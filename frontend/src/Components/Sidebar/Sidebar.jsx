@@ -6,8 +6,9 @@ import { API_CONFIG } from '../../config/apiConfig';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { fetchPublicFavoriteLists } from '../../utils/favoriteListsApi';
+import { favoriteListSidebarLabel } from '../../utils/favoriteListLabels';
 
-const Sidebar = ({sidebar, category, setCategory}) => {
+const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
   const [showSubs, setShowSubs] = useState(true);
   const [subscribers, setSubscribers] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(true);
@@ -79,10 +80,16 @@ const Sidebar = ({sidebar, category, setCategory}) => {
     return () => { cancelled = true; };
   }, [currentCreator?.id]);
 
+  const closeMobileSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 900) {
+      setSidebar?.(false);
+    }
+  };
+
   return (
     <div className={`sidebar ${sidebar ? "" : "small-sidebar"}`}>
       <div className="shortcut-links">
-        <Link to="/" className={`side-link ${category === 0 ? "active" : ""}`} onClick={() => setCategory(0)}>
+        <Link to="/" className={`side-link ${category === 0 ? "active" : ""}`} onClick={() => { setCategory(0); closeMobileSidebar(); }}>
           <img src={home} alt="" /><p>Home</p>
         </Link>
         <hr />
@@ -102,11 +109,11 @@ const Sidebar = ({sidebar, category, setCategory}) => {
                     key={L.id}
                     to={L.slug === 'owner' ? '/favorites' : `/favorites/${encodeURIComponent(L.slug)}`}
                     className={`side-link subscriber-item ${location.pathname === '/favorites' && L.slug === 'owner' ? 'active' : ''} ${location.pathname === `/favorites/${L.slug}` ? 'active' : ''}`}
-                    onClick={() => setCategory(0)}
+                    onClick={() => { setCategory(0); closeMobileSidebar(); }}
                   >
                     <div className="subscriber-info">
                       <p className={`subscriber-name ${L.is_primary ? 'favorites-owner-row' : ''}`}>
-                        {L.display_name || L.slug}
+                        {favoriteListSidebarLabel(L, currentCreator?.id)}
                         {L.is_primary ? ' ★' : ''}
                       </p>
                     </div>

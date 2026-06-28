@@ -236,6 +236,13 @@ const App = () => {
     checkProfileTier();
   }, [location.pathname]);
   
+  // Close mobile drawer after navigation (e.g. Favorites link in hamburger menu)
+  useEffect(() => {
+    if (isMobile) {
+      setSidebar(false);
+    }
+  }, [location.pathname, isMobile]);
+
   // Hide main sidebar for third tier profile pages
   const shouldShowSidebar = sidebar && !(currentProfileTier?.isThirdTier);
   
@@ -250,7 +257,7 @@ const App = () => {
         <div id="page-top-banner" className="page-top-banner" aria-hidden={!isFavoritesPage} />
         <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}>
           {shouldShowSidebar && (
-          <Sidebar sidebar={sidebar} category={category} setCategory={setCategory} />
+          <Sidebar sidebar={sidebar} category={category} setCategory={setCategory} setSidebar={setSidebar} />
           )}
           {/* Mobile backdrop for sidebar */}
           {sidebar && isMobile && (

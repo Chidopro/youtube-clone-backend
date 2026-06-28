@@ -4,11 +4,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
 import { fetchPublicFavoritesByList } from '../../utils/favoriteListsApi';
-import ChannelHeader from '../../Components/ChannelHeader/ChannelHeader';
+import { favoriteListPageHeading } from '../../utils/favoriteListLabels';
 import './Favorites.css';
 
 const DEFAULT_COVER =
   'https://images.unsplash.com/photo-1557683316-973673baf926?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80';
+
+/** Desktop banner = 75% of original 260px. Mobile = 75% of original 200px. */
+const FAVORITES_BANNER_HEIGHT_DESKTOP = 195;
+const FAVORITES_BANNER_HEIGHT_MOBILE = 150;
+const FAVORITES_BANNER_MOBILE_MAX_WIDTH = 900;
 
 const Favorites = ({ sidebar }) => {
   const navigate = useNavigate();
@@ -18,12 +23,26 @@ const Favorites = ({ sidebar }) => {
   const [listMeta, setListMeta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [bannerHeight, setBannerHeight] = useState(FAVORITES_BANNER_HEIGHT_DESKTOP);
 
   const effectiveSlug = (listSlug || 'owner').toLowerCase();
 
   useEffect(() => {
     document.body.classList.add('page-favorites');
     return () => document.body.classList.remove('page-favorites');
+  }, []);
+
+  useEffect(() => {
+    const syncBannerHeight = () => {
+      setBannerHeight(
+        window.innerWidth <= FAVORITES_BANNER_MOBILE_MAX_WIDTH
+          ? FAVORITES_BANNER_HEIGHT_MOBILE
+          : FAVORITES_BANNER_HEIGHT_DESKTOP
+      );
+    };
+    syncBannerHeight();
+    window.addEventListener('resize', syncBannerHeight);
+    return () => window.removeEventListener('resize', syncBannerHeight);
   }, []);
 
   useEffect(() => {
@@ -83,42 +102,37 @@ const Favorites = ({ sidebar }) => {
     navigate('/merchandise');
   };
 
-  const isCollaboratorPage = Boolean(
-    listMeta?.storefront_owner_id &&
-    listMeta?.owner_user_id &&
-    String(listMeta.storefront_owner_id) !== String(listMeta.owner_user_id)
-  );
-
-  const rawPageName = (listMeta?.display_name || '').trim();
-  const cleanPageName =
-    rawPageName
-      .replace(/\s*\(owner\)\s*/gi, ' ')
-      .replace(/\s*—?\s*collaborator\s*page\s*/gi, ' ')
-      .replace(/\s*Favorites\s*$/i, '')
-      .trim() || (effectiveSlug === 'owner' ? 'Main favorites' : 'Favorites');
-
-  const pageTitle = rawPageName || `${currentCreator?.display_name || 'Creator'}'s Favorites`;
-
-  const headerBio = isCollaboratorPage
-    ? `${cleanPageName} — curated favorites`
-    : 'Favorite picks — turn screenshots into merch';
+  const pageTitle = listMeta
+    ? favoriteListPageHeading(listMeta, currentCreator?.id)
+    : (effectiveSlug === 'owner' ? 'Main Favorites' : 'Favorites');
 
   const coverUrl =
     currentCreator?.cover_image_url || currentCreator?.banner_url || DEFAULT_COVER;
-  const avatarUrl = currentCreator?.profile_image_url || '/default-avatar.jpg';
-  const handle = currentCreator?.subdomain || currentCreator?.username || 'creator';
 
   const bannerSlot = typeof document !== 'undefined' ? document.getElementById('page-top-banner') : null;
 
+  const coverWrapStyle = {
+    height: bannerHeight,
+    maxHeight: bannerHeight,
+    minHeight: bannerHeight,
+    overflow: 'hidden',
+  };
+
   const channelHeader = currentCreator?.id ? (
-    <div className={`favorites-channel-header ${!sidebar ? 'favorites-channel-header--wide' : ''}`}>
-      <ChannelHeader
-        coverImageUrl={coverUrl}
-        avatarUrl={avatarUrl}
-        displayName={currentCreator.display_name || 'Creator'}
-        username={handle}
-        bio={headerBio}
-      />
+    <div
+      className={`favorites-channel-header favorites-channel-header--wide${bannerHeight === FAVORITES_BANNER_HEIGHT_MOBILE ? ' favorites-channel-header--mobile' : ''}`}
+      style={coverWrapStyle}
+    >
+      <div className="channel-header" style={coverWrapStyle}>
+        <div className="channel-cover-container" style={coverWrapStyle}>
+          <img
+            className="channel-cover-photo"
+            src={coverUrl}
+            alt="Channel Cover"
+            style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        </div>
+      </div>
     </div>
   ) : null;
 
@@ -128,22 +142,22 @@ const Favorites = ({ sidebar }) => {
 
       <div className={`favorites-page ${sidebar ? '' : 'large-container'}`}>
         <div className="favorites-toolbar">
-          <button type="button" className="favorites-back-btn" onClick={() => navigate('/')}>
-            ← Back
+          <button
+            type="button"
+            className="favorites-back-btn"
+            onClick={() => navigate('/')}
+            aria-label="Back"
+          >
+            ←
           </button>
           <div className="favorites-toolbar-text">
-            <h1 className="favorites-page-title">⭐ {pageTitle}</h1>
-            <p className="favorites-subtitle">
-              {loading ? (
-                'Loading favorites…'
-              ) : error ? (
-                <span className="favorites-error">{error}</span>
-              ) : (
-                <>
-                  {favorites.length} favorite{favorites.length !== 1 ? 's' : ''} on this page
-                </>
-              )}
-            </p>
+            <h1 className="favorites-page-title">
+              <span className="favorites-heart-icon" aria-hidden="true">
+                ♥
+              </span>
+              {pageTitle}
+            </h1>
+            {error ? <p className="favorites-error">{error}</p> : null}
           </div>
         </div>
 
@@ -153,7 +167,9 @@ const Favorites = ({ sidebar }) => {
 
         {!loading && favorites.length === 0 && !error ? (
           <div className="favorites-empty">
-            <div className="favorites-empty-icon">⭐</div>
+            <div className="favorites-empty-icon" aria-hidden="true">
+              ♥
+            </div>
             <h2>No favorites yet</h2>
             <p>The creator hasn&apos;t added any favorites to this page yet. Check back later!</p>
           </div>

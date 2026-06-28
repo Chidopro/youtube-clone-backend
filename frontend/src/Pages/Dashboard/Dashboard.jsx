@@ -28,12 +28,12 @@ function cleanFavoritePageNickname(raw) {
 
 function favoritePageSelectLabel(page) {
     if (!page) return 'Favorites';
+    if (page.is_primary) {
+        return 'Main Favorites';
+    }
     if (page.is_collaborator_page) {
         const nick = cleanFavoritePageNickname(page.member_label || page.display_name || page.slug);
-        return nick ? `${nick} Umbrella Page` : 'Umbrella Page';
-    }
-    if (page.is_primary) {
-        return 'Main Creator Page';
+        return nick ? `${nick} Favorites` : 'Favorites';
     }
     return cleanFavoritePageNickname(page.display_name) || page.slug || 'Favorites';
 }
@@ -55,21 +55,6 @@ const Dashboard = ({ sidebar }) => {
     const [subscription, setSubscription] = useState(null);
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isEditing, setIsEditing] = useState(false);
-    const [editForm, setEditForm] = useState({
-        display_name: '',
-        bio: '',
-        cover_image_url: '',
-        profile_image_url: ''
-    });
-    const [uploadingImage, setUploadingImage] = useState(false);
-    const [imagePreview, setImagePreview] = useState({
-        cover: null,
-        profile: null
-    });
-
-    const [isEditingCover, setIsEditingCover] = useState(false);
-    const [isEditingAvatar, setIsEditingAvatar] = useState(false);
     const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState('videos');
     const [umbrellaOnly, setUmbrellaOnly] = useState(false);
@@ -253,12 +238,6 @@ const Dashboard = ({ sidebar }) => {
                     };
                     
                     setUserProfile(mergedProfile);
-                    setEditForm({
-                        display_name: profile.display_name || '',
-                        bio: profile.bio || '',
-                        cover_image_url: finalCoverImageUrl,
-                        profile_image_url: finalProfileImageUrl
-                    });
                     
                     // CRITICAL: Update localStorage with latest database values
                     const updatedUser = {
@@ -296,12 +275,6 @@ const Dashboard = ({ sidebar }) => {
                         bio: user.bio || ''
                     };
                     setUserProfile(userProfileData);
-                    setEditForm({
-                        display_name: userProfileData.display_name,
-                        bio: userProfileData.bio,
-                        cover_image_url: userProfileData.cover_image_url,
-                        profile_image_url: profileImageUrl
-                    });
                 }
 
                 // Fetch user subscription
@@ -600,222 +573,6 @@ const Dashboard = ({ sidebar }) => {
         };
         fetchCurrentUser();
     }, []);
-
-
-    const uploadImageToSupabase = async (file, type) => {
-        try {
-            setUploadingImage(true);
-            
-            // Create a unique filename
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${user.id}/${type}-${Date.now()}.${fileExt}`;
-            
-            // Upload to Supabase Storage
-            const { data, error } = await supabase.storage
-                .from('profile-images')
-                .upload(fileName, file, {
-                    cacheControl: '3600',
-                    upsert: true
-                });
-
-            if (error) {
-                console.error('Error uploading image:', error);
-                alert('Failed to upload image. Please try again.');
-                return null;
-            }
-
-            // Get the public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('profile-images')
-                .getPublicUrl(fileName);
-
-            return publicUrl;
-        } catch (error) {
-            console.error('Error in uploadImageToSupabase:', error);
-            alert('Failed to upload image. Please try again.');
-            return null;
-        } finally {
-            setUploadingImage(false);
-        }
-    };
-
-    const handleFileUpload = async (file, type) => {
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-            alert('Please select a valid image file.');
-            return;
-        }
-
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            alert('File size must be less than 5MB.');
-            return;
-        }
-
-        // Create preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            setImagePreview(prev => ({
-                ...prev,
-                [type]: e.target.result
-            }));
-        };
-        reader.readAsDataURL(file);
-
-        // Upload to Supabase
-        const imageUrl = await uploadImageToSupabase(file, type);
-        if (imageUrl) {
-            setEditForm(prev => ({
-                ...prev,
-                [`${type}_image_url`]: imageUrl
-            }));
-        }
-    };
-
-    const handleSaveProfile = async () => {
-        try {
-            // Get user ID - support both Google OAuth and Supabase auth
-            let userId = user?.id;
-            
-            // If user doesn't have id but has email, look up user in database
-            if (!userId && user?.email) {
-                console.log('🔐 Dashboard: User missing id, looking up by email:', user.email);
-                try {
-                    const { data: profileData, error: lookupError } = await supabase
-                        .from('users')
-                        .select('id')
-                        .eq('email', user.email)
-                        .single();
-                    
-                    if (profileData && profileData.id) {
-                        userId = profileData.id;
-                        console.log('🔐 Dashboard: Found user id from database:', userId);
-                    }
-                } catch (lookupErr) {
-                    console.error('Error looking up user by email:', lookupErr);
-                }
-            }
-            
-            if (!userId) {
-                console.error('Error: No user ID available');
-                alert('Error: Unable to identify user. Please try logging in again.');
-                return;
-            }
-            
-            // Use backend API endpoint to bypass RLS
-            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://screenmerch.fly.dev';
-            console.log('💾 Dashboard: Saving profile for user:', userId);
-            console.log('💾 Dashboard: Profile data:', {
-                display_name: editForm.display_name,
-                bio: editForm.bio,
-                cover_image_url: editForm.cover_image_url,
-                profile_image_url: editForm.profile_image_url,
-            });
-            
-            const response = await fetch(`${BACKEND_URL}/api/users/${userId}/update-profile`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({
-                    display_name: editForm.display_name,
-                    bio: editForm.bio,
-                    cover_image_url: editForm.cover_image_url,
-                    profile_image_url: editForm.profile_image_url,
-                }),
-            });
-
-            console.log('💾 Dashboard: Response status:', response.status, response.statusText);
-            
-            if (!response.ok) {
-                const contentType = response.headers.get('content-type');
-                let errorData;
-                if (contentType && contentType.includes('application/json')) {
-                    errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                } else {
-                    const text = await response.text();
-                    console.error('💾 Dashboard: Non-JSON error response:', text);
-                    errorData = { error: `Server error: ${response.status} - ${text.substring(0, 100)}` };
-                }
-                throw new Error(errorData.error || `Server error: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
-            // Backend returns the updated user with the latest profile_image_url from database
-            const backendUpdatedUser = data?.user;
-            console.log('💾 Dashboard: Backend returned updated user:', backendUpdatedUser);
-            console.log('💾 Dashboard: Updated profile_image_url from backend:', backendUpdatedUser?.profile_image_url);
-            
-            // Update local state with backend response (most up-to-date)
-            const updatedProfile = backendUpdatedUser || {
-                ...userProfile,
-                display_name: editForm.display_name,
-                bio: editForm.bio,
-                cover_image_url: editForm.cover_image_url,
-                profile_image_url: editForm.profile_image_url,
-            };
-            setUserProfile(updatedProfile);
-            
-            // Update user object in localStorage if it exists
-            const userData = localStorage.getItem('user');
-            let updatedUser = null;
-            if (userData) {
-                try {
-                    const userObj = JSON.parse(userData);
-                    // Use backend response if available, otherwise use form data
-                    updatedUser = {
-                        ...userObj,
-                        profile_image_url: backendUpdatedUser?.profile_image_url || editForm.profile_image_url,
-                        cover_image_url: backendUpdatedUser?.cover_image_url || editForm.cover_image_url,
-                        display_name: backendUpdatedUser?.display_name || editForm.display_name,
-                        bio: backendUpdatedUser?.bio || editForm.bio,
-                    };
-                    localStorage.setItem('user', JSON.stringify(updatedUser));
-                    setUser(updatedUser);
-                    console.log('💾 Dashboard: Updated localStorage with profile_image_url:', updatedUser.profile_image_url);
-                } catch (e) {
-                    console.error('Error updating localStorage user:', e);
-                }
-            }
-            
-            // Dispatch event to notify Navbar and other components of profile update
-            // CRITICAL: Use backendUpdatedUser (from backend response) as it has the latest database values
-            // Merge with updatedUser to ensure we have all fields (id, role, etc.)
-            const userForEvent = backendUpdatedUser ? {
-                ...updatedUser,
-                ...backendUpdatedUser, // Backend response takes priority
-                profile_image_url: backendUpdatedUser.profile_image_url || updatedUser?.profile_image_url,
-                cover_image_url: backendUpdatedUser.cover_image_url || updatedUser?.cover_image_url,
-            } : updatedUser;
-            
-            if (userForEvent) {
-                console.log('📡 Dashboard: Preparing to dispatch events with profile_image_url:', userForEvent.profile_image_url);
-                
-                // Dispatch profileUpdated event IMMEDIATELY with backend response (no delay needed - backend already saved)
-                window.dispatchEvent(new CustomEvent('profileUpdated', { 
-                    detail: { user: userForEvent } 
-                }));
-                console.log('📡 Dashboard: ✅ Dispatched profileUpdated event IMMEDIATELY with profile_image_url:', userForEvent.profile_image_url);
-                
-                // Also dispatch userLoggedIn for compatibility
-                window.dispatchEvent(new CustomEvent('userLoggedIn', { 
-                    detail: { user: userForEvent } 
-                }));
-                console.log('📡 Dashboard: Dispatched userLoggedIn event with profile image:', userForEvent.profile_image_url);
-            }
-            
-            setIsEditing(false);
-            setImagePreview({ cover: null, profile: null });
-            
-            console.log('✅ Profile saved successfully via backend API');
-        } catch (error) {
-            console.error('Error saving profile:', error);
-            alert(`Failed to save profile: ${error.message || 'Unknown error'}`);
-        }
-    };
-
 
 
     const handleDeleteVideo = async (videoId, videoTitle, event) => {
@@ -1497,172 +1254,6 @@ const Dashboard = ({ sidebar }) => {
 
     return (
         <div className={`dashboard-container ${sidebar ? "" : " large-container"}`}>
-            {/* User's Custom Channel Header - Cheedo V Style */}
-            <div className="channel-header">
-                <div className="channel-cover-container">
-                    {/* Cover Image */}
-                    {isEditingCover ? (
-                        <div className="edit-cover-section">
-                            <div className="cover-edit-backdrop" onClick={() => { setIsEditingCover(false); setImagePreview(prev => ({ ...prev, cover: null })); }} />
-                            <div className="cover-edit-overlay" onClick={e => e.stopPropagation()}>
-                                <div className="cover-edit-controls">
-                                    <button className="cover-edit-close-btn" onClick={() => { setIsEditingCover(false); setImagePreview(prev => ({ ...prev, cover: null })); }} title="Close">×</button>
-                                    <h3>📸 Update Cover Image</h3>
-                                    <div className="file-upload-section">
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], 'cover')}
-                                            id="cover-upload"
-                                            className="file-input"
-                                            disabled={uploadingImage}
-                                        />
-                                        <label htmlFor="cover-upload" className="file-upload-btn">
-                                            {uploadingImage ? '⏳ Uploading...' : '📁 Choose Cover Image'}
-                                        </label>
-                                    </div>
-                                    <p className="edit-tip">💡 Tip: Max 5MB, high-quality image (1920x1080 recommended)</p>
-                                </div>
-                            </div>
-                            {(imagePreview.cover || editForm.cover_image_url) && (
-                                <img 
-                                    src={imagePreview.cover || editForm.cover_image_url || userProfile?.cover_image_url || 'https://images.unsplash.com/photo-1557683316-973673baf926?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80'} 
-                                    alt="Cover preview" 
-                                    className="channel-cover-photo"
-                                />
-                            )}
-                        </div>
-                    ) : (
-                        <div className="cover-image-container">
-                            <img
-                                className="channel-cover-photo"
-                                src={editForm.cover_image_url || userProfile?.cover_image_url || 'https://images.unsplash.com/photo-1557683316-973673baf926?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80'}
-                                alt="Channel Cover"
-                            />
-                            <button className="corner-edit-icon cover-edit" onClick={() => setIsEditingCover(true)} title="Edit cover image">
-                                ✏️
-                            </button>
-                        </div>
-                    )}
-                    {/* Channel Info Overlay */}
-                    <div className="channel-info-overlay">
-                        <div className="channel-avatar-container">
-                            {isEditingAvatar ? (
-                                <div className="edit-avatar-section">
-                                    <img
-                                        className="channel-avatar editing"
-                                        src={imagePreview.profile || editForm.profile_image_url || userProfile?.profile_image_url || user?.profile_image_url || user?.user_metadata?.picture || user?.picture || '/default-avatar.jpg'}
-                                        alt="Channel Avatar"
-                                    />
-                                    <div className="avatar-upload-section">
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], 'profile')}
-                                            id="avatar-upload"
-                                            className="file-input"
-                                            disabled={uploadingImage}
-                                        />
-                                        <label htmlFor="avatar-upload" className="avatar-upload-btn">
-                                            {uploadingImage ? '⏳ Uploading...' : '📷 Change Avatar'}
-                                        </label>
-                                    </div>
-                                    <div className="avatar-edit-buttons">
-                                        <button 
-                                            onClick={async () => {
-                                                await handleSaveProfile();
-                                                setIsEditingAvatar(false);
-                                                setImagePreview(prev => ({ ...prev, profile: null }));
-                                            }} 
-                                            className="save-btn"
-                                            disabled={uploadingImage}
-                                        >
-                                            Save
-                                        </button>
-                                        <button 
-                                            onClick={() => {
-                                                setIsEditingAvatar(false);
-                                                setImagePreview(prev => ({ ...prev, profile: null }));
-                                                // Reset to original profile_image_url
-                                                setEditForm(prev => ({
-                                                    ...prev,
-                                                    profile_image_url: userProfile?.profile_image_url || ''
-                                                }));
-                                            }} 
-                                            className="cancel-btn"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="avatar-with-edit">
-                                    <img
-                                        className="channel-avatar"
-                                        src={(() => {
-                                            // Priority order for image URL:
-                                            // 1. userProfile.profile_image_url (from database)
-                                            // 2. user.profile_image_url (from localStorage)
-                                            // 3. user.picture or user.user_metadata?.picture (for Google OAuth users)
-                                            // 4. default avatar
-                                            const imageUrl = (userProfile?.profile_image_url && userProfile.profile_image_url.trim() !== '') 
-                                                ? userProfile.profile_image_url
-                                                : (user?.profile_image_url && user.profile_image_url.trim() !== '')
-                                                    ? user.profile_image_url
-                                                    : user?.user_metadata?.picture || user?.picture || '/default-avatar.jpg';
-                                            return imageUrl;
-                                        })()}
-                                        alt="Channel Avatar"
-                                    />
-                                    <button className="corner-edit-icon avatar-edit" onClick={() => setIsEditingAvatar(true)} title="Edit avatar">
-                                        ✏️
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                        <div className="channel-details">
-                            {isEditing ? (
-                                <div className="edit-details-section">
-                                    <input
-                                        type="text"
-                                        placeholder="Display name"
-                                        value={editForm.display_name}
-                                        onChange={(e) => setEditForm({...editForm, display_name: e.target.value})}
-                                        className="edit-input edit-title"
-                                    />
-                                    <textarea
-                                        placeholder="Bio/Description"
-                                        value={editForm.bio}
-                                        onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
-                                        className="edit-textarea"
-                                        rows="2"
-                                    />
-                                </div>
-                            ) : (
-                                <>
-                                    <h1 className="channel-name">
-                                        {userProfile?.display_name || user.user_metadata?.name || 'Your Channel'}
-                                    </h1>
-                                    <p className="channel-username">@{userProfile?.username || 'username'}</p>
-                                    {userProfile?.bio && (
-                                        <p className="channel-bio">{userProfile.bio}</p>
-                                    )}
-
-                                </>
-                            )}
-                        </div>
-                        <div className="edit-controls">
-                            {isEditing ? (
-                                <div className="edit-buttons">
-                                    <button onClick={handleSaveProfile} className="save-btn">Save Changes</button>
-                                    <button onClick={() => setIsEditing(false)} className="cancel-btn">Cancel</button>
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             {/* Tab Navigation */}
             <div className="dashboard-tabs">
                 {!umbrellaOnly && (
@@ -1725,9 +1316,10 @@ const Dashboard = ({ sidebar }) => {
                         <div className="getting-started-section">
                             <h2>Getting Started</h2>
                             <div className="tips-grid">
-                                <div className="tip-card">
+                                <div className="tip-card clickable" onClick={() => setActiveTab('personalization')}>
                                     <h4>🎨 Customize Your Channel</h4>
-                                    <p>Add a cover image, profile picture, and bio to make your channel unique.</p>
+                                    <p>Add a cover image, profile picture, and bio in Personalization.</p>
+                                    <div className="card-action">Open Personalization →</div>
                                 </div>
                                 <div className="tip-card clickable" onClick={() => navigate('/upload')}>
                                     <h4>📹 Upload Content</h4>

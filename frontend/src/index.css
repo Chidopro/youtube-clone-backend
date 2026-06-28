@@ -43,7 +43,7 @@ img{
   padding-right: 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   body.page-favorites nav {
     flex-wrap: nowrap;
   }
@@ -55,5 +55,24 @@ img{
   body.page-favorites .page-top-banner {
     margin: 0;
     padding: 0;
+    overflow: hidden;
+    max-height: 150px;
+  }
+
+  body.page-favorites #page-top-banner .favorites-channel-header,
+  body.page-favorites #page-top-banner .favorites-channel-header .channel-header,
+  body.page-favorites #page-top-banner .favorites-channel-header .channel-cover-container {
+    height: 150px !important;
+    max-height: 150px !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body.page-favorites #page-top-banner .favorites-channel-header .channel-cover-photo {
+    height: 100% !important;
+    max-height: 150px !important;
+    width: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
   }
 }

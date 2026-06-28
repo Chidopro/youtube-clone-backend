@@ -7119,6 +7119,20 @@ def _umbrella_collaborator_label(user_row):
     return "Collaborator"
 
 
+def _fl_list_page_nickname(display_name, fallback=""):
+    """Prefer saved favorites page nickname over email-derived labels."""
+    import re
+
+    nick = (display_name or "").strip()
+    nick = re.sub(r"\s*\(owner\)\s*", " ", nick, flags=re.I)
+    nick = re.sub(r"\s*—?\s*collaborator\s*page\s*", " ", nick, flags=re.I)
+    nick = re.sub(r"\s*Favorites\s*$", "", nick, flags=re.I).strip()
+    if nick and "@" not in nick:
+        return nick[:80]
+    fb = (fallback or "").strip()
+    return fb[:80] if fb else ""
+
+
 def _umbrella_member_list_for_user(user_id, owner_id=None):
     """Return the collaborator favorites list row for an umbrella member."""
     if not supabase_admin or not user_id:
@@ -8456,7 +8470,7 @@ def _fl_ensure_primary_list(owner_id):
         u = supabase_admin.table("users").select("display_name,username").eq("id", owner_id).limit(1).execute()
         label = "Favorites"
         if u.data:
-            label = (u.data[0].get("display_name") or u.data[0].get("username") or "Favorites") + " (owner)"
+            label = "Main Favorites"
         ins = (
             supabase_admin.table("creator_favorite_lists")
             .insert(
@@ -8745,7 +8759,7 @@ def public_favorite_lists():
         try:
             lr = (
                 supabase_admin.table("creator_favorite_lists")
-                .select("id, slug, display_name, is_primary, sort_order, owner_user_id")
+                .select("id, slug, display_name, is_primary, sort_order, owner_user_id, storefront_owner_id")
                 .eq("storefront_owner_id", owner_id)
                 .execute()
             )
@@ -8753,7 +8767,7 @@ def public_favorite_lists():
         except Exception:
             lr = (
                 supabase_admin.table("creator_favorite_lists")
-                .select("id, slug, display_name, is_primary, sort_order, owner_user_id")
+                .select("id, slug, display_name, is_primary, sort_order, owner_user_id, storefront_owner_id")
                 .eq("owner_user_id", owner_id)
                 .execute()
             )
@@ -8762,9 +8776,27 @@ def public_favorite_lists():
         safe_lists = []
         for L in lists:
             dn = (L.get("display_name") or L.get("slug") or "Favorites").strip()
-            if "@" in dn:
+            is_collab = (
+                L.get("storefront_owner_id")
+                and L.get("owner_user_id")
+                and str(L.get("storefront_owner_id")) != str(L.get("owner_user_id"))
+            )
+            if L.get("is_primary") or L.get("slug") == "owner":
+                dn = "Main Favorites"
+            elif is_collab:
                 owner_u = _cf_user_row(L.get("owner_user_id"))
-                dn = _umbrella_collaborator_label(owner_u) + (" Favorites" if "Favorites" not in dn else "")
+                nick = _fl_list_page_nickname(
+                    L.get("display_name"),
+                    _umbrella_collaborator_label(owner_u),
+                ) or dn
+                dn = nick if "Favorites" in nick else f"{nick} Favorites"
+            elif "@" in dn:
+                owner_u = _cf_user_row(L.get("owner_user_id"))
+                nick = _fl_list_page_nickname(
+                    L.get("display_name"),
+                    _umbrella_collaborator_label(owner_u),
+                )
+                dn = nick + (" Favorites" if nick and "Favorites" not in nick else "")
             safe_lists.append({**L, "display_name": dn[:120]})
         return jsonify({"success": True, "lists": safe_lists}), 200
     except Exception as e:

@@ -10,7 +10,8 @@ const ChannelHeader = ({
   bio,
   canEdit = false,
   onEditCover,
-  onEditAvatar
+  onEditAvatar,
+  hideOverlay = false,
 }) => (
   <div className="channel-header">
     <div className="channel-cover-container">
@@ -18,22 +19,23 @@ const ChannelHeader = ({
       {canEdit && (
         <button className="corner-edit-icon cover-edit" onClick={onEditCover} title="Edit cover image">✏️</button>
       )}
-      <div className="channel-info-overlay">
-        <div className="channel-avatar-container">
-          <img className="channel-avatar" src={avatarUrl} alt="Channel Avatar" />
-          {canEdit && (
-            <button className="corner-edit-icon avatar-edit" onClick={onEditAvatar} title="Edit avatar">✏️</button>
-          )}
+      {!hideOverlay && (
+        <div className="channel-info-overlay">
+          <div className="channel-avatar-container">
+            <img className="channel-avatar" src={avatarUrl} alt="Channel Avatar" />
+            {canEdit && (
+              <button className="corner-edit-icon avatar-edit" onClick={onEditAvatar} title="Edit avatar">✏️</button>
+            )}
+          </div>
+          <div className="channel-details">
+            <h1 className="channel-name">{displayName}</h1>
+            <p className="channel-username">@{username}</p>
+            {bio && <p className="channel-bio">{bio}</p>}
+          </div>
         </div>
-        <div className="channel-details">
-          <h1 className="channel-name">{displayName}</h1>
-          <p className="channel-username">@{username}</p>
-          {bio && <p className="channel-bio">{bio}</p>}
-
-        </div>
-      </div>
+      )}
     </div>
   </div>
 );
 
-export default ChannelHeader; 
+export default ChannelHeader;
