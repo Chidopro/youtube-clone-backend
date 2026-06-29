@@ -71,6 +71,7 @@ const Dashboard = ({ sidebar }) => {
             } catch (_) {}
         }
         if (tab === 'personalization') setActiveTab('personalization');
+        if (tab === 'analytics') setActiveTab('analytics');
         if (tab === 'favorites') {
             setActiveTab('favorites');
             setShowPasteHint(true); // Show "press Ctrl+V" hint when sent from FrameSnag
@@ -89,7 +90,8 @@ const Dashboard = ({ sidebar }) => {
                 if (cancelled) return;
                 if (ok && data?.is_umbrella_only) {
                     setUmbrellaOnly(true);
-                    setActiveTab('favorites');
+                    const tabParam = new URLSearchParams(window.location.search).get('tab');
+                    setActiveTab(tabParam === 'analytics' ? 'analytics' : 'favorites');
                 } else {
                     setUmbrellaOnly(false);
                 }
@@ -161,7 +163,9 @@ const Dashboard = ({ sidebar }) => {
         avg_order_value: 0,
         products_sold: [],
         recent_sales: [],
-        daily_sales: []  // Last 7 days of sales data
+        daily_sales: [],
+        page_name: '',
+        storefront_owner_name: '',
     });
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const [isMasterAdmin, setIsMasterAdmin] = useState(false);
@@ -1098,7 +1102,7 @@ const Dashboard = ({ sidebar }) => {
         return () => { mounted = false; };
     }, [user?.email]);
 
-    // Fetch analytics data
+    // Fetch analytics data (owner: all sales; umbrella collaborator: their page only)
     const fetchAnalytics = async () => {
         if (!user || !user.id) {
             console.warn('Cannot fetch analytics: user not found');
@@ -1107,25 +1111,35 @@ const Dashboard = ({ sidebar }) => {
 
         setAnalyticsLoading(true);
         try {
-            const BACKEND_URL = 
-                (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
-                "https://screenmerch.fly.dev";
-
-            const response = await fetch(`${BACKEND_URL}/api/analytics?user_id=${user.id}`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Cache-Control': 'no-cache'
+            let data;
+            if (umbrellaOnly) {
+                const { ok, data: payload } = await favoriteListsJson('/api/favorite-lists/my-analytics');
+                if (!ok) {
+                    throw new Error(payload?.error || 'Could not load page analytics');
                 }
-            });
+                data = payload;
+            } else {
+                const BACKEND_URL =
+                    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
+                    'https://screenmerch.fly.dev';
 
-            if (!response.ok) {
-                throw new Error(`Analytics API error: ${response.status}`);
+                const response = await fetch(`${BACKEND_URL}/api/analytics?user_id=${user.id}`, {
+                    method: 'GET',
+                    headers: {
+                        Accept: 'application/json',
+                        'Cache-Control': 'no-cache',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Analytics API error: ${response.status}`);
+                }
+
+                data = await response.json();
             }
 
-            const data = await response.json();
             console.log('📊 Analytics data received:', data);
-            
+
             setAnalyticsData({
                 total_sales: data.total_sales || 0,
                 total_revenue: data.total_revenue || 0,
@@ -1136,15 +1150,22 @@ const Dashboard = ({ sidebar }) => {
                 products_sold: data.products_sold || [],
                 videos_with_sales: data.videos_with_sales || [],
                 recent_sales: data.recent_sales || [],
-                daily_sales: data.daily_sales || []  // Last 7 days of sales data
+                daily_sales: data.daily_sales || [],
+                page_name: data.page_name || '',
+                storefront_owner_name: data.storefront_owner_name || '',
             });
         } catch (error) {
             console.error('Error fetching analytics:', error);
-            // Don't show alert, just log - analytics might not be critical
         } finally {
             setAnalyticsLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (activeTab === 'analytics' && umbrellaOnly && user?.id) {
+            fetchAnalytics();
+        }
+    }, [activeTab, umbrellaOnly, user?.id]);
 
 
 
@@ -1272,6 +1293,17 @@ const Dashboard = ({ sidebar }) => {
                 >
                     ⭐ Favorites ({favorites.length})
                 </button>
+                {umbrellaOnly ? (
+                <button
+                    className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
+                    onClick={() => {
+                        setActiveTab('analytics');
+                        fetchAnalytics();
+                    }}
+                >
+                    📊 Analytics
+                </button>
+                ) : null}
                 {!umbrellaOnly && (
                 <>
                 <button 
@@ -1707,11 +1739,24 @@ const Dashboard = ({ sidebar }) => {
                         {/* Sales Analytics Section */}
                         <div className="sales-analytics-section">
                             <div className="section-header">
-                                <h2>📊 Sales Analytics</h2>
+                                <h2>
+                                    📊 Sales Analytics
+                                    {umbrellaOnly && analyticsData.page_name ? ` — ${analyticsData.page_name}` : ''}
+                                </h2>
+                                {umbrellaOnly ? (
+                                    <p className="umbrella-analytics-intro">
+                                        Sales from shoppers who checked out while viewing your{' '}
+                                        <strong>{analyticsData.page_name || 'favorites page'}</strong>
+                                        {analyticsData.storefront_owner_name ? (
+                                            <> on <strong>{analyticsData.storefront_owner_name}</strong></>
+                                        ) : null}
+                                        .
+                                    </p>
+                                ) : null}
                                 <div className="analytics-summary">
                                     <span className="total-sales">Total Sales: {analyticsLoading ? 'Loading...' : analyticsData.total_sales}</span>
                                     <span className="total-revenue">Total Revenue: ${analyticsLoading ? '0.00' : analyticsData.total_revenue.toFixed(2)}</span>
-                                    {isMasterAdmin && (
+                                    {isMasterAdmin && !umbrellaOnly && (
                                     <button 
                                         onClick={async () => {
                                             if (!window.confirm('⚠️ WARNING: This will permanently delete all your sales data. This action cannot be undone. Are you absolutely sure?')) {
@@ -1786,9 +1831,13 @@ const Dashboard = ({ sidebar }) => {
                                         <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.products_sold_count > 0 ? 'Products selling' : 'No data yet'}</div>
                                     </div>
                                     <div className="analytics-card">
-                                        <h4>🎬 Videos with Sales</h4>
-                                        <div className="analytics-amount">{analyticsLoading ? '...' : analyticsData.videos_with_sales_count}</div>
-                                        <div className="analytics-change">{analyticsLoading ? 'Loading...' : analyticsData.videos_with_sales_count > 0 ? 'Videos performing' : 'No data yet'}</div>
+                                        <h4>{umbrellaOnly ? '📄 Your page' : '🎬 Videos with Sales'}</h4>
+                                        <div className="analytics-amount">
+                                            {analyticsLoading ? '...' : (umbrellaOnly ? (analyticsData.page_name || '—') : analyticsData.videos_with_sales_count)}
+                                        </div>
+                                        <div className="analytics-change">
+                                            {analyticsLoading ? 'Loading...' : umbrellaOnly ? 'Attributed to your favorites page' : (analyticsData.videos_with_sales_count > 0 ? 'Videos performing' : 'No data yet')}
+                                        </div>
                                     </div>
                                     <div className="analytics-card">
                                         <h4>💰 Avg Order Value</h4>
@@ -1977,7 +2026,7 @@ const Dashboard = ({ sidebar }) => {
                                                             </div>
                                                         </div>
                                                         <div className="product-source">
-                                                            <small>From: {product.video_source}</small>
+                                                            <small>From: {umbrellaOnly ? (analyticsData.page_name || 'Your favorites page') : product.video_source}</small>
                                                         </div>
                                                     </div>
                                                 );

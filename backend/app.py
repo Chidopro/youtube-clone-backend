@@ -8930,6 +8930,256 @@ def favorite_lists_sales_summary():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+def _empty_analytics_payload():
+    return {
+        "total_sales": 0,
+        "total_revenue": 0,
+        "avg_order_value": 0,
+        "products_sold_count": 0,
+        "videos_with_sales_count": 0,
+        "sales_data": [0] * 30,
+        "products_sold": [],
+        "videos_with_sales": [],
+        "recent_sales": [],
+        "daily_sales": [],
+    }
+
+
+def _sale_record_to_order(sale):
+    from datetime import datetime
+
+    sale_created_at = sale.get("created_at")
+    if not sale_created_at or sale_created_at == "N/A":
+        sale_created_at = datetime.now().isoformat()
+    amount = sale.get("amount", 0) or 0
+    return {
+        "order_id": sale.get("id", "db-" + str(sale.get("id"))),
+        "cart": [
+            {
+                "product": sale.get("product_name", "Unknown Product"),
+                "variants": {"color": "N/A", "size": "N/A"},
+                "note": "",
+                "img": sale.get("image_url", ""),
+                "video_title": sale.get("video_title", "Unknown Video"),
+                "creator_name": sale.get("creator_name", "Unknown Creator"),
+                "price": amount,
+            }
+        ],
+        "status": "completed",
+        "created_at": sale_created_at,
+        "total_value": amount,
+        "user_id": sale.get("user_id"),
+        "channel_id": sale.get("channel_id"),
+        "creator_name": sale.get("creator_name", "Unknown Creator"),
+        "favorite_list_id": sale.get("favorite_list_id"),
+    }
+
+
+def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Video"):
+    from datetime import datetime, timedelta
+
+    total_sales = len(all_orders)
+    total_revenue = sum(order.get("total_value", 0) for order in all_orders)
+    avg_order_value = total_revenue / total_sales if total_sales > 0 else 0
+
+    products_sold = {}
+    videos_with_sales = {}
+    for order in all_orders:
+        if order.get("total_value", 0) <= 0:
+            continue
+        for item in order.get("cart", []):
+            product_name = item.get("product", "Unknown")
+            products_sold[product_name] = products_sold.get(product_name, 0) + 1
+            video_name = item.get("video_title", "Unknown Video")
+            creator_name = item.get("creator_name", "Unknown Creator")
+            video_key = f"{creator_name} - {video_name}"
+            if video_key not in videos_with_sales:
+                videos_with_sales[video_key] = {"sales_count": 0, "revenue": 0}
+            videos_with_sales[video_key]["sales_count"] += 1
+            videos_with_sales[video_key]["revenue"] += order.get("total_value", 0)
+
+    sales_data = [0] * 30
+    for order in all_orders:
+        try:
+            if order.get("created_at") and order.get("created_at") != "N/A":
+                order_date = datetime.fromisoformat(order.get("created_at").replace("Z", "+00:00"))
+                days_ago = (datetime.now() - order_date.replace(tzinfo=None)).days
+                if 0 <= days_ago < 30:
+                    sales_data[days_ago] += 1
+        except Exception:
+            pass
+
+    daily_sales = []
+    now = datetime.now()
+    for i in range(6, -1, -1):
+        date = now - timedelta(days=i)
+        date_str = date.strftime("%Y-%m-%d")
+        date_display = date.strftime("%a, %b %d")
+        day_sales_count = 0
+        day_revenue = 0
+        for order in all_orders:
+            try:
+                if order.get("created_at") and order.get("created_at") != "N/A":
+                    order_date = datetime.fromisoformat(order.get("created_at").replace("Z", "+00:00"))
+                    if order_date.strftime("%Y-%m-%d") == date_str:
+                        day_sales_count += len(order.get("cart", []))
+                        day_revenue += order.get("total_value", 0)
+            except Exception:
+                pass
+        daily_sales.append(
+            {
+                "date": date_str,
+                "date_display": date_display,
+                "sales_count": day_sales_count,
+                "revenue": round(day_revenue, 2),
+                "net_revenue": round(day_revenue * 0.7, 2),
+            }
+        )
+
+    products_sold_list = []
+    for product, quantity in products_sold.items():
+        product_revenue = 0
+        for order in all_orders:
+            for item in order.get("cart", []):
+                if item.get("product", "") == product:
+                    item_price = item.get("price", 0)
+                    if not item_price or item_price <= 0:
+                        cart_length = len(order.get("cart", []))
+                        if cart_length > 0:
+                            item_price = order.get("total_value", 0) / cart_length
+                    product_revenue += item_price
+        products_sold_list.append(
+            {
+                "product": product,
+                "quantity": quantity,
+                "revenue": round(product_revenue, 2),
+                "video_source": product_source_label,
+                "image": "",
+            }
+        )
+
+    def _recent_sort_key(order):
+        created = order.get("created_at")
+        if isinstance(created, (int, float)):
+            return float(created)
+        if isinstance(created, str) and created != "N/A":
+            return created
+        return "1970-01-01"
+
+    return {
+        "total_sales": total_sales,
+        "total_revenue": round(total_revenue, 2),
+        "avg_order_value": round(avg_order_value, 2),
+        "products_sold_count": len(products_sold),
+        "videos_with_sales_count": len(videos_with_sales),
+        "sales_data": sales_data,
+        "daily_sales": daily_sales,
+        "products_sold": products_sold_list,
+        "videos_with_sales": [
+            {
+                "video_name": video_name,
+                "sales_count": video_data["sales_count"],
+                "revenue": round(video_data["revenue"], 2),
+            }
+            for video_name, video_data in videos_with_sales.items()
+        ],
+        "recent_sales": [
+            {
+                "product": item.get("product", "Unknown Product"),
+                "amount": round(order.get("total_value", 0), 2),
+                "net_amount": round(order.get("total_value", 0) * 0.7, 2),
+                "created_at": order.get("created_at", "N/A"),
+                "order_id": order.get("order_id"),
+            }
+            for order in sorted(all_orders, key=_recent_sort_key, reverse=True)[:10]
+            for item in (order.get("cart") or [])
+            if isinstance(item, dict)
+        ],
+    }
+
+
+def _umbrella_page_orders_for_analytics(list_id, owner_id):
+    """Sales attributed to one umbrella collaborator favorites page."""
+    all_orders = []
+    list_id_str = str(list_id)
+    owner_id_str = str(owner_id)
+
+    for order_id, order_data in order_store.items():
+        if str(order_data.get("favorite_list_id") or "") != list_id_str:
+            continue
+        od = dict(order_data)
+        od["order_id"] = order_id
+        od["status"] = od.get("status") or "pending"
+        od["created_at"] = od.get("created_at") or od.get("timestamp", "N/A")
+        if not od.get("total_value"):
+            cart = od.get("cart") or []
+            od["total_value"] = sum((item.get("price") or 0) for item in cart) or 0
+        all_orders.append(od)
+
+    client_to_use = supabase_admin if supabase_admin else supabase
+    if not client_to_use:
+        return all_orders
+
+    try:
+        query = client_to_use.table("sales").select(
+            "id,product_name,amount,image_url,user_id,channel_id,creator_name,video_title,created_at,favorite_list_id"
+        )
+        query = query.eq("user_id", owner_id_str)
+        try:
+            sales_result = query.eq("favorite_list_id", list_id).execute()
+            sales_rows = sales_result.data or []
+        except Exception:
+            sales_result = query.execute()
+            sales_rows = [
+                s
+                for s in (sales_result.data or [])
+                if str(s.get("favorite_list_id") or "") == list_id_str
+            ]
+    except Exception as db_error:
+        logger.error("umbrella analytics sales query failed: %s", db_error)
+        sales_rows = []
+
+    for sale in sales_rows:
+        all_orders.append(_sale_record_to_order(sale))
+
+    return all_orders
+
+
+@app.route("/api/favorite-lists/my-analytics", methods=["GET", "OPTIONS"])
+def favorite_lists_my_analytics():
+    """Analytics for an umbrella collaborator's favorites page only."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _authenticated_users_id()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        if not _is_umbrella_collaborator_only(user_id):
+            return jsonify({"success": False, "error": "Only umbrella collaborators can view page analytics"}), 403
+        membership = _cf_approved_umbrella_membership(user_id)
+        owner_id = (membership or {}).get("channel_owner_id")
+        member_list = _umbrella_member_list_for_user(user_id, owner_id)
+        if not owner_id or not member_list:
+            payload = _empty_analytics_payload()
+            payload["scope"] = "umbrella_page"
+            return jsonify(payload), 200
+        page_label = (member_list.get("display_name") or "Your favorites page").strip() or "Your favorites page"
+        all_orders = _umbrella_page_orders_for_analytics(member_list["id"], owner_id)
+        payload = _analytics_payload_from_orders(all_orders, product_source_label=page_label)
+        owner = _cf_user_row(owner_id)
+        owner_label = (owner or {}).get("display_name") or (owner or {}).get("username") or "your storefront owner"
+        payload["scope"] = "umbrella_page"
+        payload["page_name"] = page_label
+        payload["favorite_list_id"] = member_list.get("id")
+        payload["storefront_owner_name"] = owner_label
+        return jsonify(payload), 200
+    except Exception as e:
+        logger.exception("favorite_lists_my_analytics: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/creator-settings", methods=["GET", "OPTIONS"])
 def get_creator_settings():
     """
