@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
 # Import utilities
-from utils.helpers import _data_from_request, _allow_origin
+from utils.helpers import _data_from_request, _allow_origin, build_platform_revenue_attribution_maps, platform_revenue_attribution_for_earning
 from utils.security import admin_required
 
 logger = logging.getLogger(__name__)
@@ -1976,25 +1976,136 @@ def reset_sales():
             return _allow_origin(response), 400
         
         client = _get_supabase_client()
-        deleted_sales = client.table('sales').delete().eq('user_id', user_id).execute()
-        
-        try:
-            client.table('creator_earnings').delete().eq('user_id', user_id).execute()
-        except Exception:
-            pass
-        
-        logger.info(f"✅ [MASTER ADMIN] Reset sales for user {user_id} by {user_email}")
-        
+        from utils.helpers import reset_creator_sales_records
+
+        reset_result = reset_creator_sales_records(client, user_id, _get_order_store(), logger)
+        deleted_count = reset_result["deleted_sales_count"]
+        purged_store = reset_result["purged_order_store_count"]
+
+        logger.info(
+            "✅ [MASTER ADMIN] Reset sales for user %s by %s. Deleted %s sales; purged %s in-memory orders.",
+            user_id,
+            user_email,
+            deleted_count,
+            purged_store,
+        )
+
         response = jsonify({
             "success": True,
-            "message": f"Sales reset successfully. Deleted {len(deleted_sales.data) if deleted_sales.data else 0} sales records.",
-            "deleted_count": len(deleted_sales.data) if deleted_sales.data else 0
+            "message": f"Sales reset successfully. Deleted {deleted_count} sales records.",
+            "deleted_count": deleted_count,
+            "deleted_earnings_count": reset_result.get("deleted_earnings_count", 0),
+            "purged_order_store_count": purged_store,
         })
         return _allow_origin(response), 200
     except Exception as e:
         logger.error(f"❌ [ADMIN] Error resetting sales: {str(e)}")
         response = jsonify({"success": False, "error": str(e)})
         return _allow_origin(response), 500
+
+
+@admin_bp.route("/api/admin/reset-platform-revenue-data", methods=["POST", "OPTIONS"])
+@admin_required()
+def reset_platform_revenue_data():
+    """Clear ALL sales + creator_earnings used by Platform Revenue and creator analytics (master admin)."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+
+    try:
+        user_email = request.headers.get("X-User-Email") or request.args.get("user_email")
+        if not _is_master_admin(user_email):
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            return _allow_origin(response), 403
+
+        if not request.get_json(silent=True) or not request.get_json().get("confirm"):
+            response = jsonify({
+                "success": False,
+                "error": 'Request body must include {"confirm": true}',
+            })
+            return _allow_origin(response), 400
+
+        client = _get_supabase_client()
+        from utils.helpers import reset_all_platform_sales_records
+
+        reset_result = reset_all_platform_sales_records(client, _get_order_store(), logger)
+        logger.info(
+            "✅ [MASTER ADMIN] Cleared all platform revenue test data by %s: %s",
+            user_email,
+            reset_result,
+        )
+
+        response = jsonify({
+            "success": True,
+            "message": (
+                "Platform revenue and sales analytics cleared. "
+                f"Removed {reset_result['deleted_sales_count']} sales, "
+                f"{reset_result['deleted_earnings_count']} earnings rows."
+            ),
+            **reset_result,
+        })
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.error("❌ [ADMIN] Error resetting platform revenue data: %s", e)
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
+def _earning_financials(earning):
+    from utils.payout import sale_revenue_breakdown
+
+    return sale_revenue_breakdown(
+        earning.get("product_name"),
+        earning.get("sale_amount"),
+        platform_fee=earning.get("platform_fee"),
+        creator_share=earning.get("creator_share"),
+    )
+
+
+def _revenue_creator_attribution_label(earning, attribution_maps):
+    """Bee (or other umbrella page) vs Storefront for Revenue by Creator rows."""
+    orders_by_oid, sales_attribution, lists_map, users_map = attribution_maps
+    attr = platform_revenue_attribution_for_earning(
+        earning, orders_by_oid, sales_attribution, lists_map, users_map
+    )
+    if attr.get("is_umbrella_attribution"):
+        return (
+            attr.get("attributed_collaborator_name")
+            or attr.get("attributed_page_name")
+            or "Umbrella"
+        )
+    return "Storefront"
+
+
+def _platform_revenue_transaction_row(earning, attribution_maps):
+    """Serialize one creator_earnings row for admin Recent Transactions."""
+    orders_by_oid, sales_attribution, lists_map, users_map = attribution_maps
+    fin = _earning_financials(earning)
+    attr = platform_revenue_attribution_for_earning(
+        earning, orders_by_oid, sales_attribution, lists_map, users_map
+    )
+    user = earning.get("users") or {}
+    creator_label = _revenue_creator_attribution_label(earning, attribution_maps)
+    return {
+        "id": earning.get("id"),
+        "order_id": earning.get("order_id"),
+        "creator_id": earning.get("user_id"),
+        "creator_name": attr["creator_name"],
+        "creator_label": creator_label,
+        "creator_display": creator_label,
+        "attributed_page_name": attr.get("attributed_page_name"),
+        "attributed_collaborator_name": attr.get("attributed_collaborator_name"),
+        "is_umbrella_attribution": attr.get("is_umbrella_attribution", False),
+        "creator_email": user.get("email", "Unknown"),
+        "creator_subdomain": user.get("subdomain", ""),
+        "product_name": earning.get("product_name"),
+        "sale_amount": round(float(earning.get("sale_amount", 0)), 2),
+        "printful_cost": fin["printful_cost"],
+        "platform_fee": round(float(earning.get("platform_fee", 0)), 2),
+        "creator_share": round(float(earning.get("creator_share", 0)), 2),
+        "creator_net_payout": fin["creator_net_payout"],
+        "created_at": earning.get("created_at"),
+        "status": earning.get("status"),
+    }
 
 
 @admin_bp.route("/api/admin/platform-revenue", methods=["GET", "OPTIONS"])
@@ -2075,45 +2186,58 @@ def platform_revenue():
         
         result = query.order('created_at', desc=True).execute()
         earnings = result.data if result.data else []
+        attribution_maps = build_platform_revenue_attribution_maps(client, earnings)
         
         # Calculate totals
         total_platform_revenue = sum(float(e.get('platform_fee', 0)) for e in earnings)
         total_gross_revenue = sum(float(e.get('sale_amount', 0)) for e in earnings)
         total_creator_payouts = sum(float(e.get('creator_share', 0)) for e in earnings)
+        total_printful_cost = sum(_earning_financials(e)['printful_cost'] for e in earnings)
+        total_creator_net_payout = sum(_earning_financials(e)['creator_net_payout'] for e in earnings)
         total_transactions = len(earnings)
         
-        # Group by creator
+        # Group by storefront owner + attribution (Bee vs Storefront)
         revenue_by_creator = {}
         for earning in earnings:
             user = earning.get('users', {})
             creator_id_key = earning.get('user_id')
-            creator_name = user.get('display_name') or user.get('username') or user.get('email') or 'Unknown Creator'
             creator_email = user.get('email', 'Unknown')
             creator_subdomain = user.get('subdomain', '')
-            
-            if creator_id_key not in revenue_by_creator:
-                revenue_by_creator[creator_id_key] = {
+            creator_label = _revenue_creator_attribution_label(earning, attribution_maps)
+            group_key = f"{creator_id_key}::{creator_label}"
+
+            if group_key not in revenue_by_creator:
+                revenue_by_creator[group_key] = {
                     'creator_id': creator_id_key,
-                    'creator_name': creator_name,
+                    'creator_label': creator_label,
+                    'creator_name': creator_label,
+                    'storefront_name': user.get('display_name') or user.get('username') or creator_email,
                     'creator_email': creator_email,
                     'creator_subdomain': creator_subdomain,
                     'platform_revenue': 0,
                     'gross_revenue': 0,
+                    'printful_cost': 0,
                     'creator_payouts': 0,
+                    'creator_net_payout': 0,
                     'transaction_count': 0,
                     'transactions': []
                 }
-            
-            revenue_by_creator[creator_id_key]['platform_revenue'] += float(earning.get('platform_fee', 0))
-            revenue_by_creator[creator_id_key]['gross_revenue'] += float(earning.get('sale_amount', 0))
-            revenue_by_creator[creator_id_key]['creator_payouts'] += float(earning.get('creator_share', 0))
-            revenue_by_creator[creator_id_key]['transaction_count'] += 1
-            revenue_by_creator[creator_id_key]['transactions'].append({
+
+            fin = _earning_financials(earning)
+            revenue_by_creator[group_key]['platform_revenue'] += float(earning.get('platform_fee', 0))
+            revenue_by_creator[group_key]['gross_revenue'] += float(earning.get('sale_amount', 0))
+            revenue_by_creator[group_key]['printful_cost'] += fin['printful_cost']
+            revenue_by_creator[group_key]['creator_payouts'] += float(earning.get('creator_share', 0))
+            revenue_by_creator[group_key]['creator_net_payout'] += fin['creator_net_payout']
+            revenue_by_creator[group_key]['transaction_count'] += 1
+            revenue_by_creator[group_key]['transactions'].append({
                 'order_id': earning.get('order_id'),
                 'product_name': earning.get('product_name'),
                 'sale_amount': float(earning.get('sale_amount', 0)),
+                'printful_cost': fin['printful_cost'],
                 'platform_fee': float(earning.get('platform_fee', 0)),
                 'creator_share': float(earning.get('creator_share', 0)),
+                'creator_net_payout': fin['creator_net_payout'],
                 'created_at': earning.get('created_at'),
                 'status': earning.get('status')
             })
@@ -2161,11 +2285,16 @@ def platform_revenue():
                     'product_name': product_name,
                     'platform_revenue': 0,
                     'gross_revenue': 0,
+                    'printful_cost': 0,
+                    'creator_net_payout': 0,
                     'transaction_count': 0
                 }
-            
+
+            fin = _earning_financials(earning)
             revenue_by_product[product_name]['platform_revenue'] += float(earning.get('platform_fee', 0))
             revenue_by_product[product_name]['gross_revenue'] += float(earning.get('sale_amount', 0))
+            revenue_by_product[product_name]['printful_cost'] += fin['printful_cost']
+            revenue_by_product[product_name]['creator_net_payout'] += fin['creator_net_payout']
             revenue_by_product[product_name]['transaction_count'] += 1
         
         revenue_by_product_list = sorted(
@@ -2179,7 +2308,9 @@ def platform_revenue():
             "summary": {
                 "total_platform_revenue": round(total_platform_revenue, 2),
                 "total_gross_revenue": round(total_gross_revenue, 2),
+                "total_printful_cost": round(total_printful_cost, 2),
                 "total_creator_payouts": round(total_creator_payouts, 2),
+                "total_creator_net_payout": round(total_creator_net_payout, 2),
                 "total_transactions": total_transactions,
                 "commission_rate": 0.30
             },
@@ -2187,22 +2318,7 @@ def platform_revenue():
             "revenue_by_date": revenue_by_date_list,
             "revenue_by_product": revenue_by_product_list,
             "all_transactions": [
-                {
-                    'id': earning.get('id'),
-                    'order_id': earning.get('order_id'),
-                    'creator_id': earning.get('user_id'),
-                    'creator_name': (earning.get('users', {}).get('display_name') or 
-                                    earning.get('users', {}).get('username') or 
-                                    earning.get('users', {}).get('email') or 'Unknown'),
-                    'creator_email': earning.get('users', {}).get('email', 'Unknown'),
-                    'creator_subdomain': earning.get('users', {}).get('subdomain', ''),
-                    'product_name': earning.get('product_name'),
-                    'sale_amount': round(float(earning.get('sale_amount', 0)), 2),
-                    'platform_fee': round(float(earning.get('platform_fee', 0)), 2),
-                    'creator_share': round(float(earning.get('creator_share', 0)), 2),
-                    'created_at': earning.get('created_at'),
-                    'status': earning.get('status')
-                }
+                _platform_revenue_transaction_row(earning, attribution_maps)
                 for earning in earnings[:100]
             ]
         }

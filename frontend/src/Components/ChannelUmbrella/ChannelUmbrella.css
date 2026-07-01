@@ -219,6 +219,142 @@
 }
 
 .channel-umbrella-sales-table td:nth-child(3),
-.channel-umbrella-sales-table td:nth-child(4) {
+.channel-umbrella-sales-table td:nth-child(4),
+.channel-umbrella-earnings-table td:nth-child(n+3):nth-child(-n+6) {
   text-align: right;
+}
+
+.channel-umbrella-earnings-table {
+  max-width: 100%;
+}
+
+.umbrella-row-collaborator td:first-child {
+  font-weight: 600;
+}
+
+.umbrella-payout-cell {
+  min-width: 160px;
+}
+
+.umbrella-balance-owed {
+  display: block;
+  font-weight: 700;
+  color: #856404;
+}
+
+.umbrella-balance-paid {
+  display: block;
+  color: #198754;
+  font-weight: 600;
+}
+
+.hint-inline {
+  color: #6c757d;
+  font-size: 0.85rem;
+}
+
+.btn-record-payout,
+.btn-payout-history {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.btn-record-payout {
+  background: #667eea;
+  color: #fff;
+}
+
+.btn-payout-history {
+  background: transparent;
+  color: #667eea;
+  padding-left: 0;
+}
+
+.umbrella-last-paid {
+  font-size: 0.78rem;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+.umbrella-payout-history {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 0.78rem;
+  color: #495057;
+}
+
+.umbrella-owed-banner {
+  font-size: 1rem;
+}
+
+.umbrella-payout-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 16px;
+}
+
+.umbrella-payout-modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px 22px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.umbrella-payout-modal h3 {
+  margin: 0 0 8px;
+}
+
+.umbrella-payout-modal label {
+  display: block;
+  margin: 12px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.umbrella-payout-modal label input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-weight: 400;
+}
+
+.umbrella-payout-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.umbrella-payout-modal-actions button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.umbrella-payout-modal-actions button[type="submit"] {
+  background: #667eea;
+  color: #fff;
+}
+
+.umbrella-payout-modal-actions button[type="button"] {
+  background: #e9ecef;
+  color: #212529;
 }

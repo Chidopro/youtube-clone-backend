@@ -20,6 +20,27 @@ const pendingAccountLabel = (row) => {
   return 'Unknown invitee';
 };
 
+const formatPaidDate = (iso) => {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch (_) {
+    return String(iso);
+  }
+};
+
+const todayInputDate = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 const ChannelUmbrella = () => {
   const [inviteInput, setInviteInput] = useState('');
   const [msg, setMsg] = useState({ type: '', text: '' });
@@ -34,6 +55,35 @@ const ChannelUmbrella = () => {
   const [salesByList, setSalesByList] = useState([]);
   const [salesLoading, setSalesLoading] = useState(true);
   const [salesError, setSalesError] = useState('');
+  const [collaboratorOwedTotal, setCollaboratorOwedTotal] = useState(0);
+  const [payoutNote, setPayoutNote] = useState('');
+  const [payoutModal, setPayoutModal] = useState(null);
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutDate, setPayoutDate] = useState(todayInputDate());
+  const [payoutNoteInput, setPayoutNoteInput] = useState('');
+  const [recordingPayout, setRecordingPayout] = useState(false);
+  const [expandedHistory, setExpandedHistory] = useState({});
+
+  const loadSalesSummary = useCallback(async () => {
+    setSalesLoading(true);
+    setSalesError('');
+    try {
+      const { ok, data } = await favoriteListsJson('/api/favorite-lists/sales-summary');
+      if (!ok) {
+        setSalesError(data?.error || 'Could not load attributed earnings');
+        setSalesByList([]);
+        setCollaboratorOwedTotal(0);
+      } else {
+        setSalesByList(data?.by_list || []);
+        setCollaboratorOwedTotal(Number(data?.collaborator_owed_total || 0));
+        setPayoutNote(data?.payout_note || '');
+      }
+    } catch (e) {
+      setSalesError(e.message || 'Network error');
+    } finally {
+      setSalesLoading(false);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -85,29 +135,58 @@ const ChannelUmbrella = () => {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setSalesLoading(true);
-      setSalesError('');
-      try {
-        const { ok, data } = await favoriteListsJson('/api/favorite-lists/sales-summary');
-        if (cancelled) return;
-        if (!ok) {
-          setSalesError(data?.error || 'Could not load sales by favorite page');
-          setSalesByList([]);
-        } else {
-          setSalesByList(data?.by_list || []);
-        }
-      } catch (e) {
-        if (!cancelled) setSalesError(e.message || 'Network error');
-      } finally {
-        if (!cancelled) setSalesLoading(false);
+    loadSalesSummary();
+  }, [loadSalesSummary]);
+
+  const openPayoutModal = (row) => {
+    const balance = Number(row.balance_owed ?? 0);
+    setPayoutModal(row);
+    setPayoutAmount(balance > 0 ? balance.toFixed(2) : '');
+    setPayoutDate(todayInputDate());
+    setPayoutNoteInput('');
+  };
+
+  const closePayoutModal = () => {
+    if (recordingPayout) return;
+    setPayoutModal(null);
+  };
+
+  const submitPayout = async (e) => {
+    e.preventDefault();
+    if (!payoutModal?.favorite_list_id) return;
+    const amount = Number(payoutAmount);
+    if (!amount || amount <= 0) {
+      setMsg({ type: 'error', text: 'Enter a payment amount greater than zero.' });
+      return;
+    }
+    setRecordingPayout(true);
+    setMsg({ type: '', text: '' });
+    try {
+      const { ok, data } = await favoriteListsJson('/api/favorite-lists/record-collaborator-payout', {
+        method: 'POST',
+        body: JSON.stringify({
+          favorite_list_id: payoutModal.favorite_list_id,
+          amount,
+          paid_at: payoutDate,
+          note: payoutNoteInput.trim() || undefined,
+        }),
+      });
+      if (!ok) {
+        setMsg({ type: 'error', text: data?.error || 'Could not record payment' });
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      setMsg({
+        type: 'ok',
+        text: `Recorded $${amount.toFixed(2)} paid to ${payoutModal.display_name || 'collaborator'} on ${formatPaidDate(payoutDate)}.`,
+      });
+      setPayoutModal(null);
+      await loadSalesSummary();
+    } catch (err) {
+      setMsg({ type: 'error', text: err.message || 'Network error' });
+    } finally {
+      setRecordingPayout(false);
+    }
+  };
 
   const copyInviteUrl = async (url) => {
     if (!url) return;
@@ -315,39 +394,172 @@ const ChannelUmbrella = () => {
 
       <section className="channel-umbrella-section" aria-labelledby="umbrella-sales-heading">
         <h2 id="umbrella-sales-heading" className="channel-umbrella-section-title">
-          Sales by favorite page
+          Attributed earnings summary
         </h2>
         <p className="hint">
-          Orders are attributed to the public favorite page the buyer had open when they checked out (owner page first, then collaborator pages below).
+          Sales attributed to each public favorites page. Pay umbrella collaborators 100% of net revenue
+          (gross minus ScreenMerch&apos;s 30% fee) off-platform, then record payments here.
         </p>
+        {payoutNote ? <p className="hint umbrella-payout-note">{payoutNote}</p> : null}
+        {collaboratorOwedTotal > 0 ? (
+          <p className="channel-umbrella-msg ok umbrella-owed-banner">
+            Unpaid balance to collaborators: <strong>${collaboratorOwedTotal.toFixed(2)}</strong>
+          </p>
+        ) : null}
         {salesLoading ? <p>Loading…</p> : null}
         {salesError ? <p className="channel-umbrella-msg error">{salesError}</p> : null}
         {!salesLoading && !salesError && salesByList.length === 0 ? (
-          <p className="hint">No orders yet, or order data has no list attribution.</p>
+          <p className="hint">No sales yet.</p>
         ) : null}
         {!salesLoading && !salesError && salesByList.length > 0 ? (
-          <table className="channel-umbrella-sales-table">
+          <table className="channel-umbrella-sales-table channel-umbrella-earnings-table">
             <thead>
               <tr>
                 <th>Page</th>
-                <th>Slug</th>
-                <th>Orders</th>
-                <th>Total</th>
+                <th>Items</th>
+                <th>Gross</th>
+                <th>Platform fee</th>
+                <th>Net</th>
+                <th>Pay collaborator</th>
+                <th>Balance owed</th>
               </tr>
             </thead>
             <tbody>
-              {salesByList.map((row) => (
-                <tr key={String(row.favorite_list_id ?? row.slug ?? row.display_name)}>
-                  <td>{row.display_name || '—'}</td>
-                  <td>{row.slug || '—'}</td>
-                  <td>{row.order_count}</td>
-                  <td>${Number(row.total_amount || 0).toFixed(2)}</td>
-                </tr>
-              ))}
+              {salesByList.map((row) => {
+                const balance = Number(row.balance_owed ?? 0);
+                const lastPaid = row.last_payout;
+                const history = row.recent_payouts || [];
+                const listKey = String(row.favorite_list_id ?? row.display_name);
+                const isCollab = row.is_collaborator_page;
+                return (
+                  <tr
+                    key={listKey}
+                    className={isCollab ? 'umbrella-row-collaborator' : ''}
+                  >
+                    <td>{row.display_name || '—'}</td>
+                    <td>{row.order_count}</td>
+                    <td>${Number(row.gross_amount ?? row.total_amount ?? 0).toFixed(2)}</td>
+                    <td>${Number(row.platform_fee_amount ?? 0).toFixed(2)}</td>
+                    <td>${Number(row.net_amount ?? 0).toFixed(2)}</td>
+                    <td>
+                      {isCollab ? (
+                        <strong>${Number(row.pay_collaborator_amount ?? row.net_amount ?? 0).toFixed(2)}</strong>
+                      ) : (
+                        <span className="hint-inline">You keep</span>
+                      )}
+                    </td>
+                    <td className="umbrella-payout-cell">
+                      {isCollab ? (
+                        <>
+                          {balance > 0 ? (
+                            <span className="umbrella-balance-owed">${balance.toFixed(2)}</span>
+                          ) : (
+                            <span className="umbrella-balance-paid">Paid up ✓</span>
+                          )}
+                          {balance > 0 ? (
+                            <button
+                              type="button"
+                              className="btn-record-payout"
+                              onClick={() => openPayoutModal(row)}
+                            >
+                              Record payment
+                            </button>
+                          ) : null}
+                          {lastPaid ? (
+                            <div className="umbrella-last-paid">
+                              Last paid ${Number(lastPaid.amount || 0).toFixed(2)} on {formatPaidDate(lastPaid.paid_at)}
+                              {lastPaid.note ? ` · ${lastPaid.note}` : ''}
+                            </div>
+                          ) : null}
+                          {history.length > 0 ? (
+                            <button
+                              type="button"
+                              className="btn-payout-history"
+                              onClick={() => setExpandedHistory((prev) => ({
+                                ...prev,
+                                [listKey]: !prev[listKey],
+                              }))}
+                            >
+                              {expandedHistory[listKey] ? 'Hide' : 'Show'} payment history
+                            </button>
+                          ) : null}
+                          {expandedHistory[listKey] && history.length > 0 ? (
+                            <ul className="umbrella-payout-history">
+                              {history.map((p) => (
+                                <li key={p.id || `${p.paid_at}-${p.amount}`}>
+                                  ${Number(p.amount || 0).toFixed(2)} on {formatPaidDate(p.paid_at)}
+                                  {p.note ? ` — ${p.note}` : ''}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span className="hint-inline">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         ) : null}
       </section>
+
+      {payoutModal ? (
+        <div className="umbrella-payout-modal-backdrop" onClick={closePayoutModal} role="presentation">
+          <div
+            className="umbrella-payout-modal"
+            role="dialog"
+            aria-labelledby="record-payout-title"
+            onClick={(ev) => ev.stopPropagation()}
+          >
+            <h3 id="record-payout-title">Record payment</h3>
+            <p className="hint">
+              Confirm you paid <strong>{payoutModal.display_name || 'collaborator'}</strong> off-platform.
+            </p>
+            <form onSubmit={submitPayout}>
+              <label>
+                Amount
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={payoutAmount}
+                  onChange={(ev) => setPayoutAmount(ev.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                Date paid
+                <input
+                  type="date"
+                  value={payoutDate}
+                  onChange={(ev) => setPayoutDate(ev.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                Note (optional)
+                <input
+                  type="text"
+                  placeholder="PayPal, Zelle, cash…"
+                  value={payoutNoteInput}
+                  onChange={(ev) => setPayoutNoteInput(ev.target.value)}
+                />
+              </label>
+              <div className="umbrella-payout-modal-actions">
+                <button type="button" onClick={closePayoutModal} disabled={recordingPayout}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={recordingPayout}>
+                  {recordingPayout ? 'Saving…' : 'Confirm payment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

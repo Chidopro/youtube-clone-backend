@@ -904,6 +904,144 @@
     border-color: #28a745;
 }
 
+.summary-card.highlight-collab {
+    background: linear-gradient(135deg, #fff3cd, #ffeeba);
+    border-color: #ffc107;
+}
+
+.collaborator-payout-panel {
+    margin-top: 18px;
+    padding: 14px 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.collaborator-payout-panel h5 {
+    margin: 0 0 6px;
+    font-size: 1rem;
+}
+
+.collaborator-payout-list {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+}
+
+.collaborator-payout-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.collaborator-payout-list li:last-child {
+    border-bottom: none;
+}
+
+.collab-payout-row-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 200px;
+}
+
+.collab-payout-row-main small {
+    color: #6c757d;
+}
+
+.btn-record-collab-payout {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #667eea;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.paid-up-label {
+    color: #198754;
+    font-weight: 600;
+}
+
+.umbrella-analytics-payout-note,
+.umbrella-analytics-last-payout {
+    margin: 12px 0 0;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.umbrella-payout-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+    padding: 16px;
+}
+
+.umbrella-payout-modal {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px 22px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.umbrella-payout-modal h3 {
+    margin: 0 0 8px;
+}
+
+.umbrella-payout-modal label {
+    display: block;
+    margin: 12px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.umbrella-payout-modal label input {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 8px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-weight: 400;
+}
+
+.umbrella-payout-modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+
+.umbrella-payout-modal-actions button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.umbrella-payout-modal-actions button[type="submit"] {
+    background: #667eea;
+    color: #fff;
+}
+
+.umbrella-payout-modal-actions button[type="button"] {
+    background: #e9ecef;
+    color: #212529;
+}
+
 .summary-label {
     font-size: 0.85rem;
     color: #666;

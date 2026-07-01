@@ -1073,6 +1073,31 @@ const Admin = () => {
     }
   };
 
+  const handleClearPlatformRevenueData = async () => {
+    if (!window.confirm(
+      '⚠️ This permanently deletes ALL sales and creator earnings used for Platform Revenue, creator analytics, and Umbrella “Sales by favorite page”. Operational fulfillment orders are not removed. Continue?'
+    )) {
+      return;
+    }
+    if (!window.confirm('Final confirmation: clear all test sales and revenue data platform-wide?')) {
+      return;
+    }
+    try {
+      const result = await AdminService.resetPlatformRevenueData();
+      if (result.success) {
+        alert(
+          `✅ Cleared test data. Sales: ${result.deleted_sales_count || 0}, earnings: ${result.deleted_earnings_count || 0}.`
+        );
+        await loadPlatformRevenue();
+      } else {
+        alert(`❌ Failed to clear data: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error clearing platform revenue data:', error);
+      alert(`❌ Error: ${error.message}`);
+    }
+  };
+
   const handleUserAction = async (userId, action) => {
     console.log('🎯 handleUserAction called with:', { userId, action });
     
@@ -2755,7 +2780,7 @@ const Admin = () => {
           {activeTab === 'platform-revenue' && isMasterAdmin && (
             <div className="platform-revenue">
               <h3>💵 Platform Revenue Analytics</h3>
-              <p>Track ScreenMerch earnings from 30% commission on creator sales</p>
+              <p>Track ScreenMerch platform fee ($6/sale markup share) and creator net payouts after Printful cost</p>
 
               {/* Filters */}
               <div className="revenue-filters" style={{ marginTop: '20px', marginBottom: '20px', display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -2820,6 +2845,21 @@ const Admin = () => {
                 >
                   Clear Filters
                 </button>
+                <button
+                  type="button"
+                  onClick={handleClearPlatformRevenueData}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                  title="Delete all sales + earnings rows that power Platform Revenue, analytics, and Umbrella sales-by-page (test reset before go-live)"
+                >
+                  🗑️ Clear All Test Sales Data
+                </button>
               </div>
 
               {platformRevenueLoading ? (
@@ -2835,7 +2875,7 @@ const Admin = () => {
                       <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
                         ${platformRevenue.summary.total_platform_revenue.toFixed(2)}
                       </p>
-                      <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#999' }}>30% Commission</p>
+                      <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#999' }}>$6 markup share</p>
                     </div>
                     <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
                       <h4 style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Total Gross Revenue</h4>
@@ -2845,11 +2885,18 @@ const Admin = () => {
                       <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#999' }}>All Sales</p>
                     </div>
                     <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
-                      <h4 style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Creator Payouts</h4>
-                      <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#17a2b8' }}>
-                        ${platformRevenue.summary.total_creator_payouts.toFixed(2)}
+                      <h4 style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Printful Cost</h4>
+                      <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#6f42c1' }}>
+                        ${(platformRevenue.summary.total_printful_cost || 0).toFixed(2)}
                       </p>
-                      <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#999' }}>70% to Creators</p>
+                      <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#999' }}>Fulfillment overhead</p>
+                    </div>
+                    <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Creator Net Payout</h4>
+                      <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#17a2b8' }}>
+                        ${(platformRevenue.summary.total_creator_net_payout ?? platformRevenue.summary.total_creator_payouts).toFixed(2)}
+                      </p>
+                      <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#999' }}>$6/sale after product cost</p>
                     </div>
                     <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
                       <h4 style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Total Transactions</h4>
@@ -2872,14 +2919,15 @@ const Admin = () => {
                             <th>Email</th>
                             <th>Platform Revenue</th>
                             <th>Gross Revenue</th>
-                            <th>Creator Payout</th>
+                            <th>Printful Cost</th>
+                            <th>Creator Net Payout</th>
                             <th>Transactions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {platformRevenue.revenue_by_creator.map((creator, index) => (
-                            <tr key={creator.creator_id || index}>
-                              <td>{creator.creator_name}</td>
+                            <tr key={`${creator.creator_id || index}-${creator.creator_label || creator.creator_name}`}>
+                              <td>{creator.creator_label || creator.creator_name}</td>
                               <td>
                                 {creator.creator_subdomain ? (
                                   <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#666' }}>
@@ -2894,7 +2942,8 @@ const Admin = () => {
                                 ${creator.platform_revenue.toFixed(2)}
                               </td>
                               <td>${creator.gross_revenue.toFixed(2)}</td>
-                              <td>${creator.creator_payouts.toFixed(2)}</td>
+                              <td>${(creator.printful_cost || 0).toFixed(2)}</td>
+                              <td>${(creator.creator_net_payout ?? creator.creator_payouts).toFixed(2)}</td>
                               <td>{creator.transaction_count}</td>
                             </tr>
                           ))}
@@ -3010,6 +3059,8 @@ const Admin = () => {
                             <th>Product</th>
                             <th>Platform Revenue</th>
                             <th>Gross Revenue</th>
+                            <th>Printful Cost</th>
+                            <th>Creator Net Payout</th>
                             <th>Transactions</th>
                           </tr>
                         </thead>
@@ -3021,6 +3072,8 @@ const Admin = () => {
                                 ${product.platform_revenue.toFixed(2)}
                               </td>
                               <td>${product.gross_revenue.toFixed(2)}</td>
+                              <td>${(product.printful_cost || 0).toFixed(2)}</td>
+                              <td>${(product.creator_net_payout || 0).toFixed(2)}</td>
                               <td>{product.transaction_count}</td>
                             </tr>
                           ))}
@@ -3044,8 +3097,9 @@ const Admin = () => {
                               <th>Subdomain</th>
                               <th>Product</th>
                               <th>Sale Amount</th>
-                              <th>Platform Fee (30%)</th>
-                              <th>Creator Share (70%)</th>
+                              <th>Printful Cost</th>
+                              <th>Platform Fee</th>
+                              <th>Creator Net Payout</th>
                               <th>Status</th>
                             </tr>
                           </thead>
@@ -3053,7 +3107,14 @@ const Admin = () => {
                             {platformRevenue.all_transactions.map((transaction, index) => (
                               <tr key={transaction.id || index}>
                                 <td>{new Date(transaction.created_at).toLocaleDateString()}</td>
-                                <td>{transaction.creator_name}</td>
+                                <td>
+                                  <div>{transaction.creator_label || transaction.creator_display || transaction.creator_name}</div>
+                                  {transaction.is_umbrella_attribution && transaction.attributed_page_name ? (
+                                    <small style={{ color: '#6c757d', display: 'block', marginTop: '2px' }}>
+                                      Page: {transaction.attributed_page_name}
+                                    </small>
+                                  ) : null}
+                                </td>
                                 <td>
                                   {transaction.creator_subdomain ? (
                                     <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#666' }}>
@@ -3065,10 +3126,11 @@ const Admin = () => {
                                 </td>
                                 <td>{transaction.product_name}</td>
                                 <td>${transaction.sale_amount.toFixed(2)}</td>
+                                <td>${(transaction.printful_cost || 0).toFixed(2)}</td>
                                 <td style={{ color: '#28a745', fontWeight: 'bold' }}>
                                   ${transaction.platform_fee.toFixed(2)}
                                 </td>
-                                <td>${transaction.creator_share.toFixed(2)}</td>
+                                <td>${(transaction.creator_net_payout ?? transaction.creator_share).toFixed(2)}</td>
                                 <td>
                                   <span 
                                     style={{

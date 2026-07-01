@@ -8853,6 +8853,62 @@ def public_favorites_by_list():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+def _is_collaborator_favorite_list(meta, storefront_owner_id=None):
+    """True when a favorites list belongs to an umbrella collaborator on a storefront."""
+    if not meta:
+        return False
+    owner_uid = str(meta.get("owner_user_id") or "")
+    sf_uid = str(meta.get("storefront_owner_id") or storefront_owner_id or "")
+    return bool(owner_uid and sf_uid and owner_uid != sf_uid)
+
+
+def _umbrella_payouts_by_list(storefront_owner_id, list_ids=None):
+    """Load off-platform collaborator payouts grouped by favorite_list_id."""
+    out = {}
+    if not supabase_admin or not storefront_owner_id:
+        return out
+    try:
+        q = (
+            supabase_admin.table("umbrella_collaborator_payouts")
+            .select("id, favorite_list_id, collaborator_user_id, amount, paid_at, note, created_at")
+            .eq("storefront_owner_id", str(storefront_owner_id))
+            .order("paid_at", desc=True)
+        )
+        if list_ids:
+            q = q.in_("favorite_list_id", [str(x) for x in list_ids])
+        r = q.execute()
+        for row in r.data or []:
+            lid = str(row.get("favorite_list_id") or "")
+            if not lid:
+                continue
+            out.setdefault(lid, []).append(row)
+    except Exception as err:
+        err_s = str(err).lower()
+        if "umbrella_collaborator_payouts" not in err_s and "does not exist" not in err_s:
+            logger.warning("umbrella payouts lookup failed: %s", err)
+    return out
+
+
+def _umbrella_payout_balance_fields(lifetime_net, payouts):
+    """Compute unpaid balance and recent payout history for one collaborator page."""
+    paid_total = 0.0
+    for p in payouts or []:
+        try:
+            paid_total += float(p.get("amount") or 0)
+        except (TypeError, ValueError):
+            pass
+    paid_total = round(paid_total, 2)
+    lifetime_net = round(float(lifetime_net or 0), 2)
+    balance_owed = round(max(0.0, lifetime_net - paid_total), 2)
+    last_payout = payouts[0] if payouts else None
+    return {
+        "paid_total": paid_total,
+        "balance_owed": balance_owed,
+        "last_payout": last_payout,
+        "recent_payouts": (payouts or [])[:5],
+    }
+
+
 @app.route("/api/favorite-lists/sales-summary", methods=["GET", "OPTIONS"])
 def favorite_lists_sales_summary():
     if request.method == "OPTIONS":
@@ -8866,35 +8922,81 @@ def favorite_lists_sales_summary():
         me = _cf_user_row(user_id)
         if not me or me.get("role") != "creator":
             return jsonify({"success": False, "error": "Only creators can view sales summary"}), 403
-        ords = (
-            supabase_admin.table("orders")
-            .select("order_id, favorite_list_id, total_amount, status, created_at")
-            .eq("creator_user_id", user_id)
-            .execute()
-        )
-        rows = ords.data or []
         by_list = {}
-        for o in rows:
-            lid = o.get("favorite_list_id")
+        # Use sales (same source as Platform Revenue + admin test reset), not orders.
+        try:
+            sales_result = (
+                supabase_admin.table("sales")
+                .select("id, favorite_list_id, amount")
+                .eq("user_id", user_id)
+                .execute()
+            )
+            rows = sales_result.data or []
+        except Exception as sales_err:
+            err_s = str(sales_err).lower()
+            if "favorite_list_id" in err_s and "column" in err_s:
+                sales_result = (
+                    supabase_admin.table("sales")
+                    .select("id, amount")
+                    .eq("user_id", user_id)
+                    .execute()
+                )
+                rows = [{**s, "favorite_list_id": None} for s in (sales_result.data or [])]
+            else:
+                raise
+        for s in rows:
+            lid = s.get("favorite_list_id")
             key = str(lid) if lid else "__none__"
             if key not in by_list:
                 by_list[key] = {"favorite_list_id": lid, "order_count": 0, "total_amount": 0.0}
             by_list[key]["order_count"] += 1
             try:
-                by_list[key]["total_amount"] += float(o.get("total_amount") or 0)
+                by_list[key]["total_amount"] += float(s.get("amount") or 0)
             except (TypeError, ValueError):
                 pass
+        uid = str(user_id)
         lists_map = {}
         try:
-            lr = supabase_admin.table("creator_favorite_lists").select("id, display_name, slug").eq("storefront_owner_id", user_id).execute()
+            lr = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("id, display_name, slug, owner_user_id, storefront_owner_id")
+                .eq("storefront_owner_id", user_id)
+                .execute()
+            )
+            for L in lr.data or []:
+                lists_map[str(L["id"])] = L
         except Exception:
-            lr = supabase_admin.table("creator_favorite_lists").select("id, display_name, slug").eq("owner_user_id", user_id).execute()
-        for L in lr.data or []:
-            lists_map[str(L["id"])] = L
+            lr = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("id, display_name, slug, owner_user_id, storefront_owner_id")
+                .eq("owner_user_id", user_id)
+                .execute()
+            )
+            for L in lr.data or []:
+                lists_map[str(L["id"])] = L
+
+        for list_id, meta in lists_map.items():
+            if _is_collaborator_favorite_list(meta, uid) and list_id not in by_list:
+                by_list[list_id] = {
+                    "favorite_list_id": meta.get("id"),
+                    "order_count": 0,
+                    "total_amount": 0.0,
+                }
+
+        collab_list_ids = [
+            lid for lid, meta in lists_map.items() if _is_collaborator_favorite_list(meta, uid)
+        ]
+        payouts_by_list = _umbrella_payouts_by_list(user_id, collab_list_ids)
+
         out = []
+        collaborator_owed_total = 0.0
         for key, agg in by_list.items():
             lid = agg["favorite_list_id"]
             meta = lists_map.get(str(lid)) if lid else None
+            gross = round(float(agg.get("total_amount") or 0), 2)
+            platform_fee = round(gross * 0.3, 2)
+            net = round(gross * 0.7, 2)
+            is_collab = _is_collaborator_favorite_list(meta, uid) if meta else False
             if lid and meta:
                 bucket = "named"
                 display_name = (meta.get("display_name") or meta.get("slug") or "Favorites page").strip() or "Favorites page"
@@ -8907,6 +9009,12 @@ def favorite_lists_sales_summary():
                 bucket = "none"
                 display_name = "Not attributed (no favorites page in session)"
                 slug_out = None
+
+            payout_bal = _umbrella_payout_balance_fields(net if is_collab else 0, [])
+            if is_collab and lid:
+                payout_bal = _umbrella_payout_balance_fields(net, payouts_by_list.get(str(lid), []))
+                collaborator_owed_total += payout_bal.get("balance_owed", 0)
+
             out.append(
                 {
                     "favorite_list_id": lid,
@@ -8914,7 +9022,16 @@ def favorite_lists_sales_summary():
                     "display_name": display_name,
                     "slug": slug_out,
                     "order_count": agg["order_count"],
-                    "total_amount": round(agg["total_amount"], 2),
+                    "total_amount": gross,
+                    "gross_amount": gross,
+                    "platform_fee_amount": platform_fee,
+                    "net_amount": net,
+                    "is_collaborator_page": is_collab,
+                    "pay_collaborator_amount": net if is_collab else None,
+                    "paid_total": payout_bal.get("paid_total", 0),
+                    "balance_owed": payout_bal.get("balance_owed", 0) if is_collab else 0,
+                    "last_payout": payout_bal.get("last_payout"),
+                    "recent_payouts": payout_bal.get("recent_payouts") or [],
                 }
             )
 
@@ -8924,9 +9041,101 @@ def favorite_lists_sales_summary():
             return (bucket_order, (row.get("display_name") or "").lower())
 
         out.sort(key=_sales_row_sort_key)
-        return jsonify({"success": True, "by_list": out}), 200
+        return jsonify(
+            {
+                "success": True,
+                "by_list": out,
+                "collaborator_owed_total": round(collaborator_owed_total, 2),
+                "payout_note": (
+                    "ScreenMerch pays you at $50+ pending earnings. "
+                    "Pay umbrella collaborators off-platform and record payments here."
+                ),
+            }
+        ), 200
     except Exception as e:
         logger.exception("favorite_lists_sales_summary: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/favorite-lists/record-collaborator-payout", methods=["POST", "OPTIONS"])
+def favorite_lists_record_collaborator_payout():
+    """Storefront owner records an off-platform payment to an umbrella collaborator."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can record collaborator payouts"}), 403
+
+        body = request.get_json(silent=True) or {}
+        favorite_list_id = body.get("favorite_list_id")
+        if not favorite_list_id:
+            return jsonify({"success": False, "error": "favorite_list_id is required"}), 400
+        try:
+            amount = round(float(body.get("amount") or 0), 2)
+        except (TypeError, ValueError):
+            amount = 0
+        if amount <= 0:
+            return jsonify({"success": False, "error": "amount must be greater than zero"}), 400
+
+        paid_at_raw = (body.get("paid_at") or "").strip()
+        note = (body.get("note") or "").strip() or None
+        from datetime import datetime, timezone
+
+        if paid_at_raw:
+            try:
+                if "T" in paid_at_raw:
+                    paid_at_dt = datetime.fromisoformat(paid_at_raw.replace("Z", "+00:00"))
+                else:
+                    paid_at_dt = datetime.fromisoformat(f"{paid_at_raw}T12:00:00").replace(tzinfo=timezone.utc)
+            except ValueError:
+                return jsonify({"success": False, "error": "paid_at must be a valid date"}), 400
+        else:
+            paid_at_dt = datetime.now(timezone.utc)
+
+        lr = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("id, display_name, slug, owner_user_id, storefront_owner_id")
+            .eq("id", favorite_list_id)
+            .limit(1)
+            .execute()
+        )
+        meta = (lr.data or [None])[0]
+        if not meta or str(meta.get("storefront_owner_id") or "") != str(user_id):
+            return jsonify({"success": False, "error": "Favorites page not found on your storefront"}), 404
+        if not _is_collaborator_favorite_list(meta, user_id):
+            return jsonify({"success": False, "error": "Only umbrella collaborator pages accept payout records"}), 400
+
+        row = {
+            "storefront_owner_id": str(user_id),
+            "favorite_list_id": str(favorite_list_id),
+            "collaborator_user_id": meta.get("owner_user_id"),
+            "amount": amount,
+            "paid_at": paid_at_dt.isoformat(),
+            "note": note,
+        }
+        try:
+            ins = supabase_admin.table("umbrella_collaborator_payouts").insert(row).execute()
+        except Exception as ins_err:
+            err_s = str(ins_err).lower()
+            if "umbrella_collaborator_payouts" in err_s or "does not exist" in err_s:
+                return jsonify(
+                    {
+                        "success": False,
+                        "error": "Payout ledger table missing. Run backend/sql/umbrella_collaborator_payouts.sql in Supabase.",
+                    }
+                ), 503
+            raise
+
+        payout_row = (ins.data or [row])[0]
+        return jsonify({"success": True, "payout": payout_row}), 200
+    except Exception as e:
+        logger.exception("favorite_lists_record_collaborator_payout: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -9170,10 +9379,24 @@ def favorite_lists_my_analytics():
         payload = _analytics_payload_from_orders(all_orders, product_source_label=page_label)
         owner = _cf_user_row(owner_id)
         owner_label = (owner or {}).get("display_name") or (owner or {}).get("username") or "your storefront owner"
+        net_owed = round(float(payload.get("total_revenue") or 0) * 0.7, 2)
+        list_payouts = _umbrella_payouts_by_list(owner_id, [member_list["id"]]).get(
+            str(member_list["id"]), []
+        )
+        payout_bal = _umbrella_payout_balance_fields(net_owed, list_payouts)
         payload["scope"] = "umbrella_page"
         payload["page_name"] = page_label
         payload["favorite_list_id"] = member_list.get("id")
         payload["storefront_owner_name"] = owner_label
+        payload["collaborator_net_owed"] = payout_bal.get("balance_owed", net_owed)
+        payload["lifetime_net"] = net_owed
+        payload["paid_total"] = payout_bal.get("paid_total", 0)
+        payload["last_payout"] = payout_bal.get("last_payout")
+        payload["recent_payouts"] = payout_bal.get("recent_payouts") or []
+        payload["payout_note"] = (
+            f"Payouts are handled off-platform by {owner_label}. "
+            "This balance is what they owe you from sales on your favorites page (after ScreenMerch's 30% fee)."
+        )
         return jsonify(payload), 200
     except Exception as e:
         logger.exception("favorite_lists_my_analytics: %s", e)
@@ -10491,22 +10714,26 @@ def reset_sales():
         
         # Use admin client to bypass RLS
         client = supabase_admin if supabase_admin else supabase
-        
-        # Delete all sales for this user
-        deleted_sales = client.table('sales').delete().eq('user_id', user_id).execute()
-        
-        # Also delete creator earnings for this user
-        try:
-            client.table('creator_earnings').delete().eq('user_id', user_id).execute()
-        except Exception as e:
-            logger.warning(f"Could not delete creator_earnings: {str(e)}")
-        
-        logger.info(f"✅ [MASTER ADMIN] Reset sales for user {user_id} by {user_email}. Deleted {len(deleted_sales.data) if deleted_sales.data else 0} sales records.")
-        
+        from utils.helpers import reset_creator_sales_records
+
+        reset_result = reset_creator_sales_records(client, user_id, order_store, logger)
+        deleted_count = reset_result["deleted_sales_count"]
+        purged_store = reset_result["purged_order_store_count"]
+
+        logger.info(
+            "✅ [MASTER ADMIN] Reset sales for user %s by %s. Deleted %s sales; purged %s in-memory orders.",
+            user_id,
+            user_email,
+            deleted_count,
+            purged_store,
+        )
+
         response = jsonify({
             "success": True,
-            "message": f"Sales reset successfully. Deleted {len(deleted_sales.data) if deleted_sales.data else 0} sales records.",
-            "deleted_count": len(deleted_sales.data) if deleted_sales.data else 0
+            "message": f"Sales reset successfully. Deleted {deleted_count} sales records.",
+            "deleted_count": deleted_count,
+            "deleted_earnings_count": reset_result.get("deleted_earnings_count", 0),
+            "purged_order_store_count": purged_store,
         })
         origin = request.headers.get('Origin', '*')
         return response
@@ -10516,6 +10743,70 @@ def reset_sales():
         response.status_code = 500
         origin = request.headers.get('Origin', '*')
         return response
+
+@app.route("/api/admin/reset-platform-revenue-data", methods=["POST", "OPTIONS"])
+@admin_required
+def reset_platform_revenue_data():
+    """Clear ALL sales + creator_earnings for Platform Revenue / analytics (master admin)."""
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        origin = request.headers.get('Origin', '*')
+        return response
+
+    try:
+        user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+        if not is_master_admin(user_email):
+            response = jsonify({"success": False, "error": "Master admin access required"})
+            response.status_code = 403
+            origin = request.headers.get('Origin', '*')
+            return response
+
+        data = request.get_json() or {}
+        if not data.get("confirm"):
+            response = jsonify({
+                "success": False,
+                "error": 'Request body must include {"confirm": true}',
+            })
+            response.status_code = 400
+            origin = request.headers.get('Origin', '*')
+            return response
+
+        client = supabase_admin if supabase_admin else supabase
+        from utils.helpers import reset_all_platform_sales_records
+
+        reset_result = reset_all_platform_sales_records(client, order_store, logger)
+        logger.info(
+            "✅ [MASTER ADMIN] Cleared all platform revenue test data by %s: %s",
+            user_email,
+            reset_result,
+        )
+
+        response = jsonify({
+            "success": True,
+            "message": (
+                "Platform revenue and sales analytics cleared. "
+                f"Removed {reset_result['deleted_sales_count']} sales, "
+                f"{reset_result['deleted_earnings_count']} earnings rows."
+            ),
+            **reset_result,
+        })
+        origin = request.headers.get('Origin', '*')
+        return response
+    except Exception as e:
+        logger.error(f"❌ [ADMIN] Error resetting platform revenue data: {str(e)}")
+        response = jsonify({"success": False, "error": str(e)})
+        response.status_code = 500
+        origin = request.headers.get('Origin', '*')
+        return response
+
+def _earning_financials(earning):
+    from utils.payout import sale_revenue_breakdown
+    return sale_revenue_breakdown(
+        earning.get("product_name"),
+        earning.get("sale_amount"),
+        platform_fee=earning.get("platform_fee"),
+        creator_share=earning.get("creator_share"),
+    )
 
 @app.route("/api/admin/platform-revenue", methods=["GET", "OPTIONS"])
 @admin_required
@@ -10609,45 +10900,60 @@ def platform_revenue():
         # Get all earnings records
         result = query.order('created_at', desc=True).execute()
         earnings = result.data if result.data else []
+        from utils.helpers import build_platform_revenue_attribution_maps
+        from routes.admin import _platform_revenue_transaction_row, _revenue_creator_attribution_label
+        attribution_maps = build_platform_revenue_attribution_maps(client, earnings)
         
         # Calculate totals
         total_platform_revenue = sum(float(e.get('platform_fee', 0)) for e in earnings)
         total_gross_revenue = sum(float(e.get('sale_amount', 0)) for e in earnings)
         total_creator_payouts = sum(float(e.get('creator_share', 0)) for e in earnings)
+        total_printful_cost = sum(_earning_financials(e)['printful_cost'] for e in earnings)
+        total_creator_net_payout = sum(_earning_financials(e)['creator_net_payout'] for e in earnings)
         total_transactions = len(earnings)
         
-        # Group by creator
+        # Group by storefront owner + attribution (Bee vs Storefront)
         revenue_by_creator = {}
         for earning in earnings:
             user = earning.get('users', {})
             creator_id_key = earning.get('user_id')
-            creator_name = user.get('display_name') or user.get('username') or user.get('email') or 'Unknown Creator'
             creator_email = user.get('email', 'Unknown')
             creator_subdomain = user.get('subdomain', '')
+            creator_label = _revenue_creator_attribution_label(earning, attribution_maps)
+            group_key = f"{creator_id_key}::{creator_label}"
             
-            if creator_id_key not in revenue_by_creator:
-                revenue_by_creator[creator_id_key] = {
+            if group_key not in revenue_by_creator:
+                revenue_by_creator[group_key] = {
                     'creator_id': creator_id_key,
-                    'creator_name': creator_name,
+                    'creator_label': creator_label,
+                    'creator_name': creator_label,
+                    'storefront_name': user.get('display_name') or user.get('username') or creator_email,
                     'creator_email': creator_email,
                     'creator_subdomain': creator_subdomain,
                     'platform_revenue': 0,
                     'gross_revenue': 0,
+                    'printful_cost': 0,
                     'creator_payouts': 0,
+                    'creator_net_payout': 0,
                     'transaction_count': 0,
                     'transactions': []
                 }
             
-            revenue_by_creator[creator_id_key]['platform_revenue'] += float(earning.get('platform_fee', 0))
-            revenue_by_creator[creator_id_key]['gross_revenue'] += float(earning.get('sale_amount', 0))
-            revenue_by_creator[creator_id_key]['creator_payouts'] += float(earning.get('creator_share', 0))
-            revenue_by_creator[creator_id_key]['transaction_count'] += 1
-            revenue_by_creator[creator_id_key]['transactions'].append({
+            fin = _earning_financials(earning)
+            revenue_by_creator[group_key]['platform_revenue'] += float(earning.get('platform_fee', 0))
+            revenue_by_creator[group_key]['gross_revenue'] += float(earning.get('sale_amount', 0))
+            revenue_by_creator[group_key]['printful_cost'] += fin['printful_cost']
+            revenue_by_creator[group_key]['creator_payouts'] += float(earning.get('creator_share', 0))
+            revenue_by_creator[group_key]['creator_net_payout'] += fin['creator_net_payout']
+            revenue_by_creator[group_key]['transaction_count'] += 1
+            revenue_by_creator[group_key]['transactions'].append({
                 'order_id': earning.get('order_id'),
                 'product_name': earning.get('product_name'),
                 'sale_amount': float(earning.get('sale_amount', 0)),
+                'printful_cost': fin['printful_cost'],
                 'platform_fee': float(earning.get('platform_fee', 0)),
                 'creator_share': float(earning.get('creator_share', 0)),
+                'creator_net_payout': fin['creator_net_payout'],
                 'created_at': earning.get('created_at'),
                 'status': earning.get('status')
             })
@@ -10699,11 +11005,16 @@ def platform_revenue():
                     'product_name': product_name,
                     'platform_revenue': 0,
                     'gross_revenue': 0,
+                    'printful_cost': 0,
+                    'creator_net_payout': 0,
                     'transaction_count': 0
                 }
-            
+
+            fin = _earning_financials(earning)
             revenue_by_product[product_name]['platform_revenue'] += float(earning.get('platform_fee', 0))
             revenue_by_product[product_name]['gross_revenue'] += float(earning.get('sale_amount', 0))
+            revenue_by_product[product_name]['printful_cost'] += fin['printful_cost']
+            revenue_by_product[product_name]['creator_net_payout'] += fin['creator_net_payout']
             revenue_by_product[product_name]['transaction_count'] += 1
         
         # Convert to sorted list
@@ -10718,7 +11029,9 @@ def platform_revenue():
             "summary": {
                 "total_platform_revenue": round(total_platform_revenue, 2),
                 "total_gross_revenue": round(total_gross_revenue, 2),
+                "total_printful_cost": round(total_printful_cost, 2),
                 "total_creator_payouts": round(total_creator_payouts, 2),
+                "total_creator_net_payout": round(total_creator_net_payout, 2),
                 "total_transactions": total_transactions,
                 "commission_rate": 0.30  # 30%
             },
@@ -10726,22 +11039,7 @@ def platform_revenue():
             "revenue_by_date": revenue_by_date_list,
             "revenue_by_product": revenue_by_product_list,
             "all_transactions": [
-                {
-                    'id': earning.get('id'),
-                    'order_id': earning.get('order_id'),
-                    'creator_id': earning.get('user_id'),
-                    'creator_name': (earning.get('users', {}).get('display_name') or 
-                                    earning.get('users', {}).get('username') or 
-                                    earning.get('users', {}).get('email') or 'Unknown'),
-                    'creator_email': earning.get('users', {}).get('email', 'Unknown'),
-                    'creator_subdomain': earning.get('users', {}).get('subdomain', ''),
-                    'product_name': earning.get('product_name'),
-                    'sale_amount': round(float(earning.get('sale_amount', 0)), 2),
-                    'platform_fee': round(float(earning.get('platform_fee', 0)), 2),
-                    'creator_share': round(float(earning.get('creator_share', 0)), 2),
-                    'created_at': earning.get('created_at'),
-                    'status': earning.get('status')
-                }
+                _platform_revenue_transaction_row(earning, attribution_maps)
                 for earning in earnings[:100]  # Limit to 100 most recent for performance
             ]
         }

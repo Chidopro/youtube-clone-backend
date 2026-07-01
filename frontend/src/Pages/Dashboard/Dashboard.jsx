@@ -17,6 +17,27 @@ function umbrellaDefaultPageName(email) {
     return local ? `${local.charAt(0).toUpperCase()}${local.slice(1)} Favorites` : 'My Favorites';
 }
 
+function formatPayoutDate(iso) {
+    if (!iso) return '—';
+    try {
+        return new Date(iso).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
+    } catch (_) {
+        return String(iso);
+    }
+}
+
+function todayPayoutInputDate() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 function cleanFavoritePageNickname(raw) {
     return (raw || '')
         .replace(/\s*\(owner\)\s*/gi, ' ')
@@ -166,8 +187,19 @@ const Dashboard = ({ sidebar }) => {
         daily_sales: [],
         page_name: '',
         storefront_owner_name: '',
+        collaborator_net_owed: 0,
+        paid_total: 0,
+        last_payout: null,
+        payout_note: '',
     });
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
+    const [collaboratorPayoutRows, setCollaboratorPayoutRows] = useState([]);
+    const [collaboratorOwedTotal, setCollaboratorOwedTotal] = useState(0);
+    const [analyticsPayoutModal, setAnalyticsPayoutModal] = useState(null);
+    const [analyticsPayoutAmount, setAnalyticsPayoutAmount] = useState('');
+    const [analyticsPayoutDate, setAnalyticsPayoutDate] = useState('');
+    const [analyticsPayoutNote, setAnalyticsPayoutNote] = useState('');
+    const [recordingAnalyticsPayout, setRecordingAnalyticsPayout] = useState(false);
     const [isMasterAdmin, setIsMasterAdmin] = useState(false);
     const [editingVideo, setEditingVideo] = useState(null);
     const [editVideoForm, setEditVideoForm] = useState({
@@ -1153,11 +1185,73 @@ const Dashboard = ({ sidebar }) => {
                 daily_sales: data.daily_sales || [],
                 page_name: data.page_name || '',
                 storefront_owner_name: data.storefront_owner_name || '',
+                collaborator_net_owed: data.collaborator_net_owed || 0,
+                paid_total: data.paid_total || 0,
+                last_payout: data.last_payout || null,
+                payout_note: data.payout_note || '',
             });
+
+            if (!umbrellaOnly) {
+                try {
+                    const { ok: sumOk, data: sumData } = await favoriteListsJson('/api/favorite-lists/sales-summary');
+                    if (sumOk) {
+                        const collabRows = (sumData?.by_list || []).filter((r) => r.is_collaborator_page);
+                        setCollaboratorPayoutRows(collabRows);
+                        setCollaboratorOwedTotal(Number(sumData?.collaborator_owed_total || 0));
+                    }
+                } catch (_) {
+                    /* non-fatal */
+                }
+            } else {
+                setCollaboratorPayoutRows([]);
+                setCollaboratorOwedTotal(0);
+            }
         } catch (error) {
             console.error('Error fetching analytics:', error);
         } finally {
             setAnalyticsLoading(false);
+        }
+    };
+
+    const openAnalyticsPayoutModal = (row) => {
+        const balance = Number(row.balance_owed ?? 0);
+        setAnalyticsPayoutModal(row);
+        setAnalyticsPayoutAmount(balance > 0 ? balance.toFixed(2) : '');
+        setAnalyticsPayoutDate(todayPayoutInputDate());
+        setAnalyticsPayoutNote('');
+    };
+
+    const closeAnalyticsPayoutModal = () => {
+        if (recordingAnalyticsPayout) return;
+        setAnalyticsPayoutModal(null);
+    };
+
+    const submitAnalyticsPayout = async (e) => {
+        e.preventDefault();
+        if (!analyticsPayoutModal?.favorite_list_id) return;
+        const amount = Number(analyticsPayoutAmount);
+        if (!amount || amount <= 0) return;
+        setRecordingAnalyticsPayout(true);
+        try {
+            const { ok, data } = await favoriteListsJson('/api/favorite-lists/record-collaborator-payout', {
+                method: 'POST',
+                body: JSON.stringify({
+                    favorite_list_id: analyticsPayoutModal.favorite_list_id,
+                    amount,
+                    paid_at: analyticsPayoutDate,
+                    note: analyticsPayoutNote.trim() || undefined,
+                }),
+            });
+            if (!ok) {
+                alert(data?.error || 'Could not record payment');
+                return;
+            }
+            setAnalyticsPayoutModal(null);
+            await fetchAnalytics();
+        } catch (err) {
+            alert(err.message || 'Network error');
+        } finally {
+            setRecordingAnalyticsPayout(false);
         }
     };
 
@@ -1735,6 +1829,7 @@ const Dashboard = ({ sidebar }) => {
 
                 {/* Analytics Tab */}
                 {activeTab === 'analytics' && (
+                    <>
                     <div className="analytics-tab">
                         {/* Sales Analytics Section */}
                         <div className="sales-analytics-section">
@@ -1938,7 +2033,76 @@ const Dashboard = ({ sidebar }) => {
                                                 <div className="summary-value">${(analyticsData.total_revenue * 0.3).toFixed(2)}</div>
                                                 <div className="summary-subtitle">Platform fee</div>
                                             </div>
+                                            {!umbrellaOnly && collaboratorPayoutRows.length > 0 ? (
+                                                <div className="summary-card highlight-collab">
+                                                    <div className="summary-label">Owed to collaborators</div>
+                                                    <div className="summary-value">${collaboratorOwedTotal.toFixed(2)}</div>
+                                                    <div className="summary-subtitle">Pay off-platform</div>
+                                                </div>
+                                            ) : null}
+                                            {umbrellaOnly && analyticsData.collaborator_net_owed > 0 ? (
+                                                <div className="summary-card highlight-collab">
+                                                    <div className="summary-label">Unpaid balance</div>
+                                                    <div className="summary-value">${Number(analyticsData.collaborator_net_owed).toFixed(2)}</div>
+                                                    <div className="summary-subtitle">From {analyticsData.storefront_owner_name || 'store owner'}</div>
+                                                </div>
+                                            ) : null}
                                         </div>
+                                        {!umbrellaOnly && collaboratorPayoutRows.length > 0 ? (
+                                            <div className="collaborator-payout-panel">
+                                                <h5>Collaborator payouts</h5>
+                                                <p className="hint">
+                                                    Pay umbrella collaborators 100% of net (after ScreenMerch&apos;s 30% fee), then confirm payment with date.
+                                                </p>
+                                                <ul className="collaborator-payout-list">
+                                                    {collaboratorPayoutRows.map((row) => {
+                                                        const balance = Number(row.balance_owed ?? 0);
+                                                        return (
+                                                            <li key={String(row.favorite_list_id)}>
+                                                                <div className="collab-payout-row-main">
+                                                                    <strong>{row.display_name}</strong>
+                                                                    <span>
+                                                                        Net ${Number(row.net_amount || 0).toFixed(2)}
+                                                                        {' · '}
+                                                                        {balance > 0 ? (
+                                                                            <>Owed <strong>${balance.toFixed(2)}</strong></>
+                                                                        ) : (
+                                                                            <span className="paid-up-label">Paid up ✓</span>
+                                                                        )}
+                                                                    </span>
+                                                                    {row.last_payout ? (
+                                                                        <small>
+                                                                            Last paid ${Number(row.last_payout.amount || 0).toFixed(2)} on {formatPayoutDate(row.last_payout.paid_at)}
+                                                                            {row.last_payout.note ? ` · ${row.last_payout.note}` : ''}
+                                                                        </small>
+                                                                    ) : null}
+                                                                </div>
+                                                                {balance > 0 ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn-record-collab-payout"
+                                                                        onClick={() => openAnalyticsPayoutModal(row)}
+                                                                    >
+                                                                        Record payment
+                                                                    </button>
+                                                                ) : null}
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            </div>
+                                        ) : null}
+                                        {umbrellaOnly && analyticsData.payout_note ? (
+                                            <p className="umbrella-analytics-payout-note">{analyticsData.payout_note}</p>
+                                        ) : null}
+                                        {umbrellaOnly && analyticsData.last_payout ? (
+                                            <p className="umbrella-analytics-last-payout">
+                                                Last payment from {analyticsData.storefront_owner_name || 'store owner'}:{' '}
+                                                ${Number(analyticsData.last_payout.amount || 0).toFixed(2)} on{' '}
+                                                {formatPayoutDate(analyticsData.last_payout.paid_at)}
+                                                {analyticsData.last_payout.note ? ` (${analyticsData.last_payout.note})` : ''}
+                                            </p>
+                                        ) : null}
                                     </div>
                                     
                                     {/* Recent Sales Activity */}
@@ -2047,6 +2211,62 @@ const Dashboard = ({ sidebar }) => {
                             </div>
                         </div>
                     </div>
+
+                    {analyticsPayoutModal ? (
+                        <div className="umbrella-payout-modal-backdrop" onClick={closeAnalyticsPayoutModal} role="presentation">
+                            <div
+                                className="umbrella-payout-modal"
+                                role="dialog"
+                                aria-labelledby="analytics-record-payout-title"
+                                onClick={(ev) => ev.stopPropagation()}
+                            >
+                                <h3 id="analytics-record-payout-title">Record collaborator payment</h3>
+                                <p className="hint">
+                                    Confirm you paid <strong>{analyticsPayoutModal.display_name || 'collaborator'}</strong> off-platform.
+                                </p>
+                                <form onSubmit={submitAnalyticsPayout}>
+                                    <label>
+                                        Amount
+                                        <input
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            value={analyticsPayoutAmount}
+                                            onChange={(ev) => setAnalyticsPayoutAmount(ev.target.value)}
+                                            required
+                                        />
+                                    </label>
+                                    <label>
+                                        Date paid
+                                        <input
+                                            type="date"
+                                            value={analyticsPayoutDate}
+                                            onChange={(ev) => setAnalyticsPayoutDate(ev.target.value)}
+                                            required
+                                        />
+                                    </label>
+                                    <label>
+                                        Note (optional)
+                                        <input
+                                            type="text"
+                                            placeholder="PayPal, Zelle, cash…"
+                                            value={analyticsPayoutNote}
+                                            onChange={(ev) => setAnalyticsPayoutNote(ev.target.value)}
+                                        />
+                                    </label>
+                                    <div className="umbrella-payout-modal-actions">
+                                        <button type="button" onClick={closeAnalyticsPayoutModal} disabled={recordingAnalyticsPayout}>
+                                            Cancel
+                                        </button>
+                                        <button type="submit" disabled={recordingAnalyticsPayout}>
+                                            {recordingAnalyticsPayout ? 'Saving…' : 'Confirm payment'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    ) : null}
+                    </>
                 )}
 
                 {/* Personalization Tab */}

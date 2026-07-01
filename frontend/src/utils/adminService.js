@@ -1949,6 +1949,44 @@ export class AdminService {
   }
 
   /**
+   * Clear ALL platform revenue + sales analytics test data (master admin only).
+   */
+  static async resetPlatformRevenueData() {
+    try {
+      const userEmail = await this.getCurrentUserEmail();
+      if (!userEmail) {
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const response = await fetch(`${apiUrl}/api/admin/reset-platform-revenue-data`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': userEmail,
+        },
+        body: JSON.stringify({ confirm: true }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      await this.logAdminAction('reset_platform_revenue_data', 'platform', 'all', {
+        deleted_sales_count: result.deleted_sales_count,
+        deleted_earnings_count: result.deleted_earnings_count,
+      });
+      return result;
+    } catch (error) {
+      console.error('Error resetting platform revenue data:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Get platform revenue analytics (master admin only)
    * @param {string} startDate - Optional start date filter (YYYY-MM-DD)
    * @param {string} endDate - Optional end date filter (YYYY-MM-DD)

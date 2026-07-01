@@ -217,3 +217,215 @@ def _allow_origin(resp):
     resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Cache-Control,Pragma,Expires'
     
     return resp
+
+
+def build_platform_revenue_attribution_maps(client, earnings):
+    """Resolve favorite_list_id per earning via orders and sales tables."""
+    order_ids = list({e.get("order_id") for e in earnings if e.get("order_id")})
+    orders_by_oid = {}
+    if order_ids:
+        try:
+            ords = (
+                client.table("orders")
+                .select("order_id, favorite_list_id")
+                .in_("order_id", order_ids)
+                .execute()
+            )
+            for row in ords.data or []:
+                if row.get("order_id"):
+                    orders_by_oid[row["order_id"]] = row.get("favorite_list_id")
+        except Exception as err:
+            logger.warning("platform revenue orders attribution lookup failed: %s", err)
+
+    sales_attribution = {}
+    user_ids = list({e.get("user_id") for e in earnings if e.get("user_id")})
+    if user_ids:
+        try:
+            sales_res = (
+                client.table("sales")
+                .select("user_id, product_name, amount, favorite_list_id, created_at")
+                .in_("user_id", user_ids)
+                .execute()
+            )
+            for row in sales_res.data or []:
+                if not row.get("favorite_list_id"):
+                    continue
+                key = (
+                    str(row.get("user_id")),
+                    (row.get("product_name") or "").strip(),
+                    round(float(row.get("amount") or 0), 2),
+                )
+                sales_attribution[key] = row.get("favorite_list_id")
+        except Exception as err:
+            logger.warning("platform revenue sales attribution lookup failed: %s", err)
+
+    list_ids = set()
+    for lid in orders_by_oid.values():
+        if lid:
+            list_ids.add(str(lid))
+    for lid in sales_attribution.values():
+        if lid:
+            list_ids.add(str(lid))
+
+    lists_map = {}
+    users_map = {}
+    if list_ids:
+        try:
+            lr = (
+                client.table("creator_favorite_lists")
+                .select("id, display_name, slug, owner_user_id, storefront_owner_id")
+                .in_("id", list(list_ids))
+                .execute()
+            )
+            for row in lr.data or []:
+                lists_map[str(row["id"])] = row
+            member_ids = {
+                str(row.get("owner_user_id"))
+                for row in lists_map.values()
+                if row.get("owner_user_id")
+            }
+            if member_ids:
+                ur = (
+                    client.table("users")
+                    .select("id, display_name, username, email")
+                    .in_("id", list(member_ids))
+                    .execute()
+                )
+                for u in ur.data or []:
+                    users_map[str(u["id"])] = u
+        except Exception as err:
+            logger.warning("platform revenue list attribution lookup failed: %s", err)
+
+    return orders_by_oid, sales_attribution, lists_map, users_map
+
+
+def platform_revenue_attribution_for_earning(
+    earning, orders_by_oid, sales_attribution, lists_map, users_map
+):
+    """Label storefront owner vs umbrella collaborator page for admin transactions."""
+    storefront_user = earning.get("users") or {}
+    storefront_name = (
+        storefront_user.get("display_name")
+        or storefront_user.get("username")
+        or storefront_user.get("email")
+        or "Storefront"
+    )
+    storefront_uid = str(earning.get("user_id") or "")
+
+    fav_list_id = None
+    order_id = earning.get("order_id")
+    if order_id:
+        fav_list_id = orders_by_oid.get(order_id)
+    if not fav_list_id:
+        key = (
+            storefront_uid,
+            (earning.get("product_name") or "").strip(),
+            round(float(earning.get("sale_amount") or 0), 2),
+        )
+        fav_list_id = sales_attribution.get(key)
+
+    meta = lists_map.get(str(fav_list_id)) if fav_list_id else None
+    if not meta:
+        return {
+            "creator_name": storefront_name,
+            "creator_display": storefront_name,
+            "attributed_page_name": None,
+            "attributed_collaborator_name": None,
+            "is_umbrella_attribution": False,
+        }
+
+    page_name = (meta.get("display_name") or meta.get("slug") or "Favorites page").strip()
+    owner_uid = str(meta.get("owner_user_id") or "")
+    storefront_owner_uid = str(meta.get("storefront_owner_id") or "")
+    is_collab = (
+        storefront_owner_uid == storefront_uid
+        and owner_uid
+        and owner_uid != storefront_uid
+    )
+
+    collab_user = users_map.get(owner_uid, {})
+    collab_label = (
+        collab_user.get("display_name")
+        or collab_user.get("username")
+        or page_name
+    )
+
+    if is_collab:
+        return {
+            "creator_name": storefront_name,
+            "creator_display": f"{storefront_name} · via {collab_label}",
+            "attributed_page_name": page_name,
+            "attributed_collaborator_name": collab_label,
+            "is_umbrella_attribution": True,
+        }
+
+    return {
+        "creator_name": storefront_name,
+        "creator_display": storefront_name,
+        "attributed_page_name": page_name if owner_uid == storefront_uid else None,
+        "attributed_collaborator_name": None,
+        "is_umbrella_attribution": False,
+    }
+
+
+def reset_creator_sales_records(client, user_id, order_store=None, log=None):
+    """Clear sales + creator_earnings (+ in-memory orders) for one storefront owner."""
+    uid = str(user_id)
+    deleted_sales = client.table("sales").delete().eq("user_id", uid).execute()
+    deleted_sales_count = len(deleted_sales.data or [])
+    deleted_earnings_count = 0
+    try:
+        earnings_res = client.table("creator_earnings").delete().eq("user_id", uid).execute()
+        deleted_earnings_count = len(earnings_res.data or [])
+    except Exception as err:
+        if log:
+            log.warning("Could not delete creator_earnings for %s: %s", uid, err)
+
+    purged_order_store_count = 0
+    if order_store is not None:
+        for order_id in list(order_store.keys()):
+            od = order_store.get(order_id) or {}
+            creator_uid = str(od.get("creator_user_id") or od.get("user_id") or "")
+            if creator_uid == uid:
+                order_store.pop(order_id, None)
+                purged_order_store_count += 1
+
+    return {
+        "deleted_sales_count": deleted_sales_count,
+        "deleted_earnings_count": deleted_earnings_count,
+        "purged_order_store_count": purged_order_store_count,
+    }
+
+
+def _delete_all_table_rows(client, table_name, log=None):
+    """Delete every row in a Supabase table (PostgREST requires a filter)."""
+    attempts = [
+        lambda q: q.gte("created_at", "1970-01-01T00:00:00Z"),
+        lambda q: q.neq("id", "00000000-0000-0000-0000-000000000000"),
+        lambda q: q.neq("id", 0),
+    ]
+    for build in attempts:
+        try:
+            result = build(client.table(table_name).delete()).execute()
+            return len(result.data or [])
+        except Exception as err:
+            if log:
+                log.warning("delete all rows from %s failed: %s", table_name, err)
+    return 0
+
+
+def reset_all_platform_sales_records(client, order_store=None, log=None):
+    """Master admin: wipe all sales analytics + platform revenue test data."""
+    deleted_sales_count = _delete_all_table_rows(client, "sales", log)
+    deleted_earnings_count = _delete_all_table_rows(client, "creator_earnings", log)
+
+    purged_order_store_count = 0
+    if order_store is not None:
+        purged_order_store_count = len(order_store)
+        order_store.clear()
+
+    return {
+        "deleted_sales_count": deleted_sales_count,
+        "deleted_earnings_count": deleted_earnings_count,
+        "purged_order_store_count": purged_order_store_count,
+    }
