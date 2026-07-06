@@ -8891,22 +8891,9 @@ def _umbrella_payouts_by_list(storefront_owner_id, list_ids=None):
 
 def _umbrella_payout_balance_fields(lifetime_net, payouts):
     """Compute unpaid balance and recent payout history for one collaborator page."""
-    paid_total = 0.0
-    for p in payouts or []:
-        try:
-            paid_total += float(p.get("amount") or 0)
-        except (TypeError, ValueError):
-            pass
-    paid_total = round(paid_total, 2)
-    lifetime_net = round(float(lifetime_net or 0), 2)
-    balance_owed = round(max(0.0, lifetime_net - paid_total), 2)
-    last_payout = payouts[0] if payouts else None
-    return {
-        "paid_total": paid_total,
-        "balance_owed": balance_owed,
-        "last_payout": last_payout,
-        "recent_payouts": (payouts or [])[:5],
-    }
+    from utils.payout import umbrella_payout_balance_fields
+
+    return umbrella_payout_balance_fields(lifetime_net, payouts)
 
 
 @app.route("/api/favorite-lists/sales-summary", methods=["GET", "OPTIONS"])
@@ -8927,7 +8914,7 @@ def favorite_lists_sales_summary():
         try:
             sales_result = (
                 supabase_admin.table("sales")
-                .select("id, favorite_list_id, amount")
+                .select("id, favorite_list_id, amount, product_name")
                 .eq("user_id", user_id)
                 .execute()
             )
@@ -8937,23 +8924,30 @@ def favorite_lists_sales_summary():
             if "favorite_list_id" in err_s and "column" in err_s:
                 sales_result = (
                     supabase_admin.table("sales")
-                    .select("id, amount")
+                    .select("id, amount, product_name")
                     .eq("user_id", user_id)
                     .execute()
                 )
                 rows = [{**s, "favorite_list_id": None} for s in (sales_result.data or [])]
+            elif "product_name" in err_s and "column" in err_s:
+                sales_result = (
+                    supabase_admin.table("sales")
+                    .select("id, favorite_list_id, amount")
+                    .eq("user_id", user_id)
+                    .execute()
+                )
+                rows = [{**s, "product_name": ""} for s in (sales_result.data or [])]
             else:
                 raise
+        from utils.payout import aggregate_sales_payout_totals
+
+        by_list = {}
         for s in rows:
             lid = s.get("favorite_list_id")
             key = str(lid) if lid else "__none__"
             if key not in by_list:
-                by_list[key] = {"favorite_list_id": lid, "order_count": 0, "total_amount": 0.0}
-            by_list[key]["order_count"] += 1
-            try:
-                by_list[key]["total_amount"] += float(s.get("amount") or 0)
-            except (TypeError, ValueError):
-                pass
+                by_list[key] = {"favorite_list_id": lid, "sales": []}
+            by_list[key]["sales"].append(s)
         uid = str(user_id)
         lists_map = {}
         try:
@@ -8979,8 +8973,7 @@ def favorite_lists_sales_summary():
             if _is_collaborator_favorite_list(meta, uid) and list_id not in by_list:
                 by_list[list_id] = {
                     "favorite_list_id": meta.get("id"),
-                    "order_count": 0,
-                    "total_amount": 0.0,
+                    "sales": [],
                 }
 
         collab_list_ids = [
@@ -8990,65 +8983,78 @@ def favorite_lists_sales_summary():
 
         out = []
         collaborator_owed_total = 0.0
+        owner_sales = []
         for key, agg in by_list.items():
             lid = agg["favorite_list_id"]
             meta = lists_map.get(str(lid)) if lid else None
-            gross = round(float(agg.get("total_amount") or 0), 2)
-            platform_fee = round(gross * 0.3, 2)
-            net = round(gross * 0.7, 2)
             is_collab = _is_collaborator_favorite_list(meta, uid) if meta else False
+            sale_lines = agg.get("sales") or []
+            totals = aggregate_sales_payout_totals(sale_lines)
+            gross = totals["gross_amount"]
+            platform_fee = totals["platform_fee_amount"]
+            merch_cost = totals["merch_cost_amount"]
+            pay_collaborator = totals["pay_collaborator_amount"]
+            if not is_collab:
+                owner_sales.extend(sale_lines)
             if lid and meta:
-                bucket = "named"
                 display_name = (meta.get("display_name") or meta.get("slug") or "Favorites page").strip() or "Favorites page"
                 slug_out = meta.get("slug")
             elif lid and not meta:
-                bucket = "orphan"
                 display_name = "Removed or unknown favorites page"
                 slug_out = None
             else:
-                bucket = "none"
                 display_name = "Not attributed (no favorites page in session)"
                 slug_out = None
 
-            payout_bal = _umbrella_payout_balance_fields(net if is_collab else 0, [])
+            payout_bal = _umbrella_payout_balance_fields(0, [])
             if is_collab and lid:
-                payout_bal = _umbrella_payout_balance_fields(net, payouts_by_list.get(str(lid), []))
+                payout_bal = _umbrella_payout_balance_fields(
+                    pay_collaborator, payouts_by_list.get(str(lid), [])
+                )
                 collaborator_owed_total += payout_bal.get("balance_owed", 0)
 
-            out.append(
-                {
-                    "favorite_list_id": lid,
-                    "bucket": bucket,
-                    "display_name": display_name,
-                    "slug": slug_out,
-                    "order_count": agg["order_count"],
-                    "total_amount": gross,
-                    "gross_amount": gross,
-                    "platform_fee_amount": platform_fee,
-                    "net_amount": net,
-                    "is_collaborator_page": is_collab,
-                    "pay_collaborator_amount": net if is_collab else None,
-                    "paid_total": payout_bal.get("paid_total", 0),
-                    "balance_owed": payout_bal.get("balance_owed", 0) if is_collab else 0,
-                    "last_payout": payout_bal.get("last_payout"),
-                    "recent_payouts": payout_bal.get("recent_payouts") or [],
-                }
-            )
+            row_out = {
+                "favorite_list_id": lid,
+                "display_name": display_name,
+                "slug": slug_out,
+                "order_count": totals["order_count"],
+                "total_amount": gross,
+                "gross_amount": gross,
+                "platform_fee_amount": platform_fee,
+                "merch_cost_amount": merch_cost,
+                "net_amount": merch_cost,
+                "is_collaborator_page": is_collab,
+                "pay_collaborator_amount": pay_collaborator if is_collab else None,
+                "paid_total": payout_bal.get("paid_total", 0),
+                "balance_owed": payout_bal.get("balance_owed", 0) if is_collab else 0,
+                "is_paid_up": payout_bal.get("is_paid_up", False) if is_collab else False,
+                "can_record_payout": payout_bal.get("can_record_payout", False) if is_collab else False,
+                "payout_stale": payout_bal.get("payout_stale", False) if is_collab else False,
+                "last_payout": payout_bal.get("last_payout"),
+                "recent_payouts": payout_bal.get("recent_payouts") or [],
+            }
+            if is_collab:
+                out.append(row_out)
 
         def _sales_row_sort_key(row):
-            b = row.get("bucket") or "named"
-            bucket_order = {"named": 0, "orphan": 1, "none": 2}.get(b, 0)
-            return (bucket_order, (row.get("display_name") or "").lower())
+            return (row.get("display_name") or "").lower()
 
         out.sort(key=_sales_row_sort_key)
+        owner_totals = aggregate_sales_payout_totals(owner_sales)
         return jsonify(
             {
                 "success": True,
                 "by_list": out,
                 "collaborator_owed_total": round(collaborator_owed_total, 2),
+                "storefront_owner_summary": {
+                    "gross_amount": owner_totals["gross_amount"],
+                    "platform_fee_amount": owner_totals["platform_fee_amount"],
+                    "net_amount": owner_totals["pay_collaborator_amount"],
+                    "merch_cost_amount": owner_totals["merch_cost_amount"],
+                },
                 "payout_note": (
-                    "ScreenMerch pays you at $50+ pending earnings. "
-                    "Pay umbrella collaborators off-platform and record payments here."
+                    "ScreenMerch pays you when your pending earnings reach $50 or more. "
+                    "You are responsible for paying umbrella collaborators monthly when their owed balance exceeds $50."
                 ),
             }
         ), 200
@@ -9110,6 +9116,55 @@ def favorite_lists_record_collaborator_payout():
             return jsonify({"success": False, "error": "Favorites page not found on your storefront"}), 404
         if not _is_collaborator_favorite_list(meta, user_id):
             return jsonify({"success": False, "error": "Only umbrella collaborator pages accept payout records"}), 400
+
+        from utils.payout import (
+            UMBRELLA_COLLABORATOR_PAYOUT_MINIMUM,
+            aggregate_sales_payout_totals,
+        )
+
+        try:
+            sales_res = (
+                supabase_admin.table("sales")
+                .select("product_name, amount, favorite_list_id")
+                .eq("user_id", str(user_id))
+                .eq("favorite_list_id", str(favorite_list_id))
+                .execute()
+            )
+            sale_lines = sales_res.data or []
+        except Exception:
+            sale_lines = []
+        pay_collaborator = aggregate_sales_payout_totals(sale_lines)["pay_collaborator_amount"]
+        list_payouts = _umbrella_payouts_by_list(user_id, [favorite_list_id]).get(
+            str(favorite_list_id), []
+        )
+        payout_bal = _umbrella_payout_balance_fields(pay_collaborator, list_payouts)
+        balance_owed = float(payout_bal.get("balance_owed") or 0)
+        min_pay = UMBRELLA_COLLABORATOR_PAYOUT_MINIMUM
+
+        if balance_owed < min_pay:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": (
+                        f"Balance owed (${balance_owed:.2f}) is below the ${min_pay:.0f} minimum "
+                        "for recording a collaborator payout."
+                    ),
+                }
+            ), 400
+        if amount < min_pay:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": f"Payment amount must be at least ${min_pay:.0f}.",
+                }
+            ), 400
+        if amount > balance_owed:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": f"Payment amount cannot exceed balance owed (${balance_owed:.2f}).",
+                }
+            ), 400
 
         row = {
             "storefront_owner_id": str(user_id),
@@ -9184,6 +9239,51 @@ def _sale_record_to_order(sale):
     }
 
 
+def _storefront_collaborator_list_ids(storefront_owner_id):
+    """UUID strings for umbrella collaborator favorite lists on a storefront."""
+    ids = set()
+    if not supabase_admin or not storefront_owner_id:
+        return ids
+    try:
+        lr = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("id, owner_user_id, storefront_owner_id")
+            .eq("storefront_owner_id", str(storefront_owner_id))
+            .execute()
+        )
+        for row in lr.data or []:
+            if _is_collaborator_favorite_list(row, storefront_owner_id):
+                ids.add(str(row["id"]))
+    except Exception:
+        pass
+    return ids
+
+
+def _analytics_payout_fields_from_sales(sales_rows, storefront_owner_id=None):
+    """Markup-based payout summary aligned with Umbrella tab (same $6/$6 model)."""
+    from utils.payout import get_payout_for_sale, split_sales_payout_totals
+
+    collab_ids = _storefront_collaborator_list_ids(storefront_owner_id) if storefront_owner_id else set()
+    splits = split_sales_payout_totals(sales_rows, collab_ids)
+    all_t = splits["all"]
+    owner_t = splits["owner_direct"]
+    collab_t = splits["collaborator_attributed"]
+    return {
+        "gross_amount": all_t["gross_amount"],
+        "platform_fee_amount": all_t["platform_fee_amount"],
+        "merch_cost_amount": all_t["merch_cost_amount"],
+        "owner_net_payout": owner_t["pay_collaborator_amount"],
+        "collaborator_pay_total": collab_t["pay_collaborator_amount"],
+    }
+
+
+def _sale_line_creator_share(product_name, amount, quantity=1):
+    from utils.payout import get_payout_for_sale
+
+    cs, _pf = get_payout_for_sale(product_name, amount, quantity)
+    return cs
+
+
 def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Video"):
     from datetime import datetime, timedelta
 
@@ -9225,14 +9325,26 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
         date_str = date.strftime("%Y-%m-%d")
         date_display = date.strftime("%a, %b %d")
         day_sales_count = 0
-        day_revenue = 0
+        day_revenue = 0.0
+        day_payout_net = 0.0
         for order in all_orders:
             try:
                 if order.get("created_at") and order.get("created_at") != "N/A":
                     order_date = datetime.fromisoformat(order.get("created_at").replace("Z", "+00:00"))
                     if order_date.strftime("%Y-%m-%d") == date_str:
-                        day_sales_count += len(order.get("cart", []))
-                        day_revenue += order.get("total_value", 0)
+                        for item in order.get("cart") or []:
+                            if not isinstance(item, dict):
+                                continue
+                            day_sales_count += 1
+                            price = float(item.get("price") or 0)
+                            if price <= 0 and order.get("total_value"):
+                                price = float(order.get("total_value", 0)) / max(
+                                    len(order.get("cart") or []), 1
+                                )
+                            day_revenue += price
+                            day_payout_net += _sale_line_creator_share(
+                                item.get("product"), price, 1
+                            )
             except Exception:
                 pass
         daily_sales.append(
@@ -9241,7 +9353,7 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
                 "date_display": date_display,
                 "sales_count": day_sales_count,
                 "revenue": round(day_revenue, 2),
-                "net_revenue": round(day_revenue * 0.7, 2),
+                "net_revenue": round(day_payout_net, 2),
             }
         )
 
@@ -9275,6 +9387,26 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
             return created
         return "1970-01-01"
 
+    sale_lines = []
+    for order in all_orders:
+        for item in order.get("cart") or []:
+            if not isinstance(item, dict):
+                continue
+            price = float(item.get("price") or 0)
+            if price <= 0 and order.get("total_value"):
+                price = float(order.get("total_value", 0)) / max(len(order.get("cart") or []), 1)
+            sale_lines.append({"product_name": item.get("product"), "amount": price})
+    from utils.payout import aggregate_sales_payout_totals
+
+    page_totals = aggregate_sales_payout_totals(sale_lines)
+    payout_summary = {
+        "gross_amount": page_totals["gross_amount"],
+        "platform_fee_amount": page_totals["platform_fee_amount"],
+        "merch_cost_amount": page_totals["merch_cost_amount"],
+        "owner_net_payout": 0,
+        "collaborator_pay_total": page_totals["pay_collaborator_amount"],
+    }
+
     return {
         "total_sales": total_sales,
         "total_revenue": round(total_revenue, 2),
@@ -9295,8 +9427,26 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
         "recent_sales": [
             {
                 "product": item.get("product", "Unknown Product"),
-                "amount": round(order.get("total_value", 0), 2),
-                "net_amount": round(order.get("total_value", 0) * 0.7, 2),
+                "amount": round(
+                    float(item.get("price") or 0)
+                    or (
+                        float(order.get("total_value", 0))
+                        / max(len(order.get("cart") or []), 1)
+                    ),
+                    2,
+                ),
+                "net_amount": round(
+                    _sale_line_creator_share(
+                        item.get("product"),
+                        item.get("price")
+                        or (
+                            order.get("total_value", 0)
+                            / max(len(order.get("cart") or []), 1)
+                        ),
+                        1,
+                    ),
+                    2,
+                ),
                 "created_at": order.get("created_at", "N/A"),
                 "order_id": order.get("order_id"),
             }
@@ -9304,6 +9454,7 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
             for item in (order.get("cart") or [])
             if isinstance(item, dict)
         ],
+        "payout_summary": payout_summary,
     }
 
 
@@ -9379,23 +9530,59 @@ def favorite_lists_my_analytics():
         payload = _analytics_payload_from_orders(all_orders, product_source_label=page_label)
         owner = _cf_user_row(owner_id)
         owner_label = (owner or {}).get("display_name") or (owner or {}).get("username") or "your storefront owner"
-        net_owed = round(float(payload.get("total_revenue") or 0) * 0.7, 2)
+        from utils.payout import aggregate_sales_payout_totals
+
+        page_sales = []
+        try:
+            sales_q = (
+                supabase_admin.table("sales")
+                .select("product_name, amount")
+                .eq("user_id", str(owner_id))
+            )
+            try:
+                page_sales_res = sales_q.eq("favorite_list_id", member_list["id"]).execute()
+                page_sales = page_sales_res.data or []
+            except Exception:
+                all_res = sales_q.execute()
+                page_sales = [
+                    s
+                    for s in (all_res.data or [])
+                    if str(s.get("favorite_list_id") or "") == str(member_list["id"])
+                ]
+        except Exception:
+            page_sales = [
+                {
+                    "product_name": (item.get("product") or item.get("product_name") or ""),
+                    "amount": item.get("price") or order.get("total_value") or 0,
+                }
+                for order in all_orders
+                for item in (order.get("cart") or [])
+                if isinstance(item, dict)
+            ]
+        payout_totals = aggregate_sales_payout_totals(page_sales)
+        pay_collaborator = payout_totals["pay_collaborator_amount"]
         list_payouts = _umbrella_payouts_by_list(owner_id, [member_list["id"]]).get(
             str(member_list["id"]), []
         )
-        payout_bal = _umbrella_payout_balance_fields(net_owed, list_payouts)
+        payout_bal = _umbrella_payout_balance_fields(pay_collaborator, list_payouts)
         payload["scope"] = "umbrella_page"
         payload["page_name"] = page_label
         payload["favorite_list_id"] = member_list.get("id")
         payload["storefront_owner_name"] = owner_label
-        payload["collaborator_net_owed"] = payout_bal.get("balance_owed", net_owed)
-        payload["lifetime_net"] = net_owed
+        payload["collaborator_net_owed"] = payout_bal.get("balance_owed", pay_collaborator)
+        payload["lifetime_net"] = pay_collaborator
+        payload["pay_collaborator_amount"] = pay_collaborator
+        payload["platform_fee_amount"] = payout_totals["platform_fee_amount"]
+        payload["merch_cost_amount"] = payout_totals["merch_cost_amount"]
         payload["paid_total"] = payout_bal.get("paid_total", 0)
+        payload["is_paid_up"] = payout_bal.get("is_paid_up", False)
+        payload["can_record_payout"] = payout_bal.get("can_record_payout", False)
+        payload["payout_stale"] = payout_bal.get("payout_stale", False)
         payload["last_payout"] = payout_bal.get("last_payout")
         payload["recent_payouts"] = payout_bal.get("recent_payouts") or []
         payload["payout_note"] = (
-            f"Payouts are handled off-platform by {owner_label}. "
-            "This balance is what they owe you from sales on your favorites page (after ScreenMerch's 30% fee)."
+            f"ScreenMerch pays {owner_label} when their pending earnings reach $50 or more. "
+            f"They are responsible for paying you monthly when your owed balance exceeds $50."
         )
         return jsonify(payload), 200
     except Exception as e:
@@ -10138,6 +10325,7 @@ def get_analytics():
         
         # Get all orders from database and in-memory store
         all_orders = []
+        sales_rows = []
         
         # Get orders from order_store (recent orders) - FILTER by user_id for precise tracking
         for order_id, order_data in order_store.items():
@@ -10176,7 +10364,9 @@ def get_analytics():
             # Build query based on filters - user_id is REQUIRED for precise tracking
             if user_id:
                 # PRECISE TRACKING: Filter by user_id to ensure creator only sees their own sales
-                query = client_to_use.table('sales').select('id,product_name,amount,image_url,user_id,channel_id,creator_name,video_title')
+                query = client_to_use.table('sales').select(
+                    'id,product_name,amount,image_url,user_id,channel_id,creator_name,video_title,created_at,favorite_list_id'
+                )
                 query = query.eq('user_id', user_id)  # CRITICAL: Only get sales for this creator
                 
                 if channel_id:
@@ -10195,8 +10385,8 @@ def get_analytics():
                 # No user_id provided - return empty for security (precise tracking requires user_id)
                 logger.warning("⚠️ Analytics request missing user_id - returning empty sales for security")
                 sales_result = type('obj', (object,), {'data': []})()  # Empty result
-            
-            logger.info(f"📊 Found {len(sales_result.data)} sales records in database")
+                sales_rows = []
+            sales_rows = list(sales_result.data or [])
             
             # Debug: Log the first few sales to see what we're getting
             for i, sale in enumerate(sales_result.data[:3]):
@@ -10238,6 +10428,9 @@ def get_analytics():
                 logger.info(f"✅ Added sale to analytics: {sale.get('product_name')} - ${sale.get('amount')} - created_at: {sale_created_at}")
         except Exception as db_error:
             logger.error(f"Database error loading analytics: {str(db_error)}")
+        
+        payout_summary = _analytics_payout_fields_from_sales(sales_rows, user_id)
+        from utils.payout import aggregate_sales_payout_totals, split_sales_payout_totals
         
         # Calculate analytics
         total_sales = len(all_orders)
@@ -10298,28 +10491,31 @@ def get_analytics():
             date_str = date.strftime('%Y-%m-%d')
             date_display = date.strftime('%a, %b %d')
             
-            # Count sales and calculate revenue for this day
             day_sales_count = 0
-            day_revenue = 0
-            
-            for order in all_orders:
+            day_revenue = 0.0
+            day_owner_net = 0.0
+            day_lines = []
+            for s in sales_rows:
                 try:
-                    if order.get('created_at') and order.get('created_at') != 'N/A':
-                        order_date = datetime.fromisoformat(order.get('created_at').replace('Z', '+00:00'))
-                        order_date_str = order_date.strftime('%Y-%m-%d')
-                        
-                        if order_date_str == date_str:
-                            day_sales_count += len(order.get('cart', []))
-                            day_revenue += order.get('total_value', 0)
-                except:
+                    created = s.get('created_at')
+                    if not created:
+                        continue
+                    if str(created)[:10] == date_str:
+                        day_lines.append(s)
+                except Exception:
                     pass
+            day_totals = aggregate_sales_payout_totals(day_lines)
+            day_splits = split_sales_payout_totals(day_lines, _storefront_collaborator_list_ids(user_id))
+            day_sales_count = day_totals['order_count']
+            day_revenue = day_totals['gross_amount']
+            day_owner_net = day_splits['owner_direct']['pay_collaborator_amount']
             
             daily_sales.append({
                 'date': date_str,
                 'date_display': date_display,
                 'sales_count': day_sales_count,
                 'revenue': round(day_revenue, 2),
-                'net_revenue': round(day_revenue * 0.7, 2)  # After 30% fee
+                'net_revenue': round(day_owner_net, 2),
             })
         
         # Calculate actual revenue per product (not hardcoded $25)
@@ -10366,18 +10562,20 @@ def get_analytics():
             ],
             'recent_sales': [
                 {
-                    'product': item.get('product', 'Unknown Product'),
-                    'amount': round(order.get('total_value', 0), 2),
-                    'net_amount': round(order.get('total_value', 0) * 0.7, 2),
-                    'created_at': order.get('created_at', 'N/A')
+                    'product': s.get('product_name', 'Unknown Product'),
+                    'amount': round(float(s.get('amount') or 0), 2),
+                    'net_amount': round(
+                        _sale_line_creator_share(s.get('product_name'), s.get('amount'), 1), 2
+                    ),
+                    'created_at': s.get('created_at', 'N/A'),
                 }
-                for order in sorted(all_orders, key=lambda x: (
-                    float(x.get('created_at', 0)) if isinstance(x.get('created_at'), (int, float)) 
-                    else (x.get('created_at') if isinstance(x.get('created_at'), str) and x.get('created_at') != 'N/A' 
-                          else '1970-01-01')
-                ), reverse=True)[:10]  # Get 10 most recent
-                for item in order.get('cart', [])
-            ]
+                for s in sorted(
+                    sales_rows,
+                    key=lambda x: str(x.get('created_at') or '1970-01-01'),
+                    reverse=True,
+                )[:10]
+            ],
+            'payout_summary': payout_summary,
         }
         
         return jsonify(analytics_data)

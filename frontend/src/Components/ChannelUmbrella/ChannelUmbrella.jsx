@@ -56,6 +56,7 @@ const ChannelUmbrella = () => {
   const [salesLoading, setSalesLoading] = useState(true);
   const [salesError, setSalesError] = useState('');
   const [collaboratorOwedTotal, setCollaboratorOwedTotal] = useState(0);
+  const [ownerSummary, setOwnerSummary] = useState(null);
   const [payoutNote, setPayoutNote] = useState('');
   const [payoutModal, setPayoutModal] = useState(null);
   const [payoutAmount, setPayoutAmount] = useState('');
@@ -73,9 +74,11 @@ const ChannelUmbrella = () => {
         setSalesError(data?.error || 'Could not load attributed earnings');
         setSalesByList([]);
         setCollaboratorOwedTotal(0);
+        setOwnerSummary(null);
       } else {
         setSalesByList(data?.by_list || []);
         setCollaboratorOwedTotal(Number(data?.collaborator_owed_total || 0));
+        setOwnerSummary(data?.storefront_owner_summary || null);
         setPayoutNote(data?.payout_note || '');
       }
     } catch (e) {
@@ -157,6 +160,10 @@ const ChannelUmbrella = () => {
     const amount = Number(payoutAmount);
     if (!amount || amount <= 0) {
       setMsg({ type: 'error', text: 'Enter a payment amount greater than zero.' });
+      return;
+    }
+    if (amount < 50) {
+      setMsg({ type: 'error', text: 'Minimum collaborator payout is $50.' });
       return;
     }
     setRecordingPayout(true);
@@ -394,13 +401,18 @@ const ChannelUmbrella = () => {
 
       <section className="channel-umbrella-section" aria-labelledby="umbrella-sales-heading">
         <h2 id="umbrella-sales-heading" className="channel-umbrella-section-title">
-          Attributed earnings summary
+          Payout summary
         </h2>
-        <p className="hint">
-          Sales attributed to each public favorites page. Pay umbrella collaborators 100% of net revenue
-          (gross minus ScreenMerch&apos;s 30% fee) off-platform, then record payments here.
-        </p>
         {payoutNote ? <p className="hint umbrella-payout-note">{payoutNote}</p> : null}
+        {ownerSummary && Number(ownerSummary.net_amount || 0) > 0 ? (
+          <div className="umbrella-owner-payout-card">
+            <h3 className="channel-umbrella-subheading">Your storefront (paid by ScreenMerch)</h3>
+            <p className="hint">
+              Net earnings from sales on your storefront (not attributed to an umbrella page):{' '}
+              <strong>${Number(ownerSummary.net_amount || 0).toFixed(2)}</strong>
+            </p>
+          </div>
+        ) : null}
         {collaboratorOwedTotal > 0 ? (
           <p className="channel-umbrella-msg ok umbrella-owed-banner">
             Unpaid balance to collaborators: <strong>${collaboratorOwedTotal.toFixed(2)}</strong>
@@ -409,100 +421,112 @@ const ChannelUmbrella = () => {
         {salesLoading ? <p>Loading…</p> : null}
         {salesError ? <p className="channel-umbrella-msg error">{salesError}</p> : null}
         {!salesLoading && !salesError && salesByList.length === 0 ? (
-          <p className="hint">No sales yet.</p>
+          <p className="hint">No umbrella collaborator sales yet.</p>
         ) : null}
         {!salesLoading && !salesError && salesByList.length > 0 ? (
-          <table className="channel-umbrella-sales-table channel-umbrella-earnings-table">
+          <>
+            <h3 className="channel-umbrella-subheading">Umbrella collaborators (you pay monthly)</h3>
+          <div className="umbrella-earnings-table-wrap">
+          <table className="channel-umbrella-earnings-table">
             <thead>
               <tr>
-                <th>Page</th>
-                <th>Items</th>
-                <th>Gross</th>
-                <th>Platform fee</th>
-                <th>Net</th>
-                <th>Pay collaborator</th>
-                <th>Balance owed</th>
+                <th className="col-page">Page</th>
+                <th className="col-num">Items</th>
+                <th className="col-num">Gross</th>
+                <th className="col-num">Platform fee</th>
+                <th className="col-num">Merch cost</th>
+                <th className="col-num">Pay collaborator</th>
+                <th className="col-num">Balance owed</th>
+                <th className="col-action">Confirm payment</th>
               </tr>
             </thead>
             <tbody>
               {salesByList.map((row) => {
                 const balance = Number(row.balance_owed ?? 0);
+                const gross = Number(row.gross_amount ?? row.total_amount ?? 0);
+                const fee = Number(row.platform_fee_amount ?? 0);
+                const merchCost = Number(row.merch_cost_amount ?? row.net_amount ?? 0);
+                const payCollab = Number(row.pay_collaborator_amount ?? 0);
                 const lastPaid = row.last_payout;
                 const history = row.recent_payouts || [];
                 const listKey = String(row.favorite_list_id ?? row.display_name);
-                const isCollab = row.is_collaborator_page;
+                const canRecord = row.can_record_payout ?? (payCollab > 0 && balance >= 50);
+                const isPaidUp = row.is_paid_up ?? (payCollab > 0 && balance <= 0);
                 return (
-                  <tr
-                    key={listKey}
-                    className={isCollab ? 'umbrella-row-collaborator' : ''}
-                  >
-                    <td>{row.display_name || '—'}</td>
-                    <td>{row.order_count}</td>
-                    <td>${Number(row.gross_amount ?? row.total_amount ?? 0).toFixed(2)}</td>
-                    <td>${Number(row.platform_fee_amount ?? 0).toFixed(2)}</td>
-                    <td>${Number(row.net_amount ?? 0).toFixed(2)}</td>
-                    <td>
-                      {isCollab ? (
-                        <strong>${Number(row.pay_collaborator_amount ?? row.net_amount ?? 0).toFixed(2)}</strong>
+                  <React.Fragment key={listKey}>
+                  <tr className="umbrella-row-collaborator">
+                    <td className="col-page">{row.display_name || '—'}</td>
+                    <td className="col-num">{row.order_count}</td>
+                    <td className="col-num">${gross.toFixed(2)}</td>
+                    <td className="col-num">${fee.toFixed(2)}</td>
+                    <td className="col-num">${merchCost.toFixed(2)}</td>
+                    <td className="col-num col-pay">${payCollab.toFixed(2)}</td>
+                    <td className="col-num">
+                      {payCollab <= 0 ? (
+                        <span className="umbrella-amount-zero">$0.00</span>
+                      ) : isPaidUp ? (
+                        <span className="umbrella-balance-paid">Paid up ✓</span>
+                      ) : balance > 0 ? (
+                        <span className="umbrella-balance-owed">${balance.toFixed(2)}</span>
                       ) : (
-                        <span className="hint-inline">You keep</span>
+                        <span className="umbrella-amount-zero">$0.00</span>
                       )}
                     </td>
-                    <td className="umbrella-payout-cell">
-                      {isCollab ? (
-                        <>
-                          {balance > 0 ? (
-                            <span className="umbrella-balance-owed">${balance.toFixed(2)}</span>
-                          ) : (
-                            <span className="umbrella-balance-paid">Paid up ✓</span>
-                          )}
-                          {balance > 0 ? (
-                            <button
-                              type="button"
-                              className="btn-record-payout"
-                              onClick={() => openPayoutModal(row)}
-                            >
-                              Record payment
-                            </button>
-                          ) : null}
-                          {lastPaid ? (
-                            <div className="umbrella-last-paid">
-                              Last paid ${Number(lastPaid.amount || 0).toFixed(2)} on {formatPaidDate(lastPaid.paid_at)}
-                              {lastPaid.note ? ` · ${lastPaid.note}` : ''}
-                            </div>
-                          ) : null}
-                          {history.length > 0 ? (
-                            <button
-                              type="button"
-                              className="btn-payout-history"
-                              onClick={() => setExpandedHistory((prev) => ({
-                                ...prev,
-                                [listKey]: !prev[listKey],
-                              }))}
-                            >
-                              {expandedHistory[listKey] ? 'Hide' : 'Show'} payment history
-                            </button>
-                          ) : null}
-                          {expandedHistory[listKey] && history.length > 0 ? (
-                            <ul className="umbrella-payout-history">
-                              {history.map((p) => (
-                                <li key={p.id || `${p.paid_at}-${p.amount}`}>
-                                  ${Number(p.amount || 0).toFixed(2)} on {formatPaidDate(p.paid_at)}
-                                  {p.note ? ` — ${p.note}` : ''}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </>
+                    <td className="col-action">
+                      {canRecord ? (
+                        <button
+                          type="button"
+                          className="btn-record-payout"
+                          onClick={() => openPayoutModal(row)}
+                        >
+                          Confirm payment + date
+                        </button>
                       ) : (
                         <span className="hint-inline">—</span>
                       )}
                     </td>
                   </tr>
+                  {(lastPaid || history.length > 0) ? (
+                    <tr className="umbrella-row-payout-meta">
+                      <td colSpan={8}>
+                        {lastPaid ? (
+                          <span className="umbrella-last-paid">
+                            Last paid ${Number(lastPaid.amount || 0).toFixed(2)} on {formatPaidDate(lastPaid.paid_at)}
+                            {lastPaid.note ? ` · ${lastPaid.note}` : ''}
+                          </span>
+                        ) : null}
+                        {history.length > 0 ? (
+                          <button
+                            type="button"
+                            className="btn-payout-history"
+                            onClick={() => setExpandedHistory((prev) => ({
+                              ...prev,
+                              [listKey]: !prev[listKey],
+                            }))}
+                          >
+                            {expandedHistory[listKey] ? 'Hide' : 'Show'} payment history
+                          </button>
+                        ) : null}
+                        {expandedHistory[listKey] && history.length > 0 ? (
+                          <ul className="umbrella-payout-history">
+                            {history.map((p) => (
+                              <li key={p.id || `${p.paid_at}-${p.amount}`}>
+                                ${Number(p.amount || 0).toFixed(2)} on {formatPaidDate(p.paid_at)}
+                                {p.note ? ` — ${p.note}` : ''}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ) : null}
+                  </React.Fragment>
                 );
               })}
             </tbody>
           </table>
+          </div>
+          </>
         ) : null}
       </section>
 
@@ -514,7 +538,7 @@ const ChannelUmbrella = () => {
             aria-labelledby="record-payout-title"
             onClick={(ev) => ev.stopPropagation()}
           >
-            <h3 id="record-payout-title">Record payment</h3>
+            <h3 id="record-payout-title">Confirm payment + date</h3>
             <p className="hint">
               Confirm you paid <strong>{payoutModal.display_name || 'collaborator'}</strong> off-platform.
             </p>

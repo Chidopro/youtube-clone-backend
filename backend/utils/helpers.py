@@ -390,10 +390,21 @@ def reset_creator_sales_records(client, user_id, order_store=None, log=None):
                 order_store.pop(order_id, None)
                 purged_order_store_count += 1
 
+    deleted_payouts_count = 0
+    try:
+        payouts_res = client.table("umbrella_collaborator_payouts").delete().eq(
+            "storefront_owner_id", uid
+        ).execute()
+        deleted_payouts_count = len(payouts_res.data or [])
+    except Exception as err:
+        if log:
+            log.warning("Could not delete umbrella_collaborator_payouts for %s: %s", uid, err)
+
     return {
         "deleted_sales_count": deleted_sales_count,
         "deleted_earnings_count": deleted_earnings_count,
         "purged_order_store_count": purged_order_store_count,
+        "deleted_payouts_count": deleted_payouts_count,
     }
 
 
@@ -418,6 +429,7 @@ def reset_all_platform_sales_records(client, order_store=None, log=None):
     """Master admin: wipe all sales analytics + platform revenue test data."""
     deleted_sales_count = _delete_all_table_rows(client, "sales", log)
     deleted_earnings_count = _delete_all_table_rows(client, "creator_earnings", log)
+    deleted_payouts_count = _delete_all_table_rows(client, "umbrella_collaborator_payouts", log)
 
     purged_order_store_count = 0
     if order_store is not None:
@@ -427,5 +439,6 @@ def reset_all_platform_sales_records(client, order_store=None, log=None):
     return {
         "deleted_sales_count": deleted_sales_count,
         "deleted_earnings_count": deleted_earnings_count,
+        "deleted_payouts_count": deleted_payouts_count,
         "purged_order_store_count": purged_order_store_count,
     }

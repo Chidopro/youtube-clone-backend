@@ -272,11 +272,26 @@ def _resolve_favorite_list_id_for_order(data, creator_user_id_from_subdomain):
     if not client:
         return None
     try:
-        r = client.table("creator_favorite_lists").select("id, owner_user_id").eq("id", str(raw)).limit(1).execute()
+        r = (
+            client.table("creator_favorite_lists")
+            .select("id, owner_user_id, storefront_owner_id")
+            .eq("id", str(raw))
+            .limit(1)
+            .execute()
+        )
         row = (r.data or [None])[0]
-        if not row or str(row.get("owner_user_id")) != str(creator_user_id_from_subdomain):
+        if not row:
             return None
-        return str(row["id"])
+        owner_uid = str(row.get("owner_user_id") or "")
+        sf_uid = str(row.get("storefront_owner_id") or "")
+        creator_uid = str(creator_user_id_from_subdomain)
+        # Storefront owner's own favorites page
+        if owner_uid == creator_uid:
+            return str(row["id"])
+        # Umbrella collaborator page on this storefront (owner is the collaborator, not the storefront owner)
+        if sf_uid == creator_uid and owner_uid and owner_uid != creator_uid:
+            return str(row["id"])
+        return None
     except Exception:
         return None
 

@@ -191,6 +191,7 @@ const Dashboard = ({ sidebar }) => {
         paid_total: 0,
         last_payout: null,
         payout_note: '',
+        payout_summary: {},
     });
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const [collaboratorPayoutRows, setCollaboratorPayoutRows] = useState([]);
@@ -1189,6 +1190,7 @@ const Dashboard = ({ sidebar }) => {
                 paid_total: data.paid_total || 0,
                 last_payout: data.last_payout || null,
                 payout_note: data.payout_note || '',
+                payout_summary: data.payout_summary || {},
             });
 
             if (!umbrellaOnly) {
@@ -1231,6 +1233,10 @@ const Dashboard = ({ sidebar }) => {
         if (!analyticsPayoutModal?.favorite_list_id) return;
         const amount = Number(analyticsPayoutAmount);
         if (!amount || amount <= 0) return;
+        if (amount < 50) {
+            alert('Minimum collaborator payout is $50.');
+            return;
+        }
         setRecordingAnalyticsPayout(true);
         try {
             const { ok, data } = await favoriteListsJson('/api/favorite-lists/record-collaborator-payout', {
@@ -1946,8 +1952,8 @@ const Dashboard = ({ sidebar }) => {
                                                                          <div className="chart-header">
                                          <h3>📊 Sales Analytics Dashboard</h3>
                                          <div className="service-fee-info">
-                                             <span className="fee-badge">30% Service Fee</span>
-                                             <span className="fee-explanation">Net revenue shown after fees</span>
+                                             <span className="fee-badge">$6/item platform share</span>
+                                             <span className="fee-explanation">Markup split — not 30% of gross</span>
                                          </div>
                                      </div>
                                     
@@ -2012,6 +2018,21 @@ const Dashboard = ({ sidebar }) => {
                                     {/* Weekly Summary */}
                                     <div className="weekly-summary">
                                         <h4>📊 Weekly Summary</h4>
+                                        {(() => {
+                                            const ps = analyticsData.payout_summary || {};
+                                            const gross = Number(ps.gross_amount ?? analyticsData.total_revenue ?? 0);
+                                            const platformFee = Number(ps.platform_fee_amount ?? 0);
+                                            const ownerPayout = Number(ps.owner_net_payout ?? 0);
+                                            const collabPayTotal = Number(ps.collaborator_pay_total ?? 0);
+                                            const merchCost = Number(ps.merch_cost_amount ?? 0);
+                                            const netLabel = umbrellaOnly ? 'Your payout' : 'Your payout';
+                                            const netValue = umbrellaOnly
+                                                ? Number(analyticsData.collaborator_net_owed ?? 0) + Number(analyticsData.paid_total ?? 0)
+                                                : ownerPayout;
+                                            const netSubtitle = umbrellaOnly
+                                                ? 'Earned on your favorites page ($6/item)'
+                                                : 'From your page sales ($6/item)';
+                                            return (
                                         <div className="summary-grid">
                                             <div className="summary-card">
                                                 <div className="summary-label">This Week</div>
@@ -2020,19 +2041,33 @@ const Dashboard = ({ sidebar }) => {
                                             </div>
                                             <div className="summary-card">
                                                 <div className="summary-label">Gross Revenue</div>
-                                                <div className="summary-value">${analyticsData.total_revenue.toFixed(2)}</div>
+                                                <div className="summary-value">${gross.toFixed(2)}</div>
                                                 <div className="summary-subtitle">Before fees</div>
                                             </div>
                                             <div className="summary-card highlight">
-                                                <div className="summary-label">Net Revenue</div>
-                                                <div className="summary-value">${(analyticsData.total_revenue * 0.7).toFixed(2)}</div>
-                                                <div className="summary-subtitle">After 30% fee</div>
+                                                <div className="summary-label">{netLabel}</div>
+                                                <div className="summary-value">${netValue.toFixed(2)}</div>
+                                                <div className="summary-subtitle">{netSubtitle}</div>
                                             </div>
                                             <div className="summary-card">
-                                                <div className="summary-label">Service Fee</div>
-                                                <div className="summary-value">${(analyticsData.total_revenue * 0.3).toFixed(2)}</div>
-                                                <div className="summary-subtitle">Platform fee</div>
+                                                <div className="summary-label">Platform fee</div>
+                                                <div className="summary-value">${platformFee.toFixed(2)}</div>
+                                                <div className="summary-subtitle">ScreenMerch ($6/item)</div>
                                             </div>
+                                            {!umbrellaOnly && collabPayTotal > 0 ? (
+                                                <div className="summary-card">
+                                                    <div className="summary-label">Collaborator pay</div>
+                                                    <div className="summary-value">${collabPayTotal.toFixed(2)}</div>
+                                                    <div className="summary-subtitle">Umbrella pages ($6/item)</div>
+                                                </div>
+                                            ) : null}
+                                            {!umbrellaOnly && merchCost > 0 ? (
+                                                <div className="summary-card">
+                                                    <div className="summary-label">Merch cost</div>
+                                                    <div className="summary-value">${merchCost.toFixed(2)}</div>
+                                                    <div className="summary-subtitle">Fulfillment overhead</div>
+                                                </div>
+                                            ) : null}
                                             {!umbrellaOnly && collaboratorPayoutRows.length > 0 ? (
                                                 <div className="summary-card highlight-collab">
                                                     <div className="summary-label">Owed to collaborators</div>
@@ -2048,26 +2083,35 @@ const Dashboard = ({ sidebar }) => {
                                                 </div>
                                             ) : null}
                                         </div>
+                                            );
+                                        })()}
                                         {!umbrellaOnly && collaboratorPayoutRows.length > 0 ? (
                                             <div className="collaborator-payout-panel">
                                                 <h5>Collaborator payouts</h5>
                                                 <p className="hint">
-                                                    Pay umbrella collaborators 100% of net (after ScreenMerch&apos;s 30% fee), then confirm payment with date.
+                                                    Record off-platform payments to umbrella collaborators when their owed balance exceeds $50.
                                                 </p>
                                                 <ul className="collaborator-payout-list">
                                                     {collaboratorPayoutRows.map((row) => {
                                                         const balance = Number(row.balance_owed ?? 0);
+                                                        const payCollab = Number(row.pay_collaborator_amount ?? 0);
+                                                        const isPaidUp = row.is_paid_up ?? (payCollab > 0 && balance <= 0);
+                                                        const canRecord = row.can_record_payout ?? (payCollab > 0 && balance >= 50);
                                                         return (
                                                             <li key={String(row.favorite_list_id)}>
                                                                 <div className="collab-payout-row-main">
                                                                     <strong>{row.display_name}</strong>
                                                                     <span>
-                                                                        Net ${Number(row.net_amount || 0).toFixed(2)}
+                                                                        Pay collaborator ${payCollab.toFixed(2)}
                                                                         {' · '}
-                                                                        {balance > 0 ? (
+                                                                        {payCollab <= 0 ? (
+                                                                            <>Owed $0.00</>
+                                                                        ) : isPaidUp ? (
+                                                                            <span className="paid-up-label">Paid up ✓</span>
+                                                                        ) : balance > 0 ? (
                                                                             <>Owed <strong>${balance.toFixed(2)}</strong></>
                                                                         ) : (
-                                                                            <span className="paid-up-label">Paid up ✓</span>
+                                                                            <>Owed $0.00</>
                                                                         )}
                                                                     </span>
                                                                     {row.last_payout ? (
@@ -2077,7 +2121,7 @@ const Dashboard = ({ sidebar }) => {
                                                                         </small>
                                                                     ) : null}
                                                                 </div>
-                                                                {balance > 0 ? (
+                                                                {canRecord ? (
                                                                     <button
                                                                         type="button"
                                                                         className="btn-record-collab-payout"
@@ -2141,7 +2185,7 @@ const Dashboard = ({ sidebar }) => {
                                                             <div className="activity-icon">💰</div>
                                                             <div className="activity-details">
                                                                 <div className="activity-title">Sale completed</div>
-                                                                <div className="activity-subtitle">Product: {sale.product} | Net: ${sale.net_amount?.toFixed(2) || (sale.amount * 0.7).toFixed(2)}</div>
+                                                                <div className="activity-subtitle">Product: {sale.product} | Share: ${sale.net_amount?.toFixed(2) || '0.00'}</div>
                                                             </div>
                                                             <div className="activity-time">{timeAgo}</div>
                                                         </div>
