@@ -7,11 +7,12 @@
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  z-index: 10000;
-  padding: 20px;
+  z-index: 100002;
+  padding: max(72px, env(safe-area-inset-top, 0px) + 16px) 20px 20px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .creator-signup-modal {
@@ -19,9 +20,11 @@
   border-radius: 20px;
   max-width: 650px;
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: none;
+  overflow: visible;
   position: relative;
+  flex-shrink: 0;
+  margin: 0 auto 20px;
   box-shadow: 0 25px 80px rgba(102, 126, 234, 0.3), 0 0 0 1px rgba(102, 126, 234, 0.1);
   animation: modalSlideIn 0.3s ease-out;
   border: 1px solid rgba(102, 126, 234, 0.2);
@@ -66,7 +69,9 @@
 }
 
 .creator-signup-modal-content {
-  padding: 48px 40px 40px 40px;
+  padding: 40px 40px 32px;
+  max-height: calc(100vh - max(72px, env(safe-area-inset-top, 0px) + 16px) - 40px);
+  overflow-y: auto;
 }
 
 .creator-signup-modal-title {
@@ -482,16 +487,17 @@
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .creator-signup-modal-overlay {
-    padding: 10px;
+    padding: max(64px, env(safe-area-inset-top, 0px) + 12px) 10px 12px;
   }
 
   .creator-signup-modal {
-    max-height: 95vh;
     border-radius: 12px;
+    margin-bottom: 12px;
   }
 
   .creator-signup-modal-content {
-    padding: 24px 20px;
+    padding: 24px 20px 20px;
+    max-height: calc(100vh - max(64px, env(safe-area-inset-top, 0px) + 12px) - 24px);
   }
 
   .creator-signup-modal-title {

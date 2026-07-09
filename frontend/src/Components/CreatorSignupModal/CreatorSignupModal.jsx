@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import './CreatorSignupModal.css';
 
 const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
@@ -71,7 +72,7 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
     }
   };
 
-  return (
+  return createPortal(
     <div className="creator-signup-modal-overlay" onClick={handleOverlayClick}>
       <div className="creator-signup-modal">
         <button 
@@ -164,6 +165,7 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
             <div className="creator-signup-terms">
               <p className="creator-signup-agreement-intro">
                 By creating an account you agree to our Terms of Service and Privacy Policy. Your application requires admin approval.
+                If you later operate a storefront with umbrella creators, you also agree to the umbrella payout and tax responsibilities described in our Terms.
               </p>
               <p className="creator-signup-fulfillment-notice">
                 Merchandise orders are fulfilled by third-party partners (e.g., Printful). Their <a href="https://www.printful.com/policies/terms" target="_blank" rel="noopener noreferrer">terms</a> and <a href="https://www.printful.com/policies/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a> apply to fulfillment.
@@ -219,7 +221,8 @@ const CreatorSignupModal = ({ isOpen, onClose, onSignup, apiBase = '' }) => {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

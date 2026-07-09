@@ -12,7 +12,7 @@ const TermsOfService = () => {
         </div>
         
         <h1>Terms of Service</h1>
-        <div className="last-updated">Last Updated: February 2025</div>
+        <div className="last-updated">Last Updated: July 2026</div>
 
         <section>
           <h2>1. Acceptance of Terms</h2>
@@ -27,6 +27,7 @@ const TermsOfService = () => {
             <li>Enable fans to capture screenshots or thumbnails</li>
             <li>Place captured images onto merchandise</li>
             <li>Sell products through ScreenMerch&apos;s integrated checkout and fulfillment system</li>
+            <li>Invite approved umbrella creators to sell through a shared branded storefront (see Section 9)</li>
           </ul>
           <p>ScreenMerch processes images for print optimization (including 300 DPI formatting) and coordinates production and shipping through third-party fulfillment providers.</p>
         </section>
@@ -119,17 +120,65 @@ const TermsOfService = () => {
         </section>
 
         <section>
-          <h2>8. Creator Earnings &amp; Payouts</h2>
+          <h2>8. Creator Earnings &amp; Payouts (ScreenMerch to Storefront Owner)</h2>
           <ul>
             <li>Creators earn $6 per sale on most items (excluding greeting cards, stickers, and magnets unless otherwise specified).</li>
             <li>Payout eligibility requires a minimum balance of $50.</li>
             <li>Creators must provide a valid PayPal email for payout processing.</li>
             <li>ScreenMerch reserves the right to withhold payouts in cases of fraud, abuse, or violation of these Terms.</li>
+            <li>These payouts apply to earnings ScreenMerch owes directly to an approved storefront owner for sales on that owner&apos;s storefront that are <strong>not</strong> attributed to an umbrella collaborator page (see Section 9).</li>
           </ul>
         </section>
 
+        <section className="critical-box">
+          <h2>9. Umbrella Creators, Collaborator Payouts &amp; Taxes</h2>
+          <p>ScreenMerch allows approved <strong>storefront owners</strong> to invite <strong>umbrella creators</strong> (also called umbrella collaborators) to participate in a shared storefront on the owner&apos;s subdomain. By using umbrella features — whether as a storefront owner or umbrella creator — you agree to the following.</p>
+
+          <h3>9.1 Umbrella Program Overview</h3>
+          <ul>
+            <li>A storefront owner may invite umbrella creators by username or email. Invites must be accepted before access is granted.</li>
+            <li>Each approved umbrella creator may receive a dedicated page within the owner&apos;s branded storefront. Fans shop within the owner&apos;s subdomain; sales may be attributed to the storefront owner&apos;s page or an umbrella creator&apos;s page.</li>
+            <li>The storefront owner controls the primary subdomain, branding, and umbrella invite list. ScreenMerch may remove umbrella members or suspend umbrella access for violations of these Terms.</li>
+            <li>Umbrella creators upload and manage content for their attributed page subject to the same content, intellectual property, and prohibited-content rules in these Terms.</li>
+          </ul>
+
+          <h3>9.2 Earnings Attribution</h3>
+          <ul>
+            <li>Sales attributed to an umbrella creator&apos;s page generally entitle that collaborator to the creator share (typically $6 per qualifying item sold), as shown in the owner&apos;s dashboard analytics and payout summary.</li>
+            <li>Sales not attributed to an umbrella page are treated as the storefront owner&apos;s direct storefront earnings for purposes of ScreenMerch payouts under Section 8.</li>
+            <li>Attribution is determined by ScreenMerch systems (for example, which favorites page or session was active when the sale occurred). ScreenMerch&apos;s attribution records are used for dashboard reporting unless corrected for clear error or fraud.</li>
+          </ul>
+
+          <h3>9.3 Storefront Owner Obligations — Paying Umbrella Creators</h3>
+          <ul>
+            <li><strong>You pay umbrella creators.</strong> ScreenMerch pays the storefront owner only for that owner&apos;s direct, non-umbrella-attributed earnings (Section 8). The storefront owner is solely responsible for paying umbrella creators their attributed earnings.</li>
+            <li>When an umbrella creator&apos;s owed balance reaches <strong>$50 or more</strong>, the storefront owner should pay that collaborator on a timely basis (for example, monthly). The dashboard allows the owner to record off-platform payments for bookkeeping; recording a payment in ScreenMerch does not move money and is not processed by ScreenMerch.</li>
+            <li>The storefront owner chooses the payment method to collaborators (for example, PayPal, bank transfer, or other agreed method). ScreenMerch is not a party to those payments and does not hold funds for collaborators on the owner&apos;s behalf.</li>
+            <li>The storefront owner is responsible for any separate written or verbal agreements with umbrella creators regarding revenue splits, timing, content rights, or removal from the umbrella. ScreenMerch does not negotiate or enforce private agreements between creators.</li>
+            <li>The storefront owner must ensure umbrella creators comply with these Terms and applicable law. The owner may remove umbrella members from their network through platform tools.</li>
+          </ul>
+
+          <h3>9.4 Umbrella Creator Acknowledgments</h3>
+          <ul>
+            <li>Umbrella creators understand that ScreenMerch does not pay them directly for sales attributed to their umbrella page. Payment comes from the storefront owner.</li>
+            <li>Umbrella creators should maintain accurate contact and payout details with the storefront owner and resolve payment disputes directly with that owner.</li>
+            <li>Joining an umbrella network does not create an employment, partnership, or agency relationship between the umbrella creator and ScreenMerch or the storefront owner, except as expressly stated in these Terms.</li>
+          </ul>
+
+          <h3>9.5 Taxes &amp; Reporting</h3>
+          <ul>
+            <li><strong>Your responsibility.</strong> You are solely responsible for all taxes, duties, withholdings, and government filings arising from your use of ScreenMerch, including income earned as a storefront owner or umbrella creator and payments you make or receive under the umbrella program.</li>
+            <li><strong>ScreenMerch payouts to you.</strong> Amounts ScreenMerch pays directly to an approved storefront owner under Section 8 may be reported to tax authorities as required by law (for example, IRS Form 1099 in the United States). You are responsible for providing accurate tax information when requested.</li>
+            <li><strong>Owner-to-collaborator payments.</strong> Payments from a storefront owner to an umbrella creator are made off-platform. ScreenMerch does not withhold taxes on those payments and does not issue tax forms for them unless required by law. In the United States, storefront owners may be required to report payments to umbrella creators (for example, Form 1099-NEC) when thresholds apply. Consult a qualified tax professional.</li>
+            <li><strong>No tax advice.</strong> ScreenMerch does not provide tax, legal, or accounting advice. Figures in dashboards are informational earnings summaries, not tax documents.</li>
+          </ul>
+
+          <h3>9.6 Disputes &amp; Limitation</h3>
+          <p>Disputes between a storefront owner and an umbrella creator regarding attribution, payment timing, or removal from an umbrella are primarily between those parties. ScreenMerch may assist with account or attribution issues but is not liable for unpaid collaborator balances, private revenue agreements, or tax consequences of off-platform payments, except where liability cannot be limited under applicable law.</p>
+        </section>
+
         <section>
-          <h2>9. Account Termination</h2>
+          <h2>10. Account Termination</h2>
           <p>ScreenMerch may suspend or terminate accounts for:</p>
           <ul>
             <li>Violations of these Terms</li>
@@ -145,7 +194,7 @@ const TermsOfService = () => {
         </section>
 
         <section>
-          <h2>10. Limitation of Liability</h2>
+          <h2>11. Limitation of Liability</h2>
           <p>To the maximum extent permitted by law:</p>
           <ul>
             <li>ScreenMerch shall not be liable for indirect, incidental, consequential, or punitive damages, including lost profits or lost revenue.</li>
@@ -154,19 +203,19 @@ const TermsOfService = () => {
         </section>
 
         <section>
-          <h2>11. Arbitration &amp; Dispute Resolution (U.S.)</h2>
+          <h2>12. Arbitration &amp; Dispute Resolution (U.S.)</h2>
           <p>Any disputes arising from these Terms shall be resolved through binding arbitration in the United States, except where prohibited by law.</p>
           <p>You waive the right to participate in class-action lawsuits.</p>
           <p>Disputes with third-party fulfillment partners (e.g., Printful) are governed by those partners&apos; terms and their arbitration or dispute-resolution provisions, not this section.</p>
         </section>
 
         <section>
-          <h2>12. California Consumer Rights</h2>
+          <h2>13. California Consumer Rights</h2>
           <p>Under California Civil Code Section 1789.3, California users are entitled to the following: The Complaint Assistance Unit of the Division of Consumer Services of the California Department of Consumer Affairs may be contacted in writing at 1625 North Market Blvd., Suite N 112, Sacramento, CA 95834, or by telephone at (916) 445-1254 or (800) 952-5210. You may contact ScreenMerch at support@screenmerch.com.</p>
         </section>
 
         <section>
-          <h2>13. Changes to Terms</h2>
+          <h2>14. Changes to Terms</h2>
           <p>We may update these Terms periodically. Continued use of the Service constitutes acceptance of updated Terms.</p>
         </section>
 

@@ -12,7 +12,7 @@ const PrivacyPolicy = () => {
         </div>
         
         <h1>Privacy Policy</h1>
-        <div className="last-updated">Last Updated: February 2025</div>
+        <div className="last-updated">Last Updated: July 2026</div>
 
         <section>
           <h2>Company Information</h2>
@@ -35,6 +35,7 @@ const PrivacyPolicy = () => {
             <li><strong>Contact Details:</strong> Phone number (for order notifications), mailing address</li>
             <li><strong>Billing Information:</strong> Shipping and billing addresses, payment method details (processed securely through Stripe)</li>
             <li><strong>Profile Data:</strong> Profile pictures, preferences, customization settings</li>
+            <li><strong>Umbrella Program Data:</strong> Invite emails or usernames, umbrella membership status, collaborator page names, sales attribution to umbrella pages, and payout records entered by storefront owners (amount, date, and optional notes)</li>
           </ul>
 
           <h3>Content and Usage Information</h3>
@@ -100,6 +101,19 @@ const PrivacyPolicy = () => {
         </section>
 
         <section>
+          <h2>Umbrella Creators &amp; Storefront Collaboration</h2>
+          <p>If you participate in ScreenMerch&apos;s umbrella program, we collect and use additional information to operate invites, collaborator pages, sales attribution, and payout summaries:</p>
+          <ul>
+            <li><strong>Invitations:</strong> Email addresses or usernames you provide when inviting or requesting to join an umbrella network, plus invite status (pending, accepted, or declined).</li>
+            <li><strong>Collaborator pages:</strong> Display names and content associated with umbrella creator pages hosted on a storefront owner&apos;s subdomain.</li>
+            <li><strong>Sales attribution:</strong> Which favorites or umbrella page was associated with a sale, for earnings reporting in the dashboard.</li>
+            <li><strong>Recorded payouts:</strong> When a storefront owner logs an off-platform payment to an umbrella creator, we store the amount, date, and any note the owner enters. ScreenMerch does not process those payments; we store this data to show balances and history in the dashboard.</li>
+          </ul>
+          <p><strong>Visibility between participants:</strong> Storefront owners can see umbrella collaborators connected to their storefront, attributed sales summaries, and payout history they record. Umbrella creators can see their own attributed analytics and umbrella relationship status. We do not publicly display collaborator email addresses on storefront pages.</p>
+          <p><strong>Tax and payment information:</strong> PayPal or other payout details you provide for ScreenMerch-to-creator payouts (Section 8 of our Terms) are used only to pay you amounts ScreenMerch owes directly. Payment details exchanged between a storefront owner and umbrella creator off-platform are not collected by ScreenMerch unless you voluntarily enter them in account or support communications.</p>
+        </section>
+
+        <section>
           <h2>Sharing with Fulfillment Partners</h2>
           <p>To produce and ship merchandise orders, we share necessary information with third-party fulfillment partners, including Printful, Inc. This may include:</p>
           <ul>
@@ -120,6 +134,7 @@ const PrivacyPolicy = () => {
             <li><strong>Platform Improvement:</strong> Enhance our services and user experience</li>
             <li><strong>Security:</strong> Protect against fraud and unauthorized access</li>
             <li><strong>Legal Compliance:</strong> Meet regulatory and legal obligations</li>
+            <li><strong>Umbrella program operations:</strong> Manage invites, collaborator access, sales attribution, and payout summaries between storefront owners and umbrella creators</li>
           </ul>
 
           <h3>Platform Exclusivity Protection</h3>
