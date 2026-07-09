@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import Feed from "../../Components/Feed/Feed";
+import CreatorDirectory, { SCREENMERCH_INTRO_TITLE } from "../../Components/Feed/CreatorDirectory";
 import { supabase } from '../../supabaseClient';
 import './Home.css'
 import { useNavigate, Link } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
-import { getSubdomain, getCreatorFromSubdomain } from '../../utils/subdomainService';
+import { getSubdomain, getCreatorFromSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { fetchPublicFavoritesByList } from '../../utils/favoriteListsApi';
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
 import API_CONFIG from '../../config/apiConfig';
@@ -23,6 +24,16 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [favoritesPreview, setFavoritesPreview] = useState(null);
   const navigate = useNavigate();
   const { creatorSettings, currentCreator, refreshCreator } = useCreator();
+  const isMainSite = !isCreatorStorefrontHostname();
+
+  const introVideo = React.useMemo(() => {
+    if (!videos.length) return null;
+    const match = videos.find((v) =>
+      (v.title || '').trim().toLowerCase() === SCREENMERCH_INTRO_TITLE.toLowerCase()
+      || /screenmerch\s*introduction/i.test(v.title || '')
+    );
+    return match || null;
+  }, [videos]);
 
   useEffect(() => {
     const subdomain = getSubdomain();
@@ -249,10 +260,23 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         />
 
 
-        {/* Videos Feed */}
-        {loading && <div style={{padding: 24}}>Loading videos...</div>}
+        {/* Main site: creator directory mockup. Subdomains: creator video feed. Revert: Home.jsx.origbak */}
+        {loading && <div style={{padding: 24}}>Loading...</div>}
         {error && <div style={{padding: 24, color: 'red'}}>{error}</div>}
-        {!loading && !error && videos.length > 0 && (
+        {!loading && !error && isMainSite && (
+          <CreatorDirectory
+            introVideo={introVideo}
+            onIntroUpdated={(next) => {
+              if (next?.id) {
+                setVideos((prev) => {
+                  const rest = prev.filter((v) => v.id !== next.id);
+                  return [next, ...rest];
+                });
+              }
+            }}
+          />
+        )}
+        {!loading && !error && !isMainSite && videos.length > 0 && (
           <Feed 
             videos={videos} 
             favoritesCount={favoritesCount}

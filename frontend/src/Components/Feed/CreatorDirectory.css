@@ -1,0 +1,419 @@
+/* Creator directory — same grid + card footprint as Feed (.feed / .card) */
+
+.creator-directory-header {
+  text-align: center;
+  margin: 0 0 10px;
+  padding: 0 12px;
+}
+
+.creator-directory-subtitle {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: #333;
+  line-height: 1.35;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 768px) {
+  .creator-directory-subtitle {
+    font-size: 0.9rem;
+  }
+}
+
+.creator-directory-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #444;
+}
+
+.creator-directory-counter strong {
+  color: #667eea;
+}
+
+.creator-directory-grid {
+  margin-top: 4px;
+}
+
+/* Intro card — same .card shell, subtle brand ring */
+.creator-directory-grid .card.intro-directory-card {
+  border: 2px solid rgba(102, 126, 234, 0.35);
+}
+
+.creator-directory-grid .card.intro-directory-card:hover {
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
+}
+
+.intro-directory-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.intro-directory-edit-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  border: 1px solid rgba(102, 126, 234, 0.4);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.intro-directory-edit-btn:hover {
+  background: #fff;
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.intro-edit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.intro-edit-modal {
+  position: relative;
+  background: #fff;
+  border-radius: 12px;
+  max-width: 440px;
+  width: 100%;
+  padding: 24px 22px 20px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+}
+
+.intro-edit-close {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  border: none;
+  background: transparent;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  color: #888;
+}
+
+.intro-edit-modal h2 {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+}
+
+.intro-edit-hint {
+  margin: 0 0 16px;
+  font-size: 0.85rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+.intro-edit-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 12px;
+}
+
+.intro-edit-label input[type='text'],
+.intro-edit-label input[type='file'] {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.intro-edit-label input[type='text'] {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #f5f5f5;
+}
+
+.intro-edit-file {
+  margin: -6px 0 12px;
+  font-size: 0.75rem;
+  color: #667eea;
+}
+
+.intro-edit-msg {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: #dc3545;
+}
+
+.intro-edit-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.intro-edit-actions button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #f8f8f8;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.intro-edit-save {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.intro-edit-save:disabled,
+.intro-edit-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Reserve slot cards — match .card img 16:9 preview height */
+.reserve-slot-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 5px 5px 0 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #fff;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.reserve-slot-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.reserve-slot-preview.pattern-filmstrip::before {
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 8px,
+    rgba(0, 0, 0, 0.4) 8px,
+    rgba(0, 0, 0, 0.4) 12px
+  );
+}
+
+.reserve-slot-preview.pattern-sparkle::before {
+  background: radial-gradient(circle at 20% 30%, #fff 1px, transparent 1px),
+    radial-gradient(circle at 80% 70%, #fff 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.reserve-slot-preview.pattern-dots::before {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.35) 2px, transparent 2px);
+  background-size: 16px 16px;
+}
+
+.reserve-slot-preview.pattern-coins::before {
+  background: radial-gradient(circle at 30% 40%, rgba(255, 215, 0, 0.4) 0%, transparent 50%),
+    radial-gradient(circle at 70% 60%, rgba(255, 215, 0, 0.3) 0%, transparent 45%);
+}
+
+.reserve-slot-preview.pattern-lens::before {
+  background: radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.25) 31%, transparent 32%),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.1) 0%, transparent 55%);
+}
+
+.reserve-slot-preview.pattern-warm::before,
+.reserve-slot-preview.pattern-soft::before {
+  background: radial-gradient(ellipse at top, rgba(255, 255, 255, 0.25) 0%, transparent 60%);
+}
+
+.reserve-slot-preview.pattern-clapper::before {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 6px,
+    rgba(255, 255, 255, 0.08) 6px,
+    rgba(255, 255, 255, 0.08) 12px
+  );
+}
+
+.reserve-slot-preview.pattern-brush::before {
+  background: linear-gradient(45deg, rgba(255, 255, 255, 0.1) 25%, transparent 25%);
+  background-size: 20px 20px;
+}
+
+.reserve-slot-preview.pattern-stars::before {
+  background: radial-gradient(circle at 15% 25%, #fff 1.5px, transparent 1.5px),
+    radial-gradient(circle at 85% 15%, #fff 1px, transparent 1px),
+    radial-gradient(circle at 50% 80%, #fff 1px, transparent 1px);
+  background-size: 100% 100%;
+}
+
+.reserve-slot-preview.pattern-reel::before {
+  background: repeating-radial-gradient(
+    circle at 50% 50%,
+    transparent 0,
+    transparent 8px,
+    rgba(255, 255, 255, 0.06) 8px,
+    rgba(255, 255, 255, 0.06) 10px
+  );
+}
+
+.reserve-slot-preview.pattern-flame::before {
+  background: radial-gradient(ellipse at bottom, rgba(255, 200, 0, 0.35) 0%, transparent 70%);
+}
+
+.reserve-slot-preview.pattern-gold::before {
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.2) 0%, transparent 50%);
+}
+
+.reserve-slot-preview.pattern-space::before {
+  background: radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.5) 1px, transparent 1px),
+    radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.4) 1px, transparent 1px);
+  background-size: 40px 40px, 55px 55px;
+}
+
+.reserve-slot-preview.pattern-ribbon::before,
+.reserve-slot-preview.pattern-ribbon::before {
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
+}
+
+.reserve-slot-preview.pattern-ticket::before {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 4px,
+    rgba(255, 255, 255, 0.08) 4px,
+    rgba(255, 255, 255, 0.08) 8px
+  );
+}
+
+.reserve-slot-preview.pattern-gem::before {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
+}
+
+.reserve-slot-preview.pattern-wave::before {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0,
+    rgba(255, 255, 255, 0.05) 2px,
+    transparent 2px,
+    transparent 12px
+  );
+}
+
+.reserve-slot-preview.pattern-spotlight::before {
+  background: radial-gradient(ellipse at 50% -20%, rgba(255, 255, 255, 0.35) 0%, transparent 55%);
+}
+
+.reserve-slot-number {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+.reserve-slot-icon {
+  position: relative;
+  z-index: 1;
+  font-size: 2.25rem;
+  line-height: 1;
+  margin-bottom: 6px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+}
+
+.reserve-slot-tagline {
+  position: relative;
+  z-index: 1;
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.95;
+  margin: 0 0 8px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  max-width: 90%;
+}
+
+.reserve-slot-cta-pill {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.95);
+  color: #333;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.02em;
+}
+
+.card.reserve-slot-card:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.card.reserve-slot-card {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card.reserve-slot-card h2 {
+  color: #667eea;
+}
+
+.card.reserve-slot-card h3 {
+  color: #888;
+  font-weight: 500;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 600px) {
+  .reserve-slot-icon {
+    font-size: 1.85rem;
+  }
+
+  .reserve-slot-tagline {
+    font-size: 0.65rem;
+  }
+}

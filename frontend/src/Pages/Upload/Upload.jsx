@@ -399,7 +399,7 @@ const Upload = ({ sidebar }) => {
                         />
                     </div>
                     <div style={{ marginBottom: 16 }}>
-                        <label>Video File * (Max 100MB)</label>
+                        <label>Video File * (Max 100MB — about a 2 minute or less video is acceptable)</label>
                         <input 
                             type="file" 
                             accept="video/*" 
