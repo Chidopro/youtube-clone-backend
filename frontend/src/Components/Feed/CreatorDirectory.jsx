@@ -232,8 +232,11 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
   return (
     <div className="creator-directory">
       <div className="creator-directory-header">
-        <p className="creator-directory-subtitle">
+        <p className="creator-directory-subtitle creator-directory-subtitle-desktop">
           Unlock your Free ScreenMerch storefront, limited access soft launch.
+        </p>
+        <p className="creator-directory-subtitle creator-directory-subtitle-mobile">
+          Free ScreenMerch storefront, limited access soft launch.
         </p>
         <div className="creator-directory-counter" aria-live="polite">
           <span>

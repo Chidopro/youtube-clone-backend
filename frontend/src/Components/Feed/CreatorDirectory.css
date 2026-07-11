@@ -17,12 +17,16 @@
   margin-right: auto;
 }
 
+.creator-directory-subtitle-mobile {
+  display: none;
+}
+
 @media (min-width: 769px) {
   .creator-directory-header {
     margin-bottom: 4px;
   }
 
-  .creator-directory-subtitle {
+  .creator-directory-subtitle-desktop {
     max-width: none;
     white-space: nowrap;
     margin-bottom: 6px;
@@ -36,8 +40,16 @@
 }
 
 @media (max-width: 768px) {
-  .creator-directory-subtitle {
-    font-size: 0.9rem;
+  .creator-directory-subtitle-desktop {
+    display: none;
+  }
+
+  .creator-directory-subtitle-mobile {
+    display: block;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    margin-bottom: 8px;
+    line-height: 1.25;
   }
 }
 
