@@ -40,16 +40,25 @@
 }
 
 @media (max-width: 768px) {
+  .creator-directory-header {
+    margin: 0 0 6px;
+    padding: 0 4px;
+    overflow: visible;
+  }
+
   .creator-directory-subtitle-desktop {
     display: none;
   }
 
   .creator-directory-subtitle-mobile {
     display: block;
-    font-size: 0.85rem;
+    font-size: 1rem;
+    font-weight: 500;
     white-space: nowrap;
-    margin-bottom: 8px;
-    line-height: 1.25;
+    /* Raise sentence toward purple bar; extra bottom margin keeps counter in place */
+    margin: 0 0 14px;
+    line-height: 1.2;
+    max-width: none;
   }
 }
 

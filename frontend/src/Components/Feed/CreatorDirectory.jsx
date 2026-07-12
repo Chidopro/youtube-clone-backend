@@ -236,7 +236,7 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
           Unlock your Free ScreenMerch storefront, limited access soft launch.
         </p>
         <p className="creator-directory-subtitle creator-directory-subtitle-mobile">
-          Free ScreenMerch storefront, limited access soft launch.
+          Free ScreenMerch storefront limited access soft launch
         </p>
         <div className="creator-directory-counter" aria-live="polite">
           <span>
