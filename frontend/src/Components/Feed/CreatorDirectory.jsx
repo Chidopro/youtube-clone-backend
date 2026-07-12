@@ -72,9 +72,7 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
   }, []);
 
   const openIntro = () => {
-    if (intro?.id) {
-      navigate(`/video/${intro.categoryId || 0}/${intro.id}`);
-    }
+    navigate('/how-it-works');
   };
 
   /** Same path as Navbar "Become a creator" → earnings/signup flow. */
@@ -253,11 +251,11 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
         {/* First card — ScreenMerch introduction only */}
         <div
           className="card intro-directory-card"
-          style={{ cursor: intro?.id ? 'pointer' : 'default' }}
+          style={{ cursor: 'pointer' }}
           onClick={openIntro}
           onKeyDown={(e) => e.key === 'Enter' && openIntro()}
-          role={intro?.id ? 'button' : undefined}
-          tabIndex={intro?.id ? 0 : undefined}
+          role="button"
+          tabIndex={0}
         >
           <div style={{ position: 'relative' }}>
             <span className="intro-directory-badge">How it works</span>

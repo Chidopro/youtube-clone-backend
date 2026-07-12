@@ -34,6 +34,8 @@ import RequestSetPassword from "./Pages/RequestSetPassword/RequestSetPassword";
 import CreatorThankYou from "./Pages/CreatorThankYou/CreatorThankYou";
 import AdminSignup from "./Pages/AdminSignup/AdminSignup";
 import Release from "./Pages/Release/Release";
+import HowItWorks from "./Pages/HowItWorks/HowItWorks";
+import FAQ from "./Pages/FAQ/FAQ";
 import Favorites from "./Pages/Favorites/Favorites";
 import UmbrellaJoin from "./Pages/UmbrellaJoin/UmbrellaJoin";
 import { API_CONFIG } from "./config/apiConfig";
@@ -295,6 +297,8 @@ const App = () => {
                 <Route path="/order-success" element={<OrderSuccess />} />
                 <Route path="/coming-soon" element={<ComingSoon />} />
                 <Route path="/release" element={<Release />} />
+                <Route path="/how-it-works" element={<HowItWorks />} />
+                <Route path="/faq" element={<FAQ />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/auth" element={<AuthForm />} />
                 <Route path="/login" element={<Login />} />
