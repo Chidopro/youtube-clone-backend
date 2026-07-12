@@ -43,11 +43,6 @@ const HowItWorks = () => {
     <div className="how-it-works-page">
       <div className="how-it-works-inner">
         <p className="how-it-works-eyebrow">ScreenMerch soft launch</p>
-        <h1 className="how-it-works-title">How it works</h1>
-        <p className="how-it-works-lede">
-          Watch the introduction, then see how fans turn a video moment into merch — and how creators
-          own the storefront.
-        </p>
 
         <div className="how-it-works-player-wrap">
           {loading && <div className="how-it-works-player-placeholder">Loading video…</div>}
@@ -69,69 +64,75 @@ const HowItWorks = () => {
           )}
         </div>
 
-        <section className="how-it-works-section">
-          <h2>What you just saw</h2>
-          <ol className="how-it-works-steps">
-            <li>
-              <strong>Choose a video</strong>
-              <span>Fans browse content on a creator&apos;s branded ScreenMerch storefront.</span>
-            </li>
-            <li>
-              <strong>Select a screenshot</strong>
-              <span>They pause on the moment they love and capture it for print.</span>
-            </li>
-            <li>
-              <strong>Make merch</strong>
-              <span>That image goes on products and checks out — inventory and shipping handled for you.</span>
-            </li>
-          </ol>
+        <section className="how-it-works-section how-it-works-narrative">
+          <h1 className="how-it-works-title">How ScreenMerch Works</h1>
+
+          <p>
+            ScreenMerch transforms the best moments from online videos into high-quality, personalized
+            merchandise—giving creators a simple new way to monetize the content their audiences already
+            love.
+          </p>
+
+          <p>
+            Every approved creator receives a fully branded online storefront with a personalized
+            subdomain, custom logo, colors, favicon, and branding. Instead of directing fans to a generic
+            marketplace, each creator has their own destination where their community can browse and
+            purchase merchandise inspired by their videos.
+          </p>
+
+          <p>
+            To make capturing those memorable moments effortless, ScreenMerch provides creators with{' '}
+            <strong>FrameSnag</strong>, a free Google Chrome extension developed exclusively for the
+            ScreenMerch platform. FrameSnag allows creators to browse YouTube videos and channel
+            thumbnails, capture high-quality frames with a single click, and instantly save them to their
+            ScreenMerch Favorites page. Those saved images become the artwork available for merchandise,
+            eliminating the need to download, edit, or upload images manually.
+          </p>
+
+          <p>
+            Once images have been added through FrameSnag, fans simply visit the creator&apos;s
+            storefront, browse the creator&apos;s collection of favorite images, select the one they love
+            most, and place it on a wide variety of premium print-on-demand products. Every product is
+            professionally printed at 300 DPI for exceptional image quality, then produced and shipped
+            through trusted global fulfillment partners.
+          </p>
+
+          <p>
+            Creators never have to purchase inventory, package orders, or manage shipping logistics.
+            ScreenMerch handles secure payment processing, manufacturing, fulfillment, and customer
+            delivery, allowing creators to focus entirely on creating content while earning revenue from
+            every qualifying sale.
+          </p>
+
+          <p>
+            ScreenMerch also supports collaborative growth through its unique Umbrella Creator system.
+            Storefront owners can invite trusted collaborators, co-hosts, or team members to create their
+            own branded pages within the same storefront. Each umbrella creator manages their own
+            collection of favorite images while maintaining separate analytics and earnings, giving
+            audiences a seamless shopping experience across an entire creator network.
+          </p>
+
+          <p>
+            By bringing together video content, image capture, merchandise creation, storefront
+            management, fulfillment, and creator collaboration into one integrated platform, ScreenMerch
+            provides a complete merchandising ecosystem designed specifically for today&apos;s creator
+            economy.
+          </p>
         </section>
 
-        <section className="how-it-works-section">
-          <h2>Why this is different</h2>
-          <p>
-            ScreenMerch is not a marketplace bolted onto someone else&apos;s brand. Every approved creator
-            gets a personalized subdomain, branding control, and a dashboard for videos, analytics, and
-            payouts. Fans stay inside <em>your</em> world while they shop.
-          </p>
-          <p>
-            Most products pay creators <strong>$6 per sale</strong>. Production and shipping run through
-            trusted fulfillment partners. You focus on content.
-          </p>
-        </section>
-
-        <section className="how-it-works-section">
-          <h2>Grow with umbrella creators</h2>
-          <p>
-            Storefront owners can invite umbrella creators — trusted collaborators and creative partners —
-            onto the same branded subdomain. Each collaborator gets an attributed page; sales are tracked
-            per page. ScreenMerch pays the storefront owner for direct storefront earnings; the owner pays
-            umbrella creators when owed balances reach the platform minimum (typically $50).
-          </p>
-          <p>
-            Details on payouts, taxes, and responsibilities are in our{' '}
-            <Link to="/terms-of-service">Terms of Service</Link> and{' '}
-            <Link to="/faq">FAQ</Link>.
-          </p>
-        </section>
-
-        <section className="how-it-works-section">
-          <h2>Soft launch — limited free storefronts</h2>
-          <p>
-            ScreenMerch is offering a limited number of free storefronts for this soft launch. Reserve a
-            spot, complete creator signup, and wait for admin approval. Subdomains may take up to 24 hours
-            after approval.
-          </p>
-        </section>
-
-        <div className="how-it-works-cta-row">
-          <button
-            type="button"
-            className="how-it-works-cta-primary"
-            onClick={() => navigate('/subscription-tiers', { state: { intent: 'creator' } })}
-          >
-            Unlock your free storefront
-          </button>
+        <div className="how-it-works-cta-block">
+          <div className="how-it-works-cta-primary-col">
+            <p className="how-it-works-tagline">
+              <strong>Your brand. Your content. Your earnings.</strong>
+            </p>
+            <button
+              type="button"
+              className="how-it-works-cta-primary"
+              onClick={() => navigate('/subscription-tiers', { state: { intent: 'creator' } })}
+            >
+              Unlock your free storefront
+            </button>
+          </div>
           <Link to="/faq" className="how-it-works-cta-secondary">
             Read the FAQ
           </Link>

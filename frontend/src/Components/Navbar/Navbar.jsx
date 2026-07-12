@@ -704,6 +704,18 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         Channel invites
                     </button>
                 )}
+                <button
+                    className="dropdown-item"
+                    type="button"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDropdownOpen(false);
+                        navigate('/faq');
+                    }}
+                >
+                    FAQ
+                </button>
                 {(isOrderProcessingAdmin || isFullAdmin) && (
                     <button
                         className="dropdown-item"

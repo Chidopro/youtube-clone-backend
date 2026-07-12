@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
 import {
@@ -18,13 +19,13 @@ const Checkout = () => {
   const [shipping, setShipping] = useState({ cost: 0, method: 'Standard Shipping', loading: false, error: '', calculated: false });
   const [address, setAddress] = useState({ country_code: 'US', zip: '', state_code: '' });
   const shippingRef = useRef(shipping);
-  // Design preferences modal – per-item (orientation + tools) so each cart item can have its own style
+  // Design preferences modal – per-item orientation; tools live on /tools
   const [showDesignModal, setShowDesignModal] = useState(false);
-  /** One entry per cart item: { orientation: ''|'portrait'|'landscape', feather: 'yes'|'no', cornerRadius: 'yes'|'no', frame: 'yes'|'no' } */
+  /** One entry per cart item: { orientation: ''|'portrait'|'landscape' } */
   const [designPreferences, setDesignPreferences] = useState([]);
   const designPreferencesRef = useRef([]);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
-  /** Set true when user completes design modal with "Continue to Checkout" (all tools No). Required before Place Order. */
+  /** Set true when user completes design modal with "Continue to Checkout". Required before Place Order. */
   const [designConfirmed, setDesignConfirmed] = useState(false);
   const designModalShownOnLoadRef = useRef(false);
 
@@ -67,12 +68,7 @@ const Checkout = () => {
   // When design modal opens, init per-item preferences (orientation left empty so user must choose)
   useEffect(() => {
     if (showDesignModal && items.length > 0) {
-      setDesignPreferences(items.map(() => ({
-        orientation: '',
-        feather: 'no',
-        cornerRadius: 'no',
-        frame: 'no',
-      })));
+      setDesignPreferences(items.map(() => ({ orientation: '' })));
     }
   }, [showDesignModal, items.length]);
 
@@ -299,7 +295,7 @@ const Checkout = () => {
   // which would retrigger this effect and spam /api/calculate-shipping (blinking error banner).
   }, [address.zip, address.country_code, address.state_code, items.length, shipping.calculated, fetchShipping]);
 
-  /** Run actual checkout (build payload, POST, redirect). Call after design modal "Continue" when all tools are No. */
+  /** Run actual checkout (build payload, POST, redirect). Call after design modal "Continue to Checkout". */
   const runCheckout = useCallback(async (cartOverride = null) => {
     const cartToUse = Array.isArray(cartOverride) ? cartOverride : items;
     const zipValue = String(address.zip || '').trim();
@@ -807,21 +803,20 @@ const Checkout = () => {
         </div>
       )}
 
-      {/* Design preferences safeguard modal – per-item so each cart item has its own style */}
-      {showDesignModal && items.length > 0 && (
+      {/* Design preferences – portaled to body so navbar cannot cover it */}
+      {showDesignModal && items.length > 0 && createPortal(
         <div className="design-modal-overlay" onClick={() => setShowDesignModal(false)}>
           <div className="design-modal design-modal--multi" onClick={e => e.stopPropagation()}>
             <h2>Design preferences</h2>
 
             <div className="design-modal-items">
               {items.map((item, i) => {
-                const prefs = designPreferences[i] ?? { orientation: '', feather: 'no', cornerRadius: 'no', frame: 'no' };
+                const prefs = designPreferences[i] ?? { orientation: '' };
                 const setPref = (key, value) => {
                   setDesignPreferences(prev => {
                     const next = prev.slice(0, items.length);
-                    while (next.length <= i) next.push({ orientation: '', feather: 'no', cornerRadius: 'no', frame: 'no' });
+                    while (next.length <= i) next.push({ orientation: '' });
                     next[i] = { ...next[i], [key]: value };
-                    // Keep ref in sync immediately so validation buttons use latest choice
                     designPreferencesRef.current = next;
                     return next;
                   });
@@ -833,7 +828,7 @@ const Checkout = () => {
                     <h3 className="design-modal-item-title">{itemName}</h3>
                     {isShirt && (
                     <div className="design-modal-field">
-                      <label>Image orientation</label>
+                      <label className="design-modal-field-label">Image orientation</label>
                       <div className="design-modal-options design-modal-orientation-options">
                         <label className="design-modal-orientation-option">
                           <img src="/shirt-portrait.png" alt="Portrait print on shirt" className="design-modal-orientation-img" />
@@ -852,118 +847,66 @@ const Checkout = () => {
                       </div>
                     </div>
                     )}
-                    <div className="design-modal-field">
-                      <label>Feather edge?</label>
-                      <div className="design-modal-toggle-group" role="group" aria-label="Feather edge">
-                        <label className={`design-modal-segment ${prefs.feather === 'yes' ? 'design-modal-segment-selected' : ''}`}>
-                          <input type="radio" name={`feather-${i}`} checked={prefs.feather === 'yes'} onChange={() => setPref('feather', 'yes')} className="design-modal-segment-input" />
-                          <span>Yes</span>
-                        </label>
-                        <label className={`design-modal-segment ${prefs.feather === 'no' ? 'design-modal-segment-selected' : ''}`}>
-                          <input type="radio" name={`feather-${i}`} checked={prefs.feather === 'no'} onChange={() => setPref('feather', 'no')} className="design-modal-segment-input" />
-                          <span>No</span>
-                        </label>
-                      </div>
-                    </div>
-                    <div className="design-modal-field">
-                      <label>Corner radius tool?</label>
-                      <div className="design-modal-toggle-group" role="group" aria-label="Corner radius tool">
-                        <label className={`design-modal-segment ${prefs.cornerRadius === 'yes' ? 'design-modal-segment-selected' : ''}`}>
-                          <input type="radio" name={`corner-${i}`} checked={prefs.cornerRadius === 'yes'} onChange={() => setPref('cornerRadius', 'yes')} className="design-modal-segment-input" />
-                          <span>Yes</span>
-                        </label>
-                        <label className={`design-modal-segment ${prefs.cornerRadius === 'no' ? 'design-modal-segment-selected' : ''}`}>
-                          <input type="radio" name={`corner-${i}`} checked={prefs.cornerRadius === 'no'} onChange={() => setPref('cornerRadius', 'no')} className="design-modal-segment-input" />
-                          <span>No</span>
-                        </label>
-                      </div>
-                    </div>
-                    <div className="design-modal-field">
-                      <label>Frame tool?</label>
-                      <div className="design-modal-toggle-group" role="group" aria-label="Frame tool">
-                        <label className={`design-modal-segment ${prefs.frame === 'yes' ? 'design-modal-segment-selected' : ''}`}>
-                          <input type="radio" name={`frame-${i}`} checked={prefs.frame === 'yes'} onChange={() => setPref('frame', 'yes')} className="design-modal-segment-input" />
-                          <span>Yes</span>
-                        </label>
-                        <label className={`design-modal-segment ${prefs.frame === 'no' ? 'design-modal-segment-selected' : ''}`}>
-                          <input type="radio" name={`frame-${i}`} checked={prefs.frame === 'no'} onChange={() => setPref('frame', 'no')} className="design-modal-segment-input" />
-                          <span>No</span>
-                        </label>
-                      </div>
-                    </div>
                   </div>
                 );
               })}
             </div>
 
-            <div className="design-modal-actions">
-              <button type="button" className="btn-outline" onClick={() => setShowDesignModal(false)}>
-                Cancel
-              </button>
-              {(() => {
-                const prefs = designPreferencesRef.current;
-                const anyToolYes = items.some((_, i) => {
-                  const p = prefs[i] ?? {};
-                  return p.feather === 'yes' || p.cornerRadius === 'yes' || p.frame === 'yes';
-                });
-                const allShirtItemsHaveOrientation = items.every((it, i) => {
+            {(() => {
+              const applyOrientationToCart = () => {
+                const currentPrefs = designPreferencesRef.current;
+                const hasOrientation = items.every((it, i) => {
                   if (!SHIRT_CATEGORIES.includes(it.category)) return true;
-                  const o = (prefs[i] ?? {}).orientation || it.toolSettings?.imageOrientation || '';
+                  const o = (currentPrefs[i] ?? {}).orientation || it.toolSettings?.imageOrientation || '';
                   return o === 'portrait' || o === 'landscape';
                 });
-                const handleContinue = () => {
-                  const currentPrefs = designPreferencesRef.current;
-                  const hasOrientation = items.every((it, i) => {
-                    if (!SHIRT_CATEGORIES.includes(it.category)) return true;
-                    const o = (currentPrefs[i] ?? {}).orientation || it.toolSettings?.imageOrientation || '';
-                    return o === 'portrait' || o === 'landscape';
-                  });
-                  if (!hasOrientation) {
-                    alert('Please choose Image orientation (Portrait or Landscape) for each shirt item before continuing.');
-                    return;
-                  }
-                  const updated = items.map((it, idx) => ({
+                if (!hasOrientation) {
+                  alert('Please choose Image orientation (Portrait or Landscape) for each shirt item before continuing.');
+                  return null;
+                }
+                const updated = items.map((it, idx) => {
+                  if (!SHIRT_CATEGORIES.includes(it.category)) return it;
+                  return {
                     ...it,
                     toolSettings: {
                       ...(it.toolSettings || {}),
                       imageOrientation: ((currentPrefs[idx] ?? {}).orientation || it.toolSettings?.imageOrientation) === 'landscape' ? 'landscape' : 'portrait',
                     },
-                  }));
-                  setItems(updated);
-                  try { localStorage.setItem('cart_items', JSON.stringify(updated)); } catch (e) { /* ignore */ }
-                  setDesignConfirmed(true);
-                  setShowDesignModal(false);
-                };
-                const handleGoToTools = () => {
-                  const currentPrefs = designPreferencesRef.current;
-                  const hasOrientation = items.every((it, i) => {
-                    if (!SHIRT_CATEGORIES.includes(it.category)) return true;
-                    const o = (currentPrefs[i] ?? {}).orientation || it.toolSettings?.imageOrientation || '';
-                    return o === 'portrait' || o === 'landscape';
-                  });
-                  if (!hasOrientation) {
-                    alert('Please choose Image orientation (Portrait or Landscape) for each shirt item before continuing.');
-                    return;
-                  }
-                  setShowDesignModal(false);
-                  navigate('/tools');
-                };
-                if (anyToolYes) {
-                  return (
-                    <button type="button" className="btn-primary" onClick={handleGoToTools}>
-                      Go to Edit Tools
-                    </button>
-                  );
-                }
-                return (
-                  <button type="button" className="btn-primary" onClick={handleContinue}>
-                    Continue to Checkout
+                  };
+                });
+                setItems(updated);
+                try { localStorage.setItem('cart_items', JSON.stringify(updated)); } catch (e) { /* ignore */ }
+                return updated;
+              };
+              const handleContinue = () => {
+                if (!applyOrientationToCart()) return;
+                setDesignConfirmed(true);
+                setShowDesignModal(false);
+              };
+              const handleGoToTools = () => {
+                if (!applyOrientationToCart()) return;
+                setShowDesignModal(false);
+                navigate('/tools');
+              };
+              return (
+                <>
+                  <button type="button" className="design-modal-tools-btn" onClick={handleGoToTools}>
+                    Tools page
                   </button>
-                );
-              })()}
-            </div>
+                  <div className="design-modal-actions">
+                    <button type="button" className="btn-outline" onClick={() => setShowDesignModal(false)}>
+                      Cancel
+                    </button>
+                    <button type="button" className="btn-primary" onClick={handleContinue}>
+                      Continue to Checkout
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

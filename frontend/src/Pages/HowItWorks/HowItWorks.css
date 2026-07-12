@@ -11,7 +11,7 @@
 }
 
 .how-it-works-eyebrow {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.85rem;
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -20,20 +20,12 @@
 }
 
 .how-it-works-title {
-  margin: 0 0 0.5rem;
+  margin: 0 0 1rem;
   font-size: clamp(1.75rem, 4vw, 2.35rem);
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.15;
   color: #0f172a;
-}
-
-.how-it-works-lede {
-  margin: 0 0 1.5rem;
-  font-size: 1.05rem;
-  line-height: 1.55;
-  color: #475569;
-  max-width: 38rem;
 }
 
 .how-it-works-player-wrap {
@@ -72,64 +64,34 @@
   margin-bottom: 1.75rem;
 }
 
-.how-it-works-section h2 {
-  margin: 0 0 0.65rem;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.how-it-works-section p {
-  margin: 0 0 0.85rem;
-  font-size: 1rem;
-  line-height: 1.65;
+.how-it-works-narrative p {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
   color: #334155;
 }
 
-.how-it-works-section a {
-  color: #5568d3;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.how-it-works-section a:hover {
-  text-decoration: underline;
-}
-
-.how-it-works-steps {
+.how-it-works-tagline {
   margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.85rem;
+  font-size: 1.15rem;
+  color: #0f172a;
+  text-align: center;
+  white-space: nowrap;
 }
 
-.how-it-works-steps li {
-  display: grid;
-  gap: 0.2rem;
-  padding: 0.9rem 1rem;
-  border-radius: 10px;
-  background: #fff;
-  border: 1px solid rgba(102, 126, 234, 0.2);
-}
-
-.how-it-works-steps strong {
-  color: #4338ca;
-  font-size: 0.95rem;
-}
-
-.how-it-works-steps span {
-  color: #475569;
-  font-size: 0.95rem;
-  line-height: 1.45;
-}
-
-.how-it-works-cta-row {
+.how-it-works-cta-block {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+  align-items: flex-end;
+  margin: 1.25rem 0 1.25rem;
+}
+
+.how-it-works-cta-primary-col {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  margin: 2rem 0 1.25rem;
+  gap: 1.35rem;
 }
 
 .how-it-works-cta-primary {
@@ -184,15 +146,37 @@
   .how-it-works-player-wrap {
     border-radius: 10px;
     margin-bottom: 1.5rem;
+    /* Keep full 16:9 frame visible; do not let global video height rules clip it */
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
   }
 
-  .how-it-works-cta-row {
+  .how-it-works-player {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: none !important;
+    object-fit: contain !important;
+  }
+
+  .how-it-works-cta-block {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .how-it-works-cta-primary-col {
+    width: 100%;
+  }
+
+  .how-it-works-tagline {
+    white-space: normal;
+  }
+
   .how-it-works-cta-primary,
   .how-it-works-cta-secondary {
+    width: 100%;
     justify-content: center;
     text-align: center;
   }

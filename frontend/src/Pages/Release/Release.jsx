@@ -58,7 +58,7 @@ const Release = () => {
 
         <p className="release-contact"><strong>Media Contact:</strong><br />ScreenMerch<br />support@screenmerch.com</p>
 
-        <p className="release-tagline"><strong>Your brand. Your videos. Your earnings.</strong></p>
+        <p className="release-tagline"><strong>Your brand. Your content. Your earnings.</strong></p>
       </article>
       <Link to="/" className="release-back">Back to Home</Link>
     </div>

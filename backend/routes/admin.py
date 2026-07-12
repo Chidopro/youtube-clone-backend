@@ -250,7 +250,7 @@ def _send_creator_welcome_email(creator_email):
   <p style="margin-bottom: 24px;"><a href="{set_password_url}" style="color: #667eea; font-weight: 600; word-break: break-all;">{set_password_url}</a></p>
   {intro_video_block}
   <p style="margin-top: 24px;">Thank you for joining us — we're excited to support your journey.</p>
-  <p style="font-style: italic; color: #555; margin: 16px 0;">Your brand. Your videos. Your earnings.</p>
+  <p style="font-style: italic; color: #555; margin: 16px 0;">Your brand. Your content. Your earnings.</p>
   <p style="margin-top: 24px;">The ScreenMerch Team</p>
 </body>
 </html>"""
@@ -299,7 +299,7 @@ Note: Your custom subdomain may take up to 24 hours to be reviewed and activated
 
 Thank you for joining us — we're excited to support your journey.
 
-Your brand. Your videos. Your earnings.
+Your brand. Your content. Your earnings.
 
 The ScreenMerch Team
 """

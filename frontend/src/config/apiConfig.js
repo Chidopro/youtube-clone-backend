@@ -3,6 +3,9 @@ const isDevelopment = import.meta.env.MODE === 'development';
 const env = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {};
 
 const BACKEND_URL_FALLBACK = 'https://screenmerch.fly.dev';
+/** Chrome Web Store listing: FrameSnag - For ScreenMerch Creators */
+export const FRAMESNAG_CHROME_STORE_URL =
+  'https://chromewebstore.google.com/detail/framesnag-for-screenmerch/hfokckkkdojjgfgknpakccbfmbakkilf';
 const SUPABASE_URL_FALLBACK = 'https://sojxbydpcdcdzfdtbypd.supabase.co';
 const SUPABASE_ANON_KEY_FALLBACK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanhieWRwY2RjZHpmZHRieXBkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4NTIwNTUsImV4cCI6MjA2NTQyODA1NX0.BUm9LKbNs-EdJKxwwtoY3IRyokmDtRbS0XP-WBw-5no';
 

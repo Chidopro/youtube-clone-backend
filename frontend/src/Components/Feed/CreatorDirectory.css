@@ -75,6 +75,8 @@
   font-size: 0.8rem;
   font-weight: 600;
   color: #444;
+  /* Lift away from How it Works card (mobile + desktop) */
+  margin-bottom: 6px;
 }
 
 .creator-directory-counter strong {
@@ -82,7 +84,7 @@
 }
 
 .creator-directory-grid {
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 /* Intro card — same .card shell, subtle brand ring */
