@@ -60,3 +60,6 @@ backend/app_backup*.py
 backend/app_working_backup.py
 backend/app_original*
 backend/app_temp.py
+
+# Manual editor snapshots
+*.origbak
