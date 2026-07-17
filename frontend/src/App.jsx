@@ -37,6 +37,7 @@ import Release from "./Pages/Release/Release";
 import HowItWorks from "./Pages/HowItWorks/HowItWorks";
 import FAQ from "./Pages/FAQ/FAQ";
 import Favorites from "./Pages/Favorites/Favorites";
+import FriendPages from "./Pages/FriendPages/FriendPages";
 import UmbrellaJoin from "./Pages/UmbrellaJoin/UmbrellaJoin";
 import { API_CONFIG } from "./config/apiConfig";
 import { CreatorProvider } from "./contexts/CreatorContext";
@@ -249,6 +250,9 @@ const App = () => {
   const shouldShowSidebar = sidebar && !(currentProfileTier?.isThirdTier);
   
   const isFavoritesPage = /^\/favorites(\/|$)/.test(location.pathname);
+  const isFriendPages = location.pathname === '/friend-pages';
+  const isOrderSuccessPage = location.pathname === '/order-success' || location.pathname === '/success';
+  const useStorefrontChrome = isFavoritesPage || isFriendPages;
 
   console.log('🚀 App.jsx rendering - current path:', location.pathname);
   
@@ -256,13 +260,13 @@ const App = () => {
     <CreatorProvider>
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <Navbar setSidebar={setSidebar} resetCategory={resetCategory} />
-        <div id="page-top-banner" className="page-top-banner" aria-hidden={!isFavoritesPage} />
+        <div id="page-top-banner" className="page-top-banner" aria-hidden="true" />
         <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}>
-          {shouldShowSidebar && (
+          {shouldShowSidebar && !isOrderSuccessPage && (
           <Sidebar sidebar={sidebar} category={category} setCategory={setCategory} setSidebar={setSidebar} />
           )}
           {/* Mobile backdrop for sidebar */}
-          {sidebar && isMobile && (
+          {sidebar && isMobile && !isOrderSuccessPage && (
             <div 
               className="mobile-sidebar-backdrop"
               onClick={() => setSidebar(false)}
@@ -279,7 +283,7 @@ const App = () => {
             />
           )}
           <div
-            className={`main-content-area${isFavoritesPage ? ' main-content-area--favorites' : ''}`}
+            className={`main-content-area${useStorefrontChrome ? ' main-content-area--storefront-subpage' : ''}${isOrderSuccessPage ? ' main-content-area--order-success' : ''}`}
             style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
           >
             <div className="main-content-inner" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'visible' }}>
@@ -322,6 +326,7 @@ const App = () => {
                 <Route path="/join" element={<UmbrellaJoin />} />
                 <Route path="/favorites" element={<Favorites sidebar={sidebar} />} />
                 <Route path="/favorites/:listSlug" element={<Favorites sidebar={sidebar} />} />
+                <Route path="/friend-pages" element={<FriendPages sidebar={sidebar} />} />
                 {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
               </Routes>
             </div>

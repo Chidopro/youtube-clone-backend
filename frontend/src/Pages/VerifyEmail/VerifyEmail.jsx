@@ -12,6 +12,8 @@ const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [token, setToken] = useState(null);
@@ -221,35 +223,57 @@ const VerifyEmail = () => {
 
             <div className="verify-email-field">
               <label htmlFor="password" className="verify-email-label">Password</label>
-              <input
-                id="password"
-                type="password"
-                className="verify-email-input"
-                placeholder="••••••••"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-                required
-                minLength={6}
-              />
+              <div className="verify-email-password-wrap">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="verify-email-input"
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  className="verify-email-password-toggle"
+                  onClick={() => setShowPassword((v) => !v)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
               <p className="verify-email-hint">Must be at least 6 characters</p>
             </div>
 
             <div className="verify-email-field">
               <label htmlFor="confirmPassword" className="verify-email-label">Confirm Password</label>
-              <input
-                id="confirmPassword"
-                type="password"
-                className="verify-email-input"
-                placeholder="••••••••"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={isLoading}
-                required
-                minLength={6}
-              />
+              <div className="verify-email-password-wrap">
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  className="verify-email-input"
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading}
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  className="verify-email-password-toggle"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  tabIndex={-1}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
 
             <button type="submit" className="verify-email-submit-btn" disabled={isLoading}>

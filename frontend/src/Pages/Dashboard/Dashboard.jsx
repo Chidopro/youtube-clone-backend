@@ -12,9 +12,11 @@ import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.js
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
 // Force Netlify rebuild
 
-function umbrellaDefaultPageName(email) {
-    const local = (email || '').split('@')[0].trim();
-    return local ? `${local.charAt(0).toUpperCase()}${local.slice(1)} Favorites` : 'My Favorites';
+/** Auto-generated umbrella list titles should not prefill the nickname field. */
+function isUmbrellaAutoPageName(name) {
+    const n = (name || '').replace(/\s*\(owner\)\s*/gi, ' ').trim();
+    const stripped = n.replace(/\s*Favorites\s*$/i, '').trim();
+    return !stripped || /^collaborator$/i.test(stripped);
 }
 
 function formatPayoutDate(iso) {
@@ -112,7 +114,11 @@ const Dashboard = ({ sidebar }) => {
                 if (ok && data?.is_umbrella_only) {
                     setUmbrellaOnly(true);
                     const tabParam = new URLSearchParams(window.location.search).get('tab');
-                    setActiveTab(tabParam === 'analytics' ? 'analytics' : 'favorites');
+                    if (tabParam === 'analytics' || tabParam === 'videos' || tabParam === 'favorites') {
+                        setActiveTab(tabParam);
+                    } else {
+                        setActiveTab('favorites');
+                    }
                 } else {
                     setUmbrellaOnly(false);
                 }
@@ -418,7 +424,7 @@ const Dashboard = ({ sidebar }) => {
                 if (nextId) persistFramesnagListTarget(nextId);
                 if (data.is_umbrella_only && primary) {
                     const rawName = (primary.display_name || '').replace(/\s*\(owner\)\s*/gi, ' ').trim();
-                    setUmbrellaPageName(rawName || umbrellaDefaultPageName(user?.email));
+                    setUmbrellaPageName(isUmbrellaAutoPageName(rawName) ? '' : rawName);
                 }
                 if (nextId && listUserId) {
                     const page = data.lists.find((l) => l.id === nextId);
@@ -744,7 +750,11 @@ const Dashboard = ({ sidebar }) => {
                     return;
                 }
                 if (json.success && json.favorite) {
-                    if (json.user_id && json.user_id !== userId && !json.collaborator_upload) {
+                    if (json.user_id_corrected && json.user_id) {
+                        const merged = { ...(storedUser || user || {}), id: json.user_id, email: accountEmail || (storedUser || user || {}).email };
+                        localStorage.setItem('user', JSON.stringify(merged));
+                        setUser(merged);
+                    } else if (json.user_id && json.user_id !== userId && !json.collaborator_upload) {
                         const merged = { ...(storedUser || user || {}), id: json.user_id };
                         localStorage.setItem('user', JSON.stringify(merged));
                         setUser(merged);
@@ -1377,14 +1387,12 @@ const Dashboard = ({ sidebar }) => {
         <div className={`dashboard-container ${sidebar ? "" : " large-container"}`}>
             {/* Tab Navigation */}
             <div className="dashboard-tabs">
-                {!umbrellaOnly && (
                 <button 
                     className={`tab-button ${activeTab === 'videos' ? 'active' : ''}`}
                     onClick={() => setActiveTab('videos')}
                 >
                     📹 Videos ({videos.length})
                 </button>
-                )}
                 <button 
                     className={`tab-button ${activeTab === 'favorites' ? 'active' : ''}`}
                     onClick={() => {
@@ -1448,11 +1456,13 @@ const Dashboard = ({ sidebar }) => {
                         <div className="getting-started-section">
                             <h2>Getting Started</h2>
                             <div className="tips-grid">
+                                {!umbrellaOnly && (
                                 <div className="tip-card clickable" onClick={() => setActiveTab('personalization')}>
                                     <h4>🎨 Customize Your Channel</h4>
                                     <p>Add a cover image, profile picture, and bio in Personalization.</p>
                                     <div className="card-action">Open Personalization →</div>
                                 </div>
+                                )}
                                 <div className="tip-card clickable" onClick={() => navigate('/upload')}>
                                     <h4>📹 Upload Content</h4>
                                     <p>Start sharing your videos and build your audience.</p>
@@ -1469,6 +1479,13 @@ const Dashboard = ({ sidebar }) => {
                         <div className="user-videos-section">
                             <div className="section-header">
                                 <h2>Your Videos ({videos.length})</h2>
+                                <button
+                                    type="button"
+                                    className="add-favorite-btn"
+                                    onClick={() => navigate('/upload')}
+                                >
+                                    Upload video
+                                </button>
                             </div>
                             
                             {videos.length > 0 ? (
@@ -1512,10 +1529,31 @@ const Dashboard = ({ sidebar }) => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="no-videos-placeholder">
+                                <div
+                                    className="no-videos-placeholder no-videos-placeholder--clickable"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => navigate('/upload')}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            navigate('/upload');
+                                        }
+                                    }}
+                                >
                                     <div className="placeholder-content">
                                         <h3>No videos yet</h3>
                                         <p>Start building your content library by uploading your first video!</p>
+                                        <button
+                                            type="button"
+                                            className="add-favorite-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigate('/upload');
+                                            }}
+                                        >
+                                            + Add your first video
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -1536,15 +1574,15 @@ const Dashboard = ({ sidebar }) => {
                                         Favorites menu, not your email.
                                     </p>
                                 </div>
-                                <label className="favorite-pages-label" htmlFor="umbrella-page-name">Page nickname</label>
                                 <div className="umbrella-fav-page-row">
                                     <input
                                         id="umbrella-page-name"
                                         type="text"
                                         className="favorite-pages-input umbrella-page-name-input"
-                                        placeholder="e.g. Alan's Picks"
+                                        placeholder="Page Name"
                                         value={umbrellaPageName}
                                         onChange={(e) => setUmbrellaPageName(e.target.value)}
+                                        aria-label="Page Name"
                                     />
                                     <button
                                         type="button"
@@ -1621,11 +1659,15 @@ const Dashboard = ({ sidebar }) => {
                                 type="button"
                                 className="add-favorite-btn favorites-upload-btn"
                                 onClick={() => {
+                                    if (umbrellaOnly) {
+                                        navigate('/upload');
+                                        return;
+                                    }
                                     setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
                                     setShowFavoriteModal(true);
                                 }}
                             >
-                                Upload
+                                {umbrellaOnly ? 'Upload video' : 'Upload'}
                             </button>
                         </div>
                         {!umbrellaOnly && (
@@ -1804,7 +1846,7 @@ const Dashboard = ({ sidebar }) => {
                                             <img 
                                                 src={newFavorite.imagePreview} 
                                                 alt="Preview" 
-                                                style={{ maxWidth: '100%', marginTop: '10px', borderRadius: '8px' }}
+                                                className="favorite-upload-preview"
                                             />
                                         )}
                                     </div>
@@ -1977,13 +2019,13 @@ const Dashboard = ({ sidebar }) => {
                                                                 <div 
                                                                     className={`daily-bar ${salesCount > 0 ? 'has-sales' : 'no-sales'} ${isToday ? 'today' : ''}`}
                                                                     style={{ height: `${barHeightPx}px` }}
-                                                                    title={`${dayData.date_display}: ${salesCount} sales | Gross: $${revenue.toFixed(2)} | Net: $${netRevenue.toFixed(2)}`}
+                                                                    title={`${dayData.date_display}: ${salesCount} sales | Gross: $${revenue.toFixed(2)} | Your payout: $${netRevenue.toFixed(2)}`}
                                                                 >
                                                                     <span className="daily-bar-value">{salesCount}</span>
                                                                 </div>
                                                                 <div className="daily-bar-label">{dayData.date_display}</div>
                                                                 {salesCount > 0 && (
-                                                                    <div className="daily-bar-revenue">${netRevenue.toFixed(2)}</div>
+                                                                    <div className="daily-bar-revenue">${Number(revenue).toFixed(2)}</div>
                                                                 )}
                                                             </div>
                                                         );

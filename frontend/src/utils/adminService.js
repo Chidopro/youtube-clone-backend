@@ -15,6 +15,13 @@ function getAdminApiBase() {
   return API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
 }
 
+function adminApiUrl(path) {
+  const base = getAdminApiBase();
+  const p = path.startsWith('/') ? path : `/${path}`;
+  if (!base) return p;
+  return `${String(base).replace(/\/$/, '')}${p}`;
+}
+
 export class AdminService {
   /**
    * Get current user info from Supabase auth or localStorage
@@ -408,23 +415,23 @@ export class AdminService {
    */
   static async getSubscriptions(statusFilter = 'active') {
     try {
-      let query = supabase
-        .from('user_subscriptions')
-        .select('*, users(display_name, email, role)')
-        .order('created_at', { ascending: false });
-
-      // Filter subscriptions by status
-      if (statusFilter === 'all') {
-        // Show all subscriptions including canceled
-        // No filter applied
-      } else {
-        query = query.eq('status', statusFilter);
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) {
+        console.error('Error fetching subscriptions: Not authenticated');
+        return [];
       }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return data || [];
+      const base = getAdminApiBase();
+      const qs = new URLSearchParams({ status: statusFilter || 'active' });
+      const res = await fetch(`${base}/api/admin/subscriptions?${qs}`, {
+        method: 'GET',
+        headers: { 'X-User-Email': currentUser.userEmail },
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || res.statusText || 'Failed to load subscriptions');
+      }
+      return data.subscriptions || [];
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
       return [];
@@ -436,23 +443,29 @@ export class AdminService {
    * @param {string} subscriptionId - Subscription ID
    * @returns {Promise<Object>} Result object
    */
-  static async deleteSubscription(subscriptionId) {
+  static async deleteSubscription(subscriptionId, { hard = false } = {}) {
     try {
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .update({ 
-          status: 'canceled',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscriptionId)
-        .select()
-        .single();
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) {
+        return { success: false, error: 'Not authenticated' };
+      }
+      const base = getAdminApiBase();
+      const res = await fetch(
+        `${base}/api/admin/subscriptions/${subscriptionId}?hard=${hard ? '1' : '0'}`,
+        {
+          method: 'DELETE',
+          headers: { 'X-User-Email': currentUser.userEmail },
+          credentials: 'include',
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { success: false, error: data.error || res.statusText };
+      }
 
-      if (error) throw error;
-
-      // Log admin action
       await this.logAdminAction('delete_subscription', 'subscription', subscriptionId, {
-        target_subscription_id: subscriptionId
+        target_subscription_id: subscriptionId,
+        hard,
       });
 
       return { success: true, data };
@@ -469,19 +482,25 @@ export class AdminService {
    */
   static async reactivateSubscription(subscriptionId) {
     try {
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .update({ 
-          status: 'active',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscriptionId)
-        .select()
-        .single();
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) {
+        return { success: false, error: 'Not authenticated' };
+      }
+      const base = getAdminApiBase();
+      const res = await fetch(`${base}/api/admin/subscriptions/${subscriptionId}/reactivate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': currentUser.userEmail,
+        },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { success: false, error: data.error || res.statusText };
+      }
 
-      if (error) throw error;
-
-      // Log admin action
       await this.logAdminAction('reactivate_subscription', 'subscription', subscriptionId, {
         target_subscription_id: subscriptionId
       });
@@ -502,32 +521,34 @@ export class AdminService {
   static async updateUserStatus(userId, status) {
     try {
       console.log(`Updating user ${userId} status to ${status}`);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: false, error: 'Not authenticated' };
+      // Master Admin often uses email/localStorage login (no supabase.auth session).
+      // Route through backend APIs that accept X-User-Email instead of client RLS.
+      if (status === 'active') {
+        return this.approveUser(userId);
+      }
+      if (status === 'suspended') {
+        const currentUser = await this.getCurrentUser();
+        if (!currentUser?.userEmail) {
+          return { success: false, error: 'Not authenticated' };
+        }
+        const base = getAdminApiBase();
+        const res = await fetch(`${base}/api/admin/users/${userId}/suspend`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-Email': currentUser.userEmail,
+          },
+          credentials: 'include',
+          body: JSON.stringify({}),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          return { success: false, error: data.error || res.statusText || 'Failed to suspend user' };
+        }
+        return { success: true, data };
       }
 
-      const { data, error } = await supabase
-        .from('users')
-        .update({ status })
-        .eq('id', userId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Database update error:', error);
-        throw error;
-      }
-
-      console.log('Database update successful:', data);
-
-      // Log admin action
-      await this.logAdminAction('update_user_status', 'user', userId, {
-        new_status: status,
-        target_user_id: userId
-      });
-
-      return { success: true, data };
+      return { success: false, error: `Unsupported status: ${status}` };
     } catch (error) {
       console.error('Error updating user status:', error);
       return { success: false, error: error.message };
@@ -560,12 +581,22 @@ export class AdminService {
   }
 
   /**
-   * Approve a pending user (changes status from 'pending' to 'active')
+   * Approve a pending user (changes status from 'pending' to 'active').
+   * Uses backend + X-User-Email so Master Admin email login works (not only supabase.auth).
+   * Creators get the set-password acceptance email via approve-creator.
    * @param {string} userId - User ID
    * @returns {Promise<Object>} Result object
    */
   static async approveUser(userId) {
-    return this.updateUserStatus(userId, 'active');
+    const asCreator = await this.approveCreator(userId);
+    if (asCreator.success) return asCreator;
+    // Non-creator (or already past pending): general activate + welcome email
+    const asUser = await this.activateUser(userId);
+    if (asUser.success) return asUser;
+    return {
+      success: false,
+      error: asCreator.error || asUser.error || 'Failed to approve user',
+    };
   }
 
   /**
@@ -1958,7 +1989,7 @@ export class AdminService {
         return { success: false, error: 'Not authenticated' };
       }
 
-      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      const apiUrl = getAdminApiBase();
       const response = await fetch(`${apiUrl}/api/admin/reset-platform-revenue-data`, {
         method: 'POST',
         credentials: 'include',
@@ -2007,8 +2038,8 @@ export class AdminService {
       if (endDate) params.append('end_date', endDate);
       if (creatorId) params.append('creator_id', creatorId);
       
-      // Use API endpoint
-      const apiUrl = API_CONFIG.BASE_URL || 'https://screenmerch.fly.dev';
+      // Use same-origin /api on screenmerch.com (Netlify → Fly) to avoid CSP/CORS "Failed to fetch"
+      const apiUrl = getAdminApiBase();
       const headers = {
         'Content-Type': 'application/json',
         'X-User-Email': userEmail

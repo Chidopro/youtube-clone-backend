@@ -87,6 +87,46 @@ def get_videos():
         return jsonify([]), 200
 
 
+def _is_screenmerch_intro_video(row):
+    title = (row.get("title") or "").strip().lower()
+    return title == "screenmerch introduction video" or "screenmerch introduction" in title
+
+
+@videos_bp.route("/api/public/intro-video", methods=["GET", "OPTIONS"])
+def get_intro_video():
+    """Return the ScreenMerch introduction video only (How It Works / homepage)."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        client = _get_supabase_client()
+        if not client:
+            return jsonify({"success": False, "error": "Database not available", "video": None}), 503
+        # Prefer recent rows; scan a bounded set instead of the full catalog.
+        response = (
+            client.table("videos2")
+            .select("id, title, video_url, thumbnail, channelTitle, created_at")
+            .order("created_at", desc=True)
+            .limit(200)
+            .execute()
+        )
+        rows = response.data or []
+        match = next((r for r in rows if _is_screenmerch_intro_video(r)), None)
+        if not match:
+            return jsonify({"success": True, "video": None}), 200
+        thumb = (match.get("thumbnail") or "").strip() or None
+        video = {
+            "id": match.get("id"),
+            "title": match.get("title"),
+            "video_url": match.get("video_url"),
+            "thumbnail": thumb,
+            "channelTitle": match.get("channelTitle") or "ScreenMerch",
+        }
+        return jsonify({"success": True, "video": video}), 200
+    except Exception as e:
+        logger.exception("get_intro_video failed: %s", e)
+        return jsonify({"success": False, "error": str(e), "video": None}), 500
+
+
 @videos_bp.route("/api/search/creators", methods=["GET", "OPTIONS"])
 @cross_origin(origins=[], supports_credentials=True)
 def search_creators():

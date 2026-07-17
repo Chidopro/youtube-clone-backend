@@ -7,9 +7,8 @@ const Release = () => {
     <div className="release-page">
       <article className="release-article">
         <p className="release-for-immediate">FOR IMMEDIATE RELEASE</p>
-        <p className="release-date">February 28, 2026</p>
         <h1 className="release-title">The Creator Revolution Has a Storefront: ScreenMerch Officially Launches</h1>
-        <p className="release-dateline">Alameda, California — February 28, 2026</p>
+        <p className="release-dateline">Alameda, California</p>
 
         <p>Today marks the official public launch of ScreenMerch, a creator-focused platform designed to transform video moments into merchandise — and give creators full ownership of their storefronts, with room to grow through umbrella collaboration.</p>
 
@@ -51,7 +50,6 @@ const Release = () => {
         <p>ScreenMerch launches today as more than a tool.</p>
         <p>It launches as an invitation.</p>
         <p>An invitation for creators to own their storefronts.<br />An invitation for umbrella creators to grow inside a shared branded home.<br />An invitation for fans to participate in the moments they love.<br />An invitation to build revenue around creativity — not dependency.</p>
-        <p>February 28, 2026 marks the first official day ScreenMerch is offered publicly for creator use.</p>
         <p><strong>The storefront revolution begins now.</strong></p>
 
         <p>For more information or to apply as a creator, visit:<br /><a href="https://screenmerch.com" className="release-link">https://screenmerch.com</a></p>

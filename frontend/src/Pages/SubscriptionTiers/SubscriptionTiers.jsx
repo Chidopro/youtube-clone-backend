@@ -59,6 +59,12 @@ const SubscriptionTiers = () => {
     const [isCreatorSignupModalOpen, setIsCreatorSignupModalOpen] = useState(false);
 
     useEffect(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        const main = document.querySelector('.main-content-area');
+        if (main) main.scrollTop = 0;
+
         const fetchUserData = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
@@ -77,6 +83,17 @@ const SubscriptionTiers = () => {
 
         fetchUserData();
     }, []);
+
+    // After loading swaps "Loading..." for the hero, keep the top of the calculator in view
+    // (homepage scroll position can carry over via .main-content-area).
+    useEffect(() => {
+        if (loading) return;
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        const main = document.querySelector('.main-content-area');
+        if (main) main.scrollTop = 0;
+    }, [loading]);
 
     const handleGetStarted = async () => {
         if (!currentUser) {

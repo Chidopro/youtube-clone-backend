@@ -362,10 +362,15 @@ const Admin = () => {
   };
 
   const handleApproveCreator = async (userId) => {
+    if (!window.confirm('Approve this creator? They will become active and receive a set-password email.')) {
+      return;
+    }
     const result = await AdminService.approveCreator(userId);
     if (result.success) {
+      alert('Creator approved successfully. They will appear under Subscriptions → Creators (Free).');
       await loadPendingApprovalUsers();
       loadStats();
+      loadSubscriptions();
     } else {
       alert(result.error || 'Failed to approve');
     }
@@ -375,6 +380,7 @@ const Admin = () => {
     if (!window.confirm('Disapprove this creator? They will not be able to use the platform.')) return;
     const result = await AdminService.disapproveCreator(userId);
     if (result.success) {
+      alert('Creator disapproved.');
       await loadPendingApprovalUsers();
       loadStats();
     } else {
@@ -1133,6 +1139,9 @@ const Admin = () => {
         alert(`User ${action}d successfully`);
         console.log('Reloading users...');
         await loadUsers();
+        if (action === 'approve' || action === 'activate') {
+          loadSubscriptions();
+        }
         console.log('Users reloaded');
       } else {
         alert(`Failed to ${action} user: ${result.error}`);
@@ -1192,7 +1201,7 @@ const Admin = () => {
     }
   };
 
-  const handleSubscriptionAction = async (subscriptionId, action) => {
+  const handleSubscriptionAction = async (subscriptionId, action, options = {}) => {
     const actionText = action === 'delete' ? 'delete (cancel)' : action;
     if (!confirm(`Are you sure you want to ${actionText} this subscription? All data will be preserved.`)) return;
 
@@ -1200,16 +1209,16 @@ const Admin = () => {
       let result;
       
       if (action === 'delete') {
-        result = await AdminService.deleteSubscription(subscriptionId);
+        result = await AdminService.deleteSubscription(subscriptionId, { hard: Boolean(options.hard) });
       } else if (action === 'reactivate') {
         result = await AdminService.reactivateSubscription(subscriptionId);
       }
 
-      if (result.success) {
+      if (result?.success) {
         alert(`Subscription ${action === 'delete' ? 'canceled' : 'reactivated'} successfully`);
         loadSubscriptions();
       } else {
-        alert(`Failed to ${action} subscription: ${result.error}`);
+        alert(`Failed to ${action} subscription: ${result?.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error(`Error ${action}ing subscription:`, error);
@@ -1859,7 +1868,10 @@ const Admin = () => {
 
           {activeTab === 'subscriptions' && isMasterAdmin && (() => {
             const creatorSubs = subscriptions.filter(sub => sub.users?.role === 'creator');
-            const customerSubs = subscriptions.filter(sub => sub.users?.role !== 'creator');
+            const customerSubs = subscriptions.filter(sub => sub.users?.role === 'customer');
+            const unknownSubs = subscriptions.filter(
+              sub => !sub.users?.role || (sub.users.role !== 'creator' && sub.users.role !== 'customer')
+            );
             const renderSubTable = (list, emptyLabel) => (
               <table>
                 <thead>
@@ -1879,7 +1891,7 @@ const Admin = () => {
                   ) : (
                     list.map(sub => (
                       <tr key={sub.id}>
-                        <td>{sub.users?.display_name || '—'}</td>
+                        <td>{sub.users?.display_name || (sub.users ? 'No name' : 'Deleted / unknown')}</td>
                         <td>{sub.users?.email || sub.email || '—'}</td>
                         <td><span className={`tier-badge ${sub.tier}`}>{sub.tier}</span></td>
                         <td><span className={`status-badge ${sub.status}`}>{sub.status}</span></td>
@@ -1890,7 +1902,13 @@ const Admin = () => {
                             {sub.status === 'canceled' ? (
                               <button onClick={() => handleSubscriptionAction(sub.id, 'reactivate')} className="action-btn activate" style={{ backgroundColor: '#28a745', color: 'white' }}>Reactivate</button>
                             ) : (
-                              <button onClick={() => handleSubscriptionAction(sub.id, 'delete')} className="action-btn delete" style={{ backgroundColor: '#dc3545', color: 'white' }}>Delete</button>
+                              <button
+                                onClick={() => handleSubscriptionAction(sub.id, 'delete', { hard: !sub.users })}
+                                className="action-btn delete"
+                                style={{ backgroundColor: '#dc3545', color: 'white' }}
+                              >
+                                Delete
+                              </button>
                             )}
                           </div>
                         </td>
@@ -1922,6 +1940,12 @@ const Admin = () => {
                   <h4>Customers ({customerSubs.length})</h4>
                   <div className="subscriptions-table">{renderSubTable(customerSubs, 'No customer subscriptions.')}</div>
                 </div>
+                {unknownSubs.length > 0 && (
+                  <div className="subscriptions-section">
+                    <h4>Unknown / deleted users ({unknownSubs.length})</h4>
+                    <div className="subscriptions-table">{renderSubTable(unknownSubs, 'None.')}</div>
+                  </div>
+                )}
               </div>
             </div>
             );

@@ -37,7 +37,8 @@ img{
   display: none;
 }
 
-.main-content-area--favorites {
+.main-content-area--favorites,
+.main-content-area--storefront-subpage {
   padding-top: 0;
   padding-left: 0;
   padding-right: 0;

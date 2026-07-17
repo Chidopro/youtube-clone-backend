@@ -1,6 +1,6 @@
 .how-it-works-page {
   min-height: 70vh;
-  padding: 1.5rem 1rem 3rem;
+  padding: 0.75rem 1rem 3rem;
   background: linear-gradient(180deg, #f7f8fc 0%, #ffffff 40%);
 }
 
@@ -11,7 +11,7 @@
 }
 
 .how-it-works-eyebrow {
-  margin: 0 0 0.85rem;
+  margin: 0 0 0.65rem;
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -36,7 +36,7 @@
   overflow: hidden;
   background: #0f172a;
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
 }
 
 .how-it-works-player {
@@ -45,6 +45,14 @@
   display: block;
   object-fit: contain;
   background: #000;
+}
+
+.how-it-works-poster {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  background: #0f172a;
 }
 
 .how-it-works-player-placeholder {
@@ -72,26 +80,18 @@
 }
 
 .how-it-works-tagline {
-  margin: 0;
+  margin: 1.5rem 0 0;
   font-size: 1.15rem;
   color: #0f172a;
-  text-align: center;
-  white-space: nowrap;
+  text-align: left;
 }
 
-.how-it-works-cta-block {
+.how-it-works-cta-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  align-items: flex-end;
-  margin: 1.25rem 0 1.25rem;
-}
-
-.how-it-works-cta-primary-col {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 1.35rem;
+  margin: 2rem 0 1.25rem;
 }
 
 .how-it-works-cta-primary {
@@ -140,7 +140,7 @@
 
 @media (max-width: 768px) {
   .how-it-works-page {
-    padding: 1rem 0.85rem 2.5rem;
+    padding: 0.35rem 0.85rem 2.5rem;
   }
 
   .how-it-works-player-wrap {
@@ -161,17 +161,9 @@
     object-fit: contain !important;
   }
 
-  .how-it-works-cta-block {
+  .how-it-works-cta-row {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .how-it-works-cta-primary-col {
-    width: 100%;
-  }
-
-  .how-it-works-tagline {
-    white-space: normal;
   }
 
   .how-it-works-cta-primary,

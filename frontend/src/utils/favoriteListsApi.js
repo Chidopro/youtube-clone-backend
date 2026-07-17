@@ -60,10 +60,26 @@ export async function fetchPublicFavoriteLists(subdomain) {
   return { ok: res.ok, data };
 }
 
+export function favoriteImageUrl(favorite) {
+  if (!favorite) return '';
+  return (favorite.image_url || favorite.thumbnail_url || favorite.thumbnail || '').trim();
+}
+
+export function listPreviewImages(list) {
+  if (!list) return [];
+  if (Array.isArray(list.preview_images) && list.preview_images.length) {
+    return list.preview_images.map((u) => String(u || '').trim()).filter(Boolean);
+  }
+  const single = (list.preview_image_url || '').trim();
+  return single ? [single] : [];
+}
+
 export async function fetchPublicFavoritesByList(subdomain, listSlug) {
+  const sub = (subdomain || '').trim().toLowerCase();
   const slug = (listSlug || 'owner').trim().toLowerCase() || 'owner';
+  if (!sub) return { ok: false, data: { success: false, error: 'subdomain is required' } };
   const res = await fetch(
-    `${getBackendUrl()}/api/public/favorites-by-list?subdomain=${encodeURIComponent(subdomain)}&list_slug=${encodeURIComponent(slug)}`,
+    `${getBackendUrl()}/api/public/favorites-by-list?subdomain=${encodeURIComponent(sub)}&list_slug=${encodeURIComponent(slug)}`,
     { credentials: 'omit' }
   );
   const data = await res.json().catch(() => ({}));

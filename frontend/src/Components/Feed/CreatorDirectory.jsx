@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { AdminService } from '../../utils/adminService';
+import { API_CONFIG } from '../../config/apiConfig';
 import './Feed.css';
 import './CreatorDirectory.css';
 import { RESERVE_SLOT_THEMES, TOTAL_CREATOR_SPOTS } from './reserveSlotThemes';
@@ -33,9 +34,40 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
   const [editMsg, setEditMsg] = useState('');
   const videoInputRef = useRef(null);
   const thumbInputRef = useRef(null);
+  const [claimedCount, setClaimedCount] = useState(0);
+  const [takenBySpot, setTakenBySpot] = useState({});
 
-  const claimedCount = 0; // wire to approved creators later
-  const availableCount = TOTAL_CREATOR_SPOTS - claimedCount;
+  const availableCount = Math.max(0, TOTAL_CREATOR_SPOTS - claimedCount);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const base = (API_CONFIG?.BASE_URL || 'https://screenmerch.fly.dev').replace(/\/$/, '');
+        const res = await fetch(`${base}/api/creators/soft-launch-spots`);
+        const data = await res.json().catch(() => ({}));
+        if (cancelled || !data?.success) return;
+        const claimed = Math.min(
+          TOTAL_CREATOR_SPOTS,
+          Math.max(0, Number(data.claimed) || 0)
+        );
+        setClaimedCount(claimed);
+        const map = {};
+        (data.taken_slots || []).forEach((slot) => {
+          if (slot?.spot) map[slot.spot] = slot;
+        });
+        setTakenBySpot(map);
+      } catch (_) {
+        if (!cancelled) {
+          setClaimedCount(0);
+          setTakenBySpot({});
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (introVideo) {
@@ -279,33 +311,63 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
         </div>
 
         {/* 20 numbered reserve storefront slots */}
-        {RESERVE_SLOT_THEMES.map((slot) => (
-          <div
-            key={slot.spot}
-            className="card reserve-slot-card"
-            onClick={openReserveCta}
-            onKeyDown={(e) => e.key === 'Enter' && openReserveCta()}
-            role="button"
-            tabIndex={0}
-            aria-label={`Reserve storefront spot number ${slot.spot}`}
-          >
+        {RESERVE_SLOT_THEMES.map((slot) => {
+          const taken = takenBySpot[slot.spot];
+          const isTaken = Boolean(taken) || slot.spot <= claimedCount;
+          const storeLabel = taken?.label || `Store ${slot.spot}`;
+          return (
             <div
-              className={`reserve-slot-preview pattern-${slot.pattern}`}
-              style={{ background: slot.gradient }}
+              key={slot.spot}
+              className={`card reserve-slot-card${isTaken ? ' reserve-slot-card--taken' : ''}`}
+              onClick={isTaken ? undefined : openReserveCta}
+              onKeyDown={
+                isTaken
+                  ? undefined
+                  : (e) => e.key === 'Enter' && openReserveCta()
+              }
+              role={isTaken ? 'group' : 'button'}
+              tabIndex={isTaken ? -1 : 0}
+              aria-label={
+                isTaken
+                  ? `${storeLabel} taken — soft launch spot ${slot.spot}`
+                  : `Reserve storefront spot number ${slot.spot}`
+              }
+              aria-disabled={isTaken}
             >
-              <span className="reserve-slot-number">Spot #{slot.spot}</span>
-              <span className="reserve-slot-icon" aria-hidden="true">
-                {slot.icon}
-              </span>
-              <p className="reserve-slot-tagline">{slot.tagline}</p>
-              <span className="reserve-slot-cta-pill">Reserve — free</span>
+              <div
+                className={`reserve-slot-preview pattern-${slot.pattern}`}
+                style={{ background: slot.gradient }}
+              >
+                <span className="reserve-slot-number">Spot #{slot.spot}</span>
+                {isTaken ? (
+                  <>
+                    <span className="reserve-slot-taken-badge" aria-hidden="true">
+                      Taken
+                    </span>
+                    <p className="reserve-slot-store-label">{storeLabel}</p>
+                    <span className="reserve-slot-cta-pill reserve-slot-cta-pill--taken">
+                      Claimed
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="reserve-slot-icon" aria-hidden="true">
+                      {slot.icon}
+                    </span>
+                    <p className="reserve-slot-tagline">{slot.tagline}</p>
+                    <span className="reserve-slot-cta-pill">Reserve — free</span>
+                  </>
+                )}
+              </div>
+              <h2>{isTaken ? storeLabel : 'Reserve your storefront'}</h2>
+              <h3>
+                {isTaken
+                  ? `Soft launch seat claimed · Spot #${slot.spot}`
+                  : `Limited to ${TOTAL_CREATOR_SPOTS} creators · Spot #${slot.spot}`}
+              </h3>
             </div>
-            <h2>Reserve your storefront</h2>
-            <h3>
-              Limited to {TOTAL_CREATOR_SPOTS} creators · Spot #{slot.spot}
-            </h3>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {editOpen && (

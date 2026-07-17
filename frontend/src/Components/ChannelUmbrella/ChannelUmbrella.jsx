@@ -51,7 +51,6 @@ const ChannelUmbrella = () => {
   const [submitting, setSubmitting] = useState(false);
   const [ownerSubdomain, setOwnerSubdomain] = useState('');
   const [busyCancel, setBusyCancel] = useState(null);
-  const [lastInviteUrl, setLastInviteUrl] = useState('');
   const [salesByList, setSalesByList] = useState([]);
   const [salesLoading, setSalesLoading] = useState(true);
   const [salesError, setSalesError] = useState('');
@@ -101,9 +100,6 @@ const ChannelUmbrella = () => {
         const ep = outRes.data.email_pending || [];
         setPending(outRes.data.pending || []);
         setEmailPending(ep);
-        if (ep.length > 0 && ep[0].invite_url) {
-          setLastInviteUrl((prev) => prev || ep[0].invite_url);
-        }
       }
       if (!memRes.ok) {
         setMsg({ type: 'error', text: memRes.data?.error || 'Could not load members' });
@@ -223,15 +219,10 @@ const ChannelUmbrella = () => {
         setMsg({ type: 'error', text: hint });
         return;
       }
-      if (data.invite_url) {
-        setLastInviteUrl(data.invite_url);
-      } else {
-        setLastInviteUrl('');
-      }
       setMsg({
         type: 'ok',
         text: data.message || (data.email_invite
-          ? 'Email invite created. Copy the link below and send it to your collaborator.'
+          ? 'Email invite created. Copy the join link from Pending invites below and send it to your collaborator.'
           : data.existing_user
             ? 'Invite sent to an existing account. They accept under Channel invites (no join link).'
             : 'Invite sent.'),
@@ -321,13 +312,6 @@ const ChannelUmbrella = () => {
         </button>
       </form>
       {msg.text ? <p className={`channel-umbrella-msg ${msg.type}`} role="alert">{msg.text}</p> : null}
-      {lastInviteUrl ? (
-        <div className="channel-umbrella-invite-url">
-          <p className="hint">Share this join link with your collaborator:</p>
-          <input type="text" readOnly value={lastInviteUrl} aria-label="Invite link" />
-          <button type="button" onClick={() => copyInviteUrl(lastInviteUrl)}>Copy link</button>
-        </div>
-      ) : null}
 
       <h2>Pending invites</h2>
       {loading ? <p>Loading…</p> : null}

@@ -1,0 +1,142 @@
+.friend-pages {
+  padding: 24px 30px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.friend-pages--in-container {
+  padding: 20px 0 40px;
+  max-width: none;
+  margin: 0;
+}
+
+.friend-pages.large-container {
+  padding: 24px 50px 40px;
+}
+
+.friend-pages-toolbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.friend-pages-back-btn {
+  grid-column: 1;
+  grid-row: 1;
+  z-index: 1;
+  justify-self: start;
+  background: none;
+  border: none;
+  color: #444;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.friend-pages-back-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #000;
+}
+
+.friend-pages-toolbar-text {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-width: 0;
+  pointer-events: none;
+}
+
+.friend-pages-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: center;
+}
+
+.friend-pages-body {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+
+.friend-pages-loading {
+  color: #666;
+  padding: 12px 0;
+}
+
+.friend-pages-error {
+  color: #c00;
+  margin: 0 0 16px;
+}
+
+.friend-pages-empty {
+  text-align: center;
+  padding: 48px 16px;
+  color: #444;
+}
+
+.friend-pages-empty h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: #1a1a1a;
+}
+
+.friend-pages-empty p {
+  margin: 0;
+  color: #666;
+}
+
+.friend-pages-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.friend-pages-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.friend-pages-item:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+.friend-pages-item-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.friend-pages-item-arrow {
+  color: #888;
+  font-size: 18px;
+}

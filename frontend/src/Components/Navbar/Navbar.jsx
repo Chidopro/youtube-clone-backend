@@ -41,7 +41,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
 
     const navigate = useNavigate();
     const location = useLocation();
-    const isOrderSuccessPage = location.pathname === '/success';
+    const isOrderSuccessPage = location.pathname === '/success' || location.pathname === '/order-success';
 
     useEffect(() => {
         let isMounted = true;
@@ -711,7 +711,8 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         e.preventDefault();
                         e.stopPropagation();
                         setDropdownOpen(false);
-                        navigate('/faq');
+                        navigate('/faq', { state: { fromMenu: true, t: Date.now() } });
+                        window.scrollTo(0, 0);
                     }}
                 >
                     FAQ

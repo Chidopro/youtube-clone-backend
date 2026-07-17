@@ -1,32 +1,45 @@
 .auth-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
   backdrop-filter: blur(5px);
+  padding: 16px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .auth-modal {
   background: white;
   border-radius: 15px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  width: 90%;
+  width: 100%;
   max-width: 400px;
+  max-height: min(92vh, 720px);
+  margin: auto;
   padding: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   animation: modalSlideIn 0.3s ease-out;
+}
+
+.auth-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 @keyframes modalSlideIn {
   from {
     opacity: 0;
-    transform: translateY(-50px) scale(0.9);
+    transform: translateY(-24px) scale(0.96);
   }
   to {
     opacity: 1;
@@ -37,27 +50,29 @@
 .auth-modal-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 25px 30px 20px;
+  padding: 18px 24px 14px;
   border-radius: 15px 15px 0 0;
   text-align: center;
   position: relative;
+  flex-shrink: 0;
 }
 
 .auth-logo {
-  font-size: 2.5rem;
-  margin-bottom: 10px;
+  font-size: 1.75rem;
+  margin-bottom: 4px;
+  line-height: 1;
 }
 
 .auth-modal-header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
 }
 
 .auth-close-btn {
   position: absolute;
-  top: 15px;
-  right: 20px;
+  top: 12px;
+  right: 14px;
   background: none;
   border: none;
   color: white;
@@ -80,23 +95,25 @@
   background: #e3f2fd;
   border: 1px solid #2196f3;
   color: #1976d2;
-  padding: 15px 30px;
+  padding: 12px 24px;
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   text-align: center;
+  line-height: 1.4;
+  flex-shrink: 0;
 }
 
 .auth-form {
-  padding: 30px;
+  padding: 20px 24px 12px;
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: #555;
   font-weight: 500;
   font-size: 14px;
@@ -104,7 +121,7 @@
 
 .form-group input {
   width: 100%;
-  padding: 12px 15px;
+  padding: 11px 14px;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
   font-size: 16px;
@@ -119,7 +136,7 @@
 
 .auth-submit-btn {
   width: 100%;
-  padding: 15px;
+  padding: 13px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
@@ -161,8 +178,8 @@
 
 .auth-forgot-wrap {
   text-align: center;
-  margin-top: 12px;
-  margin-bottom: 4px;
+  margin-top: 10px;
+  margin-bottom: 2px;
 }
 
 .auth-forgot-link {
@@ -177,7 +194,7 @@
 }
 
 .auth-toggle {
-  padding: 0 30px 20px;
+  padding: 0 24px 16px;
   text-align: center;
   color: #666;
   font-size: 14px;
@@ -198,8 +215,8 @@
 }
 
 .auth-message-display {
-  margin: 0 30px 20px;
-  padding: 10px 15px;
+  margin: 0 24px 16px;
+  padding: 10px 14px;
   border-radius: 5px;
   font-size: 14px;
   text-align: center;
@@ -217,26 +234,31 @@
   color: #c62828;
 }
 
-/* Mobile responsiveness */
 @media (max-width: 480px) {
+  .auth-modal-overlay {
+    padding: 12px;
+    align-items: flex-start;
+  }
+
   .auth-modal {
-    width: 95%;
-    margin: 20px;
+    width: 100%;
+    max-height: calc(100vh - 24px);
+    margin-top: 8px;
   }
-  
+
   .auth-modal-header {
-    padding: 20px 20px 15px;
+    padding: 14px 18px 12px;
   }
-  
+
   .auth-form {
-    padding: 20px;
+    padding: 16px 18px 10px;
   }
-  
+
   .auth-toggle {
-    padding: 0 20px 15px;
+    padding: 0 18px 12px;
   }
-  
+
   .auth-message-display {
-    margin: 0 20px 15px;
+    margin: 0 18px 12px;
   }
-} 
+}

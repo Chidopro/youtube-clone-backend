@@ -2590,22 +2590,29 @@
     background: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     z-index: 10000;
-    padding: 20px;
+    padding: max(12px, env(safe-area-inset-top, 0px)) 16px 16px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
 }
 
 .favorite-modal-content {
     background: white;
     border-radius: 16px;
     padding: 0;
-    max-width: 600px;
+    max-width: 520px;
     width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    margin: auto;
+    overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     position: relative;
     animation: modalSlideIn 0.3s ease-out;
+    display: flex;
+    flex-direction: column;
 }
 
 @keyframes modalSlideIn {
@@ -2621,9 +2628,9 @@
 
 .favorite-modal-close {
     position: absolute;
-    top: 16px;
-    right: 20px;
-    font-size: 32px;
+    top: 12px;
+    right: 16px;
+    font-size: 28px;
     font-weight: 300;
     color: #666;
     cursor: pointer;
@@ -2646,23 +2653,27 @@
 
 .favorite-modal-content h2 {
     margin: 0;
-    padding: 24px 24px 20px 24px;
-    font-size: 1.5rem;
+    padding: 18px 48px 14px 20px;
+    font-size: 1.25rem;
     color: #2c3e50;
     border-bottom: 1px solid #e3e3e3;
+    flex-shrink: 0;
 }
 
 .upload-form {
-    padding: 24px;
+    padding: 16px 20px 20px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     font-weight: 600;
     color: #2c3e50;
     font-size: 0.95rem;
@@ -2707,20 +2718,42 @@
 
 .form-group img {
     max-width: 100%;
-    max-height: 300px;
-    margin-top: 12px;
+    max-height: 140px;
+    margin-top: 8px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     object-fit: contain;
+}
+
+.favorite-upload-preview {
+    display: block;
+    max-width: 100%;
+    max-height: 140px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    margin-top: 8px;
+    border-radius: 8px;
 }
 
 .form-actions {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-    margin-top: 24px;
-    padding-top: 20px;
+    margin-top: 12px;
+    padding-top: 12px;
     border-top: 1px solid #e3e3e3;
+    flex-shrink: 0;
+}
+
+.no-videos-placeholder--clickable {
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.no-videos-placeholder--clickable:hover {
+    background: #eef2ff;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.25);
 }
 
 .form-actions .save-btn {
@@ -2806,13 +2839,14 @@
 @media (max-width: 768px) {
     .favorite-modal-content {
         max-width: 95%;
-        max-height: 95vh;
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
         border-radius: 12px;
     }
 
     .favorite-modal-content h2 {
-        font-size: 1.3rem;
-        padding: 20px 20px 16px 20px;
+        font-size: 1.15rem;
+        padding: 14px 44px 12px 16px;
     }
 
     .upload-form {

@@ -10,6 +10,7 @@ const UmbrellaJoin = () => {
   const [error, setError] = useState('');
   const [invite, setInvite] = useState(null);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [message, setMessage] = useState(null);
 
@@ -156,16 +157,27 @@ const UmbrellaJoin = () => {
               <label className="umbrella-join-label" htmlFor="umbrella-password">
                 Password
               </label>
-              <input
-                id="umbrella-password"
-                type="password"
-                className="umbrella-join-input"
-                value={password}
-                onChange={(ev) => setPassword(ev.target.value)}
-                placeholder="Your account password"
-                autoComplete="current-password"
-                disabled={authLoading}
-              />
+              <div className="umbrella-join-password-wrap">
+                <input
+                  id="umbrella-password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="umbrella-join-input"
+                  value={password}
+                  onChange={(ev) => setPassword(ev.target.value)}
+                  placeholder="Your account password"
+                  autoComplete="current-password"
+                  disabled={authLoading}
+                />
+                <button
+                  type="button"
+                  className="umbrella-join-password-toggle"
+                  onClick={() => setShowPassword((v) => !v)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
               <button
                 type="submit"
                 className="umbrella-join-btn umbrella-join-btn-secondary"

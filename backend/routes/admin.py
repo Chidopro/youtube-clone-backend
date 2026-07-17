@@ -1150,6 +1150,22 @@ def admin_approve_creator(user_id):
         if not result.data or len(result.data) == 0:
             response = jsonify({"success": False, "error": "User not found or not pending creator"})
             return _allow_origin(response), 404
+        try:
+            existing = client.table('user_subscriptions').select('id').eq('user_id', user_id).limit(1).execute()
+            if existing.data:
+                client.table('user_subscriptions').update({
+                    'tier': 'free',
+                    'status': 'active',
+                    'updated_at': datetime.utcnow().isoformat(),
+                }).eq('user_id', user_id).execute()
+            else:
+                client.table('user_subscriptions').insert({
+                    'user_id': user_id,
+                    'tier': 'free',
+                    'status': 'active',
+                }).execute()
+        except Exception as sub_err:
+            logger.error(f"approve-creator subscription ensure failed for {user_id}: {sub_err}")
         # Send welcome email once (when creator_welcome_email_sent_at is null)
         if creator.get('creator_welcome_email_sent_at') is None and _send_creator_welcome_email(creator.get('email') or ''):
             try:
@@ -1212,6 +1228,41 @@ def admin_activate_user(user_id):
         return _allow_origin(response), 200
     except Exception as e:
         logger.exception(f"activate user error: {e}")
+        response = jsonify({"success": False, "error": str(e)})
+        return _allow_origin(response), 500
+
+
+@admin_bp.route("/api/admin/users/<user_id>/suspend", methods=["POST", "OPTIONS"])
+@admin_bp.route("/api/admin/users/<user_id>/suspend/", methods=["POST", "OPTIONS"])
+def admin_suspend_user(user_id):
+    """Set user status to suspended. Master Admin only."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin_email = request.headers.get("X-User-Email") or (_data_from_request() or {}).get("admin_email")
+        if not admin_email:
+            response = jsonify({"success": False, "error": "X-User-Email required"})
+            return _allow_origin(response), 401
+        if not _is_master_admin(admin_email):
+            response = jsonify({"success": False, "error": "Master admin required"})
+            return _allow_origin(response), 403
+        if not _is_valid_uuid(user_id):
+            response = jsonify({"success": False, "error": "Invalid user ID"})
+            return _allow_origin(response), 400
+        client = _get_supabase_client()
+        if not client:
+            response = jsonify({"success": False, "error": "Database unavailable"})
+            return _allow_origin(response), 500
+        row = client.table("users").select("id").eq("id", user_id).limit(1).execute()
+        if not row.data:
+            response = jsonify({"success": False, "error": "User not found"})
+            return _allow_origin(response), 404
+        client.table("users").update({"status": "suspended"}).eq("id", user_id).execute()
+        logger.info(f"User suspended: {user_id} by {admin_email}")
+        response = jsonify({"success": True, "message": "User suspended"})
+        return _allow_origin(response), 200
+    except Exception as e:
+        logger.exception(f"suspend user error: {e}")
         response = jsonify({"success": False, "error": str(e)})
         return _allow_origin(response), 500
 

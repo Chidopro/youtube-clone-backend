@@ -2648,7 +2648,7 @@ def privacy_policy():
 def terms_of_service():
     return render_template('terms-of-service.html')
 
-def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=None):
+def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=None, favorite_list_id=None):
     from datetime import datetime
     from urllib.parse import urlparse
     
@@ -2715,6 +2715,11 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
     else:
         logger.warning(f"⚠️ [RECORD_SALE] Recording sale WITHOUT creator_user_id! Product: {item.get('product', 'N/A')}, amount: ${item_price}")
         logger.warning(f"⚠️ [RECORD_SALE] This sale will NOT appear in creator analytics dashboard!")
+
+    fav_raw = favorite_list_id if favorite_list_id is not None else item.get("favorite_list_id") or item.get("list_id")
+    fav_list = str(fav_raw).strip() if fav_raw else None
+    if fav_list in ("", "None", "null"):
+        fav_list = None
     
     sale_data = {
         "user_id": creator_user_id,  # Use looked-up creator user_id for precise tracking
@@ -2730,10 +2735,22 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
         "friend_id": friend_id,
         "channel_id": channel_id  # Now that column is VARCHAR(255), string values work correctly
     }
+    if fav_list:
+        sale_data["favorite_list_id"] = fav_list
+        logger.info(f"✅ [RECORD_SALE] Attributing sale to favorite_list_id={fav_list}")
     try:
         # Use service role client to bypass RLS for precise tracking
         client_to_use = supabase_admin if supabase_admin else supabase
-        client_to_use.table('sales').insert(sale_data).execute()
+        try:
+            client_to_use.table('sales').insert(sale_data).execute()
+        except Exception as sale_insert_err:
+            err_s = str(sale_insert_err).lower()
+            if fav_list and ("favorite_list_id" in err_s or "column" in err_s):
+                sale_data.pop("favorite_list_id", None)
+                client_to_use.table('sales').insert(sale_data).execute()
+                logger.warning("sales insert retried without favorite_list_id (column may be missing)")
+            else:
+                raise sale_insert_err
         logger.info(f"✅ Recorded sale with precise tracking: product={sale_data['product_name']}, creator_user_id={creator_user_id}, amount=${item_price}")
         
         # Create creator earnings record if creator_user_id exists and they are a creator
@@ -3755,6 +3772,7 @@ def create_checkout_session():
         # Extract subdomain from request origin to store with order
         creator_user_id_from_subdomain = None
         subdomain_from_request = None
+        favorite_list_id_from_checkout = (data.get("favorite_list_id") or "").strip() or None
         try:
             origin = request.headers.get('Origin', '')
             if origin and origin.endswith('.screenmerch.com') and origin.startswith('https://'):
@@ -3790,6 +3808,9 @@ def create_checkout_session():
             "shipping_address": shipping_address,  # Store shipping address for future reference
             "status": "pending"
         }
+        if favorite_list_id_from_checkout:
+            order_data["favorite_list_id"] = favorite_list_id_from_checkout
+            logger.info(f"✅ [CHECKOUT] favorite_list_id={favorite_list_id_from_checkout}")
         # Order-level screenshot and timestamp so get-order-screenshot and email show them
         if checkout_screenshot:
             order_data["selected_screenshot"] = checkout_screenshot
@@ -3823,11 +3844,19 @@ def create_checkout_session():
                 logger.info(f"✅ Order {order_id} stored in database")
             except Exception as insert_err:
                 err_str = str(insert_err).lower()
-                if 'selected_screenshot' in err_str or 'screenshot_timestamp' in err_str or 'column' in err_str:
-                    order_data_fallback = {k: v for k, v in order_data.items() if k not in ('selected_screenshot', 'screenshot_timestamp')}
+                drop_cols = []
+                if 'selected_screenshot' in err_str or 'screenshot_timestamp' in err_str:
+                    drop_cols.extend(['selected_screenshot', 'screenshot_timestamp'])
+                if 'favorite_list_id' in err_str:
+                    drop_cols.append('favorite_list_id')
+                if drop_cols or 'column' in err_str:
+                    order_data_fallback = {
+                        k: v for k, v in order_data.items()
+                        if k not in ('selected_screenshot', 'screenshot_timestamp', 'favorite_list_id')
+                    }
                     try:
                         orders_write.table('orders').insert(order_data_fallback).execute()
-                        logger.info(f"✅ Order {order_id} stored in database (run add_order_screenshot_column.sql to enable screenshot/timestamp columns)")
+                        logger.info(f"✅ Order {order_id} stored in database (without optional columns)")
                     except Exception as retry_err:
                         raise retry_err
                 else:
@@ -3841,11 +3870,15 @@ def create_checkout_session():
                 "order_id": order_id,
                 "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
                 "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                "creator_user_id": creator_user_id_from_subdomain,
+                "subdomain": subdomain_from_request,
                 "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
                 "screenshot_timestamp": data.get("screenshot_timestamp", data.get("timestamp", "Not provided")),
                 "status": "pending",
-                "created_at": data.get("created_at", "Recent")
+                "created_at": data.get("created_at", "Recent"),
             }
+            if favorite_list_id_from_checkout:
+                order_store[order_id]["favorite_list_id"] = favorite_list_id_from_checkout
             if checkout_screenshot:
                 order_store[order_id]["selected_screenshot"] = checkout_screenshot
             logger.info(f"✅ Order {order_id} also stored in in-memory store")
@@ -3866,6 +3899,8 @@ def create_checkout_session():
                 "status": "pending",
                 "created_at": data.get("created_at", "Recent")
             }
+            if favorite_list_id_from_checkout:
+                order_store[order_id]["favorite_list_id"] = favorite_list_id_from_checkout
             if checkout_screenshot:
                 order_store[order_id]["selected_screenshot"] = checkout_screenshot
 
@@ -3954,7 +3989,8 @@ def create_checkout_session():
                 "order_id": order_id,  # Only store the small order ID in Stripe
                 "video_url": data.get("videoUrl", data.get("video_url", "Not provided")),
                 "video_title": data.get("videoTitle", data.get("video_title", "Unknown Video")),
-                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator"))
+                "creator_name": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
+                **({"favorite_list_id": favorite_list_id_from_checkout} if favorite_list_id_from_checkout else {}),
             }
         }
 
@@ -4236,7 +4272,18 @@ def stripe_webhook():
                 # Extract channel_id from the order data if available
                 # channel_id is now VARCHAR(255) in database, so string values work correctly
                 channel_id = order_data.get('channel_id') or item.get('channel_id') or None
-                record_sale(item, user_id=creator_user_id, channel_id=channel_id, order_id=order_id)
+                fav_list_id = (
+                    order_data.get('favorite_list_id')
+                    or session.get("metadata", {}).get("favorite_list_id")
+                    or item.get("favorite_list_id")
+                )
+                record_sale(
+                    item,
+                    user_id=creator_user_id,
+                    channel_id=channel_id,
+                    order_id=order_id,
+                    favorite_list_id=fav_list_id,
+                )
                 
             # Email notifications only - no SMS
             logger.info("📧 Order notifications will be sent via email")
@@ -4636,6 +4683,20 @@ def _creator_id_from_request_subdomain():
 
 # /api/videos: only the videos blueprint (routes/videos.py) must handle this. Do not add @app.route("/api/videos") here or CORS from screenmerch.com will fail.
 
+def _is_staff_or_excluded_creator(row):
+    """Staff/admin and platform test identities — not soft-launch public seats."""
+    if row.get("is_admin"):
+        return True
+    admin_role = (row.get("admin_role") or "").strip().lower()
+    if admin_role in ("master_admin", "admin", "order_processing_admin"):
+        return True
+    email = (row.get("email") or "").strip().lower()
+    username = (row.get("username") or "").strip().lower()
+    if email in ("alancraigdigital@gmail.com",) or username in ("alancraigdigital", "screenmerch"):
+        return True
+    return False
+
+
 @app.route("/api/creators/list", methods=["GET", "OPTIONS"])
 @cross_origin(origins=[], supports_credentials=True)
 def creators_list():
@@ -4647,10 +4708,12 @@ def creators_list():
         if not client:
             return jsonify({"success": False, "error": "Database unavailable", "creators": []}), 503
         r = client.table("users").select(
-            "id, username, display_name, profile_image_url, subdomain"
-        ).eq("role", "creator").eq("status", "active").order("created_at", desc=True).limit(20).execute()
+            "id, username, display_name, profile_image_url, subdomain, is_admin, admin_role, email"
+        ).eq("role", "creator").eq("status", "active").order("created_at", desc=True).limit(50).execute()
         creators = []
         for row in (r.data or []):
+            if _is_staff_or_excluded_creator(row):
+                continue
             subdomain = (row.get("subdomain") or "").strip()
             creators.append({
                 "id": row.get("id"),
@@ -4659,10 +4722,70 @@ def creators_list():
                 "avatar": row.get("profile_image_url"),
                 "subdomain": subdomain,
             })
+            if len(creators) >= 20:
+                break
         return jsonify({"success": True, "creators": creators}), 200
     except Exception as e:
         logger.error(f"Error listing creators for sidebar: {e}")
         return jsonify({"success": False, "error": str(e), "creators": []}), 500
+
+
+@app.route("/api/creators/soft-launch-spots", methods=["GET", "OPTIONS"])
+@cross_origin(origins=[], supports_credentials=True)
+def soft_launch_spots():
+    """Public soft-launch seat count for homepage counter + taken reserve cards.
+    Counts role=creator with status active or pending (same as signup limit), excluding staff/test accounts.
+    """
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    TOTAL = 20
+    try:
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            return jsonify({
+                "success": False,
+                "error": "Database unavailable",
+                "total": TOTAL,
+                "claimed": 0,
+                "available": TOTAL,
+                "taken_slots": [],
+            }), 503
+        r = client.table("users").select(
+            "id, username, display_name, subdomain, is_admin, admin_role, email, status, created_at"
+        ).eq("role", "creator").in_("status", ["active", "pending"]).order("created_at", desc=False).limit(100).execute()
+        taken_slots = []
+        for row in (r.data or []):
+            if _is_staff_or_excluded_creator(row):
+                continue
+            spot = len(taken_slots) + 1
+            if spot > TOTAL:
+                break
+            taken_slots.append({
+                "spot": spot,
+                "label": f"Store {spot}",
+                "status": row.get("status") or "pending",
+                "name": (row.get("display_name") or row.get("username") or "").strip(),
+                "subdomain": (row.get("subdomain") or "").strip(),
+            })
+        claimed = len(taken_slots)
+        available = max(0, TOTAL - claimed)
+        return jsonify({
+            "success": True,
+            "total": TOTAL,
+            "claimed": claimed,
+            "available": available,
+            "taken_slots": taken_slots,
+        }), 200
+    except Exception as e:
+        logger.error(f"Error listing soft-launch spots: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "total": TOTAL,
+            "claimed": 0,
+            "available": TOTAL,
+            "taken_slots": [],
+        }), 500
 
 
 @app.route("/api/users/by-username/<username>", methods=["GET", "OPTIONS"])
@@ -5557,11 +5680,18 @@ def get_my_profile():
         user = result.data[0]
         user_email = (user.get("email") or "").strip().lower()
         if user_email and supabase_admin:
-            auth_ok, auth_err = ensure_auth_user_for_public_user(
+            auth_ok, auth_err, synced_id = ensure_auth_user_for_public_user(
                 supabase_admin, user_id, user_email
             )
             if not auth_ok:
                 logger.warning("get_my_profile: auth.users sync failed for %s: %s", user_id, auth_err)
+            elif synced_id and str(synced_id) != str(user_id):
+                user_id = synced_id
+                result = client_to_use.table("users").select(",".join(USER_PROFILE_SAFE_FIELDS)).eq("id", user_id).limit(1).execute()
+                if result.data:
+                    user = result.data[0]
+                    out = {k: user.get(k) for k in USER_PROFILE_SAFE_FIELDS if k in user}
+                    return jsonify(out), 200
         # Return only keys that exist and are in safe list (no extra columns leaked)
         out = {k: user.get(k) for k in USER_PROFILE_SAFE_FIELDS if k in user}
         return jsonify(out), 200
@@ -6146,6 +6276,30 @@ def admin_approve_creator(user_id):
         }).eq("id", user_id).execute()
         logger.info(f"Creator approved: {user_id}")
 
+        # Ensure Free subscription row so they appear under Admin → Subscriptions → Creators
+        try:
+            existing = (
+                client.table("user_subscriptions")
+                .select("id")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            if existing.data:
+                client.table("user_subscriptions").update({
+                    "tier": "free",
+                    "status": "active",
+                    "updated_at": "now()",
+                }).eq("user_id", user_id).execute()
+            else:
+                client.table("user_subscriptions").insert({
+                    "user_id": user_id,
+                    "tier": "free",
+                    "status": "active",
+                }).execute()
+        except Exception as sub_err:
+            logger.error(f"approve-creator subscription ensure failed for {user_id}: {sub_err}")
+
         # Send acceptance email with link to set password (reuses verify-email page)
         frontend_url = (os.getenv("FRONTEND_URL", "https://screenmerch.com")).rstrip("/")
         set_password_link = f"{frontend_url}/verify-email?token={quote(set_password_token, safe='')}&email={quote(creator_email, safe='')}"
@@ -6179,6 +6333,109 @@ def admin_approve_creator(user_id):
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"Error approving creator: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/admin/subscriptions", methods=["GET", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_list_subscriptions():
+    """List user_subscriptions with user email/role (service role — avoids RLS blank joins). Master Admin only."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    err, code = _require_master_admin()
+    if err is not None:
+        return err, code
+    client = supabase_admin if supabase_admin else supabase
+    if not client:
+        return jsonify({"success": False, "error": "Database unavailable", "subscriptions": []}), 503
+    try:
+        status_filter = (request.args.get("status") or "active").strip().lower()
+        q = client.table("user_subscriptions").select("*").order("created_at", desc=True).limit(500)
+        if status_filter and status_filter != "all":
+            q = q.eq("status", status_filter)
+        r = q.execute()
+        rows = r.data or []
+        user_ids = list({row.get("user_id") for row in rows if row.get("user_id")})
+        users_by_id = {}
+        # Chunk lookups (PostgREST .in_ has URL limits)
+        for i in range(0, len(user_ids), 50):
+            chunk = user_ids[i:i + 50]
+            ur = (
+                client.table("users")
+                .select("id, display_name, email, role, status")
+                .in_("id", chunk)
+                .execute()
+            )
+            for u in (ur.data or []):
+                users_by_id[u["id"]] = u
+        out = []
+        for row in rows:
+            d = dict(row)
+            u = users_by_id.get(row.get("user_id"))
+            if u:
+                d["users"] = {
+                    "display_name": u.get("display_name"),
+                    "email": u.get("email"),
+                    "role": u.get("role"),
+                    "status": u.get("status"),
+                }
+                d["email"] = u.get("email")
+            else:
+                d["users"] = None
+            out.append(d)
+        return jsonify({"success": True, "subscriptions": out}), 200
+    except Exception as e:
+        logger.exception("admin_list_subscriptions: %s", e)
+        return jsonify({"success": False, "error": str(e), "subscriptions": []}), 500
+
+
+@app.route("/api/admin/subscriptions/<subscription_id>", methods=["DELETE", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_delete_subscription(subscription_id):
+    """Soft-cancel (default) or hard-delete (?hard=1) a subscription row. Master Admin only."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    err, code = _require_master_admin()
+    if err is not None:
+        return err, code
+    client = supabase_admin if supabase_admin else supabase
+    if not client:
+        return jsonify({"success": False, "error": "Database unavailable"}), 503
+    try:
+        hard = (request.args.get("hard") or "").strip() in ("1", "true", "yes")
+        if hard:
+            client.table("user_subscriptions").delete().eq("id", subscription_id).execute()
+        else:
+            client.table("user_subscriptions").update({
+                "status": "canceled",
+                "updated_at": "now()",
+            }).eq("id", subscription_id).execute()
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        logger.exception("admin_delete_subscription: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/admin/subscriptions/<subscription_id>/reactivate", methods=["POST", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_reactivate_subscription(subscription_id):
+    """Set subscription status back to active. Master Admin only."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    err, code = _require_master_admin()
+    if err is not None:
+        return err, code
+    client = supabase_admin if supabase_admin else supabase
+    if not client:
+        return jsonify({"success": False, "error": "Database unavailable"}), 503
+    try:
+        client.table("user_subscriptions").update({
+            "status": "active",
+            "updated_at": "now()",
+        }).eq("id", subscription_id).execute()
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        logger.exception("admin_reactivate_subscription: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -6871,7 +7128,30 @@ def upload_favorite():
             return err[0], err[1]
         if not supabase_admin:
             return jsonify({"success": False, "error": "Server upload not configured"}), 503
+        email_hint = (
+            (request.form.get("email") or request.headers.get("X-User-Email") or "")
+            .strip()
+            .lower()
+        )
         user_chk = supabase_admin.table("users").select("id, email").eq("id", user_id).limit(1).execute()
+        if not user_chk.data:
+            # Session may still hold a pre-remap public.users id (auth/public UUID mismatch repair).
+            if email_hint:
+                by_email = (
+                    supabase_admin.table("users")
+                    .select("id, email")
+                    .ilike("email", email_hint)
+                    .limit(1)
+                    .execute()
+                )
+                if by_email.data:
+                    user_id = by_email.data[0]["id"]
+                    user_chk = by_email
+                    logger.info(
+                        "upload_favorite: resolved session user via email %s -> %s",
+                        email_hint,
+                        user_id,
+                    )
         if not user_chk.data:
             logger.error("upload_favorite: user_id %s missing from users after auth", user_id)
             return jsonify(
@@ -6891,11 +7171,23 @@ def upload_favorite():
             .limit(1)
             .execute()
         )
+        if not fav_row.data and email_hint:
+            # Remap may have moved the collaborator row to auth id already
+            fav_by_email = (
+                supabase_admin.table("users")
+                .select("id, email, display_name, username")
+                .ilike("email", email_hint)
+                .limit(1)
+                .execute()
+            )
+            if fav_by_email.data:
+                fav_row = fav_by_email
+                favorite_user_id = fav_by_email.data[0]["id"]
         if not fav_row.data:
             return jsonify({"success": False, "error": "Favorite page owner not found"}), 400
         fav_user = fav_row.data[0]
         fav_email = (fav_user.get("email") or "").strip().lower()
-        auth_ok, auth_sync_err = ensure_auth_user_for_public_user(
+        auth_ok, auth_sync_err, synced_fav_id = ensure_auth_user_for_public_user(
             supabase_admin, favorite_user_id, fav_email
         )
         if not auth_ok:
@@ -6911,6 +7203,29 @@ def upload_favorite():
                     "error": "Your account could not be synced. Please sign out and sign in again, or contact support.",
                 }
             ), 400
+        id_corrected = False
+        if synced_fav_id and str(synced_fav_id) != str(favorite_user_id):
+            logger.info(
+                "upload_favorite: remapped favorite user %s -> %s",
+                favorite_user_id,
+                synced_fav_id,
+            )
+            favorite_user_id = synced_fav_id
+            id_corrected = True
+            fav_row = (
+                supabase_admin.table("users")
+                .select("id, email, display_name, username")
+                .eq("id", favorite_user_id)
+                .limit(1)
+                .execute()
+            )
+            if fav_row.data:
+                fav_user = fav_row.data[0]
+            # Session user was the collaborator — keep ids aligned
+            if str(user_id) != str(favorite_user_id):
+                user_id = favorite_user_id
+                id_corrected = True
+            _, target_list = _fl_resolve_favorite_upload(user_id, list_id_form)
         if str(favorite_user_id) != str(user_id):
             owner_email = (
                 (request.form.get("email") or request.headers.get("X-User-Email") or "").strip().lower()
@@ -6977,7 +7292,7 @@ def upload_favorite():
             "user_id": favorite_user_id,
             "uploaded_by": user_id,
         }
-        if str(session_user_id) != str(user_id):
+        if str(session_user_id) != str(user_id) or id_corrected:
             payload["user_id_corrected"] = True
         if str(favorite_user_id) != str(user_id):
             payload["collaborator_upload"] = True
@@ -8797,7 +9112,28 @@ def public_favorite_lists():
                     _umbrella_collaborator_label(owner_u),
                 )
                 dn = nick + (" Favorites" if nick and "Favorites" not in nick else "")
-            safe_lists.append({**L, "display_name": dn[:120]})
+            preview_images = []
+            try:
+                fr = (
+                    supabase_admin.table("creator_favorites")
+                    .select("image_url, thumbnail_url")
+                    .eq("list_id", L.get("id"))
+                    .order("created_at", desc=True)
+                    .limit(8)
+                    .execute()
+                )
+                for fav in fr.data or []:
+                    img = (fav.get("image_url") or fav.get("thumbnail_url") or "").strip()
+                    if img and img not in preview_images:
+                        preview_images.append(img)
+            except Exception as preview_err:
+                logger.warning("public_favorite_lists preview for %s: %s", L.get("id"), preview_err)
+            safe_lists.append({
+                **L,
+                "display_name": dn[:120],
+                "preview_image_url": preview_images[0] if preview_images else None,
+                "preview_images": preview_images,
+            })
         return jsonify({"success": True, "lists": safe_lists}), 200
     except Exception as e:
         logger.exception("public_favorite_lists: %s", e)

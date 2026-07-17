@@ -1,12 +1,26 @@
-/* Order Success – professional, tight layout */
+/* Order Success – fills main content under navbar so CTA stays visible */
 .order-success-page {
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   background: #f1f5f9;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 32px 24px 48px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-sizing: border-box;
+}
+
+.main-content-area--order-success {
+  padding: 0 !important;
+}
+
+.main-content-area--order-success .main-content-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .order-success-container {

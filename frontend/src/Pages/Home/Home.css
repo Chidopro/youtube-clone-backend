@@ -344,4 +344,67 @@ body {
   }
 }
 
+.storefront-empty {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem 3rem;
+}
 
+.storefront-empty-card {
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+  padding: 2.5rem 1.75rem;
+  border: 1.5px dashed rgba(102, 126, 234, 0.45);
+  border-radius: 16px;
+  background: #f8f9ff;
+}
+
+.storefront-empty-card--clickable {
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.storefront-empty-card--clickable:hover {
+  border-color: rgba(102, 126, 234, 0.8);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.12);
+}
+
+.storefront-empty-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.storefront-empty-card p {
+  margin: 0 0 1.25rem;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.storefront-empty-cta {
+  border: none;
+  cursor: pointer;
+  padding: 0.75rem 1.35rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.storefront-empty-cta:hover {
+  opacity: 0.95;
+}
+
+@media (max-width: 768px) {
+  .storefront-empty {
+    padding: 1.25rem 0.75rem 2rem;
+  }
+
+  .storefront-empty-card {
+    padding: 1.75rem 1.25rem;
+  }
+}

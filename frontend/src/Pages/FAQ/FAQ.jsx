@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import './FAQ.css';
 
 const FAQ_SECTIONS = [
@@ -9,15 +9,23 @@ const FAQ_SECTIONS = [
     items: [
       {
         q: 'How do I get a free ScreenMerch storefront?',
-        a: 'From the homepage, reserve a soft-launch spot or go to creator signup. Complete the application (Google or email), agree to the Terms and Privacy Policy, then wait for admin approval. After approval, your subdomain (yourname.screenmerch.com) may take up to 24 hours to activate.',
+        a: 'From the homepage, reserve a soft-launch spot or go to creator signup. Complete the application (Google or email), agree to the Terms and Privacy Policy, then wait for admin approval. After approval, sign in on the main site (screenmerch.com), open your dashboard, and set your branding and subdomain. Your storefront URL may take up to 24 hours to activate after you save a subdomain.',
       },
       {
-        q: 'What do I set up first after approval?',
-        a: 'Personalize your branding (logo, colors, favicon), set your subdomain, upload short videos, and connect payout details (PayPal email). On desktop, FrameSnag helps capture moments from YouTube into your storefront workflow.',
+        q: 'What do I set up after approval?',
+        a: 'Sign in at screenmerch.com with your email and password. In the dropdown, go to Dashboard, then open the Personalization tab to set up your subdomain name (for example, example.screenmerch.com). Set your header logo (upload from your computer, ScreenMerch hosts it and fills in the URL - or paste a URL if it’s already online), page colors, and favicon, then save settings. The subdomain can take up to 24 hours to activate and load your storefront. Next, upload short videos, and on desktop use FrameSnag to capture YouTube moments into your Favorites page. Recommended sizes: header logo 200×50px (PNG or SVG, upload max 2MB); favicon 32×32px (ICO or PNG).',
+      },
+      {
+        q: 'How do I use FrameSnag?',
+        a: 'FrameSnag is a free Google Chrome extension for ScreenMerch creators (desktop). After your storefront is approved, install FrameSnag from the Chrome Web Store or from the download link in Dashboard → Favorites. Open one of your own YouTube videos (FrameSnag only works on your videos), use FrameSnag to capture high-quality frames or thumbnails, and send them to your ScreenMerch Favorites. Those images become artwork fans can put on merch. You can also paste a capture into Favorites with Ctrl+V (Cmd+V on Mac) when FrameSnag opens your dashboard.',
       },
       {
         q: 'How much do I earn per sale?',
         a: 'Creators earn $6 per sale on most products. Greeting cards, stickers, and magnets may use different rates. ScreenMerch pays storefront owners when pending earnings reach the $50 minimum.',
+      },
+      {
+        q: 'Why are storefront spots limited?',
+        a: 'This soft launch offers a limited number of free creator storefronts so we can support early creators closely. When spots are claimed, new applications may wait for the next wave.',
       },
     ],
   },
@@ -31,7 +39,7 @@ const FAQ_SECTIONS = [
       },
       {
         q: 'Who pays umbrella creators?',
-        a: 'You do. ScreenMerch pays you for sales on your direct storefront pages. Sales attributed to an umbrella collaborator page are your responsibility to pay that collaborator — typically when their owed balance reaches $50. Recording a payment in the dashboard is bookkeeping; money moves off-platform (for example PayPal).',
+        a: 'You do. ScreenMerch pays you for sales on your direct storefront pages. Sales attributed to an umbrella collaborator page are your responsibility to pay that collaborator — typically when their owed balance reaches $50.',
       },
       {
         q: 'Am I responsible for taxes on collaborator payouts?',
@@ -44,12 +52,16 @@ const FAQ_SECTIONS = [
     title: 'Umbrella collaborator',
     items: [
       {
+        q: 'How does a storefront owner send an umbrella invite?',
+        a: 'The storefront owner opens Dashboard → Umbrella (Collaborators), enters the invitee’s email or ScreenMerch username, and clicks Send invite. Email invites create a join link the owner copies and emails (ScreenMerch does not email the link automatically). Username invites go to people who already have a ScreenMerch account; they accept under Channel invites in the profile menu. The owner should set a subdomain in Personalization before sending email invites, since join links use that storefront address.',
+      },
+      {
         q: 'How do I join someone’s storefront?',
-        a: 'Accept an invite by username (Channel invites) or open the join link from an email invite and sign in with the invited email. Once approved, you get a page on the owner’s subdomain.',
+        a: 'Accept an invite by username (Channel invites) or open the join link from an email invite and sign in with the invited email. Once you accept the invite, you get a page on the owner’s subdomain.',
       },
       {
         q: 'Does ScreenMerch pay me directly?',
-        a: 'Not for umbrella-attributed sales. The storefront owner pays you based on attributed earnings shown in their dashboard. Keep your contact and payout details current with the owner.',
+        a: 'Not for umbrella-attributed sales. The storefront owner pays you based on attributed earnings shown in their dashboard. You can monitor your sales in your analytics page. Keep your contact and payout details current with the owner.',
       },
     ],
   },
@@ -58,8 +70,12 @@ const FAQ_SECTIONS = [
     title: 'Fans & shopping',
     items: [
       {
+        q: 'I just want a customer account.',
+        a: 'You don’t need to be a creator to shop. Create a customer account, then visit a creator’s storefront (for example theirname.screenmerch.com), pick a video moment or Favorites image, place the image on a product, and check out.',
+      },
+      {
         q: 'How does merch from a video work?',
-        a: 'On a creator storefront, open a video, capture a screenshot of a moment you like, place it on a product, and check out. Fulfillment partners (such as Printful) produce and ship the order.',
+        a: 'On a creator storefront, open a video or go to the Favorites page. On a video, use Select Screenshot to capture up to five moments. Choose a screenshot or favorite image, click Make Merch, pick a product category, place the image on a product, and check out.',
       },
       {
         q: 'Can I return custom merch?',
@@ -67,25 +83,22 @@ const FAQ_SECTIONS = [
       },
     ],
   },
-  {
-    id: 'soft-launch',
-    title: 'Soft launch & access',
-    items: [
-      {
-        q: 'Why are storefront spots limited?',
-        a: 'This soft launch offers a limited number of free creator storefronts so we can support early creators closely. When spots are claimed, new applications may wait for the next wave.',
-      },
-      {
-        q: 'Where can I watch a full walkthrough?',
-        a: 'Open How it works from the homepage introduction card for the ScreenMerch intro video and a written explanation — without entering the live screenshot-and-merch tool.',
-      },
-    ],
-  },
 ];
 
 const FAQ = () => {
   const navigate = useNavigate();
-  const [openKey, setOpenKey] = useState('solo-0');
+  const location = useLocation();
+  const [openKey, setOpenKey] = useState('');
+
+  // Every visit (including from dashboard dropdown): all closed, scroll to top
+  useEffect(() => {
+    setOpenKey('');
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const main = document.querySelector('.main-content-area');
+    if (main) main.scrollTop = 0;
+  }, [location.key, location.pathname, location.state]);
 
   const toggle = (key) => {
     setOpenKey((prev) => (prev === key ? '' : key));
@@ -93,14 +106,12 @@ const FAQ = () => {
 
   return (
     <div className="faq-page">
-      <div className="faq-inner">
+      <header className="faq-header">
         <p className="faq-eyebrow">Help center</p>
         <h1 className="faq-title">FAQ</h1>
-        <p className="faq-lede">
-          Setup scenarios for solo creators, umbrella owners, collaborators, and shoppers during
-          ScreenMerch&apos;s limited soft launch.
-        </p>
+      </header>
 
+      <div className="faq-inner">
         {FAQ_SECTIONS.map((section) => (
           <section key={section.id} className="faq-section" id={section.id}>
             <h2 className="faq-section-title">{section.title}</h2>

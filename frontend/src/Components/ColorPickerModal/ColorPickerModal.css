@@ -8,6 +8,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
   z-index: 10000;
   animation: fadeIn 0.2s ease;
 }
@@ -26,19 +28,21 @@
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
+  max-width: 450px;
+  max-height: 85vh;
   overflow-y: auto;
+  transform: scale(0.9);
+  transform-origin: center center;
   animation: slideUp 0.3s ease;
 }
 
 @keyframes slideUp {
   from {
-    transform: translateY(20px);
+    transform: scale(0.85) translateY(20px);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: scale(0.9) translateY(0);
     opacity: 1;
   }
 }

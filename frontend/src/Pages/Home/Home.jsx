@@ -5,13 +5,11 @@ import { supabase } from '../../supabaseClient';
 import './Home.css'
 import { useNavigate, Link } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
-import { getSubdomain, getCreatorFromSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService';
-import { fetchPublicFavoritesByList } from '../../utils/favoriteListsApi';
+import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService';
+import { fetchPublicFavoriteLists, fetchPublicFavoritesByList, listPreviewImages, favoriteImageUrl } from '../../utils/favoriteListsApi';
+import { isCollaboratorFavoriteList } from '../../utils/favoriteListLabels';
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
-import API_CONFIG from '../../config/apiConfig';
-import { mockVideos } from '../../mockVideos';
-
-const mockVideosForFeed = mockVideos.map((v) => ({ ...v, created_at: v.created_at || v.publishedAt }));
+import { apiJoin } from '../../config/apiConfig';
 
 const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [videos, setVideos] = useState([]);
@@ -20,11 +18,20 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [canEdit, setCanEdit] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
-  const [favoritesCount, setFavoritesCount] = useState(0);
-  const [favoritesPreview, setFavoritesPreview] = useState(null);
+  const [favoritesPreview, setFavoritesPreview] = useState([]);
+  const [friendPagePreview, setFriendPagePreview] = useState([]);
   const navigate = useNavigate();
-  const { creatorSettings, currentCreator, refreshCreator } = useCreator();
+  const { creatorSettings, currentCreator, refreshCreator, loading: creatorLoading } = useCreator();
   const isMainSite = !isCreatorStorefrontHostname();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash !== '#storefront-videos') return;
+    const t = window.setTimeout(() => {
+      document.getElementById('storefront-videos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+    return () => window.clearTimeout(t);
+  }, [loading, videos.length]);
 
   const introVideo = React.useMemo(() => {
     if (!videos.length) return null;
@@ -36,73 +43,121 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   }, [videos]);
 
   useEffect(() => {
-    const subdomain = getSubdomain();
     const fetchVideos = async () => {
       setLoading(true);
       setError('');
-      // When on a subdomain: if creator found, filter by user_id; if not found (404), still show placeholder videos
+
+      // Creator storefronts: wait until creator context finishes loading
+      if (!isMainSite) {
+        if (creatorLoading) {
+          setVideos([]);
+          return;
+        }
+        if (!currentCreator?.id) {
+          setVideos([]);
+          setLoading(false);
+          return;
+        }
+      }
+
       const params = new URLSearchParams();
       if (category && category !== 'All') params.set('category', category);
       if (currentCreator?.id) params.set('user_id', currentCreator.id);
-      const url = `${API_CONFIG.BASE_URL}/api/videos${params.toString() ? '?' + params.toString() : ''}`;
+      // Same-origin /api on *.screenmerch.com (Netlify → Fly) so CSP cannot block video loads
+      const url = `${apiJoin('/api/videos')}${params.toString() ? `?${params.toString()}` : ''}`;
       try {
         const res = await fetch(url);
         if (!res.ok) {
-          setError('');
-          setVideos(mockVideosForFeed);
+          setVideos([]);
+          if (isMainSite) setError('Failed to load videos');
         } else {
           const data = await res.json();
           const list = Array.isArray(data) ? data : [];
-          setVideos(list.length > 0 ? list : mockVideosForFeed);
+          setVideos(
+            list.map((v) => ({
+              ...v,
+              thumbnail: v.thumbnail || v.thumbnail_url || '',
+            }))
+          );
         }
       } catch (_) {
-        setError('');
-        setVideos(mockVideosForFeed);
+        setVideos([]);
+        if (isMainSite) setError('Failed to load videos');
       }
       setLoading(false);
     };
     fetchVideos();
-  }, [category, currentCreator?.id]);
+  }, [category, currentCreator?.id, isMainSite, creatorLoading]);
 
-  // Fetch favorites count and preview for the Favorites card (primary list on subdomain)
+  // Hub previews: one favorite-lists call (includes preview_images per list)
   useEffect(() => {
-    const fetchFavorites = async () => {
+    const fetchHubPreviews = async () => {
       const sub = getSubdomain();
-      if (!sub || !currentCreator?.id) {
-        setFavoritesCount(0);
-        setFavoritesPreview(null);
+      if (!sub || !currentCreator?.id || creatorLoading) {
+        if (!creatorLoading) {
+          setFavoritesPreview([]);
+          setFriendPagePreview([]);
+        }
         return;
       }
       try {
-        const { ok, data } = await fetchPublicFavoritesByList(sub, 'owner');
-        if (!ok || !data.success) {
-          setFavoritesCount(0);
-          setFavoritesPreview(null);
+        const { ok, data } = await fetchPublicFavoriteLists(sub);
+        if (!ok || !data?.success) {
+          setFavoritesPreview([]);
+          setFriendPagePreview([]);
           return;
         }
-        const rows = data.favorites || [];
-        setFavoritesCount(rows.length);
-        if (data.list?.id) {
+        const lists = Array.isArray(data.lists) ? data.lists : [];
+        const ownerList = lists.find((L) => L.is_primary || L.slug === 'owner');
+        let ownerImages = listPreviewImages(ownerList);
+        if (!ownerImages.length && ownerList) {
+          const { ok: okOwner, data: ownerData } = await fetchPublicFavoritesByList(
+            sub,
+            ownerList.slug || 'owner'
+          );
+          if (okOwner && ownerData?.success) {
+            ownerImages = (ownerData.favorites || [])
+              .map((f) => favoriteImageUrl(f))
+              .filter(Boolean);
+          }
+        }
+        if (ownerList?.id) {
           try {
-            localStorage.setItem('sm_favorite_list_id', data.list.id);
-            localStorage.setItem('sm_favorite_list_slug', data.list.slug || 'owner');
+            localStorage.setItem('sm_favorite_list_id', ownerList.id);
+            localStorage.setItem('sm_favorite_list_slug', ownerList.slug || 'owner');
           } catch (_) {
             /* ignore */
           }
         }
-        if (rows.length > 0) {
-          setFavoritesPreview(rows.slice(0, 4).map((f) => f.image_url || f.thumbnail_url).filter(Boolean));
-        } else {
-          setFavoritesPreview(null);
+        setFavoritesPreview(ownerImages);
+
+        const friendLists = lists.filter(
+          (L) =>
+            !L.is_primary &&
+            L.slug !== 'owner' &&
+            isCollaboratorFavoriteList(L, currentCreator.id)
+        );
+        let friendImages = friendLists.flatMap((L) => listPreviewImages(L));
+        if (!friendImages.length && friendLists.length) {
+          for (const L of friendLists) {
+            const slug = (L.slug || '').trim();
+            if (!slug) continue;
+            const { ok: okFriend, data: friendData } = await fetchPublicFavoritesByList(sub, slug);
+            if (!okFriend || !friendData?.success) continue;
+            friendImages.push(
+              ...(friendData.favorites || []).map((f) => favoriteImageUrl(f)).filter(Boolean)
+            );
+          }
         }
+        setFriendPagePreview(friendImages);
       } catch (err) {
-        console.error('Error fetching favorites:', err);
-        setFavoritesCount(0);
-        setFavoritesPreview(null);
+        console.error('Error fetching hub previews:', err);
+        setFavoritesPreview([]);
+        setFriendPagePreview([]);
       }
     };
-    fetchFavorites();
-  }, [currentCreator?.id]);
+    fetchHubPreviews();
+  }, [currentCreator?.id, creatorLoading]);
 
   // Check if user can edit colors (must be authenticated and own the subdomain)
   useEffect(() => {
@@ -260,7 +315,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         />
 
 
-        {/* Main site: creator directory mockup. Subdomains: creator video feed. Revert: Home.jsx.origbak */}
+        {/* Main site: creator directory. Subdomains: hub row + video feed. */}
         {loading && <div style={{padding: 24}}>Loading...</div>}
         {error && <div style={{padding: 24, color: 'red'}}>{error}</div>}
         {!loading && !error && isMainSite && (
@@ -276,13 +331,54 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
             }}
           />
         )}
-        {!loading && !error && !isMainSite && videos.length > 0 && (
-          <Feed 
-            videos={videos} 
-            favoritesCount={favoritesCount}
-            favoritesPreview={favoritesPreview}
-            creatorName={currentCreator?.display_name}
-          />
+        {!loading && !error && !isMainSite && (
+          <>
+            <Feed
+              videos={videos}
+              favoritesPreview={favoritesPreview}
+              friendPagePreview={friendPagePreview}
+              showHubs
+            />
+            {videos.length === 0 && (
+              <div className="storefront-empty">
+                <div
+                  className={`storefront-empty-card${canEdit ? ' storefront-empty-card--clickable' : ''}`}
+                  role={canEdit ? 'button' : undefined}
+                  tabIndex={canEdit ? 0 : undefined}
+                  onClick={canEdit ? () => navigate('/dashboard?tab=videos') : undefined}
+                  onKeyDown={
+                    canEdit
+                      ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            navigate('/dashboard?tab=videos');
+                          }
+                        }
+                      : undefined
+                  }
+                >
+                  <h3>No videos yet</h3>
+                  <p>
+                    {canEdit
+                      ? 'This storefront is live. Add your first video from the dashboard to start selling merch.'
+                      : 'This creator hasn\'t added videos yet. Check back soon.'}
+                  </p>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="storefront-empty-cta"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/upload');
+                      }}
+                    >
+                      Add videos
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </>
