@@ -2102,14 +2102,10 @@ def reset_platform_revenue_data():
 
 
 def _earning_financials(earning):
-    from utils.payout import sale_revenue_breakdown
+    """Always recompute $6/$6 (or product-specific) split — do not trust stale stored fees."""
+    from utils.payout import earning_payout_financials
 
-    return sale_revenue_breakdown(
-        earning.get("product_name"),
-        earning.get("sale_amount"),
-        platform_fee=earning.get("platform_fee"),
-        creator_share=earning.get("creator_share"),
-    )
+    return earning_payout_financials(earning)
 
 
 def _revenue_creator_attribution_label(earning, attribution_maps):
@@ -2149,10 +2145,10 @@ def _platform_revenue_transaction_row(earning, attribution_maps):
         "creator_email": user.get("email", "Unknown"),
         "creator_subdomain": user.get("subdomain", ""),
         "product_name": earning.get("product_name"),
-        "sale_amount": round(float(earning.get("sale_amount", 0)), 2),
+        "sale_amount": fin["sale_amount"],
         "printful_cost": fin["printful_cost"],
-        "platform_fee": round(float(earning.get("platform_fee", 0)), 2),
-        "creator_share": round(float(earning.get("creator_share", 0)), 2),
+        "platform_fee": fin["platform_fee"],
+        "creator_share": fin["creator_share"],
         "creator_net_payout": fin["creator_net_payout"],
         "created_at": earning.get("created_at"),
         "status": earning.get("status"),
@@ -2162,7 +2158,7 @@ def _platform_revenue_transaction_row(earning, attribution_maps):
 @admin_bp.route("/api/admin/platform-revenue", methods=["GET", "OPTIONS"])
 @admin_required()
 def platform_revenue():
-    """Get platform revenue analytics (30% commission from all creator earnings) - Master admin only"""
+    """Platform revenue analytics — $6/$6 markup split (canonical via payout.py). Master admin only."""
     if request.method == "OPTIONS":
         return _handle_cors_preflight()
     
@@ -2202,7 +2198,9 @@ def platform_revenue():
                                 "total_gross_revenue": 0,
                                 "total_creator_payouts": 0,
                                 "total_transactions": 0,
-                                "commission_rate": 0.30
+                                "fee_model": "markup_split_6_6",
+                                "platform_share_per_item": 6.0,
+                                "creator_share_per_item": 6.0,
                             },
                             "revenue_by_creator": [],
                             "revenue_by_date": [],
@@ -2217,7 +2215,9 @@ def platform_revenue():
                             "total_gross_revenue": 0,
                             "total_creator_payouts": 0,
                             "total_transactions": 0,
-                            "commission_rate": 0.30
+                            "fee_model": "markup_split_6_6",
+                            "platform_share_per_item": 6.0,
+                            "creator_share_per_item": 6.0,
                         },
                         "revenue_by_creator": [],
                         "revenue_by_date": [],
@@ -2239,17 +2239,18 @@ def platform_revenue():
         earnings = result.data if result.data else []
         attribution_maps = build_platform_revenue_attribution_maps(client, earnings)
         
-        # Calculate totals
-        total_platform_revenue = sum(float(e.get('platform_fee', 0)) for e in earnings)
-        total_gross_revenue = sum(float(e.get('sale_amount', 0)) for e in earnings)
-        total_creator_payouts = sum(float(e.get('creator_share', 0)) for e in earnings)
-        total_printful_cost = sum(_earning_financials(e)['printful_cost'] for e in earnings)
-        total_creator_net_payout = sum(_earning_financials(e)['creator_net_payout'] for e in earnings)
+        # Canonical $6/$6 (or product-specific) totals — recompute, don't trust stored fees
+        earnings_financials = [_earning_financials(e) for e in earnings]
+        total_platform_revenue = sum(f["platform_fee"] for f in earnings_financials)
+        total_gross_revenue = sum(f["sale_amount"] for f in earnings_financials)
+        total_creator_payouts = sum(f["creator_share"] for f in earnings_financials)
+        total_printful_cost = sum(f["printful_cost"] for f in earnings_financials)
+        total_creator_net_payout = sum(f["creator_net_payout"] for f in earnings_financials)
         total_transactions = len(earnings)
         
         # Group by storefront owner + attribution (Bee vs Storefront)
         revenue_by_creator = {}
-        for earning in earnings:
+        for earning, fin in zip(earnings, earnings_financials):
             user = earning.get('users', {})
             creator_id_key = earning.get('user_id')
             creator_email = user.get('email', 'Unknown')
@@ -2274,20 +2275,19 @@ def platform_revenue():
                     'transactions': []
                 }
 
-            fin = _earning_financials(earning)
-            revenue_by_creator[group_key]['platform_revenue'] += float(earning.get('platform_fee', 0))
-            revenue_by_creator[group_key]['gross_revenue'] += float(earning.get('sale_amount', 0))
+            revenue_by_creator[group_key]['platform_revenue'] += fin['platform_fee']
+            revenue_by_creator[group_key]['gross_revenue'] += fin['sale_amount']
             revenue_by_creator[group_key]['printful_cost'] += fin['printful_cost']
-            revenue_by_creator[group_key]['creator_payouts'] += float(earning.get('creator_share', 0))
+            revenue_by_creator[group_key]['creator_payouts'] += fin['creator_share']
             revenue_by_creator[group_key]['creator_net_payout'] += fin['creator_net_payout']
             revenue_by_creator[group_key]['transaction_count'] += 1
             revenue_by_creator[group_key]['transactions'].append({
                 'order_id': earning.get('order_id'),
                 'product_name': earning.get('product_name'),
-                'sale_amount': float(earning.get('sale_amount', 0)),
+                'sale_amount': fin['sale_amount'],
                 'printful_cost': fin['printful_cost'],
-                'platform_fee': float(earning.get('platform_fee', 0)),
-                'creator_share': float(earning.get('creator_share', 0)),
+                'platform_fee': fin['platform_fee'],
+                'creator_share': fin['creator_share'],
                 'creator_net_payout': fin['creator_net_payout'],
                 'created_at': earning.get('created_at'),
                 'status': earning.get('status')
@@ -2301,7 +2301,7 @@ def platform_revenue():
         
         # Group by date
         revenue_by_date = {}
-        for earning in earnings:
+        for earning, fin in zip(earnings, earnings_financials):
             try:
                 created_at = earning.get('created_at')
                 if created_at:
@@ -2319,8 +2319,8 @@ def platform_revenue():
                             'transaction_count': 0
                         }
                     
-                    revenue_by_date[date_str]['platform_revenue'] += float(earning.get('platform_fee', 0))
-                    revenue_by_date[date_str]['gross_revenue'] += float(earning.get('sale_amount', 0))
+                    revenue_by_date[date_str]['platform_revenue'] += fin['platform_fee']
+                    revenue_by_date[date_str]['gross_revenue'] += fin['sale_amount']
                     revenue_by_date[date_str]['transaction_count'] += 1
             except Exception:
                 continue
@@ -2329,7 +2329,7 @@ def platform_revenue():
         
         # Group by product
         revenue_by_product = {}
-        for earning in earnings:
+        for earning, fin in zip(earnings, earnings_financials):
             product_name = earning.get('product_name', 'Unknown Product')
             if product_name not in revenue_by_product:
                 revenue_by_product[product_name] = {
@@ -2341,9 +2341,8 @@ def platform_revenue():
                     'transaction_count': 0
                 }
 
-            fin = _earning_financials(earning)
-            revenue_by_product[product_name]['platform_revenue'] += float(earning.get('platform_fee', 0))
-            revenue_by_product[product_name]['gross_revenue'] += float(earning.get('sale_amount', 0))
+            revenue_by_product[product_name]['platform_revenue'] += fin['platform_fee']
+            revenue_by_product[product_name]['gross_revenue'] += fin['sale_amount']
             revenue_by_product[product_name]['printful_cost'] += fin['printful_cost']
             revenue_by_product[product_name]['creator_net_payout'] += fin['creator_net_payout']
             revenue_by_product[product_name]['transaction_count'] += 1
@@ -2363,7 +2362,9 @@ def platform_revenue():
                 "total_creator_payouts": round(total_creator_payouts, 2),
                 "total_creator_net_payout": round(total_creator_net_payout, 2),
                 "total_transactions": total_transactions,
-                "commission_rate": 0.30
+                "fee_model": "markup_split_6_6",
+                "platform_share_per_item": 6.0,
+                "creator_share_per_item": 6.0,
             },
             "revenue_by_creator": revenue_by_creator_list,
             "revenue_by_date": revenue_by_date_list,

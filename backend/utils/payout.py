@@ -71,6 +71,22 @@ def sale_revenue_breakdown(product_name, sale_amount, platform_fee=None, creator
     }
 
 
+def earning_payout_financials(earning, quantity=1):
+    """
+    Canonical payout numbers for one creator_earnings (or sale-like) row.
+
+    Always recomputes platform_fee and creator_share from product + amount via
+    get_payout_for_sale so dashboards stay consistent even if stored rows are stale.
+    """
+    return sale_revenue_breakdown(
+        earning.get("product_name"),
+        earning.get("sale_amount") if earning.get("sale_amount") is not None else earning.get("amount"),
+        platform_fee=None,
+        creator_share=None,
+        quantity=quantity,
+    )
+
+
 def aggregate_sales_payout_totals(sale_lines):
     """
     Sum gross, platform fee, collaborator/creator share, and merchandise (Printful) cost

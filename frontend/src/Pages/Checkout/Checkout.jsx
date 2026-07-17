@@ -28,6 +28,19 @@ const Checkout = () => {
   /** Set true when user completes design modal with "Continue to Checkout". Required before Place Order. */
   const [designConfirmed, setDesignConfirmed] = useState(false);
   const designModalShownOnLoadRef = useRef(false);
+  const shippingSectionRef = useRef(null);
+
+  const scrollToShippingSection = useCallback(() => {
+    // Wait for the design modal to unmount so layout height is correct.
+    requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        shippingSectionRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }, 80);
+    });
+  }, []);
 
   // Portrait/landscape confirmation only for shirts (Womens, Mens, Kids). Other categories go straight to checkout.
   const SHIRT_CATEGORIES = ['womens', 'mens', 'kids'];
@@ -511,7 +524,11 @@ const Checkout = () => {
             </div>
 
             {/* Shipping Section */}
-            <div className="order-section">
+            <div
+              className="order-section checkout-shipping-section"
+              id="checkout-shipping"
+              ref={shippingSectionRef}
+            >
               <h2>Shipping Information</h2>
               <div className="shipping-form">
                 <div className="form-row">
@@ -882,6 +899,7 @@ const Checkout = () => {
                 if (!applyOrientationToCart()) return;
                 setDesignConfirmed(true);
                 setShowDesignModal(false);
+                scrollToShippingSection();
               };
               const handleGoToTools = () => {
                 if (!applyOrientationToCart()) return;

@@ -198,6 +198,8 @@ const Dashboard = ({ sidebar }) => {
         last_payout: null,
         payout_note: '',
         payout_summary: {},
+        platform_fee_amount: 0,
+        pay_collaborator_amount: 0,
     });
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const [collaboratorPayoutRows, setCollaboratorPayoutRows] = useState([]);
@@ -1201,6 +1203,8 @@ const Dashboard = ({ sidebar }) => {
                 last_payout: data.last_payout || null,
                 payout_note: data.payout_note || '',
                 payout_summary: data.payout_summary || {},
+                platform_fee_amount: data.platform_fee_amount ?? data.payout_summary?.platform_fee_amount ?? 0,
+                pay_collaborator_amount: data.pay_collaborator_amount ?? data.payout_summary?.collaborator_pay_total ?? 0,
             });
 
             if (!umbrellaOnly) {
@@ -2063,13 +2067,27 @@ const Dashboard = ({ sidebar }) => {
                                         {(() => {
                                             const ps = analyticsData.payout_summary || {};
                                             const gross = Number(ps.gross_amount ?? analyticsData.total_revenue ?? 0);
-                                            const platformFee = Number(ps.platform_fee_amount ?? 0);
+                                            // Umbrella: platform + collaborator come from the same payout_summary ($6/$6)
+                                            const collabPay = umbrellaOnly
+                                                ? Number(
+                                                    ps.collaborator_pay_total
+                                                    ?? analyticsData.pay_collaborator_amount
+                                                    ?? 0
+                                                )
+                                                : Number(ps.collaborator_pay_total ?? 0);
+                                            const platformFee = umbrellaOnly
+                                                ? Number(
+                                                    ps.platform_fee_amount
+                                                    ?? analyticsData.platform_fee_amount
+                                                    ?? collabPay
+                                                )
+                                                : Number(ps.platform_fee_amount ?? 0);
                                             const ownerPayout = Number(ps.owner_net_payout ?? 0);
-                                            const collabPayTotal = Number(ps.collaborator_pay_total ?? 0);
+                                            const collabPayTotal = collabPay;
                                             const merchCost = Number(ps.merch_cost_amount ?? 0);
                                             const netLabel = umbrellaOnly ? 'Your payout' : 'Your payout';
                                             const netValue = umbrellaOnly
-                                                ? Number(analyticsData.collaborator_net_owed ?? 0) + Number(analyticsData.paid_total ?? 0)
+                                                ? (collabPay || (Number(analyticsData.collaborator_net_owed ?? 0) + Number(analyticsData.paid_total ?? 0)))
                                                 : ownerPayout;
                                             const netSubtitle = umbrellaOnly
                                                 ? 'Earned on your favorites page ($6/item)'

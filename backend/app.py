@@ -9795,48 +9795,77 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
 
 
 def _umbrella_page_orders_for_analytics(list_id, owner_id):
-    """Sales attributed to one umbrella collaborator favorites page."""
+    """Sales attributed to one umbrella collaborator favorites page.
+
+    Prefer the sales table as the source of truth. In-memory order_store entries
+    are only added when not already persisted (avoids double-counting after webhook).
+    """
     all_orders = []
     list_id_str = str(list_id)
     owner_id_str = str(owner_id)
+    seen_keys = set()
+
+    client_to_use = supabase_admin if supabase_admin else supabase
+    sales_rows = []
+    if client_to_use:
+        try:
+            query = client_to_use.table("sales").select(
+                "id,product_name,amount,image_url,user_id,channel_id,creator_name,video_title,created_at,favorite_list_id"
+            )
+            query = query.eq("user_id", owner_id_str)
+            try:
+                sales_result = query.eq("favorite_list_id", list_id).execute()
+                sales_rows = sales_result.data or []
+            except Exception:
+                sales_result = query.execute()
+                sales_rows = [
+                    s
+                    for s in (sales_result.data or [])
+                    if str(s.get("favorite_list_id") or "") == list_id_str
+                ]
+        except Exception as db_error:
+            logger.error("umbrella analytics sales query failed: %s", db_error)
+            sales_rows = []
+
+    for sale in sales_rows:
+        sale_id = sale.get("id")
+        key = f"sale:{sale_id}" if sale_id is not None else None
+        if key:
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+        order = _sale_record_to_order(sale)
+        fp = (
+            f"fp:{order.get('total_value')}|"
+            f"{(order.get('cart') or [{}])[0].get('product')}|"
+            f"{str(order.get('created_at') or '')[:16]}"
+        )
+        seen_keys.add(fp)
+        all_orders.append(order)
 
     for order_id, order_data in order_store.items():
         if str(order_data.get("favorite_list_id") or "") != list_id_str:
             continue
+        cart = order_data.get("cart") or []
+        first_product = (cart[0].get("product") if cart and isinstance(cart[0], dict) else "") or ""
+        total_value = order_data.get("total_value")
+        if not total_value:
+            total_value = sum((item.get("price") or 0) for item in cart if isinstance(item, dict)) or 0
+        created = order_data.get("created_at") or order_data.get("timestamp", "N/A")
+        fp = f"fp:{total_value}|{first_product}|{str(created)[:16]}"
+        if fp in seen_keys:
+            continue
+        mem_key = f"mem:{order_id}"
+        if mem_key in seen_keys:
+            continue
+        seen_keys.add(mem_key)
+        seen_keys.add(fp)
         od = dict(order_data)
         od["order_id"] = order_id
         od["status"] = od.get("status") or "pending"
-        od["created_at"] = od.get("created_at") or od.get("timestamp", "N/A")
-        if not od.get("total_value"):
-            cart = od.get("cart") or []
-            od["total_value"] = sum((item.get("price") or 0) for item in cart) or 0
+        od["created_at"] = created
+        od["total_value"] = total_value
         all_orders.append(od)
-
-    client_to_use = supabase_admin if supabase_admin else supabase
-    if not client_to_use:
-        return all_orders
-
-    try:
-        query = client_to_use.table("sales").select(
-            "id,product_name,amount,image_url,user_id,channel_id,creator_name,video_title,created_at,favorite_list_id"
-        )
-        query = query.eq("user_id", owner_id_str)
-        try:
-            sales_result = query.eq("favorite_list_id", list_id).execute()
-            sales_rows = sales_result.data or []
-        except Exception:
-            sales_result = query.execute()
-            sales_rows = [
-                s
-                for s in (sales_result.data or [])
-                if str(s.get("favorite_list_id") or "") == list_id_str
-            ]
-    except Exception as db_error:
-        logger.error("umbrella analytics sales query failed: %s", db_error)
-        sales_rows = []
-
-    for sale in sales_rows:
-        all_orders.append(_sale_record_to_order(sale))
 
     return all_orders
 
@@ -9895,8 +9924,10 @@ def favorite_lists_my_analytics():
                 for item in (order.get("cart") or [])
                 if isinstance(item, dict)
             ]
+        # Single source of truth for collaborator + platform ($6 / $6 on standard items)
         payout_totals = aggregate_sales_payout_totals(page_sales)
         pay_collaborator = payout_totals["pay_collaborator_amount"]
+        platform_fee = payout_totals["platform_fee_amount"]
         list_payouts = _umbrella_payouts_by_list(owner_id, [member_list["id"]]).get(
             str(member_list["id"]), []
         )
@@ -9908,7 +9939,7 @@ def favorite_lists_my_analytics():
         payload["collaborator_net_owed"] = payout_bal.get("balance_owed", pay_collaborator)
         payload["lifetime_net"] = pay_collaborator
         payload["pay_collaborator_amount"] = pay_collaborator
-        payload["platform_fee_amount"] = payout_totals["platform_fee_amount"]
+        payload["platform_fee_amount"] = platform_fee
         payload["merch_cost_amount"] = payout_totals["merch_cost_amount"]
         payload["paid_total"] = payout_bal.get("paid_total", 0)
         payload["is_paid_up"] = payout_bal.get("is_paid_up", False)
@@ -9916,6 +9947,14 @@ def favorite_lists_my_analytics():
         payload["payout_stale"] = payout_bal.get("payout_stale", False)
         payload["last_payout"] = payout_bal.get("last_payout")
         payload["recent_payouts"] = payout_bal.get("recent_payouts") or []
+        # Keep weekly summary cards on the same totals (fixes inflated platform fee)
+        payload["payout_summary"] = {
+            "gross_amount": payout_totals["gross_amount"],
+            "platform_fee_amount": platform_fee,
+            "merch_cost_amount": payout_totals["merch_cost_amount"],
+            "owner_net_payout": 0,
+            "collaborator_pay_total": pay_collaborator,
+        }
         payload["payout_note"] = (
             f"ScreenMerch pays {owner_label} when their pending earnings reach $50 or more. "
             f"They are responsible for paying you monthly when your owed balance exceeds $50."
@@ -10659,36 +10698,10 @@ def get_analytics():
         
         logger.info(f"📊 Analytics request - User ID: {user_id}, Channel ID: {channel_id}")
         
-        # Get all orders from database and in-memory store
+        # Sales table is the source of truth; order_store only fills gaps (no double-count)
         all_orders = []
         sales_rows = []
-        
-        # Get orders from order_store (recent orders) - FILTER by user_id for precise tracking
-        for order_id, order_data in order_store.items():
-            # IMPORTANT: Only include orders that belong to this creator
-            # Check if order has creator_name that matches this user
-            order_creator_name = order_data.get('creator_name', 'Unknown Creator')
-            
-            # If we have user_id, try to match orders to this creator
-            # Skip orders that don't match this creator for precise tracking
-            if user_id and order_creator_name != 'Unknown Creator':
-                try:
-                    # Look up if this creator_name matches the user_id
-                    creator_match = supabase_admin.table('users').select('id').or_(
-                        f"display_name.ilike.{order_creator_name},username.ilike.{order_creator_name}"
-                    ).eq('id', user_id).limit(1).execute()
-                    
-                    # If creator doesn't match this user_id, skip this order
-                    if not creator_match.data or len(creator_match.data) == 0:
-                        continue  # Skip orders not belonging to this creator
-                except:
-                    # If lookup fails, skip to be safe (ensures precise tracking)
-                    continue
-            
-            order_data['order_id'] = order_id
-            order_data['status'] = 'pending'
-            order_data['created_at'] = order_data.get('timestamp', 'N/A')
-            all_orders.append(order_data)
+        seen_keys = set()
         
         # Get orders from database (sales table)
         try:
@@ -10724,46 +10737,67 @@ def get_analytics():
                 sales_rows = []
             sales_rows = list(sales_result.data or [])
             
-            # Debug: Log the first few sales to see what we're getting
-            for i, sale in enumerate(sales_result.data[:3]):
-                logger.info(f"📦 Sample sale {i+1}: {sale.get('product_name')} - ${sale.get('amount')} - Channel: {sale.get('channel_id')}")
-            
-            # Debug: Log all sales found
-            for sale in sales_result.data:
-                logger.info(f"📦 Found sale: {sale.get('product_name')} - ${sale.get('amount')} - Channel: {sale.get('channel_id')} - User: {sale.get('user_id')}")
-            
-            for sale in sales_result.data:
-                logger.info(f"📦 Processing sale: {sale.get('product_name')} - ${sale.get('amount')}")
-                # Convert database sale to order format - preserve creator info for precise tracking
-                # Try to get created_at from sale record, fallback to current time if not available
-                sale_created_at = sale.get('created_at')
-                if not sale_created_at or sale_created_at == 'N/A':
-                    # Use current timestamp if created_at is missing
-                    from datetime import datetime
-                    sale_created_at = datetime.now().isoformat()
-                
-                order_data = {
-                    'order_id': sale.get('id', 'db-' + str(sale.get('id'))),
-                    'cart': [{
-                        'product': sale.get('product_name', 'Unknown Product'),
-                        'variants': {'color': 'N/A', 'size': 'N/A'},
-                        'note': '',
-                        'img': sale.get('image_url', ''),
-                        'video_title': sale.get('video_title', 'Unknown Video'),
-                        'creator_name': sale.get('creator_name', 'Unknown Creator'),
-                        'price': sale.get('amount', 0)  # Store price in cart item for revenue calculation
-                    }],
-                    'status': 'completed',
-                    'created_at': sale_created_at,  # Use actual created_at from database
-                    'total_value': sale.get('amount', 0),
-                    'user_id': sale.get('user_id'),  # Preserve user_id for tracking
-                    'channel_id': sale.get('channel_id'),
-                    'creator_name': sale.get('creator_name', 'Unknown Creator')  # Preserve creator_name
-                }
+            for sale in sales_rows:
+                sale_id = sale.get('id')
+                key = f"sale:{sale_id}" if sale_id is not None else None
+                if key:
+                    if key in seen_keys:
+                        continue
+                    seen_keys.add(key)
+                order_data = _sale_record_to_order(sale)
+                fp = (
+                    f"fp:{order_data.get('total_value')}|"
+                    f"{(order_data.get('cart') or [{}])[0].get('product')}|"
+                    f"{str(order_data.get('created_at') or '')[:16]}"
+                )
+                seen_keys.add(fp)
                 all_orders.append(order_data)
-                logger.info(f"✅ Added sale to analytics: {sale.get('product_name')} - ${sale.get('amount')} - created_at: {sale_created_at}")
+                logger.info(
+                    f"✅ Added sale to analytics: {sale.get('product_name')} - ${sale.get('amount')} - created_at: {sale.get('created_at')}"
+                )
         except Exception as db_error:
             logger.error(f"Database error loading analytics: {str(db_error)}")
+        
+        # In-memory checkouts not yet persisted (skip if fingerprint already in sales)
+        for order_id, order_data in order_store.items():
+            if user_id:
+                order_uid = str(order_data.get('user_id') or '')
+                if order_uid and order_uid != str(user_id):
+                    continue
+                if not order_uid:
+                    order_creator_name = order_data.get('creator_name', 'Unknown Creator')
+                    if order_creator_name != 'Unknown Creator':
+                        try:
+                            creator_match = supabase_admin.table('users').select('id').or_(
+                                f"display_name.ilike.{order_creator_name},username.ilike.{order_creator_name}"
+                            ).eq('id', user_id).limit(1).execute()
+                            if not creator_match.data or len(creator_match.data) == 0:
+                                continue
+                        except Exception:
+                            continue
+                    else:
+                        continue
+
+            cart = order_data.get('cart') or []
+            first_product = (cart[0].get('product') if cart and isinstance(cart[0], dict) else '') or ''
+            total_value = order_data.get('total_value')
+            if not total_value:
+                total_value = sum((item.get('price') or 0) for item in cart if isinstance(item, dict)) or 0
+            created = order_data.get('created_at') or order_data.get('timestamp', 'N/A')
+            fp = f"fp:{total_value}|{first_product}|{str(created)[:16]}"
+            if fp in seen_keys:
+                continue
+            mem_key = f"mem:{order_id}"
+            if mem_key in seen_keys:
+                continue
+            seen_keys.add(mem_key)
+            seen_keys.add(fp)
+            od = dict(order_data)
+            od['order_id'] = order_id
+            od['status'] = od.get('status') or 'pending'
+            od['created_at'] = created
+            od['total_value'] = total_value
+            all_orders.append(od)
         
         payout_summary = _analytics_payout_fields_from_sales(sales_rows, user_id)
         from utils.payout import aggregate_sales_payout_totals, split_sales_payout_totals
@@ -11334,13 +11368,9 @@ def reset_platform_revenue_data():
         return response
 
 def _earning_financials(earning):
-    from utils.payout import sale_revenue_breakdown
-    return sale_revenue_breakdown(
-        earning.get("product_name"),
-        earning.get("sale_amount"),
-        platform_fee=earning.get("platform_fee"),
-        creator_share=earning.get("creator_share"),
-    )
+    """Always recompute $6/$6 (or product-specific) split — do not trust stale stored fees."""
+    from utils.payout import earning_payout_financials
+    return earning_payout_financials(earning)
 
 @app.route("/api/admin/platform-revenue", methods=["GET", "OPTIONS"])
 @admin_required
@@ -11438,17 +11468,18 @@ def platform_revenue():
         from routes.admin import _platform_revenue_transaction_row, _revenue_creator_attribution_label
         attribution_maps = build_platform_revenue_attribution_maps(client, earnings)
         
-        # Calculate totals
-        total_platform_revenue = sum(float(e.get('platform_fee', 0)) for e in earnings)
-        total_gross_revenue = sum(float(e.get('sale_amount', 0)) for e in earnings)
-        total_creator_payouts = sum(float(e.get('creator_share', 0)) for e in earnings)
-        total_printful_cost = sum(_earning_financials(e)['printful_cost'] for e in earnings)
-        total_creator_net_payout = sum(_earning_financials(e)['creator_net_payout'] for e in earnings)
+        # Canonical $6/$6 totals — recompute, don't trust stored fees
+        earnings_financials = [_earning_financials(e) for e in earnings]
+        total_platform_revenue = sum(f["platform_fee"] for f in earnings_financials)
+        total_gross_revenue = sum(f["sale_amount"] for f in earnings_financials)
+        total_creator_payouts = sum(f["creator_share"] for f in earnings_financials)
+        total_printful_cost = sum(f["printful_cost"] for f in earnings_financials)
+        total_creator_net_payout = sum(f["creator_net_payout"] for f in earnings_financials)
         total_transactions = len(earnings)
         
         # Group by storefront owner + attribution (Bee vs Storefront)
         revenue_by_creator = {}
-        for earning in earnings:
+        for earning, fin in zip(earnings, earnings_financials):
             user = earning.get('users', {})
             creator_id_key = earning.get('user_id')
             creator_email = user.get('email', 'Unknown')
@@ -11473,20 +11504,19 @@ def platform_revenue():
                     'transactions': []
                 }
             
-            fin = _earning_financials(earning)
-            revenue_by_creator[group_key]['platform_revenue'] += float(earning.get('platform_fee', 0))
-            revenue_by_creator[group_key]['gross_revenue'] += float(earning.get('sale_amount', 0))
+            revenue_by_creator[group_key]['platform_revenue'] += fin['platform_fee']
+            revenue_by_creator[group_key]['gross_revenue'] += fin['sale_amount']
             revenue_by_creator[group_key]['printful_cost'] += fin['printful_cost']
-            revenue_by_creator[group_key]['creator_payouts'] += float(earning.get('creator_share', 0))
+            revenue_by_creator[group_key]['creator_payouts'] += fin['creator_share']
             revenue_by_creator[group_key]['creator_net_payout'] += fin['creator_net_payout']
             revenue_by_creator[group_key]['transaction_count'] += 1
             revenue_by_creator[group_key]['transactions'].append({
                 'order_id': earning.get('order_id'),
                 'product_name': earning.get('product_name'),
-                'sale_amount': float(earning.get('sale_amount', 0)),
+                'sale_amount': fin['sale_amount'],
                 'printful_cost': fin['printful_cost'],
-                'platform_fee': float(earning.get('platform_fee', 0)),
-                'creator_share': float(earning.get('creator_share', 0)),
+                'platform_fee': fin['platform_fee'],
+                'creator_share': fin['creator_share'],
                 'creator_net_payout': fin['creator_net_payout'],
                 'created_at': earning.get('created_at'),
                 'status': earning.get('status')
@@ -11502,7 +11532,7 @@ def platform_revenue():
         # Group by date (for daily/weekly/monthly charts)
         from datetime import datetime, timedelta
         revenue_by_date = {}
-        for earning in earnings:
+        for earning, fin in zip(earnings, earnings_financials):
             try:
                 created_at = earning.get('created_at')
                 if created_at:
@@ -11520,8 +11550,8 @@ def platform_revenue():
                             'transaction_count': 0
                         }
                     
-                    revenue_by_date[date_str]['platform_revenue'] += float(earning.get('platform_fee', 0))
-                    revenue_by_date[date_str]['gross_revenue'] += float(earning.get('sale_amount', 0))
+                    revenue_by_date[date_str]['platform_revenue'] += fin['platform_fee']
+                    revenue_by_date[date_str]['gross_revenue'] += fin['sale_amount']
                     revenue_by_date[date_str]['transaction_count'] += 1
             except Exception as e:
                 logger.warning(f"Error parsing date for earning: {str(e)}")
@@ -11532,7 +11562,7 @@ def platform_revenue():
         
         # Group by product
         revenue_by_product = {}
-        for earning in earnings:
+        for earning, fin in zip(earnings, earnings_financials):
             product_name = earning.get('product_name', 'Unknown Product')
             if product_name not in revenue_by_product:
                 revenue_by_product[product_name] = {
@@ -11543,10 +11573,9 @@ def platform_revenue():
                     'creator_net_payout': 0,
                     'transaction_count': 0
                 }
-
-            fin = _earning_financials(earning)
-            revenue_by_product[product_name]['platform_revenue'] += float(earning.get('platform_fee', 0))
-            revenue_by_product[product_name]['gross_revenue'] += float(earning.get('sale_amount', 0))
+            
+            revenue_by_product[product_name]['platform_revenue'] += fin['platform_fee']
+            revenue_by_product[product_name]['gross_revenue'] += fin['sale_amount']
             revenue_by_product[product_name]['printful_cost'] += fin['printful_cost']
             revenue_by_product[product_name]['creator_net_payout'] += fin['creator_net_payout']
             revenue_by_product[product_name]['transaction_count'] += 1
@@ -11567,7 +11596,9 @@ def platform_revenue():
                 "total_creator_payouts": round(total_creator_payouts, 2),
                 "total_creator_net_payout": round(total_creator_net_payout, 2),
                 "total_transactions": total_transactions,
-                "commission_rate": 0.30  # 30%
+                "fee_model": "markup_split_6_6",
+                "platform_share_per_item": 6.0,
+                "creator_share_per_item": 6.0,
             },
             "revenue_by_creator": revenue_by_creator_list,
             "revenue_by_date": revenue_by_date_list,
@@ -11577,7 +11608,7 @@ def platform_revenue():
                 for earning in earnings[:100]  # Limit to 100 most recent for performance
             ]
         }
-        
+
         response = jsonify(response_data)
         origin = request.headers.get('Origin', '*')
         return response
