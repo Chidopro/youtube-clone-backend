@@ -27,14 +27,16 @@ _nested_maps: Dict[int, Dict[str, Dict[str, int]]] = {}
 # Storefront product name -> Printful catalog product id (verified against Printful API).
 # Omit entries we have not matched to a catalog product; those keep using legacy heuristics.
 PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
-    # Printful: Unisex Staple T-Shirt | Bella + Canvas 3001 — ScreenMerch: "Unisex T-Shirt".
-    "Unisex T-Shirt": 71,
+    # Printful: Unisex Staple T-Shirt | Bella + Canvas 3001 — ScreenMerch: "T-Shirt".
+    "T-Shirt": 71,
+    "Unisex T-Shirt": 71,  # legacy alias
     # Printful: Men's Fitted T-Shirt | Next Level 3600 — ScreenMerch: "Mens Fitted T-Shirt".
     "Mens Fitted T-Shirt": 108,
     # Printful: Men's Fitted Long Sleeve Shirt | Next Level 3601 — ScreenMerch: "Men's Fitted Long Sleeve".
     "Men's Fitted Long Sleeve": 116,
-    # Printful: Unisex Oversized Garment-Dyed T-Shirt | Bella + Canvas 4810 — ScreenMerch: "Unisex Oversized T-Shirt".
-    "Unisex Oversized T-Shirt": 880,
+    # Printful: Unisex Oversized Garment-Dyed T-Shirt | Bella + Canvas 4810 — ScreenMerch: "Oversized T-Shirt".
+    "Oversized T-Shirt": 880,
+    "Unisex Oversized T-Shirt": 880,  # legacy alias
     # Printful: Unisex Long Sleeve Shirt | Gildan 2400 — ScreenMerch: "Men's Long Sleeve Shirt".
     "Men's Long Sleeve Shirt": 57,
     # Printful: Men's Staple Tank Top | Bella + Canvas 3480 — ScreenMerch: "Men's Tank Top".
@@ -47,25 +49,29 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Youth Heavy Blend Hoodie": 689,
     # Printful: Youth Crew Neck Sweatshirt | Gildan 18000B — ScreenMerch: "Kids Sweatshirt".
     "Kids Sweatshirt": 677,
-    # Printful: Unisex Pullover Hoodie | Bella + Canvas 3719 — ScreenMerch: "Unisex Pullover Hoodie".
-    "Unisex Pullover Hoodie": 294,
-    # Printful: Unisex Premium Pullover Hoodie | Cotton Heritage M2580 — ScreenMerch: "Unisex Hoodie".
-    "Unisex Hoodie": 380,
+    # Printful: Unisex Pullover Hoodie | Bella + Canvas 3719 — ScreenMerch: "Pullover Hoodie".
+    "Pullover Hoodie": 294,
+    "Unisex Pullover Hoodie": 294,  # legacy alias
+    # Printful: Unisex Premium Pullover Hoodie | Cotton Heritage M2580 — ScreenMerch: "Hoodie".
+    "Hoodie": 380,
+    "Unisex Hoodie": 380,  # legacy alias
     "Cropped Hoodie": 317,
-    # Printful: Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717 — ScreenMerch: "Unisex Heavyweight T-Shirt".
-    "Unisex Heavyweight T-Shirt": 586,
+    # Printful: Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717 — ScreenMerch: "Heavyweight T-Shirt".
+    "Heavyweight T-Shirt": 586,
+    "Unisex Heavyweight T-Shirt": 586,  # legacy alias
     # Printful: Women's Relaxed T-Shirt | Bella + Canvas 6400 — ScreenMerch name is "Women's Shirt".
     "Women's Shirt": 360,
     # Stanley/Stella SATU001; Printful title says "Unisex" — matches storefront organic ribbed tee colors.
     "Women's Ribbed Neck": 818,
-    # Printful: Women's Ideal Racerback Tank Top | Next Level 1533 — ScreenMerch: "Fitted Racerback Tank".
-    "Fitted Racerback Tank": 857,
+    # Printful: Women's Ideal Racerback Tank Top | Next Level 1533 — ScreenMerch: "Racerback Tank".
+    "Racerback Tank": 857,
     # Printful: Women's Micro-Rib Tank Top | Bella Canvas 1012 — ScreenMerch: "Micro-Rib Tank Top".
     "Micro-Rib Tank Top": 780,
     # Printful: Women's Crop Top | AS Colour 4062 — ScreenMerch: "Women's Crop Top".
     "Women's Crop Top": 636,
-    # Printful: Unisex Champion Powerblend Hoodie | S700 — ScreenMerch: "Unisex Champion Hoodie".
-    "Unisex Champion Hoodie": 842,
+    # Printful: Unisex Champion Powerblend Hoodie | S700 — ScreenMerch: "Champion Hoodie".
+    "Champion Hoodie": 842,
+    "Unisex Champion Hoodie": 842,  # legacy alias
     # Printful: Baby Staple Tee | Bella + Canvas 3001B — ScreenMerch: "Baby Staple Tee".
     "Baby Staple Tee": 305,
     # Printful: Baby Jersey T-Shirt | Rabbit Skins 3322 — ScreenMerch: "Baby Jersey T-Shirt".

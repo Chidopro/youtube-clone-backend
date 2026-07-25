@@ -127,13 +127,13 @@ export const PRINT_AREA_CONFIG = {
   },
   
   // Men's Products
-  "Unisex Classic Tee": {
+  "Classic Tee": {
     width: 12,
     height: 15,
     dpi: 300,
     description: "Standard T-Shirt"
   },
-  "Unisex T-Shirt": {
+  "T-Shirt": {
     front: {
       sizes: {
         "XS-M": { width: 11.5, height: 13.8 },
@@ -145,7 +145,7 @@ export const PRINT_AREA_CONFIG = {
       default: { width: 12, height: 16 }
     },
     dpi: 300,
-    description: "Unisex T-Shirt"
+    description: "T-Shirt"
   },
   "Men's Tank Top": {
     front: {
@@ -177,7 +177,7 @@ export const PRINT_AREA_CONFIG = {
     dpi: 300,
     description: "Long Sleeve Shirt"
   },
-  "Unisex Hoodie": {
+  "Hoodie": {
     front: {
       default: { width: 13, height: 13 } // Range: 10x10 to 13x13, using max
     },
@@ -187,7 +187,7 @@ export const PRINT_AREA_CONFIG = {
     dpi: 300,
     description: "Hoodie"
   },
-  "Unisex Champion Hoodie": {
+  "Champion Hoodie": {
     front: {
       sizes: {
         "S-M": { width: 11.5, height: 11.5 },
@@ -202,7 +202,7 @@ export const PRINT_AREA_CONFIG = {
     dpi: 300,
     description: "Champion Hoodie"
   },
-  "Unisex Pullover Hoodie": {
+  "Pullover Hoodie": {
     front: {
       default: { width: 13, height: 13 } // Range: 10x10 to 13x13, using max
     },
@@ -212,7 +212,7 @@ export const PRINT_AREA_CONFIG = {
     dpi: 300,
     description: "Pullover Hoodie"
   },
-  "Unisex Heavyweight T-Shirt": {
+  "Heavyweight T-Shirt": {
     front: {
       default: { width: 12, height: 16 }
     },
@@ -222,7 +222,7 @@ export const PRINT_AREA_CONFIG = {
     dpi: 300,
     description: "Heavyweight T-Shirt"
   },
-  "Unisex Oversized T-Shirt": {
+  "Oversized T-Shirt": {
     front: {
       default: { width: 11.5, height: 15.3 }
     },
@@ -298,7 +298,7 @@ export const PRINT_AREA_CONFIG = {
     dpi: 300,
     description: "Cropped Hoodie"
   },
-  "Fitted Racerback Tank": {
+  "Racerback Tank": {
     front: {
       sizes: {
         "XS-S": { width: 10, height: 12 },
@@ -579,6 +579,15 @@ export const PRINT_AREA_CONFIG = {
     description: "Greeting Card (5.83\" × 8.27\" - Print Size 5.98\" × 8.42\")"
   }
 };
+
+// Legacy catalog title aliases (old carts / saved designs)
+PRINT_AREA_CONFIG["Unisex Classic Tee"] = PRINT_AREA_CONFIG["Classic Tee"];
+PRINT_AREA_CONFIG["Unisex T-Shirt"] = PRINT_AREA_CONFIG["T-Shirt"];
+PRINT_AREA_CONFIG["Unisex Hoodie"] = PRINT_AREA_CONFIG["Hoodie"];
+PRINT_AREA_CONFIG["Unisex Champion Hoodie"] = PRINT_AREA_CONFIG["Champion Hoodie"];
+PRINT_AREA_CONFIG["Unisex Pullover Hoodie"] = PRINT_AREA_CONFIG["Pullover Hoodie"];
+PRINT_AREA_CONFIG["Unisex Heavyweight T-Shirt"] = PRINT_AREA_CONFIG["Heavyweight T-Shirt"];
+PRINT_AREA_CONFIG["Unisex Oversized T-Shirt"] = PRINT_AREA_CONFIG["Oversized T-Shirt"];
 
 // Helper function to get print area config for a product
 // Returns the config object which may have simple format or size-specific format

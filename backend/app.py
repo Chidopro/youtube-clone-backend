@@ -1396,23 +1396,23 @@ def test_order_notification():
 PRODUCTS = [
     # Products with both COLOR and SIZE options
     {
-        "name": "Unisex T-Shirt",
-        "price": 21.59,
+        "name": "T-Shirt",
+        "price": 21.75,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "preview_image": "mensunisextshirtpreview.png",
         "description": "The Unisex Staple T-Shirt feels soft and light with just the right amount of stretch. It's comfortable and flattering for all. We can't compliment this shirt enough–it's one of our crowd favorites, and it's sure to be your next favorite too! Solid colors are 100% Airlume combed and ring-spun cotton. Ash color is 99% combed and ring-spun cotton, 1% polyester. Heather colors are 52% combed and ring-spun cotton, 48% polyester. Athletic and Black Heather are 90% combed and ring-spun cotton, 10% polyester. Heather Prism colors are 99% combed and ring-spun cotton, 1% polyester. Fabric weight: 4.2 oz./yd.² (142 g/m²). Pre-shrunk fabric. 30 singles. Side-seamed construction. Tear-away label. Shoulder-to-shoulder taping. Blank product sourced from Nicaragua, Mexico, Honduras, or the US. Disclaimer: The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "Black Heather", "Athletic Heather", "Dark Grey Heather", "Red", "Kelly", "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal", "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
         "size_pricing": {
-            "XS": 0,      # No extra charge
-            "S": 0,       # No extra charge  
-            "M": 0,       # No extra charge
-            "L": 0,       # No extra charge
-            "XL": 0,      # No extra charge
-            "XXL": 1.65,  # +$1.65 = $21.24
-            "XXXL": 3.30, # +$3.30 = $22.89
-            "XXXXL": 4.95, # +$4.95 = $24.54
-            "XXXXXL": 6.60 # +$6.60 = $26.19
+            "XS": 0,      # Same as S–XL $21.75
+            "S": 0,       # Base price $21.75
+            "M": 0,       # Base price $21.75
+            "L": 0,       # Base price $21.75
+            "XL": 0,      # Base price $21.75
+            "XXL": 1.00,  # +$1.00 = $22.75
+            "XXXL": 3.50, # +$3.50 = $25.25
+            "XXXXL": 4.75, # +$4.75 = $26.50
+            "XXXXXL": 6.44 # +$6.44 = $28.19
         }
     },
     {
@@ -1422,28 +1422,25 @@ PRODUCTS = [
         "main_image": "mensfittedtshirt.png",
         "preview_image": "mensfittedtshirtpreview.png",
         "description": "The Next Level 3600 Men's Fitted T-Shirt combines softness with a modern, tailored fit that holds its shape wash after wash. Its lightweight feel makes it a natural everyday favorite, while the tear-away tag offers room for custom branding. 100% ring-spun combed cotton. Heather Grey is 90% cotton, 10% polyester. Fabric weight: 4.3 oz/y² (145.8 g/m²). 32 singles. Pre-shrunk. Tear-away tag. Blank product sourced from Honduras, Nicaragua, Mexico, or Cambodia. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "White", "Heather Grey", "Royal Blue", "Midnight Navy", "Desert Pink"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
+        "options": {"color": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue", "Red", "Desert Pink", "Light Blue"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "XS": 0,      # No extra charge
             "S": 0,       # No extra charge  
             "M": 0,       # No extra charge
             "L": 0,       # No extra charge
             "XL": 0,      # No extra charge
-            "XXL": 1.65,  # +$1.65 = $23.76
-            "XXXL": 3.30, # +$3.30 = $25.41
-            "XXXXL": 4.00 # Keep existing for 4XL
+            "XXL": 1.65,  # +$1.65
+            "XXXL": 3.30  # +$3.30
         }
     },
     {
-        "name": "Unisex Oversized T-Shirt",
+        "name": "Oversized T-Shirt",
         "price": 26.02,
         "filename": "unisexoversizedtshirt.png",
         "main_image": "unisexoversizedtshirt.png",
         "preview_image": "mensunisexoversizedtshirtpreview.png",
         "description": "This oversized 100% cotton tee is made for streetwear drops and everyday fits. The heavyweight fabric gives it structure and a premium feel, while the relaxed, roomy cut makes it perfect for layering or wearing on its own. Add bold prints or clean embroidery—this tee is ready to carry your brand's style. 100% ring-spun cotton. Fabric weight: 6.5 oz./yd.² (220.4 g/m²). 18 singles yarn. Oversized fit. Tear-away label. Washed-color options for a trendy vintage look. Streetwear-inspired style. Blank product sourced from Nicaragua. This product is made on demand. No minimums.",
-        "options": {"color": ["Washed Black", "Washed Maroon", "Washed Charcoal", "Khaki", "Light Washed Denim", "Vintage White"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]},
+        "options": {"color": ["Washed Black", "Washed Maroon", "Washed Charcoal", "Khaki", "Light Washed Denim", "Vintage White"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "XS": 0,      # No extra charge
             "S": 0,       # No extra charge  
             "M": 0,       # No extra charge
             "L": 0,       # No extra charge
@@ -1454,19 +1451,19 @@ PRODUCTS = [
     },
     {
         "name": "Men's Tank Top",
-        "price": 23.87,
+        "price": 24.75,
         "filename": "menstanktoppreview.png",
         "main_image": "menstanktoppreview.png",
         "preview_image": "menstanktoppreview.png",
         "description": "The Men's Staple Tank Top is made of high-quality durable materials. Wear it on a sunny day out or offer it to your customers on your online store. 100% combed and ring-spun cotton. Tri-blends are 50% polyester, 25% combed, 25% ring-spun cotton, and rayon. Athletic Heather is 90% airlume combed and ring-spun cotton, 10% polyester. All the other Heather colors are 52% airlume combed and ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/yd² (142.40 g/m²), triblends: 3.8 oz/yd² (90.07 g/m²). 30 singles. Regular fit. Side-seamed construction. Blank product sourced from Nicaragua, Honduras, or the US. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "White", "Navy", "True Royal", "Athletic Heather", "Red", "Oatmeal Triblend"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
+        "options": {"color": ["Black", "White", "Navy", "True Royal", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
-            "XS": 0,      # No extra charge
-            "S": 0,       # No extra charge  
-            "M": 0,       # No extra charge
-            "L": 0,       # No extra charge
-            "XL": 0,      # No extra charge
-            "XXL": 1.65   # +$1.65 = $23.52
+            "XS": -0.88,  # $23.87 (unchanged)
+            "S": 0,       # Base price $24.75
+            "M": 0,       # Base price $24.75
+            "L": 0,       # Base price $24.75
+            "XL": 0,      # Base price $24.75
+            "XXL": 1.50   # +$1.50 = $26.25
         }
     },
     {
@@ -1486,20 +1483,20 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Unisex Hoodie",
-        "price": 34.99,
+        "name": "Hoodie",
+        "price": 34.50,
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "mensunisexhoodiepreview.png",
         "description": "Classic unisex hoodie with a front pouch pocket and matching flat drawstrings. The 100% cotton exterior makes this hoodie soft to the touch. What's more, if you go with custom prints, you can personalize the hoodie to your heart's content and maximize your branding thanks to the custom inside label. Use it to showcase your logo, strengthen customer loyalty, and boost your brand's visibility on the market. 65% ring-spun cotton, 35% polyester. Charcoal Heather is 60% ring-spun cotton, 40% polyester. Carbon Grey is 55% ring-spun cotton, 45% polyester. 100% cotton face. Fabric weight: 8.5 oz./yd.² (288.2 g/m²). Front pouch pocket. Self-fabric patch on the back. Matching flat drawstrings. 3-panel hood. Tear-away tag. Blank product sourced from Pakistan. Disclaimer: Please be aware that, for legal reasons, this product comes with a manufacturer's side tag attached. The tag is discreet and won't compromise your design's integrity. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "Navy Blazer", "Carbon Grey", "White", "Maroon", "Charcoal Heather", "Vintage Black", "Forest Green", "Military Green", "Team Red", "Dusty Rose", "Sky Blue", "Purple", "Team Royal"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
+        "options": {"color": ["Black", "Navy Blazer", "Maroon", "Charcoal Heather", "Carbon Grey", "White", "Vintage Black", "Team Royal", "Purple", "Forest Green", "Military Green", "Team Red", "Adobe", "Dusty Rose", "Latte", "Khaki", "Team Gold", "Carolina Blue", "Light Pink", "Lavender"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $32.99
-            "M": 0,       # Base price $32.99
-            "L": 0,       # Base price $32.99
-            "XL": 0,      # Base price $32.99
-            "XXL": 1.65,  # +$1.65 = $34.64
-            "XXXL": 3.30  # +$3.30 = $36.29
+            "S": 0,       # Base price $34.50
+            "M": 0,       # Base price $34.50
+            "L": 0,       # Base price $34.50
+            "XL": 0,      # Base price $34.50
+            "XXL": 1.25,  # +$1.25 = $35.75
+            "XXXL": 2.75  # +$2.75 = $37.25
         }
     },
     {
@@ -1519,20 +1516,19 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Unisex Champion Hoodie",
+        "name": "Champion Hoodie",
         "price": 41.75,
         "filename": "hoodiechampion.png",
         "main_image": "hoodiechampion.png",
         "preview_image": "mensunisexchampionhoodiepreview.png",
         "description": "A classic hoodie that combines Champion's signature quality with everyday comfort. The cotton-poly blend makes it soft and durable, while the two-ply hood and snug rib-knit cuffs lock in warmth. Champion's double Dry technology keeps the wearer dry on the move, and the kangaroo pocket keeps essentials handy. Customize it with your design, order one for yourself, or sell it online. 50% cotton, 50% polyester. Light Steel color is 50% cotton, 40% polyester, and 10% black polyester. Fabric weight: 9 oz./yd.² (305 g/m²). Regular fit. Set-in sleeves. Two-ply hood. Dyed-to-match drawcord. Kangaroo pocket. Heavy rib-knit waistband and cuffs. Embroidered C logo on the left cuff. Blank product sourced from Honduras and Guatemala. Disclaimer: Size up for a looser fit.",
-        "options": {"color": ["Black", "Light Steel"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
+        "options": {"color": ["Black", "Light Steel"], "size": ["S", "M", "L", "XXL", "XXXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $39.75
-            "M": 0,       # Base price $39.75
-            "L": 0,       # Base price $39.75
-            "XL": 0,      # Base price $39.75
-            "XXL": 1.65,  # +$1.65 = $41.40
-            "XXXL": 3.30  # +$3.30 = $43.05
+            "S": 0,       # Base price $41.75
+            "M": 0,       # Base price $41.75
+            "L": 0,       # Base price $41.75
+            "XXL": 1.65,  # +$1.65 = $43.40
+            "XXXL": 3.30  # +$3.30 = $45.05
         }
     },
     {
@@ -1572,7 +1568,7 @@ PRODUCTS = [
         } 
     },
     {
-        "name": "Unisex Heavyweight T-Shirt",
+        "name": "Heavyweight T-Shirt",
         "price": 24.19,
         "filename": "womenshdshirt.png",
         "main_image": "womenshdshirt.png",
@@ -1612,7 +1608,7 @@ PRODUCTS = [
         "main_image": "kidhoodie.png",
         "preview_image": "kidsyouthheavyblendhoodiepreview.png",
         "description": "The Youth Heavy Blend Hoodie is a timeless and versatile piece, combining resilience with comfort. The blend of breathable cotton and durable polyester ensures this hoodie can withstand daily wear and frequent washes, making it a suitable fit for children on-the-go. Comfortable fleece and air jet yarn guarantees minimal pilling, and the hoodie comes with a front pouch pocket and no drawcords. Design a hoodie for your child, or start selling today! 50% cotton, 50% polyester, 20 singles. Fabric weight: 8 oz./yd² (271.25 g/m²). 2-end midweight fleece fabric. Air jet yarn for a softer feel and reduced pilling. Double-lined hood. No drawcords for child safety. Front pouch pocket. Double-needle stitching detailing at shoulders, armholes, neck, waistband and cuffs. 1 x 1 rib with spandex at cuffs and hem for enhanced stretch and recovery. CPSIA Tracking Label Compliant. Tear away label. Blank product sourced from Honduras. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "Navy", "Royal", "White", "Dark Heather", "Carolina Blue"], "size": ["XS", "S", "M", "L", "XL"]},
+        "options": {"color": ["Black", "Navy", "Royal", "White", "Dark Heather", "Carolina Blue", "Light Pink", "Sport Grey"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
             "XS": 0,
             "S": 0,
@@ -1637,7 +1633,7 @@ PRODUCTS = [
     },
     {
         "name": "Kids Sweatshirt",
-        "price": 26.13,
+        "price": 27.25,
         "filename": "kidssweatshirt.png",
         "main_image": "kidssweatshirt.png",
         "preview_image": "kidssweatshirtpreview.png",
@@ -1653,22 +1649,21 @@ PRODUCTS = [
     },
     {
         "name": "Baby Body Suit",
-        "price": 21.27,
+        "price": 21.60,
         "filename": "youthalloverprintswimsuit.png",
         "main_image": "youthalloverprintswimsuit.png",
         "preview_image": "kidsbabybodysuitpreview.png",
         "description": "Made from supremely soft cotton, this one-piece is ideal for delicate skin. The lap shoulder design and three-snap closure ensure quick, easy outfit changes, making it a practical choice for parents. Add your design, order this bodysuit for your little one, or start selling it online! 100% combed ring-spun cotton in a 1 × 1 rib. Heather color is 90% combed ring-spun cotton, 10% polyester. Fabric weight: 5 oz./yd.² (170 g/m²). Three-snap closure. Lap shoulders. Blank product sourced from India. Note that due to the ribbed fabric, the print can break when stretched. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "Heather", "Pink", "White"], "size": ["6m", "12m", "18m", "24m"]},
+        "options": {"color": ["Black", "Red", "Royal", "Pink", "White", "Vintage Indigo", "Ash"], "size": ["12m", "18m", "24m"]},
         "size_pricing": {
-            "6m": 0,      # No extra charge
-            "12m": 0,     # No extra charge  
-            "18m": 0,     # No extra charge
-            "24m": 0      # No extra charge
+            "12m": 0,     # Base price $21.60
+            "18m": 0,     # Base price $21.60
+            "24m": 0      # Base price $21.60
         }
     },
     {
         "name": "Toddler Jersey T-Shirt",
-        "price": 20.75,
+        "price": 21.25,
         "filename": "toddlerjerseytshirt.png",
         "main_image": "toddlerjerseytshirt.png",
         "preview_image": "kidstoddlerjerseytshirtpreview.png",
@@ -1704,10 +1699,10 @@ PRODUCTS = [
         "description": "Soft, cozy, and made for everyday wear—this baby jersey t-shirt is designed with gentle, breathable fabric that's perfect for delicate skin. The ribbed collar keeps the shirt snug and maintains its shape wash after wash. Whether it's playtime, naptime, or a family outing, it's a reliable choice. Customize this baby tee with your design, order it for your child, or start selling it online. 100% combed ring-spun cotton. Fabric weight: 4.5 oz./yd.² (153 g/m²). Regular fit. Side-seamed construction. Topstitched ribbed collar. Shoulder-to-shoulder self-fabric back neck tape. Double-needle topstitch on sleeves and bottom hem. EasyTear label. Blank product sourced from India. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Royal", "Pink", "Light Blue", "White", "Charcoal"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
-            "6m": 0,      # No extra charge
-            "12m": 0,     # No extra charge
-            "18m": 0,     # No extra charge
-            "24m": 0      # No extra charge
+            "6m": 0,      # Base price $20.75
+            "12m": 0.50,  # +$0.50 = $21.25
+            "18m": 0.50,  # +$0.50 = $21.25
+            "24m": 0.50   # +$0.50 = $21.25
         }
     },
     {
@@ -1912,53 +1907,60 @@ PRODUCTS = [
     },
     {
         "name": "Men's Long Sleeve Shirt",
-        "price": 22.79,
+        "price": 22.95,
         "filename": "menslongsleeve.png",
         "main_image": "menslongsleeve.png",
         "preview_image": "menslongsleevepreview.png",
         "description": "With its classic and regular fit, this Men's Long Sleeve Shirt is a true wardrobe essential. It'll look great on its own or layered under a jacket and will be perfect for a relaxed and casual setting. 100% cotton. Sport Grey is 90% cotton, 10% polyester. Fabric weight: 6.0 oz./yd.² (203.43 g/m²). Classic fit with long sleeves and rib cuffs. Pre-shrunk jersey knit. Seamless double-needle ⅞ ″ (2.2 cm) collar. Double-needle bottom hem. Taped neck and shoulders. Quarter-turned to avoid crease down the middle. Blank product sourced from Honduras, Haiti, or Nicaragua. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Ash"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
+        "options": {"color": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
-            "S": 0,
-            "M": 0,
-            "L": 0,
-            "XL": 0,
-            "XXL": 1.65,  # +$1.65 = $22.44
-            "XXXL": 3.30, # +$3.30 = $24.09
-            "XXXXL": 4.95 # +$4.95 = $25.74
+            "S": 0,       # Base price $22.95
+            "M": 0,       # Base price $22.95
+            "L": 0,       # Base price $22.95
+            "XL": 0,      # Base price $22.95
+            "XXL": 3.80,  # +$3.80 = $26.75
+            "XXXL": 4.10, # +$4.10 = $27.05
+            "XXXXL": 4.79 # +$4.79 = $27.74
+        },
+        "size_color_availability": {
+            "S": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
+            "M": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
+            "L": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
+            "XL": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
+            "XXL": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
+            "XXXL": ["Navy", "Royal", "Sport Grey", "Red", "Light Blue", "Military Green", "Irish Green", "Ash", "Forest Green", "Indigo Blue"],
+            "XXXXL": ["Navy", "Sport Grey", "Red", "Military Green", "Irish Green", "Ash"]
         }
     },
     {
-        "name": "Fitted Racerback Tank",
-        "price": 21.31,
+        "name": "Racerback Tank",
+        "price": 25.82,
         "filename": "womenstank.png",
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.png",
         "description": "A proven bestseller in women's activewear, this racerback tank blends style, comfort, and affordability. Designed to deliver a premium feel without the high price tag, it's a smart pick for fitness or athleisure-oriented stores. With matching self-binding seams, a flattering fitted cut, and a lightweight cotton-poly jersey blend, it's built to perform and easy to customize for yourself or to sell online. 60% combed ringspun cotton, 40% polyester. Fabric weight: 4 oz./yd.² (113.4 g/m²). Lightweight jersey. Fitted silhouette. Scoop neck and racerback. Self-binding seams in matching colors for a seamless look. Tear-away label. Blank product sourced from Honduras. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "Hot Pink", "Light Orange", "Tahiti Blue", "Heather Gray", "Cancun", "White"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
+        "options": {"color": ["Vintage Black", "Purple Rush", "Premium Heather", "Vintage Navy", "Vintage Red", "Vintage Royal", "Vintage Turquoise", "Heather White"], "size": ["S", "M", "L", "XL"]},
         "size_pricing": {
-            "XS": 0,
-            "S": 0,
-            "M": 0,
-            "L": 0,
-            "XL": 0,
-            "XXL": 1.65  # +$1.65 = $20.96
+            "S": 0,       # Base price $25.82
+            "M": 0,       # Base price $25.82
+            "L": 0,       # Base price $25.82
+            "XL": 0       # Base price $25.82
         }
     },
     {
-        "name": "Unisex Pullover Hoodie",
+        "name": "Pullover Hoodie",
         "price": 39.97,
         "filename": "unisexpulloverhoodie.png",
         "main_image": "unisexpulloverhoodie.png",
         "preview_image": "womensunisexpulloverhoodiepreview.png",
         "description": "This classic Unisex Pullover Hoodie should be a staple in every store and wardrobe. It's soft and warm with cuffed long sleeves. Add your designs and start selling! 52% airlume combed ring-spun cotton, 48% poly fleece. Heather colors are 60% airlume combed ring-spun cotton, 40% poly fleece. Fabric weight: 6.5 oz/yd² (220.4 g/m²). Regular fit. Side-seamed construction. Blank product sourced from Honduras, Nicaragua or the US. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "White", "Heather Forest", "Heather Navy"], "size": ["S", "M", "L", "XL", "XXL"]},
+        "options": {"color": ["Black", "White", "Heather Forest", "Maroon", "Forest", "Heather Navy", "Team Purple", "True Royal", "Athletic Heather", "Lilac"], "size": ["S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
             "S": 0,
             "M": 0,
             "L": 0,
             "XL": 0,
-            "XXL": 1.65  # +$1.65 = $39.62
+            "XXL": 1.65  # +$1.65 = $41.62
         }
     },
     {
@@ -2143,8 +2145,8 @@ def filter_products_by_category(category):
     """Filter products based on category selection"""
     print(f"🔍 FILTER DEBUG: Received category: '{category}'")
     if not category or category == "all" or category == "all-products":
-        print(f"🔍 FILTER DEBUG: No category or 'all'/'all-products', returning all products")
-        return PRODUCTS  # Show all products when category is 'all' or 'all-products'
+        print(f"🔍 FILTER DEBUG: No category or 'all'/'all-products', returning all products cheapest→expensive")
+        return sorted(PRODUCTS, key=lambda p: (float(p.get("price") or 0), p.get("name") or ""))
     
     # Special handling for thumbnails category - Coming Soon
     if category == "thumbnails":
@@ -2163,24 +2165,24 @@ def filter_products_by_category(category):
     # Define category mappings based on actual product names from PRODUCTS list
     category_mappings = {
         'mens': [
-            "Unisex Hoodie",
-            "Men's Tank Top", 
-            "Mens Fitted T-Shirt",
-            "Men's Fitted Long Sleeve",
-            "Unisex T-Shirt",
-            "Unisex Oversized T-Shirt",
+            "T-Shirt",
             "Men's Long Sleeve Shirt",
-            "Unisex Champion Hoodie"
+            "Mens Fitted T-Shirt",
+            "Men's Tank Top",
+            "Oversized T-Shirt",
+            "Men's Fitted Long Sleeve",
+            "Hoodie",
+            "Champion Hoodie"
         ],
         'womens': [
-            "Cropped Hoodie",
-            "Fitted Racerback Tank",
-            "Micro-Rib Tank Top", 
-            "Women's Ribbed Neck",
             "Women's Shirt",
-            "Unisex Heavyweight T-Shirt",
-            "Unisex Pullover Hoodie",
-            "Women's Crop Top"
+            "Heavyweight T-Shirt",
+            "Women's Ribbed Neck",
+            "Micro-Rib Tank Top",
+            "Racerback Tank",
+            "Women's Crop Top",
+            "Pullover Hoodie",
+            "Cropped Hoodie"
         ],
         'kids': [
             "Youth Heavy Blend Hoodie",
@@ -2230,22 +2232,25 @@ def filter_products_by_category(category):
         'thumbnails': []  # Coming Soon - no products yet
     }
     
-    # Get product names for the selected category
+    # Get product names for the selected category (order = display order)
     category_products = category_mappings.get(category, [])
     
-    # Filter PRODUCTS list to only include products from this category
-    filtered_products = []
+    # Preserve category_mappings membership, then sort cheapest → most expensive
     print(f"🔍 FILTER DEBUG: Looking for products in category '{category}' with {len(category_products)} product names")
     print(f"🔍 FILTER DEBUG: Category products: {category_products}")
     
-    for product in PRODUCTS:
-        if product["name"] in category_products:
-            print(f"✅ FILTER DEBUG: Found matching product: {product['name']}")
+    product_by_name = {product["name"]: product for product in PRODUCTS}
+    filtered_products = []
+    for name in category_products:
+        product = product_by_name.get(name)
+        if product:
+            print(f"✅ FILTER DEBUG: Found matching product: {name}")
             filtered_products.append(product)
         else:
-            print(f"❌ FILTER DEBUG: Skipping product: {product['name']}")
+            print(f"❌ FILTER DEBUG: Missing product for category name: {name}")
     
-    print(f"🔍 FILTER DEBUG: Returning {len(filtered_products)} filtered products out of {len(PRODUCTS)} total")
+    filtered_products.sort(key=lambda p: (float(p.get("price") or 0), p.get("name") or ""))
+    print(f"🔍 FILTER DEBUG: Returning {len(filtered_products)} filtered products out of {len(PRODUCTS)} total (price-sorted)")
     return filtered_products
 
 # Register Products and Orders Blueprints now that PRODUCTS is defined
@@ -2854,8 +2859,8 @@ def send_order():
                         "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
                     }), 400
             
-            # Check Unisex T-Shirt availability
-            if product_name == "Unisex T-Shirt":
+            # Check T-Shirt availability
+            if product_name in ("Unisex T-Shirt", "T-Shirt"):
                 # Colors not available in XS
                 unavailable_in_xs = [
                     "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
@@ -2864,7 +2869,7 @@ def send_order():
                 if color in unavailable_in_xs and size == "XS":
                     return jsonify({
                         "success": False,
-                        "error": f"{color} is not available in size XS for Unisex T-Shirt. Please select a different size or color."
+                        "error": f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
                     }), 400
                 
                 # Colors not available in 5XL (XXXXXL)
@@ -2876,7 +2881,25 @@ def send_order():
                 if color in unavailable_in_5xl and size == "XXXXXL":
                     return jsonify({
                         "success": False,
-                        "error": f"{color} is not available in size 5XL for Unisex T-Shirt. Please select a different size or color."
+                        "error": f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
+                    }), 400
+
+            # Check Men's Long Sleeve Shirt availability
+            if product_name == "Men's Long Sleeve Shirt":
+                unavailable_sizes_by_color = {
+                    "Royal": ["XXXXL"],
+                    "Maroon": ["XXXL", "XXXXL"],
+                    "Light Blue": ["XXXXL"],
+                    "Sand": ["XXXL", "XXXXL"],
+                    "Forest Green": ["XXXXL"],
+                    "Indigo Blue": ["XXXXL"],
+                    "Light Pink": ["XXXL", "XXXXL"],
+                }
+                blocked = unavailable_sizes_by_color.get(color, [])
+                if size in blocked:
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
                     }), 400
 
         # --- Email Formatting ---
@@ -3169,8 +3192,8 @@ def place_order():
                         "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
                     }), 400
             
-            # Check Unisex T-Shirt availability
-            if product_name == "Unisex T-Shirt":
+            # Check T-Shirt availability
+            if product_name in ("Unisex T-Shirt", "T-Shirt"):
                 # Colors not available in XS
                 unavailable_in_xs = [
                     "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
@@ -3179,7 +3202,7 @@ def place_order():
                 if color in unavailable_in_xs and size == "XS":
                     return jsonify({
                         "success": False,
-                        "error": f"{color} is not available in size XS for Unisex T-Shirt. Please select a different size or color."
+                        "error": f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
                     }), 400
                 
                 # Colors not available in 5XL (XXXXXL)
@@ -3191,7 +3214,25 @@ def place_order():
                 if color in unavailable_in_5xl and size == "XXXXXL":
                     return jsonify({
                         "success": False,
-                        "error": f"{color} is not available in size 5XL for Unisex T-Shirt. Please select a different size or color."
+                        "error": f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
+                    }), 400
+
+            # Check Men's Long Sleeve Shirt availability
+            if product_name == "Men's Long Sleeve Shirt":
+                unavailable_sizes_by_color = {
+                    "Royal": ["XXXXL"],
+                    "Maroon": ["XXXL", "XXXXL"],
+                    "Light Blue": ["XXXXL"],
+                    "Sand": ["XXXL", "XXXXL"],
+                    "Forest Green": ["XXXXL"],
+                    "Indigo Blue": ["XXXXL"],
+                    "Light Pink": ["XXXL", "XXXXL"],
+                }
+                blocked = unavailable_sizes_by_color.get(color, [])
+                if size in blocked:
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
                     }), 400
         
         # Validate shipping address using robust function
@@ -3613,8 +3654,8 @@ def create_checkout_session():
                         "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
                     }), 400
             
-            # Check Unisex T-Shirt availability
-            if product_name == "Unisex T-Shirt":
+            # Check T-Shirt availability
+            if product_name in ("Unisex T-Shirt", "T-Shirt"):
                 # Colors not available in XS
                 unavailable_in_xs = [
                     "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
@@ -3622,7 +3663,7 @@ def create_checkout_session():
                 ]
                 if color in unavailable_in_xs and size == "XS":
                     return jsonify({
-                        "error": f"{color} is not available in size XS for Unisex T-Shirt. Please select a different size or color."
+                        "error": f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
                     }), 400
                 
                 # Colors not available in 5XL (XXXXXL)
@@ -3633,7 +3674,24 @@ def create_checkout_session():
                 ]
                 if color in unavailable_in_5xl and size == "XXXXXL":
                     return jsonify({
-                        "error": f"{color} is not available in size 5XL for Unisex T-Shirt. Please select a different size or color."
+                        "error": f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
+                    }), 400
+
+            # Check Men's Long Sleeve Shirt availability
+            if product_name == "Men's Long Sleeve Shirt":
+                unavailable_sizes_by_color = {
+                    "Royal": ["XXXXL"],
+                    "Maroon": ["XXXL", "XXXXL"],
+                    "Light Blue": ["XXXXL"],
+                    "Sand": ["XXXL", "XXXXL"],
+                    "Forest Green": ["XXXXL"],
+                    "Indigo Blue": ["XXXXL"],
+                    "Light Pink": ["XXXL", "XXXXL"],
+                }
+                blocked = unavailable_sizes_by_color.get(color, [])
+                if size in blocked:
+                    return jsonify({
+                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
                     }), 400
         
         # Validate shipping address using robust function
@@ -12548,3 +12606,8 @@ if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)
+# deploy-bust 2026-07-25T12:05:08.8323387+07:00
+
+
+# sort-order-fix 2026-07-25T12:09:10.4191983+07:00
+

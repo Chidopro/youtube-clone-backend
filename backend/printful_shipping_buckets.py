@@ -48,29 +48,35 @@ _SHIPS_SEPARATE: frozenset = frozenset(
 _PRODUCT_BUCKET: Dict[str, str] = {}
 
 for _name, _b in (
-    ("Unisex T-Shirt", "shirts_light"),
+    ("T-Shirt", "shirts_light"),
+    ("Unisex T-Shirt", "shirts_light"),  # legacy alias
     ("Mens Fitted T-Shirt", "shirts_light"),
     ("Men's Fitted Long Sleeve", "shirts_light"),
-    ("Unisex Oversized T-Shirt", "shirts_light"),
+    ("Oversized T-Shirt", "shirts_light"),
+    ("Unisex Oversized T-Shirt", "shirts_light"),  # legacy alias
     ("Men's Long Sleeve Shirt", "shirts_light"),
     ("Men's Tank Top", "shirts_light"),
     ("Kids Shirt", "shirts_light"),
     ("Kids Long Sleeve", "shirts_light"),
     ("Women's Shirt", "shirts_light"),
     ("Women's Ribbed Neck", "shirts_light"),
-    ("Fitted Racerback Tank", "shirts_light"),
+    ("Racerback Tank", "shirts_light"),
     ("Micro-Rib Tank Top", "shirts_light"),
     ("Women's Crop Top", "shirts_light"),
     ("Baby Staple Tee", "shirts_light"),
     ("Baby Jersey T-Shirt", "shirts_light"),
     ("Baby Body Suit", "shirts_light"),
     ("Toddler Jersey T-Shirt", "shirts_light"),
-    ("Unisex Heavyweight T-Shirt", "shirts_light"),
+    ("Heavyweight T-Shirt", "shirts_light"),
+    ("Unisex Heavyweight T-Shirt", "shirts_light"),  # legacy alias
     ("Bandana", "shirts_light"),
-    ("Unisex Hoodie", "hoodies_heavy"),
+    ("Hoodie", "hoodies_heavy"),
+    ("Unisex Hoodie", "hoodies_heavy"),  # legacy alias
     ("Cropped Hoodie", "hoodies_heavy"),
-    ("Unisex Pullover Hoodie", "hoodies_heavy"),
-    ("Unisex Champion Hoodie", "hoodies_heavy"),
+    ("Pullover Hoodie", "hoodies_heavy"),
+    ("Unisex Pullover Hoodie", "hoodies_heavy"),  # legacy alias
+    ("Champion Hoodie", "hoodies_heavy"),
+    ("Unisex Champion Hoodie", "hoodies_heavy"),  # legacy alias
     ("Youth Heavy Blend Hoodie", "hoodies_heavy"),
     ("Kids Sweatshirt", "hoodies_heavy"),
     ("White Glossy Mug", "mugs_drinkware"),
@@ -97,7 +103,8 @@ for _name, _b in (
     ("Jigsaw Puzzle with Tin", "puzzles_games"),
     ("Die-Cut Magnets", "magnets"),
     # Legacy / integration-only names
-    ("Unisex Classic Tee", "shirts_light"),
+    ("Classic Tee", "shirts_light"),
+    ("Unisex Classic Tee", "shirts_light"),  # legacy alias
     ("Soft Tee", "shirts_light"),
     ("Women's HD Shirt", "shirts_light"),
     ("Canvas Tote", "bags_small"),

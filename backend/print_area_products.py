@@ -23,18 +23,18 @@ PRINT_AREA_PRODUCTS = [
     {"name": "Baby Jersey T-Shirt", "description": "Baby Jersey", "width": 7, "height": 8},
     {"name": "Baby Body Suit", "description": "Baby Body Suit", "width": 7, "height": 8},
     # Men's / Unisex
-    {"name": "Unisex Classic Tee", "description": "Standard T-Shirt", "width": 12, "height": 15},
-    {"name": "Unisex T-Shirt", "description": "Unisex T-Shirt", "width": 11.5, "height": 13.8,
+    {"name": "Classic Tee", "description": "Standard T-Shirt", "width": 12, "height": 15},
+    {"name": "T-Shirt", "description": "T-Shirt", "width": 11.5, "height": 13.8,
      "sizes": _sizes(("XS-M", 11.5, 13.8), ("L-3XL", 15, 18))},
     {"name": "Men's Tank Top", "description": "Tank Top", "width": 12, "height": 16},
     {"name": "Men's Fitted Long Sleeve", "description": "Long Sleeve Shirt", "width": 12, "height": 16},
     {"name": "Men's Long Sleeve Shirt", "description": "Long Sleeve Shirt", "width": 12, "height": 16},
-    {"name": "Unisex Hoodie", "description": "Hoodie", "width": 13, "height": 13},
-    {"name": "Unisex Champion Hoodie", "description": "Champion Hoodie", "width": 11.5, "height": 11.5,
+    {"name": "Hoodie", "description": "Hoodie", "width": 13, "height": 13},
+    {"name": "Champion Hoodie", "description": "Champion Hoodie", "width": 11.5, "height": 11.5,
      "sizes": _sizes(("S-M", 11.5, 11.5), ("L-XL", 13, 13), ("2XL-3XL", 14, 14))},
-    {"name": "Unisex Pullover Hoodie", "description": "Pullover Hoodie", "width": 13, "height": 13},
-    {"name": "Unisex Heavyweight T-Shirt", "description": "Heavyweight T-Shirt", "width": 12, "height": 16},
-    {"name": "Unisex Oversized T-Shirt", "description": "Oversized T-Shirt", "width": 11.5, "height": 15.3},
+    {"name": "Pullover Hoodie", "description": "Pullover Hoodie", "width": 13, "height": 13},
+    {"name": "Heavyweight T-Shirt", "description": "Heavyweight T-Shirt", "width": 12, "height": 16},
+    {"name": "Oversized T-Shirt", "description": "Oversized T-Shirt", "width": 11.5, "height": 15.3},
     {"name": "Mens Fitted T-Shirt", "description": "Fitted T-Shirt", "width": 12, "height": 16},
     # Women's
     {"name": "Women's Ribbed Neck", "description": "Women's Ribbed Neck", "width": 12, "height": 16},
@@ -43,7 +43,7 @@ PRINT_AREA_PRODUCTS = [
     {"name": "Women's HD Shirt", "description": "Women's HD Shirt", "width": 10, "height": 13},
     {"name": "Women's Crop Top", "description": "Crop Top", "width": 10, "height": 10},
     {"name": "Cropped Hoodie", "description": "Cropped Hoodie", "width": 10, "height": 10},
-    {"name": "Fitted Racerback Tank", "description": "Racerback Tank", "width": 10, "height": 12,
+    {"name": "Racerback Tank", "description": "Racerback Tank", "width": 10, "height": 12,
      "sizes": _sizes(("XS-S", 10, 12), ("M-2XL", 12, 16))},
     {"name": "Micro-Rib Tank Top", "description": "Micro-Rib Tank", "width": 10, "height": 12,
      "sizes": _sizes(("XS-S", 10, 12), ("M-2XL", 12, 16))},
@@ -94,12 +94,25 @@ PRINT_AREA_PRODUCTS = [
 ]
 
 
+# Legacy catalog title aliases (old carts / saved designs)
+_PRINT_AREA_NAME_ALIASES = {
+    "Unisex Classic Tee": "Classic Tee",
+    "Unisex T-Shirt": "T-Shirt",
+    "Unisex Hoodie": "Hoodie",
+    "Unisex Champion Hoodie": "Champion Hoodie",
+    "Unisex Pullover Hoodie": "Pullover Hoodie",
+    "Unisex Heavyweight T-Shirt": "Heavyweight T-Shirt",
+    "Unisex Oversized T-Shirt": "Oversized T-Shirt",
+}
+
+
 def get_products():
     return sorted(PRINT_AREA_PRODUCTS, key=lambda p: p["name"].lower())
 
 
 def get_dimensions_for_product(product_name, size_label=None):
     """Return (width, height) in inches for the product (and optional size)."""
+    product_name = _PRINT_AREA_NAME_ALIASES.get(product_name, product_name)
     for p in PRINT_AREA_PRODUCTS:
         if p["name"] == product_name:
             if size_label and p.get("sizes"):

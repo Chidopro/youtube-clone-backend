@@ -141,7 +141,7 @@ class ScreenMerchPrintfulIntegration:
         
         # Product type mappings to Printful variant IDs
         self.product_mappings = {
-            "Unisex Classic Tee": {
+            "Classic Tee": {
                 "variant_id": 4012,  # Bella + Canvas 3001 Unisex Short Sleeve Jersey T-Shirt
                 "colors": {
                     "Black": 4012,
@@ -151,8 +151,26 @@ class ScreenMerchPrintfulIntegration:
                 },
                 "sizes": ["S", "M", "L", "XL"]
             },
-            "Unisex Hoodie": {
+            "Unisex Classic Tee": {
+                "variant_id": 4012,
+                "colors": {
+                    "Black": 4012,
+                    "White": 4013,
+                    "Gray": 4014,
+                    "Navy": 4015
+                },
+                "sizes": ["S", "M", "L", "XL"]
+            },
+            "Hoodie": {
                 "variant_id": 4383,  # Bella + Canvas 3710 Unisex Fleece Pullover Hoodie
+                "colors": {
+                    "Black": 4383,
+                    "Gray": 4384
+                },
+                "sizes": ["S", "M", "L"]
+            },
+            "Unisex Hoodie": {
+                "variant_id": 4383,
                 "colors": {
                     "Black": 4383,
                     "Gray": 4384

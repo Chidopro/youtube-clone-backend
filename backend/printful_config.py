@@ -5,8 +5,18 @@
 # These map your product names to Printful's variant IDs
 PRINTFUL_VARIANTS = {
     # T-Shirts
-    "Unisex Classic Tee": {
+    "Classic Tee": {
         "base_variant_id": 4012,  # Bella + Canvas 3001 Unisex Short Sleeve Jersey T-Shirt
+        "colors": {
+            "Black": 4012,
+            "White": 4013,
+            "Gray": 4014,
+            "Navy": 4015
+        },
+        "sizes": ["S", "M", "L", "XL"]
+    },
+    "Unisex Classic Tee": {
+        "base_variant_id": 4012,
         "colors": {
             "Black": 4012,
             "White": 4013,
@@ -17,8 +27,16 @@ PRINTFUL_VARIANTS = {
     },
     
     # Hoodies
-    "Unisex Hoodie": {
+    "Hoodie": {
         "base_variant_id": 4383,  # Bella + Canvas 3710 Unisex Fleece Pullover Hoodie
+        "colors": {
+            "Black": 4383,
+            "Gray": 4384
+        },
+        "sizes": ["S", "M", "L"]
+    },
+    "Unisex Hoodie": {
+        "base_variant_id": 4383,
         "colors": {
             "Black": 4383,
             "Gray": 4384
@@ -209,7 +227,7 @@ SHIPPING_OPTIONS = {
 
 # Product Categories
 PRODUCT_CATEGORIES = {
-    "clothing": ["Unisex Classic Tee", "Unisex Hoodie", "Cropped Hoodie", "Women's Ribbed Neck", "Women's Shirt", "Women's HD Shirt", "Kids Shirt", "Kids Hoodie", "Kids Long Sleeve"],
+    "clothing": ["Classic Tee", "Hoodie", "Cropped Hoodie", "Women's Ribbed Neck", "Women's Shirt", "Women's HD Shirt", "Kids Shirt", "Kids Hoodie", "Kids Long Sleeve"],
     "accessories": ["Canvas Tote", "Tote Bag", "Large Canvas Bag"],
     "home": ["Greeting Card", "Notebook", "Coasters"],
     "other": ["Sticker Pack", "Dog Bowl", "Magnet Set"]

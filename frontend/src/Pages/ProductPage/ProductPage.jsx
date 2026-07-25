@@ -157,24 +157,24 @@ const ProductPage = ({ sidebar }) => {
     // Use same category_mappings logic as backend
     const category_mappings = {
       'mens': [
-        "Unisex Hoodie",
+        "Hoodie",
         "Men's Tank Top", 
         "Mens Fitted T-Shirt",
         "Men's Fitted Long Sleeve",
-        "Unisex T-Shirt",
-        "Unisex Oversized T-Shirt",
+        "T-Shirt",
+        "Oversized T-Shirt",
         "Men's Long Sleeve Shirt",
-        "Unisex Champion Hoodie"
+        "Champion Hoodie"
       ],
       'womens': [
-        "Cropped Hoodie",
-        "Fitted Racerback Tank",
-        "Micro-Rib Tank Top", 
-        "Women's Ribbed Neck",
         "Women's Shirt",
-        "Unisex Heavyweight T-Shirt",
-        "Unisex Pullover Hoodie",
-        "Women's Crop Top"
+        "Heavyweight T-Shirt",
+        "Women's Ribbed Neck",
+        "Micro-Rib Tank Top",
+        "Racerback Tank",
+        "Women's Crop Top",
+        "Pullover Hoodie",
+        "Cropped Hoodie"
       ],
       'kids': [
         "Youth Heavy Blend Hoodie",
@@ -238,21 +238,21 @@ const ProductPage = ({ sidebar }) => {
     
     // Map product names to actual product data from backend (using exact filenames from PRODUCTS list)
     const productImageMap = {
-      "Unisex Hoodie": { filename: "tested.png", preview: "testedpreview.png", price: 35.35 },
+      "Hoodie": { filename: "tested.png", preview: "testedpreview.png", price: 35.35 },
       "Men's Tank Top": { filename: "random.png", preview: "randompreview.png", price: 26.23 },
       "Mens Fitted T-Shirt": { filename: "mensfittedtshirt.png", preview: "mensfittedtshirtpreview.png", price: 28.58 },
       "Men's Fitted Long Sleeve": { filename: "mensfittedlongsleeve.png", preview: "mensfittedlongsleevepreview.png", price: 31.33 },
-      "Unisex T-Shirt": { filename: "guidontee.png", preview: "guidonteepreview.png", price: 23.69 },
-      "Unisex Oversized T-Shirt": { filename: "unisexoversizedtshirt.png", preview: "unisexoversizedtshirtpreview.png", price: 28.49 },
+      "T-Shirt": { filename: "guidontee.png", preview: "guidonteepreview.png", price: 23.69 },
+      "Oversized T-Shirt": { filename: "unisexoversizedtshirt.png", preview: "unisexoversizedtshirtpreview.png", price: 28.49 },
       "Men's Long Sleeve Shirt": { filename: "menslongsleeve.png", preview: "menslongsleevepreview.png", price: 26.79 },
-      "Unisex Champion Hoodie": { filename: "hoodiechampion.png", preview: "hoodiechampionpreview.png", price: 47.00 },
+      "Champion Hoodie": { filename: "hoodiechampion.png", preview: "hoodiechampionpreview.png", price: 47.00 },
       "Cropped Hoodie": { filename: "womenscroppedhoodiepreview.png", preview: "womenscroppedhoodiepreview.png", price: 45.15 },
-      "Fitted Racerback Tank": { filename: "womenstankpreview.png", preview: "womenstankpreview.png", price: 22.95 },
+      "Racerback Tank": { filename: "womenstankpreview.png", preview: "womenstankpreview.png", price: 22.95 },
       "Micro-Rib Tank Top": { filename: "womensmicroribtanktoppreview.png", preview: "womensmicroribtanktoppreview.png", price: 27.81 },
       "Women's Ribbed Neck": { filename: "womensribbedneckpreview.png", preview: "womensribbedneckpreview.png", price: 27.60 },
       "Women's Shirt": { filename: "womenshirtpreview.png", preview: "womenshirtpreview.png", price: 25.69 },
-      "Unisex Heavyweight T-Shirt": { filename: "womenshdshirtpreview.png", preview: "womenshdshirtpreview.png", price: 27.29 },
-      "Unisex Pullover Hoodie": { filename: "womensunisexpulloverhoodiepreview.png", preview: "womensunisexpulloverhoodiepreview.png", price: 43.06 },
+      "Heavyweight T-Shirt": { filename: "womenshdshirtpreview.png", preview: "womenshdshirtpreview.png", price: 27.29 },
+      "Pullover Hoodie": { filename: "womensunisexpulloverhoodiepreview.png", preview: "womensunisexpulloverhoodiepreview.png", price: 43.06 },
       "Women's Crop Top": { filename: "womenscroptoppreview.png", preview: "womenscroptoppreview.png", price: 30.55 },
       "Youth Heavy Blend Hoodie": { filename: "kidhoodie.png", preview: "kidhoodiepreview.png", price: 31.33 },
       "Kids Shirt": { filename: "kidshirt.png", preview: "kidshirtpreview.png", price: 25.49 },
@@ -435,13 +435,26 @@ const ProductPage = ({ sidebar }) => {
     }
   };
 
-  // Get available sizes for a product and color based on availability data
+  // Get available sizes for a product and color based on availability data.
+  // API product.options.size is the source of truth (never expand beyond it).
   const getAvailableSizes = (product, color) => {
+    const apiSizes = product?.options?.size || [];
     if (!product || !color) {
-      return product?.options?.size || [];
+      return apiSizes;
+    }
+
+    // Prefer API size_color_availability (size -> colors[]) from catalog
+    const sca = product.size_color_availability;
+    if (sca && typeof sca === 'object' && Object.keys(sca).length > 0) {
+      const sizesFromApi = apiSizes.filter((size) => {
+        const colorsForSize = sca[size];
+        return Array.isArray(colorsForSize) && colorsForSize.includes(color);
+      });
+      if (sizesFromApi.length > 0) return sizesFromApi;
+      return apiSizes;
     }
     
-    // Find product in products.js by name (case-insensitive, trim whitespace)
+    // Optional local products.js filter — only within API sizes
     const productName = (product.name || '').trim().toLowerCase();
     const productKey = Object.keys(products).find(key => {
       const localProductName = (products[key].name || '').trim().toLowerCase();
@@ -449,29 +462,24 @@ const ProductPage = ({ sidebar }) => {
     });
     
     if (!productKey) {
-      // Product not found in local data, return all sizes
-      return product.options?.size || [];
+      return apiSizes;
     }
     
     const localProduct = products[productKey];
     if (!localProduct.variables?.availability) {
-      // No availability data, return all sizes
-      return product.options?.size || [];
+      return apiSizes;
     }
     
     const availability = localProduct.variables.availability;
-    const allSizes = localProduct.variables.sizes || product.options?.size || [];
-    
-    // Filter sizes where this color is available (explicitly true)
-    const availableSizes = allSizes.filter(size => {
+    const availableSizes = apiSizes.filter(size => {
       const sizeAvailability = availability[size];
-      if (!sizeAvailability || typeof sizeAvailability !== 'object') return false;
-      // Check if color exists and is explicitly true
+      if (!sizeAvailability || typeof sizeAvailability !== 'object') return true;
+      // If color is listed, require true; if color missing from matrix, keep API size
+      if (!(color in sizeAvailability)) return true;
       return sizeAvailability[color] === true;
     });
     
-    // If no sizes are available, fall back to all sizes (shouldn't happen, but defensive)
-    return availableSizes.length > 0 ? availableSizes : (product.options?.size || []);
+    return availableSizes.length > 0 ? availableSizes : apiSizes;
   };
 
   // Calculate price based on selected size
@@ -1004,8 +1012,8 @@ const ProductPage = ({ sidebar }) => {
 
             // Map product names to categories
             const productCategoryMap = {
-              'womens': ["Cropped Hoodie", "Fitted Racerback Tank", "Micro-Rib Tank Top", "Women's Ribbed Neck", "Women's Shirt", "Unisex Heavyweight T-Shirt", "Unisex Pullover Hoodie", "Women's Crop Top"],
-              'mens': ["Unisex Hoodie", "Men's Tank Top", "Mens Fitted T-Shirt", "Men's Fitted Long Sleeve", "Unisex T-Shirt", "Unisex Oversized T-Shirt", "Men's Long Sleeve Shirt", "Unisex Champion Hoodie"],
+              'womens': ["Women's Shirt", "Heavyweight T-Shirt", "Women's Ribbed Neck", "Micro-Rib Tank Top", "Racerback Tank", "Women's Crop Top", "Pullover Hoodie", "Cropped Hoodie"],
+              'mens': ["Hoodie", "Men's Tank Top", "Mens Fitted T-Shirt", "Men's Fitted Long Sleeve", "T-Shirt", "Oversized T-Shirt", "Men's Long Sleeve Shirt", "Champion Hoodie"],
               'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve", "Toddler Jersey T-Shirt", "Kids Sweatshirt", "Baby Staple Tee", "Baby Jersey T-Shirt", "Baby Body Suit"],
               'mugs': ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"],
               'hats': ["Distressed Dad Hat", "Closed Back Cap", "Five Panel Trucker Hat", "Five Panel Baseball Cap"],

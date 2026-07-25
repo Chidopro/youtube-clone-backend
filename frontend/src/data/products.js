@@ -243,7 +243,7 @@ export const products = {
     }
   },
   "unisexclassictee": {
-    "name": "Unisex Classic Tee",
+    "name": "Classic Tee",
     "price": 36.99,
     "description": "Classic unisex t-shirt",
     "image": "/static/images/unisexclassictee.png",
@@ -457,7 +457,7 @@ export const products = {
 }
   },
   "unisexhoodie": {
-    "name": "Unisex Hoodie",
+    "name": "Hoodie",
     "price": 35.35,
     "description": "Comfortable unisex hoodie",
     "image": "/static/images/tested.png",
@@ -553,7 +553,7 @@ export const products = {
     }
   },
   "unisexchampionhoodie": {
-    "name": "Unisex Champion Hoodie",
+    "name": "Champion Hoodie",
     "price": 41.99,
     "description": "Premium Champion brand hoodie",
     "image": "/static/images/hoodiechampion.png",
@@ -1555,7 +1555,7 @@ export const products = {
     }
   },
   "unisexpulloverhoodie": {
-    "name": "Unisex Pullover Hoodie",
+    "name": "Pullover Hoodie",
     "price": 31.99,
     "description": "Comfortable unisex pullover hoodie",
     "image": "/static/images/unisexpulloverhoodie.png",

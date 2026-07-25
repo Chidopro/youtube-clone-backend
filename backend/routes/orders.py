@@ -442,14 +442,14 @@ def _validate_product_availability(cart):
             if color == "Bubblegum":
                 return False, f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
         
-        # Unisex T-Shirt restrictions
-        if product_name == "Unisex T-Shirt":
+        # T-Shirt restrictions
+        if product_name in ("Unisex T-Shirt", "T-Shirt"):
             unavailable_in_xs = [
                 "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
                 "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
             ]
             if color in unavailable_in_xs and size == "XS":
-                return False, f"{color} is not available in size XS for Unisex T-Shirt. Please select a different size or color."
+                return False, f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
             
             unavailable_in_5xl = [
                 "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
@@ -457,7 +457,22 @@ def _validate_product_availability(cart):
                 "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
             ]
             if color in unavailable_in_5xl and size == "XXXXXL":
-                return False, f"{color} is not available in size 5XL for Unisex T-Shirt. Please select a different size or color."
+                return False, f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
+
+        # Men's Long Sleeve Shirt — size-specific color limits (US/Mex catalog)
+        if product_name == "Men's Long Sleeve Shirt":
+            unavailable_sizes_by_color = {
+                "Royal": ["XXXXL"],
+                "Maroon": ["XXXL", "XXXXL"],
+                "Light Blue": ["XXXXL"],
+                "Sand": ["XXXL", "XXXXL"],
+                "Forest Green": ["XXXXL"],
+                "Indigo Blue": ["XXXXL"],
+                "Light Pink": ["XXXL", "XXXXL"],
+            }
+            blocked = unavailable_sizes_by_color.get(color, [])
+            if size in blocked:
+                return False, f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
     
     return True, None
 

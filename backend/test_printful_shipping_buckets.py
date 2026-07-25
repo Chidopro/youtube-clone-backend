@@ -14,7 +14,7 @@ class TestPrintfulShippingBuckets(unittest.TestCase):
         os.environ.pop("SHIPPING_TABLE_INCLUDE_US_HOLIDAY_40C", None)
 
     def test_three_shirts(self):
-        cart = [{"product": "Unisex T-Shirt", "quantity": 3}]
+        cart = [{"product": "T-Shirt", "quantity": 3}]
         self.assertAlmostEqual(printful_table_shipping_floor_usd(cart, "US"), 9.15, places=2)
 
     def test_two_shirts_one_mug(self):
@@ -27,18 +27,18 @@ class TestPrintfulShippingBuckets(unittest.TestCase):
 
     def test_hoodie_plus_shirt(self):
         cart = [
-            {"product": "Unisex Hoodie", "quantity": 1},
-            {"product": "Unisex T-Shirt", "quantity": 1},
+            {"product": "Hoodie", "quantity": 1},
+            {"product": "T-Shirt", "quantity": 1},
         ]
         self.assertAlmostEqual(printful_table_shipping_floor_usd(cart, "US"), 10.69, places=2)
 
     def test_disabled_returns_zero_blend_passes_api(self):
         os.environ.pop("SHIPPING_TABLE_FLOOR_ENABLED", None)
-        self.assertEqual(printful_table_shipping_floor_usd([{"product": "Unisex T-Shirt", "quantity": 10}], "US"), 0.0)
-        self.assertEqual(blend_api_with_table_floor(3.0, [{"product": "Unisex T-Shirt", "quantity": 10}], "US"), 3.0)
+        self.assertEqual(printful_table_shipping_floor_usd([{"product": "T-Shirt", "quantity": 10}], "US"), 0.0)
+        self.assertEqual(blend_api_with_table_floor(3.0, [{"product": "T-Shirt", "quantity": 10}], "US"), 3.0)
 
     def test_non_us_no_floor(self):
-        cart = [{"product": "Unisex T-Shirt", "quantity": 1}]
+        cart = [{"product": "T-Shirt", "quantity": 1}]
         self.assertEqual(printful_table_shipping_floor_usd(cart, "CA"), 0.0)
 
     def test_blend_maxes_api(self):

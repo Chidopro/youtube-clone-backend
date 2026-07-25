@@ -63,7 +63,7 @@ def _filter_products_by_category(category):
     products = _get_products_list()
     
     if not category or category == "all" or category == "all-products":
-        return products
+        return sorted(products, key=lambda p: (float(p.get("price") or 0), p.get("name") or ""))
     
     # Special handling for thumbnails category
     if category == "thumbnails":
@@ -78,27 +78,27 @@ def _filter_products_by_category(category):
             "coming_soon": True
         }]
     
-    # Define category mappings
+    # Define category mappings (membership); display order is price-sorted below
     category_mappings = {
         'mens': [
-            "Unisex Hoodie",
-            "Men's Tank Top", 
-            "Mens Fitted T-Shirt",
-            "Men's Fitted Long Sleeve",
-            "Unisex T-Shirt",
-            "Unisex Oversized T-Shirt",
+            "T-Shirt",
             "Men's Long Sleeve Shirt",
-            "Unisex Champion Hoodie"
+            "Mens Fitted T-Shirt",
+            "Men's Tank Top",
+            "Oversized T-Shirt",
+            "Men's Fitted Long Sleeve",
+            "Hoodie",
+            "Champion Hoodie"
         ],
         'womens': [
-            "Cropped Hoodie",
-            "Fitted Racerback Tank",
-            "Micro-Rib Tank Top", 
-            "Women's Ribbed Neck",
             "Women's Shirt",
-            "Unisex Heavyweight T-Shirt",
-            "Unisex Pullover Hoodie",
-            "Women's Crop Top"
+            "Heavyweight T-Shirt",
+            "Women's Ribbed Neck",
+            "Micro-Rib Tank Top",
+            "Racerback Tank",
+            "Women's Crop Top",
+            "Pullover Hoodie",
+            "Cropped Hoodie"
         ],
         'kids': [
             "Youth Heavy Blend Hoodie",
@@ -147,12 +147,14 @@ def _filter_products_by_category(category):
     }
     
     category_products = category_mappings.get(category, [])
+    product_by_name = {product.get("name"): product for product in products}
     filtered_products = []
-    
-    for product in products:
-        if product.get("name") in category_products:
+    for name in category_products:
+        product = product_by_name.get(name)
+        if product:
             filtered_products.append(product)
-    
+
+    filtered_products.sort(key=lambda p: (float(p.get("price") or 0), p.get("name") or ""))
     return filtered_products
 
 
