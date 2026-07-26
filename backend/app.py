@@ -1623,9 +1623,8 @@ PRODUCTS = [
         "main_image": "kidsshirtpreview.png",
         "preview_image": "kidsshirtpreview.png",
         "description": "This Youth Staple Tee is light, comfy, and has just the right amount of stretch youngsters need for an active lifestyle. Both your print and embroidery designs will look great on this soft cotton tee. Add your artistry and make this crowd favorite into something special! 100% Airlume combed and ring-spun cotton. Heather colors are 52% combed and ring-spun cotton, 48% polyester. Athletic Heather is 90% combed and ring-spun cotton, 10% polyester. Fabric weight: 4.2 oz/yd² (142 g/m²). Pre-shrunk fabric. 32 singles. Relaxed unisex fit. Side-seamed construction. Blank product sourced from Nicaragua, the US, Guatemala, or Honduras. Disclaimer: The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions. Take a look at our Bella + Canvas 3001 unisex, toddler, and baby tees as well! This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "Navy", "Maroon", "Forest", "Red", "Dark Grey Heather", "True Royal", "Berry", "Heather Forest", "Kelly", "Heather Columbia Blue", "Athletic Heather", "Mustard", "Pink", "Heather Dust", "Natural", "White"], "size": ["XS", "S", "M", "L", "XL"]},
+        "options": {"color": ["Black", "Navy", "Maroon", "Forest", "Red", "Dark Grey Heather", "True Royal", "Berry", "Heather Forest", "Kelly", "Heather Columbia Blue", "Athletic Heather", "Mustard", "Pink", "Heather Dust", "Natural", "White"], "size": ["S", "M", "L", "XL"]},
         "size_pricing": {
-            "XS": 0,
             "S": 0,
             "M": 0,
             "L": 0,
@@ -1664,7 +1663,7 @@ PRODUCTS = [
     },
     {
         "name": "Kids Sweatshirt",
-        "price": 27.25,
+        "price": 26.13,
         "filename": "kidssweatshirt.png",
         "main_image": "kidssweatshirt.png",
         "preview_image": "kidssweatshirtpreview.png",
@@ -1694,7 +1693,7 @@ PRODUCTS = [
     },
     {
         "name": "Toddler Jersey T-Shirt",
-        "price": 21.25,
+        "price": 20.75,
         "filename": "toddlerjerseytshirt.png",
         "main_image": "toddlerjerseytshirt.png",
         "preview_image": "kidstoddlerjerseytshirtpreview.png",
@@ -1731,9 +1730,9 @@ PRODUCTS = [
         "options": {"color": ["Black", "Royal", "Pink", "Light Blue", "White", "Charcoal"], "size": ["6m", "12m", "18m", "24m"]},
         "size_pricing": {
             "6m": 0,      # Base price $20.75
-            "12m": 0.50,  # +$0.50 = $21.25
-            "18m": 0.50,  # +$0.50 = $21.25
-            "24m": 0.50   # +$0.50 = $21.25
+            "12m": 0,     # Base price $20.75
+            "18m": 0,     # Base price $20.75
+            "24m": 0      # Base price $20.75
         }
     },
     {
