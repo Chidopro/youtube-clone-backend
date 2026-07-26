@@ -6,6 +6,7 @@ import { UserService } from '../../utils/userService';
 import { getBackendUrl } from '../../config/apiConfig';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
+import { setToolsFocusCartIndex } from '../../utils/merchSession';
 import './ProductPage.css';
 
 const IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
@@ -569,8 +570,31 @@ const ProductPage = ({ sidebar }) => {
     };
     const next = [...cartItems, item];
     persistCart(next);
+    setToolsFocusCartIndex(next.length - 1);
     console.log('✅ Item added to cart, showing modal...');
     setShowAddedToCartModal(true);
+  };
+
+  const goToToolsPage = () => {
+    // Prefer the most recently added cart item (or current selection) so Tools
+    // does not reopen a leftover screenshot from an earlier video.
+    try {
+      const items = JSON.parse(localStorage.getItem('cart_items') || '[]');
+      if (Array.isArray(items) && items.length > 0) {
+        setToolsFocusCartIndex(items.length - 1);
+      }
+      const urlToSave = selectedScreenshotUrl || getSelectedScreenshotUrl();
+      if (urlToSave) {
+        const raw = localStorage.getItem('pending_merch_data');
+        const data = raw ? JSON.parse(raw) : {};
+        data.selected_screenshot = urlToSave;
+        delete data.edited_screenshot;
+        localStorage.setItem('pending_merch_data', JSON.stringify(data));
+      }
+    } catch (e) {
+      console.warn('Could not prepare tools focus:', e);
+    }
+    navigate('/tools');
   };
 
   // Check if user is a creator
@@ -1178,21 +1202,7 @@ const ProductPage = ({ sidebar }) => {
             <div className="tools-button-container">
               <button 
                 className="tools-page-btn"
-                onClick={() => {
-                  // Save the selected screenshot URL before navigating to tools (use stored URL so it matches what would be sent to cart)
-                  const urlToSave = selectedScreenshotUrl || getSelectedScreenshotUrl();
-                  if (urlToSave) {
-                    try {
-                      const raw = localStorage.getItem('pending_merch_data');
-                      const data = raw ? JSON.parse(raw) : {};
-                      data.selected_screenshot = urlToSave;
-                      localStorage.setItem('pending_merch_data', JSON.stringify(data));
-                    } catch (e) {
-                      console.warn('Could not save selected screenshot:', e);
-                    }
-                  }
-                  navigate('/tools');
-                }}
+                onClick={goToToolsPage}
               >
                 🛠️ Tools Page
               </button>
@@ -1452,7 +1462,7 @@ const ProductPage = ({ sidebar }) => {
                 <div className="cart-actions">
                   <button className="view-cart-btn" onClick={() => setIsCartOpen(false)}>Continue Shopping</button>
                   <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
-                  <button className="edit-tools-btn" onClick={() => navigate('/tools')}>Edit Tools</button>
+                  <button className="edit-tools-btn" onClick={goToToolsPage}>Edit Tools</button>
                 </div>
               </div>
             )}
@@ -1460,7 +1470,7 @@ const ProductPage = ({ sidebar }) => {
         </div>
       )}
 
-      {/* Added to Cart Modal with Tools Reminder - Always available, hidden in creator mode */}
+      {/* Added to Cart Modal - Always available, hidden in creator mode */}
       {!creatorMode && showAddedToCartModal && (
         <div className="added-to-cart-modal-overlay" onClick={() => setShowAddedToCartModal(false)}>
           <div className="added-to-cart-modal" onClick={(e) => e.stopPropagation()}>
@@ -1477,45 +1487,6 @@ const ProductPage = ({ sidebar }) => {
               <h2 className="added-to-cart-title">Added to Cart!</h2>
               <p className="added-to-cart-message">Your item has been added successfully.</p>
               
-              <div className="tools-reminder-section">
-                <h3 className="tools-reminder-title">✨ Enhance Your Design with Our Tools</h3>
-                <p className="tools-reminder-subtitle">Customize your screenshot before checkout:</p>
-                
-                <div className="tools-list">
-                  <div className="tool-item">
-                    <div className="tool-icon">🪶</div>
-                    <div className="tool-info">
-                      <h4 className="tool-name">Feather Edge</h4>
-                      <p className="tool-description">Softens the edges of your screenshot</p>
-                    </div>
-                  </div>
-                  
-                  <div className="tool-item">
-                    <div className="tool-icon">⭕</div>
-                    <div className="tool-info">
-                      <h4 className="tool-name">Corner Radius</h4>
-                      <p className="tool-description">Round corners (max = perfect circle)</p>
-                    </div>
-                  </div>
-                  
-                  <div className="tool-item">
-                    <div className="tool-icon">🖼️</div>
-                    <div className="tool-info">
-                      <h4 className="tool-name">Framed Border</h4>
-                      <p className="tool-description">Add a colored frame around your screenshot</p>
-                    </div>
-                  </div>
-                  
-                  <div className="tool-item">
-                    <div className="tool-icon">📝</div>
-                    <div className="tool-info">
-                      <h4 className="tool-name">Text</h4>
-                      <p className="tool-description">Add headline or text with font, color, size and position</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
               <div className="added-to-cart-modal-actions">
                 <button 
                   className="checkout-btn-modal"
@@ -1530,7 +1501,7 @@ const ProductPage = ({ sidebar }) => {
                   className="go-to-tools-btn"
                   onClick={() => {
                     setShowAddedToCartModal(false);
-                    navigate('/tools');
+                    goToToolsPage();
                   }}
                 >
                   Go to Tools Page

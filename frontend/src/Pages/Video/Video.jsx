@@ -4,9 +4,8 @@ import Recommended from "../../Components/Recommended/Recommended";
 import AuthModal from "../../Components/AuthModal/AuthModal";
 import './Video.css'
 import { useParams } from "react-router-dom";
-import { API_CONFIG } from '../../config/apiConfig'
-import { UserService } from '../../utils/userService'
 import { useCreator } from '../../contexts/CreatorContext';
+import { savePendingMerchData } from '../../utils/merchSession';
 
 const Video = ({ sidebar }) => {
 
@@ -227,19 +226,7 @@ const Video = ({ sidebar }) => {
   };
 
   // Make Merch handler
-  const handleMakeMerch = async () => {
-    // Check if user is authenticated (check both auth types)
-    const isAuthenticated = localStorage.getItem('user_authenticated');
-    const googleAuthenticated = localStorage.getItem('isAuthenticated');
-    const isLoggedIn = (isAuthenticated === 'true') || (googleAuthenticated === 'true');
-    
-    console.log('🛍️ Make Merch - Auth check:', {
-      user_authenticated: isAuthenticated,
-      isAuthenticated: googleAuthenticated,
-      isLoggedIn: isLoggedIn
-    });
-    
-    // Always persist the current merch data so the product page can render (screenshot_timestamp for email/order)
+  const goToMerchandiseCategories = () => {
     try {
       const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : 0;
       const frameSeconds =
@@ -253,155 +240,52 @@ const Video = ({ sidebar }) => {
         videoTitle: videoData?.title || 'Unknown Video',
         creatorName: videoData?.channelTitle || 'Unknown Creator'
       };
-      localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+      savePendingMerchData(merchData);
     } catch (e) {
-      // Non-fatal: if storage fails, still proceed to create product
+      console.warn('Failed saving pending_merch_data:', e);
+    }
+
+    const email = localStorage.getItem('user_email') || '';
+    const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
+    window.location.href = `/merchandise${qs}`;
+  };
+
+  const handleMakeMerch = async () => {
+    const isAuthenticated = localStorage.getItem('user_authenticated');
+    const googleAuthenticated = localStorage.getItem('isAuthenticated');
+    const isLoggedIn = (isAuthenticated === 'true') || (googleAuthenticated === 'true');
+
+    // Persist screenshots first so category page can use them
+    try {
+      const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : 0;
+      const frameSeconds =
+        screenshotTimestamps.length > 0 ? screenshotTimestamps[0] : screenshots.length > 0 ? 0 : currentTime;
+      savePendingMerchData({
+          thumbnail,
+          videoUrl: window.location.href,
+          screenshots: screenshots.slice(0, 6),
+          screenshot_timestamp: frameSeconds,
+          timestamp: frameSeconds,
+          videoTitle: videoData?.title || 'Unknown Video',
+          creatorName: videoData?.channelTitle || 'Unknown Creator'
+        });
+    } catch (e) {
       console.warn('Failed saving pending_merch_data:', e);
     }
 
     if (!isLoggedIn) {
-      // Show auth modal instead of redirecting
       setShowAuthModal(true);
       return;
     }
-    
-    // Check if user is a creator
-    const isCreator = await UserService.isCreator();
-    
-    if (isCreator) {
-      // For creators, navigate directly to screenshot selection page (skip category selection)
-      localStorage.setItem('creator_favorites_mode', 'true');
-      // Navigate directly to screenshot selection page in creator mode
-      window.location.href = '/product/browse?category=mens&creatorMode=favorites';
-      return;
-    }
-    
-    // User is authenticated but not creator, proceed with merch creation
-    await createMerchProduct();
+
+    // Always go to category page (do not wait on create-product — large screenshots can hang)
+    goToMerchandiseCategories();
   };
 
-  // Create merch product function
+  // After login from Make Merch modal — go straight to categories
   const createMerchProduct = async () => {
-    try {
-      
-      // Get authentication state from localStorage
-      const isAuthenticated = localStorage.getItem('user_authenticated');
-      const userEmail = localStorage.getItem('user_email');
-      
-      // Get video information from the video data (passed from PlayVideo component)
-      const videoUrl = window.location.href;
-      
-      // Use the video data from state
-      const videoTitle = videoData?.title || 'Unknown Video';
-      const creatorName = videoData?.channelTitle || 'Unknown Creator';
-      
-      
-      const requestData = {
-        thumbnail,
-        videoUrl: videoUrl,
-        videoTitle: videoTitle,
-        creatorName: creatorName,
-        screenshots: screenshots.slice(0, 6),
-        isAuthenticated: isAuthenticated === 'true',
-        userEmail: userEmail || ''
-      };
-      
-      
-      const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-      });
-      
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server error response:', errorText);
-        throw new Error(`Server error: ${response.status} - ${errorText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.success && data.product_url) {
-        // Check if we're on mobile and handle accordingly
-        if (window.innerWidth <= 768) {
-          // On mobile, try to open in same window or show a message
-          try {
-            window.location.href = data.product_url;
-          } catch (e) {
-                       // Fallback: show URL for user to copy
-           const notification = document.createElement('div');
-           notification.style.cssText = `
-             position: fixed;
-             top: 20px;
-             right: 20px;
-             background: #4CAF50;
-             color: white;
-             padding: 12px 20px;
-             border-radius: 8px;
-             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-             z-index: 10000;
-             animation: slideIn 0.3s ease-out;
-             max-width: 300px;
-             font-size: 14px;
-             font-weight: 500;
-           `;
-           notification.textContent = `Your merch page is ready! Please visit: ${data.product_url}`;
-           document.body.appendChild(notification);
-           setTimeout(() => document.body.removeChild(notification), 5000);
-          }
-        } else {
-          // On desktop, open in new tab
-          window.open(data.product_url, '_blank');
-        }
-             } else {
-         console.error('Failed to create product:', data);
-         const notification = document.createElement('div');
-         notification.style.cssText = `
-           position: fixed;
-           top: 20px;
-           right: 20px;
-           background: #f44336;
-           color: white;
-           padding: 12px 20px;
-           border-radius: 8px;
-           box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-           z-index: 10000;
-           animation: slideIn 0.3s ease-out;
-           max-width: 300px;
-           font-size: 14px;
-           font-weight: 500;
-         `;
-         notification.textContent = `Failed to create merch product page: ${data.error || 'Unknown error'}`;
-         document.body.appendChild(notification);
-         setTimeout(() => document.body.removeChild(notification), 5000);
-       }
-     } catch (err) {
-       console.error('Make Merch error:', err);
-       const notification = document.createElement('div');
-       notification.style.cssText = `
-         position: fixed;
-         top: 20px;
-         right: 20px;
-         background: #f44336;
-         color: white;
-         padding: 12px 20px;
-         border-radius: 8px;
-         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-         z-index: 10000;
-         animation: slideIn 0.3s ease-out;
-         max-width: 300px;
-         font-size: 14px;
-         font-weight: 500;
-       `;
-       notification.textContent = `Error connecting to merch server: ${err.message}`;
-       document.body.appendChild(notification);
-       setTimeout(() => document.body.removeChild(notification), 5000);
-     }
-   };
+    goToMerchandiseCategories();
+  };
 
        // Scroll to screenshots section and grab screenshot - DISABLED TO STOP LOOPS
     const scrollToScreenshots = () => {

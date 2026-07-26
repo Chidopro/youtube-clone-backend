@@ -8,6 +8,7 @@ import { API_CONFIG } from '../../config/apiConfig'
 import { UserService } from '../../utils/userService'
 import AuthModal from '../AuthModal/AuthModal'
 import { useCreator } from '../../contexts/CreatorContext'
+import { savePendingMerchData } from '../../utils/merchSession'
 
 // Mobile detection hook
 const useIsMobile = () => {
@@ -513,7 +514,7 @@ const PlayVideo = ({
                 videoTitle: video?.title || 'Unknown Video',
                 creatorName: video?.channelTitle || 'Unknown Creator'
             };
-            localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+            savePendingMerchData(merchData);
             
             // Show simple auth modal instead of redirecting to complex login page
             setShowAuthModal(true);
@@ -524,7 +525,8 @@ const PlayVideo = ({
         const isCreator = await UserService.isCreator();
         
         if (isCreator) {
-            // For creators, navigate directly to screenshot selection page (skip category selection)
+            // Same category page as customers (pending screenshots already saved above when not logged in;
+            // ensure saved when logged-in creator path runs)
             const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : (screenshotTimestamps[0] ?? 0);
             const merchData = {
                 thumbnail,
@@ -534,10 +536,10 @@ const PlayVideo = ({
                 videoTitle: video?.title || 'Unknown Video',
                 creatorName: video?.channelTitle || 'Unknown Creator'
             };
-            localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
-            localStorage.setItem('creator_favorites_mode', 'true');
-            // Navigate directly to screenshot selection page in creator mode
-            window.location.href = '/product/browse?category=mens&creatorMode=favorites';
+            savePendingMerchData(merchData);
+            const email = localStorage.getItem('user_email') || '';
+            const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
+            window.location.href = `/merchandise${qs}`;
             return;
         }
         
@@ -552,7 +554,7 @@ const PlayVideo = ({
             videoTitle: video?.title || 'Unknown Video',
             creatorName: video?.channelTitle || 'Unknown Creator'
         };
-        localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+        savePendingMerchData(merchData);
         
         await createMerchProduct();
     };
@@ -986,15 +988,9 @@ const PlayVideo = ({
             // console.log('Response data:', data);
             
             if (data.success) {
-                if (isMobile) {
-                    // For mobile, redirect to merchandise categories page instead of specific product
-                    setTimeout(() => {
-                        window.location.href = '/merchandise';
-                    }, 1000);
-                } else {
-                    // For desktop, also redirect to merchandise categories page
-                    window.location.href = '/merchandise';
-                }
+                const email = localStorage.getItem('user_email') || '';
+                const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
+                window.location.href = `/merchandise${qs}`;
             } else {
                 console.error('Failed to create product:', data);
                 alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
@@ -1008,12 +1004,9 @@ const PlayVideo = ({
     // handleAuthSuccess function to be called by AuthModal
     const handleAuthSuccess = () => {
         setShowAuthModal(false);
-        
-        // After successful authentication, try to create merch again
-        // Small delay to ensure auth state is properly set
-        setTimeout(() => {
-            createMerchProduct();
-        }, 1000);
+        const email = localStorage.getItem('user_email') || '';
+        const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
+        window.location.href = `/merchandise${qs}`;
     };
 
     // Test video playback function

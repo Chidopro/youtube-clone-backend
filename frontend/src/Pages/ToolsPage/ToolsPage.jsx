@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG } from '../../config/printAreaConfig';
 import API_CONFIG from '../../config/apiConfig';
+import { consumeToolsFocusCartIndex } from '../../utils/merchSession';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -917,7 +918,8 @@ const ToolsPage = () => {
         const state = JSON.parse(savedState);
         if (state.screenshotScale !== undefined) setScreenshotScale(state.screenshotScale);
         if (state.productImageOffsets) setProductImageOffsets(state.productImageOffsets);
-        if (state.selectedCartProductIndex !== undefined) setSelectedCartProductIndex(state.selectedCartProductIndex);
+        // Do NOT restore selectedCartProductIndex — it often points at a leftover
+        // item from a previous video. Selection is set from focus index / latest cart item.
         console.log('📦 Restored tool page state from localStorage');
       }
     } catch (e) {
@@ -1120,10 +1122,36 @@ const ToolsPage = () => {
           
           setCartProducts(productsWithScreenshots);
           
-          // Auto-select first product if products exist and none is currently selected
+          // Prefer the cart item we just added / focused; otherwise keep current
+          // selection (or fall back to most recent when none/invalid).
           if (productsWithScreenshots.length > 0) {
-            if (selectedCartProductIndex === null || selectedCartProductIndex >= productsWithScreenshots.length) {
-              setSelectedCartProductIndex(0);
+            const focusOriginal = consumeToolsFocusCartIndex();
+            if (focusOriginal != null) {
+              const matched = productsWithScreenshots.findIndex(
+                (p) => p.originalCartIndex === focusOriginal
+              );
+              setSelectedCartProductIndex(
+                matched >= 0 ? matched : productsWithScreenshots.length - 1
+              );
+            } else if (
+              selectedCartProductIndex === null ||
+              selectedCartProductIndex >= productsWithScreenshots.length
+            ) {
+              let nextIndex = productsWithScreenshots.length - 1;
+              try {
+                const raw = localStorage.getItem('pending_merch_data');
+                const data = raw ? JSON.parse(raw) : null;
+                const wanted = data?.selected_screenshot || '';
+                if (wanted) {
+                  const matched = productsWithScreenshots.findIndex(
+                    (p) => p.screenshot === wanted
+                  );
+                  if (matched >= 0) nextIndex = matched;
+                }
+              } catch {
+                /* ignore */
+              }
+              setSelectedCartProductIndex(nextIndex);
             }
             if (productsWithScreenshots.length > 1) {
               console.log(`🛍️ Found ${productsWithScreenshots.length} products in cart`);
