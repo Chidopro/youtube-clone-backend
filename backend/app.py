@@ -1506,13 +1506,13 @@ PRODUCTS = [
         "main_image": "croppedhoodie.png",
         "preview_image": "womenscroppedhoodiepreview.png",
         "description": "Comfort and style rolled into one—that's the easiest way to describe this fashion-forward hoodie. It serves as a great statement piece in any wardrobe, and with its trendy raw hem and matching drawstrings, the hoodie is bound to become a true favorite on your online store. 52% airlume combed and ring-spun cotton, 48% poly fleece. Fabric weight: 6.5 oz/yd² (220.39 g/m²). Dyed-to-match drawstrings. Dropped shoulder cut. Cropped body with a raw hem. Blank product sourced from Mexico, Nicaragua or the United States. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "Military Green", "Storm", "Peach"], "size": ["S", "M", "L", "XL", "XXL"]},
+        "options": {"color": ["Black", "Military Green", "Storm"], "size": ["S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $38.27
-            "M": 0,       # Base price $38.27
-            "L": 0,       # Base price $38.27
-            "XL": 0,      # Base price $38.27
-            "XXL": 1.65   # +$1.65 = $39.92
+            "S": 0,       # Base price $40.27
+            "M": 0,       # Base price $40.27
+            "L": 0,       # Base price $40.27
+            "XL": 0,      # Base price $40.27
+            "XXL": 1.65   # +$1.65 = $41.92
         }
     },
     {
@@ -1548,6 +1548,16 @@ PRODUCTS = [
             "XXXL": 3.30, # +$3.30 = $26.43
             "XXXXL": 4.95, # +$4.95 = $28.08
             "XXXXXL": 6.60 # +$6.60 = $29.73
+        },
+        "size_color_availability": {
+            "S": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"],
+            "M": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"],
+            "L": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"],
+            "XL": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"],
+            "XXL": ["Black", "French Navy", "Heather Grey", "White", "Dark Heather Grey", "Burgundy", "India Ink Grey", "Anthracite", "Red", "Stargazer", "Khaki", "Desert Dust", "Fraiche Peche", "Cotton Pink", "Lavender"],
+            "XXXL": ["Black", "French Navy", "Heather Grey", "White"],
+            "XXXXL": ["Black", "French Navy", "Heather Grey", "White"],
+            "XXXXXL": ["Black", "French Navy", "Heather Grey", "White"]
         }
     },
     {
@@ -1557,7 +1567,7 @@ PRODUCTS = [
         "main_image": "womensshirt.png",
         "preview_image": "womenshirtpreview.png",
         "description": "The perfect women's t-shirt is hard to find, but this Bella + Canvas relaxed tee just might be it. Its soft and smooth fabric, as well as the relaxed fit will appeal to anyone looking for a comfy everyday t-shirt, or an addition to their business casual wardrobe. Add your design and turn this shirt into something truly special. 100% combed and ring-spun cotton. Heather Prism Lilac & Heather Prism Natural are 99% combed and ring-spun cotton, 1% polyester. Athletic Heather is 90% combed and ring-spun cotton, 10% polyester. Other Heather colors are 52% combed and ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/y² (142 g/m²). Relaxed fit. Pre-shrunk fabric. Side-seamed construction. Crew neck. Blank product sourced from Nicaragua, Honduras, or the US. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "White", "Dark Grey Heather", "Pink", "Navy", "Heather Mauve", "Heather Red", "Leaf", "Heather Blue Lagoon", "Athletic Heather", "Heather Stone"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
+        "options": {"color": ["Black", "White", "Navy", "Dark Grey Heather", "Pink", "Heather Mauve", "Maroon", "Heather Navy", "Military Green", "Heather Deep Teal", "Heather True Royal", "Heather Red", "Mauve", "Leaf", "Heather Blue Lagoon", "Sage", "Athletic Heather", "Heather Stone", "Light Violet", "Natural"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
             "S": 0,
             "M": 0,
@@ -1939,8 +1949,9 @@ PRODUCTS = [
         "main_image": "womenstank.png",
         "preview_image": "womenstankpreview.png",
         "description": "A proven bestseller in women's activewear, this racerback tank blends style, comfort, and affordability. Designed to deliver a premium feel without the high price tag, it's a smart pick for fitness or athleisure-oriented stores. With matching self-binding seams, a flattering fitted cut, and a lightweight cotton-poly jersey blend, it's built to perform and easy to customize for yourself or to sell online. 60% combed ringspun cotton, 40% polyester. Fabric weight: 4 oz./yd.² (113.4 g/m²). Lightweight jersey. Fitted silhouette. Scoop neck and racerback. Self-binding seams in matching colors for a seamless look. Tear-away label. Blank product sourced from Honduras. This product is made on demand. No minimums.",
-        "options": {"color": ["Vintage Black", "Purple Rush", "Premium Heather", "Vintage Navy", "Vintage Red", "Vintage Royal", "Vintage Turquoise", "Heather White"], "size": ["S", "M", "L", "XL"]},
+        "options": {"color": ["Vintage Black", "Purple Rush", "Premium Heather", "Vintage Navy", "Vintage Red", "Vintage Royal", "Vintage Turquoise", "Heather White"], "size": ["XS", "S", "M", "L", "XL"]},
         "size_pricing": {
+            "XS": 0,      # Base price $25.82
             "S": 0,       # Base price $25.82
             "M": 0,       # Base price $25.82
             "L": 0,       # Base price $25.82
@@ -2044,34 +2055,34 @@ PRODUCTS = [
     },
     {
         "name": "White Glossy Mug",
-        "price": 16.95,
+        "price": 17.75,
         "filename": "mug1.png",
         "main_image": "mug1.png",
         "preview_image": "mugwhiteglossymugpreview.png",
         "description": "This sturdy mug is perfect for your morning coffee, afternoon tea, or whatever hot beverage you enjoy. It's glossy white and yields vivid prints that retain their quality when dish-washed and microwaved. Add a graphic of your choice and add this best-seller to your store, so others can enjoy your magical designs too! Ceramic. 11 oz mug dimensions: 3.8″ (9.6 cm) in height, 3.2″ (8.2 cm) in diameter. 15 oz mug dimensions: 4.7″ (11.9 cm) in height, 3.3″ (8.5 cm) in diameter. 20 oz mug dimensions: 4.3″ (10.9 cm) in height, 3.7″ (9.3 cm) in diameter. Lead and BPA-free material. Dishwasher and microwave safe. Blank product sourced from China. Disclaimer: The White Glossy Mug may vary slightly in size by up to +/- 0.1″ (2 mm) due to the nature of the production process. These variations are normal and won't affect your mug's quality or functionality. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["11 oz", "15 oz", "20 oz"]},
         "size_pricing": {
-            "11 oz": 0,
-            "15 oz": 1.50,  # +$1.50 = $16.45
-            "20 oz": 3.00   # +$3.00 = $17.95
+            "11 oz": 0,      # Base price $17.75
+            "15 oz": 2.00,   # +$2.00 = $19.75
+            "20 oz": 5.50    # +$5.50 = $23.25
         }
     },
     {
         "name": "Travel Mug",
-        "price": 30.48,
+        "price": 30.25,
         "filename": "travelmug.png",
         "main_image": "travelmug.png",
         "preview_image": "mugtravelmugpreview.png",
         "description": "Enjoy your favorite beverage on the go with a premium-quality travel mug. It's made with stainless steel and keeps hot drinks hot for up to 6 h, and cold drinks cold for up to 8 h. It fits into most car cup holders and has a spill-proof plastic lid. Personalize it for yourself or add it to your online store and start selling modern drinkware. Made with stainless steel. Lead and BPA-free materials used. Hand-wash only. Blank product sourced from China. 25 oz (739 ml) size: Height: 7.9″ (20 cm), Upper diameter: 3.3″ (8.4 cm), Bottom diameter: 2.7″ (7 cm). Comes with a plastic press-in lid. 40 oz (1183 ml) size: Height: 10.4″ (26.5 cm), Upper diameter: 3.9″ (9.9 cm), Bottom diameter: 2.9″ (7.4 cm). Comes with a plastic straw and screw-on lid. Caution! To prevent steam pressure buildup, always open the lid before placing it on a hot drink. This product is made on demand. No minimums.",
         "options": {"color": ["White", "Black", "Navy", "Gray"], "size": ["25 oz", "40 oz"]},
         "size_pricing": {
-            "25 oz": 0,
-            "40 oz": 0.93  # +$0.93 = $29.41
+            "25 oz": 0,      # Base price $30.25
+            "40 oz": 1.00    # +$1.00 = $31.25
         }
     },
     {
         "name": "Enamel Mug",
-        "price": 21.82,
+        "price": 22.25,
         "filename": "enamalmug.png",
         "main_image": "enamalmug.png",
         "preview_image": "mugenamelmugpreview.png",
@@ -2083,15 +2094,19 @@ PRODUCTS = [
     },
     {
         "name": "Colored Mug",
-        "price": 18.49,
+        "price": 18.25,
         "filename": "coloredmug.png",
         "main_image": "coloredmug.png",
         "preview_image": "mugcoloredmugpreview.png",
         "description": "This sturdy White Ceramic Mug has a colorful inside and a white print area all around the mug. Choose between vibrant color options, create your own unique designs, and start selling the mug to your customers! Ceramic. 11 oz mug dimensions: 3.79″ (9.6 cm) in height, 3.25″ (8.3 cm) in diameter. 15 oz mug dimensions: 4.69″ (11.9 cm) in height, 3.35″ (8.5 cm) in diameter. Lead and BPA-free material. White print area. Colored rim, inside, and handle. Dishwasher and microwave safe. Blank product sourced from China. This product is made on demand. No minimums. Disclaimer: This product is not suitable for children under 18 months. Depending on the light setting, the handle color of the White Ceramic Mug in Black may appear blue.",
-        "options": {"color": ["Black", "Red", "Blue", "Dark Green"], "size": ["11 oz", "15 oz"]},
+        "options": {"color": ["Black", "Red", "Blue", "Pink", "Yellow", "Orange", "Dark Blue", "Dark Green", "Golden Yellow", "Green"], "size": ["11 oz", "15 oz"]},
         "size_pricing": {
-            "11 oz": 0,
-            "15 oz": 0.80  # +$0.80 = $17.29
+            "11 oz": 0,      # Base price $18.25
+            "15 oz": 2.50    # +$2.50 = $20.75
+        },
+        "size_color_availability": {
+            "11 oz": ["Black", "Red", "Blue", "Pink", "Yellow", "Orange", "Dark Blue", "Dark Green", "Golden Yellow", "Green"],
+            "15 oz": ["Black", "Red", "Blue", "Pink", "Dark Blue", "Dark Green"]
         }
     },
     {
@@ -2834,22 +2849,6 @@ def send_order():
                         "error": f"{color} is not available in size {size} for Women's Ribbed Neck. Please select a different size or color."
                     }), 400
             
-            # Check Cropped Hoodie availability
-            if product_name == "Cropped Hoodie":
-                # Black is NOT available in XL and XXL
-                if color == "Black" and size in ["XL", "XXL"]:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size {size} for Cropped Hoodie. Please select a different size or color."
-                    }), 400
-                
-                # Peach is ONLY available in XL
-                if color == "Peach" and size != "XL":
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
-                    }), 400
-            
             # Check Women's Crop Top availability
             if product_name == "Women's Crop Top":
                 # Bubblegum is out of stock
@@ -2900,6 +2899,15 @@ def send_order():
                     return jsonify({
                         "success": False,
                         "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
+                    }), 400
+
+            # Check Colored Mug availability
+            if product_name == "Colored Mug":
+                unavailable_in_15oz = ["Yellow", "Orange", "Golden Yellow", "Green"]
+                if color in unavailable_in_15oz and size == "15 oz":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size 15 oz for Colored Mug. Please select a different size or color."
                     }), 400
 
         # --- Email Formatting ---
@@ -3167,22 +3175,6 @@ def place_order():
                         "error": f"{color} is not available in size {size} for Women's Ribbed Neck. Please select a different size or color."
                     }), 400
             
-            # Check Cropped Hoodie availability
-            if product_name == "Cropped Hoodie":
-                # Black is NOT available in XL and XXL
-                if color == "Black" and size in ["XL", "XXL"]:
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size {size} for Cropped Hoodie. Please select a different size or color."
-                    }), 400
-                
-                # Peach is ONLY available in XL
-                if color == "Peach" and size != "XL":
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
-                    }), 400
-            
             # Check Women's Crop Top availability
             if product_name == "Women's Crop Top":
                 # Bubblegum is out of stock
@@ -3204,18 +3196,6 @@ def place_order():
                         "success": False,
                         "error": f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
                     }), 400
-                
-                # Colors not available in 5XL (XXXXXL)
-                unavailable_in_5xl = [
-                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
-                    "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve",
-                    "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
-                ]
-                if color in unavailable_in_5xl and size == "XXXXXL":
-                    return jsonify({
-                        "success": False,
-                        "error": f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
-                    }), 400
 
             # Check Men's Long Sleeve Shirt availability
             if product_name == "Men's Long Sleeve Shirt":
@@ -3233,6 +3213,15 @@ def place_order():
                     return jsonify({
                         "success": False,
                         "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
+                    }), 400
+
+            # Check Colored Mug availability
+            if product_name == "Colored Mug":
+                unavailable_in_15oz = ["Yellow", "Orange", "Golden Yellow", "Green"]
+                if color in unavailable_in_15oz and size == "15 oz":
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size 15 oz for Colored Mug. Please select a different size or color."
                     }), 400
         
         # Validate shipping address using robust function
@@ -3632,20 +3621,6 @@ def create_checkout_session():
                         "error": f"{color} is not available in size {size} for Women's Ribbed Neck. Please select a different size or color."
                     }), 400
             
-            # Check Cropped Hoodie availability
-            if product_name == "Cropped Hoodie":
-                # Black is NOT available in XL and XXL
-                if color == "Black" and size in ["XL", "XXL"]:
-                    return jsonify({
-                        "error": f"{color} is not available in size {size} for Cropped Hoodie. Please select a different size or color."
-                    }), 400
-                
-                # Peach is ONLY available in XL
-                if color == "Peach" and size != "XL":
-                    return jsonify({
-                        "error": f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
-                    }), 400
-            
             # Check Women's Crop Top availability
             if product_name == "Women's Crop Top":
                 # Bubblegum is out of stock
@@ -3692,6 +3667,14 @@ def create_checkout_session():
                 if size in blocked:
                     return jsonify({
                         "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
+                    }), 400
+
+            # Check Colored Mug availability
+            if product_name == "Colored Mug":
+                unavailable_in_15oz = ["Yellow", "Orange", "Golden Yellow", "Green"]
+                if color in unavailable_in_15oz and size == "15 oz":
+                    return jsonify({
+                        "error": f"{color} is not available in size 15 oz for Colored Mug. Please select a different size or color."
                     }), 400
         
         # Validate shipping address using robust function

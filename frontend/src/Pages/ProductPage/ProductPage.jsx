@@ -4,7 +4,6 @@ import ToolsPage from '../ToolsPage/ToolsPage';
 import { supabase } from '../../supabaseClient';
 import { UserService } from '../../utils/userService';
 import { getBackendUrl } from '../../config/apiConfig';
-import { products } from '../../data/products';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import './ProductPage.css';
@@ -436,7 +435,7 @@ const ProductPage = ({ sidebar }) => {
   };
 
   // Get available sizes for a product and color based on availability data.
-  // API product.options.size is the source of truth (never expand beyond it).
+  // API product.options.size is the source of truth (never use stale products.js).
   const getAvailableSizes = (product, color) => {
     const apiSizes = product?.options?.size || [];
     if (!product || !color) {
@@ -451,35 +450,19 @@ const ProductPage = ({ sidebar }) => {
         return Array.isArray(colorsForSize) && colorsForSize.includes(color);
       });
       if (sizesFromApi.length > 0) return sizesFromApi;
-      return apiSizes;
     }
-    
-    // Optional local products.js filter — only within API sizes
-    const productName = (product.name || '').trim().toLowerCase();
-    const productKey = Object.keys(products).find(key => {
-      const localProductName = (products[key].name || '').trim().toLowerCase();
-      return localProductName === productName;
-    });
-    
-    if (!productKey) {
-      return apiSizes;
+    return apiSizes;
+  };
+
+  // Colors available for a selected size (size_color_availability from API).
+  const getAvailableColors = (product, size) => {
+    const apiColors = product?.options?.color || [];
+    if (!product || !size) return apiColors;
+    const sca = product.size_color_availability;
+    if (sca && typeof sca === 'object' && Array.isArray(sca[size]) && sca[size].length > 0) {
+      return apiColors.filter((c) => sca[size].includes(c));
     }
-    
-    const localProduct = products[productKey];
-    if (!localProduct.variables?.availability) {
-      return apiSizes;
-    }
-    
-    const availability = localProduct.variables.availability;
-    const availableSizes = apiSizes.filter(size => {
-      const sizeAvailability = availability[size];
-      if (!sizeAvailability || typeof sizeAvailability !== 'object') return true;
-      // If color is listed, require true; if color missing from matrix, keep API size
-      if (!(color in sizeAvailability)) return true;
-      return sizeAvailability[color] === true;
-    });
-    
-    return availableSizes.length > 0 ? availableSizes : apiSizes;
+    return apiColors;
   };
 
   // Calculate price based on selected size
@@ -1297,12 +1280,19 @@ const ProductPage = ({ sidebar }) => {
                   
                   <div className="product-options">
                     {/* Color Options - reserved: use product.options.color / selectedColors only */}
-                    {product.options && product.options.color && product.options.color.length > 0 && (
+                    {product.options && product.options.color && product.options.color.length > 0 && (() => {
+                      const selectedSize = selectedSizes[index] || product.options?.size?.[0];
+                      const availableColors = getAvailableColors(product, selectedSize);
+                      const currentColor = selectedColors[index] || product.options?.color?.[0] || '';
+                      const displayColor = availableColors.includes(currentColor)
+                        ? currentColor
+                        : (availableColors[0] || currentColor);
+                      return (
                       <div className="option-group">
                         <label>Color:</label>
                         <select 
                           className="color-select"
-                          value={selectedColors[index] || product.options?.color?.[0] || ''}
+                          value={displayColor}
                           onChange={async (e) => {
                             const newSelectedColors = { ...selectedColors };
                             const newColor = e.target.value;
@@ -1322,14 +1312,15 @@ const ProductPage = ({ sidebar }) => {
                             }
                           }}
                         >
-                          {(product.options?.color || []).map((color, colorIndex) => (
+                          {availableColors.map((color, colorIndex) => (
                             <option key={colorIndex} value={color}>
                               {color}
                             </option>
                           ))}
                         </select>
                       </div>
-                    )}
+                      );
+                    })()}
                     
                     {/* Handle Color Options */}
                     {product.options && product.options.handle_color && product.options.handle_color.length > 0 && (
@@ -1381,7 +1372,12 @@ const ProductPage = ({ sidebar }) => {
                               const nextSize = e.target.value;
                               newSelectedSizes[index] = nextSize;
                               setSelectedSizes(newSelectedSizes);
-                              const nextColor = selectedColors[index] || product.options?.color?.[0] || product.options?.handle_color?.[0];
+                              const colorsForSize = getAvailableColors(product, nextSize);
+                              let nextColor = selectedColors[index] || product.options?.color?.[0] || product.options?.handle_color?.[0];
+                              if (colorsForSize.length > 0 && !colorsForSize.includes(nextColor)) {
+                                nextColor = colorsForSize[0];
+                                setSelectedColors({ ...selectedColors, [index]: nextColor });
+                              }
                               await checkSelectionAvailability(product, index, nextColor, nextSize);
                             }}
                           >

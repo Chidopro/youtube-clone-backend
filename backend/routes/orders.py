@@ -430,13 +430,6 @@ def _validate_product_availability(cart):
             if color in restricted_colors and size in restricted_sizes:
                 return False, f"{color} is not available in size {size} for Women's Ribbed Neck. Please select a different size or color."
         
-        # Cropped Hoodie restrictions
-        if product_name == "Cropped Hoodie":
-            if color == "Black" and size in ["XL", "XXL"]:
-                return False, f"{color} is not available in size {size} for Cropped Hoodie. Please select a different size or color."
-            if color == "Peach" and size != "XL":
-                return False, f"{color} is only available in size XL for Cropped Hoodie. Please select XL or a different color."
-        
         # Women's Crop Top restrictions
         if product_name == "Women's Crop Top":
             if color == "Bubblegum":
@@ -473,6 +466,12 @@ def _validate_product_availability(cart):
             blocked = unavailable_sizes_by_color.get(color, [])
             if size in blocked:
                 return False, f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
+
+        # Colored Mug — 15 oz does not offer Yellow / Orange / Golden Yellow / Green
+        if product_name == "Colored Mug":
+            unavailable_in_15oz = ["Yellow", "Orange", "Golden Yellow", "Green"]
+            if color in unavailable_in_15oz and size == "15 oz":
+                return False, f"{color} is not available in size 15 oz for Colored Mug. Please select a different size or color."
     
     return True, None
 

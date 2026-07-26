@@ -515,39 +515,33 @@ export const products = {
       "colors": [
         "Black",
         "Military Green",
-        "Storm",
-        "Peach"
+        "Storm"
       ],
       "availability": {
         "S": {
           "Black": true,
           "Military Green": true,
-          "Storm": true,
-          "Peach": false
+          "Storm": true
         },
         "M": {
           "Black": true,
           "Military Green": true,
-          "Storm": true,
-          "Peach": false
+          "Storm": true
         },
         "L": {
           "Black": true,
           "Military Green": true,
-          "Storm": true,
-          "Peach": false
+          "Storm": true
         },
         "XL": {
-          "Black": false,
+          "Black": true,
           "Military Green": true,
-          "Storm": true,
-          "Peach": true
+          "Storm": true
         },
         "XXL": {
-          "Black": false,
+          "Black": true,
           "Military Green": true,
-          "Storm": true,
-          "Peach": false
+          "Storm": true
         }
       }
     }
