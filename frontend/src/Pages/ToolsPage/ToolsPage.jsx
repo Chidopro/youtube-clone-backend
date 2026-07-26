@@ -757,11 +757,7 @@ const isMiscProductNoPreview = (productName) => {
   if (!productName) return false;
   const miscNoPreview = [
     "Greeting Card",
-    "Hardcover Bound Notebook",
-    "Coasters",
-    "Kiss-Cut Stickers",
-    "Kiss Cut Stickers",
-    "Bandana"
+    "Hardcover Bound Notebook"
   ];
   return miscNoPreview.some(product => productName.includes(product) || product.includes(productName));
 };

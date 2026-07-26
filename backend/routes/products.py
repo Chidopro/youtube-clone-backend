@@ -135,14 +135,10 @@ def _filter_products_by_category(category):
             "All Over Print Collar"
         ],
         'misc': [
-            "Bandana",
             "Hardcover Bound Notebook", 
-            "Coasters",
             "Apron",
             "Jigsaw Puzzle with Tin",
-            "Greeting Card",
-            "Kiss-Cut Stickers",
-            "Die-Cut Magnets"
+            "Greeting Card"
         ]
     }
     

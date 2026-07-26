@@ -214,14 +214,10 @@ const ProductPage = ({ sidebar }) => {
         "All Over Print Collar"
       ],
       'misc': [
-        "Bandana",
         "Hardcover Bound Notebook", 
-        "Coasters",
         "Apron",
         "Jigsaw Puzzle with Tin",
-        "Greeting Card",
-        "Kiss-Cut Stickers",
-        "Die-Cut Magnets"
+        "Greeting Card"
       ],
       'all-products': [],  // All Products category - will contain all products eventually
       'thumbnails': []  // Coming Soon - no products yet
@@ -281,14 +277,10 @@ const ProductPage = ({ sidebar }) => {
       "Pet Bandana Collar": { filename: "scarfcollar.png", preview: "scarfcollarpreview.png", price: 21.95 },
       "All Over Print Leash": { filename: "leash.png", preview: "leashpreview.png", price: 26.95 },
       "All Over Print Collar": { filename: "collar.png", preview: "collarpreview.png", price: 25.08 },
-      "Kiss-Cut Stickers": { filename: "stickers.png", preview: "stickerspreview.png", price: 4.29 },
-      "Die-Cut Magnets": { filename: "magnet.png", preview: "magnetpreview.png", price: 5.32 },
-      "Greeting Card": { filename: "greetingcard.png", preview: "greetingcardpreview.png", price: 5.00 },
-      "Hardcover Bound Notebook": { filename: "hardcovernotebook.png", preview: "hardcovernotebookpreview.png", price: 23.21 },
-      "Coasters": { filename: "coaster.png", preview: "coasterpreview.png", price: 33.99 },
-      "Apron": { filename: "apron.png", preview: "apronpreview.png", price: 19.99 },
-      "Bandana": { filename: "bandana.png", preview: "bandanapreview.png", price: 19.95 },
-      "Jigsaw Puzzle with Tin": { filename: "jigsawpuzzle.png", preview: "jigsawpuzzlepreview.png", price: 27.65 }
+      "Greeting Card": { filename: "greetingcard.png", preview: "greetingcardpreview.png", price: 9.99 },
+      "Hardcover Bound Notebook": { filename: "hardcovernotebook.png", preview: "hardcovernotebookpreview.png", price: 23.05 },
+      "Apron": { filename: "apron.png", preview: "apronpreview.png", price: 28.90 },
+      "Jigsaw Puzzle with Tin": { filename: "jigsawpuzzle.png", preview: "jigsawpuzzlepreview.png", price: 25.40 }
     };
 
     // Return products with actual image paths from backend
@@ -1002,7 +994,7 @@ const ProductPage = ({ sidebar }) => {
               'hats': ["Distressed Dad Hat", "Closed Back Cap", "Five Panel Trucker Hat", "Five Panel Baseball Cap"],
               'bags': ["Laptop Sleeve", "All-Over Print Drawstring", "All Over Print Tote Pocket", "All-Over Print Utility Bag"],
               'pets': ["Pet Bowl All-Over Print", "Pet Bandana Collar", "All Over Print Leash", "All Over Print Collar"],
-              'misc': ["Bandana", "Hardcover Bound Notebook", "Coasters", "Apron", "Jigsaw Puzzle with Tin", "Greeting Card", "Kiss-Cut Stickers", "Die-Cut Magnets"]
+              'misc': ["Hardcover Bound Notebook", "Apron", "Jigsaw Puzzle with Tin", "Greeting Card"]
             };
 
             // Group products

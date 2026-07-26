@@ -1774,7 +1774,7 @@ PRODUCTS = [
     },
     {
         "name": "Greeting Card",
-        "price": 4.75,
+        "price": 9.99,
         "filename": "greetingcard.png",
         "main_image": "greetingcard.png",
         "preview_image": "miscellaneousgreetingcardpreview.png",
@@ -1786,7 +1786,7 @@ PRODUCTS = [
     },
     {
         "name": "Hardcover Bound Notebook",
-        "price": 21.05,
+        "price": 23.05,
         "filename": "hardcovernotebook.png",
         "main_image": "hardcovernotebook.png",
         "preview_image": "miscellaneoushardcovernotebookpreview.png",
@@ -1797,45 +1797,15 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Coasters",
-        "price": 5.00,
-        "filename": "coaster.png",
-        "main_image": "coaster.png",
-        "preview_image": "miscellaneouscoasterspreview.png",
-        "description": "Hello beverage coaster, goodbye mug stain! Introducing the long-awaited Cork-Back Coaster that's designed to protect your countertops and furniture from spills and scratches. It's crafted from genuine cork, hardboard, with a high-gloss coating that ensures a quality print. The coaster is heat-resistant, water-repellent, and easy to clean—just wipe it with a damp cloth. Add a vibrant design, a meaningful quote, or a photo to the coaster and pair it with your favorite mug or offer the item to your customers online. Hardboard MDF 0.12″ (3 mm). Cork 0.04″ (1 mm). High-gloss coating on top. Size: 3.74″ × 3.74″ × 0.16″ (95 × 95 × 4 mm). Rounded corners. Water-repellent, heat-resistant, and non-slip. Easy to clean. Blank product sourced from China. The displayed price is for a single item. This product is made on demand. No minimums.",
-        "options": {"color": ["Wood", "Cork", "Black"], "size": ["4\"x4\""]},
-        "size_pricing": {
-            "4\"x4\"": 0
-        }
-    },
-    {
         "name": "Apron",
-        "price": 26.85,
+        "price": 28.90,
         "filename": "apron.png",
         "main_image": "apron.png",
         "preview_image": "miscellaneousapronpreview.png",
         "description": "This apron is a canvas for bold, custom designs, perfect for pros behind the grill or home chefs mastering pasta night. It seamlessly blends fashion and function with a sleek fit, button-adjustable straps, and a durable yet lightweight fabric. It's a bestseller for online stores offering kitchen-ready gear or a thoughtful gift for foodies, newlyweds, or housewarming hosts. 100% polyester. Size: 27.6″ × 30.3″ (70 cm × 77 cm). Weight: 10.9 oz (310 g). Durable overlocked seams. Button-adjustable black twill straps. One size fits most. One-sided print. Blank product sourced from China. Disclaimer: Apron size may vary by ±1″ (2.5 cm). This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "White", "Navy", "Red", "Green"], "size": ["S", "M", "L", "XL"]},
+        "options": {"color": ["Black", "White", "Navy", "Red", "Green"], "size": ["One Size"]},
         "size_pricing": {
-            "S": 0,
-            "M": 0,
-            "L": 0,
-            "XL": 0
-        }
-    },
-    {
-        "name": "Kiss-Cut Stickers",
-        "price": 3.39,
-        "filename": "stickers.png",
-        "main_image": "stickers.png",
-        "preview_image": "miscellaneouskisscutstickerspreview.png",
-        "description": "These Kiss-Cut Stickers can be cut in any shape you want, while also leaving a wide enough border around your design for smooth peeling. Available in four sizes that can be used for a single sticker or multiple smaller ones. What's more, there are no order minimums, so you can get a single sticker or a whole bunch—the world of stickers is your oyster. High opacity film that's impossible to see through. Durable vinyl. 95µ thickness. Fast and easy bubble-free application. Blank product sourced from Japan. Follow these tips when applying stickers: Apply the sticker to a clean, dust-free, oil-free, and moisture-free surface. After application, press the sticker down with a clean cloth to maximize the sticker's ability to stick to the surface and avoid air bubbles. Make sure that the sticker is applied correctly the first time. With every reapplication, the sticker's ability to stick will decrease. Apply the sticker to a flat surface only. If applied on items that bend, are round, or in a cylinder form, we can't guarantee its ability to hold. Disclaimer: Please note that the sticker paper is white and a transparent background isn't possible. This product is made on demand. No minimums.",
-        "options": {"color": ["White"], "size": ["3\"x3\"", "4\"x4\"", "5.5\"x5.5\"", "15\"x3.75\""]},
-        "size_pricing": {
-            "3\"x3\"": 0,
-            "4\"x4\"": 0.20,
-            "5.5\"x5.5\"": 0.40,
-            "15\"x3.75\"": 3.07
+            "One Size": 0
         }
     },
     {
@@ -1867,32 +1837,20 @@ PRODUCTS = [
         }
     },
     {
-        "name": "Bandana",
-        "price": 12.99,
-        "filename": "bandana.png",
-        "main_image": "bandana.png",
-        "preview_image": "miscellaneousbandanapreview.png",
-        "description": "A headband, armband, necktie, bag accessory, or even a scarf for a beloved pet—that's the All-Over Print Bandana! With double-folded edges and a detailed single-sided print, it's sturdy and durable to use for as long as you like. Create your own custom design for this bandana and get one for yourself or start selling! 65% recycled polyester, 35% polyester. Fabric weight: 2.95 oz./yd.² (100 g/m²). Breathable and moisture-wicking material. Lightweight and soft to the touch. Double-folded edges. Single-sided print. Multifunctional. UPF50+ protection. The fabric is OEKO-TEX 100 standard certified. The recycled content of this product is certified under GRS (Global Recycled Standard). Important sizing information: the smallest bandana size is made for small pets and won't fit a grown-up. Please choose the medium or large size if you're selling/ordering for a grown-up and disclose this sizing information on your store. Product code: 655. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "Red", "Blue", "Green", "Pink"], "size": ["Small", "Medium", "Large"]},
-        "size_pricing": {
-            "Small": 0,
-            "Medium": 0,
-            "Large": 0
-        }
-    },
-    {
         "name": "Jigsaw Puzzle with Tin",
-        "price": 25.59,
+        "price": 25.40,
         "filename": "jigsawpuzzle.png",
         "main_image": "jigsawpuzzle.png",
         "preview_image": "miscellaneousjigsawpuzzlewithtinpreview.png",
         "description": "Make quality time more fun with a custom jigsaw puzzle that's both a challenge and a keepsake. Whether it's a cozy night in with family or a weekend brain-teaser with friends, this puzzle delivers an experience worth framing. With rich colors, a glossy finish, and your design, it's ideal for sellers looking to offer meaningful, personalized gifts. Pre-die-cut chipboard with non-edge pieces. White metal tin box with the image on the lid. Available in 6 sizes: 30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm), 110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm), 252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm), 500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm), 1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm), 2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm). Weight by size: 30 pcs: 8 oz (227 g), 110 pcs: 8 oz (227 g), 252 pcs: 9.6 oz (272 g), 500 pcs: 20 oz (567 g), 1000 pcs: 24 oz (680 g), 2000 pcs: 28 oz (794 g). Glossy finish. Vibrant colors. Ideal for gifting or wall decor. Blank product sourced from China. Important: Choking hazard—small parts. Not suitable for children under 4 years. This product is made on demand. No minimums.",
-        "options": {"color": ["White"], "size": ["252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)", "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)", "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)", "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)"]},
+        "options": {"color": ["White"], "size": ["30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)", "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)", "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)", "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)", "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)"]},
         "size_pricing": {
-            "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)": 0,  # Base price $25.59
-            "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)": 3.74,  # +$3.74 = $29.33
-            "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)": 6.18,  # +$6.18 = $31.77
-            "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)": 14.91  # +$14.91 = $40.50
+            "30 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,  # Base price $25.40
+            "110 pcs: 10″ × 8″ (25.40 cm × 20.32 cm)": 0,  # Base price $25.40
+            "252 pcs: 14″ × 11″ (35.56 cm × 27.94 cm)": 2.19,  # +$2.19 = $27.59
+            "500 pcs: 21″ × 15.5″ (53.34 cm × 39.37 cm)": 5.93,  # +$5.93 = $31.33
+            "1000 pcs: 30″ × 20″ (76.20 cm × 50.80 cm)": 8.37,  # +$8.37 = $33.77
+            "2000 pcs: 40″ × 28″ (101.60 cm × 71.12 cm)": 17.10  # +$17.10 = $42.50
         }
     },
     {
@@ -1919,20 +1877,6 @@ PRODUCTS = [
             "S 11.8\"-17.8\"": 0,
             "M 13.5\"-20.5\"": 0,
             "L 14.8\"-23.8\"": 0
-        }
-    },
-    {
-        "name": "Die-Cut Magnets",
-        "price": 4.75,
-        "filename": "magnet.png",
-        "main_image": "magnet.png",
-        "preview_image": "miscellaneousdiecutmagnetspreview.png",
-        "description": "Make jokes, memories, or original drawings last forever with our Die-Cut Magnets. Featuring a sleek, professional matte finish, these magnets come in three sizes and can be cut into any defined shape. The entire back of each magnet is covered with a strong magnetic material, ensuring a secure hold on any metallic surface. Create travel magnets and order in bulk to sell as souvenirs, or design a cool complement to different collections for your online store. Made from 20 mil (0.5 mm) flexible vinyl. Premium matte finish on top. Black magnetic backing. 3 sizes available: 3″ × 3″ (8 × 8 cm), 4″ × 4″ (10 × 10 cm), 6″ × 6″ (15 × 15 cm). Blank product sourced from the USA. This product is made on demand. No minimums.",
-        "options": {"color": ["White"], "size": ["3\"x3\"", "4\"x4\"", "6\"x6\""]},
-        "size_pricing": {
-            "3\"x3\"": 0,
-            "4\"x4\"": 0.51,
-            "6\"x6\"": 2.55
         }
     },
     {
@@ -2013,7 +1957,7 @@ PRODUCTS = [
     },
     {
         "name": "Distressed Dad Hat",
-        "price": 23.89,
+        "price": 24.48,
         "filename": "distresseddadhat.png",
         "main_image": "distresseddadhat.png",
         "preview_image": "hatsdistresseddadhatpreview.png",
@@ -2025,19 +1969,20 @@ PRODUCTS = [
     },
     {
         "name": "Closed Back Cap",
-        "price": 27.19,
+        "price": 24.91,
         "filename": "closedbackcap.png",
         "main_image": "closedbackcap.png",
         "preview_image": "hatsclosedbackcappreview.png",
         "description": "Closed back cap with adjustable fit. Perfect for custom designs and logos.",
-        "options": {"color": ["Dark Navy", "Black", "Royal Blue", "Red", "Grey", "White", "Dark Grey", "Multicam Black", "Olive", "Multicam Green", "Khaki"], "size": ["One Size"]},
+        "options": {"color": ["Dark Navy", "Black", "Royal Blue", "Red", "Grey", "White", "Dark Grey", "Multicam Black", "Olive", "Multicam Green", "Khaki"], "size": ["S/M", "L/XL"]},
         "size_pricing": {
-            "One Size": 0
+            "S/M": 0,     # Base price $24.91
+            "L/XL": 0     # Same price $24.91
         }
     },
     {
         "name": "Five Panel Trucker Hat",
-        "price": 24.71,
+        "price": 25.39,
         "filename": "fivepaneltruckerhat.png",
         "main_image": "fivepaneltruckerhat.png",
         "preview_image": "hatsfivepaneltruckerhatpreview.png",
@@ -2063,7 +2008,7 @@ PRODUCTS = [
     },
     {
         "name": "Five Panel Baseball Cap",
-        "price": 21.96,
+        "price": 22.46,
         "filename": "youthbaseballcap.png",
         "main_image": "youthbaseballcap.png",
         "preview_image": "hatsfivepanelbaseballhatpreview.png",
@@ -2254,14 +2199,10 @@ def filter_products_by_category(category):
             "All Over Print Collar"
         ],
         'misc': [
-            "Bandana",
             "Hardcover Bound Notebook", 
-            "Coasters",
             "Apron",
             "Jigsaw Puzzle with Tin",
-            "Greeting Card",
-            "Kiss-Cut Stickers",
-            "Die-Cut Magnets"
+            "Greeting Card"
         ],
         'all-products': [],  # All Products category - will contain all products eventually
         'thumbnails': []  # Coming Soon - no products yet
