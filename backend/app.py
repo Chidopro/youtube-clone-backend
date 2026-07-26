@@ -2075,34 +2075,34 @@ PRODUCTS = [
     },
     {
         "name": "White Glossy Mug",
-        "price": 17.75,
+        "price": 16.95,
         "filename": "mug1.png",
         "main_image": "mug1.png",
         "preview_image": "mugwhiteglossymugpreview.png",
         "description": "This sturdy mug is perfect for your morning coffee, afternoon tea, or whatever hot beverage you enjoy. It's glossy white and yields vivid prints that retain their quality when dish-washed and microwaved. Add a graphic of your choice and add this best-seller to your store, so others can enjoy your magical designs too! Ceramic. 11 oz mug dimensions: 3.8″ (9.6 cm) in height, 3.2″ (8.2 cm) in diameter. 15 oz mug dimensions: 4.7″ (11.9 cm) in height, 3.3″ (8.5 cm) in diameter. 20 oz mug dimensions: 4.3″ (10.9 cm) in height, 3.7″ (9.3 cm) in diameter. Lead and BPA-free material. Dishwasher and microwave safe. Blank product sourced from China. Disclaimer: The White Glossy Mug may vary slightly in size by up to +/- 0.1″ (2 mm) due to the nature of the production process. These variations are normal and won't affect your mug's quality or functionality. This product is made on demand. No minimums.",
         "options": {"color": ["White"], "size": ["11 oz", "15 oz", "20 oz"]},
         "size_pricing": {
-            "11 oz": 0,      # Base price $17.75
-            "15 oz": 2.00,   # +$2.00 = $19.75
-            "20 oz": 5.50    # +$5.50 = $23.25
+            "11 oz": 0,      # Base price $16.95
+            "15 oz": 1.50,   # +$1.50 = $18.45
+            "20 oz": 3.00    # +$3.00 = $19.95
         }
     },
     {
         "name": "Travel Mug",
-        "price": 30.25,
+        "price": 30.48,
         "filename": "travelmug.png",
         "main_image": "travelmug.png",
         "preview_image": "mugtravelmugpreview.png",
         "description": "Enjoy your favorite beverage on the go with a premium-quality travel mug. It's made with stainless steel and keeps hot drinks hot for up to 6 h, and cold drinks cold for up to 8 h. It fits into most car cup holders and has a spill-proof plastic lid. Personalize it for yourself or add it to your online store and start selling modern drinkware. Made with stainless steel. Lead and BPA-free materials used. Hand-wash only. Blank product sourced from China. 25 oz (739 ml) size: Height: 7.9″ (20 cm), Upper diameter: 3.3″ (8.4 cm), Bottom diameter: 2.7″ (7 cm). Comes with a plastic press-in lid. 40 oz (1183 ml) size: Height: 10.4″ (26.5 cm), Upper diameter: 3.9″ (9.9 cm), Bottom diameter: 2.9″ (7.4 cm). Comes with a plastic straw and screw-on lid. Caution! To prevent steam pressure buildup, always open the lid before placing it on a hot drink. This product is made on demand. No minimums.",
         "options": {"color": ["White", "Black", "Navy", "Gray"], "size": ["25 oz", "40 oz"]},
         "size_pricing": {
-            "25 oz": 0,      # Base price $30.25
-            "40 oz": 1.00    # +$1.00 = $31.25
+            "25 oz": 0,      # Base price $30.48
+            "40 oz": 0.93    # +$0.93 = $31.41
         }
     },
     {
         "name": "Enamel Mug",
-        "price": 22.25,
+        "price": 21.82,
         "filename": "enamalmug.png",
         "main_image": "enamalmug.png",
         "preview_image": "mugenamelmugpreview.png",
@@ -2114,15 +2114,15 @@ PRODUCTS = [
     },
     {
         "name": "Colored Mug",
-        "price": 18.25,
+        "price": 18.49,
         "filename": "coloredmug.png",
         "main_image": "coloredmug.png",
         "preview_image": "mugcoloredmugpreview.png",
         "description": "This sturdy White Ceramic Mug has a colorful inside and a white print area all around the mug. Choose between vibrant color options, create your own unique designs, and start selling the mug to your customers! Ceramic. 11 oz mug dimensions: 3.79″ (9.6 cm) in height, 3.25″ (8.3 cm) in diameter. 15 oz mug dimensions: 4.69″ (11.9 cm) in height, 3.35″ (8.5 cm) in diameter. Lead and BPA-free material. White print area. Colored rim, inside, and handle. Dishwasher and microwave safe. Blank product sourced from China. This product is made on demand. No minimums. Disclaimer: This product is not suitable for children under 18 months. Depending on the light setting, the handle color of the White Ceramic Mug in Black may appear blue.",
         "options": {"color": ["Black", "Red", "Blue", "Pink", "Yellow", "Orange", "Dark Blue", "Dark Green", "Golden Yellow", "Green"], "size": ["11 oz", "15 oz"]},
         "size_pricing": {
-            "11 oz": 0,      # Base price $18.25
-            "15 oz": 2.50    # +$2.50 = $20.75
+            "11 oz": 0,      # Base price $18.49
+            "15 oz": 0.80    # +$0.80 = $19.29
         },
         "size_color_availability": {
             "11 oz": ["Black", "Red", "Blue", "Pink", "Yellow", "Orange", "Dark Blue", "Dark Green", "Golden Yellow", "Green"],
