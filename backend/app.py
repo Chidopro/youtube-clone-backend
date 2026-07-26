@@ -1397,22 +1397,33 @@ PRODUCTS = [
     # Products with both COLOR and SIZE options
     {
         "name": "T-Shirt",
-        "price": 21.75,
+        "price": 21.59,
         "filename": "guidontee.png",
         "main_image": "guidontee.png",
         "preview_image": "mensunisextshirtpreview.png",
         "description": "The Unisex Staple T-Shirt feels soft and light with just the right amount of stretch. It's comfortable and flattering for all. We can't compliment this shirt enough–it's one of our crowd favorites, and it's sure to be your next favorite too! Solid colors are 100% Airlume combed and ring-spun cotton. Ash color is 99% combed and ring-spun cotton, 1% polyester. Heather colors are 52% combed and ring-spun cotton, 48% polyester. Athletic and Black Heather are 90% combed and ring-spun cotton, 10% polyester. Heather Prism colors are 99% combed and ring-spun cotton, 1% polyester. Fabric weight: 4.2 oz./yd.² (142 g/m²). Pre-shrunk fabric. 30 singles. Side-seamed construction. Tear-away label. Shoulder-to-shoulder taping. Blank product sourced from Nicaragua, Mexico, Honduras, or the US. Disclaimer: The fabric is slightly sheer and may appear see-through, especially in lighter colors or under certain lighting conditions. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "Black Heather", "Athletic Heather", "Dark Grey Heather", "Red", "Kelly", "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal", "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "XXXXL", "XXXXXL"]},
         "size_pricing": {
-            "XS": 0,      # Same as S–XL $21.75
-            "S": 0,       # Base price $21.75
-            "M": 0,       # Base price $21.75
-            "L": 0,       # Base price $21.75
-            "XL": 0,      # Base price $21.75
-            "XXL": 1.00,  # +$1.00 = $22.75
-            "XXXL": 3.50, # +$3.50 = $25.25
-            "XXXXL": 4.75, # +$4.75 = $26.50
-            "XXXXXL": 6.44 # +$6.44 = $28.19
+            "XS": 0,      # Base price $21.59
+            "S": 0,       # Base price $21.59
+            "M": 0,       # Base price $21.59
+            "L": 0,       # Base price $21.59
+            "XL": 0,      # Base price $21.59
+            "XXL": 1.65,  # +$1.65 = $23.24
+            "XXXL": 3.30, # +$3.30 = $24.89
+            "XXXXL": 4.95, # +$4.95 = $26.54
+            "XXXXXL": 6.60 # +$6.60 = $28.19
+        },
+        "size_color_availability": {
+            "XS": ["Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red", "Black Heather", "Kelly", "Heather Midnight Navy", "Heather Prism Ice Blue", "Heather Prism Lilac", "Soft Cream"],
+            "S": ["Black", "White", "Navy", "Black Heather", "Athletic Heather", "Dark Grey Heather", "Red", "Kelly", "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal", "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"],
+            "M": ["Black", "White", "Navy", "Black Heather", "Athletic Heather", "Dark Grey Heather", "Red", "Kelly", "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal", "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"],
+            "L": ["Black", "White", "Navy", "Black Heather", "Athletic Heather", "Dark Grey Heather", "Red", "Kelly", "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal", "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"],
+            "XL": ["Black", "White", "Navy", "Black Heather", "Athletic Heather", "Dark Grey Heather", "Red", "Kelly", "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal", "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"],
+            "XXL": ["Black", "White", "Navy", "Black Heather", "Athletic Heather", "Dark Grey Heather", "Red", "Kelly", "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal", "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"],
+            "XXXL": ["Black", "White", "Navy", "Black Heather", "Athletic Heather", "Dark Grey Heather", "Red", "Kelly", "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal", "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"],
+            "XXXXL": ["Black", "White", "Navy", "Black Heather", "Athletic Heather", "Dark Grey Heather", "Red", "Kelly", "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal", "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"],
+            "XXXXXL": ["Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red", "Black Heather"]
         }
     },
     {
@@ -1422,14 +1433,24 @@ PRODUCTS = [
         "main_image": "mensfittedtshirt.png",
         "preview_image": "mensfittedtshirtpreview.png",
         "description": "The Next Level 3600 Men's Fitted T-Shirt combines softness with a modern, tailored fit that holds its shape wash after wash. Its lightweight feel makes it a natural everyday favorite, while the tear-away tag offers room for custom branding. 100% ring-spun combed cotton. Heather Grey is 90% cotton, 10% polyester. Fabric weight: 4.3 oz/y² (145.8 g/m²). 32 singles. Pre-shrunk. Tear-away tag. Blank product sourced from Honduras, Nicaragua, Mexico, or Cambodia. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue", "Red", "Desert Pink", "Light Blue"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
+        "options": {"color": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue", "Red", "Desert Pink", "Light Blue"], "size": ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "S": 0,       # No extra charge  
-            "M": 0,       # No extra charge
-            "L": 0,       # No extra charge
-            "XL": 0,      # No extra charge
+            "XS": 0,      # Base price $24.11
+            "S": 0,       # Base price $24.11
+            "M": 0,       # Base price $24.11
+            "L": 0,       # Base price $24.11
+            "XL": 0,      # Base price $24.11
             "XXL": 1.65,  # +$1.65
             "XXXL": 3.30  # +$3.30
+        },
+        "size_color_availability": {
+            "XS": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue"],
+            "S": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue", "Red", "Desert Pink", "Light Blue"],
+            "M": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue", "Red", "Desert Pink", "Light Blue"],
+            "L": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue", "Red", "Desert Pink", "Light Blue"],
+            "XL": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue", "Red", "Desert Pink", "Light Blue"],
+            "XXL": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue", "Red", "Desert Pink", "Light Blue"],
+            "XXXL": ["Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue", "Red", "Desert Pink", "Light Blue"]
         }
     },
     {
@@ -1451,19 +1472,19 @@ PRODUCTS = [
     },
     {
         "name": "Men's Tank Top",
-        "price": 24.75,
+        "price": 23.87,
         "filename": "menstanktoppreview.png",
         "main_image": "menstanktoppreview.png",
         "preview_image": "menstanktoppreview.png",
         "description": "The Men's Staple Tank Top is made of high-quality durable materials. Wear it on a sunny day out or offer it to your customers on your online store. 100% combed and ring-spun cotton. Tri-blends are 50% polyester, 25% combed, 25% ring-spun cotton, and rayon. Athletic Heather is 90% airlume combed and ring-spun cotton, 10% polyester. All the other Heather colors are 52% airlume combed and ring-spun cotton, 48% polyester. Fabric weight: 4.2 oz/yd² (142.40 g/m²), triblends: 3.8 oz/yd² (90.07 g/m²). 30 singles. Regular fit. Side-seamed construction. Blank product sourced from Nicaragua, Honduras, or the US. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "White", "Navy", "True Royal", "Red", "Athletic Heather"], "size": ["XS", "S", "M", "L", "XL", "XXL"]},
         "size_pricing": {
-            "XS": -0.88,  # $23.87 (unchanged)
-            "S": 0,       # Base price $24.75
-            "M": 0,       # Base price $24.75
-            "L": 0,       # Base price $24.75
-            "XL": 0,      # Base price $24.75
-            "XXL": 1.50   # +$1.50 = $26.25
+            "XS": 0,      # Base price $23.87
+            "S": 0,       # Base price $23.87
+            "M": 0,       # Base price $23.87
+            "L": 0,       # Base price $23.87
+            "XL": 0,      # Base price $23.87
+            "XXL": 1.65   # +$1.65 = $25.52
         }
     },
     {
@@ -1484,19 +1505,19 @@ PRODUCTS = [
     },
     {
         "name": "Hoodie",
-        "price": 34.50,
+        "price": 35.35,
         "filename": "tested.png",
         "main_image": "tested.png",
         "preview_image": "mensunisexhoodiepreview.png",
         "description": "Classic unisex hoodie with a front pouch pocket and matching flat drawstrings. The 100% cotton exterior makes this hoodie soft to the touch. What's more, if you go with custom prints, you can personalize the hoodie to your heart's content and maximize your branding thanks to the custom inside label. Use it to showcase your logo, strengthen customer loyalty, and boost your brand's visibility on the market. 65% ring-spun cotton, 35% polyester. Charcoal Heather is 60% ring-spun cotton, 40% polyester. Carbon Grey is 55% ring-spun cotton, 45% polyester. 100% cotton face. Fabric weight: 8.5 oz./yd.² (288.2 g/m²). Front pouch pocket. Self-fabric patch on the back. Matching flat drawstrings. 3-panel hood. Tear-away tag. Blank product sourced from Pakistan. Disclaimer: Please be aware that, for legal reasons, this product comes with a manufacturer's side tag attached. The tag is discreet and won't compromise your design's integrity. This product is made on demand. No minimums.",
         "options": {"color": ["Black", "Navy Blazer", "Maroon", "Charcoal Heather", "Carbon Grey", "White", "Vintage Black", "Team Royal", "Purple", "Forest Green", "Military Green", "Team Red", "Adobe", "Dusty Rose", "Latte", "Khaki", "Team Gold", "Carolina Blue", "Light Pink", "Lavender"], "size": ["S", "M", "L", "XL", "XXL", "XXXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $34.50
-            "M": 0,       # Base price $34.50
-            "L": 0,       # Base price $34.50
-            "XL": 0,      # Base price $34.50
-            "XXL": 1.25,  # +$1.25 = $35.75
-            "XXXL": 2.75  # +$2.75 = $37.25
+            "S": 0,       # Base price $35.35
+            "M": 0,       # Base price $35.35
+            "L": 0,       # Base price $35.35
+            "XL": 0,      # Base price $35.35
+            "XXL": 1.65,  # +$1.65 = $37.00
+            "XXXL": 3.30  # +$3.30 = $38.65
         }
     },
     {
@@ -1917,29 +1938,29 @@ PRODUCTS = [
     },
     {
         "name": "Men's Long Sleeve Shirt",
-        "price": 22.95,
+        "price": 22.79,
         "filename": "menslongsleeve.png",
         "main_image": "menslongsleeve.png",
         "preview_image": "menslongsleevepreview.png",
         "description": "With its classic and regular fit, this Men's Long Sleeve Shirt is a true wardrobe essential. It'll look great on its own or layered under a jacket and will be perfect for a relaxed and casual setting. 100% cotton. Sport Grey is 90% cotton, 10% polyester. Fabric weight: 6.0 oz./yd.² (203.43 g/m²). Classic fit with long sleeves and rib cuffs. Pre-shrunk jersey knit. Seamless double-needle ⅞ ″ (2.2 cm) collar. Double-needle bottom hem. Taped neck and shoulders. Quarter-turned to avoid crease down the middle. Blank product sourced from Honduras, Haiti, or Nicaragua. Disclaimer: Due to the fabric properties, the White color variant may appear off-white rather than bright white. This product is made on demand. No minimums.",
-        "options": {"color": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
+        "options": {"color": ["Black", "White", "Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"], "size": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"]},
         "size_pricing": {
-            "S": 0,       # Base price $22.95
-            "M": 0,       # Base price $22.95
-            "L": 0,       # Base price $22.95
-            "XL": 0,      # Base price $22.95
-            "XXL": 3.80,  # +$3.80 = $26.75
-            "XXXL": 4.10, # +$4.10 = $27.05
-            "XXXXL": 4.79 # +$4.79 = $27.74
+            "S": 0,       # Base price $22.79
+            "M": 0,       # Base price $22.79
+            "L": 0,       # Base price $22.79
+            "XL": 0,      # Base price $22.79
+            "XXL": 1.65,  # +$1.65 = $24.44
+            "XXXL": 3.30, # +$3.30 = $26.09
+            "XXXXL": 4.95 # +$4.95 = $27.74
         },
         "size_color_availability": {
-            "S": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
-            "M": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
-            "L": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
-            "XL": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
-            "XXL": ["Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
-            "XXXL": ["Navy", "Royal", "Sport Grey", "Red", "Light Blue", "Military Green", "Irish Green", "Ash", "Forest Green", "Indigo Blue"],
-            "XXXXL": ["Navy", "Sport Grey", "Red", "Military Green", "Irish Green", "Ash"]
+            "S": ["Black", "White", "Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
+            "M": ["Black", "White", "Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
+            "L": ["Black", "White", "Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
+            "XL": ["Black", "White", "Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
+            "XXL": ["Black", "White", "Navy", "Royal", "Sport Grey", "Maroon", "Red", "Light Blue", "Military Green", "Sand", "Irish Green", "Ash", "Forest Green", "Indigo Blue", "Light Pink"],
+            "XXXL": ["Black", "White", "Navy", "Royal", "Sport Grey", "Red", "Light Blue", "Military Green", "Irish Green", "Ash", "Forest Green", "Indigo Blue"],
+            "XXXXL": ["Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Irish Green", "Ash"]
         }
     },
     {
@@ -2858,44 +2879,49 @@ def send_order():
                         "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
                     }), 400
             
-            # Check T-Shirt availability
+            # Check T-Shirt availability (XS / 5XL color limits)
             if product_name in ("Unisex T-Shirt", "T-Shirt"):
-                # Colors not available in XS
-                unavailable_in_xs = [
-                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
-                    "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
-                ]
-                if color in unavailable_in_xs and size == "XS":
+                xs_colors = {
+                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red",
+                    "Black Heather", "Kelly", "Heather Midnight Navy", "Heather Prism Ice Blue",
+                    "Heather Prism Lilac", "Soft Cream",
+                }
+                xl5_colors = {
+                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red", "Black Heather",
+                }
+                if size == "XS" and color and color not in xs_colors:
                     return jsonify({
                         "success": False,
                         "error": f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
                     }), 400
-                
-                # Colors not available in 5XL (XXXXXL)
-                unavailable_in_5xl = [
-                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
-                    "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve",
-                    "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
-                ]
-                if color in unavailable_in_5xl and size == "XXXXXL":
+                if size == "XXXXXL" and color and color not in xl5_colors:
                     return jsonify({
                         "success": False,
                         "error": f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
                     }), 400
 
+            # Check Mens Fitted T-Shirt availability (XS color limits)
+            if product_name == "Mens Fitted T-Shirt":
+                xs_colors = {"Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue"}
+                if size == "XS" and color and color not in xs_colors:
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size XS for Mens Fitted T-Shirt. Please select a different size or color."
+                    }), 400
+
             # Check Men's Long Sleeve Shirt availability
             if product_name == "Men's Long Sleeve Shirt":
-                unavailable_sizes_by_color = {
-                    "Royal": ["XXXXL"],
-                    "Maroon": ["XXXL", "XXXXL"],
-                    "Light Blue": ["XXXXL"],
-                    "Sand": ["XXXL", "XXXXL"],
-                    "Forest Green": ["XXXXL"],
-                    "Indigo Blue": ["XXXXL"],
-                    "Light Pink": ["XXXL", "XXXXL"],
+                xxxl_colors = {
+                    "Black", "White", "Navy", "Royal", "Sport Grey", "Red", "Light Blue",
+                    "Military Green", "Irish Green", "Ash", "Forest Green", "Indigo Blue",
                 }
-                blocked = unavailable_sizes_by_color.get(color, [])
-                if size in blocked:
+                xxxxl_colors = {"Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Irish Green", "Ash"}
+                if size == "XXXL" and color and color not in xxxl_colors:
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
+                    }), 400
+                if size == "XXXXL" and color and color not in xxxxl_colors:
                     return jsonify({
                         "success": False,
                         "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
@@ -3184,32 +3210,49 @@ def place_order():
                         "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
                     }), 400
             
-            # Check T-Shirt availability
+            # Check T-Shirt availability (XS / 5XL color limits)
             if product_name in ("Unisex T-Shirt", "T-Shirt"):
-                # Colors not available in XS
-                unavailable_in_xs = [
-                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
-                    "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
-                ]
-                if color in unavailable_in_xs and size == "XS":
+                xs_colors = {
+                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red",
+                    "Black Heather", "Kelly", "Heather Midnight Navy", "Heather Prism Ice Blue",
+                    "Heather Prism Lilac", "Soft Cream",
+                }
+                xl5_colors = {
+                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red", "Black Heather",
+                }
+                if size == "XS" and color and color not in xs_colors:
                     return jsonify({
                         "success": False,
                         "error": f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
                     }), 400
+                if size == "XXXXXL" and color and color not in xl5_colors:
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
+                    }), 400
+
+            # Check Mens Fitted T-Shirt availability (XS color limits)
+            if product_name == "Mens Fitted T-Shirt":
+                xs_colors = {"Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue"}
+                if size == "XS" and color and color not in xs_colors:
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size XS for Mens Fitted T-Shirt. Please select a different size or color."
+                    }), 400
 
             # Check Men's Long Sleeve Shirt availability
             if product_name == "Men's Long Sleeve Shirt":
-                unavailable_sizes_by_color = {
-                    "Royal": ["XXXXL"],
-                    "Maroon": ["XXXL", "XXXXL"],
-                    "Light Blue": ["XXXXL"],
-                    "Sand": ["XXXL", "XXXXL"],
-                    "Forest Green": ["XXXXL"],
-                    "Indigo Blue": ["XXXXL"],
-                    "Light Pink": ["XXXL", "XXXXL"],
+                xxxl_colors = {
+                    "Black", "White", "Navy", "Royal", "Sport Grey", "Red", "Light Blue",
+                    "Military Green", "Irish Green", "Ash", "Forest Green", "Indigo Blue",
                 }
-                blocked = unavailable_sizes_by_color.get(color, [])
-                if size in blocked:
+                xxxxl_colors = {"Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Irish Green", "Ash"}
+                if size == "XXXL" and color and color not in xxxl_colors:
+                    return jsonify({
+                        "success": False,
+                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
+                    }), 400
+                if size == "XXXXL" and color and color not in xxxxl_colors:
                     return jsonify({
                         "success": False,
                         "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
@@ -3629,42 +3672,45 @@ def create_checkout_session():
                         "error": f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
                     }), 400
             
-            # Check T-Shirt availability
+            # Check T-Shirt availability (XS / 5XL color limits)
             if product_name in ("Unisex T-Shirt", "T-Shirt"):
-                # Colors not available in XS
-                unavailable_in_xs = [
-                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
-                    "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
-                ]
-                if color in unavailable_in_xs and size == "XS":
+                xs_colors = {
+                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red",
+                    "Black Heather", "Kelly", "Heather Midnight Navy", "Heather Prism Ice Blue",
+                    "Heather Prism Lilac", "Soft Cream",
+                }
+                xl5_colors = {
+                    "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red", "Black Heather",
+                }
+                if size == "XS" and color and color not in xs_colors:
                     return jsonify({
                         "error": f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
                     }), 400
-                
-                # Colors not available in 5XL (XXXXXL)
-                unavailable_in_5xl = [
-                    "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
-                    "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve",
-                    "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
-                ]
-                if color in unavailable_in_5xl and size == "XXXXXL":
+                if size == "XXXXXL" and color and color not in xl5_colors:
                     return jsonify({
                         "error": f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
                     }), 400
 
+            # Check Mens Fitted T-Shirt availability (XS color limits)
+            if product_name == "Mens Fitted T-Shirt":
+                xs_colors = {"Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue"}
+                if size == "XS" and color and color not in xs_colors:
+                    return jsonify({
+                        "error": f"{color} is not available in size XS for Mens Fitted T-Shirt. Please select a different size or color."
+                    }), 400
+
             # Check Men's Long Sleeve Shirt availability
             if product_name == "Men's Long Sleeve Shirt":
-                unavailable_sizes_by_color = {
-                    "Royal": ["XXXXL"],
-                    "Maroon": ["XXXL", "XXXXL"],
-                    "Light Blue": ["XXXXL"],
-                    "Sand": ["XXXL", "XXXXL"],
-                    "Forest Green": ["XXXXL"],
-                    "Indigo Blue": ["XXXXL"],
-                    "Light Pink": ["XXXL", "XXXXL"],
+                xxxl_colors = {
+                    "Black", "White", "Navy", "Royal", "Sport Grey", "Red", "Light Blue",
+                    "Military Green", "Irish Green", "Ash", "Forest Green", "Indigo Blue",
                 }
-                blocked = unavailable_sizes_by_color.get(color, [])
-                if size in blocked:
+                xxxxl_colors = {"Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Irish Green", "Ash"}
+                if size == "XXXL" and color and color not in xxxl_colors:
+                    return jsonify({
+                        "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
+                    }), 400
+                if size == "XXXXL" and color and color not in xxxxl_colors:
                     return jsonify({
                         "error": f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
                     }), 400

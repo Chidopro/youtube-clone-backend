@@ -435,36 +435,37 @@ def _validate_product_availability(cart):
             if color == "Bubblegum":
                 return False, f"{color} is currently out of stock for Women's Crop Top. Please select a different color."
         
-        # T-Shirt restrictions
+        # T-Shirt restrictions (XS / 5XL color limits)
         if product_name in ("Unisex T-Shirt", "T-Shirt"):
-            unavailable_in_xs = [
-                "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
-                "Mauve", "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
-            ]
-            if color in unavailable_in_xs and size == "XS":
+            xs_colors = {
+                "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red",
+                "Black Heather", "Kelly", "Heather Midnight Navy", "Heather Prism Ice Blue",
+                "Heather Prism Lilac", "Soft Cream",
+            }
+            xl5_colors = {
+                "Black", "White", "Navy", "Dark Grey Heather", "Athletic Heather", "Red", "Black Heather",
+            }
+            if size == "XS" and color and color not in xs_colors:
                 return False, f"{color} is not available in size XS for T-Shirt. Please select a different size or color."
-            
-            unavailable_in_5xl = [
-                "Heather Midnight Navy", "True Royal", "Asphalt", "Heather True Royal",
-                "Heather Prism Lilac", "Soft Cream", "Heather Prism Ice Blue", "Mauve",
-                "Forest", "Heather Forest", "Olive", "Heather Deep Teal"
-            ]
-            if color in unavailable_in_5xl and size == "XXXXXL":
+            if size == "XXXXXL" and color and color not in xl5_colors:
                 return False, f"{color} is not available in size 5XL for T-Shirt. Please select a different size or color."
 
-        # Men's Long Sleeve Shirt — size-specific color limits (US/Mex catalog)
+        # Mens Fitted T-Shirt — XS color limits
+        if product_name == "Mens Fitted T-Shirt":
+            xs_colors = {"Black", "White", "Heather Grey", "Midnight Navy", "Royal Blue"}
+            if size == "XS" and color and color not in xs_colors:
+                return False, f"{color} is not available in size XS for Mens Fitted T-Shirt. Please select a different size or color."
+
+        # Men's Long Sleeve Shirt — size-specific color limits
         if product_name == "Men's Long Sleeve Shirt":
-            unavailable_sizes_by_color = {
-                "Royal": ["XXXXL"],
-                "Maroon": ["XXXL", "XXXXL"],
-                "Light Blue": ["XXXXL"],
-                "Sand": ["XXXL", "XXXXL"],
-                "Forest Green": ["XXXXL"],
-                "Indigo Blue": ["XXXXL"],
-                "Light Pink": ["XXXL", "XXXXL"],
+            xxxl_colors = {
+                "Black", "White", "Navy", "Royal", "Sport Grey", "Red", "Light Blue",
+                "Military Green", "Irish Green", "Ash", "Forest Green", "Indigo Blue",
             }
-            blocked = unavailable_sizes_by_color.get(color, [])
-            if size in blocked:
+            xxxxl_colors = {"Black", "White", "Navy", "Sport Grey", "Red", "Military Green", "Irish Green", "Ash"}
+            if size == "XXXL" and color and color not in xxxl_colors:
+                return False, f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
+            if size == "XXXXL" and color and color not in xxxxl_colors:
                 return False, f"{color} is not available in size {size} for Men's Long Sleeve Shirt. Please select a different size or color."
 
         # Colored Mug — 15 oz does not offer Yellow / Orange / Golden Yellow / Green
