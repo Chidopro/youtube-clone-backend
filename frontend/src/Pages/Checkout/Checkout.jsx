@@ -839,29 +839,37 @@ const Checkout = () => {
                   });
                 };
                 const itemName = item.name || item.product || `Item ${i + 1}`;
+                const itemSize = (item.size || '').trim();
                 const isShirt = SHIRT_CATEGORIES.includes(item.category);
                 return (
                   <div key={i} className="design-modal-item-block">
-                    <h3 className="design-modal-item-title">{itemName}</h3>
+                    <h3 className="design-modal-item-title">
+                      {itemName}
+                      {itemSize ? <span className="design-modal-item-size"> · {itemSize}</span> : null}
+                    </h3>
                     {isShirt && (
                     <div className="design-modal-field">
-                      <label className="design-modal-field-label">Image orientation</label>
                       <div className="design-modal-options design-modal-orientation-options">
                         <label className="design-modal-orientation-option">
-                          <img src="/shirt-portrait.png" alt="Portrait print on shirt" className="design-modal-orientation-img" />
+                          <span className="design-modal-orientation-img-wrap">
+                            <img src="/shirt-portrait.png" alt="Portrait print on shirt" className="design-modal-orientation-img" />
+                          </span>
                           <span className="design-modal-option-row">
                             <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'portrait'} onChange={() => setPref('orientation', 'portrait')} />
                             <span className="design-modal-option-text">Portrait</span>
                           </span>
                         </label>
                         <label className="design-modal-orientation-option">
-                          <img src="/shirt-landscape.png" alt="Landscape print on shirt" className="design-modal-orientation-img" />
+                          <span className="design-modal-orientation-img-wrap">
+                            <img src="/shirt-landscape.png" alt="Landscape print on shirt" className="design-modal-orientation-img" />
+                          </span>
                           <span className="design-modal-option-row">
                             <input type="radio" name={`orientation-${i}`} checked={prefs.orientation === 'landscape'} onChange={() => setPref('orientation', 'landscape')} />
                             <span className="design-modal-option-text">Landscape</span>
                           </span>
                         </label>
                       </div>
+                      <span className="design-modal-field-label design-modal-field-label--under">Image orientation</span>
                     </div>
                     )}
                   </div>

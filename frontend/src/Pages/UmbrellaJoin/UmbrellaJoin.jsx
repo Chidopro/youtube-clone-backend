@@ -40,7 +40,9 @@ const UmbrellaJoin = () => {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const finishLogin = (data) => {
@@ -126,11 +128,11 @@ const UmbrellaJoin = () => {
         ) : (
           <>
             <h1>Join {invite?.owner_name}&apos;s network</h1>
-            <p>
-              You&apos;ve been invited to upload favorites on this creator&apos;s storefront.
-              Use the email below — Proton, Yahoo, and other non-Google addresses can create
-              an account with email and password.
+            <p className="umbrella-join-lead">
+              You&apos;ve been invited to this storefront. Use the email below to create an account
+              or sign in.
             </p>
+
             <p className="umbrella-join-email">{invite?.invited_email}</p>
 
             {message && (
@@ -141,16 +143,15 @@ const UmbrellaJoin = () => {
 
             <button
               type="button"
-              className="umbrella-join-btn umbrella-join-btn-google"
-              onClick={acceptWithGoogle}
+              className="umbrella-join-btn umbrella-join-btn-primary"
+              onClick={createAccountWithEmail}
               disabled={authLoading}
             >
-              Sign in with Google
+              {authLoading ? 'Sending…' : 'New here? Create account with this email'}
             </button>
-            <p className="umbrella-join-hint">Only if this invite email is your Google account</p>
 
             <div className="umbrella-join-divider">
-              <span>or use email &amp; password</span>
+              <span>Already have an account?</span>
             </div>
 
             <form className="umbrella-join-form" onSubmit={acceptWithPassword}>
@@ -175,7 +176,7 @@ const UmbrellaJoin = () => {
                   tabIndex={-1}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
               <button
@@ -187,14 +188,21 @@ const UmbrellaJoin = () => {
               </button>
             </form>
 
+            <div className="umbrella-join-divider">
+              <span>or</span>
+            </div>
+
             <button
               type="button"
-              className="umbrella-join-link-btn"
-              onClick={createAccountWithEmail}
+              className="umbrella-join-btn umbrella-join-btn-google"
+              onClick={acceptWithGoogle}
               disabled={authLoading}
             >
-              New here? Create account with this email
+              Sign in with Google
             </button>
+            <p className="umbrella-join-hint umbrella-join-hint-last">
+              Only if this invite email is your Google account
+            </p>
           </>
         )}
       </div>

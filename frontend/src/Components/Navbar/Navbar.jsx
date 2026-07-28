@@ -16,8 +16,9 @@ import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from 
 import { AdminService } from '../../utils/adminService'
 import { useCreator } from '../../contexts/CreatorContext'
 import { getSubdomain } from '../../utils/subdomainService'
+import Sidebar from '../Sidebar/Sidebar'
 
-const Navbar = ({ setSidebar, resetCategory }) => {
+const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) => {
     const creatorContext = useCreator();
     const creatorSettings = creatorContext?.creatorSettings ?? null;
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
@@ -771,8 +772,7 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         src={menu_icon}
                         alt="Menu"
                         className="menu-icon"
-                        onClick={() => setSidebar(prev => !prev)}
-                        onTouchStart={(e) => {
+                        onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             setSidebar(prev => !prev);
@@ -800,6 +800,24 @@ const Navbar = ({ setSidebar, resetCategory }) => {
                         )}
                     </div>
                 </div>
+                {sidebar && !isOrderSuccessPage && (
+                    <div className="nav-mobile-menu" role="dialog" aria-label="Menu">
+                        <button
+                            type="button"
+                            className="nav-mobile-menu-backdrop"
+                            aria-label="Close menu"
+                            onClick={() => setSidebar(false)}
+                        />
+                        <div className="nav-mobile-menu-panel" onClick={(e) => e.stopPropagation()}>
+                            <Sidebar
+                                sidebar={sidebar}
+                                category={category}
+                                setCategory={setCategory}
+                                setSidebar={setSidebar}
+                            />
+                        </div>
+                    </div>
+                )}
                 <div className="nav-center-right flex-div">
                     <div className="nav-middle flex-div">
                         <div className="search-box flex-div">

@@ -3330,6 +3330,27 @@ def place_order():
             logger.error(f"❌ Order data keys being saved: {list(order_data.keys())}")
             logger.error(f"❌ creator_user_id value: {creator_user_id_from_subdomain}")
             logger.error(f"❌ subdomain value: {subdomain_from_request}")
+            # Retry without huge base64 screenshots so the order still exists for Print Quality on other machines
+            try:
+                slim = dict(order_data)
+                slim.pop("selected_screenshot", None)
+                slim_cart = []
+                for item in (slim.get("cart") or []):
+                    if isinstance(item, dict):
+                        it = dict(item)
+                        for k in ("selected_screenshot", "screenshot", "img", "thumbnail", "edited_screenshot"):
+                            val = it.get(k)
+                            if isinstance(val, str) and val.startswith("data:image") and len(val) > 50000:
+                                it.pop(k, None)
+                        slim_cart.append(it)
+                    else:
+                        slim_cart.append(item)
+                slim["cart"] = slim_cart
+                orders_write.table("orders").insert(slim).execute()
+                stored_in_db = True
+                logger.info(f"✅ Order {order_id} stored in database (slim cart without huge data-URL screenshots)")
+            except Exception as slim_err:
+                logger.error(f"❌ Slim order insert also failed: {slim_err}")
 
         # Always keep an in-memory backup for admin dashboard/tools and get-order-screenshot
         order_store[order_id] = {
@@ -5359,22 +5380,48 @@ def get_order_screenshot(order_id):
         order_data = None
         cart = []
         from_db = False
+        raw = (order_id or "").strip()
+        candidates = []
+        if raw:
+            candidates.append(raw)
+            upper = raw.upper()
+            if upper.startswith("ORD-"):
+                bare = raw[4:]
+                if bare:
+                    candidates.append(bare)
+                    candidates.append("ORD-" + bare.upper())
+            else:
+                candidates.append("ORD-" + upper)
+        seen = set()
+        id_list = []
+        for c in candidates:
+            if c and c not in seen:
+                seen.add(c)
+                id_list.append(c)
+
         # Prefer in-memory order_store first (screenshot is always stored there at checkout)
-        if order_id in order_store:
-            order_data = dict(order_store[order_id])
-            cart = order_data.get('cart', [])
-            logger.info(f"✅ Retrieved order {order_id} from in-memory store (screenshot available)")
-        # Else load from database
+        for c in id_list:
+            if c in order_store:
+                order_data = dict(order_store[c])
+                cart = order_data.get('cart', [])
+                logger.info(f"✅ Retrieved order {c} from in-memory store (screenshot available)")
+                break
+        # Else load from database (service role bypasses RLS — anon often cannot read orders)
         if not order_data:
-            result = supabase.table('orders').select('*').eq('order_id', order_id).execute()
-            if not result.data:
-                alt_result = supabase.table('orders').select('*').eq('id', order_id).execute()
+            db_client = supabase_admin if supabase_admin else supabase
+            result = type("R", (), {"data": None})()
+            for c in id_list:
+                result = db_client.table('orders').select('*').eq('order_id', c).execute()
+                if result.data:
+                    break
+                alt_result = db_client.table('orders').select('*').eq('id', c).execute()
                 if alt_result.data:
                     result = alt_result
-                else:
-                    alt2_result = supabase.table('orders').select('*').eq('order_number', order_id).execute()
-                    if alt2_result.data:
-                        result = alt2_result
+                    break
+                alt2_result = db_client.table('orders').select('*').eq('order_number', c).execute()
+                if alt2_result.data:
+                    result = alt2_result
+                    break
             if not result.data:
                 response = jsonify({
                     "success": False,
@@ -5383,10 +5430,11 @@ def get_order_screenshot(order_id):
                 return response, 404
             order_data = result.data[0]
             from_db = True
-            logger.info(f"✅ Retrieved order {order_id} from database")
+            logger.info(f"✅ Retrieved order {order_data.get('order_id', order_id)} from database")
         # If we loaded from DB but order is also in order_store, merge screenshot from store (same instance may have it)
-        if from_db and order_id in order_store:
-            stored = order_store[order_id]
+        resolved_id = order_data.get("order_id") or order_id
+        if from_db and resolved_id in order_store:
+            stored = order_store[resolved_id]
             if stored.get("selected_screenshot"):
                 order_data = dict(order_data)
                 order_data["selected_screenshot"] = stored["selected_screenshot"]
@@ -6544,79 +6592,91 @@ def admin_disapprove_creator(user_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/users/<user_id>/delete-account", methods=["DELETE"])
-@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+@app.route("/api/users/<user_id>/delete-account", methods=["DELETE", "OPTIONS"])
 def delete_user_account(user_id):
     """Delete user account and all associated data - uses admin client to bypass RLS"""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
     try:
         logger.info(f"🗑️ Attempting to delete user account: {user_id}")
-        
-        # Use admin client to bypass RLS (same pattern as other admin endpoints)
-        # This allows admin to delete users even when RLS would normally block it
+
+        # Require the signed-in session to match the account being deleted (or admin).
+        session_user_id, auth_err = _authenticated_users_id()
+        if auth_err is not None:
+            return auth_err[0], auth_err[1]
+        if str(session_user_id) != str(user_id):
+            me = _cf_user_row(session_user_id) if session_user_id else None
+            is_admin = bool(me and (me.get("is_admin") or me.get("admin_role")))
+            if not is_admin:
+                return jsonify({"success": False, "error": "Not authorized to delete this account"}), 403
+
         client_to_use = supabase_admin if supabase_admin else supabase
-        
         if not supabase_admin:
             logger.warning("⚠️ Admin client not available - deletions may fail due to RLS")
-        
-        # Delete user's videos
+
+        def _safe_delete(table, **filters):
+            try:
+                q = client_to_use.table(table).delete()
+                for k, v in filters.items():
+                    q = q.eq(k, v)
+                q.execute()
+                logger.info(f"✅ Deleted {table} for user {user_id} ({filters})")
+            except Exception as e:
+                logger.error(f"❌ Error deleting {table}: {str(e)}")
+
+        _safe_delete("videos2", user_id=user_id)
+        _safe_delete("subscriptions", subscriber_id=user_id)
+        _safe_delete("subscriptions", channel_id=user_id)
+        _safe_delete("user_subscriptions", user_id=user_id)
+        _safe_delete("channel_friends", friend_id=user_id)
+        _safe_delete("channel_friends", channel_owner_id=user_id)
         try:
-            client_to_use.table('videos2').delete().eq('user_id', user_id).execute()
-            logger.info(f"✅ Deleted videos for user {user_id}")
+            # Remove invites for this user's email
+            urow = client_to_use.table("users").select("email").eq("id", user_id).limit(1).execute()
+            email = ((urow.data or [{}])[0].get("email") or "").strip().lower()
+            if email:
+                client_to_use.table("umbrella_email_invites").delete().eq("invited_email", email).execute()
+                logger.info(f"✅ Deleted umbrella_email_invites for {email}")
         except Exception as e:
-            logger.error(f"❌ Error deleting videos: {str(e)}")
-        
-        # Delete user's subscriptions (where they are the subscriber)
+            logger.error(f"❌ Error deleting umbrella_email_invites: {str(e)}")
+        _safe_delete("creator_favorites", user_id=user_id)
+        _safe_delete("creator_favorite_lists", owner_user_id=user_id)
         try:
-            client_to_use.table('subscriptions').delete().eq('subscriber_id', user_id).execute()
-            logger.info(f"✅ Deleted subscriptions for user {user_id}")
-        except Exception as e:
-            logger.error(f"❌ Error deleting subscriptions: {str(e)}")
-        
-        # Delete user's channel subscriptions (where they are the channel)
+            client_to_use.table("umbrella_collaborator_payouts").delete().eq(
+                "collaborator_user_id", user_id
+            ).execute()
+        except Exception:
+            pass
+
         try:
-            client_to_use.table('subscriptions').delete().eq('channel_id', user_id).execute()
-            logger.info(f"✅ Deleted channel subscriptions for user {user_id}")
-        except Exception as e:
-            logger.error(f"❌ Error deleting channel subscriptions: {str(e)}")
-        
-        # Delete user's subscription tier
-        try:
-            client_to_use.table('user_subscriptions').delete().eq('user_id', user_id).execute()
-            logger.info(f"✅ Deleted user subscription for user {user_id}")
-        except Exception as e:
-            logger.error(f"❌ Error deleting user subscription: {str(e)}")
-        
-        # Friend functionality removed - no friend requests to delete
-        
-        # Delete user's products (skip if products table has no user_id column)
-        try:
-            client_to_use.table('products').delete().eq('user_id', user_id).execute()
+            client_to_use.table("products").delete().eq("user_id", user_id).execute()
             logger.info(f"✅ Deleted products for user {user_id}")
         except Exception as e:
             err_msg = str(e)
-            if 'user_id' in err_msg and 'does not exist' in err_msg:
-                logger.info(f"⏭️ Skipped products delete (table has no user_id)")
+            if "user_id" in err_msg and "does not exist" in err_msg:
+                logger.info("⏭️ Skipped products delete (table has no user_id)")
             else:
                 logger.error(f"❌ Error deleting products: {err_msg}")
-        
-        # Delete user's sales
+
+        _safe_delete("sales", user_id=user_id)
+
         try:
-            client_to_use.table('sales').delete().eq('user_id', user_id).execute()
-            logger.info(f"✅ Deleted sales for user {user_id}")
-        except Exception as e:
-            logger.error(f"❌ Error deleting sales: {str(e)}")
-        
-        # Finally, delete the user profile (most important - must succeed)
-        try:
-            client_to_use.table('users').delete().eq('id', user_id).execute()
+            client_to_use.table("users").delete().eq("id", user_id).execute()
             logger.info(f"✅ Deleted user profile for user {user_id}")
         except Exception as e:
             logger.error(f"❌ Error deleting user profile: {str(e)}")
             return jsonify({"success": False, "error": f"Failed to delete user profile: {str(e)}"}), 500
-        
+
+        # Best-effort: remove matching Supabase Auth user if present
+        try:
+            if supabase_admin:
+                supabase_admin.auth.admin.delete_user(user_id)
+        except Exception as auth_del_err:
+            logger.warning("Auth user delete skipped for %s: %s", user_id, auth_del_err)
+
         logger.info(f"✅ Successfully deleted all data for user {user_id}")
         return jsonify({"success": True, "message": "Account deleted successfully"})
-        
+
     except Exception as e:
         logger.error(f"❌ Error in delete_user_account: {str(e)}")
         return jsonify({"success": False, "error": f"Failed to delete account: {str(e)}"}), 500
@@ -7337,6 +7397,81 @@ def upload_favorite():
         return jsonify({"success": False, "error": "Upload failed. Please try again."}), 500
 
 
+@app.route("/api/favorites/save-url", methods=["POST", "OPTIONS"])
+def favorites_save_url():
+    """
+    Save an existing image URL into creator_favorites with the correct list_id.
+    Used by product-page creatorMode Save Favorite (umbrella + storefront owners).
+    JSON: image_url, title, description?, channel_title?, list_id?
+    """
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _authenticated_users_id()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can save favorites"}), 403
+        data = request.get_json() or {}
+        image_url = (data.get("image_url") or data.get("thumbnail_url") or "").strip()
+        title = (data.get("title") or "").strip()
+        if not image_url:
+            return jsonify({"success": False, "error": "image_url is required"}), 400
+        if not title:
+            return jsonify({"success": False, "error": "title is required"}), 400
+        list_id_form = (data.get("list_id") or "").strip()
+        favorite_user_id, target_list = _fl_resolve_favorite_upload(user_id, list_id_form)
+        if list_id_form and not target_list:
+            return jsonify({"success": False, "error": "Favorite page not found or not allowed"}), 400
+        if not target_list:
+            return jsonify({"success": False, "error": "Could not resolve favorites page"}), 400
+        channel_title = (data.get("channel_title") or "").strip()
+        if not channel_title:
+            fav_user = _cf_user_row(favorite_user_id) or me
+            channel_title = (
+                (fav_user or {}).get("display_name")
+                or (fav_user or {}).get("username")
+                or "Unknown"
+            )
+        description = (data.get("description") or "").strip() or None
+        insert_data = {
+            "user_id": favorite_user_id,
+            "channelTitle": channel_title,
+            "title": title[:200],
+            "description": description,
+            "image_url": image_url,
+            "thumbnail_url": image_url,
+            "list_id": target_list,
+        }
+        try:
+            result = supabase_admin.table("creator_favorites").insert(insert_data).execute()
+        except Exception as ins_err:
+            if "list_id" in str(ins_err).lower() and (
+                "column" in str(ins_err).lower() or "schema" in str(ins_err).lower()
+            ):
+                insert_data.pop("list_id", None)
+                result = supabase_admin.table("creator_favorites").insert(insert_data).execute()
+            else:
+                raise
+        if not result.data:
+            return jsonify({"success": False, "error": "Failed to save favorite"}), 500
+        _fl_attach_orphan_favorites(favorite_user_id, target_list)
+        return jsonify(
+            {
+                "success": True,
+                "favorite": result.data[0],
+                "list_id": target_list,
+                "user_id": favorite_user_id,
+            }
+        ), 200
+    except Exception as e:
+        logger.exception("favorites_save_url: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/favorites/move-list", methods=["POST", "OPTIONS"])
 def favorite_move_list():
     """Move a creator_favorites row to another list (own page or umbrella collaborator page)."""
@@ -7770,9 +7905,62 @@ def _umbrella_build_join_url(owner_id, token):
     return f"https://{sub}.screenmerch.com/join?token={quote(token)}"
 
 
+def _umbrella_send_invite_email(to_email, invite_url, owner_name, owner_subdomain=None):
+    """Email the collaborator the join link (automatic invite)."""
+    if not RESEND_API_KEY:
+        logger.warning("[umbrella invite-email] RESEND_API_KEY not set")
+        return False
+    if not to_email or not invite_url:
+        return False
+    owner_label = (owner_name or "a creator").strip() or "a creator"
+    store_label = f"{owner_subdomain}.screenmerch.com" if owner_subdomain else "their ScreenMerch storefront"
+    link_escaped = invite_url.replace("&", "&amp;")
+    html = f"""
+    <!DOCTYPE html>
+    <html><body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2>You're invited to collaborate on ScreenMerch</h2>
+      <p><strong>{owner_label}</strong> invited you to join their umbrella storefront at <strong>{store_label}</strong>.</p>
+      <p>You'll get your own Favorites page on their storefront where fans can make merch from your images.</p>
+      <p style="margin: 28px 0;">
+        <a href="{link_escaped}" style="background: #2563eb; color: #fff; padding: 12px 22px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+          Accept invite
+        </a>
+      </p>
+      <p style="font-size: 12px; color: #666;">Or copy this link:</p>
+      <p style="font-size: 12px; word-break: break-all;"><a href="{link_escaped}">{invite_url}</a></p>
+      <p style="font-size: 12px; color: #666;">This invite link expires in 14 days. If you already have a ScreenMerch account, sign in with <strong>{to_email}</strong> on the join page.</p>
+      <p style="color: #666; font-size: 14px;">— ScreenMerch</p>
+    </body></html>
+    """
+    try:
+        r = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "from": RESEND_FROM,
+                "to": [to_email],
+                "subject": f"{owner_label} invited you to join their ScreenMerch storefront",
+                "html": html,
+            },
+            timeout=30,
+        )
+        if r.status_code in (200, 201, 202):
+            logger.info("[umbrella invite-email] sent to %s", to_email)
+            return True
+        logger.warning(
+            "[umbrella invite-email] Resend failed status=%s body=%s",
+            r.status_code,
+            r.text[:300],
+        )
+    except Exception as e:
+        logger.exception("[umbrella invite-email] send failed: %s", e)
+    return False
+
+
 def _umbrella_create_or_get_email_invite(channel_owner_id, raw_email):
     """
     Email umbrella invites always use a join link (new or existing ScreenMerch accounts).
+    Sends the invite email automatically via Resend; join link is still returned for copy/paste backup.
     Returns (payload_dict, None) or (None, error_message).
     """
     if not supabase_admin:
@@ -7783,6 +7971,8 @@ def _umbrella_create_or_get_email_invite(channel_owner_id, raw_email):
     owner_sub = _umbrella_owner_subdomain(channel_owner_id)
     if not owner_sub:
         return None, "Set up your subdomain in Personalization before sending email invites"
+    owner = _cf_user_row(channel_owner_id)
+    owner_name = (owner or {}).get("display_name") or (owner or {}).get("username") or owner_sub
     token = secrets.token_urlsafe(32)
     now_iso = datetime.now(timezone.utc).isoformat()
     expires_at = (datetime.now(timezone.utc) + timedelta(days=14)).isoformat()
@@ -7796,7 +7986,8 @@ def _umbrella_create_or_get_email_invite(channel_owner_id, raw_email):
             .limit(1)
             .execute()
         )
-        if pend.data:
+        already_pending = bool(pend.data)
+        if already_pending:
             tok_row = (
                 supabase_admin.table("umbrella_email_invites")
                 .select("token")
@@ -7806,39 +7997,48 @@ def _umbrella_create_or_get_email_invite(channel_owner_id, raw_email):
             )
             token = (tok_row.data or [{}])[0].get("token") or token
             invite_url = _umbrella_build_join_url(channel_owner_id, token)
-            return (
-                {
-                    "success": True,
-                    "email_invite": True,
-                    "invite_url": invite_url,
-                    "message": "Invite already pending for this email. Share the join link below.",
-                },
-                None,
+        else:
+            ins = (
+                supabase_admin.table("umbrella_email_invites")
+                .insert(
+                    {
+                        "channel_owner_id": channel_owner_id,
+                        "invited_email": email,
+                        "token": token,
+                        "status": "pending",
+                        "created_at": now_iso,
+                        "expires_at": expires_at,
+                        "updated_at": now_iso,
+                    }
+                )
+                .execute()
             )
-        ins = (
-            supabase_admin.table("umbrella_email_invites")
-            .insert(
-                {
-                    "channel_owner_id": channel_owner_id,
-                    "invited_email": email,
-                    "token": token,
-                    "status": "pending",
-                    "created_at": now_iso,
-                    "expires_at": expires_at,
-                    "updated_at": now_iso,
-                }
+            if not ins.data:
+                return None, "Could not create email invite"
+            invite_url = _umbrella_build_join_url(channel_owner_id, token)
+
+        if not invite_url:
+            return None, "Could not build join link (check storefront subdomain)."
+
+        email_sent = _umbrella_send_invite_email(email, invite_url, owner_name, owner_sub)
+        if email_sent:
+            msg = (
+                f"Invite email resent to {email}. They can also use the join link below."
+                if already_pending
+                else f"Invite email sent to {email}. A join link is also listed below if they need it."
             )
-            .execute()
-        )
-        if not ins.data:
-            return None, "Could not create email invite"
-        invite_url = _umbrella_build_join_url(channel_owner_id, token)
+        else:
+            msg = (
+                f"Invite created for {email}, but the email could not be sent. "
+                "Copy the join link below and send it manually."
+            )
         return (
             {
                 "success": True,
                 "email_invite": True,
                 "invite_url": invite_url,
-                "message": "Join link created. Copy and send it to your collaborator (works for new and existing accounts).",
+                "email_sent": email_sent,
+                "message": msg,
             },
             None,
         )
@@ -8110,7 +8310,7 @@ def channel_friends_outgoing():
 
 @app.route("/api/channel-friends/members", methods=["GET", "OPTIONS"])
 def channel_friends_members():
-    """Creator: approved umbrella rows (canonical membership also has subscriptions)."""
+    """Creator: approved + paused umbrella members (owner can pause/remove from dashboard)."""
     if request.method == "OPTIONS":
         return jsonify(success=True)
     try:
@@ -8126,13 +8326,229 @@ def channel_friends_members():
             supabase_admin.table("channel_friends")
             .select("*")
             .eq("channel_owner_id", user_id)
-            .eq("status", "approved")
+            .in_("status", ["approved", "paused"])
             .execute()
         )
         rows = _cf_attach_user_summaries(r.data or [], "friend_id")
+        # Approved first, then paused; stable by created_at
+        rows.sort(
+            key=lambda row: (
+                0 if row.get("status") == "approved" else 1,
+                row.get("created_at") or "",
+            )
+        )
         return jsonify({"success": True, "members": rows}), 200
     except Exception as e:
         logger.exception("channel_friends_members: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def _unlink_umbrella_member_lists(storefront_owner_id, member_user_id):
+    """Detach collaborator favorites pages from this storefront (no longer public there)."""
+    if not supabase_admin or not storefront_owner_id or not member_user_id:
+        return
+    member_ids = {str(member_user_id)}
+    try:
+        u = _cf_user_row(member_user_id)
+        email = ((u or {}).get("email") or "").strip().lower()
+        if email:
+            twins = (
+                supabase_admin.table("users")
+                .select("id")
+                .ilike("email", email)
+                .limit(10)
+                .execute()
+            )
+            for row in twins.data or []:
+                if row.get("id"):
+                    member_ids.add(str(row["id"]))
+    except Exception as twin_err:
+        logger.warning("unlink umbrella twin lookup: %s", twin_err)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    for mid in member_ids:
+        try:
+            supabase_admin.table("creator_favorite_lists").update(
+                {"storefront_owner_id": None, "updated_at": now_iso}
+            ).eq("owner_user_id", mid).eq("storefront_owner_id", storefront_owner_id).execute()
+        except Exception as e:
+            logger.warning("unlink umbrella lists %s/%s: %s", storefront_owner_id, mid, e)
+
+
+def _approved_umbrella_friend_ids(storefront_owner_id):
+    """Friend ids currently approved on this storefront (public Pages / Friends List)."""
+    if not supabase_admin or not storefront_owner_id:
+        return set()
+    try:
+        r = (
+            supabase_admin.table("channel_friends")
+            .select("friend_id")
+            .eq("channel_owner_id", storefront_owner_id)
+            .eq("status", "approved")
+            .execute()
+        )
+        return {str(row.get("friend_id")) for row in (r.data or []) if row.get("friend_id")}
+    except Exception as e:
+        logger.warning("approved umbrella friend ids: %s", e)
+        return set()
+
+
+def _paused_umbrella_friend_ids(storefront_owner_id):
+    """Friend ids paused on this storefront (their public pages should be hidden)."""
+    if not supabase_admin or not storefront_owner_id:
+        return set()
+    try:
+        r = (
+            supabase_admin.table("channel_friends")
+            .select("friend_id")
+            .eq("channel_owner_id", storefront_owner_id)
+            .eq("status", "paused")
+            .execute()
+        )
+        return {str(row.get("friend_id")) for row in (r.data or []) if row.get("friend_id")}
+    except Exception as e:
+        logger.warning("paused umbrella friend ids: %s", e)
+        return set()
+
+
+@app.route("/api/channel-friends/remove-member", methods=["POST", "OPTIONS"])
+def channel_friends_remove_member():
+    """Storefront owner removes an approved/paused umbrella member from the network."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can remove umbrella members"}), 403
+        data = request.get_json() or {}
+        friend_id = (data.get("friend_id") or "").strip()
+        if not friend_id:
+            return jsonify({"success": False, "error": "friend_id is required"}), 400
+        r = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", user_id)
+            .eq("friend_id", friend_id)
+            .in_("status", ["approved", "paused"])
+            .limit(1)
+            .execute()
+        )
+        row = (r.data or [None])[0]
+        if not row:
+            return jsonify({"success": False, "error": "Umbrella member not found"}), 404
+        _unlink_umbrella_member_lists(user_id, friend_id)
+        try:
+            supabase_admin.table("subscriptions").delete().eq("channel_id", user_id).eq(
+                "subscriber_id", friend_id
+            ).execute()
+        except Exception as sub_err:
+            logger.warning("remove-member subscription cleanup: %s", sub_err)
+        supabase_admin.table("channel_friends").delete().eq("id", row["id"]).execute()
+        return jsonify({"success": True, "removed_id": row["id"], "friend_id": friend_id}), 200
+    except Exception as e:
+        logger.exception("channel_friends_remove_member: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/channel-friends/pause-member", methods=["POST", "OPTIONS"])
+def channel_friends_pause_member():
+    """Pause an approved member (hides their public page; Resume restores)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can pause umbrella members"}), 403
+        data = request.get_json() or {}
+        friend_id = (data.get("friend_id") or "").strip()
+        if not friend_id:
+            return jsonify({"success": False, "error": "friend_id is required"}), 400
+        r = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", user_id)
+            .eq("friend_id", friend_id)
+            .eq("status", "approved")
+            .limit(1)
+            .execute()
+        )
+        row = (r.data or [None])[0]
+        if not row:
+            return jsonify({"success": False, "error": "Approved umbrella member not found"}), 404
+        now_iso = datetime.now(timezone.utc).isoformat()
+        try:
+            upd = (
+                supabase_admin.table("channel_friends")
+                .update({"status": "paused", "updated_at": now_iso})
+                .eq("id", row["id"])
+                .execute()
+            )
+        except Exception as pause_err:
+            err_s = str(pause_err).lower()
+            if "paused" in err_s or "check" in err_s or "constraint" in err_s:
+                return jsonify({
+                    "success": False,
+                    "error": "Pause is not enabled in the database yet. Run backend/sql/channel_friends_paused_status.sql in Supabase.",
+                }), 503
+            raise
+        return jsonify({"success": True, "member": (upd.data or [None])[0], "status": "paused"}), 200
+    except Exception as e:
+        logger.exception("channel_friends_pause_member: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/channel-friends/resume-member", methods=["POST", "OPTIONS"])
+def channel_friends_resume_member():
+    """Resume a paused umbrella member (public page visible again)."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can resume umbrella members"}), 403
+        data = request.get_json() or {}
+        friend_id = (data.get("friend_id") or "").strip()
+        if not friend_id:
+            return jsonify({"success": False, "error": "friend_id is required"}), 400
+        r = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", user_id)
+            .eq("friend_id", friend_id)
+            .eq("status", "paused")
+            .limit(1)
+            .execute()
+        )
+        row = (r.data or [None])[0]
+        if not row:
+            return jsonify({"success": False, "error": "Paused umbrella member not found"}), 404
+        now_iso = datetime.now(timezone.utc).isoformat()
+        # Re-attach favorites page to this storefront if it was unlinked
+        u = _cf_user_row(friend_id)
+        _fl_ensure_umbrella_member_list(user_id, friend_id, _umbrella_collaborator_label(u))
+        upd = (
+            supabase_admin.table("channel_friends")
+            .update({"status": "approved", "updated_at": now_iso})
+            .eq("id", row["id"])
+            .execute()
+        )
+        return jsonify({"success": True, "member": (upd.data or [None])[0], "status": "approved"}), 200
+    except Exception as e:
+        logger.exception("channel_friends_resume_member: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -8176,6 +8592,11 @@ def channel_friends_invite():
         row = (existing.data or [None])[0]
         if row and row.get("status") == "approved":
             return jsonify({"success": False, "error": "Already an umbrella member"}), 400
+        if row and row.get("status") == "paused":
+            return jsonify({
+                "success": False,
+                "error": "This member is paused. Use Resume on the Approved members list.",
+            }), 400
         if row and row.get("status") == "pending":
             return jsonify(
                 {
@@ -8788,6 +9209,92 @@ def _fl_slugify(raw):
     return s[:64] if s else ""
 
 
+def _fl_unique_slug(base_slug, *, owner_user_id=None, storefront_owner_id=None, ignore_list_id=None):
+    """Pick a slug unused by other lists on this owner/storefront."""
+    base = _fl_slugify(base_slug) or "page"
+    if base == "owner":
+        base = "page"
+    slug = base
+    n = 1
+    while True:
+        q = supabase_admin.table("creator_favorite_lists").select("id").eq("slug", slug)
+        if storefront_owner_id:
+            q = q.eq("storefront_owner_id", storefront_owner_id)
+        elif owner_user_id:
+            q = q.eq("owner_user_id", owner_user_id)
+        if ignore_list_id:
+            q = q.neq("id", ignore_list_id)
+        ex = q.limit(1).execute()
+        if not ex.data:
+            return slug
+        n += 1
+        slug = f"{base}-{n}"[:64]
+
+
+def _fl_attach_orphan_favorites(user_id, list_id):
+    """Attach favorites missing list_id to the collaborator's page (repairs Save Favorite bugs)."""
+    if not supabase_admin or not user_id or not list_id:
+        return 0
+    try:
+        r = (
+            supabase_admin.table("creator_favorites")
+            .select("id")
+            .eq("user_id", user_id)
+            .is_("list_id", "null")
+            .execute()
+        )
+        ids = [row["id"] for row in (r.data or []) if row.get("id")]
+        if not ids:
+            return 0
+        supabase_admin.table("creator_favorites").update({"list_id": list_id}).in_("id", ids).execute()
+        return len(ids)
+    except Exception as err:
+        logger.warning("_fl_attach_orphan_favorites: %s", err)
+        return 0
+
+
+def _fl_sync_stale_collaborator_slug(list_row):
+    """If nickname was renamed but slug stayed 'collaborator', update slug for public URLs."""
+    if not supabase_admin or not list_row or not list_row.get("id"):
+        return list_row
+    if list_row.get("is_primary") or (list_row.get("slug") or "") == "owner":
+        return list_row
+    cur_slug = (list_row.get("slug") or "").strip().lower()
+    nick = _fl_list_page_nickname(list_row.get("display_name"))
+    if not nick:
+        return list_row
+    desired = _fl_slugify(nick)
+    if not desired or desired == cur_slug:
+        return list_row
+    stale = (
+        cur_slug in ("collaborator", "friend", "member")
+        or cur_slug.startswith("collaborator-")
+        or cur_slug.startswith("member-")
+    )
+    if not stale:
+        return list_row
+    new_slug = _fl_unique_slug(
+        nick,
+        owner_user_id=list_row.get("owner_user_id"),
+        storefront_owner_id=list_row.get("storefront_owner_id"),
+        ignore_list_id=list_row.get("id"),
+    )
+    try:
+        upd = (
+            supabase_admin.table("creator_favorite_lists")
+            .update({"slug": new_slug, "updated_at": datetime.now(timezone.utc).isoformat()})
+            .eq("id", list_row["id"])
+            .execute()
+        )
+        if upd.data:
+            return upd.data[0]
+        list_row = dict(list_row)
+        list_row["slug"] = new_slug
+    except Exception as err:
+        logger.warning("_fl_sync_stale_collaborator_slug: %s", err)
+    return list_row
+
+
 def _fl_ensure_primary_list(owner_id):
     """Create primary 'owner' list if missing; attach orphan favorites to it."""
     if not supabase_admin:
@@ -8945,10 +9452,34 @@ def favorite_lists_rename():
         for dup_row in dup_q.data or []:
             if (dup_row.get("display_name") or "").strip().lower() == name_key:
                 return jsonify({"success": False, "error": "A page with this name already exists"}), 400
+        # Load current list for storefront slug uniqueness
+        cur = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("id, storefront_owner_id, owner_user_id, is_primary, slug")
+            .eq("id", list_id)
+            .limit(1)
+            .execute()
+        )
+        cur_row = (cur.data or [None])[0] or {}
+        if cur_row.get("is_primary") or (cur_row.get("slug") or "") == "owner":
+            return jsonify({"success": False, "error": "Cannot rename the main storefront page here"}), 400
+        nick = _fl_list_page_nickname(display_name) or display_name.strip()
+        new_slug = _fl_unique_slug(
+            nick,
+            owner_user_id=cur_row.get("owner_user_id") or user_id,
+            storefront_owner_id=cur_row.get("storefront_owner_id"),
+            ignore_list_id=list_id,
+        )
         now_iso = datetime.now(timezone.utc).isoformat()
         upd = (
             supabase_admin.table("creator_favorite_lists")
-            .update({"display_name": display_name[:120], "updated_at": now_iso})
+            .update(
+                {
+                    "display_name": display_name[:120],
+                    "slug": new_slug,
+                    "updated_at": now_iso,
+                }
+            )
             .eq("id", list_id)
             .execute()
         )
@@ -9115,14 +9646,28 @@ def public_favorite_lists():
             )
             lists = lr.data or []
         lists.sort(key=lambda L: (0 if L.get("is_primary") else 1, L.get("sort_order") or 0, (L.get("display_name") or "").lower()))
+        approved_ids = _approved_umbrella_friend_ids(owner_id)
+        paused_ids = _paused_umbrella_friend_ids(owner_id)
         safe_lists = []
         for L in lists:
-            dn = (L.get("display_name") or L.get("slug") or "Favorites").strip()
+            # Collaborator pages only while membership is approved (removed/paused stay hidden)
             is_collab = (
                 L.get("storefront_owner_id")
                 and L.get("owner_user_id")
                 and str(L.get("storefront_owner_id")) != str(L.get("owner_user_id"))
             )
+            if is_collab:
+                oid = str(L.get("owner_user_id"))
+                if oid not in approved_ids or oid in paused_ids:
+                    # Repair stale link left after delete
+                    if oid not in approved_ids and oid not in paused_ids:
+                        try:
+                            _unlink_umbrella_member_lists(owner_id, oid)
+                        except Exception:
+                            pass
+                    continue
+            L = _fl_sync_stale_collaborator_slug(L)
+            dn = (L.get("display_name") or L.get("slug") or "Favorites").strip()
             if L.get("is_primary") or L.get("slug") == "owner":
                 dn = "Main Favorites"
             elif is_collab:
@@ -9203,6 +9748,26 @@ def public_favorites_by_list():
         row = (lr.data or [None])[0]
         if not row:
             return jsonify({"success": False, "error": "List not found"}), 404
+        is_collab = (
+            row.get("storefront_owner_id")
+            and row.get("owner_user_id")
+            and str(row.get("storefront_owner_id")) != str(row.get("owner_user_id"))
+        )
+        if is_collab:
+            approved_ids = _approved_umbrella_friend_ids(owner_id)
+            paused_ids = _paused_umbrella_friend_ids(owner_id)
+            oid = str(row.get("owner_user_id"))
+            if oid not in approved_ids or oid in paused_ids:
+                if oid not in approved_ids and oid not in paused_ids:
+                    try:
+                        _unlink_umbrella_member_lists(owner_id, oid)
+                    except Exception:
+                        pass
+                return jsonify({"success": False, "error": "List not found"}), 404
+        row = _fl_sync_stale_collaborator_slug(row)
+        # Repair favorites saved without list_id (old Save Favorite path)
+        if row.get("owner_user_id") and row.get("id"):
+            _fl_attach_orphan_favorites(row["owner_user_id"], row["id"])
         fr = (
             supabase_admin.table("creator_favorites")
             .select("*")
@@ -9332,8 +9897,30 @@ def favorite_lists_sales_summary():
             for L in lr.data or []:
                 lists_map[str(L["id"])] = L
 
+        active_friend_ids = set()
+        try:
+            mem_r = (
+                supabase_admin.table("channel_friends")
+                .select("friend_id")
+                .eq("channel_owner_id", user_id)
+                .in_("status", ["approved", "paused"])
+                .execute()
+            )
+            active_friend_ids = {
+                str(row.get("friend_id"))
+                for row in (mem_r.data or [])
+                if row.get("friend_id")
+            }
+        except Exception as mem_err:
+            logger.warning("sales-summary active members: %s", mem_err)
+
         for list_id, meta in lists_map.items():
-            if _is_collaborator_favorite_list(meta, uid) and list_id not in by_list:
+            if not _is_collaborator_favorite_list(meta, uid):
+                continue
+            # Only pre-seed empty rows for people still in the umbrella
+            if str(meta.get("owner_user_id") or "") not in active_friend_ids:
+                continue
+            if list_id not in by_list:
                 by_list[list_id] = {
                     "favorite_list_id": meta.get("id"),
                     "sales": [],
@@ -9374,7 +9961,6 @@ def favorite_lists_sales_summary():
                 payout_bal = _umbrella_payout_balance_fields(
                     pay_collaborator, payouts_by_list.get(str(lid), [])
                 )
-                collaborator_owed_total += payout_bal.get("balance_owed", 0)
 
             row_out = {
                 "favorite_list_id": lid,
@@ -9397,6 +9983,19 @@ def favorite_lists_sales_summary():
                 "recent_payouts": payout_bal.get("recent_payouts") or [],
             }
             if is_collab:
+                member_uid = str((meta or {}).get("owner_user_id") or "")
+                is_active = member_uid in active_friend_ids
+                has_activity = (
+                    float(gross or 0) > 0
+                    or float(pay_collaborator or 0) > 0
+                    or float(payout_bal.get("balance_owed") or 0) > 0
+                    or float(payout_bal.get("paid_total") or 0) > 0
+                    or int(totals.get("order_count") or 0) > 0
+                )
+                # Drop ghost $0 rows for people no longer in the umbrella
+                if not is_active and not has_activity:
+                    continue
+                collaborator_owed_total += payout_bal.get("balance_owed", 0)
                 out.append(row_out)
 
         def _sales_row_sort_key(row):

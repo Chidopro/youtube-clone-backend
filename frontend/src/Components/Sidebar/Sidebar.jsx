@@ -80,16 +80,14 @@ const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
     return () => { cancelled = true; };
   }, [currentCreator?.id]);
 
-  const closeMobileSidebar = () => {
-    if (typeof window !== 'undefined' && window.innerWidth <= 900) {
-      setSidebar?.(false);
-    }
+  const closeSidebar = () => {
+    setSidebar?.(false);
   };
 
   return (
     <div className={`sidebar ${sidebar ? "" : "small-sidebar"}`}>
       <div className="shortcut-links">
-        <Link to="/" className={`side-link ${category === 0 ? "active" : ""}`} onClick={() => { setCategory(0); closeMobileSidebar(); }}>
+        <Link to="/" className={`side-link ${category === 0 ? "active" : ""}`} onClick={() => { setCategory(0); closeSidebar(); }}>
           <img src={home} alt="" /><p>Home</p>
         </Link>
         <hr />
@@ -97,7 +95,7 @@ const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
       {favLists.length > 0 && (
         <div className="subscribed-list" style={{ marginBottom: 8 }}>
           <h3 style={{ cursor: 'pointer' }} onClick={() => setShowFav((s) => !s)}>
-            Favorites {showFav ? '▲' : '▼'}
+            Pages {showFav ? '▲' : '▼'}
           </h3>
           {showFav && (
             <div className="subscribers-list">
@@ -109,7 +107,7 @@ const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
                     key={L.id}
                     to={L.slug === 'owner' ? '/favorites' : `/favorites/${encodeURIComponent(L.slug)}`}
                     className={`side-link subscriber-item ${location.pathname === '/favorites' && L.slug === 'owner' ? 'active' : ''} ${location.pathname === `/favorites/${L.slug}` ? 'active' : ''}`}
-                    onClick={() => { setCategory(0); closeMobileSidebar(); }}
+                    onClick={() => { setCategory(0); closeSidebar(); }}
                   >
                     <div className="subscriber-info">
                       <p className={`subscriber-name ${L.is_primary ? 'favorites-owner-row' : ''}`}>
@@ -141,14 +139,26 @@ const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
                 {subscribers.map(sub => (
                   <div className="subscriber-item-container" key={sub.id}>
                     {sub.subdomain ? (
-                      <a href={`https://${sub.subdomain}.screenmerch.com`} className="side-link subscriber-item" target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={`https://${sub.subdomain}.screenmerch.com`}
+                        className="side-link subscriber-item"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={closeSidebar}
+                      >
                         <img src={sub.avatar || '/default-avatar.jpg'} alt={sub.name} className="subscriber-avatar" />
                         <div className="subscriber-info">
                           <p className="subscriber-name">{sub.name}</p>
                         </div>
                       </a>
                     ) : sub.username ? (
-                      <a href={`https://screenmerch.com/profile/${sub.username}`} className="side-link subscriber-item" target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={`https://screenmerch.com/profile/${sub.username}`}
+                        className="side-link subscriber-item"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={closeSidebar}
+                      >
                         <img src={sub.avatar || '/default-avatar.jpg'} alt={sub.name} className="subscriber-avatar" />
                         <div className="subscriber-info">
                           <p className="subscriber-name">{sub.name}</p>

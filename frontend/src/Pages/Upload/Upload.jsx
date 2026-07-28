@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import '../Home/Home.css'; // For layout
 import './Upload.css'; // Import new styles
 
-const Upload = ({ sidebar }) => {
+const Upload = () => {
     const [user, setUser] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
     const [loadingUser, setLoadingUser] = useState(true);
@@ -338,130 +339,196 @@ const Upload = ({ sidebar }) => {
         }
     };
 
-    if (loadingUser) {
-        return <div className={`container ${sidebar ? "" : " large-container"}`}><h2>Loading...</h2></div>;
-    }
+    const goBack = () => {
+        if (window.history.length > 1) {
+            navigate(-1);
+        } else {
+            navigate('/dashboard');
+        }
+    };
 
-    if (!user) {
-        return (
-            <div className={`container ${sidebar ? "" : " large-container"}`} style={{textAlign: 'center', paddingTop: '5rem'}}>
-                <h2>Please Log In to Upload</h2>
-                <p>You must sign in with Google to upload videos.</p>
-                <button 
-                    className="sign-in-btn" 
-                    onClick={async () => {
-                        const apiBase = (window.location.origin === 'https://screenmerch.com' || window.location.origin === 'https://www.screenmerch.com') ? '' : 'https://screenmerch.fly.dev';
-                        const url = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}&format=json`;
-                        try {
-                            const res = await fetch(url, { credentials: 'include', headers: { Accept: 'application/json' } });
-                            const data = await res.json().catch(() => ({}));
-                            if (data.auth_url) { window.location.href = data.auth_url; return; }
-                        } catch (_) {}
-                        window.location.href = url.replace('&format=json', '');
-                    }}
+    const modal = (() => {
+        if (loadingUser) {
+            return (
+                <div className="upload-modal-overlay" role="dialog" aria-modal="true" aria-label="Upload Video">
+                    <div className="upload-modal-card">
+                        <h2>Upload Video</h2>
+                        <div className="upload-form-body">Loading...</div>
+                    </div>
+                </div>
+            );
+        }
+
+        if (!user) {
+            return (
+                <div
+                    className="upload-modal-overlay"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Sign in to upload"
+                    onClick={goBack}
                 >
-                    Sign In with Google
-                </button>
+                    <div className="upload-auth-card" onClick={(e) => e.stopPropagation()}>
+                        <h2>Please Log In to Upload</h2>
+                        <p>You must sign in to upload videos.</p>
+                        <button
+                            type="button"
+                            className="sign-in-btn"
+                            onClick={async () => {
+                                const apiBase =
+                                    window.location.origin === 'https://screenmerch.com' ||
+                                    window.location.origin === 'https://www.screenmerch.com'
+                                        ? ''
+                                        : 'https://screenmerch.fly.dev';
+                                const url = `${apiBase}/api/auth/google/login?return_url=${encodeURIComponent(window.location.href)}&format=json`;
+                                try {
+                                    const res = await fetch(url, {
+                                        credentials: 'include',
+                                        headers: { Accept: 'application/json' },
+                                    });
+                                    const data = await res.json().catch(() => ({}));
+                                    if (data.auth_url) {
+                                        window.location.href = data.auth_url;
+                                        return;
+                                    }
+                                } catch (_) {}
+                                window.location.href = url.replace('&format=json', '');
+                            }}
+                        >
+                            Sign In with Google
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div
+                className="upload-modal-overlay"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="upload-video-heading"
+                onClick={goBack}
+            >
+                <div className="upload-modal-card" onClick={(e) => e.stopPropagation()}>
+                    <button
+                        type="button"
+                        className="upload-modal-close"
+                        onClick={goBack}
+                        aria-label="Close"
+                    >
+                        &times;
+                    </button>
+                    <h2 id="upload-video-heading">Upload Video</h2>
+                    <form className="upload-form-body" onSubmit={handleSubmit}>
+                        <div className="upload-form-group">
+                            <label htmlFor="upload-video-title">Title *</label>
+                            <input
+                                id="upload-video-title"
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                required
+                                placeholder="Enter video title"
+                            />
+                        </div>
+
+                        <div className="upload-form-group">
+                            <label htmlFor="upload-video-description">Description *</label>
+                            <textarea
+                                id="upload-video-description"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                required
+                                rows={3}
+                                placeholder="Enter video description"
+                            />
+                        </div>
+
+                        <div className="upload-file-row">
+                            <div className="upload-form-group">
+                                <label htmlFor="upload-video-file">
+                                    Video File *{' '}
+                                    <span className="field-hint">(Max 100MB)</span>
+                                </label>
+                                <input
+                                    id="upload-video-file"
+                                    type="file"
+                                    accept="video/*"
+                                    onChange={handleFileChange}
+                                    required
+                                />
+                                {file && (
+                                    <small className="upload-file-meta">
+                                        {file.name} ({(file.size / 1024 / 1024).toFixed(1)} MB)
+                                    </small>
+                                )}
+                            </div>
+
+                            <div className="upload-form-group">
+                                <label htmlFor="upload-video-thumb">
+                                    Thumbnail *{' '}
+                                    <span className="field-hint">(16:9)</span>
+                                </label>
+                                <input
+                                    id="upload-video-thumb"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleThumbnailChange}
+                                    required
+                                />
+                                {thumbnail && (
+                                    <small className="upload-file-meta">
+                                        {thumbnail.name} ({(thumbnail.size / 1024 / 1024).toFixed(1)} MB)
+                                    </small>
+                                )}
+                            </div>
+                        </div>
+
+                        {uploadProgress > 0 && (
+                            <div className="upload-progress">
+                                <div className="upload-progress-track">
+                                    <div
+                                        className="upload-progress-fill"
+                                        style={{ width: `${uploadProgress}%` }}
+                                    />
+                                </div>
+                                <small className="upload-progress-label">
+                                    Upload progress: {uploadProgress}%
+                                </small>
+                            </div>
+                        )}
+
+                        {message && (
+                            <div
+                                className={`upload-message ${
+                                    message.includes('✅') ? 'success' : 'error'
+                                }`}
+                            >
+                                {message}
+                            </div>
+                        )}
+
+                        <div className="upload-form-actions">
+                            <button type="submit" className="save-btn" disabled={loading}>
+                                {loading ? 'Uploading...' : 'Upload Video'}
+                            </button>
+                            <button
+                                type="button"
+                                className="cancel-btn"
+                                onClick={goBack}
+                                disabled={loading}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         );
-    }
+    })();
 
-    return (
-        <div className={`container ${sidebar ? "" : " large-container"}`}>
-            <div style={{ maxWidth: 700, margin: '20px auto', background: '#fff', padding: 24, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-                <h2>Upload a New Video</h2>
-                <div className="uploader-info">
-                    <img src={userProfile?.profile_image_url || user.user_metadata?.picture || '/default-avatar.jpg'} alt="Your avatar" />
-                    <p>You are uploading as: <strong>{userProfile?.display_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Your Channel'}</strong></p>
-                </div>
-
-                <form onSubmit={handleSubmit}>
-                    <div style={{ marginBottom: 16 }}>
-                        <label>Title *</label>
-                        <input 
-                            type="text" 
-                            value={title} 
-                            onChange={e => setTitle(e.target.value)} 
-                            required 
-                            style={{ width: '100%', padding: 8, marginTop: 4 }}
-                            placeholder="Enter video title"
-                        />
-                    </div>
-                    <div style={{ marginBottom: 16 }}>
-                        <label>Description *</label>
-                        <textarea 
-                            value={description} 
-                            onChange={e => setDescription(e.target.value)} 
-                            required 
-                            style={{ width: '100%', padding: 8, marginTop: 4 }} 
-                            rows={4}
-                            placeholder="Enter video description"
-                        />
-                    </div>
-                    <div style={{ marginBottom: 16 }}>
-                        <label>Video File * (Max 100MB — about a 2 minute or less video is acceptable)</label>
-                        <input 
-                            type="file" 
-                            accept="video/*" 
-                            onChange={handleFileChange} 
-                            required 
-                            style={{ display: 'block', marginTop: 4 }} 
-                        />
-                        {file && (
-                            <small style={{ color: '#666', marginTop: 4, display: 'block' }}>
-                                Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                            </small>
-                        )}
-                    </div>
-                    <div style={{ marginBottom: 16 }}>
-                        <label>Thumbnail Image * (16:9 aspect ratio, max 10MB — e.g. 1280×720 or 1920×1080)</label>
-                        <input 
-                            type="file" 
-                            accept="image/*" 
-                            onChange={handleThumbnailChange} 
-                            required 
-                            style={{ display: 'block', marginTop: 4 }} 
-                        />
-                        {thumbnail && (
-                            <small style={{ color: '#666', marginTop: 4, display: 'block' }}>
-                                Selected: {thumbnail.name} ({(thumbnail.size / 1024 / 1024).toFixed(2)} MB)
-                            </small>
-                        )}
-                    </div>
-
-                    {uploadProgress > 0 && (
-                        <div style={{ marginBottom: 16 }}>
-                            <div style={{ 
-                                width: '100%', 
-                                backgroundColor: '#f0f0f0', 
-                                borderRadius: 4, 
-                                overflow: 'hidden',
-                                marginTop: 8
-                            }}>
-                                <div style={{
-                                    width: `${uploadProgress}%`,
-                                    height: 20,
-                                    backgroundColor: '#4CAF50',
-                                    transition: 'width 0.3s ease'
-                                }}></div>
-                            </div>
-                            <small style={{ color: '#666' }}>Upload Progress: {uploadProgress}%</small>
-                        </div>
-                    )}
-
-                    {message && (
-                        <div className={`upload-message ${message.includes('✅') ? 'success' : 'error'}`}>
-                            {message}
-                        </div>
-                    )}
-
-                    <button type="submit" className="upload-btn" disabled={loading}>
-                        {loading ? 'Uploading...' : 'Upload Video'}
-                    </button>
-                </form>
-            </div>
-        </div>
-    );
+    return createPortal(modal, document.body);
 };
 
 export default Upload;

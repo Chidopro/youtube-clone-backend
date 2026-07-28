@@ -1236,6 +1236,38 @@
     margin-top: 16px;
     padding-top: 0;
   }
+
+  /* Larger mobile preview slots so correct-aspect captures are easier to review */
+  .screenmerch-images-grid {
+    gap: 14px;
+  }
+
+  .screenmerch-image-box {
+    min-height: 170px;
+    max-height: 210px;
+    padding: 10px;
+    /* Neutral matte so letterboxing isn’t mistaken for part of the photo */
+    background: #f3f3f3;
+  }
+
+  .screenmerch-preview {
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    max-height: 170px;
+    object-fit: contain;
+  }
+
+  .screenmerch-placeholder {
+    height: 120px;
+  }
+
+  .screenmerch-img-wrapper {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .screenmerch-img-wrapper {

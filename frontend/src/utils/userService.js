@@ -299,29 +299,57 @@ export class UserService {
    */
   static async deleteUserAccount() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
+      // Prefer app session (localStorage / sm_session) — umbrella password login
+      // often has no active supabase.auth session.
+      let userId = null;
+      let email = null;
+      try {
+        const raw = typeof localStorage !== 'undefined' && localStorage.getItem('user');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          userId = parsed?.id || null;
+          email = parsed?.email || null;
+        }
+      } catch (_) {}
+
+      if (!userId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id || null;
+        email = email || user?.email || null;
+      }
+
+      if (!userId) {
         return { success: false, error: 'No authenticated user found' };
       }
 
-      // Call the server endpoint to handle complete account deletion
-      const response = await fetch(`${getBackendUrl()}/api/users/${user.id}/delete-account`, {
+      const token = await claimSessionTokenIfNeeded(userId);
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-User-Id': userId,
+      };
+      if (email) headers['X-User-Email'] = String(email).trim().toLowerCase();
+      if (token) headers['X-Session-Token'] = token;
+
+      const response = await fetch(`${getBackendUrl()}/api/users/${userId}/delete-account`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers,
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        return { 
-          success: false, 
-          error: errorData.error || 'Failed to delete account' 
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          success: false,
+          error: errorData.error || 'Failed to delete account',
         };
       }
 
       const result = await response.json();
+      try {
+        localStorage.removeItem('user');
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('auth_token');
+      } catch (_) {}
       return result;
 
     } catch (error) {

@@ -52,7 +52,7 @@
 }
 
 .favorites-page--in-container {
-  padding: 20px 0 40px;
+  padding: 20px 24px 40px;
   max-width: none;
   margin: 0;
 }
@@ -175,11 +175,73 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .favorites-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.favorites-card--video {
+  cursor: default;
+}
+
+.page-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: -8px 0 24px;
+}
+
+.page-filter-chip {
+  border: 1px solid #d8d8d8;
+  background: #fff;
+  color: #444;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.page-filter-chip:hover {
+  border-color: #999;
+}
+
+.page-filter-chip.is-active {
+  background: #2c3e50;
+  border-color: #2c3e50;
+  color: #fff;
+}
+
+.page-item-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.page-item-badge--image {
+  background: rgba(102, 126, 234, 0.92);
+}
+
+.page-item-meta {
+  margin: 0;
+  color: #777;
+  font-size: 0.9rem;
 }
 
 .favorites-card-image {
@@ -197,6 +259,10 @@
 
 .favorites-card-content {
   padding: 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .favorites-card-content h3 {
@@ -216,6 +282,7 @@
   color: #666;
   margin: 0 0 12px 0;
   line-height: 1.4;
+  min-height: calc(1.4em * 2); /* reserve 2 lines so missing descriptions don't lift the button */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -224,6 +291,7 @@
 
 .favorites-make-merch-btn {
   width: 100%;
+  margin-top: auto;
   padding: 12px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;

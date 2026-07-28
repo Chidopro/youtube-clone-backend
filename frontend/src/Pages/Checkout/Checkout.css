@@ -306,9 +306,7 @@
   color: #64748b;
   font-size: 0.85rem;
   font-weight: 500;
-  background: rgba(102, 126, 234, 0.1);
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 4px 0 0;
   display: inline-block;
   width: fit-content;
   margin-top: 4px;
@@ -663,9 +661,10 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 12px 16px 16px;
+  padding: max(96px, 12vh) 16px max(24px, 4vh);
   box-sizing: border-box;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   /* Portaled to body; above sticky navbar (10050–100000) */
   z-index: 200000;
 }
@@ -676,7 +675,8 @@
   padding: 20px 24px;
   max-width: 440px;
   width: 100%;
-  max-height: calc(100dvh - 24px);
+  max-height: calc(100vh - 120px);
+  max-height: calc(100dvh - 120px);
   margin: 0 auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(20px);
@@ -717,7 +717,8 @@
 
 .design-modal--multi {
   max-width: 440px;
-  max-height: calc(100dvh - 24px);
+  max-height: calc(100vh - 120px);
+  max-height: calc(100dvh - 120px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -742,14 +743,20 @@
 }
 
 .design-modal-item-title {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
-  color: #0f172a;
-  margin: 0 0 6px 0;
+  color: #5b4cdb;
+  margin: 0 0 10px 0;
+  letter-spacing: -0.01em;
+}
+
+.design-modal-item-size {
+  font-weight: 700;
+  color: #4a5568;
 }
 
 .design-modal-field {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .design-modal-field-label,
@@ -760,6 +767,18 @@
   font-size: 0.72rem;
   letter-spacing: 0.03em;
   margin-bottom: 6px;
+}
+
+.design-modal-field-label--under {
+  display: block;
+  margin: 8px 0 0;
+  padding: 0;
+  text-align: center;
+  font-weight: 500;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: #a8b0bd;
+  text-transform: none;
 }
 
 .design-modal-options {
@@ -834,23 +853,24 @@
 .design-modal-orientation-options {
   display: flex;
   align-items: stretch;
-  gap: 16px;
+  gap: 12px;
 }
 
 .design-modal-orientation-option {
   display: inline-flex !important;
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
-  min-height: 72px;
   flex-direction: column !important;
   align-items: center !important;
-  justify-content: center !important;
-  gap: 6px !important;
-  padding: 10px 12px;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  padding: 12px 10px 10px;
   border-radius: 10px;
   border: 2px solid #e5e7eb;
   background: #fafafa;
   transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+  box-sizing: border-box;
 }
 
 .design-modal-orientation-option:hover {
@@ -863,12 +883,22 @@
   background: #eef2ff;
 }
 
-/* Shirt mockup images – constrained to fit in popup without changing modal size */
+.design-modal-orientation-img-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 96px;
+  flex-shrink: 0;
+}
+
+/* Shirt mockup images – equal example window for every item */
 .design-modal-orientation-img {
   display: block;
-  width: 100%;
-  max-width: 80px;
-  max-height: 56px;
+  width: auto;
+  height: auto;
+  max-width: 110px;
+  max-height: 96px;
   object-fit: contain;
   flex-shrink: 0;
   border-radius: 4px;
@@ -1023,23 +1053,31 @@
   }
   
   .order-section-header {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: nowrap;
     align-items: flex-start;
-    gap: 12px;
+    justify-content: space-between;
+    gap: 8px;
   }
   
   .order-section h2 {
     font-size: 1.5rem;
+    margin-top: 12px; /* sit a bit below BACK TO CART on the right */
+    flex: 1 1 auto;
+    min-width: 0;
   }
   
   .back-to-cart-btn {
-    width: 100%;
-    justify-content: flex-start;
+    width: auto;
+    flex: 0 0 auto;
+    margin-left: auto;
+    justify-content: flex-end;
+    align-self: flex-start;
     padding: 0;
   }
   
   .back-to-cart-text {
-    font-size: 1.5rem;
+    font-size: 1.15rem;
   }
   
   .form-row {

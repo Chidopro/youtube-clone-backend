@@ -650,3 +650,88 @@ nav.nav-dropdown-active {
     background: rgba(63, 81, 181, 0.2);
     transform: scale(1.1);
 }
+
+/* Mobile hamburger dropdown — attached to sticky header */
+.nav-mobile-menu {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    nav {
+        overflow: visible !important;
+    }
+
+    .nav-mobile-menu {
+        display: block;
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100%;
+        z-index: 10060;
+        pointer-events: none;
+    }
+
+    .nav-mobile-menu-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        pointer-events: auto;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .nav-mobile-menu-panel {
+        position: absolute;
+        top: 6px;
+        left: 8px;
+        z-index: 1;
+        width: min(200px, 52vw);
+        max-height: min(70vh, calc(100dvh - 72px));
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+        pointer-events: auto;
+    }
+
+    .nav-mobile-menu-panel .sidebar,
+    .nav-mobile-menu-panel .sidebar:not(.small-sidebar),
+    .nav-mobile-menu-panel .sidebar.small-sidebar {
+        position: static;
+        top: auto;
+        left: auto;
+        bottom: auto;
+        width: 100%;
+        height: auto;
+        max-height: none;
+        margin: 0;
+        padding: 12px 12px 14px;
+        background: transparent;
+        box-shadow: none;
+        transform: none;
+        overflow: visible;
+    }
+
+    .nav-mobile-menu-panel .sidebar hr {
+        width: 100%;
+    }
+
+    .nav-mobile-menu-panel .subscribed-list {
+        max-height: none;
+    }
+
+    /* Keep hamburger above the dismiss backdrop so a second tap closes the menu */
+    .nav-left,
+    .nav-left .menu-icon {
+        z-index: 10070 !important;
+        position: relative;
+        pointer-events: auto !important;
+    }
+}

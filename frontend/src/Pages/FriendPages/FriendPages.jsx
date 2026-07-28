@@ -9,10 +9,17 @@ import './FriendPages.css';
 
 const FriendPages = ({ sidebar }) => {
   const navigate = useNavigate();
-  const { currentCreator } = useCreator();
+  const { currentCreator, creatorSettings } = useCreator();
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const accentPrimary = creatorSettings?.primary_color || '#e91e8c';
+  const accentSecondary = creatorSettings?.secondary_color || '#7cb342';
+  const pageStyle = {
+    '--friend-accent-a': accentPrimary,
+    '--friend-accent-b': accentSecondary,
+  };
 
   useEffect(() => {
     const run = async () => {
@@ -52,7 +59,7 @@ const FriendPages = ({ sidebar }) => {
     <div className={`container ${sidebar ? '' : ' large-container'}`}>
       <StorefrontFlowBanner />
 
-      <div className="friend-pages friend-pages--in-container">
+      <div className="friend-pages friend-pages--in-container" style={pageStyle}>
         <div className="friend-pages-toolbar">
           <button
             type="button"
@@ -80,7 +87,7 @@ const FriendPages = ({ sidebar }) => {
 
         {!loading && pages.length > 0 ? (
           <ul className="friend-pages-list">
-            {pages.map((L) => {
+            {pages.map((L, index) => {
               const label = friendPageLabel(L, currentCreator?.id);
               const to =
                 L.slug === 'owner' ? '/favorites' : `/favorites/${encodeURIComponent(L.slug)}`;
@@ -88,7 +95,7 @@ const FriendPages = ({ sidebar }) => {
                 <li key={L.id}>
                   <button
                     type="button"
-                    className="friend-pages-item"
+                    className={`friend-pages-item friend-pages-item--tone-${(index % 3) + 1}`}
                     onClick={() => navigate(to)}
                   >
                     <span className="friend-pages-item-name">{label}</span>

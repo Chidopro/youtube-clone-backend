@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import './Dashboard.css';
 import { supabase } from '../../supabaseClient';
@@ -452,8 +453,11 @@ const Dashboard = ({ sidebar }) => {
 
     const handleSaveUmbrellaPageName = async () => {
         const name = umbrellaPageName.trim();
-        const collabList = favoritePages.find((l) => l.storefront_owner_id) || favoritePages[0];
-        const listId = collabList?.id || selectedFavoriteListId;
+        const selectedList = favoritePages.find((l) => String(l.id) === String(selectedFavoriteListId));
+        const collabList = selectedList?.is_collaborator_page
+            ? selectedList
+            : (favoritePages.find((l) => l.is_collaborator_page) || favoritePages[0]);
+        const listId = selectedList?.id || collabList?.id;
         if (!name) {
             alert('Enter a page name (this nickname appears in the storefront menu — not your email).');
             return;
@@ -1568,12 +1572,11 @@ const Dashboard = ({ sidebar }) => {
                 {/* Favorites Tab */}
                 {activeTab === 'favorites' && (
                     <div className="favorites-tab">
-                        <div className="favorites-tab-controls">
+                        <div className={`favorites-tab-controls${umbrellaOnly ? ' favorites-tab-controls--umbrella' : ''}`}>
                         {userProfile?.role === 'creator' && umbrellaOnly && favoritePages.length > 0 && (
                             <div className="umbrella-fav-page-bar">
                                 <div className="umbrella-fav-page-intro">
                                     <p>
-                                        Your favorites on <strong>{umbrellaOwnerName || 'this storefront'}</strong>.
                                         Choose a <strong>nickname</strong> for your page — customers see this in the
                                         Favorites menu, not your email.
                                     </p>
@@ -1659,21 +1662,30 @@ const Dashboard = ({ sidebar }) => {
                                 </div>
                             </div>
                         )}
+                            {!umbrellaOnly && (
                             <button
                                 type="button"
                                 className="add-favorite-btn favorites-upload-btn"
                                 onClick={() => {
-                                    if (umbrellaOnly) {
-                                        navigate('/upload');
-                                        return;
-                                    }
                                     setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
                                     setShowFavoriteModal(true);
                                 }}
                             >
-                                {umbrellaOnly ? 'Upload video' : 'Upload'}
+                                Upload
                             </button>
+                            )}
                         </div>
+                        {umbrellaOnly && favorites.length > 0 && (
+                            <div className="umbrella-fav-under-actions umbrella-fav-under-actions--below-bar">
+                                <button
+                                    type="button"
+                                    className="add-favorite-btn favorites-upload-btn"
+                                    onClick={() => navigate('/upload')}
+                                >
+                                    Upload video
+                                </button>
+                            </div>
+                        )}
                         {!umbrellaOnly && (
                         <p className="paste-hint">
                             Paste from FrameSnag (Ctrl+V) to add a captured image. Uploads go to the page selected above
@@ -1784,25 +1796,36 @@ const Dashboard = ({ sidebar }) => {
                                 ))}
                             </div>
                         ) : (
-                            <div className="no-videos-placeholder">
+                            <div className={`no-videos-placeholder${umbrellaOnly ? ' no-videos-placeholder--umbrella' : ''}`}>
                                 <div className="placeholder-content">
                                     <h3>No favorites yet</h3>
-                                    <p>Upload your favorite images for users to create merchandise from!</p>
-                                    <button 
-                                        className="add-favorite-btn"
-                                        onClick={() => {
-                                            setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
-                                            setShowFavoriteModal(true);
-                                        }}
-                                    >
-                                        + Add Your First Favorite
-                                    </button>
+                                    <p>Upload your favorite images/videos for users to create merchandise with!</p>
+                                    <div className="umbrella-fav-under-actions">
+                                        <button
+                                            className="add-favorite-btn"
+                                            onClick={() => {
+                                                setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+                                                setShowFavoriteModal(true);
+                                            }}
+                                        >
+                                            + Add Your First Favorite
+                                        </button>
+                                        {umbrellaOnly && (
+                                            <button
+                                                type="button"
+                                                className="add-favorite-btn favorites-upload-btn"
+                                                onClick={() => navigate('/upload')}
+                                            >
+                                                Upload video
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
                         
-                        {/* Favorite Upload Modal */}
-                        {showFavoriteModal && (
+                        {/* Favorite Upload Modal — portaled so sticky navbar cannot cover it */}
+                        {showFavoriteModal && createPortal(
                             <div className="favorite-modal-overlay" onClick={() => setShowFavoriteModal(false)}>
                                 <div className="favorite-modal-content" onClick={(e) => e.stopPropagation()} ref={modalContentRef}>
                                     <span className="favorite-modal-close" onClick={() => setShowFavoriteModal(false)}>&times;</span>
@@ -1874,7 +1897,8 @@ const Dashboard = ({ sidebar }) => {
                                     </div>
                                 </div>
                                 </div>
-                            </div>
+                            </div>,
+                            document.body
                         )}
                     </div>
                 )}

@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import ToolsPage from '../ToolsPage/ToolsPage';
 import { supabase } from '../../supabaseClient';
 import { UserService } from '../../utils/userService';
 import { getBackendUrl } from '../../config/apiConfig';
+import { claimSessionTokenIfNeeded } from '../../utils/userService';
+import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import { setToolsFocusCartIndex } from '../../utils/merchSession';
@@ -342,20 +345,17 @@ const ProductPage = ({ sidebar }) => {
     try {
       setSavingFavorite(true);
 
-      // Get current user
       const isAuthenticated = localStorage.getItem('isAuthenticated');
       const userData = localStorage.getItem('user');
-      
+
       let user = null;
       let userId = null;
-      
+
       if (isAuthenticated === 'true' && userData) {
-        // Google OAuth user
         const googleUser = JSON.parse(userData);
         user = googleUser;
         userId = googleUser.id;
       } else {
-        // Fallback to Supabase auth
         const { data: { user: supabaseUser } } = await supabase.auth.getUser();
         if (!supabaseUser) {
           alert('Please sign in to save favorites.');
@@ -370,16 +370,24 @@ const ProductPage = ({ sidebar }) => {
         return;
       }
 
-      // Get user profile for channel title
-      const { data: profile } = await supabase
-        .from('users')
-        .select('display_name, username, channelTitle')
-        .eq('id', userId)
-        .single();
+      await claimSessionTokenIfNeeded(userId);
 
-      const channelTitle = profile?.channelTitle || profile?.display_name || profile?.username || user?.name || 'Unknown Creator';
+      let channelTitle = user?.name || user?.email?.split('@')[0] || 'Unknown Creator';
+      try {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('display_name, username, channelTitle')
+          .eq('id', userId)
+          .single();
+        channelTitle =
+          profile?.channelTitle ||
+          profile?.display_name ||
+          profile?.username ||
+          channelTitle;
+      } catch (_) {
+        /* profile optional — backend fills channel title if missing */
+      }
 
-      // Get video metadata from localStorage if available
       const raw = localStorage.getItem('pending_merch_data');
       let videoTitle = screenshotLabel || 'Screenshot';
       if (raw) {
@@ -393,32 +401,34 @@ const ProductPage = ({ sidebar }) => {
         }
       }
 
-      // Save to favorites
-      const insertData = {
-        user_id: userId,
-        channelTitle: channelTitle,
-        title: videoTitle,
-        description: `Saved screenshot from product selection`,
-        image_url: screenshotUrl,
-        thumbnail_url: screenshotUrl
-      };
+      let listId = null;
+      try {
+        listId = localStorage.getItem('sm_favorite_list_id') || null;
+      } catch (_) {}
 
-      const { data, error } = await supabase
-        .from('creator_favorites')
-        .insert(insertData)
-        .select()
-        .single();
+      const { ok, data } = await favoriteListsJson('/api/favorites/save-url', {
+        method: 'POST',
+        body: JSON.stringify({
+          image_url: screenshotUrl,
+          title: videoTitle,
+          description: 'Saved screenshot from product selection',
+          channel_title: channelTitle,
+          ...(listId ? { list_id: listId } : {}),
+        }),
+      });
 
-      if (error) {
-        console.error('Error saving favorite:', error);
-        alert(`Failed to save favorite: ${error.message || 'Unknown error'}`);
-      } else {
-        console.log('Favorite saved successfully:', data);
-        alert('Screenshot saved to favorites!');
-        
-        // Stay on the page so creator can select more screenshots
-        // No navigation - creator can continue selecting and saving
+      if (!ok || !data?.success) {
+        alert(data?.error || 'Failed to save favorite');
+        return;
       }
+
+      if (data.list_id) {
+        try {
+          localStorage.setItem('sm_favorite_list_id', data.list_id);
+        } catch (_) {}
+      }
+
+      alert('Screenshot saved to favorites!');
     } catch (error) {
       console.error('Error saving favorite:', error);
       alert(`Failed to save favorite: ${error.message || 'Unknown error'}`);
@@ -1470,8 +1480,8 @@ const ProductPage = ({ sidebar }) => {
         </div>
       )}
 
-      {/* Added to Cart Modal - Always available, hidden in creator mode */}
-      {!creatorMode && showAddedToCartModal && (
+      {/* Added to Cart Modal - portal to body so navbar/overflow never clip it */}
+      {!creatorMode && showAddedToCartModal && createPortal(
         <div className="added-to-cart-modal-overlay" onClick={() => setShowAddedToCartModal(false)}>
           <div className="added-to-cart-modal" onClick={(e) => e.stopPropagation()}>
             <button 
@@ -1515,7 +1525,8 @@ const ProductPage = ({ sidebar }) => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

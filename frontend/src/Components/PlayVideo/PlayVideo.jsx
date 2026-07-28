@@ -461,18 +461,19 @@ const PlayVideo = ({
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Set canvas size to match video display size
-            const videoRect = videoElement.getBoundingClientRect();
-            canvas.width = videoRect.width;
-            canvas.height = videoRect.height;
+            // Use intrinsic video frame size (not CSS display box).
+            // On mobile the player is often letterboxed/cropped in a non-16:9 box;
+            // sizing the canvas to getBoundingClientRect() stretched the saved JPEG.
+            const videoWidth = videoElement.videoWidth;
+            const videoHeight = videoElement.videoHeight;
+            canvas.width = videoWidth;
+            canvas.height = videoHeight;
             
-            // No waiting - instant capture for maximum speed
-            
-            // Draw the current video frame to canvas
-            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            // Draw the current video frame 1:1 into the canvas
+            ctx.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
             
             // Convert to data URL with high quality
-            const screenshotData = canvas.toDataURL('image/jpeg', 0.9);
+            const screenshotData = canvas.toDataURL('image/jpeg', 0.92);
             
             // console.log('Client-side screenshot captured successfully');
             return screenshotData;
@@ -481,7 +482,7 @@ const PlayVideo = ({
             console.error('Error capturing video frame:', error);
             return null;
         }
-    }, [isMobile]);
+    }, []);
 
     // Make Merch handler
     const handleMakeMerch = async () => {

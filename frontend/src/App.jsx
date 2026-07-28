@@ -239,12 +239,10 @@ const App = () => {
     checkProfileTier();
   }, [location.pathname]);
   
-  // Close mobile drawer after navigation (e.g. Favorites link in hamburger menu)
+  // Close hamburger drawer after navigation (Favorites / Home / etc.)
   useEffect(() => {
-    if (isMobile) {
-      setSidebar(false);
-    }
-  }, [location.pathname, isMobile]);
+    setSidebar(false);
+  }, [location.pathname]);
 
   // Hide main sidebar for third tier profile pages
   const shouldShowSidebar = sidebar && !(currentProfileTier?.isThirdTier);
@@ -253,34 +251,24 @@ const App = () => {
   const isFriendPages = location.pathname === '/friend-pages';
   const isOrderSuccessPage = location.pathname === '/order-success' || location.pathname === '/success';
   const useStorefrontChrome = isFavoritesPage || isFriendPages;
+  const showDesktopSidebar = shouldShowSidebar && !isMobile && !isOrderSuccessPage;
 
   console.log('🚀 App.jsx rendering - current path:', location.pathname);
   
   return (
     <CreatorProvider>
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <Navbar setSidebar={setSidebar} resetCategory={resetCategory} />
+        <Navbar
+          sidebar={sidebar}
+          setSidebar={setSidebar}
+          resetCategory={resetCategory}
+          category={category}
+          setCategory={setCategory}
+        />
         <div id="page-top-banner" className="page-top-banner" aria-hidden="true" />
         <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0 }}>
-          {shouldShowSidebar && !isOrderSuccessPage && (
+          {showDesktopSidebar && (
           <Sidebar sidebar={sidebar} category={category} setCategory={setCategory} setSidebar={setSidebar} />
-          )}
-          {/* Mobile backdrop for sidebar */}
-          {sidebar && isMobile && !isOrderSuccessPage && (
-            <div 
-              className="mobile-sidebar-backdrop"
-              onClick={() => setSidebar(false)}
-              style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                zIndex: 999,
-                display: 'block'
-              }}
-            />
           )}
           <div
             className={`main-content-area${useStorefrontChrome ? ' main-content-area--storefront-subpage' : ''}${isOrderSuccessPage ? ' main-content-area--order-success' : ''}`}

@@ -159,7 +159,7 @@
   height: 101px; /* 16:9 landscape to match capture/screenshot area */
   object-fit: contain;
   display: block;
-  background: #0a0a0a;
+  background: #f3f3f3; /* light matte — match capture/Tools previews, no black bars */
 }
 
 .screenshot-label {
@@ -450,9 +450,9 @@
   }
 
   .screenshots-section {
-    padding: 20px 15px;
-    margin: 15px auto;
-    margin-bottom: 1.5rem;
+    padding: 16px 8px;
+    margin: 12px auto;
+    margin-bottom: 1rem;
   }
 
   .screenshots-title {
@@ -462,27 +462,52 @@
 
   .screenshots-subtitle {
     font-size: 0.9rem;
-    margin-bottom: 20px;
-  }
-
-  .screenshot-image {
-    width: 112px;
-    height: 63px; /* 16:9 landscape to match capture */
+    margin-bottom: 16px;
   }
 
   .screenshot-grid {
     gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    /* Prevent row stretch — that left blank white under shorter cards in portrait */
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .screenshot-item {
+    width: calc(50% - 5px);
+    max-width: none;
+    height: auto;
+    align-self: flex-start;
+    flex: 0 0 calc(50% - 5px);
+    box-sizing: border-box;
+  }
+
+  .screenshot-item > div {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .screenshot-image {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    max-height: none;
+    object-fit: contain;
   }
 
   .screenshot-label {
     font-size: 0.75rem;
     padding: 6px 8px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .screenshot-item.selected {
     border: 5px solid #667eea !important;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4), 0 8px 28px rgba(102, 126, 234, 0.5) !important;
-    transform: scale(1.05);
+    transform: none; /* scale caused uneven card heights in the flex row */
   }
 
   .categories-container {
@@ -1269,27 +1294,45 @@
   }
   
   .cart-section-bottom {
+    /* Keep side-by-side — .cart-section { column } would otherwise stack these */
+    flex-direction: row !important;
     margin-top: 1.5rem;
     margin-bottom: 0;
     width: 100%;
     max-width: none;
+    padding: 0 12px;
+    gap: 0.5rem;
+    box-sizing: border-box;
   }
 
   .tools-button-container,
   .cart-section-buttons {
     width: 100%;
     max-width: none;
+    padding: 0 12px;
+    box-sizing: border-box;
   }
 
   .tools-page-btn,
   .edit-tools-btn,
-  .add-to-cart-btn,
+  .add-to-cart-btn {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+  }
+
   .cart-section-buttons .view-cart-btn,
   .cart-section-buttons .checkout-btn,
   .cart-section-bottom .view-cart-btn,
   .cart-section-bottom .checkout-btn {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    max-width: none;
     padding: 0.6rem 1rem;
     font-size: 0.9rem;
+    box-sizing: border-box;
   }
   
   .cart-actions {
@@ -1354,16 +1397,17 @@
 /* Added to Cart Modal Styles */
 .added-to-cart-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  z-index: 10000;
-  padding: 20px;
+  /* Above Navbar (up to ~100001) */
+  z-index: 200000;
+  padding: max(96px, 12vh) 16px max(24px, 4vh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
   animation: fadeIn 0.3s ease-out;
 }
 
@@ -1381,22 +1425,14 @@
   border-radius: 16px;
   max-width: 380px;
   width: 100%;
-  max-height: 90vh;
+  max-height: calc(100vh - 120px);
+  max-height: calc(100dvh - 120px);
   overflow-y: auto;
   position: relative;
+  margin: 0 auto;
+  flex-shrink: 0;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(30px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  box-sizing: border-box;
 }
 
 .added-to-cart-modal-close {
@@ -1519,13 +1555,14 @@
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
   .added-to-cart-modal-overlay {
-    padding: 12px;
+    padding: max(80px, 10vh) 12px 16px;
   }
 
   .added-to-cart-modal {
     max-width: 100%;
     border-radius: 12px;
-    max-height: 90vh;
+    max-height: calc(100vh - 96px);
+    max-height: calc(100dvh - 96px);
   }
 
   .added-to-cart-modal-content {

@@ -51,6 +51,7 @@ const ChannelUmbrella = () => {
   const [submitting, setSubmitting] = useState(false);
   const [ownerSubdomain, setOwnerSubdomain] = useState('');
   const [busyCancel, setBusyCancel] = useState(null);
+  const [busyMember, setBusyMember] = useState(null);
   const [salesByList, setSalesByList] = useState([]);
   const [salesLoading, setSalesLoading] = useState(true);
   const [salesError, setSalesError] = useState('');
@@ -222,7 +223,9 @@ const ChannelUmbrella = () => {
       setMsg({
         type: 'ok',
         text: data.message || (data.email_invite
-          ? 'Email invite created. Copy the join link from Pending invites below and send it to your collaborator.'
+          ? (data.email_sent
+            ? 'Invite email sent. A join link is also listed under Pending invites.'
+            : 'Invite created, but email could not be sent — copy the join link below.')
           : data.existing_user
             ? 'Invite sent to an existing account. They accept under Channel invites (no join link).'
             : 'Invite sent.'),
@@ -276,6 +279,78 @@ const ChannelUmbrella = () => {
     }
   };
 
+  const removeMember = async (friendId, label) => {
+    const name = label || 'this member';
+    if (
+      !window.confirm(
+        `Remove ${name} from your umbrella?\n\nTheir page will leave this storefront. Past sales attribution stays in your payout history.`
+      )
+    ) {
+      return;
+    }
+    setBusyMember(`remove:${friendId}`);
+    setMsg({ type: '', text: '' });
+    try {
+      const { ok, data } = await channelFriendsJson('/api/channel-friends/remove-member', {
+        method: 'POST',
+        body: JSON.stringify({ friend_id: friendId }),
+      });
+      if (!ok) {
+        setMsg({ type: 'error', text: data?.error || 'Could not remove member' });
+        return;
+      }
+      setMsg({ type: 'ok', text: `${name} was removed from your umbrella.` });
+      await refresh();
+      await loadSalesSummary();
+    } catch (e) {
+      setMsg({ type: 'error', text: e.message || 'Network error' });
+    } finally {
+      setBusyMember(null);
+    }
+  };
+
+  const pauseMember = async (friendId, label) => {
+    setBusyMember(`pause:${friendId}`);
+    setMsg({ type: '', text: '' });
+    try {
+      const { ok, data } = await channelFriendsJson('/api/channel-friends/pause-member', {
+        method: 'POST',
+        body: JSON.stringify({ friend_id: friendId }),
+      });
+      if (!ok) {
+        setMsg({ type: 'error', text: data?.error || 'Could not pause member' });
+        return;
+      }
+      setMsg({ type: 'ok', text: `${label || 'Member'} paused — their page is hidden from the storefront.` });
+      await refresh();
+    } catch (e) {
+      setMsg({ type: 'error', text: e.message || 'Network error' });
+    } finally {
+      setBusyMember(null);
+    }
+  };
+
+  const resumeMember = async (friendId, label) => {
+    setBusyMember(`resume:${friendId}`);
+    setMsg({ type: '', text: '' });
+    try {
+      const { ok, data } = await channelFriendsJson('/api/channel-friends/resume-member', {
+        method: 'POST',
+        body: JSON.stringify({ friend_id: friendId }),
+      });
+      if (!ok) {
+        setMsg({ type: 'error', text: data?.error || 'Could not resume member' });
+        return;
+      }
+      setMsg({ type: 'ok', text: `${label || 'Member'} resumed — their page is public again.` });
+      await refresh();
+    } catch (e) {
+      setMsg({ type: 'error', text: e.message || 'Network error' });
+    } finally {
+      setBusyMember(null);
+    }
+  };
+
   return (
     <div className="channel-umbrella">
       <section className="channel-umbrella-section" aria-labelledby="umbrella-collab-heading">
@@ -283,10 +358,11 @@ const ChannelUmbrella = () => {
           Collaborators
         </h2>
         <p className="hint">
-          Invite by <strong>email</strong> to get a join link you copy and send (works for new and existing accounts).
-          Invite by <strong>username</strong> only if they already use ScreenMerch — they accept under{' '}
+          Invite by <strong>email</strong> and ScreenMerch emails them a join link automatically
+          (you can still copy the link under Pending invites). Invite by <strong>username</strong> only if they
+          already use ScreenMerch — they accept under{' '}
           <Link to="/channel-invites">Channel invites</Link> (profile menu → Channel invites).
-          We do not email the link automatically. FrameSnag on YouTube stays with you as the storefront owner.
+          FrameSnag on YouTube stays with you as the storefront owner.
         </p>
         {!ownerSubdomain ? (
           <p className="channel-umbrella-msg error">
@@ -373,14 +449,60 @@ const ChannelUmbrella = () => {
       ))}
 
       <h2>Approved members</h2>
+      <p className="hint">
+        Pause hides their public Favorites page without removing them. Delete removes them from your umbrella network (does not delete their ScreenMerch login).
+      </p>
       {!loading && members.length === 0 ? <p className="hint">No approved umbrella members yet.</p> : null}
-      {members.map((row) => (
-        <div key={row.id} className="channel-umbrella-row">
-          <div className="channel-umbrella-row-main">
-            <span className="channel-umbrella-row-label">{pendingAccountLabel(row) || 'Member'}</span>
+      {members.map((row) => {
+        const label = pendingAccountLabel(row) || 'Member';
+        const isPaused = row.status === 'paused';
+        const friendId = row.friend_id;
+        const busy = busyMember && String(busyMember).endsWith(`:${friendId}`);
+        return (
+          <div
+            key={row.id}
+            className={`channel-umbrella-row channel-umbrella-row--member${isPaused ? ' is-paused' : ''}`}
+          >
+            <div className="channel-umbrella-row-main">
+              <span className="channel-umbrella-row-label">{label}</span>
+              {isPaused ? (
+                <span className="channel-umbrella-row-meta channel-umbrella-paused-badge">Paused — page hidden</span>
+              ) : (
+                <span className="channel-umbrella-row-meta">Active on this storefront</span>
+              )}
+            </div>
+            <div className="channel-umbrella-row-actions">
+              {isPaused ? (
+                <button
+                  type="button"
+                  className="btn-resume-member"
+                  disabled={!!busy}
+                  onClick={() => resumeMember(friendId, label)}
+                >
+                  {busyMember === `resume:${friendId}` ? '…' : 'Resume'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-pause-member"
+                  disabled={!!busy}
+                  onClick={() => pauseMember(friendId, label)}
+                >
+                  {busyMember === `pause:${friendId}` ? '…' : 'Pause account'}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-delete-invite"
+                disabled={!!busy}
+                onClick={() => removeMember(friendId, label)}
+              >
+                {busyMember === `remove:${friendId}` ? '…' : 'Delete account'}
+              </button>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       </section>
 
       <section className="channel-umbrella-section" aria-labelledby="umbrella-sales-heading">

@@ -38,10 +38,12 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 8px;
+  max-width: 560px;
 }
 
 .channel-umbrella-form input {
   flex: 1 1 220px;
+  max-width: 360px;
   padding: 10px 12px;
   border-radius: 6px;
   border: 1px solid #ced4da;
@@ -93,10 +95,21 @@
   border-radius: 8px;
   margin-bottom: 8px;
   background: #fff;
+  max-width: 560px;
+}
+
+.channel-umbrella-row--member.is-paused {
+  background: #f8f9fa;
+  border-color: #ced4da;
+}
+
+.channel-umbrella-paused-badge {
+  color: #b45309 !important;
+  font-weight: 600;
 }
 
 .channel-umbrella-row-main {
-  flex: 1 1 240px;
+  flex: 1 1 180px;
   min-width: 0;
 }
 
@@ -138,7 +151,9 @@
 
 .channel-umbrella-row button.btn-cancel-invite,
 .channel-umbrella-row button.btn-copy-invite,
-.channel-umbrella-row button.btn-delete-invite {
+.channel-umbrella-row button.btn-delete-invite,
+.channel-umbrella-row button.btn-pause-member,
+.channel-umbrella-row button.btn-resume-member {
   padding: 8px 14px;
   font-size: 0.85rem;
   border-radius: 6px;
@@ -150,6 +165,16 @@
 
 .channel-umbrella-row button.btn-copy-invite {
   background: #667eea;
+  color: #fff;
+}
+
+.channel-umbrella-row button.btn-pause-member {
+  background: #f59e0b;
+  color: #1a1a1a;
+}
+
+.channel-umbrella-row button.btn-resume-member {
+  background: #198754;
   color: #fff;
 }
 

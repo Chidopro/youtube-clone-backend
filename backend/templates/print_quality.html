@@ -705,9 +705,10 @@
             if (selectedProduct.screenshot && selectedProduct.screenshot.trim() !== '') {
                 orderScreenshot = selectedProduct.screenshot;
                 originalScreenshot = selectedProduct.screenshot;
-                document.getElementById('screenshotPreview').innerHTML = `
+                const preview = document.getElementById('screenshotPreview');
+                preview.innerHTML = `
                     <div class="active-image-wrap">
-                        <img id="activeEditImage" src="${selectedProduct.screenshot}" alt="Active screenshot">
+                        <img id="activeEditImage" alt="Active screenshot">
                         <button type="button" class="crop-tool-btn" id="cropToolBtn" title="Crop before Fit to Print">++ Crop Tool</button>
                         <div id="cropOverlay" class="crop-overlay">
                             <div id="cropBox" class="crop-box" style="left:0;top:0;width:100%;height:100%;">
@@ -724,6 +725,8 @@
                     </div>
                     <p style="margin-top: 10px; color: green;">✅ Editing: ${(selectedProduct.product || 'Product')} ${selectedProduct.color && selectedProduct.color !== 'N/A' ? ' — ' + selectedProduct.color : ''} ${selectedProduct.size && selectedProduct.size !== 'N/A' ? ' (' + selectedProduct.size + ')' : ''}</p>
                 `;
+                const activeImg = document.getElementById('activeEditImage');
+                if (activeImg) activeImg.src = selectedProduct.screenshot;
                 document.getElementById('cropX').value = '';
                 document.getElementById('cropY').value = '';
                 document.getElementById('cropWidth').value = '';
@@ -758,7 +761,14 @@
                 card.setAttribute('data-index', index);
                 const label = [product.product, product.color && product.color !== 'N/A' ? product.color : '', product.size && product.size !== 'N/A' ? product.size : ''].filter(Boolean).join(' · ');
                 if (product.screenshot && product.screenshot.trim() !== '') {
-                    card.innerHTML = `<img src="${product.screenshot}" alt="${(product.product || 'Product')}"><span class="card-label">${(product.product || 'Product ' + (index + 1))}${product.color && product.color !== 'N/A' ? ' — ' + product.color : ''}${product.size && product.size !== 'N/A' ? ' (' + product.size + ')' : ''}</span>`;
+                    const img = document.createElement('img');
+                    img.alt = product.product || 'Product';
+                    img.src = product.screenshot;
+                    card.appendChild(img);
+                    const span = document.createElement('span');
+                    span.className = 'card-label';
+                    span.textContent = (product.product || 'Product ' + (index + 1)) + (product.color && product.color !== 'N/A' ? ' — ' + product.color : '') + (product.size && product.size !== 'N/A' ? ' (' + product.size + ')' : '');
+                    card.appendChild(span);
                 } else {
                     card.innerHTML = `<div style="width:120px;height:90px;background:#eee;border-radius:4px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;color:#999;">No image</div><span class="card-label">${product.product || 'Product ' + (index + 1)}</span>`;
                 }
@@ -769,8 +779,9 @@
         }
 
         // Load order screenshots (same API as email — screenshots in email body come from here)
-        async function loadOrderScreenshot() {
-            const currentOrderId = orderId || document.getElementById('orderIdInput').value;
+        async function loadOrderScreenshot(retryCount) {
+            retryCount = retryCount || 0;
+            const currentOrderId = (orderId || document.getElementById('orderIdInput').value || '').trim();
             const queueContainer = document.getElementById('screenshotQueueContainer');
             
             if (!currentOrderId) {
@@ -780,7 +791,7 @@
             }
 
             try {
-                const response = await fetch(`/api/get-order-screenshot/${currentOrderId}`);
+                const response = await fetch(`/api/get-order-screenshot/${encodeURIComponent(currentOrderId)}`);
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success && (data.products?.length > 0 || data.screenshot)) {
@@ -799,6 +810,12 @@
                         document.getElementById('screenshotPreview').innerHTML = '<p style="color: orange;">⚠️ No screenshot found in order</p><small style="display:block;margin-top:8px;">The order was found but no image was saved. You can still use the tools below with a video URL or by uploading an image.</small>';
                     }
                 } else {
+                    // Retry once — Fly multi-machine / DB lag can 404 briefly after checkout
+                    if (response.status === 404 && retryCount < 2) {
+                        document.getElementById('screenshotPreview').innerHTML = '<p style="color: #0066cc;">⏳ Order not ready yet, retrying…</p>';
+                        await new Promise(function(r) { setTimeout(r, 1500); });
+                        return loadOrderScreenshot(retryCount + 1);
+                    }
                     allProducts = [];
                     if (queueContainer) queueContainer.style.display = 'none';
                     let errMsg = 'Failed to load order screenshots';
@@ -806,9 +823,14 @@
                         const errData = await response.json();
                         if (errData && errData.error) errMsg = errData.error;
                     } catch (e) {}
-                    document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">❌ ' + errMsg + '</p><small style="display:block;margin-top:8px;">If the order was just placed, wait a moment and try again. Use the order ID from your email link.</small>';
+                    document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">❌ ' + errMsg + '</p><small style="display:block;margin-top:8px;">If the order was just placed, wait a moment and click Load Screenshots again. Use the full order ID from your email (including ORD-).</small>';
                 }
             } catch (error) {
+                if (retryCount < 2) {
+                    document.getElementById('screenshotPreview').innerHTML = '<p style="color: #0066cc;">⏳ Network hiccup, retrying…</p>';
+                    await new Promise(function(r) { setTimeout(r, 1500); });
+                    return loadOrderScreenshot(retryCount + 1);
+                }
                 allProducts = [];
                 if (queueContainer) queueContainer.style.display = 'none';
                 document.getElementById('screenshotPreview').innerHTML = '<p style="color: red;">❌ Error: ' + error.message + '</p><small style="display:block;margin-top:8px;">Check your connection and the order ID (e.g. from your email).</small>';

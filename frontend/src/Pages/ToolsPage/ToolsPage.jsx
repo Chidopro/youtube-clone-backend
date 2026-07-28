@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG } from '../../config/printAreaConfig';
-import API_CONFIG from '../../config/apiConfig';
+import API_CONFIG, { apiJoin } from '../../config/apiConfig';
 import { consumeToolsFocusCartIndex } from '../../utils/merchSession';
 import './ToolsPage.css';
 
@@ -980,7 +980,7 @@ const ToolsPage = () => {
     setOrderScreenshotsLoading(true);
     setOrderScreenshotsError(null);
 
-    fetch(`${API_CONFIG.BASE_URL}/api/get-order-screenshot/${encodeURIComponent(trimmedOrderId)}`)
+    fetch(apiJoin(`/api/get-order-screenshot/${encodeURIComponent(trimmedOrderId)}`))
       .then(async (response) => {
         if (cancelled) return;
         if (!response.ok) {
@@ -1023,7 +1023,7 @@ const ToolsPage = () => {
           if (missing.length > 0) {
             Promise.all(
               missing.map((item) =>
-                fetch(`${API_CONFIG.BASE_URL}/api/product-preview-url?name=${encodeURIComponent(item.name)}`)
+                fetch(apiJoin(`/api/product-preview-url?name=${encodeURIComponent(item.name)}`))
                   .then((r) => r.ok ? r.json() : null)
                   .then((data) => (data && data.url ? { ...item, productImage: data.url } : item))
                   .catch(() => item)
@@ -1198,6 +1198,10 @@ const ToolsPage = () => {
           const selectedProduct = cartProducts[selectedCartProductIndex];
           if (selectedProduct.screenshot && selectedProduct.screenshot.trim() !== '') {
             const screenshot = selectedProduct.screenshot;
+            // Avoid clobbering an in-progress edit when cart poll reloads the same image
+            if (screenshot === imageUrl && !switchingSlotRef.current) {
+              return;
+            }
             if (screenshot !== imageUrl) {
               upgradeTriggeredRef.current = false;
             }
@@ -2249,6 +2253,92 @@ const ToolsPage = () => {
     img.src = imageUrl;
   }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick]);
 
+  const rotateScreenshotClockwise = () => {
+    const src = (imageUrl || '').trim();
+    if (!src) {
+      alert('No image to rotate. Load a screenshot first.');
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.height;
+      canvas.height = img.width;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        alert('Could not rotate this image.');
+        return;
+      }
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      let dataUrl;
+      try {
+        dataUrl = canvas.toDataURL('image/png');
+      } catch (_) {
+        alert('Could not rotate this image. Try again after it fully loads.');
+        return;
+      }
+
+      // Persist so loadScreenshot / cart poll cannot restore the unrotated original
+      if (selectedCartProductIndex !== null) {
+        slotStateRef.current[selectedCartProductIndex] = {
+          ...(slotStateRef.current[selectedCartProductIndex] || {}),
+          editedImageUrl: '',
+        };
+      }
+
+      setImageUrl(dataUrl);
+      setSelectedImage(dataUrl);
+      setEditedImageUrl('');
+      upgradeTriggeredRef.current = false;
+
+      setCartProducts((prev) => {
+        if (selectedCartProductIndex === null || !prev[selectedCartProductIndex]) return prev;
+        return prev.map((p, i) =>
+          i === selectedCartProductIndex ? { ...p, screenshot: dataUrl } : p
+        );
+      });
+
+      try {
+        const cartItems = JSON.parse(localStorage.getItem('cart_items') || '[]');
+        const selected =
+          selectedCartProductIndex !== null ? cartProducts[selectedCartProductIndex] : null;
+        const cartIndex =
+          selected && typeof selected.originalCartIndex === 'number'
+            ? selected.originalCartIndex
+            : -1;
+        if (cartIndex >= 0 && cartItems[cartIndex]) {
+          cartItems[cartIndex] = {
+            ...cartItems[cartIndex],
+            screenshot: dataUrl,
+          };
+          localStorage.setItem('cart_items', JSON.stringify(cartItems));
+        }
+      } catch (e) {
+        console.warn('Could not persist rotated screenshot to cart:', e);
+      }
+
+      try {
+        const raw = localStorage.getItem('pending_merch_data');
+        if (raw) {
+          const data = JSON.parse(raw);
+          data.edited_screenshot = dataUrl;
+          data.selected_screenshot = dataUrl;
+          if (Array.isArray(data.screenshots) && data.screenshots.length) {
+            data.screenshots = [dataUrl, ...data.screenshots.slice(1)];
+          }
+          localStorage.setItem('pending_merch_data', JSON.stringify(data));
+        }
+      } catch (e) {
+        console.warn('Could not persist rotated screenshot to pending_merch_data:', e);
+      }
+    };
+    img.onerror = () => alert('Could not load image to rotate.');
+    img.src = src;
+  };
+
   const handleDownload = () => {
     const imageToDownload = editedImageUrl || imageUrl;
     if (!imageToDownload || !imageToDownload.trim()) {
@@ -2326,7 +2416,7 @@ const ToolsPage = () => {
       }
       const apiUrl = import.meta.env.DEV
         ? 'http://127.0.0.1:5000/api/process-thumbnail-print-quality'
-        : (API_CONFIG.BASE_URL + '/api/process-thumbnail-print-quality');
+        : apiJoin('/api/process-thumbnail-print-quality');
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2571,13 +2661,16 @@ const ToolsPage = () => {
                     position: 'relative'
                   }}>
                     <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
+                      position: 'relative',
                       marginBottom: '10px',
-                      gap: '8px',
-                      justifyContent: 'center'
+                      minHeight: '30px',
+                      padding: '0 36px'
                     }}>
                       <span style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
                         background: '#007bff',
                         color: 'white',
                         borderRadius: '50%',
@@ -2587,12 +2680,11 @@ const ToolsPage = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 'bold',
-                        fontSize: '14px',
-                        flexShrink: 0
+                        fontSize: '14px'
                       }}>
                         {selectedCartProductIndex + 1}
                       </span>
-                      <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
+                      <div style={{ textAlign: 'center' }}>
                         <div style={{ fontWeight: 'bold', fontSize: '14px', wordBreak: 'break-word' }}>{product.name}</div>
                         <div style={{ fontSize: '12px', color: '#666' }}>
                           {product.color} • {product.size}
@@ -2836,128 +2928,145 @@ const ToolsPage = () => {
                       
                       return null;
                     })()}
-                    <p style={{ margin: '12px 0 0 0', fontSize: '12px', color: '#6b7280', fontStyle: 'italic', textAlign: 'center' }}>
-                      Product mockup, your item will be made in the color you selected.
-                    </p>
+                    {/* Screenshot Size — in the product card so it stays fully visible */}
+                    <div className="tool-control-group screenshot-size-under-preview" style={{ marginTop: '12px', marginBottom: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '8px' }}>
+                        <h3 style={{ textAlign: 'center', margin: 0, fontSize: '15px' }}>Screenshot Size</h3>
+                        <button
+                          type="button"
+                          className="screenshot-rotate-btn"
+                          onClick={rotateScreenshotClockwise}
+                          title="Rotate 90° clockwise"
+                          aria-label="Rotate image 90 degrees clockwise"
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path
+                              d="M12 4a8 8 0 1 1-7.07 4.07"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            />
+                            <path
+                              d="M5 3v5h5"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="slider-control">
+                        <div className={`${selectedProductName && !screenshotSizeInteracted ? 'screenshot-size-pulse' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderRadius: '4px' }}>
+                          <input
+                            type="range"
+                            min="50"
+                            max="150"
+                            value={screenshotScale}
+                            onMouseDown={() => setScreenshotSizeInteracted(true)}
+                            onTouchStart={() => setScreenshotSizeInteracted(true)}
+                            onChange={(e) => {
+                              setScreenshotScale(parseInt(e.target.value));
+                              setScreenshotSizeInteracted(true);
+                            }}
+                            onContextMenu={(e) => e.preventDefault()}
+                            onSelectStart={(e) => e.preventDefault()}
+                            className="slider"
+                            style={{
+                              flex: 1,
+                              userSelect: 'none',
+                              WebkitUserSelect: 'none',
+                              WebkitTouchCallout: 'none',
+                              touchAction: 'manipulation'
+                            }}
+                          />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setScreenshotScale(Math.min(150, screenshotScale + 1));
+                                setScreenshotSizeInteracted(true);
+                              }}
+                              onContextMenu={(e) => e.preventDefault()}
+                              onSelectStart={(e) => e.preventDefault()}
+                              style={{
+                                background: '#667eea',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                width: '28px',
+                                height: '20px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '12px',
+                                padding: 0,
+                                lineHeight: 1,
+                                userSelect: 'none',
+                                WebkitUserSelect: 'none',
+                                WebkitTouchCallout: 'none',
+                                touchAction: 'manipulation'
+                              }}
+                              title="Increase size"
+                            >
+                              ▲
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setScreenshotScale(Math.max(50, screenshotScale - 1));
+                                setScreenshotSizeInteracted(true);
+                              }}
+                              onContextMenu={(e) => e.preventDefault()}
+                              onSelectStart={(e) => e.preventDefault()}
+                              style={{
+                                background: '#667eea',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                width: '28px',
+                                height: '20px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '12px',
+                                padding: 0,
+                                lineHeight: 1,
+                                userSelect: 'none',
+                                WebkitUserSelect: 'none',
+                                WebkitTouchCallout: 'none',
+                                touchAction: 'manipulation'
+                              }}
+                              title="Decrease size"
+                            >
+                              ▼
+                            </button>
+                          </div>
+                          <span
+                            className="slider-value"
+                            style={{
+                              minWidth: '50px',
+                              textAlign: 'right',
+                              userSelect: 'none',
+                              WebkitUserSelect: 'none',
+                              WebkitTouchCallout: 'none'
+                            }}
+                            onContextMenu={(e) => e.preventDefault()}
+                            onSelectStart={(e) => e.preventDefault()}
+                          >
+                            {screenshotScale}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 );
               })()}
               </div>
             )}
 
-          </div>
-
-          {/* Scrollable section below fixed previews */}
-          <div className="tools-left-column-scrollable">
-            {/* Screenshot Size Tool - Directly under product */}
-            <div className="tool-control-group" style={{ marginTop: '20px' }}>
-              <h3 style={{ textAlign: 'center' }}>Screenshot Size</h3>
-              <p className="tool-description" style={{ textAlign: 'center' }}>Adjust the size of your screenshot to fit the print area perfectly</p>
-              <div className="slider-control">
-                <div className={`${selectedProductName && !screenshotSizeInteracted ? 'screenshot-size-pulse' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderRadius: '4px' }}>
-                  <input
-                    type="range"
-                    min="50"
-                    max="150"
-                    value={screenshotScale}
-                    onMouseDown={() => setScreenshotSizeInteracted(true)}
-                    onTouchStart={() => setScreenshotSizeInteracted(true)}
-                    onChange={(e) => {
-                      setScreenshotScale(parseInt(e.target.value));
-                      setScreenshotSizeInteracted(true);
-                    }}
-                    onContextMenu={(e) => e.preventDefault()}
-                    onSelectStart={(e) => e.preventDefault()}
-                    className="slider"
-                    style={{ 
-                      flex: 1,
-                      userSelect: 'none',
-                      WebkitUserSelect: 'none',
-                      WebkitTouchCallout: 'none',
-                      touchAction: 'manipulation'
-                    }}
-                  />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setScreenshotScale(Math.min(150, screenshotScale + 1));
-                        setScreenshotSizeInteracted(true);
-                      }}
-                      onContextMenu={(e) => e.preventDefault()}
-                      onSelectStart={(e) => e.preventDefault()}
-                      style={{
-                        background: '#667eea',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        width: '28px',
-                        height: '20px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '12px',
-                        padding: 0,
-                        lineHeight: 1,
-                        userSelect: 'none',
-                        WebkitUserSelect: 'none',
-                        WebkitTouchCallout: 'none',
-                        touchAction: 'manipulation'
-                      }}
-                      title="Increase size"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setScreenshotScale(Math.max(50, screenshotScale - 1));
-                        setScreenshotSizeInteracted(true);
-                      }}
-                      onContextMenu={(e) => e.preventDefault()}
-                      onSelectStart={(e) => e.preventDefault()}
-                      style={{
-                        background: '#667eea',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        width: '28px',
-                        height: '20px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '12px',
-                        padding: 0,
-                        lineHeight: 1,
-                        userSelect: 'none',
-                        WebkitUserSelect: 'none',
-                        WebkitTouchCallout: 'none',
-                        touchAction: 'manipulation'
-                      }}
-                      title="Decrease size"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                  <span 
-                    className="slider-value" 
-                    style={{ 
-                      minWidth: '50px', 
-                      textAlign: 'right',
-                      userSelect: 'none',
-                      WebkitUserSelect: 'none',
-                      WebkitTouchCallout: 'none'
-                    }}
-                    onContextMenu={(e) => e.preventDefault()}
-                    onSelectStart={(e) => e.preventDefault()}
-                  >
-                    {screenshotScale}%
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
         

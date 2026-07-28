@@ -2580,19 +2580,17 @@
     }
 }
 
-/* Favorite Upload Modal Styles */
+/* Favorite Upload Modal Styles — same stacking approach as AuthModal */
 .favorite-modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    z-index: 10000;
-    padding: max(12px, env(safe-area-inset-top, 0px)) 16px 16px;
+    /* Above Navbar (up to ~100001) so the dialog header is never covered */
+    z-index: 200000;
+    padding: max(72px, 8vh) 16px max(24px, 4vh);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     box-sizing: border-box;
@@ -2604,15 +2602,16 @@
     padding: 0;
     max-width: 520px;
     width: 100%;
-    max-height: calc(100vh - 24px);
-    max-height: calc(100dvh - 24px);
-    margin: auto;
+    max-height: calc(100vh - 96px);
+    max-height: calc(100dvh - 96px);
+    margin: 0 auto;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     position: relative;
     animation: modalSlideIn 0.3s ease-out;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
 }
 
 @keyframes modalSlideIn {
@@ -2837,10 +2836,14 @@
 
 /* Mobile Responsive for Favorite Modal */
 @media (max-width: 768px) {
+    .favorite-modal-overlay {
+        padding: max(64px, 6vh) 12px max(16px, 3vh);
+    }
+
     .favorite-modal-content {
         max-width: 95%;
-        max-height: calc(100vh - 16px);
-        max-height: calc(100dvh - 16px);
+        max-height: calc(100vh - 80px);
+        max-height: calc(100dvh - 80px);
         border-radius: 12px;
     }
 
@@ -2870,31 +2873,71 @@
 }
 
 .umbrella-fav-page-bar {
-    margin: 0 0 20px;
-    padding: 16px 18px;
+    margin: 0 0 16px;
+    padding: 14px 16px;
     background: #f8f9ff;
     border: 1px solid #d8dcff;
     border-radius: 12px;
     text-align: left;
+    max-width: 560px;
+    width: 100%;
+    flex: 0 0 auto;
+    height: auto;
+    align-self: flex-start;
 }
 
 .umbrella-fav-page-intro p {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     color: #495057;
     font-size: 0.95rem;
-    line-height: 1.45;
+    line-height: 1.4;
 }
 
 .umbrella-fav-page-row {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
     align-items: center;
 }
 
 .umbrella-page-name-input {
-    flex: 1 1 220px;
-    min-width: 200px;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 280px;
+}
+
+.favorites-tab-controls--umbrella {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.umbrella-fav-under-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.umbrella-fav-under-actions--below-bar {
+    margin: 0 0 16px;
+}
+
+.umbrella-fav-under-actions .add-favorite-btn {
+    min-width: 240px;
+}
+
+.no-videos-placeholder--umbrella {
+    text-align: left;
+    background: transparent;
+    padding: 8px 0 24px;
+}
+
+.no-videos-placeholder--umbrella .placeholder-content h3 {
+    display: none;
+}
+
+.no-videos-placeholder--umbrella .placeholder-content p {
+    margin: 0 0 16px;
 }
 
 .favorite-pages-toolbar {

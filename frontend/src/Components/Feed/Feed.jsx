@@ -92,8 +92,8 @@ const Feed = ({
             <h2>My Videos</h2>
           </button>
           <button type="button" className="card hub-card" onClick={() => navigate('/favorites')}>
-            <HubThumb src={hubThumbs.favorites} emptyLabel="No Favorites Yet" />
-            <h2>My Favorites</h2>
+            <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" />
+            <h2>My Page</h2>
           </button>
           <button type="button" className="card hub-card" onClick={() => navigate('/friend-pages')}>
             <HubThumb src={hubThumbs.friend} emptyLabel="No Friends Yet" />

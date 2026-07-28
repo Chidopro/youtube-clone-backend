@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { apiJoin } from '../../config/apiConfig';
 import './AuthModal.css';
@@ -98,10 +99,16 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
 
         setMessage({ type: 'success', text: data.message || 'Login successful! Redirecting...' });
 
+        window.dispatchEvent(
+          new CustomEvent('userLoggedIn', {
+            detail: { email: email.trim(), user_type: 'customer' },
+          })
+        );
+
         setTimeout(() => {
           onSuccess && onSuccess();
           onClose();
-        }, 1500);
+        }, 400);
       } else {
         setMessage({ type: 'error', text: data.error || 'Authentication failed' });
       }
@@ -134,7 +141,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="auth-modal-overlay" onClick={onClose}>
       <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
         <div className="auth-modal-header">
@@ -214,7 +221,8 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

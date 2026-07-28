@@ -1535,21 +1535,50 @@ def success():
 
 @orders_bp.route("/api/get-order-screenshot/<order_id>")
 def get_order_screenshot(order_id):
-    """Get screenshot data for a specific order"""
+    """Get screenshot data for a specific order (admin client + ID variants; works across Fly machines)."""
     try:
-        client = _get_supabase_client()
+        client = _get_supabase_admin() or _get_supabase_client()
         order_store = _get_order_store()
-        
+        candidates = []
+        raw = (order_id or "").strip()
+        if raw:
+            candidates.append(raw)
+            upper = raw.upper()
+            if upper.startswith("ORD-"):
+                bare = raw[4:]
+                if bare:
+                    candidates.append(bare)
+                    candidates.append("ORD-" + bare.upper())
+            else:
+                candidates.append("ORD-" + upper)
+        # de-dupe
+        seen = set()
+        id_list = []
+        for c in candidates:
+            if c and c not in seen:
+                seen.add(c)
+                id_list.append(c)
+
         order_data = None
-        if client:
-            result = client.table('orders').select('*').eq('order_id', order_id).execute()
-            if result.data:
-                order_data = result.data[0]
-            elif order_id in order_store:
-                order_data = order_store[order_id]
-        else:
-            if order_id in order_store:
-                order_data = order_store[order_id]
+        # Prefer in-memory store (same machine that took the order)
+        for c in id_list:
+            if c in order_store:
+                order_data = dict(order_store[c])
+                break
+
+        # Then DB with service role when available (anon RLS often blocks order reads)
+        if not order_data and client:
+            for c in id_list:
+                for col in ("order_id", "order_number", "id"):
+                    try:
+                        result = client.table("orders").select("*").eq(col, c).limit(1).execute()
+                        if result.data:
+                            order_data = result.data[0]
+                            break
+                    except Exception as lookup_err:
+                        logger.warning(f"Order lookup {col}={c}: {lookup_err}")
+                if order_data:
+                    break
         
         if not order_data:
             response = jsonify({
@@ -1565,6 +1594,14 @@ def get_order_screenshot(order_id):
             return response, 404
         
         cart = order_data.get('cart', [])
+        if isinstance(cart, str):
+            try:
+                cart = json.loads(cart) if cart.strip() else []
+            except Exception:
+                cart = []
+        if not isinstance(cart, list):
+            cart = []
+
         order_level_screenshot = (order_data.get('selected_screenshot') or 
                                  order_data.get('thumbnail') or 
                                  order_data.get('screenshot'))
@@ -1572,9 +1609,12 @@ def get_order_screenshot(order_id):
         # Build products list with screenshots
         products = []
         for idx, item in enumerate(cart):
-            product_name = item.get('product', f'Product {idx + 1}')
-            color = item.get('variants', {}).get('color', 'N/A')
-            size = item.get('variants', {}).get('size', 'N/A')
+            if not isinstance(item, dict):
+                continue
+            product_name = item.get('product') or item.get('name') or f'Product {idx + 1}'
+            variants = item.get('variants') if isinstance(item.get('variants'), dict) else {}
+            color = variants.get('color') or item.get('color') or 'N/A'
+            size = variants.get('size') or item.get('size') or 'N/A'
             
             screenshot_data = (item.get('selected_screenshot') or 
                              item.get('img') or 
@@ -1582,26 +1622,17 @@ def get_order_screenshot(order_id):
                              item.get('thumbnail') or 
                              order_level_screenshot)
             
-            if screenshot_data:
-                products.append({
-                    "index": idx,
-                    "product": product_name,
-                    "screenshot": screenshot_data,
-                    "color": color,
-                    "size": size
-                })
-            else:
-                products.append({
-                    "index": idx,
-                    "product": product_name,
-                    "screenshot": "",
-                    "color": color,
-                    "size": size
-                })
+            products.append({
+                "index": idx,
+                "product": product_name,
+                "screenshot": screenshot_data or "",
+                "color": color,
+                "size": size
+            })
         
         response = jsonify({
             "success": True,
-            "order_id": order_id,
+            "order_id": order_data.get("order_id") or order_id,
             "products": products,
             "video_url": order_data.get('video_url', ''),
             "video_title": order_data.get('video_title', ''),

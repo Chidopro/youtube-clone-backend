@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { AdminService } from '../../utils/adminService';
-import { API_CONFIG } from '../../config/apiConfig';
+import { apiJoin } from '../../config/apiConfig';
 import './Feed.css';
 import './CreatorDirectory.css';
 import { RESERVE_SLOT_THEMES, TOTAL_CREATOR_SPOTS } from './reserveSlotThemes';
@@ -43,8 +43,10 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
     let cancelled = false;
     (async () => {
       try {
-        const base = (API_CONFIG?.BASE_URL || 'https://screenmerch.fly.dev').replace(/\/$/, '');
-        const res = await fetch(`${base}/api/creators/soft-launch-spots`);
+        // Same-origin /api on screenmerch.com (Netlify → Fly). Direct fly.dev can fail CORS and leave counter at 0.
+        const res = await fetch(apiJoin('/api/creators/soft-launch-spots'), {
+          credentials: 'omit',
+        });
         const data = await res.json().catch(() => ({}));
         if (cancelled || !data?.success) return;
         const claimed = Math.min(
@@ -58,10 +60,7 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
         });
         setTakenBySpot(map);
       } catch (_) {
-        if (!cancelled) {
-          setClaimedCount(0);
-          setTakenBySpot({});
-        }
+        /* keep default 0 until next load */
       }
     })();
     return () => {
