@@ -56,7 +56,10 @@ function favoritePageSelectLabel(page) {
         return 'Main Favorites';
     }
     if (page.is_collaborator_page) {
-        const nick = cleanFavoritePageNickname(page.member_label || page.display_name || page.slug);
+        // Prefer saved page display_name (Pom / Gee) over email-derived member_label
+        const nick = cleanFavoritePageNickname(
+            page.display_name || page.member_label || page.slug
+        );
         return nick ? `${nick} Favorites` : 'Favorites';
     }
     return cleanFavoritePageNickname(page.display_name) || page.slug || 'Favorites';
@@ -1911,7 +1914,7 @@ const Dashboard = ({ sidebar }) => {
                         <div className="sales-analytics-section">
                             <div className="section-header">
                                 <h2>
-                                    📊 Sales Analytics
+                                    📊 Sales Analytics Dashboard
                                     {umbrellaOnly && analyticsData.page_name ? ` — ${analyticsData.page_name}` : ''}
                                 </h2>
                                 {umbrellaOnly ? (
@@ -2019,14 +2022,6 @@ const Dashboard = ({ sidebar }) => {
                                 
                                 {/* Enhanced Sales Chart */}
                                 <div className="sales-chart-section">
-                                                                         <div className="chart-header">
-                                         <h3>📊 Sales Analytics Dashboard</h3>
-                                         <div className="service-fee-info">
-                                             <span className="fee-badge">$6/item platform share</span>
-                                             <span className="fee-explanation">Markup split — not 30% of gross</span>
-                                         </div>
-                                     </div>
-                                    
                                     {/* Daily Sales Chart */}
                                     <div className="chart-section">
                                         <h4>📅 Daily Sales (Last 7 Days)</h4>
@@ -2291,7 +2286,7 @@ const Dashboard = ({ sidebar }) => {
                                 
                                 {/* Products Sold Chart */}
                                 <div className="products-sold-chart">
-                                    <h3>🛍️ Products Sold</h3>
+                                    <h3>🛍️ Products Sold (Last 7 Days)</h3>
                                     
                                     {analyticsData.products_sold && analyticsData.products_sold.length > 0 ? (
                                         <div className="products-chart-container">
@@ -2316,9 +2311,6 @@ const Dashboard = ({ sidebar }) => {
                                                             >
                                                                 <span className="bar-label">{product.quantity}</span>
                                                             </div>
-                                                        </div>
-                                                        <div className="product-source">
-                                                            <small>From: {umbrellaOnly ? (analyticsData.page_name || 'Your favorites page') : product.video_source}</small>
                                                         </div>
                                                     </div>
                                                 );

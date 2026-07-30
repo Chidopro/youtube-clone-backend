@@ -899,7 +899,6 @@
 }
 
 .edit-tools-btn {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   width: 100%;
 }
 
@@ -1113,9 +1112,23 @@
 
 .cart-actions {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  justify-content: stretch;
   gap: 10px;
   margin-top: 16px;
+  width: 100%;
+}
+
+.cart-actions .view-cart-btn,
+.cart-actions .checkout-btn {
+  flex: 1 1 calc(50% - 5px);
+  width: auto;
+  min-width: 0;
+}
+
+.cart-actions .edit-tools-btn {
+  flex: 1 1 100%;
+  width: 100%;
 }
 /* All Products Informational Layout */
 .all-products-info-container {
@@ -1338,6 +1351,16 @@
   .cart-actions {
     flex-wrap: wrap;
     gap: 8px;
+    width: 100%;
+  }
+
+  .cart-actions .view-cart-btn,
+  .cart-actions .checkout-btn {
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  .cart-actions .edit-tools-btn {
+    flex: 1 1 100%;
   }
 
   /* Mobile Cart Item Styles */

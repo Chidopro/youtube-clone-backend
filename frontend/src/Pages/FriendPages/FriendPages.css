@@ -202,12 +202,22 @@
   }
 
   .friend-pages-list {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 
   .friend-pages-item {
-    min-height: 72px;
-    padding: 16px 14px;
+    min-height: 64px;
+    padding: 12px 10px;
+    gap: 8px;
+  }
+
+  .friend-pages-item-name {
+    font-size: 15px;
+    padding-left: 4px;
+  }
+
+  .friend-pages-item-arrow {
+    font-size: 16px;
   }
 }

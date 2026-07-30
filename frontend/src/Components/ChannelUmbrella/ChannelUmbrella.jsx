@@ -455,6 +455,7 @@ const ChannelUmbrella = () => {
       {!loading && members.length === 0 ? <p className="hint">No approved umbrella members yet.</p> : null}
       {members.map((row) => {
         const label = pendingAccountLabel(row) || 'Member';
+        const pageName = (row.page_name || '').trim() || 'Collaborator';
         const isPaused = row.status === 'paused';
         const friendId = row.friend_id;
         const busy = busyMember && String(busyMember).endsWith(`:${friendId}`);
@@ -466,9 +467,11 @@ const ChannelUmbrella = () => {
             <div className="channel-umbrella-row-main">
               <span className="channel-umbrella-row-label">{label}</span>
               {isPaused ? (
-                <span className="channel-umbrella-row-meta channel-umbrella-paused-badge">Paused — page hidden</span>
+                <span className="channel-umbrella-row-meta channel-umbrella-paused-badge">
+                  Page name: {pageName} · Paused — page hidden
+                </span>
               ) : (
-                <span className="channel-umbrella-row-meta">Active on this storefront</span>
+                <span className="channel-umbrella-row-meta">Page name: {pageName}</span>
               )}
             </div>
             <div className="channel-umbrella-row-actions">

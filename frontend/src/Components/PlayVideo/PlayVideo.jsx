@@ -1352,123 +1352,27 @@ const PlayVideo = ({
                     
                                          {/* Crop Tool Icon - Top Left Corner */}
                      <button
+                         className={`playvideo-crop-toggle${isCropMode ? ' is-active' : ''}`}
                          onClick={handleToggleCropMode}
                          type="button"
-                         style={{
-                             position: 'absolute',
-                             top: '10px',
-                             left: '10px',
-                            background: 'rgba(255, 255, 255, 0.95)',
-                            border: '2px solid #764ba2',
-                            borderRadius: '6px',
-                            width: isMobile ? '47px' : '53px',
-                            height: isMobile ? '47px' : '53px',
-                             cursor: 'pointer',
-                             display: 'flex',
-                             alignItems: 'center',
-                             justifyContent: 'center',
-                            zIndex: 1000,
-                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-                            overflow: 'hidden',
-                            outline: 'none',
-                            WebkitAppearance: 'none',
-                            MozAppearance: 'none',
-                            appearance: 'none',
-                            borderStyle: 'solid',
-                            padding: '4px'
-                         }}
-                         onFocus={(e) => {
-                             e.target.style.outline = 'none';
-                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-                             e.target.style.transform = 'none';
-                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-                             e.target.style.border = '2px solid #764ba2';
-                         }}
-                         onBlur={(e) => {
-                             e.target.style.outline = 'none';
-                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-                             e.target.style.transform = 'none';
-                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-                             e.target.style.border = '2px solid #764ba2';
-                         }}
-                         onMouseDown={(e) => {
-                             e.preventDefault();
-                             e.target.style.outline = 'none';
-                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-                             e.target.style.transform = 'none';
-                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-                             e.target.style.border = '2px solid #764ba2';
-                         }}
-                         onMouseUp={(e) => {
-                             e.target.style.outline = 'none';
-                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-                             e.target.style.transform = 'none';
-                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-                             e.target.style.border = '2px solid #764ba2';
-                         }}
-                         onMouseEnter={(e) => {
-                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-                             e.target.style.transform = 'none';
-                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-                             e.target.style.border = '2px solid #764ba2';
-                         }}
-                         onMouseLeave={(e) => {
-                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-                             e.target.style.transform = 'none';
-                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-                             e.target.style.border = '2px solid #764ba2';
-                         }}
-                         onTouchStart={(e) => {
-                             e.target.style.outline = 'none';
-                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-                             e.target.style.transform = 'none';
-                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-                             e.target.style.border = '2px solid #764ba2';
-                         }}
-                         onTouchEnd={(e) => {
-                             e.target.style.outline = 'none';
-                             e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-                             e.target.style.transform = 'none';
-                             e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-                             e.target.style.border = '2px solid #764ba2';
-                         }}
                          onContextMenu={(e) => e.preventDefault()}
                          title={isCropMode ? "Exit Crop Mode" : "Crop Screenshot"}
                     >
-                        {/* Crop icon */}
-                        <svg 
-                            width={isMobile ? "20" : "22"} 
-                            height={isMobile ? "20" : "22"} 
+                        <svg
+                            className="playvideo-crop-toggle-icon"
+                            width="22"
+                            height="22"
                             viewBox="0 0 24 24"
                             fill="none"
-                            stroke="#764ba2"
+                            stroke="currentColor"
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            style={{ 
-                                position: 'absolute',
-                                top: '8px',
-                                left: '50%',
-                                transform: 'translateX(-50%)',
-                                zIndex: 2
-                            }}
+                            aria-hidden="true"
                         >
                             <path d="M6 2v4h4M18 2v4h-4M6 22v-4h4M18 22v-4h-4M2 6h4v4M22 6h-4v4M2 18h4v-4M22 18h-4v-4"/>
                         </svg>
-                        
-                        {/* Crop Tool text */}
-                        <span style={{ 
-                            position: 'absolute',
-                            bottom: '6px',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            fontSize: isMobile ? '8px' : '9px',
-                            fontWeight: '700',
-                            color: '#764ba2',
-                            zIndex: 2,
-                            whiteSpace: 'nowrap',
-                            lineHeight: '1'
-                        }}>Crop Tool</span>
+                        <span className="playvideo-crop-toggle-label">Crop Tool</span>
                     </button>
 
                      {/* Inline Crop Overlay */}

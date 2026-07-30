@@ -7653,7 +7653,11 @@ def _fl_storefront_collaborator_lists(storefront_owner_id):
         entry = dict(member_list)
         entry["is_collaborator_page"] = True
         u = _cf_user_row(fid)
-        entry["member_label"] = _umbrella_collaborator_label(u)
+        fallback = _umbrella_collaborator_label(u)
+        # Prefer the saved page nickname (e.g. Pom / Gee), not email-derived labels
+        entry["member_label"] = (
+            _fl_list_page_nickname(member_list.get("display_name"), fallback) or fallback
+        )
         out.append(entry)
     out.sort(key=lambda L: (L.get("display_name") or L.get("member_label") or "").lower())
     return out
@@ -8330,6 +8334,43 @@ def channel_friends_members():
             .execute()
         )
         rows = _cf_attach_user_summaries(r.data or [], "friend_id")
+        # Attach public Page nickname for each member (from their storefront favorites list)
+        page_by_owner = {}
+        try:
+            lr = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("owner_user_id, display_name, slug")
+                .eq("storefront_owner_id", user_id)
+                .execute()
+            )
+            for L in lr.data or []:
+                oid = str(L.get("owner_user_id") or "")
+                if oid and oid not in page_by_owner:
+                    page_by_owner[oid] = L
+        except Exception as list_err:
+            logger.warning("channel_friends_members page names: %s", list_err)
+        for row in rows:
+            fid = str(row.get("friend_id") or "")
+            u = row.get("user") or {}
+            fallback = _umbrella_collaborator_label(u) or "Collaborator"
+            L = page_by_owner.get(fid)
+            if not L:
+                # Email twin user ids (same person, remapped account)
+                email = ((u.get("email") or "").strip().lower())
+                if email:
+                    for oid, cand in page_by_owner.items():
+                        try:
+                            ou = _cf_user_row(oid)
+                            if ((ou or {}).get("email") or "").strip().lower() == email:
+                                L = cand
+                                break
+                        except Exception:
+                            continue
+            if L:
+                page = _fl_list_page_nickname(L.get("display_name"), fallback) or fallback
+            else:
+                page = fallback
+            row["page_name"] = (page or "Collaborator")[:120]
         # Approved first, then paused; stable by created_at
         rows.sort(
             key=lambda row: (
@@ -10253,9 +10294,26 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
     total_revenue = sum(order.get("total_value", 0) for order in all_orders)
     avg_order_value = total_revenue / total_sales if total_sales > 0 else 0
 
+    def _order_dt(order):
+        created = order.get("created_at")
+        if not created or created == "N/A":
+            return None
+        try:
+            return datetime.fromisoformat(str(created).replace("Z", "+00:00")).replace(tzinfo=None)
+        except Exception:
+            return None
+
+    # Products Sold chart: last 7 days only (keeps the dashboard list short)
+    week_cutoff = datetime.now() - timedelta(days=7)
+    week_orders = []
+    for order in all_orders:
+        od = _order_dt(order)
+        if od is not None and od >= week_cutoff:
+            week_orders.append(order)
+
     products_sold = {}
     videos_with_sales = {}
-    for order in all_orders:
+    for order in week_orders:
         if order.get("total_value", 0) <= 0:
             continue
         for item in order.get("cart", []):
@@ -10322,7 +10380,7 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
     products_sold_list = []
     for product, quantity in products_sold.items():
         product_revenue = 0
-        for order in all_orders:
+        for order in week_orders:
             for item in order.get("cart", []):
                 if item.get("product", "") == product:
                     item_price = item.get("price", 0)
@@ -10340,6 +10398,7 @@ def _analytics_payload_from_orders(all_orders, product_source_label="Unknown Vid
                 "image": "",
             }
         )
+    products_sold_list.sort(key=lambda p: (-int(p.get("quantity") or 0), str(p.get("product") or "")))
 
     def _recent_sort_key(order):
         created = order.get("created_at")
@@ -11437,13 +11496,24 @@ def get_analytics():
         logger.info(f"🔍 Debug: all_orders length = {len(all_orders)}")
         logger.info(f"🔍 Debug: order_store length = {len(order_store)}")
         
-        # Get unique products sold
+        # Get unique products sold (last 7 days only — keeps Products Sold chart short)
+        from datetime import datetime, timedelta
         products_sold = {}
         videos_with_sales = {}
+        week_cutoff = datetime.now() - timedelta(days=7)
         
         for order in all_orders:
             # Skip orders with $0 value
             if order.get('total_value', 0) <= 0:
+                continue
+            try:
+                created = order.get('created_at')
+                if not created or created == 'N/A':
+                    continue
+                order_date = datetime.fromisoformat(str(created).replace('Z', '+00:00')).replace(tzinfo=None)
+                if order_date < week_cutoff:
+                    continue
+            except Exception:
                 continue
                 
             for item in order.get('cart', []):
@@ -11466,14 +11536,13 @@ def get_analytics():
                 videos_with_sales[video_key]['revenue'] += order.get('total_value', 0)
         
         # Generate sales data for chart (last 30 days)
-        from datetime import datetime, timedelta
         sales_data = [0] * 30
         
         for order in all_orders:
             try:
                 if order.get('created_at') and order.get('created_at') != 'N/A':
                     order_date = datetime.fromisoformat(order.get('created_at').replace('Z', '+00:00'))
-                    days_ago = (datetime.now() - order_date).days
+                    days_ago = (datetime.now() - order_date.replace(tzinfo=None)).days
                     if 0 <= days_ago < 30:
                         sales_data[days_ago] += 1
             except:
@@ -11514,18 +11583,24 @@ def get_analytics():
                 'net_revenue': round(day_owner_net, 2),
             })
         
-        # Calculate actual revenue per product (not hardcoded $25)
+        # Calculate actual revenue per product (last 7 days only)
         products_sold_list = []
         for product, quantity in products_sold.items():
-            # Calculate actual revenue for this product from orders
             product_revenue = 0
             for order in all_orders:
+                try:
+                    created = order.get('created_at')
+                    if not created or created == 'N/A':
+                        continue
+                    order_date = datetime.fromisoformat(str(created).replace('Z', '+00:00')).replace(tzinfo=None)
+                    if order_date < week_cutoff:
+                        continue
+                except Exception:
+                    continue
                 for item in order.get('cart', []):
                     if item.get('product', '') == product:
-                        # Get price from item or order total_value divided by items
                         item_price = item.get('price', 0)
                         if not item_price or item_price <= 0:
-                            # Try to get from order total divided by cart length
                             cart_length = len(order.get('cart', []))
                             if cart_length > 0:
                                 item_price = order.get('total_value', 0) / cart_length
@@ -11538,7 +11613,8 @@ def get_analytics():
                 'video_source': 'Unknown Video',
                 'image': ''
             })
-        
+        products_sold_list.sort(key=lambda p: (-int(p.get('quantity') or 0), str(p.get('product') or '')))
+
         analytics_data = {
             'total_sales': total_sales,
             'total_revenue': round(total_revenue, 2),
