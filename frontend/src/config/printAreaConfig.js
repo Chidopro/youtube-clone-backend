@@ -450,18 +450,6 @@ export const PRINT_AREA_CONFIG = {
     dpi: 300,
     description: "Bandana (Square)"
   },
-  "All Over Print Leash": {
-    width: 1,
-    height: 48,
-    dpi: 300,
-    description: "Leash (Vertical)"
-  },
-  "All Over Print Collar": {
-    width: 1,
-    height: 12,
-    dpi: 300,
-    description: "Collar (Vertical)"
-  },
   
   // Misc
   "Hardcover Bound Notebook": {
@@ -481,30 +469,6 @@ export const PRINT_AREA_CONFIG = {
     height: 14,
     dpi: 300,
     description: "Apron (All-Over Print - Tools Not Available)"
-  },
-  "Kiss Cut Stickers - 3\" × 3\"": {
-    width: 3,
-    height: 3,
-    dpi: 300,
-    description: "Kiss Cut Stickers (3\" × 3\" - Print 3\" × 3\")"
-  },
-  "Kiss Cut Stickers - 4\" × 4\"": {
-    width: 4,
-    height: 4,
-    dpi: 300,
-    description: "Kiss Cut Stickers (4\" × 4\" - Print 4\" × 4\")"
-  },
-  "Kiss Cut Stickers - 5.5\" × 5.5\"": {
-    width: 5.5,
-    height: 5.5,
-    dpi: 300,
-    description: "Kiss Cut Stickers (5.5\" × 5.5\" - Print 5.5\" × 5.5\")"
-  },
-  "Kiss Cut Stickers - 3.75\" × 15\"": {
-    width: 3.75,
-    height: 15,
-    dpi: 300,
-    description: "Kiss Cut Stickers (3.75\" × 15\" - Print 3.75\" × 15\")"
   },
   "Bandana": {
     width: 27.5,
@@ -541,24 +505,6 @@ export const PRINT_AREA_CONFIG = {
     height: 20.5,
     dpi: 300,
     description: "Jigsaw Puzzle with Tin (30\" × 20\" - 1000 pcs - Print 30.25\" × 20.50\")"
-  },
-  "Die-Cut Magnets - 3\" × 3\"": {
-    width: 3,
-    height: 3,
-    dpi: 300,
-    description: "Die-Cut Magnets (3\" × 3\" - Print 3\" × 3\")"
-  },
-  "Die-Cut Magnets - 4\" × 4\"": {
-    width: 4,
-    height: 4,
-    dpi: 300,
-    description: "Die-Cut Magnets (4\" × 4\" - Print 4\" × 4\")"
-  },
-  "Die-Cut Magnets - 6\" × 6\"": {
-    width: 6,
-    height: 6,
-    dpi: 300,
-    description: "Die-Cut Magnets (6\" × 6\" - Print 6\" × 6\")"
   },
   "Greeting Card - 4\" × 6\"": {
     width: 4.15,

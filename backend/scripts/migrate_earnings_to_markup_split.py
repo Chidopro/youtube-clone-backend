@@ -1,6 +1,6 @@
 """
 One-time migration: set creator_share and platform_fee from payout.py for all
-creator_earnings rows that are standard products (not cards/stickers/magnets).
+creator_earnings rows to the standard $6 / $6 split.
 
 Historical rows may use an older split; this corrects them to the current
 standard markup split ($6 creator / $6 platform per sale on $12 markup).
@@ -27,7 +27,6 @@ for p in [backend_dir / ".env", repo_root / ".env", Path.cwd() / ".env"]:
 from utils.payout import (
     CREATOR_SHARE_PER_MARKUP_SALE,
     PLATFORM_FEE_PER_MARKUP_SALE,
-    PRODUCTS_WITHOUT_STANDARD_MARKUP,
 )
 
 
@@ -45,9 +44,6 @@ def main():
     rows = result.data or []
     to_update = []
     for r in rows:
-        product_name = (r.get("product_name") or "").strip()
-        if product_name in PRODUCTS_WITHOUT_STANDARD_MARKUP:
-            continue
         to_update.append({
             "id": r["id"],
             "creator_share": CREATOR_SHARE_PER_MARKUP_SALE,
@@ -55,7 +51,7 @@ def main():
         })
 
     if not to_update:
-        print("No rows to update (all are cards/stickers/magnets or table empty).")
+        print("No rows to update (table empty).")
         return
 
     print(f"Updating {len(to_update)} creator_earnings rows to ${CREATOR_SHARE_PER_MARKUP_SALE} / ${PLATFORM_FEE_PER_MARKUP_SALE} per sale...")

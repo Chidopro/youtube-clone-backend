@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import './Sidebar.css'
 import home from '../../assets/home.png'
 import { Link, useLocation } from 'react-router-dom';
-import { API_CONFIG } from '../../config/apiConfig';
+import { apiJoin } from '../../config/apiConfig';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { fetchPublicFavoriteLists } from '../../utils/favoriteListsApi';
@@ -12,47 +12,68 @@ const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
   const [showSubs, setShowSubs] = useState(true);
   const [subscribers, setSubscribers] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(true);
+  const [creatorsError, setCreatorsError] = useState(false);
   const [favLists, setFavLists] = useState([]);
   const [loadingFavLists, setLoadingFavLists] = useState(false);
   const [showFav, setShowFav] = useState(true);
   const location = useLocation();
   const { currentCreator } = useCreator();
 
-  // Creator directory: main site only (screenmerch.com). Subdomains keep Favorites (+ optional channel tools elsewhere).
+  // Creator directory: main site only (screenmerch.com). Subdomains keep Pages (+ optional channel tools elsewhere).
   useEffect(() => {
     if (isCreatorStorefrontHostname()) {
       setSubscribers([]);
       setLoadingSubs(false);
+      setCreatorsError(false);
       return;
     }
+    let cancelled = false;
     const fetchCreators = async () => {
       setLoadingSubs(true);
+      setCreatorsError(false);
       try {
-        const res = await fetch(`${API_CONFIG.BASE_URL}/api/creators/list`);
+        const res = await fetch(apiJoin('/api/creators/list'));
         const data = await res.json().catch(() => ({}));
-        if (data?.success && Array.isArray(data.creators)) {
-          const mapped = data.creators.map(c => ({
-            id: c.id,
-            username: c.username,
-            name: c.name || c.display_name || c.username,
-            avatar: c.avatar,
-            subdomain: c.subdomain || '',
-          }));
-          const linkable = mapped.filter(
-            c => (c.subdomain && c.subdomain.trim()) || (c.username && c.username.trim())
-          );
+        if (cancelled) return;
+        if (res.ok && data?.success && Array.isArray(data.creators)) {
+          const mapped = data.creators.map((c) => {
+            const subdomain = (c.subdomain || '').trim();
+            const username = (c.username || '').trim();
+            const rawName = (c.name || c.display_name || username || '').trim();
+            const name =
+              rawName && rawName.toLowerCase() !== 'creator'
+                ? rawName
+                : subdomain || username || 'Creator';
+            return {
+              id: c.id,
+              username,
+              name,
+              avatar: c.avatar,
+              subdomain,
+            };
+          });
+          const linkable = mapped.filter((c) => c.subdomain || c.username);
           setSubscribers(linkable);
+          setCreatorsError(false);
         } else {
           setSubscribers([]);
+          setCreatorsError(true);
         }
       } catch (err) {
         console.error('Error fetching creators for sidebar:', err);
-        setSubscribers([]);
+        if (!cancelled) {
+          setSubscribers([]);
+          setCreatorsError(true);
+        }
+      } finally {
+        if (!cancelled) setLoadingSubs(false);
       }
-      setLoadingSubs(false);
     };
 
     fetchCreators();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -132,6 +153,8 @@ const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
           <div>
             {loadingSubs ? (
               <div className="loading-subs">Loading creators...</div>
+            ) : creatorsError ? (
+              <div className="no-subs">Creators unavailable. Try again later.</div>
             ) : subscribers.length === 0 ? (
               <div className="no-subs">No creators yet.</div>
             ) : (

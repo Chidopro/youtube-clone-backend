@@ -450,7 +450,7 @@ const ChannelUmbrella = () => {
 
       <h2>Approved members</h2>
       <p className="hint">
-        Pause hides their public Favorites page without removing them. Delete removes them from your umbrella network (does not delete their ScreenMerch login).
+        Pause hides their public page without removing them. Delete removes them from your umbrella network (does not delete their ScreenMerch login).
       </p>
       {!loading && members.length === 0 ? <p className="hint">No approved umbrella members yet.</p> : null}
       {members.map((row) => {

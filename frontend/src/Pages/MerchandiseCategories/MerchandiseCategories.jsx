@@ -35,7 +35,7 @@ const MerchandiseCategories = ({ sidebar }) => {
     console.log('📸 screenshots:', screenshots.length, 'thumbnail?', !!thumbnail);
   }
 
-  // Category definitions - Stickers removed, All Products added
+  // Category definitions - All Products added
   const categories = [
     { name: "Women's", emoji: "👩", category: "womens" },
     { name: "Men's", emoji: "👨", category: "mens" },

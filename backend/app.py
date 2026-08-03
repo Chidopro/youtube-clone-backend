@@ -1854,32 +1854,6 @@ PRODUCTS = [
         }
     },
     {
-        "name": "All Over Print Leash",
-        "price": 26.90,
-        "filename": "leash.png",
-        "main_image": "leash.png",
-        "preview_image": "petsalloverprintleash.png",
-        "description": "Design custom pet collar and leash sets for yourself or sell them to pet owners online. With all-over print sublimation, designs stay vibrant and last long. The padded collar inside and leash handle offer comfort to the pet and its owner. Optionally, add branding to the product packaging. Durable 100% polyester webbing. 92% polyester, 8% spandex collar and leash handle inside. Black 100% polyester sponge collar and handle padding. Metal snap hook and D-ring for the leash. Black plastic main buckle, adjustable buckle, and strap holder for the collar. Leash length: 6 ft. (1.83 m). Leash and collar width: 1″ (2.54 cm). 3 collar sizes available: S 11.8″–17.8″ (30–45 cm), M 13.5″–20.5″ (35–52 cm), L 14.8″–23.8″ (38–60 cm). Adjustable collar length. The leash is customizable on both sides. The collar is customizable on one side. Option to add branding to the cardboard packaging and poly mailer. Blank product sourced from China. Disclaimers: The collar has visible black stitching. Hand wash with mild detergent or machine wash on a gentle cycle in a mesh bag. Air dry. Important: This product is available only in select countries. If you sell this item on your online store, make sure you let your customers know that they won't be able to order this product outside of these countries. As of April 21, 2025, express shipping is no longer available for customers who previously had this option enabled. This change is due to increased carrier surcharges of up to $25–$30 per package. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "Brown", "Blue", "Red"], "size": ["6 feet"]},
-        "size_pricing": {
-            "6 feet": 0
-        }
-    },
-    {
-        "name": "All Over Print Collar",
-        "price": 25.08,
-        "filename": "collar.png",
-        "main_image": "collar.png",
-        "preview_image": "petsalloverprintcollarpreview.png",
-        "description": "Expand your pet accessory range with custom collars. The all-over print sublimation technique allows for vibrant, long-lasting prints. The premium quality collar features black padding on the inside to ensure comfort for pets. Available in three adjustable sizes. Optionally, add branding to the packaging. Durable 100% polyester webbing. 92% polyester, 8% spandex collar inside. Black 100% polyester sponge collar inside padding. 3 sizes available: S 11.8″–17.8″ (30–45 cm), M 13.5″–20.5″ (35–52 cm), L 14.8″–23.8″ (38–60 cm). Adjustable collar length. Collar width: 1″ (2.54 cm). Black plastic main buckle, adjustable buckle, and strap holder. The collar is customizable on one side. Option to add branding to the cardboard packaging and poly mailer. Blank product sourced from China. Disclaimers: The collar has visible black stitching. Hand wash with mild detergent or machine wash on a gentle cycle in a mesh bag. Air dry. Important: This product is available only in select countries. If you sell this item on your online store, make sure you let your customers know that they won't be able to order this product outside of these countries. As of April 21, 2025, express shipping is no longer available for customers who previously had this option enabled. This change is due to increased carrier surcharges of up to $25–$30 per package. This product is made on demand. No minimums.",
-        "options": {"color": ["Black", "Brown", "Blue", "Red", "Green"], "size": ["S 11.8\"-17.8\"", "M 13.5\"-20.5\"", "L 14.8\"-23.8\""]},
-        "size_pricing": {
-            "S 11.8\"-17.8\"": 0,
-            "M 13.5\"-20.5\"": 0,
-            "L 14.8\"-23.8\"": 0
-        }
-    },
-    {
         "name": "Men's Long Sleeve Shirt",
         "price": 22.79,
         "filename": "menslongsleeve.png",
@@ -2194,9 +2168,7 @@ def filter_products_by_category(category):
         ],
         'pets': [
             "Pet Bowl All-Over Print",
-            "Pet Bandana Collar",
-            "All Over Print Leash",
-            "All Over Print Collar"
+            "Pet Bandana Collar"
         ],
         'misc': [
             "Hardcover Bound Notebook", 
@@ -2740,7 +2712,7 @@ def record_sale(item, user_id=None, friend_id=None, channel_id=None, order_id=No
                 # Check if user is a creator
                 user_result = client_to_use.table('users').select('role').eq('id', creator_user_id).single().execute()
                 if user_result.data and user_result.data.get('role') == 'creator':
-                    # Precise payout: $12 markup = $6 creator / $6 platform per sale; cards/stickers/magnets use 70/30 (TBD)
+                    # Precise payout: $12 markup = $6 creator / $6 platform per sale on every product
                     from utils.payout import get_payout_for_sale
                     product_name = sale_data.get('product_name') or item.get('product') or ''
                     quantity = item.get('quantity', 1)

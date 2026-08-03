@@ -135,16 +135,16 @@ const HowItWorks = () => {
           <h1 className="how-it-works-title">How ScreenMerch Works</h1>
 
           <p>
-            ScreenMerch transforms the best moments from videos into high-quality, personalized
-            merchandise, giving creators a simple new way to monetize the content their audiences already
-            love.
+            ScreenMerch is a creator-focused platform designed to transform video moments and photos
+            into merchandise — giving YouTube creators a storefront they own for their content, with
+            room to grow by inviting collaborators onto it.
           </p>
 
           <p>
             Every approved creator receives a fully branded online storefront with a personalized
             subdomain, page color editor, favicon, and a header area for their own logo. Instead of
             directing fans to a generic marketplace, each creator has their own destination where their
-            community can browse and purchase merchandise inspired by their videos.
+            community can browse and purchase merchandise inspired by their videos and photos.
           </p>
 
           <p>
@@ -152,16 +152,17 @@ const HowItWorks = () => {
             <strong>FrameSnag</strong>, a free Google Chrome extension developed exclusively for the
             ScreenMerch platform. FrameSnag allows creators to browse their YouTube videos, capture
             high-quality frames and thumbnail images with a single click, and instantly save them to their
-            ScreenMerch Favorites page. Those saved images become the artwork available for merchandise,
-            eliminating the need to download, edit, or upload images manually.
+            ScreenMerch page. Creators can also upload photos directly. Those images become the
+            artwork available for merchandise, so there&apos;s no need to download, edit, or upload
+            captures manually when using FrameSnag.
           </p>
 
           <p>
-            Once favorites and video shorts are on the storefront, fans simply visit the creator&apos;s
-            storefront, browse the creator&apos;s collection, select the one they love most, and place it
-            on a wide variety of premium print-on-demand products. Every product image is professionally
-            printed at 300 DPI for exceptional quality, then produced and shipped through trusted global
-            fulfillment partners.
+            Once images and video shorts are on the storefront, fans visit the creator&apos;s store,
+            browse the collection, choose a favorite frame or image, and place it on a wide variety of
+            premium print-on-demand products. Every product image is professionally printed at 300 DPI
+            for exceptional quality, then produced and shipped through trusted global fulfillment
+            partners.
           </p>
 
           <p>
@@ -172,19 +173,18 @@ const HowItWorks = () => {
           </p>
 
           <p>
-            ScreenMerch also supports collaborative growth through its unique Umbrella Creator system.
+            ScreenMerch also supports collaborative growth through its Umbrella Creator system.
             Storefront owners can invite trusted collaborators, co-hosts, or team members to create their
             own branded pages within the same storefront, giving audiences a seamless shopping experience
-            across an entire creator network. Each umbrella creator manages their own video shorts and
-            favorite images, with separate analytics and earnings, so tracking sales, popular images, and
+            across an entire creator network. Each umbrella creator manages their own videos, photos, and
+            page images, with separate analytics and earnings, so tracking sales, popular images, and
             payouts stays simple.
           </p>
 
           <p>
-            By bringing together video content, image capture, merchandise creation, storefront
-            management, fulfillment, and creator collaboration into one integrated platform, ScreenMerch
-            provides a complete merchandising ecosystem designed specifically for today&apos;s creator
-            economy.
+            By bringing together videos, photos, image capture, merchandise, storefront management,
+            fulfillment, and creator collaboration into one integrated platform, ScreenMerch provides a
+            complete merchandising ecosystem designed for the creator economy.
           </p>
         </section>
 

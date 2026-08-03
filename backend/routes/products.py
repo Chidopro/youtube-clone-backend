@@ -130,9 +130,7 @@ def _filter_products_by_category(category):
         ],
         'pets': [
             "Pet Bowl All-Over Print",
-            "Pet Bandana Collar",
-            "All Over Print Leash",
-            "All Over Print Collar"
+            "Pet Bandana Collar"
         ],
         'misc': [
             "Hardcover Bound Notebook", 

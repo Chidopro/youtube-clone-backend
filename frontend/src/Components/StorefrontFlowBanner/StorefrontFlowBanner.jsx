@@ -1,11 +1,10 @@
 import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import '../../Pages/Home/Home.css';
 
 /**
- * Same launch line + 1-2-3 storefront bar as Home (read-only).
- * Keeps Favorites / Friends List visually congruent with the storefront homepage.
+ * Same 1-2-3 storefront bar as Home (read-only).
+ * Keeps Pages / My Friends visually congruent with the storefront homepage.
  */
 const StorefrontFlowBanner = () => {
   const { creatorSettings } = useCreator();
@@ -31,13 +30,6 @@ const StorefrontFlowBanner = () => {
 
   return (
     <>
-      <Link
-        to="/release"
-        className="home-launch-banner"
-        aria-label="Launch announcement: The Content Creator Revolution Now Has a Storefront"
-      >
-        The Content Creator Revolution Now Has a Storefront.
-      </Link>
       <div className="user-flow-section" style={{ position: 'relative', ...gradientStyle }}>
         <div className="flow-steps">
           <div className="flow-step">

@@ -6,11 +6,10 @@ const Release = () => {
   return (
     <div className="release-page">
       <article className="release-article">
-        <p className="release-for-immediate">FOR IMMEDIATE RELEASE</p>
-        <h1 className="release-title">The Creator Revolution Has a Storefront: ScreenMerch Officially Launches</h1>
+        <h1 className="release-title">The Creator Revolution Has a Storefront:<br />ScreenMerch Officially Launches</h1>
         <p className="release-dateline">Alameda, California</p>
 
-        <p>Today marks the official public launch of ScreenMerch, a creator-focused platform designed to transform video moments into merchandise — and give creators full ownership of their storefronts, with room to grow through umbrella collaboration.</p>
+        <p>ScreenMerch is a creator-focused platform designed to transform video moments and photos into merchandise — giving YouTube creators a storefront they own for their content, with room to grow by inviting collaborators onto it.</p>
 
         <p>ScreenMerch was built on a simple but powerful idea:</p>
         <ul>
@@ -18,7 +17,7 @@ const Release = () => {
           <li>They should be able to turn the moments their audiences love into something tangible.</li>
         </ul>
 
-        <p>With ScreenMerch, creators upload their videos.<br />Fans pick a moment.<br />Capture a screenshot.<br />Place it on products.<br />And check out — all inside the creator&apos;s own branded store.</p>
+        <p>With ScreenMerch, creators upload their videos or photos.<br />Fans choose a favorite frame or image.<br />Place it on products.<br />And check out — all inside the creator&apos;s own branded store.</p>
 
         <p><strong>No inventory.<br />No fulfillment headaches.<br />No shipping logistics.</strong></p>
         <p>Just content becoming commerce — instantly.</p>
@@ -29,7 +28,7 @@ const Release = () => {
           <li>A personalized subdomain (yourname.screenmerch.com)</li>
           <li>Full branding control — logo, colors, favicon, and metadata</li>
           <li>A dashboard to manage videos, analytics, and payouts</li>
-          <li>$6 per sale on most products</li>
+          <li>$6 per sale on every product</li>
           <li>Secure payment processing and global fulfillment handled behind the scenes</li>
         </ul>
         <p>Fans don&apos;t leave the creator&apos;s world.<br />They stay inside the creator&apos;s brand.</p>
@@ -47,10 +46,10 @@ const Release = () => {
         <p>Each image is processed for professional 300 DPI print quality.<br />Production and shipping are managed through trusted fulfillment partners.<br />Creators focus on creating.</p>
 
         <h2>A Movement, Not Just a Platform</h2>
-        <p>ScreenMerch launches today as more than a tool.</p>
-        <p>It launches as an invitation.</p>
-        <p>An invitation for creators to own their storefronts.<br />An invitation for umbrella creators to grow inside a shared branded home.<br />An invitation for fans to participate in the moments they love.<br />An invitation to build revenue around creativity — not dependency.</p>
-        <p><strong>The storefront revolution begins now.</strong></p>
+        <p>ScreenMerch is more than a tool.</p>
+        <p>It is an invitation.</p>
+        <p>An invitation for YouTube creators to own their own storefronts.<br />An invitation for umbrella creators to grow inside a shared branded home.<br />An invitation for fans to participate in the moments they love.<br />An invitation to build revenue around creativity — not dependency.</p>
+        <p><strong>The storefront revolution is here.</strong></p>
 
         <p>For more information or to apply as a creator, visit:<br /><a href="https://screenmerch.com" className="release-link">https://screenmerch.com</a></p>
 

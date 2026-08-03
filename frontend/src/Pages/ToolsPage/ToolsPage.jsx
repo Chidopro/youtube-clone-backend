@@ -739,9 +739,7 @@ const isAllOverPrintProduct = (productName) => {
   ];
   // Pets - all over print
   const allOverPrintPets = [
-    "Pet Bowl All-Over Print",
-    "All Over Print Leash",
-    "All Over Print Collar"
+    "Pet Bowl All-Over Print"
   ];
   // Misc - all over print
   const allOverPrintMisc = ["Apron"]; // Only apron is all over print in misc

@@ -13,15 +13,15 @@ const FAQ_SECTIONS = [
       },
       {
         q: 'What do I set up after approval?',
-        a: 'Sign in at screenmerch.com with your email and password. In the dropdown, go to Dashboard, then open the Personalization tab to set up your subdomain name (for example, example.screenmerch.com). Set your header logo (upload from your computer, ScreenMerch hosts it and fills in the URL - or paste a URL if it’s already online), page colors, and favicon, then save settings. The subdomain can take up to 24 hours to activate and load your storefront. Next, upload short videos, and on desktop use FrameSnag to capture YouTube moments into your Favorites page. Recommended sizes: header logo 200×50px (PNG or SVG, upload max 2MB); favicon 32×32px (ICO or PNG).',
+        a: 'Sign in at screenmerch.com with your email and password. In the dropdown, go to Dashboard, then open the Personalization tab to set up your subdomain name (for example, example.screenmerch.com). Set your header logo (upload from your computer, ScreenMerch hosts it and fills in the URL - or paste a URL if it’s already online), page colors, and favicon, then save settings. The subdomain can take up to 24 hours to activate and load your storefront. Next, upload short videos, and on desktop use FrameSnag to capture YouTube moments into your Pages. Recommended sizes: header logo 200×50px (PNG or SVG, upload max 2MB); favicon 32×32px (ICO or PNG).',
       },
       {
         q: 'How do I use FrameSnag?',
-        a: 'FrameSnag is a free Google Chrome extension for ScreenMerch creators (desktop). After your storefront is approved, install FrameSnag from the Chrome Web Store or from the download link in Dashboard → Favorites. Open one of your own YouTube videos (FrameSnag only works on your videos), use FrameSnag to capture high-quality frames or thumbnails, and send them to your ScreenMerch Favorites. Those images become artwork fans can put on merch. You can also paste a capture into Favorites with Ctrl+V (Cmd+V on Mac) when FrameSnag opens your dashboard.',
+        a: 'FrameSnag is a free Google Chrome extension for ScreenMerch creators (desktop). After your storefront is approved, install FrameSnag from the Chrome Web Store or from the download link in Dashboard → Pages. Open one of your own YouTube videos (FrameSnag only works on your videos), use FrameSnag to capture high-quality frames or thumbnails, and send them to your ScreenMerch page. Those images become artwork fans can put on merch. You can also paste a capture into Pages with Ctrl+V (Cmd+V on Mac) when FrameSnag opens your dashboard.',
       },
       {
         q: 'How much do I earn per sale?',
-        a: 'Creators earn $6 per sale on most products. Greeting cards, stickers, and magnets may use different rates. ScreenMerch pays storefront owners when pending earnings reach the $50 minimum.',
+        a: 'Creators earn $6 per sale on every product. ScreenMerch pays storefront owners when pending earnings reach the $50 minimum.',
       },
       {
         q: 'Why are storefront spots limited?',
@@ -71,11 +71,11 @@ const FAQ_SECTIONS = [
     items: [
       {
         q: 'I just want a customer account.',
-        a: 'You don’t need to be a creator to shop. Create a customer account, then visit a creator’s storefront (for example theirname.screenmerch.com), pick a video moment or Favorites image, place the image on a product, and check out.',
+        a: 'You don’t need to be a creator to shop. Create a customer account, then visit a creator’s storefront (for example theirname.screenmerch.com), pick a video moment or page image, place the image on a product, and check out.',
       },
       {
         q: 'How does merch from a video work?',
-        a: 'On a creator storefront, open a video or go to the Favorites page. On a video, use Select Screenshot to capture up to five moments. Choose a screenshot or favorite image, click Make Merch, pick a product category, place the image on a product, and check out.',
+        a: 'On a creator storefront, open a video or go to Pages. On a video, use Select Screenshot to capture up to five moments. Choose a screenshot or page image, click Make Merch, pick a product category, place the image on a product, and check out.',
       },
       {
         q: 'Can I return custom merch?',

@@ -221,7 +221,7 @@ const Profile = ({ sidebar }) => {
             onClick={() => setActiveTab('favorites')}
             style={{ cursor: 'pointer' }}
           >
-            Favorites
+            Pages
           </span>
         </div>
         

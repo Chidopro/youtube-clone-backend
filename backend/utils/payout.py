@@ -1,8 +1,7 @@
 """
 Precise payout calculations for ScreenMerch.
 
-- Most products: $12.00 markup per sale → Creator $6.00, ScreenMerch $6.00 (50/50).
-- Cards, stickers, magnets: different pricing (TBD); currently 70% creator / 30% platform.
+Every product: $12.00 markup per sale → Creator $6.00, ScreenMerch $6.00 (50/50).
 """
 
 # Standard markup split per unit (exact dollars)
@@ -13,32 +12,17 @@ PLATFORM_FEE_PER_MARKUP_SALE = 6.00
 # Minimum owed balance before a storefront owner can record an off-platform collaborator payout.
 UMBRELLA_COLLABORATOR_PAYOUT_MINIMUM = 50.0
 
-# Products that do NOT use the standard markup; pricing TBD (cards, stickers, magnets)
-PRODUCTS_WITHOUT_STANDARD_MARKUP = frozenset([
-    "Greeting Card",
-    "Kiss-Cut Stickers",
-    "Die-Cut Magnets",
-])
-
 
 def get_payout_for_sale(product_name, sale_amount, quantity=1):
     """
     Return (creator_share, platform_fee) in dollars, rounded to 2 decimals.
 
-    - For products with standard $12 markup: $6.00 to creator, $6.00 to platform per unit.
-    - For cards, stickers, magnets: 70% / 30% of sale amount (to be updated later).
+    Every product uses the standard $12 markup: $6.00 to creator, $6.00 to platform per unit.
     """
-    product_name = (product_name or "").strip()
     try:
         qty = max(1, int(quantity))
     except (TypeError, ValueError):
         qty = 1
-
-    if product_name in PRODUCTS_WITHOUT_STANDARD_MARKUP:
-        total = float(sale_amount) * qty
-        creator_share = round(total * 0.70, 2)
-        platform_fee = round(total * 0.30, 2)
-        return (creator_share, platform_fee)
 
     creator_share = round(CREATOR_SHARE_PER_MARKUP_SALE * qty, 2)
     platform_fee = round(PLATFORM_FEE_PER_MARKUP_SALE * qty, 2)
@@ -50,7 +34,7 @@ def sale_revenue_breakdown(product_name, sale_amount, platform_fee=None, creator
     Admin reporting: decompose a sale into Printful fulfillment cost and creator net payout.
 
     - printful_cost: sale amount minus platform fee minus creator markup share.
-    - creator_net_payout: amount owed to creator ($6/unit on standard markup items).
+    - creator_net_payout: amount owed to creator ($6/unit).
     """
     sale = round(float(sale_amount or 0), 2)
     if platform_fee is None or creator_share is None:

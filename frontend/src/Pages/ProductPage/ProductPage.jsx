@@ -213,9 +213,7 @@ const ProductPage = ({ sidebar }) => {
       ],
       'pets': [
         "Pet Bowl All-Over Print",
-        "Pet Bandana Collar",
-        "All Over Print Leash",
-        "All Over Print Collar"
+        "Pet Bandana Collar"
       ],
       'misc': [
         "Hardcover Bound Notebook", 
@@ -279,8 +277,6 @@ const ProductPage = ({ sidebar }) => {
       "Colored Mug": { filename: "coloredmug.png", preview: "coloredmugpreview.png", price: 19.95 },
       "Pet Bowl All-Over Print": { filename: "dogbowl.png", preview: "dogbowlpreview.png", price: 33.49 },
       "Pet Bandana Collar": { filename: "scarfcollar.png", preview: "scarfcollarpreview.png", price: 21.95 },
-      "All Over Print Leash": { filename: "leash.png", preview: "leashpreview.png", price: 26.95 },
-      "All Over Print Collar": { filename: "collar.png", preview: "collarpreview.png", price: 25.08 },
       "Greeting Card": { filename: "greetingcard.png", preview: "greetingcardpreview.png", price: 9.99 },
       "Hardcover Bound Notebook": { filename: "hardcovernotebook.png", preview: "hardcovernotebookpreview.png", price: 23.05 },
       "Apron": { filename: "apron.png", preview: "apronpreview.png", price: 28.90 },
@@ -338,7 +334,7 @@ const ProductPage = ({ sidebar }) => {
 
   const handleSaveToFavorites = async (screenshotUrl, screenshotLabel) => {
     if (!isCreator) {
-      alert('Only creators can save screenshots to favorites.');
+      alert('Only creators can save screenshots to Pages.');
       return;
     }
 
@@ -428,7 +424,7 @@ const ProductPage = ({ sidebar }) => {
         } catch (_) {}
       }
 
-      alert('Screenshot saved to favorites!');
+      alert('Screenshot saved to Pages!');
     } catch (error) {
       console.error('Error saving favorite:', error);
       alert(`Failed to save favorite: ${error.message || 'Unknown error'}`);
@@ -1027,7 +1023,7 @@ const ProductPage = ({ sidebar }) => {
               'mugs': ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"],
               'hats': ["Distressed Dad Hat", "Closed Back Cap", "Five Panel Trucker Hat", "Five Panel Baseball Cap"],
               'bags': ["Laptop Sleeve", "All-Over Print Drawstring", "All Over Print Tote Pocket", "All-Over Print Utility Bag"],
-              'pets': ["Pet Bowl All-Over Print", "Pet Bandana Collar", "All Over Print Leash", "All Over Print Collar"],
+              'pets': ["Pet Bowl All-Over Print", "Pet Bandana Collar"],
               'misc': ["Hardcover Bound Notebook", "Apron", "Jigsaw Puzzle with Tin", "Greeting Card"]
             };
 
@@ -1104,7 +1100,7 @@ const ProductPage = ({ sidebar }) => {
         <>
           {/* Screenshot Selection Section */}
           <div className="screenshots-section">
-            <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Favorites' : 'Select Your Screenshot'}</h2>
+            <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Pages' : 'Select Your Screenshot'}</h2>
             <p className="screenshots-subtitle">{creatorMode ? 'Choose which screenshot to save to your favorites' : 'Choose which screenshot to use for your custom merchandise'}</p>
             <div className="screenshots-preview">
               <div className="screenshot-grid">
@@ -1135,9 +1131,9 @@ const ProductPage = ({ sidebar }) => {
                           handleSaveToFavorites(thumbnailUrl, 'Thumbnail');
                         }}
                         disabled={savingFavorite}
-                        title="Save to Favorites"
+                        title="Save to Pages"
                       >
-                        {savingFavorite ? 'Saving...' : '⭐ Save to Favorites'}
+                        {savingFavorite ? 'Saving...' : '⭐ Save to Pages'}
                       </button>
                     )}
                   </div>
@@ -1181,9 +1177,9 @@ const ProductPage = ({ sidebar }) => {
                               handleSaveToFavorites(screenshot, `Screenshot ${index + 1}`);
                             }}
                             disabled={savingFavorite}
-                            title="Save to Favorites"
+                            title="Save to Pages"
                           >
-                            {savingFavorite ? 'Saving...' : '⭐ Save to Favorites'}
+                            {savingFavorite ? 'Saving...' : '⭐ Save to Pages'}
                           </button>
                         )}
                       </div>

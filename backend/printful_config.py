@@ -182,19 +182,7 @@ PRINTFUL_VARIANTS = {
     },
     
     # Products without variants
-    "Sticker Pack": {
-        "base_variant_id": 1,
-        "colors": {},
-        "sizes": []
-    },
-    
     "Dog Bowl": {
-        "base_variant_id": 1,
-        "colors": {},
-        "sizes": []
-    },
-    
-    "Magnet Set": {
         "base_variant_id": 1,
         "colors": {},
         "sizes": []
@@ -230,7 +218,7 @@ PRODUCT_CATEGORIES = {
     "clothing": ["Classic Tee", "Hoodie", "Cropped Hoodie", "Women's Ribbed Neck", "Women's Shirt", "Women's HD Shirt", "Kids Shirt", "Kids Hoodie", "Kids Long Sleeve"],
     "accessories": ["Canvas Tote", "Tote Bag", "Large Canvas Bag"],
     "home": ["Greeting Card", "Notebook", "Coasters"],
-    "other": ["Sticker Pack", "Dog Bowl", "Magnet Set"]
+    "other": ["Dog Bowl"]
 }
 
 # Helper Functions

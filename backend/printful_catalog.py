@@ -108,10 +108,6 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Pet Bowl All-Over Print": 678,
     # Printful: Pet Bandana Collar — ScreenMerch: "Pet Bandana Collar".
     "Pet Bandana Collar": 902,
-    # Printful: Pet Leash — ScreenMerch: "All Over Print Leash".
-    "All Over Print Leash": 745,
-    # Printful: Pet Collar — ScreenMerch: "All Over Print Collar".
-    "All Over Print Collar": 749,
     # Printful: Greeting Card — ScreenMerch: "Greeting Card".
     "Greeting Card": 568,
     # Printful: Hardcover Bound Notebook | JournalBook — ScreenMerch: "Hardcover Bound Notebook".
@@ -120,14 +116,10 @@ PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME: Dict[str, int] = {
     "Coasters": 611,
     # Printful: All-Over Print Apron — ScreenMerch: "Apron".
     "Apron": 894,
-    # Printful: Kiss-Cut Stickers — ScreenMerch: "Kiss-Cut Stickers".
-    "Kiss-Cut Stickers": 358,
     # Printful: All-Over Print Bandana — ScreenMerch: "Bandana".
     "Bandana": 630,
     # Printful: Jigsaw Puzzle with Tin — ScreenMerch: "Jigsaw Puzzle with Tin".
     "Jigsaw Puzzle with Tin": 906,
-    # Printful: Die-Cut Magnets — ScreenMerch: "Die-Cut Magnets".
-    "Die-Cut Magnets": 656,
 }
 
 # When storefront ``color`` labels differ from Printful catalog variant ``color`` strings.

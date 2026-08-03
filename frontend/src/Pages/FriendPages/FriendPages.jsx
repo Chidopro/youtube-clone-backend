@@ -70,7 +70,7 @@ const FriendPages = ({ sidebar }) => {
             ←
           </button>
           <div className="friend-pages-toolbar-text">
-            <h1 className="friend-pages-title">Friends List</h1>
+            <h1 className="friend-pages-title">My Friends</h1>
           </div>
         </div>
 

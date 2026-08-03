@@ -122,7 +122,7 @@ const TermsOfService = () => {
         <section>
           <h2>8. Creator Earnings &amp; Payouts (ScreenMerch to Storefront Owner)</h2>
           <ul>
-            <li>Creators earn $6 per sale on most items (excluding greeting cards, stickers, and magnets unless otherwise specified).</li>
+            <li>Creators earn $6 per sale on every product.</li>
             <li>Payout eligibility requires a minimum balance of $50.</li>
             <li>Creators must provide a valid PayPal email for payout processing.</li>
             <li>ScreenMerch reserves the right to withhold payouts in cases of fraud, abuse, or violation of these Terms.</li>
@@ -146,7 +146,7 @@ const TermsOfService = () => {
           <ul>
             <li>Sales attributed to an umbrella creator&apos;s page generally entitle that collaborator to the creator share (typically $6 per qualifying item sold), as shown in the owner&apos;s dashboard analytics and payout summary.</li>
             <li>Sales not attributed to an umbrella page are treated as the storefront owner&apos;s direct storefront earnings for purposes of ScreenMerch payouts under Section 8.</li>
-            <li>Attribution is determined by ScreenMerch systems (for example, which favorites page or session was active when the sale occurred). ScreenMerch&apos;s attribution records are used for dashboard reporting unless corrected for clear error or fraud.</li>
+            <li>Attribution is determined by ScreenMerch systems (for example, which page or session was active when the sale occurred). ScreenMerch&apos;s attribution records are used for dashboard reporting unless corrected for clear error or fraud.</li>
           </ul>
 
           <h3>9.3 Storefront Owner Obligations — Paying Umbrella Creators</h3>

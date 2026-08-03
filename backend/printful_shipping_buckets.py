@@ -93,15 +93,11 @@ for _name, _b in (
     ("All-Over Print Utility Bag", "bags_small"),
     ("Pet Bowl All-Over Print", "pet_bulky"),
     ("Pet Bandana Collar", "pet_small"),
-    ("All Over Print Leash", "bags_small"),
-    ("All Over Print Collar", "bags_small"),
     ("Greeting Card", "cards_stickers_flat"),
     ("Hardcover Bound Notebook", "stationery_notebook"),
     ("Coasters", "home_coasters"),
-    ("Kiss-Cut Stickers", "cards_stickers_flat"),
     ("Apron", "apron"),
     ("Jigsaw Puzzle with Tin", "puzzles_games"),
-    ("Die-Cut Magnets", "magnets"),
     # Legacy / integration-only names
     ("Classic Tee", "shirts_light"),
     ("Unisex Classic Tee", "shirts_light"),  # legacy alias
@@ -111,9 +107,7 @@ for _name, _b in (
     ("Tote Bag", "bags_small"),
     ("Large Canvas Bag", "bags_small"),
     ("Notebook", "stationery_notebook"),
-    ("Sticker Pack", "cards_stickers_flat"),
     ("Dog Bowl", "pet_bulky"),
-    ("Magnet Set", "magnets"),
     ("Men's Long Sleeve", "shirts_light"),
 ):
     _PRODUCT_BUCKET[_name.strip()] = _b

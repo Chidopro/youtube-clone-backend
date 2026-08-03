@@ -315,17 +315,7 @@ class ScreenMerchPrintfulIntegration:
                 },
                 "sizes": []
             },
-            "Sticker Pack": {
-                "variant_id": 1,
-                "colors": {},
-                "sizes": []
-            },
             "Dog Bowl": {
-                "variant_id": 1,
-                "colors": {},
-                "sizes": []
-            },
-            "Magnet Set": {
                 "variant_id": 1,
                 "colors": {},
                 "sizes": []

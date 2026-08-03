@@ -1353,19 +1353,6 @@ export const products = {
       "availability": {}
     }
   },
-  "stickerpack": {
-    "name": "Sticker Pack",
-    "price": 18.99,
-    "description": "Set of custom stickers",
-    "image": "/static/images/stickers.png",
-    "preview": "/static/images/stickerspreview.png",
-    "category": "accessories",
-    "variables": {
-      "sizes": [],
-      "colors": [],
-      "availability": {}
-    }
-  },
   "dogbowl": {
     "name": "Dog Bowl",
     "price": 24.99,
@@ -1373,19 +1360,6 @@ export const products = {
     "image": "/static/images/dogbowl.png",
     "preview": "/static/images/dogbowlpreview.png",
     "category": "pet-supplies",
-    "variables": {
-      "sizes": [],
-      "colors": [],
-      "availability": {}
-    }
-  },
-  "magnetset": {
-    "name": "Magnet Set",
-    "price": 21.99,
-    "description": "Set of custom magnets",
-    "image": "/static/images/magnet.png",
-    "preview": "/static/images/magnetpreview.png",
-    "category": "accessories",
     "variables": {
       "sizes": [],
       "colors": [],

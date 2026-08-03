@@ -97,7 +97,7 @@ const Feed = ({
           </button>
           <button type="button" className="card hub-card" onClick={() => navigate('/friend-pages')}>
             <HubThumb src={hubThumbs.friend} emptyLabel="No Friends Yet" />
-            <h2>Friends List</h2>
+            <h2>My Friends</h2>
           </button>
         </div>
       )}

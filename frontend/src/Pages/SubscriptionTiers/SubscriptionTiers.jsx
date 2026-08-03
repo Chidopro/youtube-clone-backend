@@ -177,14 +177,14 @@ const SubscriptionTiers = () => {
                     </div>
                 </div>
                 <p className="metrics-footnote">
-                    Example only—actual earnings depend on your sales volume. Greeting cards, stickers, and magnets use different payouts.
+                    Example only—actual earnings depend on your sales volume. Creators earn $6 per sale on every product.
                 </p>
             </div>
 
             <div className="tier-calculator-section">
                 <div className="calculator-header">
                     <h4>How creators earn on ScreenMerch</h4>
-                    <p>No monthly fees—fixed per-sale payouts on most items.</p>
+                    <p>No monthly fees—fixed $6 per-sale payouts on every product.</p>
                 </div>
 
                 <div className="tier-comparison-grid calculator-pair-grid">
@@ -257,7 +257,7 @@ const SubscriptionTiers = () => {
                             </div>
                         </div>
                         <p className="calculator-trust-disclaimer">
-                            Fixed payout on most catalog items. Greeting cards, stickers, and magnets may differ.
+                            Fixed $6 payout on every catalog item.
                         </p>
                     </div>
                 </div>

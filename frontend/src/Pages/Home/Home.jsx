@@ -236,14 +236,16 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   return (
     <>
       <div className={`container ${sidebar ? "" : " large-container"}`}>
-        {/* Launch banner: under navbar, above purple bar */}
-        <Link
-          to="/release"
-          className="home-launch-banner"
-          aria-label="Launch announcement: The Content Creator Revolution Now Has a Storefront"
-        >
-          The Content Creator Revolution Now Has a Storefront.
-        </Link>
+        {/* Launch banner: main site only (not creator subdomains) */}
+        {isMainSite ? (
+          <Link
+            to="/release"
+            className="home-launch-banner"
+            aria-label="Launch announcement: The Content Creator Revolution Now Has a Storefront"
+          >
+            The Content Creator Revolution Now Has a Storefront.
+          </Link>
+        ) : null}
 
         {/* User Flow Section */}
         <div

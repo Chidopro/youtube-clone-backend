@@ -51,18 +51,18 @@ function cleanFavoritePageNickname(raw) {
 }
 
 function favoritePageSelectLabel(page) {
-    if (!page) return 'Favorites';
+    if (!page) return 'Pages';
     if (page.is_primary) {
-        return 'Main Favorites';
+        return 'Main Page';
     }
     if (page.is_collaborator_page) {
         // Prefer saved page display_name (Pom / Gee) over email-derived member_label
         const nick = cleanFavoritePageNickname(
             page.display_name || page.member_label || page.slug
         );
-        return nick ? `${nick} Favorites` : 'Favorites';
+        return nick || 'Page';
     }
-    return cleanFavoritePageNickname(page.display_name) || page.slug || 'Favorites';
+    return cleanFavoritePageNickname(page.display_name) || page.slug || 'Page';
 }
 
 function favoritePageNameTaken(pages, name, { ignoreListId } = {}) {
@@ -568,8 +568,8 @@ const Dashboard = ({ sidebar }) => {
         const n = favorites.length;
         const msg =
             n > 0
-                ? `Delete favorite page "${row.display_name}"? The ${n} item(s) on this page will move to your main favorites page. This page’s public link will stop working.`
-                : `Delete favorite page "${row.display_name}"? This page’s public link will stop working.`;
+                ? `Delete page "${row.display_name}"? The ${n} item(s) on this page will move to your main page. This page’s public link will stop working.`
+                : `Delete page "${row.display_name}"? This page’s public link will stop working.`;
         if (!window.confirm(msg)) {
             return;
         }
@@ -1410,7 +1410,7 @@ const Dashboard = ({ sidebar }) => {
                         setActiveTab('favorites');
                     }}
                 >
-                    ⭐ Favorites ({favorites.length})
+                    ⭐ Pages ({favorites.length})
                 </button>
                 {umbrellaOnly ? (
                 <button
@@ -1581,7 +1581,7 @@ const Dashboard = ({ sidebar }) => {
                                 <div className="umbrella-fav-page-intro">
                                     <p>
                                         Choose a <strong>nickname</strong> for your page — customers see this in the
-                                        Favorites menu, not your email.
+                                        Pages menu, not your email.
                                     </p>
                                 </div>
                                 <div className="umbrella-fav-page-row">
@@ -1608,7 +1608,7 @@ const Dashboard = ({ sidebar }) => {
                         {userProfile?.role === 'creator' && !umbrellaOnly && favoritePages.length > 0 && (
                             <div className="favorite-pages-toolbar">
                                 <div className="favorite-pages-choose-row">
-                                    <label className="favorite-pages-label" htmlFor="dashboard-fav-list-select">Choose Favorites Page</label>
+                                    <label className="favorite-pages-label" htmlFor="dashboard-fav-list-select">Choose Page</label>
                                     <select
                                         id="dashboard-fav-list-select"
                                         className="favorite-pages-select"
@@ -1699,7 +1699,7 @@ const Dashboard = ({ sidebar }) => {
                         {/* Prominent hint when sent from FrameSnag */}
                         {!umbrellaOnly && showPasteHint && (
                             <div className="framesnag-paste-banner">
-                                <span>📋 You were sent here from FrameSnag. <strong>Press Ctrl+V</strong> (or Cmd+V on Mac) to add your screenshot to favorites.</span>
+                                <span>📋 You were sent here from FrameSnag. <strong>Press Ctrl+V</strong> (or Cmd+V on Mac) to add your screenshot to your page.</span>
                                 <button type="button" className="framesnag-paste-banner-dismiss" onClick={() => setShowPasteHint(false)} aria-label="Dismiss">×</button>
                             </div>
                         )}
@@ -1710,14 +1710,14 @@ const Dashboard = ({ sidebar }) => {
                             <div className="framesnag-promo-content">
                                 <div className="framesnag-promo-text">
                                     <h3>📸 Capture YouTube Screenshots with FrameSnag</h3>
-                                    <p>Capture high-quality thumbnails and screenshots from your YouTube videos, then add them to your favorites!</p>
+                                    <p>Capture high-quality thumbnails and screenshots from your YouTube videos, then add them to your page!</p>
                                     <div className="framesnag-instructions">
                                         <p><strong>How to install:</strong></p>
                                         <ol>
                                             <li>Click &quot;Install FrameSnag&quot; below to download the extension ZIP</li>
                                             <li>Unzip the file, then open Chrome → Extensions → Developer mode → Load unpacked</li>
                                             <li>Select the unzipped FrameSnag folder</li>
-                                            <li>Open any YouTube video and click the FrameSnag icon to capture and add to favorites</li>
+                                            <li>Open any YouTube video and click the FrameSnag icon to capture and add to your page</li>
                                         </ol>
                                     </div>
                                     <div className="framesnag-promo-code">
@@ -1801,8 +1801,8 @@ const Dashboard = ({ sidebar }) => {
                         ) : (
                             <div className={`no-videos-placeholder${umbrellaOnly ? ' no-videos-placeholder--umbrella' : ''}`}>
                                 <div className="placeholder-content">
-                                    <h3>No favorites yet</h3>
-                                    <p>Upload your favorite images/videos for users to create merchandise with!</p>
+                                    <h3>No pages content yet</h3>
+                                    <p>Upload your images and videos for users to create merchandise with!</p>
                                     <div className="umbrella-fav-under-actions">
                                         <button
                                             className="add-favorite-btn"
@@ -1920,7 +1920,7 @@ const Dashboard = ({ sidebar }) => {
                                 {umbrellaOnly ? (
                                     <p className="umbrella-analytics-intro">
                                         Sales from shoppers who checked out while viewing your{' '}
-                                        <strong>{analyticsData.page_name || 'favorites page'}</strong>
+                                        <strong>{analyticsData.page_name || 'page'}</strong>
                                         {analyticsData.storefront_owner_name ? (
                                             <> on <strong>{analyticsData.storefront_owner_name}</strong></>
                                         ) : null}
@@ -2010,7 +2010,7 @@ const Dashboard = ({ sidebar }) => {
                                             {analyticsLoading ? '...' : (umbrellaOnly ? (analyticsData.page_name || '—') : analyticsData.videos_with_sales_count)}
                                         </div>
                                         <div className="analytics-change">
-                                            {analyticsLoading ? 'Loading...' : umbrellaOnly ? 'Attributed to your favorites page' : (analyticsData.videos_with_sales_count > 0 ? 'Videos performing' : 'No data yet')}
+                                            {analyticsLoading ? 'Loading...' : umbrellaOnly ? 'Attributed to your page' : (analyticsData.videos_with_sales_count > 0 ? 'Videos performing' : 'No data yet')}
                                         </div>
                                     </div>
                                     <div className="analytics-card">
@@ -2109,7 +2109,7 @@ const Dashboard = ({ sidebar }) => {
                                                 ? (collabPay || (Number(analyticsData.collaborator_net_owed ?? 0) + Number(analyticsData.paid_total ?? 0)))
                                                 : ownerPayout;
                                             const netSubtitle = umbrellaOnly
-                                                ? 'Earned on your favorites page ($6/item)'
+                                                ? 'Earned on your page ($6/item)'
                                                 : 'From your page sales ($6/item)';
                                             return (
                                         <div className="summary-grid">
