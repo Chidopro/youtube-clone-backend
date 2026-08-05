@@ -5,6 +5,7 @@ import { supabase } from '../../supabaseClient';
 import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend } from '../../utils/userService';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
+import CustomerLegalConsent from '../../Components/CustomerLegalConsent/CustomerLegalConsent';
 import './Login.css';
 
 /** On *.screenmerch.com storefronts, full reload keeps the user on this host (avoids rare SPA/cookie edge cases). */
@@ -31,9 +32,11 @@ const Login = () => {
   const [isCreatorSignup, setIsCreatorSignup] = useState(false);
   const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState(null);
+  const [acceptedCustomerLegal, setAcceptedCustomerLegal] = useState(false);
 
 // Customer signup = email-only flow (from "Make a purchase" in Sign Up modal)
   const isCustomerSignup = location.pathname === '/signup' && location.state?.intent === 'customer';
+  const requiresCustomerLegalAcceptance = !isLoginMode && !isCreatorSignup;
 
   // Force signup view if routed to /signup
   // Check if coming from "Start Free" flow (payment-setup with flow=new_user)
@@ -136,13 +139,20 @@ const Login = () => {
       setMessage({ type: 'error', text: 'Please enter your email.' });
       return;
     }
+    if (!acceptedCustomerLegal) {
+      setMessage({ type: 'error', text: 'You must agree to the Terms of Service and acknowledge the Privacy Policy.' });
+      return;
+    }
     try {
       setIsLoading(true);
       const response = await fetch(apiUrl('/api/auth/signup/email-only'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() })
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          accepted_terms_and_privacy: true,
+        })
       });
       const data = await response.json().catch(() => ({}));
       if (response.ok && (data.success || data.message)) {
@@ -180,6 +190,10 @@ const Login = () => {
       setMessage({ type: 'error', text: 'Please enter your password.' });
       return;
     }
+    if (!isLoginMode && !isCreatorSignup && !acceptedCustomerLegal) {
+      setMessage({ type: 'error', text: 'You must agree to the Terms of Service and acknowledge the Privacy Policy.' });
+      return;
+    }
 
     // Use standard login/signup endpoints
     const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup';
@@ -191,7 +205,10 @@ const Login = () => {
       const requestBody = {
         email: email.trim(),
         password: password,
-        is_creator: !isLoginMode && isCreatorSignup  // Pass is_creator flag for creator signups
+        is_creator: !isLoginMode && isCreatorSignup,
+        ...(!isLoginMode && !isCreatorSignup
+          ? { accepted_terms_and_privacy: acceptedCustomerLegal }
+          : {}),
       };
 
       const response = await fetch(url, {
@@ -541,7 +558,19 @@ const Login = () => {
             </div>
           )}
 
-          <button type="submit" className="login-submit-btn" disabled={isLoading}>
+          {requiresCustomerLegalAcceptance && (
+            <CustomerLegalConsent
+              checked={acceptedCustomerLegal}
+              onChange={setAcceptedCustomerLegal}
+              id="customer-signup-legal-consent"
+            />
+          )}
+
+          <button
+            type="submit"
+            className="login-submit-btn"
+            disabled={isLoading || (requiresCustomerLegalAcceptance && !acceptedCustomerLegal)}
+          >
             {isLoading ? (
               <>
                 <span className="loading-spinner" />

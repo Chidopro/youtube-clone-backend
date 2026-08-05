@@ -9,6 +9,10 @@ CREATE TABLE IF NOT EXISTS users (
     profile_image_url TEXT,
     cover_image_url TEXT,
     bio TEXT,
+    terms_version TEXT,
+    privacy_policy_version TEXT,
+    terms_accepted_at TIMESTAMP WITH TIME ZONE,
+    privacy_policy_accepted_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

@@ -21,6 +21,10 @@ from utils.helpers import (
     _data_from_request, _return_url, _cookie_domain, 
     get_cookie_domain, _allow_origin
 )
+from utils.legal_acceptance import (
+    customer_legal_acceptance_fields,
+    has_customer_legal_acceptance,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -482,6 +486,11 @@ def auth_signup():
         
         # Check if this is a creator signup
         is_creator = data.get("is_creator", False) or data.get("role") == "creator"
+        if not is_creator and not has_customer_legal_acceptance(data):
+            return jsonify({
+                "success": False,
+                "error": "You must agree to the Terms of Service and acknowledge the Privacy Policy."
+            }), 400
         current_creator_count = 0
         
         # If creator signup, check the 20-user limit
@@ -523,6 +532,8 @@ def auth_signup():
                 'status': user_status,
                 'email_verified': False
             }
+            if user_role == 'customer':
+                new_user.update(customer_legal_acceptance_fields())
             
             result = client.table('users').insert(new_user).execute()
             
@@ -670,10 +681,14 @@ def auth_signup_email_only():
                     user_id = user.get('id')
                     if user_id:
                         try:
-                            client.table('users').update({
+                            update_payload = {
                                 'email_verification_token': verification_token,
-                                'token_expiry': token_expiry
-                            }).eq('id', user_id).execute()
+                                'token_expiry': token_expiry,
+                            }
+                            # Keep prior acceptance; only refresh if signup form re-sends acceptance.
+                            if has_customer_legal_acceptance(data):
+                                update_payload.update(customer_legal_acceptance_fields())
+                            client.table('users').update(update_payload).eq('id', user_id).execute()
                             logger.info("[signup/email-only] Updated verification token for existing unverified user %s", email)
                         except Exception as upd_err:
                             logger.warning("[signup/email-only] Failed to update token for %s: %s", email, upd_err)
@@ -689,6 +704,12 @@ def auth_signup_email_only():
             result = None
         
         if result is None:
+            # New customer accounts must accept Terms + Privacy at signup time.
+            if not has_customer_legal_acceptance(data):
+                return jsonify({
+                    "success": False,
+                    "error": "You must agree to the Terms of Service and acknowledge the Privacy Policy."
+                }), 400
             # Create new user without password
             new_user = {
                 'email': email,
@@ -696,7 +717,8 @@ def auth_signup_email_only():
                 'status': 'active',
                 'email_verified': False,
                 'email_verification_token': verification_token,
-                'token_expiry': token_expiry
+                'token_expiry': token_expiry,
+                **customer_legal_acceptance_fields(),
             }
             result = client.table('users').insert(new_user).execute()
         

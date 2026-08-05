@@ -87,6 +87,10 @@ from utils.stripe_tax_checkout import (
     tax_line_item_price_data,
 )
 from utils.auth_sync import ensure_auth_user_for_public_user
+from utils.legal_acceptance import (
+    customer_legal_acceptance_fields,
+    has_customer_legal_acceptance,
+)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -11076,6 +11080,11 @@ def auth_signup():
         
         # Check if this is a creator signup (from "Start Free" flow)
         is_creator = data.get("is_creator", False) or data.get("role") == "creator"
+        if not is_creator and not has_customer_legal_acceptance(data):
+            return jsonify({
+                "success": False,
+                "error": "You must agree to the Terms of Service and acknowledge the Privacy Policy."
+            }), 400
         
         # Track creator count for email notification
         current_creator_count = 0
@@ -11121,6 +11130,8 @@ def auth_signup():
                 'status': user_status,
                 'email_verified': False
             }
+            if user_role == 'customer':
+                new_user.update(customer_legal_acceptance_fields())
             
             result = supabase.table('users').insert(new_user).execute()
             

@@ -1,0 +1,101 @@
+﻿
+
+
+SCREENMERCH
+Privacy Policy v2.0
+For visitors, customers, creators, and umbrella participants
+Effective: August 5, 2026
+Last updated: August 5, 2026
+
+1. Scope and Operator
+This Privacy Policy explains how ScreenMerch collects, uses, discloses, retains, and protects personal information when a person visits screenmerch.com or a ScreenMerch creator subdomain; creates or uses a customer, creator, or umbrella account; creates merchandise; places or receives an order; communicates with us; or otherwise uses the ScreenMerch platform and related services (collectively, the “Services”).
+ScreenMerch is currently operated by Alan Armstrong, an individual doing business as ScreenMerch (“ScreenMerch,” “we,” “us,” or “our”). ScreenMerch is the business responsible for the personal information described in this Policy. This operator identification will be updated if the business is reorganized as a limited liability company or another legal entity.
+This Policy applies to all ScreenMerch roles. Some provisions apply only when a person uses a particular feature, such as creator tools, umbrella collaboration, purchasing, fulfillment, payouts, Google sign-in, or SMS notifications.
+2. Personal Information We Collect
+Information You Provide
+Account and identity information, including name, email address, username, account role, profile image, location, preferences, and customization settings.
+Authentication information, including login identifiers and authentication tokens. Passwords are stored in hashed form by our authentication provider and are not stored by ScreenMerch in readable form.
+Contact and order information, including recipient name, telephone number, shipping address, billing address, order selections, product customizations, and customer-service communications.
+Creator and storefront information, including subdomain, branding, channel information, uploaded videos, screenshots, thumbnails, images, favorites, merchandise designs, creator applications, approval status, and payout information.
+Umbrella-program information, including invite email addresses or usernames, membership and invitation status, collaborator page names, sales attribution, agreed allocations when recorded, and payout records entered by storefront owners, including amount, date, and optional notes.
+Communications and submissions, including support messages, feedback, legal or privacy requests, reports, and other information sent to ScreenMerch.
+Payment Information
+Payment-card information is collected and processed by Stripe or another disclosed payment processor. ScreenMerch may receive limited transaction information, such as payment status, billing name and address, payment type, and the last four digits of a payment card, but does not receive or store complete payment-card numbers. Creator payout details, such as a PayPal address or other supported payout identifier, are used to make ScreenMerch-to-creator payments.
+Information Collected Automatically
+Device and network information, such as IP address, browser type, device type, operating system, language, approximate location derived from IP address, and identifiers associated with cookies or local storage.
+Usage information, such as pages and storefronts visited, navigation paths, feature interactions, timestamps, referral information, cart activity, and diagnostic or error information.
+Transaction and security information, such as order status, fraud indicators, login activity, session information, audit records, and actions taken within an account.
+Information From Other Sources
+We may receive information from a customer or creator who invites or interacts with you; Google or another sign-in provider you choose; payment, fraud-prevention, fulfillment, shipping, communication, and infrastructure providers; and publicly available sources when reasonably necessary to verify, secure, support, or operate the Services.
+3. How We Use Personal Information
+Create, authenticate, administer, and secure customer, creator, and umbrella accounts.
+Display and operate creator storefronts, subdomains, profiles, videos, images, favorites, product previews, and merchandise tools.
+Create print-ready files; process payments; manufacture, fulfill, ship, track, support, refund, or otherwise administer merchandise orders.
+Calculate creator earnings; administer ScreenMerch payouts; attribute umbrella sales; and display balances and payout histories.
+Send transactional email or SMS notifications, security alerts, account notices, and responses to support requests.
+Operate, maintain, troubleshoot, analyze, test, and improve the Services and user experience.
+Detect, investigate, prevent, and respond to fraud, abuse, unauthorized access, intellectual-property concerns, prohibited content, and other security or legal issues.
+Maintain records, enforce our Terms of Service, resolve disputes, protect legal rights, and comply with tax, accounting, regulatory, and other legal obligations.
+4. Public and Participant-Visible Information
+Creator storefront information may be public. Depending on creator settings and platform features, a creator’s display name, username, subdomain, profile image, branding, videos, thumbnails, screenshots, images, merchandise designs, and other published content may be visible to visitors and may be indexed or copied outside ScreenMerch.
+Within an umbrella relationship, storefront owners may see connected collaborators, invite status, attributed sales summaries, balances, and payout history recorded for their storefront. Umbrella creators may see their own attribution, analytics, and relationship status. ScreenMerch does not publicly display collaborator email addresses merely because a person participates in an umbrella storefront.
+5. When We Disclose Personal Information
+We disclose personal information only as reasonably necessary for the purposes described in this Policy, including to the following categories of recipients:
+Payment processors, including Stripe, to process payments, refunds, disputes, and fraud checks.
+Manufacturing, fulfillment, and shipping providers, including Printful, to produce and deliver merchandise. Information may include recipient name, shipping address, telephone number, email address, order details, and design or print files.
+Authentication, database, storage, hosting, and infrastructure providers, including Supabase, Netlify, and Fly.io, to operate and secure the Services.
+Communication providers, including Resend and any SMS provider used by ScreenMerch, to deliver account, order, support, and security messages.
+Sign-in providers, including Google, when you choose third-party authentication.
+Analytics, security, fraud-prevention, customer-support, accounting, tax, legal, insurance, and other professional or operational service providers.
+Other users when you direct a disclosure, publish information, join an umbrella relationship, or use a feature designed to share information with them.
+Government authorities, courts, law-enforcement agencies, or other parties when required by law or reasonably necessary to protect rights, safety, security, users, or the public.
+A successor or prospective successor in connection with a merger, financing, reorganization, sale, transfer, insolvency, or similar business transaction, subject to appropriate confidentiality protections where practicable.
+Service providers may process information under their own privacy terms where they act independently. For fulfillment-related processing, users may review Printful’s Privacy Policy and applicable data-processing terms. Payment processing is also subject to Stripe’s privacy practices.
+6. No Sale or Behavioral-Advertising Sharing
+ScreenMerch does not sell personal information for money. ScreenMerch does not use or disclose personal information for cross-context behavioral advertising. We do not knowingly permit third parties to collect personal information through the Services over time and across unrelated websites for targeted advertising. If these practices change, we will update this Policy and provide any choices required by applicable law.
+7. Cookies, Local Storage, and Similar Technologies
+ScreenMerch and its service providers use cookies, local storage, session storage, and similar technologies that are reasonably necessary to authenticate users, maintain sessions, preserve carts and preferences, route creator subdomains, protect accounts, prevent fraud, remember settings, diagnose problems, and understand basic use of the Services.
+Most browsers permit users to delete or block cookies. Blocking technologies needed for authentication, cart operation, or security may prevent parts of ScreenMerch from functioning correctly.
+Browser “Do Not Track” signals are not governed by a uniform industry standard, and ScreenMerch does not respond to them separately. Because ScreenMerch does not currently sell personal information or share it for cross-context behavioral advertising, a Global Privacy Control signal does not change our necessary operational processing. We will honor legally required opt-out preference signals if our practices become subject to such requirements.
+8. Content Processing
+Uploaded videos and images may be processed to generate thumbnails, capture screenshots, create previews, optimize or prepare files for printing, operate creator storefronts, provide support, prevent misuse, and fulfill merchandise orders. Print-ready content may be transmitted to fulfillment and infrastructure providers as necessary to produce and deliver merchandise.
+Creators retain their ownership rights subject to the licenses and permissions described in the ScreenMerch Terms of Service. ScreenMerch does not use creator content for unrelated advertising or license it to competing merchandise platforms. No system can guarantee that public content will never be copied or misused by an unauthorized third party.
+9. Umbrella Collaboration and Payout Information
+ScreenMerch uses umbrella information to operate invitations, collaborator pages, sales attribution, dashboard balances, and payout histories. ScreenMerch pays the applicable storefront owner as described in the Terms of Service. The storefront owner is responsible for paying umbrella collaborators off-platform and may record the amount, date, and optional payment note in ScreenMerch.
+ScreenMerch does not process owner-to-collaborator payments. Payment details exchanged off-platform are not collected unless a participant voluntarily enters them in an account field, payment note, or support communication. Storefront owners and collaborators should avoid placing sensitive financial information in optional notes.
+10. SMS and Other Communications
+When ScreenMerch offers SMS notifications, a user who provides a telephone number and affirmatively opts in may receive order-status, shipping, customer-service, account-security, or other important service messages. Consent to receive SMS messages is not a condition of purchasing goods or services.
+Program: ScreenMerch Notifications.
+Expected frequency: generally one to three messages per order, plus occasional support, security, or critical service messages.
+Opt out: reply STOP to unsubscribe from optional SMS messages.
+Help: reply HELP or contact support@screenmerch.com.
+Carrier message and data rates may apply.
+Opting out of optional SMS does not prevent ScreenMerch from sending legally permitted non-SMS communications or responding to a user-initiated support request.
+11. Data Retention
+We retain personal information for as long as reasonably necessary to provide the Services, maintain an account, fulfill transactions, administer payouts, secure the platform, resolve disputes, enforce agreements, and comply with legal, tax, accounting, and reporting obligations.
+Active account and storefront information is generally retained while the account remains active.
+Order, payment, payout, tax, and related business records may be retained for up to seven years or longer when legally required.
+When an account-deletion request is completed, we generally delete or deidentify account information from active systems within 30 days, except information that must or may reasonably be retained for transactions, security, fraud prevention, disputes, legal obligations, or enforcement.
+Residual copies may remain temporarily in backups, logs, and disaster-recovery systems until overwritten under ordinary retention cycles.
+Published or shared information copied by other users or third parties may remain outside ScreenMerch’s control.
+12. Security
+ScreenMerch uses administrative, technical, and organizational safeguards designed to protect personal information, including HTTPS/TLS transmission, authentication controls, role-based access, restricted administrative access, logging, and encrypted storage where supported and appropriate. Service providers also maintain their own safeguards.
+No method of transmission, storage, or processing is completely secure. ScreenMerch cannot guarantee absolute security. Users are responsible for protecting their login credentials and notifying ScreenMerch promptly of suspected unauthorized account access.
+13. Privacy Choices and Requests
+Depending on where you live and subject to applicable law, you may have rights to request access to personal information, correction, deletion, portability, restriction, objection, or withdrawal of consent. You may also update certain account information directly and opt out of optional SMS communications by replying STOP.
+To submit a privacy request, email support@screenmerch.com with “Privacy Request” in the subject line. Describe the request and identify the account email address involved. We may take reasonable steps to verify identity and authority before acting. We will use verification information only for the request and will respond within the period required by applicable law. Some requests may be limited by transaction, security, fraud-prevention, recordkeeping, free-expression, legal, or other permitted exceptions.
+ScreenMerch will not unlawfully discriminate against a person for exercising an applicable privacy right. An authorized agent may submit a request where permitted by law, but ScreenMerch may require proof of authorization and identity verification.
+14. California Privacy Information
+California residents may request information about the categories and specific pieces of personal information ScreenMerch holds about them; request correction or deletion; and receive information about categories of sources, purposes, and recipients, to the extent those rights apply under California law. ScreenMerch does not sell personal information or share it for cross-context behavioral advertising.
+ScreenMerch collects the categories described in Section 2 from users, their devices, other participants, sign-in providers, payment and fulfillment providers, and operational service providers. It uses and discloses those categories for the purposes and recipients described in Sections 3 through 10. Requests may be submitted to support@screenmerch.com. If ScreenMerch becomes legally required to provide additional California notices or request methods, this Policy and the Services will be updated accordingly.
+15. International Users and Transfers
+ScreenMerch is operated from the United States. Personal information may be transferred to, stored in, and processed in the United States and other countries where ScreenMerch’s service providers operate. Those countries may have privacy laws different from the laws where a user lives. Where applicable, ScreenMerch uses legally recognized transfer mechanisms and contractual protections.
+For users in the European Economic Area or United Kingdom, processing may be based on performance of a contract, compliance with legal obligations, ScreenMerch’s legitimate interests in operating and securing the Services, or consent where required. Subject to applicable law, those users may request access, correction, deletion, restriction, portability, or objection; withdraw consent; and lodge a complaint with their local data-protection authority.
+16. Children and Age Requirements
+ScreenMerch account creation, purchasing, creator, and umbrella services are intended only for individuals who are at least 18 years old or the age of legal majority where they live. ScreenMerch does not knowingly permit children to create accounts or knowingly collect personal information from children through account registration. Visitors who are minors may browse only under the supervision of a parent or legal guardian, consistent with the Terms of Service.
+A parent or guardian who believes a child provided personal information may contact support@screenmerch.com to request review and deletion.
+17. Changes to This Policy
+ScreenMerch may update this Privacy Policy periodically. We will post the revised Policy with a new “Last Updated” date and provide additional notice when required by law or when changes are material. Where applicable, ScreenMerch may request renewed acknowledgment of a materially updated Policy.
+18. Contact Us
+For privacy questions, concerns, or requests, contact:
+ScreenMerchAttn: Privacy Officer1311 Park Street, Unit #543Alameda, California 94501Email: support@screenmerch.comWebsite: https://screenmerch.com

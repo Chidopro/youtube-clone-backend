@@ -17,7 +17,7 @@ const Footer = () => {
           <div className="footer-links-section">
             <Link to="/privacy-policy">Privacy Policy</Link>
             <Link to="/terms-of-service">Terms of Service</Link>
-            <a href="mailto:support@screenmerch.com">Contact Us</a>
+            <Link to="/contact">Contact Us</Link>
           </div>
 
           {/* Copyright */}

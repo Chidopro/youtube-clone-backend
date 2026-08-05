@@ -1,0 +1,23 @@
+.customer-legal-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.customer-legal-consent input {
+  width: 17px;
+  height: 17px;
+  margin: 1px 0 0;
+  flex: 0 0 auto;
+  accent-color: #667eea;
+}
+
+.customer-legal-consent a {
+  color: #4f63d8;
+  font-weight: 600;
+}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { apiJoin } from '../../config/apiConfig';
+import CustomerLegalConsent from '../CustomerLegalConsent/CustomerLegalConsent';
 import './AuthModal.css';
 
 const AuthModal = ({ isOpen, onClose, onSuccess }) => {
@@ -10,6 +11,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [acceptedCustomerLegal, setAcceptedCustomerLegal] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,6 +31,11 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
       setIsLoading(false);
       return;
     }
+    if (isCustomerSignup && !acceptedCustomerLegal) {
+      setMessage({ type: 'error', text: 'You must agree to the Terms of Service and acknowledge the Privacy Policy.' });
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/signup/email-only';
@@ -36,7 +43,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
       const url = apiJoin(endpoint);
 
       const requestBody = isCustomerSignup
-        ? { email: email.trim() }
+        ? { email: email.trim(), accepted_terms_and_privacy: true }
         : { email: email.trim(), password };
 
       const controller = new AbortController();
@@ -134,6 +141,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
   const toggleMode = () => {
     setIsLoginMode(!isLoginMode);
     setMessage('');
+    setAcceptedCustomerLegal(false);
     if (!isLoginMode) {
       setPassword('');
     }
@@ -188,7 +196,19 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
               </div>
             )}
 
-            <button type="submit" className="auth-submit-btn" disabled={isLoading}>
+            {!isLoginMode && (
+              <CustomerLegalConsent
+                checked={acceptedCustomerLegal}
+                onChange={setAcceptedCustomerLegal}
+                id="auth-modal-customer-legal-consent"
+              />
+            )}
+
+            <button
+              type="submit"
+              className="auth-submit-btn"
+              disabled={isLoading || (!isLoginMode && !acceptedCustomerLegal)}
+            >
               {isLoading ? (
                 <>
                   <span className="loading-spinner" />

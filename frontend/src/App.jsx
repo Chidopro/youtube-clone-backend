@@ -19,6 +19,7 @@ import AuthForm from "./Components/AuthForm";
 import Login from "./Pages/Login/Login";
 import PrivacyPolicy from "./Pages/PrivacyPolicy/PrivacyPolicy";
 import TermsOfService from "./Pages/TermsOfService/TermsOfService";
+import Contact from "./Pages/Contact/Contact";
 import Search from "./Pages/Search/Search";
 import Channel from "./Pages/Channel/Channel";
 import MerchandiseCategories from "./Pages/MerchandiseCategories/MerchandiseCategories";
@@ -297,6 +298,7 @@ const App = () => {
                 <Route path="/signup" element={<Login />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/terms-of-service" element={<TermsOfService />} />
+                <Route path="/contact" element={<Contact />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/channel/:channelName" element={<Channel />} />
                 <Route path="/merchandise" element={<MerchandiseCategories sidebar={sidebar} />} />
