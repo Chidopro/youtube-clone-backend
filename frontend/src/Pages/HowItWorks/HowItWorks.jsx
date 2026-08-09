@@ -117,7 +117,7 @@ const HowItWorks = () => {
               className="how-it-works-player"
               controls
               playsInline
-              preload="metadata"
+              preload="auto"
               poster={poster}
               src={video.video_url}
             >

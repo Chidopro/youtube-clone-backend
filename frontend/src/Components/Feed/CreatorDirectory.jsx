@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { AdminService } from '../../utils/adminService';
 import { apiJoin } from '../../config/apiConfig';
+import { requestVideoOptimize } from '../../utils/videoOptimize';
 import './Feed.css';
 import './CreatorDirectory.css';
 import { RESERVE_SLOT_THEMES, TOTAL_CREATOR_SPOTS } from './reserveSlotThemes';
@@ -240,6 +241,12 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
         categoryId: savedRow?.categoryId || 0,
       };
       setIntro(next);
+      if (videoFile && (next.video_url || videoUrl)) {
+        requestVideoOptimize({
+          videoId: next.id,
+          videoUrl: videoUrl || next.video_url,
+        });
+      }
       try {
         localStorage.setItem(INTRO_LOCAL_KEY, JSON.stringify(next));
       } catch (_) {

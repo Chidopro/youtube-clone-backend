@@ -250,6 +250,7 @@ const App = () => {
   
   const isFavoritesPage = /^\/favorites(\/|$)/.test(location.pathname);
   const isFriendPages = location.pathname === '/friend-pages';
+  const isVideoPage = /^\/video\//.test(location.pathname);
   const isOrderSuccessPage = location.pathname === '/order-success' || location.pathname === '/success';
   const useStorefrontChrome = isFavoritesPage || isFriendPages;
   const showDesktopSidebar = shouldShowSidebar && !isMobile && !isOrderSuccessPage;
@@ -272,7 +273,7 @@ const App = () => {
           <Sidebar sidebar={sidebar} category={category} setCategory={setCategory} setSidebar={setSidebar} />
           )}
           <div
-            className={`main-content-area${useStorefrontChrome ? ' main-content-area--storefront-subpage' : ''}${isOrderSuccessPage ? ' main-content-area--order-success' : ''}`}
+            className={`main-content-area${useStorefrontChrome ? ' main-content-area--storefront-subpage' : ''}${isVideoPage ? ' main-content-area--video' : ''}${isOrderSuccessPage ? ' main-content-area--order-success' : ''}`}
             style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
           >
             <div className="main-content-inner" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'visible' }}>

@@ -62,11 +62,16 @@
 .hub-card {
   border: none;
   padding: 0;
+  margin: 0;
   text-align: left;
   font: inherit;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   appearance: none;
   -webkit-appearance: none;
+  overflow: hidden;
 }
 
 .hub-card h2 {
@@ -113,10 +118,28 @@
   .feed-hubs,
   .feed {
     grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
   }
 
   .feed-hubs .hub-card:last-child {
     max-width: none;
     grid-column: auto;
+  }
+
+  .feed-hubs > .hub-card,
+  .feed > .card {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .feed-hubs > .hub-card img,
+  .feed > .card img {
+    width: 100%;
+    max-width: 100%;
+    display: block;
   }
 }

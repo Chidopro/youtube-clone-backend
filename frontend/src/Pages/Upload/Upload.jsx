@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { requestVideoOptimize } from '../../utils/videoOptimize';
 import { supabase } from '../../supabaseClient';
 import '../Home/Home.css'; // For layout
 import './Upload.css'; // Import new styles
@@ -242,7 +243,7 @@ const Upload = () => {
             const { error: storageError, data: videoData } = await supabase.storage
                 .from('videos2')
                 .upload(fileName, file, {
-                    cacheControl: '3600',
+                    cacheControl: '31536000',
                     upsert: false
                 });
                 
@@ -306,8 +307,13 @@ const Upload = () => {
             
             setUploadProgress(100);
             console.log('Video uploaded and saved successfully:', dbData);
+            const saved = Array.isArray(dbData) ? dbData[0] : dbData;
+            requestVideoOptimize({
+                videoId: saved?.id,
+                videoUrl: videoUrlData.publicUrl,
+            });
 
-            setMessage('✅ Video uploaded successfully! Redirecting you to the homepage...');
+            setMessage('✅ Video uploaded successfully! Optimizing playback in the background…');
             setTitle('');
             setDescription('');
             setFile(null);

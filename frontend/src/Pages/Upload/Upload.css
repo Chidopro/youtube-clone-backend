@@ -278,7 +278,7 @@
     margin-bottom: 20px;
 }
 
-.sign-in-btn {
+.upload-auth-card .sign-in-btn {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     padding: 12px 24px;
@@ -289,7 +289,7 @@
     cursor: pointer;
 }
 
-.sign-in-btn:hover {
+.upload-auth-card .sign-in-btn:hover {
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 

@@ -841,7 +841,7 @@ const ProductPage = ({ sidebar }) => {
   // Only show full-screen loading on initial load (no productData yet). When switching category, keep showing current products so images persist.
   if (loading && !productData) {
     return (
-      <div className={`container ${sidebar ? "" : " large-container"}`}>
+      <div className={`container product-page ${sidebar ? "" : " large-container"}`}>
         <div style={{ padding: '2rem', textAlign: 'center' }}>
           <div className="loading-spinner"></div>
           <p>Loading product...</p>
@@ -852,7 +852,7 @@ const ProductPage = ({ sidebar }) => {
 
   if (error) {
     return (
-      <div className={`container ${sidebar ? "" : " large-container"}`}>
+      <div className={`container product-page ${sidebar ? "" : " large-container"}`}>
         <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>
           <h2>Error Loading Product</h2>
           <p>{error}</p>
@@ -922,7 +922,7 @@ const ProductPage = ({ sidebar }) => {
     }
     
     return (
-      <div className={`container ${sidebar ? "" : " large-container"}`}>
+      <div className={`container product-page ${sidebar ? "" : " large-container"}`}>
         <div style={{ padding: '2rem', textAlign: 'center' }}>
           <h2>Product Not Found</h2>
           <p>The requested product could not be found.</p>
@@ -938,7 +938,7 @@ const ProductPage = ({ sidebar }) => {
   }
 
   return (
-    <div className={`container ${sidebar ? "" : " large-container"}`}>
+    <div className={`container product-page ${sidebar ? "" : " large-container"}`}>
       {/* User Flow Section - Step 3 Only - Hide for All Products */}
       {(() => {
         const categoryNormalized = (category || '').trim().toLowerCase();

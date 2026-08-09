@@ -5,6 +5,7 @@ import moment from 'moment'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
+import { isOptimizedPlaybackUrl, needsVideoOptimize, requestVideoOptimize, screenshotSourceUrl } from '../../utils/videoOptimize'
 import { UserService } from '../../utils/userService'
 import AuthModal from '../AuthModal/AuthModal'
 import { useCreator } from '../../contexts/CreatorContext'
@@ -61,6 +62,8 @@ const PlayVideo = ({
     const [error, setError] = useState('');
     const [videoError, setVideoError] = useState(null);
     const videoRef = propVideoRef || useRef(null);
+    const pendingSeekRef = useRef(null);
+    const playbackUrlRef = useRef('');
     
     // Video container ref
     const [videoContainerRef] = useState(useRef(null));
@@ -127,7 +130,7 @@ const PlayVideo = ({
             video.setAttribute('playsinline', 'true');
             video.setAttribute('webkit-playsinline', 'true');
             video.setAttribute('x-webkit-airplay', 'allow');
-            video.setAttribute('preload', 'metadata');
+            video.setAttribute('preload', 'auto');
             
             // Prevent fullscreen on mobile
             video.addEventListener('webkitbeginfullscreen', (e) => {
@@ -191,18 +194,16 @@ const PlayVideo = ({
                     return;
                 }
 
-                // Test if video URL is accessible
-                try {
-                    const response = await fetch(data.video_url, { method: 'HEAD' });
-                    // console.log('Video URL accessibility test:', response.status, response.statusText);
-                    if (!response.ok) {
-                        console.warn('Video URL may not be accessible:', response.status);
-                    }
-                } catch (urlError) {
-                    console.warn('Could not test video URL accessibility:', urlError);
-                }
-                
                 setVideo(data);
+                playbackUrlRef.current = String(data.video_url || '');
+                if (needsVideoOptimize(data)) {
+                    requestVideoOptimize({ videoId: data.id, videoUrl: data.video_url }).then((result) => {
+                        if (result?.video_url && isOptimizedPlaybackUrl(result.video_url)) {
+                            playbackUrlRef.current = result.video_url;
+                            setVideo((prev) => prev ? { ...prev, video_url: result.video_url, source_video_url: result.source_video_url || prev.source_video_url } : prev);
+                        }
+                    });
+                }
                 // Automatically set thumbnail if available
                 if (data.thumbnail || data.poster) {
                     const thumbnailUrl = data.thumbnail || data.poster;
@@ -225,6 +226,37 @@ const PlayVideo = ({
         };
         fetchVideo();
     }, [videoId, setThumbnail, setScreenshots]);
+
+    useEffect(() => {
+        if (!videoId || !video?.video_url || !needsVideoOptimize(video)) return undefined;
+        let cancelled = false;
+        let timeoutId = 0;
+        const started = Date.now();
+        const poll = async () => {
+            if (cancelled || Date.now() - started > 180000) return;
+            const { data } = await supabase
+                .from('videos2')
+                .select('video_url, source_video_url')
+                .eq('id', videoId)
+                .single();
+            if (cancelled || !data?.video_url) return;
+            if (data.video_url !== playbackUrlRef.current && isOptimizedPlaybackUrl(data.video_url)) {
+                const el = videoRef.current;
+                if (el) {
+                    pendingSeekRef.current = { time: el.currentTime || 0, play: !el.paused };
+                }
+                playbackUrlRef.current = data.video_url;
+                setVideo((prev) => prev ? { ...prev, video_url: data.video_url, source_video_url: data.source_video_url || prev.source_video_url } : prev);
+                return;
+            }
+            timeoutId = window.setTimeout(poll, 4000);
+        };
+        timeoutId = window.setTimeout(poll, 4000);
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timeoutId);
+        };
+    }, [videoId, video?.video_url]);
 
     // Reset video element when videoId changes
     useEffect(() => {
@@ -297,7 +329,7 @@ const PlayVideo = ({
 
         // Get current timestamp
         const currentTime = videoElement.currentTime || 0;
-        const videoUrl = video?.video_url || videoElement.src;
+        const videoUrl = screenshotSourceUrl(video) || videoElement.src;
 
         // Step 1: Instant client-side capture for immediate feedback
         const clientScreenshot = await captureCurrentVideoFrame();
@@ -791,10 +823,10 @@ const PlayVideo = ({
             let fullScreenshot = null;
             let useServerScreenshot = false;
             
-            if (video?.video_url) {
+            if (screenshotSourceUrl(video) || video?.video_url) {
                 try {
                     const currentTime = videoElement.currentTime || 0;
-                    const videoUrl = video.video_url;
+                    const videoUrl = screenshotSourceUrl(video) || video.video_url;
                     
                     console.log(`Requesting server-side screenshot at ${currentTime}s from ${videoUrl}`);
                     
@@ -1152,7 +1184,7 @@ const PlayVideo = ({
                         playsInline
                         webkit-playsinline="true"
                         x-webkit-airplay="allow"
-                        preload={isMobile ? "auto" : "metadata"}
+                        preload="auto"
                         disablePictureInPicture
                         onCanPlay={() => {
                             // console.log('Video can play');
@@ -1168,6 +1200,19 @@ const PlayVideo = ({
                             // console.log('Video data loaded');
                             setLoading(false);
                             setVideoError(null); // Clear any previous errors
+                            const pending = pendingSeekRef.current;
+                            const el = videoRef.current;
+                            if (pending && el) {
+                                pendingSeekRef.current = null;
+                                try {
+                                    el.currentTime = pending.time || 0;
+                                    if (pending.play) {
+                                        el.play().catch(() => {});
+                                    }
+                                } catch (_) {
+                                    /* ignore seek errors while swapping playback file */
+                                }
+                            }
                         }}
                         onWaiting={() => {
                             // Video is waiting for more data (buffering)
@@ -1550,33 +1595,26 @@ const PlayVideo = ({
                 </div>
             </div>
             
-                         {/* Action buttons for screenshots and merchandise - CACHE BUST 2025-01-27 */}
+        {isMobile && (
         <div className="screenmerch-actions" style={{
             display: 'flex',
-            gap: '10px',
-            marginBottom: isMobile ? '0px' : '0px',
-            marginTop: isMobile ? '5px' : '0px',
-            flexWrap: 'wrap'
+            gap: '8px',
+            marginBottom: '0px',
+            marginTop: '8px',
+            flexWrap: 'nowrap'
         }}>
                 <button 
                     className="screenmerch-btn screenshot-btn" 
                     onClick={handleGrabScreenshot}
                     disabled={isCapturingScreenshot || screenshots.length >= 6}
                     style={{
-                        padding: '14px 24px',
                         backgroundColor: (isCapturingScreenshot || screenshots.length >= 6) ? '#6c757d' : '#dc3545',
                         color: 'white',
                         border: 'none',
                         borderRadius: '5px',
                         cursor: (isCapturingScreenshot || screenshots.length >= 6) ? 'not-allowed' : 'pointer',
                         fontWeight: 'bold',
-                        opacity: (isCapturingScreenshot || screenshots.length >= 6) ? 0.7 : 1,
-                        textAlign: 'center',
-                        lineHeight: '1.2',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minHeight: '44px'
+                        opacity: (isCapturingScreenshot || screenshots.length >= 6) ? 0.7 : 1
                     }}
                 >
                     {isCapturingScreenshot ? 'Capturing...' : screenshots.length >= 6 ? 'Max Screenshots' : 'Select Screenshot'}
@@ -1594,27 +1632,20 @@ const PlayVideo = ({
                          }
                      }}
                      style={{
-                         padding: '14px 24px',
                          backgroundColor: '#28a745',
                          color: 'white',
                          border: 'none',
                          borderRadius: '5px',
                          cursor: 'pointer',
                          fontWeight: 'bold',
-                         touchAction: 'manipulation',
-                         minHeight: '44px',
-                         lineHeight: '1.2',
-                         textAlign: 'center',
-                         display: 'flex',
-                         alignItems: 'center',
-                         justifyContent: 'center'
+                         touchAction: 'manipulation'
                      }}
                  >
                      Make Merch
                  </button>
             </div>
+        )}
 
-            {/* Video title moved up */}
         <h3 style={{
             marginTop: '15px',
             marginBottom: isMobile ? '5px' : '15px',
@@ -1658,20 +1689,14 @@ export const ScreenmerchImages = ({ thumbnail, screenshots, onDeleteScreenshot }
                                 src={screenshots[idx]} 
                                 alt={`Screenshot ${idx + 1}`} 
                                 className="screenmerch-preview"
-                                style={{
-                                    maxWidth: '100%',
-                                    maxHeight: '100%',
-                                    width: 'auto',
-                                    height: 'auto',
-                                    objectFit: 'contain'
-                                }}
                                 onError={(e) => console.error(`Failed to load screenshot ${idx + 1}:`, e.target.src)}
-                                onLoad={() => {
-                                    // console.log(`Screenshot ${idx + 1} loaded successfully:`, screenshots[idx]);
-                                }}
                             />
                             <div className="screenmerch-buttons">
-                                <button className="screenmerch-delete-btn" onClick={() => onDeleteScreenshot(idx)} title="Delete screenshot">×</button>
+                                <button type="button" className="screenmerch-delete-btn" onClick={() => onDeleteScreenshot(idx)} title="Delete screenshot" aria-label="Delete screenshot">
+                                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                                        <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                                    </svg>
+                                </button>
                             </div>
                         </div>
                     ) : (

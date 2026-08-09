@@ -7,6 +7,7 @@ import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../utils/userService';
 import { getBackendUrl } from '../../config/apiConfig';
+import { requestVideoOptimize } from '../../utils/videoOptimize';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.jsx';
@@ -1128,6 +1129,12 @@ const Dashboard = ({ sidebar }) => {
                             : video
                     )
                 );
+                if (updates.video_url) {
+                    requestVideoOptimize({
+                        videoId: editingVideo.id,
+                        videoUrl: updates.video_url,
+                    });
+                }
                 alert('Video updated successfully!');
                 handleCancelEdit();
             } else {

@@ -235,7 +235,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
 
   return (
     <>
-      <div className={`container ${sidebar ? "" : " large-container"}`}>
+      <div className={`container home-page ${sidebar ? "" : " large-container"}`}>
         {/* Launch banner: main site only (not creator subdomains) */}
         {isMainSite ? (
           <Link

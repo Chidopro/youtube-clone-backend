@@ -183,12 +183,14 @@
   padding-bottom: 10px;
 }
 
-/* Desktop positioning - ensure consistent video player placement */
+/* Desktop: keep 2/3 bar in page flow; player row scrolls into view */
 @media (min-width: 769px) {
   .video-page-container {
-    min-height: 100vh;
+    min-height: 0;
     display: flex;
     flex-direction: column;
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
   
   .main-container {
@@ -196,7 +198,9 @@
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding-top: 0px;
+    padding: 0;
+    gap: 12px;
+    min-height: 0;
   }
 }
 
@@ -207,7 +211,12 @@
   margin: 0 auto;
   padding: 0 20px;
   align-items: flex-start;
-  min-height: 100vh;
+}
+
+@media (min-width: 769px) {
+  .video-page-container .main-container {
+    min-height: 0;
+  }
 }
 
 .video-viewer {
@@ -230,6 +239,68 @@
   display: flex;
   flex-direction: column;
   height: fit-content;
+}
+
+@media (min-width: 769px) {
+  .screenshots-section {
+    padding: 0 10px 10px 10px;
+  }
+
+  .screenshots-section .screenmerch-actions--sidebar {
+    margin: 0 0 6px 0;
+  }
+}
+
+.screenshots-section .screenmerch-actions--sidebar {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 8px 0;
+  flex-shrink: 0;
+}
+
+.screenshots-section .screenmerch-actions--sidebar .screenmerch-btn {
+  flex: 1;
+  padding: 10px 8px;
+  min-height: 40px;
+  border: none;
+  border-radius: 5px;
+  color: #fff;
+  font-weight: bold;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.screenshots-section .screenmerch-actions--sidebar .screenshot-btn {
+  background: #dc3545;
+}
+
+.screenshots-section .screenmerch-actions--sidebar .screenshot-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.screenshots-section .screenmerch-actions--sidebar .make-merch-btn {
+  background: #28a745;
+}
+
+.screenshots-section .screenmerch-actions--sidebar .screenshot-btn:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.screenshots-section .screenmerch-actions--sidebar .make-merch-btn:hover {
+  background: #218838;
+}
+
+@media (max-width: 768px) {
+  .screenshots-section .screenmerch-actions--sidebar {
+    display: none;
+  }
 }
 
 .screenshots-section h3 {
@@ -270,7 +341,7 @@
 @media (max-width: 768px) {
   .main-container {
     flex-direction: column;
-    padding: 0 10px;
+    padding: 0;
     gap: 15px;
     align-items: stretch;
     min-height: 100vh;
@@ -296,12 +367,10 @@
   }
   
   .video-viewer .video-container {
-    width: 100vw;
-    margin-left: calc(-50vw + 50%);
-    max-width: none;
+    width: 100%;
+    max-width: 100%;
     padding: 0;
-    margin-top: 0;
-    margin-bottom: 0;
+    margin: 0;
   }
   
   .video-viewer .video-container > div {
@@ -311,7 +380,8 @@
   
   .video-viewer .video-container video {
     width: 100%;
-    height: 56.25vw; /* 16:9 aspect ratio */
+    height: auto;
+    aspect-ratio: 16 / 9;
     max-height: 50vh; /* Limit maximum height to 50% of viewport height */
     border-radius: 0;
     object-fit: cover;
@@ -335,8 +405,9 @@
   }
   
   .video-viewer .screenmerch-actions {
-    margin: 0 10px 0 10px !important; /* Remove bottom margin */
-    gap: 10px;
+    margin: 8px 0 0 0 !important;
+    gap: 8px;
+    width: 100%;
   }
   
   .video-viewer .screenmerch-actions button {
@@ -404,21 +475,23 @@
   }
   
   .user-flow-section {
-    margin: -10px -10px 20px -10px;
-    padding: 10px 12px;
+    margin: 0 0 12px 0;
+    padding: 10px 4px;
     min-height: 70px !important;
     max-height: 90px !important;
-    width: calc(100% + 20px);
-    margin-left: -10px;
-    margin-right: -10px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
   
   .user-flow-section .flow-steps {
     flex-direction: row !important;
-    gap: 8px;
+    gap: 4px;
     justify-content: space-evenly !important;
+    align-items: flex-start !important;
     flex-wrap: nowrap;
     overflow-x: hidden;
+    padding: 0 2px;
   }
   
   .user-flow-section .flow-arrow {
@@ -426,11 +499,11 @@
   }
   
   .user-flow-section .flow-step {
-    min-width: auto;
+    min-width: 0;
     flex-direction: column;
     gap: 2px;
-    flex: 1;
-    max-width: 80px;
+    flex: 1 1 0;
+    max-width: none;
   }
   
   .user-flow-section .step-number {
@@ -441,10 +514,11 @@
   }
   
   .user-flow-section .step-content h3 {
-    font-size: 0.8rem !important;
+    font-size: 0.78rem !important;
     margin: 0 !important;
     line-height: 1.2;
     text-align: center;
+    white-space: nowrap !important;
   }
   
   .user-flow-section .step-content p {
@@ -531,7 +605,7 @@
 /* Extra small mobile devices */
 @media (max-width: 480px) {
   .main-container {
-    padding: 0 8px;
+    padding: 0;
     gap: 12px;
   }
   
@@ -545,15 +619,16 @@
   }
   
   .user-flow-section {
-    padding: 8px 10px;
+    padding: 8px 2px;
     min-height: 65px !important;
     max-height: 85px !important;
   }
   
   .user-flow-section .flow-steps {
-    gap: 4px;
+    gap: 2px;
     justify-content: space-evenly !important;
-    padding: 0 8px;
+    align-items: flex-start !important;
+    padding: 0 2px;
   }
   
   .user-flow-section .flow-arrow {
@@ -591,6 +666,121 @@
 
 @media (max-width: 768px) {
   .main-container {
-    padding: 0 10px;
+    padding: 0;
+  }
+}
+
+@media (min-width: 769px) {
+  .video-page-container .main-container {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+    align-items: start;
+    column-gap: 12px;
+    padding: 0;
+  }
+
+  .video-page-container .video-viewer,
+  .video-page-container .screenshots-section {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .video-page-container .screenshots-section {
+    padding: 0 0 8px 0 !important;
+    border-radius: 8px;
+  }
+
+  .video-page-container .screenmerch-actions--sidebar {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    width: 100%;
+    margin: 0 0 12px 0 !important;
+    box-sizing: border-box;
+  }
+
+  .video-page-container .screenmerch-images-grid {
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 768px) {
+  .video-page-container {
+    overflow-x: hidden;
+  }
+
+  .video-page-container .user-flow-section {
+    margin: 0 0 12px 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .video-page-container .main-container,
+  .video-page-container .video-viewer,
+  .video-page-container .play-video {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .video-page-container .play-video .video-container,
+  .video-page-container .play-video .video-container > div,
+  .video-page-container .play-video video,
+  .video-page-container .play-video video[playsinline],
+  .video-page-container .play-video video[webkit-playsinline="true"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: 50vh !important;
+    aspect-ratio: 16 / 9;
+    box-sizing: border-box;
+  }
+
+  .video-page-container .play-video video {
+    object-fit: cover !important;
+    background: #000 !important;
+    border-radius: 0 !important;
+    display: block !important;
+  }
+
+  .video-viewer .screenmerch-actions {
+    display: flex !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 8px 0 0 0 !important;
+    padding: 0 !important;
+    gap: 8px;
+    box-sizing: border-box;
+    flex-wrap: nowrap;
+  }
+
+  .video-viewer .screenmerch-actions .screenmerch-btn,
+  .video-viewer .screenmerch-actions .screenmerch-btn.screenshot-btn,
+  .video-viewer .screenmerch-actions .screenmerch-btn.make-merch-btn {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    height: auto !important;
+    min-height: 48px !important;
+    padding: 0 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    line-height: 1.2 !important;
+    box-sizing: border-box !important;
+    white-space: normal;
   }
 }

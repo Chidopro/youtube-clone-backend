@@ -20,6 +20,7 @@ const Video = ({ sidebar }) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [videoData, setVideoData] = useState(null);
   const videoRef = useRef(null);
+  const captureScreenshotRef = useRef(null);
   const [screenshotCount, setScreenshotCount] = useState(0);
   const [videoHasPlayed, setVideoHasPlayed] = useState(false); // Track if video has been played
   const [pulseStep2, setPulseStep2] = useState(false); // Step 2 only pulses after video is played
@@ -84,35 +85,18 @@ const Video = ({ sidebar }) => {
             });
           }
         } else {
-          // Desktop positioning - position video player right below white header
-          const videoContainer = document.querySelector('.video-container');
+          const row = document.querySelector('.video-page-container .main-container');
           const navbar = document.querySelector('nav');
-          
-          if (videoContainer && navbar) {
-            // Calculate navbar height to position video player right below header
-            const navbarHeight = navbar.offsetHeight;
-            const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
-            const targetScrollPosition = videoTop - navbarHeight; // Video player right below header
-            
-            window.scrollTo({
-              top: targetScrollPosition,
-              behavior: 'smooth'
-            });
-          } else if (videoContainer) {
-            // Fallback: position video player with estimated header height
-            const videoTop = videoContainer.getBoundingClientRect().top + window.scrollY;
-            const targetScrollPosition = videoTop - 80; // Estimate header height (~80px)
-            
+          if (row) {
+            const navbarHeight = navbar ? navbar.offsetHeight : 80;
+            const rowTop = row.getBoundingClientRect().top + window.scrollY;
+            const targetScrollPosition = Math.max(0, rowTop - navbarHeight - 20);
             window.scrollTo({
               top: targetScrollPosition,
               behavior: 'smooth'
             });
           } else {
-            // Final fallback: scroll to top
-            window.scrollTo({
-              top: 0,
-              behavior: 'smooth'
-            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }
         }
       }, 500); // 500ms delay to ensure video player is loaded
@@ -198,31 +182,13 @@ const Video = ({ sidebar }) => {
     });
   };
 
-  // Fast Screenshot handler - directly trigger the screenshot button click
   const handleGrabScreenshot = async () => {
-    console.log('Step 2 clicked - attempting screenshot capture');
-    
-    const beforeCount = screenshots.length;
-    
-    // Find the working screenshot button and click it directly
-    const screenshotButton = document.querySelector('.screenmerch-btn');
-    if (screenshotButton && screenshotButton.textContent.includes('Select Screenshot')) {
-      console.log('Clicking working screenshot button...');
-      screenshotButton.click();
-      
-      // Mark that user has manually taken a screenshot
+    if (typeof captureScreenshotRef.current === 'function') {
+      await captureScreenshotRef.current();
       setUserHasTakenScreenshot(true);
-      console.log('Screenshot function completed');
-      
-      // Wait a bit for the screenshot to be added, then check
-      setTimeout(() => {
-        if (screenshots.length > beforeCount) {
-          console.log('Screenshot successfully added, switching pulse states');
-        }
-      }, 500);
-    } else {
-      console.log('Screenshot button not found or not ready yet');
+      return;
     }
+    console.log('Screenshot capture is not ready yet');
   };
 
   // Make Merch handler
@@ -363,6 +329,7 @@ const Video = ({ sidebar }) => {
                onVideoData={setVideoData}
                onVideoPlayed={handleVideoPlayed}
                onMakeMerch={handleMakeMerch}
+               onScreenshotFunction={(fn) => { captureScreenshotRef.current = fn; }}
              />
            ) : (
              <div style={{padding: 24, color: 'red'}}>No video selected.</div>
@@ -398,7 +365,25 @@ const Video = ({ sidebar }) => {
             </div>
           )}
           
-          {/* Removed "Screenshot Selection" title - it's obvious from context */}
+          {!isMobile && (
+            <div className="screenmerch-actions screenmerch-actions--sidebar">
+              <button
+                type="button"
+                className="screenmerch-btn screenshot-btn"
+                onClick={handleGrabScreenshot}
+                disabled={screenshots.length >= 6}
+              >
+                {screenshots.length >= 6 ? 'Max Screenshots' : 'Select Screenshot'}
+              </button>
+              <button
+                type="button"
+                className="screenmerch-btn make-merch-btn"
+                onClick={scrollToProducts}
+              >
+                Make Merch
+              </button>
+            </div>
+          )}
           <ScreenmerchImages 
             thumbnail={thumbnail} 
             screenshots={screenshots} 

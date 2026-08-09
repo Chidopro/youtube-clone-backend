@@ -19,7 +19,7 @@ img{
 
 .main-content-area {
   flex-grow: 1;
-  padding: 20px 20px 20px 10px;
+  padding: 20px 10px 20px 10px;
   width: 100%; /* Ensure it takes full width */
   min-width: 0; /* Allow shrinking in flex layout */
   overflow: visible; /* Legal pages (Terms, Privacy) use page scroll, not inner scrollbar */
@@ -42,6 +42,20 @@ img{
   padding-top: 0;
   padding-left: 0;
   padding-right: 0;
+}
+
+@media (min-width: 769px) {
+  .main-content-area--video {
+    padding-top: 8px;
+    padding-bottom: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content-area,
+  .main-content-area--video {
+    padding: 8px 12px 16px 12px;
+  }
 }
 
 @media (max-width: 900px) {

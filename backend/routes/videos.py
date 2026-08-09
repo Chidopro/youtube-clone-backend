@@ -55,6 +55,20 @@ def _handle_cors_preflight():
     return make_response("", 204)
 
 
+def _enqueue_unoptimized_videos(rows):
+    admin = getattr(videos_bp, "supabase_admin", None)
+    if not admin or not rows:
+        return 0
+    from utils.video_optimize import enqueue_video_row
+    queued = 0
+    for row in rows:
+        if enqueue_video_row(admin, row):
+            queued += 1
+    if queued:
+        logger.info("Queued %s video(s) for playback optimize", queued)
+    return queued
+
+
 @videos_bp.route("/api/videos", methods=["GET", "OPTIONS"])
 def get_videos():
     """Get list of videos. CORS is set by app's add_security_headers (app.py)."""
@@ -79,6 +93,7 @@ def get_videos():
             query = query.eq("user_id", user_id)
         response = query.execute()
         data = response.data if response.data is not None else []
+        _enqueue_unoptimized_videos(data)
         return jsonify(data), 200
     except Exception as e:
         import traceback
@@ -623,6 +638,93 @@ def process_thumbnail_print_quality():
             response.headers.add('Access-Control-Allow-Origin', 'https://screenmerch.fly.dev')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 500
+
+
+@videos_bp.route("/api/videos/optimize", methods=["POST", "OPTIONS"])
+def optimize_video_playback():
+    """Create a 720p H.264 playback file in the background. Original stays for FrameSnag/print."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        from utils.video_optimize import start_optimize_background, public_videos2_path
+
+        data = request.get_json(silent=True) or {}
+        video_id = (data.get("video_id") or data.get("id") or "").strip() or None
+        video_url = (data.get("video_url") or "").strip()
+        source_url = video_url
+        client = getattr(videos_bp, "supabase_admin", None) or _get_supabase_client()
+        if video_id and client:
+            row = (
+                client.table("videos2")
+                .select("id, video_url, source_video_url")
+                .eq("id", video_id)
+                .limit(1)
+                .execute()
+            )
+            rec = (row.data or [None])[0]
+            if not rec:
+                return jsonify({"success": False, "error": "Video not found"}), 404
+            playback = rec.get("video_url") or ""
+            source_url = rec.get("source_video_url") or rec.get("video_url") or video_url
+            if source_url and playback and "_w720." in playback and playback != source_url:
+                return jsonify({
+                    "success": True,
+                    "status": "already_optimized",
+                    "video_url": playback,
+                    "source_video_url": rec.get("source_video_url"),
+                }), 200
+            video_url = source_url
+        if not video_url:
+            return jsonify({"success": False, "error": "video_url is required"}), 400
+        if not public_videos2_path(video_url):
+            return jsonify({"success": False, "error": "Only hosted ScreenMerch videos can be optimized"}), 400
+        if not getattr(videos_bp, "supabase_admin", None):
+            return jsonify({"success": False, "error": "Optimizer unavailable"}), 503
+        start_optimize_background(videos_bp.supabase_admin, video_url, video_id, source_url)
+        return jsonify({"success": True, "status": "processing"}), 202
+    except Exception as e:
+        logger.error("optimize_video_playback: %s", e)
+        return jsonify({"success": False, "error": "Could not start video optimization"}), 500
+
+
+@videos_bp.route("/api/videos/optimize-pending", methods=["POST", "OPTIONS"])
+def optimize_pending_videos():
+    """Queue every hosted video that still needs a 720p playback file."""
+    if request.method == "OPTIONS":
+        return _handle_cors_preflight()
+    try:
+        admin = getattr(videos_bp, "supabase_admin", None)
+        if not admin:
+            return jsonify({"success": False, "error": "Optimizer unavailable"}), 503
+        queued = 0
+        scanned = 0
+        offset = 0
+        page_size = 200
+        while True:
+            result = (
+                admin.table("videos2")
+                .select("id, video_url, source_video_url")
+                .order("created_at", desc=True)
+                .range(offset, offset + page_size - 1)
+                .execute()
+            )
+            batch = result.data or []
+            if not batch:
+                break
+            scanned += len(batch)
+            queued += _enqueue_unoptimized_videos(batch)
+            if len(batch) < page_size:
+                break
+            offset += page_size
+        return jsonify({
+            "success": True,
+            "status": "processing",
+            "scanned": scanned,
+            "queued": queued,
+        }), 202
+    except Exception as e:
+        logger.error("optimize_pending_videos: %s", e)
+        return jsonify({"success": False, "error": "Could not queue pending videos"}), 500
 
 
 @videos_bp.route("/print-quality")

@@ -43,6 +43,20 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     const navigate = useNavigate();
     const location = useLocation();
     const isOrderSuccessPage = location.pathname === '/success' || location.pathname === '/order-success';
+    const [logoOrientation, setLogoOrientation] = useState('square');
+
+    const classifyLogoOrientation = (img) => {
+        const next = (!img?.naturalWidth || !img?.naturalHeight)
+            ? 'square'
+            : (img.naturalWidth / img.naturalHeight >= 1.35 ? 'horizontal' : 'square');
+        setLogoOrientation((prev) => (prev === next ? prev : next));
+    };
+
+    useEffect(() => {
+        if (!creatorSettings?.custom_logo_url) {
+            setLogoOrientation('square');
+        }
+    }, [creatorSettings?.custom_logo_url]);
 
     useEffect(() => {
         let isMounted = true;
@@ -766,12 +780,12 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
 
     return (
         <>
-            <nav className={`flex-div${dropdownOpen ? ' nav-dropdown-active' : ''}`}>
+            <nav className={`flex-div${dropdownOpen ? ' nav-dropdown-active' : ''}${logoOrientation === 'horizontal' ? ' nav--logo-horizontal' : ''}`}>
                 <div className="nav-left flex-div">
                     <img
                         src={menu_icon}
                         alt="Menu"
-                        className="menu-icon"
+                        className="menu-icon menu-icon--hamburger"
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -779,26 +793,48 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         }}
                         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                     />
-                    <div className="navbar-logo-wrap">
-                        <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}>
-                            <img
-                                key={`navbar-logo-${creatorSettings?.custom_logo_url || 'default'}`}
-                                src={creatorSettings?.custom_logo_url || logo}
-                                alt="Logo"
-                                className={`logo ${isOrderSuccessPage ? 'order-success-logo' : ''}`}
-                                onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = logo;
-                                    if (creatorSettings?.custom_logo_url) console.warn('Custom logo failed to load. Check URL is public and correct:', creatorSettings.custom_logo_url);
-                                }}
-                            />
+                    <button
+                        type="button"
+                        className="menu-icon menu-icon--more"
+                        aria-label="Menu"
+                        aria-expanded={!!sidebar}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSidebar(prev => !prev);
+                        }}
+                    >
+                        <svg width="4" height="18" viewBox="0 0 4 18" aria-hidden="true">
+                            <circle cx="2" cy="2" r="1.7" fill="currentColor" />
+                            <circle cx="2" cy="9" r="1.7" fill="currentColor" />
+                            <circle cx="2" cy="16" r="1.7" fill="currentColor" />
+                        </svg>
+                    </button>
+                </div>
+                <div className={`navbar-logo-wrap navbar-logo-wrap--${logoOrientation}`}>
+                    <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}>
+                        <img
+                            key={`navbar-logo-${creatorSettings?.custom_logo_url || 'default'}`}
+                            src={creatorSettings?.custom_logo_url || logo}
+                            alt="Logo"
+                            className={`logo${creatorSettings?.custom_logo_url ? ' logo--custom' : ''} logo--${logoOrientation}${isOrderSuccessPage ? ' order-success-logo' : ''}`}
+                            onLoad={(e) => classifyLogoOrientation(e.target)}
+                            ref={(el) => {
+                                if (el?.complete && el.naturalWidth) classifyLogoOrientation(el);
+                            }}
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = logo;
+                                setLogoOrientation('square');
+                                if (creatorSettings?.custom_logo_url) console.warn('Custom logo failed to load. Check URL is public and correct:', creatorSettings.custom_logo_url);
+                            }}
+                        />
+                    </Link>
+                    {location.pathname.includes('/dashboard') && user && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && (
+                        <Link to="/dashboard?tab=personalization" className="navbar-logo-edit" aria-label="Edit logo in Personalization" title="Edit logo">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                         </Link>
-                        {location.pathname.includes('/dashboard') && user && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && (
-                            <Link to="/dashboard?tab=personalization" className="navbar-logo-edit" aria-label="Edit logo in Personalization" title="Edit logo">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                            </Link>
-                        )}
-                    </div>
+                    )}
                 </div>
                 {sidebar && !isOrderSuccessPage && (
                     <div className="nav-mobile-menu" role="dialog" aria-label="Menu">

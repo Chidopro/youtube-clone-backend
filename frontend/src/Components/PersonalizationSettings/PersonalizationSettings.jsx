@@ -765,7 +765,7 @@ const PersonalizationSettings = () => {
                 <img src={normalizeStorageUrl(settings.custom_logo_url)} alt="Logo preview" className="logo-preview" onError={(e) => { e.target.style.display = 'none'; }} />
               </div>
             )}
-            <p className="help-text">URL to your custom logo (recommended: 200x50px PNG or SVG). Use &quot;Upload logo&quot; or paste a URL. Uploads use the existing creator-logos bucket.</p>
+            <p className="help-text">URL to your custom logo. Crop tightly — extra empty canvas makes the mark look small in the header. Square or round marks (not enlarged): 200×200px PNG or SVG, same header area as the ScreenMerch logo. Horizontal logos (enlarged in the header): 1600×480px or about 3:1. Use &quot;Upload logo&quot; or paste a URL. Uploads use the existing creator-logos bucket.</p>
           </div>
           
           <div className="color-settings">
