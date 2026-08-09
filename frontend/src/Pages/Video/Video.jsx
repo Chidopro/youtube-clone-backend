@@ -289,8 +289,8 @@ const Video = ({ sidebar }) => {
            >
              <div className={`step-number ${pulseStep2 ? 'pulse step-red' : ''}`}>2</div>
              <div className="step-content">
-               <h3>Select Screenshot</h3>
-               <p>Select the perfect screenshot to capture</p>
+               <h3>Make Selection</h3>
+               <p>Select the perfect screenshot or image</p>
              </div>
            </div>
            <div className="flow-arrow">→</div>
@@ -306,7 +306,7 @@ const Video = ({ sidebar }) => {
              <div className={`step-number ${pulseStep3 ? 'pulse step-green' : ''}`}>3</div>
              <div className="step-content">
                <h3>Make Merchandise</h3>
-               <p>Create custom products with your screenshot</p>
+               <p>Create custom products with your selection</p>
              </div>
            </div>
          </div>

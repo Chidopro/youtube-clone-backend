@@ -46,8 +46,11 @@ img{
 
 @media (min-width: 769px) {
   .main-content-area--video {
-    padding-top: 8px;
+    padding-top: 0;
     padding-bottom: 12px;
+    padding-left: 0;
+    padding-right: 0;
+    background: #fff;
   }
 }
 

@@ -14,13 +14,15 @@ def test_public_videos2_path():
 
 
 def test_web_output_path():
-    assert _web_output_path("user1/clip.mov") == "user1/clip_w720.mp4"
-    assert _web_output_path("user1/clip_web.mp4") == "user1/clip_w720.mp4"
-    assert _web_output_path("user1/clip_w720.mp4") == "user1/clip_w720.mp4"
+    assert _web_output_path("user1/clip.mov") == "user1/clip_w720t.mp4"
+    assert _web_output_path("user1/clip_web.mp4") == "user1/clip_w720t.mp4"
+    assert _web_output_path("user1/clip_w720.mp4") == "user1/clip_w720t.mp4"
+    assert _web_output_path("user1/clip_w720t.mp4") == "user1/clip_w720t.mp4"
 
 
 def test_already_web_url():
     assert _already_web_url("https://x.supabase.co/storage/v1/object/public/videos2/a/b_w720.mp4")
+    assert _already_web_url("https://x.supabase.co/storage/v1/object/public/videos2/a/b_w720t.mp4")
     assert not _already_web_url("https://x.supabase.co/storage/v1/object/public/videos2/a/b_web.mp4")
     assert not _already_web_url("https://x.supabase.co/storage/v1/object/public/videos2/a/b.mp4")
 
@@ -29,6 +31,7 @@ def test_row_needs_optimize():
     base = "https://sojxbydpcdcdzfdtbypd.supabase.co/storage/v1/object/public/videos2/u/clip.mp4"
     assert row_needs_optimize({"id": "1", "video_url": base})
     assert not row_needs_optimize({"id": "1", "video_url": base.replace("clip.mp4", "clip_w720.mp4")})
+    assert not row_needs_optimize({"id": "1", "video_url": base.replace("clip.mp4", "clip_w720t.mp4")})
     assert not row_needs_optimize({"id": "1", "video_url": "https://youtube.com/watch?v=abc"})
 
 

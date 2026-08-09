@@ -957,7 +957,7 @@ const ProductPage = ({ sidebar }) => {
               <div className="step-number">3</div>
               <div className="step-content">
                 <h3>Make Merchandise</h3>
-                <p>Create custom products with your screenshot</p>
+                <p>Create custom products with your selection</p>
               </div>
             </div>
           </div>

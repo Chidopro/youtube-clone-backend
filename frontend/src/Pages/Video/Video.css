@@ -178,9 +178,28 @@
 
 /* Video Page Container - CACHE BUST 2025-01-27 */
 .video-page-container {
-  background: #f9f9f9;
-  padding-top: 10px;
+  background: #fff;
+  padding-top: 20px;
   padding-bottom: 10px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.video-page-container .user-flow-section {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  background: none !important;
+}
+
+.video-page-container .main-container {
+  position: relative;
+  z-index: auto;
+  margin-top: 0;
 }
 
 /* Desktop: keep 2/3 bar in page flow; player row scrolls into view */
@@ -189,28 +208,34 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    padding-top: 10px;
+    padding-top: 20px;
     padding-bottom: 10px;
+    width: 100%;
+    max-width: none;
   }
   
   .main-container {
     flex: 1;
     display: flex;
     align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
     padding: 0;
     gap: 12px;
     min-height: 0;
+    width: 100%;
+    max-width: none;
   }
 }
 
 .main-container {
   display: flex;
   gap: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 20px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 10px;
   align-items: flex-start;
+  box-sizing: border-box;
 }
 
 @media (min-width: 769px) {
@@ -673,10 +698,14 @@
 @media (min-width: 769px) {
   .video-page-container .main-container {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
     align-items: start;
     column-gap: 12px;
-    padding: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 10px;
+    box-sizing: border-box;
   }
 
   .video-page-container .video-viewer,
@@ -688,6 +717,9 @@
   .video-page-container .screenshots-section {
     padding: 0 0 8px 0 !important;
     border-radius: 8px;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
   }
 
   .video-page-container .screenmerch-actions--sidebar {
@@ -712,10 +744,11 @@
   }
 
   .video-page-container .user-flow-section {
-    margin: 0 0 12px 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
+    display: none !important;
+  }
+
+  .video-page-container .main-container {
+    margin-top: 0;
   }
 
   .video-page-container .main-container,

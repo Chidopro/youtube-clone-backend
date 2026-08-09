@@ -646,11 +646,12 @@ def optimize_video_playback():
     if request.method == "OPTIONS":
         return _handle_cors_preflight()
     try:
-        from utils.video_optimize import start_optimize_background, public_videos2_path
+        from utils.video_optimize import start_optimize_background, public_videos2_path, _already_web_url
 
         data = request.get_json(silent=True) or {}
         video_id = (data.get("video_id") or data.get("id") or "").strip() or None
         video_url = (data.get("video_url") or "").strip()
+        force = bool(data.get("force"))
         source_url = video_url
         client = getattr(videos_bp, "supabase_admin", None) or _get_supabase_client()
         if video_id and client:
@@ -666,7 +667,13 @@ def optimize_video_playback():
                 return jsonify({"success": False, "error": "Video not found"}), 404
             playback = rec.get("video_url") or ""
             source_url = rec.get("source_video_url") or rec.get("video_url") or video_url
-            if source_url and playback and "_w720." in playback and playback != source_url:
+            if (
+                not force
+                and source_url
+                and playback
+                and _already_web_url(playback)
+                and playback != source_url
+            ):
                 return jsonify({
                     "success": True,
                     "status": "already_optimized",
@@ -680,7 +687,7 @@ def optimize_video_playback():
             return jsonify({"success": False, "error": "Only hosted ScreenMerch videos can be optimized"}), 400
         if not getattr(videos_bp, "supabase_admin", None):
             return jsonify({"success": False, "error": "Optimizer unavailable"}), 503
-        start_optimize_background(videos_bp.supabase_admin, video_url, video_id, source_url)
+        start_optimize_background(videos_bp.supabase_admin, video_url, video_id, source_url, force=force)
         return jsonify({"success": True, "status": "processing"}), 202
     except Exception as e:
         logger.error("optimize_video_playback: %s", e)

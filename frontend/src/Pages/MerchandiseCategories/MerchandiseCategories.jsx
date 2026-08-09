@@ -108,10 +108,26 @@ const MerchandiseCategories = ({ sidebar }) => {
       >
         <div className="flow-steps">
           <div className="flow-step">
+            <div className="step-number">1</div>
+            <div className="step-content">
+              <h3>Choose Video/Image</h3>
+              <p>Browse and select your favorite content</p>
+            </div>
+          </div>
+          <div className="flow-arrow">→</div>
+          <div className="flow-step">
+            <div className="step-number">2</div>
+            <div className="step-content">
+              <h3>Make Selection</h3>
+              <p>Select the perfect screenshot or image</p>
+            </div>
+          </div>
+          <div className="flow-arrow">→</div>
+          <div className="flow-step">
             <div className="step-number">3</div>
             <div className="step-content">
               <h3>Make Merchandise</h3>
-              <p>Create custom products with your screenshot</p>
+              <p>Create custom products with your selection</p>
             </div>
           </div>
         </div>

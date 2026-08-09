@@ -20,6 +20,7 @@ FFMPEG_TIMEOUT_SEC = 240
 DOWNLOAD_TIMEOUT_SEC = 120
 MAX_DOWNLOAD_BYTES = 220 * 1024 * 1024
 PLAYBACK_MARK = "_w720."
+PLAYBACK_MARK_TRANSCODED = "_w720t."
 CACHE_CONTROL = "31536000"
 
 _lock = threading.Lock()
@@ -53,15 +54,16 @@ def public_videos2_path(video_url):
 
 def _web_output_path(rel_path):
     base, ext = os.path.splitext(rel_path)
-    for suffix in ("_w720", "_web"):
+    for suffix in ("_w720t", "_w720", "_web"):
         if base.endswith(suffix):
             base = base[: -len(suffix)]
             break
-    return f"{base}_w720.mp4"
+    return f"{base}_w720t.mp4"
 
 
 def _already_web_url(video_url):
-    return bool(video_url) and PLAYBACK_MARK in str(video_url)
+    url = str(video_url or "")
+    return bool(url) and (PLAYBACK_MARK_TRANSCODED in url or PLAYBACK_MARK in url)
 
 
 def _is_youtube_url(video_url):
@@ -120,6 +122,7 @@ def _probe(path):
 
 
 def _is_web_ready(probe):
+    """Kept for tests; playback copies are always transcoded for browser compatibility."""
     if not probe:
         return False
     if probe.get("codec") not in ("h264", "avc1"):
@@ -273,7 +276,7 @@ def _update_video_row(admin_client, video_id, playback_url, source_url):
         return False
 
 
-def optimize_video_url(admin_client, video_url, video_id=None, source_url=None):
+def optimize_video_url(admin_client, video_url, video_id=None, source_url=None, force=False):
     """
     Create a web playback MP4 when needed.
     Returns dict: {ok, skipped, playback_url, source_url, error}
@@ -283,7 +286,7 @@ def optimize_video_url(admin_client, video_url, video_id=None, source_url=None):
     if not rel:
         return {"ok": False, "skipped": True, "error": "Only ScreenMerch Supabase videos can be optimized"}
 
-    if _already_web_url(source_url):
+    if _already_web_url(source_url) and not force:
         return {"ok": True, "skipped": True, "playback_url": source_url, "source_url": source_url}
 
     key = str(video_id or source_url)
@@ -303,11 +306,7 @@ def optimize_video_url(admin_client, video_url, video_id=None, source_url=None):
 
         logger.info("Optimizing video %s (%s)", video_id or "", rel)
         _download(source_url, tmp_in)
-        probe = _probe(tmp_in)
-        if _is_web_ready(probe):
-            _remux_faststart(tmp_in, tmp_out)
-        else:
-            _transcode(tmp_in, tmp_out)
+        _transcode(tmp_in, tmp_out)
         web_rel = _web_output_path(rel)
         playback_url = _upload_web_file(admin_client, web_rel, tmp_out)
         if isinstance(playback_url, str):
@@ -332,9 +331,9 @@ def optimize_video_url(admin_client, video_url, video_id=None, source_url=None):
 
 def _optimize_worker():
     while True:
-        admin_client, video_url, video_id, source_url, key = _job_queue.get()
+        admin_client, video_url, video_id, source_url, key, force = _job_queue.get()
         try:
-            optimize_video_url(admin_client, video_url, video_id, source_url)
+            optimize_video_url(admin_client, video_url, video_id, source_url, force=force)
         except Exception as exc:
             logger.error("Queued optimize crashed for %s: %s", key, exc)
         finally:
@@ -353,12 +352,14 @@ def _ensure_worker():
         _worker_started = True
 
 
-def enqueue_optimize(admin_client, video_url, video_id=None, source_url=None):
+def enqueue_optimize(admin_client, video_url, video_id=None, source_url=None, force=False):
     """Queue one video. Only one transcode runs at a time on this machine."""
     if not admin_client:
         return False
     source_url = (source_url or video_url or "").strip()
-    if not source_url or _already_web_url(source_url) or _is_youtube_url(source_url):
+    if not source_url or _is_youtube_url(source_url):
+        return False
+    if _already_web_url(source_url) and not force:
         return False
     if not public_videos2_path(source_url):
         return False
@@ -368,7 +369,7 @@ def enqueue_optimize(admin_client, video_url, video_id=None, source_url=None):
         if key in _in_flight or key in _queued:
             return False
         _queued.add(key)
-    _job_queue.put((admin_client, video_url, video_id, source_url, key))
+    _job_queue.put((admin_client, video_url, video_id, source_url, key, force))
     return True
 
 
@@ -380,6 +381,6 @@ def enqueue_video_row(admin_client, row):
     return enqueue_optimize(admin_client, source, row.get("id"), source)
 
 
-def start_optimize_background(admin_client, video_url, video_id=None, source_url=None):
-    enqueue_optimize(admin_client, video_url, video_id, source_url)
+def start_optimize_background(admin_client, video_url, video_id=None, source_url=None, force=False):
+    enqueue_optimize(admin_client, video_url, video_id, source_url, force=force)
     return None

@@ -1,7 +1,7 @@
 import { apiJoin } from '../config/apiConfig';
 
 export function isOptimizedPlaybackUrl(url) {
-  return /_w720\./i.test(String(url || ''));
+  return /_w720t\.|_w720\./i.test(String(url || ''));
 }
 
 export function needsVideoOptimize(video) {

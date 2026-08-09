@@ -75,7 +75,7 @@ const FAQ_SECTIONS = [
       },
       {
         q: 'How does merch from a video work?',
-        a: 'On a creator storefront, open a video or go to Pages. On a video, use Select Screenshot to capture up to five moments. Choose a screenshot or page image, click Make Merch, pick a product category, place the image on a product, and check out.',
+        a: 'On a creator storefront, open a video or go to Pages. On a video, make a selection to capture up to five moments. Choose a screenshot or page image, click Make Merch, pick a product category, place the image on a product, and check out.',
       },
       {
         q: 'Can I return custom merch?',

@@ -1,11 +1,14 @@
 /* User Flow Section Styles - Matching other pages - FORCE CACHE BUST 2025-01-27-MOBILE-FIX */
 .merchandise-categories .user-flow-section {
   background: linear-gradient(135deg, var(--primary-color, #667eea) 0%, var(--secondary-color, #764ba2) 100%);
-  margin: -10px -20px 20px -20px;
+  margin: 0 0 20px 0;
   padding: 20px 20px;
   color: white;
   text-align: center;
   border-radius: 0;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 .flow-steps {
@@ -135,9 +138,15 @@
 
 .categories-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1.5rem;
   margin-bottom: 3rem;
+}
+
+.merchandise-categories .categories-container .categories-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1.5rem;
 }
 
 /* Button reset + mobile tap hardening (keeps same visuals) */

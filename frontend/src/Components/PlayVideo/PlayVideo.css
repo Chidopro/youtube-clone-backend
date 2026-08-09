@@ -1224,15 +1224,15 @@
 }
 
 .screenmerch-preview {
-    width: 120px;
-    height: 80px;
+    width: 100%;
+    height: auto;
     object-fit: contain;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    margin-top: 8px;
+    margin-top: 0;
     display: block;
     max-width: 100%;
-    max-height: 100%;
+    max-height: 180px;
 }
 
 .screenmerch-placeholder {
@@ -1240,7 +1240,7 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    height: 80px;
+    height: 140px;
     background: #f8f9fa;
     border: 2px dashed #dee2e6;
     border-radius: 6px;
@@ -1276,11 +1276,11 @@
     text-align: center;
     background: white;
     border-radius: 8px;
-    padding: 12px;
+    padding: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     transition: transform 0.2s ease;
-    min-height: 140px;
-    max-height: 160px;
+    min-height: 168px;
+    max-height: none;
     overflow: visible;
     position: relative;
     border: 2px dashed #e0e0e0;
@@ -1337,8 +1337,8 @@
 
   .screenmerch-image-box {
     min-height: 140px;
-    max-height: 160px;
-    padding: 12px;
+    max-height: none;
+    padding: 8px;
     background: white;
     justify-content: center;
   }
@@ -1347,12 +1347,12 @@
     width: 100%;
     height: auto;
     max-width: 100%;
-    max-height: 120px;
+    max-height: 140px;
     object-fit: contain;
   }
 
   .screenmerch-placeholder {
-    height: 80px;
+    height: 100px;
   }
 
   .screenmerch-img-wrapper {
@@ -1365,13 +1365,15 @@
 
 .screenmerch-img-wrapper {
     position: relative;
-    display: inline-block;
+    display: block;
+    width: 100%;
+    overflow: visible;
 }
 
 .screenmerch-buttons {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 8px;
+    right: 8px;
     display: flex;
     gap: 4px;
     z-index: 2;
@@ -1399,7 +1401,7 @@
 }
 
 .screenmerch-delete-btn {
-    background: rgba(255,255,255,0.8);
+    background: #fff;
     border: none;
     color: #c00;
     font-size: 0;
@@ -1407,18 +1409,24 @@
     border-radius: 50%;
     width: 22px;
     height: 22px;
+    min-width: 22px;
+    min-height: 22px;
     cursor: pointer;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
     margin: 0;
+    box-sizing: border-box;
+    overflow: visible;
     transition: background 0.2s;
 }
 
 .screenmerch-delete-btn svg {
     display: block;
     flex-shrink: 0;
+    width: 10px;
+    height: 10px;
 }
 
 .screenmerch-delete-btn:hover {
