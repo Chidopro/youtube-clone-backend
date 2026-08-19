@@ -37,6 +37,7 @@ export function savePendingMerchData(merchData) {
           return itemUrl && itemUrl === nextUrl;
         });
         localStorage.setItem('cart_items', JSON.stringify(kept));
+        emitCartUpdated();
       } catch {
         /* ignore cart cleanup errors */
       }
@@ -77,4 +78,32 @@ export function consumeToolsFocusCartIndex() {
   } catch {
     return null;
   }
+}
+
+export const CART_UPDATED_EVENT = 'screenmerch-cart-updated';
+
+export function getCartItemCount() {
+  try {
+    const items = JSON.parse(localStorage.getItem('cart_items') || '[]');
+    return Array.isArray(items) ? items.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function emitCartUpdated() {
+  try {
+    window.dispatchEvent(new Event(CART_UPDATED_EVENT));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function writeCartItems(items) {
+  try {
+    localStorage.setItem('cart_items', JSON.stringify(Array.isArray(items) ? items : []));
+  } catch {
+    /* ignore */
+  }
+  emitCartUpdated();
 }

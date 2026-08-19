@@ -1,14 +1,27 @@
-/* User Flow Section Styles - Matching other pages - FORCE CACHE BUST 2025-01-27-MOBILE-FIX */
-.merchandise-categories .user-flow-section {
+.merchandise-categories-page {
+  background: #f9f9f9;
+  min-height: 100vh;
+}
+
+/* Match Home / Product page 1-2-3 bar width */
+.merchandise-categories-page .user-flow-section {
   background: linear-gradient(135deg, var(--primary-color, #667eea) 0%, var(--secondary-color, #764ba2) 100%);
-  margin: 0 0 20px 0;
+  margin: -10px -20px 20px -20px;
   padding: 20px 20px;
   color: white;
   text-align: center;
   border-radius: 0;
-  width: 100%;
+  width: auto;
   max-width: none;
   box-sizing: border-box;
+}
+
+@media (min-width: 769px) {
+  .merchandise-categories-page .user-flow-section {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+  }
 }
 
 .flow-steps {
@@ -258,7 +271,7 @@
   }
 
   /* Mobile user flow section */
-  .merchandise-categories .user-flow-section {
+  .merchandise-categories-page .user-flow-section {
     padding: 10px 12px;
     min-height: 70px !important;
     max-height: 90px !important;
@@ -270,7 +283,7 @@
     box-sizing: border-box !important;
   }
 
-  .merchandise-categories .user-flow-section .flow-steps {
+  .merchandise-categories-page .user-flow-section .flow-steps {
     flex-direction: row !important;
     gap: 8px;
     justify-content: space-evenly !important;
@@ -281,11 +294,11 @@
     box-sizing: border-box !important;
   }
 
-  .merchandise-categories .user-flow-section .flow-arrow {
+  .merchandise-categories-page .user-flow-section .flow-arrow {
     display: none !important;
   }
 
-  .merchandise-categories .user-flow-section .flow-step {
+  .merchandise-categories-page .user-flow-section .flow-step {
     min-width: auto;
     flex-direction: column;
     gap: 2px;
@@ -294,21 +307,21 @@
     align-items: center;
   }
 
-  .merchandise-categories .user-flow-section .step-number {
+  .merchandise-categories-page .user-flow-section .step-number {
     width: 32px !important;
     height: 32px !important;
     font-size: 1rem !important;
     margin-bottom: 4px !important;
   }
 
-  .merchandise-categories .user-flow-section .step-content h3 {
+  .merchandise-categories-page .user-flow-section .step-content h3 {
     font-size: 0.8rem !important;
     margin: 0 !important;
     line-height: 1.2;
     text-align: center;
   }
 
-  .merchandise-categories .user-flow-section .step-content p {
+  .merchandise-categories-page .user-flow-section .step-content p {
     display: none !important;
   }
 

@@ -1177,6 +1177,7 @@ const PlayVideo = ({
                             background: '#000', 
                             width: '100%',
                             height: isMobile ? '320px' : '360px',
+                            objectFit: 'contain',
                             outline: 'none'
                         }} 
                         src={video.video_url}
@@ -1334,38 +1335,34 @@ const PlayVideo = ({
                             <div 
                                 className="play-icon-overlay"
                                 style={{
-                                    background: creatorSettings?.primary_color && creatorSettings?.secondary_color
-                                        ? `linear-gradient(135deg, ${creatorSettings.primary_color} 0%, ${creatorSettings.secondary_color} 100%)`
-                                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    background: 'rgba(45, 45, 45, 0.45)',
                                     borderRadius: '50%',
                                     width: isMobile ? '120px' : '150px',
                                     height: isMobile ? '120px' : '150px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    boxShadow: '0 12px 40px rgba(102, 126, 234, 0.6), 0 0 0 0 rgba(102, 126, 234, 0.7)',
+                                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(255, 255, 255, 0.2)',
                                     animation: 'pulsePlayIcon 2s infinite',
-                                    border: '6px solid rgba(255, 255, 255, 0.95)',
+                                    border: '6px solid rgba(255, 255, 255, 0.85)',
                                     transition: 'all 0.3s ease'
                                 }}
+                                aria-label="Play Video"
                             >
-                                <span style={{
-                                    fontSize: isMobile ? '60px' : '80px',
-                                    color: 'white',
-                                    marginLeft: '8px', // Slight offset to center the play icon visually
-                                    textShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                                    lineHeight: '1'
-                                }}>▶</span>
+                                <svg
+                                    className="play-icon-glyph"
+                                    width={isMobile ? 48 : 60}
+                                    height={isMobile ? 48 : 60}
+                                    viewBox="0 0 24 24"
+                                    aria-hidden="true"
+                                    focusable="false"
+                                >
+                                    <path
+                                        d="M8 5.14v13.72L19 12 8 5.14z"
+                                        fill="#fff"
+                                    />
+                                </svg>
                             </div>
-                            <p style={{
-                                marginTop: '30px',
-                                color: 'white',
-                                fontSize: isMobile ? '20px' : '24px',
-                                fontWeight: '700',
-                                textShadow: '0 4px 12px rgba(0, 0, 0, 0.9)',
-                                textAlign: 'center',
-                                letterSpacing: '0.5px'
-                            }}>▶️ Play Video</p>
                         </div>
                     )}
                     

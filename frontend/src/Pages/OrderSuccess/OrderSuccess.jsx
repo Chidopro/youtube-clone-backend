@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSubdomain } from '../../utils/subdomainService';
+import { emitCartUpdated } from '../../utils/merchSession';
 import './OrderSuccess.css';
 
 const OrderSuccess = () => {
@@ -64,6 +65,7 @@ const OrderSuccess = () => {
       } catch (error) {
         console.error('Error clearing cart:', error);
       }
+      emitCartUpdated();
     })();
 
     // Get order data from localStorage if available

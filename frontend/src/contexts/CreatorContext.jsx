@@ -39,6 +39,7 @@ export const CreatorProvider = ({ children }) => {
           custom_logo_url: normalizeStorageUrl(rawLogo) || rawLogo,
           primary_color: creator.primary_color,
           secondary_color: creator.secondary_color,
+          header_opacity: creator.header_opacity ?? 100,
           hide_screenmerch_branding: creator.hide_screenmerch_branding,
           custom_favicon_url: normalizeStorageUrl(creator.custom_favicon_url) || creator.custom_favicon_url,
           custom_meta_title: creator.custom_meta_title,

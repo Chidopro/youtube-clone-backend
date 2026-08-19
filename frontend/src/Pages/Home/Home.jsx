@@ -247,7 +247,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           </Link>
         ) : null}
 
-        {/* User Flow Section */}
+        {/* User Flow Section — hidden on creator storefronts via body.creator-storefront CSS */}
         <div
           className="user-flow-section"
           onMouseEnter={() => setIsHovering(true)}

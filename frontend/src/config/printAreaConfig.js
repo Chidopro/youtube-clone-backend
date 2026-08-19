@@ -535,6 +535,32 @@ PRINT_AREA_CONFIG["Unisex Pullover Hoodie"] = PRINT_AREA_CONFIG["Pullover Hoodie
 PRINT_AREA_CONFIG["Unisex Heavyweight T-Shirt"] = PRINT_AREA_CONFIG["Heavyweight T-Shirt"];
 PRINT_AREA_CONFIG["Unisex Oversized T-Shirt"] = PRINT_AREA_CONFIG["Oversized T-Shirt"];
 
+/** Map a cart/catalog product title to a PRINT_AREA_CONFIG key. */
+export function matchPrintAreaProductName(name) {
+  const raw = String(name || '').trim();
+  if (!raw) return '';
+  if (Object.prototype.hasOwnProperty.call(PRINT_AREA_CONFIG, raw)) return raw;
+  const keys = Object.keys(PRINT_AREA_CONFIG);
+  const lower = raw.toLowerCase();
+  const exact = keys.find((k) => k.toLowerCase() === lower);
+  if (exact) return exact;
+  const words = lower.split(/[^a-z0-9]+/).filter((w) => w.length > 1);
+  let best = '';
+  let bestScore = 0;
+  let bestLen = Infinity;
+  for (const k of keys) {
+    const kw = k.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 1);
+    const score = words.filter((w) => kw.includes(w)).length;
+    if (score < 2) continue;
+    if (score > bestScore || (score === bestScore && k.length < bestLen)) {
+      best = k;
+      bestScore = score;
+      bestLen = k.length;
+    }
+  }
+  return best;
+}
+
 // Helper function to get print area config for a product
 // Returns the config object which may have simple format or size-specific format
 export const getPrintAreaConfig = (productName) => {

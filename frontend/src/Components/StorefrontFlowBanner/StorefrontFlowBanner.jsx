@@ -4,7 +4,7 @@ import '../../Pages/Home/Home.css';
 
 /**
  * Same 1-2-3 storefront bar as Home (read-only).
- * Keeps Pages / My Friends visually congruent with the storefront homepage.
+ * Hidden on creator subdomains via body.creator-storefront CSS (easy to restore).
  */
 const StorefrontFlowBanner = () => {
   const { creatorSettings } = useCreator();
@@ -29,35 +29,33 @@ const StorefrontFlowBanner = () => {
       : undefined;
 
   return (
-    <>
-      <div className="user-flow-section" style={{ position: 'relative', ...gradientStyle }}>
-        <div className="flow-steps">
-          <div className="flow-step">
-            <div className="step-number">1</div>
-            <div className="step-content">
-              <h3>Choose Video/Image</h3>
-              <p>Browse and select your favorite content</p>
-            </div>
+    <div className="user-flow-section" style={{ position: 'relative', ...gradientStyle }}>
+      <div className="flow-steps">
+        <div className="flow-step">
+          <div className="step-number">1</div>
+          <div className="step-content">
+            <h3>Choose Video/Image</h3>
+            <p>Browse and select your favorite content</p>
           </div>
-          <div className="flow-arrow">→</div>
-          <div className="flow-step">
-            <div className="step-number">2</div>
-            <div className="step-content">
-              <h3>Make Selection</h3>
-              <p>Select the perfect screenshot or image</p>
-            </div>
+        </div>
+        <div className="flow-arrow">→</div>
+        <div className="flow-step">
+          <div className="step-number">2</div>
+          <div className="step-content">
+            <h3>Make Selection</h3>
+            <p>Select the perfect screenshot or image</p>
           </div>
-          <div className="flow-arrow">→</div>
-          <div className="flow-step">
-            <div className="step-number">3</div>
-            <div className="step-content">
-              <h3>Make Merchandise</h3>
-              <p>Create custom products with your selection</p>
-            </div>
+        </div>
+        <div className="flow-arrow">→</div>
+        <div className="flow-step">
+          <div className="step-number">3</div>
+          <div className="step-content">
+            <h3>Make Merchandise</h3>
+            <p>Create custom products with your selection</p>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

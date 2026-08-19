@@ -67,6 +67,7 @@
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
+    position: relative;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -78,7 +79,9 @@
 .dashboard-video-thumbnail {
     width: 100%;
     height: 160px;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
+    background: #111;
 }
 
 .dashboard-video-info {
@@ -505,6 +508,7 @@
     display: flex;
     gap: 20px;
     margin-top: 10px;
+    padding-right: 28px;
 }
 
 .total-sales, .total-revenue {
@@ -559,10 +563,10 @@
 /* Enhanced Chart Styles */
 .sales-chart-section {
     background: #fff;
-    padding: 30px;
+    padding: 24px 30px 24px;
     border-radius: 12px;
     border: 1px solid #dee2e6;
-    margin-bottom: 40px;
+    margin-bottom: 24px;
 }
 
 .chart-header {
@@ -869,7 +873,7 @@
 
 /* Weekly Summary Styles */
 .weekly-summary {
-    margin-bottom: 30px;
+    margin-bottom: 0;
 }
 
 .weekly-summary h4 {
@@ -911,15 +915,195 @@
 
 .collaborator-payout-panel {
     margin-top: 18px;
+    margin-bottom: 0;
     padding: 14px 16px;
     background: #f8f9fa;
     border-radius: 8px;
     border: 1px solid #e9ecef;
 }
 
+.owner-earnings-panel {
+    margin-top: 18px;
+    padding: 14px 16px;
+    background: #f0f7f4;
+    border-radius: 8px;
+    border: 1px solid #c5e0d4;
+}
+
+.owner-earnings-panel h5,
 .collaborator-payout-panel h5 {
     margin: 0 0 6px;
     font-size: 1rem;
+}
+
+.owner-earnings-panel .hint,
+.collaborator-payout-panel .hint {
+    margin: 0 0 12px;
+    color: #5f6b66;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.owner-earnings-figures {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.owner-earnings-figures div {
+    background: #fff;
+    border: 1px solid #d7e8df;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.owner-earnings-figures span {
+    font-size: 0.8rem;
+    color: #5f6b66;
+}
+
+.owner-earnings-figures strong {
+    font-size: 1.15rem;
+    color: #1a202c;
+}
+
+.owner-earnings-total {
+    border-color: #8fbfa8 !important;
+    background: #e8f6ee !important;
+}
+
+.owner-purchase-log-details {
+    margin-top: 12px;
+    border: 1px solid #d7e8df;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.owner-purchase-log-details summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #2f5d4a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.owner-purchase-log-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.owner-purchase-log-details summary::after {
+    content: '▾';
+    font-size: 0.85rem;
+    color: #5f6b66;
+    transform: rotate(-90deg);
+    transition: transform 0.15s ease;
+}
+
+.owner-purchase-log-details[open] summary::after {
+    transform: rotate(0deg);
+}
+
+.owner-purchase-log-details .owner-purchase-log {
+    margin: 0;
+    padding: 0 14px 8px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.collab-purchase-log-details {
+    flex: 1 1 100%;
+    border-color: #dee2e6;
+    margin-top: 8px;
+}
+
+.collab-purchase-log-details summary {
+    color: #374151;
+}
+
+.owner-fee-form {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #d7e8df;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.owner-fee-type {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+}
+
+.owner-fee-type label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+}
+
+.owner-fee-value-label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 240px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #4a5568;
+}
+
+.owner-fee-value-label input {
+    padding: 8px 10px;
+    border: 1px solid #c5d5cc;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.owner-fee-preview {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #2f5d4a;
+}
+
+.btn-save-owner-fee {
+    align-self: flex-start;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #2f855a;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-save-owner-fee:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.owner-fee-message {
+    margin: 0;
+    font-size: 0.88rem;
+}
+
+.owner-fee-message.ok {
+    color: #276749;
+}
+
+.owner-fee-message.error {
+    color: #c53030;
 }
 
 .collaborator-payout-list {
@@ -1248,17 +1432,17 @@
     opacity: 0.7;
 }
 
-/* Products Sold Chart */
+/* Products Sold Chart — nested in sales-chart-section */
 .products-sold-chart {
-    background: #fff;
-    padding: 30px;
-    border-radius: 12px;
-    border: 1px solid #dee2e6;
-    margin-bottom: 40px;
+    background: transparent;
+    padding: 16px 0 0;
+    border-radius: 0;
+    border: none;
+    margin: 12px 0 0;
 }
 
 .products-sold-chart h3 {
-    margin: 0 0 25px 0;
+    margin: 0 0 16px 0;
     color: #333;
     font-size: 1.3rem;
 }
@@ -1467,6 +1651,14 @@
     .tab-content {
         padding: 20px 15px;
     }
+
+    .sales-analytics-section .analytics-summary {
+        justify-content: center;
+        padding-right: 0;
+        text-align: center;
+        width: 100%;
+        flex-wrap: wrap;
+    }
     
     .analytics-overview-cards {
         grid-template-columns: 1fr;
@@ -1509,9 +1701,14 @@
     .summary-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+
+    .owner-earnings-figures {
+        grid-template-columns: 1fr;
+    }
     
     .products-sold-chart {
-        padding: 20px;
+        padding: 16px 0 0;
+        margin-top: 12px;
     }
     
     .product-chart-header {
@@ -2913,8 +3110,9 @@
 
 .umbrella-fav-under-actions {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 12px;
 }
 
@@ -2923,7 +3121,7 @@
 }
 
 .umbrella-fav-under-actions .add-favorite-btn {
-    min-width: 240px;
+    min-width: 0;
 }
 
 .no-videos-placeholder--umbrella {

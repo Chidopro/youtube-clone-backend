@@ -8,6 +8,12 @@ import './PersonalizationSettings.css';
 
 const BUCKET_CREATOR_LOGOS = 'creator-logos';
 
+const clampHeaderOpacity = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 100;
+  return Math.max(0, Math.min(100, Math.round(n)));
+};
+
 const PersonalizationSettings = () => {
   const { refreshCreator } = useCreator() || {};
   const [settings, setSettings] = useState({
@@ -16,6 +22,7 @@ const PersonalizationSettings = () => {
     custom_logo_url: '',
     primary_color: '#667eea',
     secondary_color: '#764ba2',
+    header_opacity: 100,
     hide_screenmerch_branding: false,
     custom_favicon_url: '',
     custom_meta_title: '',
@@ -56,6 +63,7 @@ const PersonalizationSettings = () => {
             custom_logo_url: creator.custom_logo_url || creator.logo_url || '',
             primary_color: creator.primary_color || '#667eea',
             secondary_color: creator.secondary_color || '#764ba2',
+            header_opacity: clampHeaderOpacity(creator.header_opacity ?? 100),
             hide_screenmerch_branding: creator.hide_screenmerch_branding || false,
             custom_favicon_url: creator.custom_favicon_url || '',
             custom_meta_title: creator.custom_meta_title || '',
@@ -79,6 +87,7 @@ const PersonalizationSettings = () => {
               custom_logo_url: data.custom_logo_url || fromApi.custom_logo_url,
               primary_color: data.primary_color || fromApi.primary_color,
               secondary_color: data.secondary_color || fromApi.secondary_color,
+              header_opacity: clampHeaderOpacity(fromApi.header_opacity),
               hide_screenmerch_branding: data.hide_screenmerch_branding || false,
               custom_favicon_url: data.custom_favicon_url || fromApi.custom_favicon_url,
               custom_meta_title: data.custom_meta_title || '',
@@ -164,6 +173,7 @@ const PersonalizationSettings = () => {
               custom_logo_url: d.custom_logo_url || '',
               primary_color: d.primary_color || '#667eea',
               secondary_color: d.secondary_color || '#764ba2',
+              header_opacity: clampHeaderOpacity(d.header_opacity ?? 100),
               hide_screenmerch_branding: d.hide_screenmerch_branding || false,
               custom_favicon_url: d.custom_favicon_url || '',
               custom_meta_title: d.custom_meta_title || '',
@@ -193,6 +203,7 @@ const PersonalizationSettings = () => {
             custom_logo_url: data.custom_logo_url || '',
             primary_color: data.primary_color || '#667eea',
             secondary_color: data.secondary_color || '#764ba2',
+            header_opacity: clampHeaderOpacity(data.header_opacity ?? 100),
             hide_screenmerch_branding: data.hide_screenmerch_branding || false,
             custom_favicon_url: data.custom_favicon_url || '',
             custom_meta_title: data.custom_meta_title || '',
@@ -219,6 +230,7 @@ const PersonalizationSettings = () => {
             custom_logo_url: data.custom_logo_url || '',
             primary_color: data.primary_color || '#667eea',
             secondary_color: data.secondary_color || '#764ba2',
+            header_opacity: 100,
             hide_screenmerch_branding: data.hide_screenmerch_branding || false,
             custom_favicon_url: data.custom_favicon_url || '',
             custom_meta_title: data.custom_meta_title || '',
@@ -491,6 +503,7 @@ const PersonalizationSettings = () => {
         subdomain: normalizedSubdomain,
         primary_color: settings.primary_color,
         secondary_color: settings.secondary_color,
+        header_opacity: clampHeaderOpacity(settings.header_opacity),
         hide_screenmerch_branding: settings.hide_screenmerch_branding,
         personalization_enabled: settings.personalization_enabled
       });
@@ -505,6 +518,7 @@ const PersonalizationSettings = () => {
         custom_logo_url: settings.custom_logo_url || null,
         primary_color: settings.primary_color || '#667eea',
         secondary_color: settings.secondary_color || '#764ba2',
+        header_opacity: clampHeaderOpacity(settings.header_opacity),
         hide_screenmerch_branding: settings.hide_screenmerch_branding || false,
         custom_favicon_url: settings.custom_favicon_url || null,
         custom_meta_title: settings.custom_meta_title || null,
@@ -537,9 +551,10 @@ const PersonalizationSettings = () => {
       // Fallback: direct Supabase update (for when backend is down or not used)
       if (userId && updateResult === null) {
         console.log('💾 PersonalizationSettings: Attempting Supabase update for ID:', userId);
+        const { header_opacity: _omitOpacity, ...supabaseUpdateData } = updateData;
         const updateResponse = await supabase
           .from('users')
-          .update(updateData)
+          .update(supabaseUpdateData)
           .eq('id', userId)
           .select();
         updateResult = updateResponse.data;
@@ -786,7 +801,7 @@ const PersonalizationSettings = () => {
                   className="color-text-input"
                 />
               </div>
-              <p className="help-text">Main brand color used in gradients and buttons</p>
+              <p className="help-text">Main brand color used in the storefront header gradient and buttons</p>
             </div>
             
             <div className="setting-group">
@@ -806,8 +821,34 @@ const PersonalizationSettings = () => {
                   className="color-text-input"
                 />
               </div>
-              <p className="help-text">Secondary brand color used in gradients</p>
+              <p className="help-text">Secondary brand color used in the storefront header gradient</p>
             </div>
+          </div>
+
+          <div className="setting-group header-opacity-setting">
+            <label className="setting-label" htmlFor="header-opacity-range">
+              Header Color Opacity
+              <span className="opacity-value">{clampHeaderOpacity(settings.header_opacity)}%</span>
+            </label>
+            <input
+              id="header-opacity-range"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={clampHeaderOpacity(settings.header_opacity)}
+              onChange={(e) => setSettings({ ...settings, header_opacity: clampHeaderOpacity(e.target.value) })}
+              className="opacity-slider"
+            />
+            <div
+              className="opacity-preview"
+              style={{
+                backgroundImage: `linear-gradient(135deg, ${settings.primary_color || '#667eea'} 0%, ${settings.secondary_color || '#764ba2'} 100%)`,
+                opacity: clampHeaderOpacity(settings.header_opacity) / 100
+              }}
+              aria-hidden="true"
+            />
+            <p className="help-text">How strong the header brand colors appear. Lower values make the header more transparent.</p>
           </div>
           
           <div className="setting-group">

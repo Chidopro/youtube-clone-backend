@@ -513,13 +513,25 @@ const ChannelUmbrella = () => {
           Payout summary
         </h2>
         {payoutNote ? <p className="hint umbrella-payout-note">{payoutNote}</p> : null}
-        {ownerSummary && Number(ownerSummary.net_amount || 0) > 0 ? (
+        {ownerSummary && (
+          Number(ownerSummary.net_amount || 0) > 0
+          || Number(ownerSummary.owner_fee_amount || 0) > 0
+        ) ? (
           <div className="umbrella-owner-payout-card">
             <h3 className="channel-umbrella-subheading">Your storefront (paid by ScreenMerch)</h3>
             <p className="hint">
-              Net earnings from sales on your storefront (not attributed to an umbrella page):{' '}
-              <strong>${Number(ownerSummary.net_amount || 0).toFixed(2)}</strong>
+              Net earnings from sales on your pages:{' '}
+              <strong>${Number(ownerSummary.owner_page_payout ?? ownerSummary.net_amount ?? 0).toFixed(2)}</strong>
             </p>
+            {Number(ownerSummary.owner_fee_amount || 0) > 0 ? (
+              <p className="hint">
+                From collaborator fees:{' '}
+                <strong>${Number(ownerSummary.owner_fee_amount || 0).toFixed(2)}</strong>
+                {' · '}
+                Total:{' '}
+                <strong>${Number(ownerSummary.owner_total_earnings || 0).toFixed(2)}</strong>
+              </p>
+            ) : null}
           </div>
         ) : null}
         {collaboratorOwedTotal > 0 ? (

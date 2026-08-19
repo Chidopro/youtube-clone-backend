@@ -42,6 +42,7 @@ import FriendPages from "./Pages/FriendPages/FriendPages";
 import UmbrellaJoin from "./Pages/UmbrellaJoin/UmbrellaJoin";
 import { API_CONFIG } from "./config/apiConfig";
 import { CreatorProvider } from "./contexts/CreatorContext";
+import { isCreatorStorefrontHostname } from "./utils/subdomainService";
 
 const App = () => {
   // Sidebar starts closed by default for cleaner look
@@ -66,6 +67,11 @@ const App = () => {
     
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Apex vs creator storefront: hide 1-2-3 bar on subdomains (CSS), keep markup for easy restore
+  useEffect(() => {
+    document.body.classList.toggle('creator-storefront', isCreatorStorefrontHostname());
+  }, [location.pathname]);
 
   // Handle Google OAuth redirect (only process success once per load so we don't clear auth on effect re-run)
   useEffect(() => {

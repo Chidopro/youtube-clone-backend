@@ -97,7 +97,7 @@ const MerchandiseCategories = ({ sidebar }) => {
   };
 
   return (
-    <div className={`container merchandise-categories ${sidebar ? "" : " large-container"}`}>
+    <div className={`container merchandise-categories-page ${sidebar ? "" : " large-container"}`}>
       <div
         className="user-flow-section"
         style={

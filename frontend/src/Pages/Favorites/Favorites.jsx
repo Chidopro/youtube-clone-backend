@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
-import { fetchPublicFavoritesByList, favoriteImageUrl } from '../../utils/favoriteListsApi';
+import { fetchPublicFavoritesByList, favoriteImageUrl, favoriteCardThumbUrl } from '../../utils/favoriteListsApi';
 import { favoriteListPageHeading } from '../../utils/favoriteListLabels';
 import { apiJoin } from '../../config/apiConfig';
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
@@ -57,6 +57,9 @@ const Favorites = ({ sidebar }) => {
         const list = data.list || null;
         setListMeta(list);
         setImages(data.favorites || []);
+        // Show images immediately — don't block the page on the videos request
+        setLoading(false);
+
         if (list?.id) {
           try {
             localStorage.setItem('sm_favorite_list_id', list.id);
@@ -94,8 +97,8 @@ const Favorites = ({ sidebar }) => {
         setError(e.message || 'Network error');
         setImages([]);
         setVideos([]);
+        setLoading(false);
       }
-      setLoading(false);
     };
     run();
   }, [currentCreator?.id, effectiveSlug, creatorLoading, navigate]);
@@ -119,7 +122,8 @@ const Favorites = ({ sidebar }) => {
       kind: 'image',
       id: `image-${f.id}`,
       title: f.title || 'Untitled',
-      thumb: favoriteImageUrl(f),
+      thumb: favoriteCardThumbUrl(f),
+      full: favoriteImageUrl(f),
       created_at: f.created_at || '',
       description: f.description || '',
       raw: f,
@@ -232,6 +236,8 @@ const Favorites = ({ sidebar }) => {
                     <img
                       src={item.thumb || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
                       alt={item.title}
+                      loading="lazy"
+                      decoding="async"
                     />
                   </div>
                   <div className="favorites-card-content">
@@ -253,6 +259,14 @@ const Favorites = ({ sidebar }) => {
                     <img
                       src={item.thumb || 'https://via.placeholder.com/320x180?text=No+Image'}
                       alt={item.title}
+                      loading="lazy"
+                      decoding="async"
+                      onError={(e) => {
+                        const fallback = item.full || favoriteImageUrl(item.raw);
+                        if (fallback && e.currentTarget.src !== fallback) {
+                          e.currentTarget.src = fallback;
+                        }
+                      }}
                     />
                   </div>
                   <div className="favorites-card-content">

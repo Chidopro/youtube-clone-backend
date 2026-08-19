@@ -409,7 +409,7 @@
     aspect-ratio: 16 / 9;
     max-height: 50vh; /* Limit maximum height to 50% of viewport height */
     border-radius: 0;
-    object-fit: cover;
+    object-fit: contain;
     /* Prevent fullscreen on mobile */
     -webkit-playsinline: true;
     playsinline: true;
@@ -609,7 +609,7 @@
     font-size: 16px;
     border-radius: 8px;
     margin-top: 15px;
-    background: linear-gradient(135deg, var(--primary-color, #667eea) 0%, var(--secondary-color, #764ba2) 100%);
+    background: #28a745;
     color: white;
     border: none;
     cursor: pointer;
@@ -780,7 +780,7 @@
   }
 
   .video-page-container .play-video video {
-    object-fit: cover !important;
+    object-fit: contain !important;
     background: #000 !important;
     border-radius: 0 !important;
     display: block !important;

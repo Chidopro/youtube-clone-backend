@@ -3,13 +3,12 @@ import { createPortal } from 'react-dom';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import ToolsPage from '../ToolsPage/ToolsPage';
 import { supabase } from '../../supabaseClient';
-import { UserService } from '../../utils/userService';
+import { UserService, claimSessionTokenIfNeeded } from '../../utils/userService';
 import { getBackendUrl } from '../../config/apiConfig';
-import { claimSessionTokenIfNeeded } from '../../utils/userService';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
-import { setToolsFocusCartIndex } from '../../utils/merchSession';
+import { setToolsFocusCartIndex, writeCartItems } from '../../utils/merchSession';
 import './ProductPage.css';
 
 const IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
@@ -46,7 +45,7 @@ const getStableImageQuery = (productData) => productData?.timestamp ? `v=${produ
 
 const ProductPage = ({ sidebar }) => {
   const { productId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { creatorSettings } = useCreator();
   const [productData, setProductData] = useState(null);
@@ -69,10 +68,15 @@ const ProductPage = ({ sidebar }) => {
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showAddedToCartModal, setShowAddedToCartModal] = useState(false);
+  const [cartModalMode, setCartModalMode] = useState('add');
   const [fallbackImages, setFallbackImages] = useState({ screenshots: [], thumbnail: '' });
   const [isCreator, setIsCreator] = useState(false);
   const [savingFavorite, setSavingFavorite] = useState(false);
   const [selectedScreenshotForFavorite, setSelectedScreenshotForFavorite] = useState(null);
+  const [highlightedProductIndex, setHighlightedProductIndex] = useState(null);
+  const productCardRefs = useRef([]);
+  const editPrefillKeyRef = useRef('');
+  const lastTouchedCartIndexRef = useRef(null);
 
   // Read from query first
   const qsCategory = searchParams.get('category');
@@ -87,6 +91,10 @@ const ProductPage = ({ sidebar }) => {
   const email = searchParams.get('email') || '';
   const openCart = searchParams.get('openCart') === 'true';
   const creatorMode = searchParams.get('creatorMode') === 'favorites';
+  const editCartParam = searchParams.get('editCart');
+  const editingCartIndex = Number.parseInt(editCartParam, 10);
+  const isEditingCart = Number.isInteger(editingCartIndex) && editingCartIndex >= 0 && editingCartIndex < cartItems.length;
+  const editingCartItem = isEditingCart ? cartItems[editingCartIndex] : null;
 
   useEffect(() => {
     if (window.__DEBUG__) {
@@ -141,7 +149,8 @@ const ProductPage = ({ sidebar }) => {
     const newUrl =
       `${base}?category=${encodeURIComponent(newCategory)}` +
       `&authenticated=${authenticated}` +
-      `&email=${encodeURIComponent(email || '')}`;
+      `&email=${encodeURIComponent(email || '')}` +
+      (isEditingCart ? `&editCart=${editingCartIndex}` : '');
 
     // Persist for mobile reloads
     try { localStorage.setItem('last_selected_category', newCategory); } catch {}
@@ -478,7 +487,7 @@ const ProductPage = ({ sidebar }) => {
 
   const persistCart = (items) => {
     setCartItems(items);
-    try { localStorage.setItem('cart_items', JSON.stringify(items)); } catch (e) {}
+    writeCartItems(items);
   };
 
   const checkSelectionAvailability = async (product, index, color, size) => {
@@ -538,7 +547,8 @@ const ProductPage = ({ sidebar }) => {
     const isAvailable = await checkSelectionAvailability(product, index, chosenColor, chosenSize);
     if (!isAvailable) return;
     // Use the URL stored when user clicked a screenshot so we send the exact image they selected (not thumbnail by mistake)
-    const screenshotUrl = selectedScreenshotUrl || getSelectedScreenshotUrl();
+    const screenshotUrl = selectedScreenshotUrl || getSelectedScreenshotUrl()
+      || editingCartItem?.selected_screenshot || editingCartItem?.screenshot;
 
     // Get video metadata from localStorage (including screenshot_timestamp for email/order)
     let videoMetadata = {};
@@ -557,37 +567,60 @@ const ProductPage = ({ sidebar }) => {
     } catch (e) {
       console.warn('Could not load video metadata from localStorage:', e);
     }
+    const filledVideoMetadata = Object.fromEntries(
+      Object.entries(videoMetadata).filter(([, value]) => value != null && value !== '')
+    );
 
     const printful_variant_id = resolvePrintfulVariantId(product, chosenColor, chosenSize);
     const item = {
+      ...(isEditingCart && editingCartItem ? editingCartItem : {}),
       name: product?.name || 'Product',
       price: calculatePrice(product, index),
       image: getProductImageUrl(product, true),
       color: chosenColor,
       size: chosenSize,
-      screenshot: screenshotUrl,
-      selected_screenshot: screenshotUrl,
-      qty: 1,
+      screenshot: screenshotUrl || editingCartItem?.screenshot,
+      selected_screenshot: screenshotUrl || editingCartItem?.selected_screenshot,
+      qty: isEditingCart && editingCartItem?.qty ? editingCartItem.qty : 1,
       category: category || '', // womens, mens, kids = shirts (need portrait/landscape); others skip design modal
       printful_catalog_product_id: product?.printful_catalog_product_id ?? null,
       printful_variant_id: printful_variant_id != null ? printful_variant_id : undefined,
       // Include video metadata in cart item (screenshot_timestamp for email/Print Quality)
-      ...videoMetadata
+      ...filledVideoMetadata
     };
-    const next = [...cartItems, item];
+    const next = [...cartItems];
+    if (isEditingCart) {
+      next[editingCartIndex] = item;
+    } else {
+      next.push(item);
+    }
     persistCart(next);
-    setToolsFocusCartIndex(next.length - 1);
-    console.log('✅ Item added to cart, showing modal...');
+    const focusIndex = isEditingCart ? editingCartIndex : next.length - 1;
+    lastTouchedCartIndexRef.current = focusIndex;
+    setToolsFocusCartIndex(focusIndex);
+    if (isEditingCart) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('editCart');
+      setSearchParams(nextParams, { replace: true });
+      setHighlightedProductIndex(null);
+    }
+    console.log(isEditingCart ? '✅ Cart item updated' : '✅ Item added to cart, showing modal...');
+    setCartModalMode(isEditingCart ? 'update' : 'add');
     setShowAddedToCartModal(true);
   };
 
   const goToToolsPage = () => {
-    // Prefer the most recently added cart item (or current selection) so Tools
-    // does not reopen a leftover screenshot from an earlier video.
+    // Prefer the item being edited or last updated, then the most recently added cart item.
     try {
-      const items = JSON.parse(localStorage.getItem('cart_items') || '[]');
-      if (Array.isArray(items) && items.length > 0) {
-        setToolsFocusCartIndex(items.length - 1);
+      if (isEditingCart) {
+        setToolsFocusCartIndex(editingCartIndex);
+      } else if (lastTouchedCartIndexRef.current != null) {
+        setToolsFocusCartIndex(lastTouchedCartIndexRef.current);
+      } else {
+        const items = JSON.parse(localStorage.getItem('cart_items') || '[]');
+        if (Array.isArray(items) && items.length > 0) {
+          setToolsFocusCartIndex(items.length - 1);
+        }
       }
       const urlToSave = selectedScreenshotUrl || getSelectedScreenshotUrl();
       if (urlToSave) {
@@ -838,6 +871,53 @@ const ProductPage = ({ sidebar }) => {
     });
   }, [productData, selectedColors]);
 
+  useEffect(() => {
+    if (!isEditingCart || !editingCartItem) return;
+    const shot = editingCartItem.selected_screenshot || editingCartItem.screenshot;
+    if (shot) setSelectedScreenshotUrl(shot);
+  }, [isEditingCart, editingCartIndex]);
+
+  useEffect(() => {
+    if (!isEditingCart || !editingCartItem) {
+      setHighlightedProductIndex(null);
+      return;
+    }
+    const products = productData?.products;
+    if (!Array.isArray(products) || products.length === 0) return;
+
+    const key = `${category}:${editingCartIndex}:${editingCartItem.name || ''}:${editingCartItem.size || ''}:${editingCartItem.color || ''}`;
+    if (editPrefillKeyRef.current === key) return;
+
+    let matchIndex = -1;
+    const catalogId = editingCartItem.printful_catalog_product_id;
+    if (catalogId != null && catalogId !== '') {
+      matchIndex = products.findIndex((p) => p && p.printful_catalog_product_id === catalogId);
+    }
+    if (matchIndex < 0) {
+      const name = (editingCartItem.name || editingCartItem.product || '').trim().toLowerCase();
+      if (name) {
+        matchIndex = products.findIndex((p) => (p?.name || '').trim().toLowerCase() === name);
+      }
+    }
+    if (matchIndex < 0) {
+      setHighlightedProductIndex(null);
+      return;
+    }
+
+    editPrefillKeyRef.current = key;
+    setHighlightedProductIndex(matchIndex);
+    if (editingCartItem.color) {
+      setSelectedColors((prev) => ({ ...prev, [matchIndex]: editingCartItem.color }));
+    }
+    if (editingCartItem.size) {
+      setSelectedSizes((prev) => ({ ...prev, [matchIndex]: editingCartItem.size }));
+    }
+    const frame = window.requestAnimationFrame(() => {
+      productCardRefs.current[matchIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isEditingCart, editingCartIndex, editingCartItem, productData, category]);
+
   // Only show full-screen loading on initial load (no productData yet). When switching category, keep showing current products so images persist.
   if (loading && !productData) {
     return (
@@ -939,7 +1019,7 @@ const ProductPage = ({ sidebar }) => {
 
   return (
     <div className={`container product-page ${sidebar ? "" : " large-container"}`}>
-      {/* User Flow Section - Step 3 Only - Hide for All Products */}
+      {/* User Flow Section - Step 3 Only - Hide for All Products; storefronts hide via CSS */}
       {(() => {
         const categoryNormalized = (category || '').trim().toLowerCase();
         return categoryNormalized !== 'all' && categoryNormalized !== 'all-products';
@@ -1243,9 +1323,31 @@ const ProductPage = ({ sidebar }) => {
               )}
             </div>
 
+            {isEditingCart && editingCartItem && (
+              <div className="edit-cart-banner">
+                <p className="edit-cart-banner-text">
+                  Editing <strong>{editingCartItem.name || editingCartItem.product || 'item'}</strong>
+                  {editingCartItem.size ? ` · ${editingCartItem.size}` : ''}
+                  {editingCartItem.color ? ` · ${editingCartItem.color}` : ''}.
+                  {' '}Change product, size, or color, then Update Cart.
+                </p>
+                <button
+                  type="button"
+                  className="edit-cart-banner-cancel"
+                  onClick={() => navigate('/checkout')}
+                >
+                  Back to Checkout
+                </button>
+              </div>
+            )}
+
             <div className="products-grid">
               {productData.products && productData.products.map((product, index) => (
-                <div key={product?.name ? `${product.name}-${index}` : index} className="product-card">
+                <div
+                  key={product?.name ? `${product.name}-${index}` : index}
+                  className={`product-card${highlightedProductIndex === index ? ' product-card-editing' : ''}`}
+                  ref={(el) => { productCardRefs.current[index] = el; }}
+                >
                   {/* Product Image - always show; stable URL so images load despite re-renders */}
                   {(() => {
                     const isApparelCategory = category === 'womens' || category === 'mens' || category === 'kids';
@@ -1408,7 +1510,7 @@ const ProductPage = ({ sidebar }) => {
                     disabled={variantAvailability[index]?.checking || variantAvailability[index]?.available === false}
                     onClick={() => handleAddToCart(product, index)}
                   >
-                    {variantAvailability[index]?.checking ? 'Checking...' : 'Add to Cart'}
+                    {variantAvailability[index]?.checking ? 'Checking...' : (isEditingCart ? 'Update Cart' : 'Add to Cart')}
                   </button>
                 </div>
               ))}
@@ -1455,8 +1557,7 @@ const ProductPage = ({ sidebar }) => {
                       className="cart-item-delete" 
                       onClick={() => {
                         const updatedItems = cartItems.filter((_, index) => index !== i);
-                        setCartItems(updatedItems);
-                        localStorage.setItem('cart_items', JSON.stringify(updatedItems));
+                        persistCart(updatedItems);
                       }}
                       title="Remove item"
                     >
@@ -1490,8 +1591,8 @@ const ProductPage = ({ sidebar }) => {
             
             <div className="added-to-cart-modal-content">
               <div className="added-to-cart-success-icon">✓</div>
-              <h2 className="added-to-cart-title">Added to Cart!</h2>
-              <p className="added-to-cart-message">Your item has been added successfully.</p>
+              <h2 className="added-to-cart-title">{cartModalMode === 'update' ? 'Cart Updated!' : 'Added to Cart!'}</h2>
+              <p className="added-to-cart-message">{cartModalMode === 'update' ? 'Your item has been updated successfully.' : 'Your item has been added successfully.'}</p>
               
               <div className="added-to-cart-modal-actions">
                 <button 

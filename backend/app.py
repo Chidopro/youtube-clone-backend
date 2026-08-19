@@ -7061,6 +7061,7 @@ def get_subdomain_creator(subdomain):
                     "personalization_enabled": creator.get('personalization_enabled', False),
                     "primary_color": creator.get('primary_color'),
                     "secondary_color": creator.get('secondary_color'),
+                    "header_opacity": _read_header_opacity(creator.get('id')),
                     "logo_url": creator.get('custom_logo_url'),  # Use custom_logo_url from database
                     "custom_logo_url": creator.get('custom_logo_url'),  # Also include as custom_logo_url for clarity
                     "banner_url": creator.get('banner_url'),
@@ -7105,6 +7106,87 @@ def get_subdomain_creator(subdomain):
 # Creator logo upload - uses service role to bypass Storage RLS (works for Google OAuth users)
 CREATOR_LOGOS_BUCKET = "creator-logos"
 MAX_LOGO_SIZE = 2 * 1024 * 1024  # 2MB
+
+
+def _clamp_header_opacity(value, default=100):
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(0, min(100, n))
+
+
+def _header_opacity_storage_prefix(user_id):
+    return f"{user_id}"
+
+
+def _minimal_png_bytes():
+    # 1x1 transparent PNG
+    import base64
+    return base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
+
+
+def _write_header_opacity(user_id, opacity):
+    """Persist header opacity in Storage via filename (bucket only allows image MIME types)."""
+    if not supabase_admin or not user_id:
+        return False
+    opacity = _clamp_header_opacity(opacity)
+    folder = _header_opacity_storage_prefix(user_id)
+    new_name = f"ho-{opacity}.png"
+    new_path = f"{folder}/{new_name}"
+    try:
+        existing = supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).list(folder) or []
+        stale = [
+            f"{folder}/{item['name']}"
+            for item in existing
+            if isinstance(item, dict) and str(item.get("name", "")).startswith("ho-") and item.get("name") != new_name
+        ]
+        if stale:
+            try:
+                supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).remove(stale)
+            except Exception:
+                pass
+        supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).upload(
+            path=new_path,
+            file=_minimal_png_bytes(),
+            file_options={"content-type": "image/png", "upsert": "true"},
+        )
+        return True
+    except Exception as upload_err:
+        try:
+            supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).remove([new_path])
+        except Exception:
+            pass
+        try:
+            supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).upload(
+                path=new_path,
+                file=_minimal_png_bytes(),
+                file_options={"content-type": "image/png", "upsert": "true"},
+            )
+            return True
+        except Exception as retry_err:
+            logger.warning("write header_opacity failed for %s: %s / %s", user_id, upload_err, retry_err)
+            return False
+
+
+def _read_header_opacity(user_id):
+    """Read header opacity from Storage marker file; default 100 if missing."""
+    if not supabase_admin or not user_id:
+        return 100
+    folder = _header_opacity_storage_prefix(user_id)
+    try:
+        existing = supabase_admin.storage.from_(CREATOR_LOGOS_BUCKET).list(folder) or []
+        for item in existing:
+            name = str((item or {}).get("name") or "")
+            if name.startswith("ho-") and name.endswith(".png"):
+                raw = name[3:-4]
+                return _clamp_header_opacity(raw)
+    except Exception as read_err:
+        logger.warning("read header_opacity failed for %s: %s", user_id, read_err)
+    return 100
+
 
 @app.route("/api/upload-creator-logo", methods=["POST", "OPTIONS"])
 def upload_creator_logo():
@@ -7160,6 +7242,29 @@ def upload_creator_logo():
 # Favorite image upload - uses service role so Google OAuth users (no Supabase session) can upload
 FAVORITES_BUCKET = "thumbnails"
 MAX_FAVORITE_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+def _favorite_card_thumbnail_bytes(file_bytes, max_edge=720, quality=72):
+    """Build a small JPEG for My Page / hub cards. Returns (bytes, content_type) or None."""
+    try:
+        from io import BytesIO
+        from PIL import Image
+
+        img = Image.open(BytesIO(file_bytes))
+        if img.mode in ("RGBA", "P", "LA"):
+            background = Image.new("RGB", img.size, (255, 255, 255))
+            rgba = img.convert("RGBA")
+            background.paste(rgba, mask=rgba.split()[-1])
+            img = background
+        else:
+            img = img.convert("RGB")
+        img.thumbnail((max_edge, max_edge), Image.Resampling.LANCZOS)
+        out = BytesIO()
+        img.save(out, format="JPEG", quality=quality, optimize=True)
+        return out.getvalue(), "image/jpeg"
+    except Exception as e:
+        logger.warning("favorite card thumbnail failed: %s", e)
+        return None
 
 
 def _validate_favorites_session():
@@ -7325,13 +7430,27 @@ def upload_favorite():
             file_options={"content-type": file.content_type or "image/png", "upsert": "false"}
         )
         public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{path}"
+        thumb_url = public_url
+        thumb_payload = _favorite_card_thumbnail_bytes(file_bytes)
+        if thumb_payload:
+            thumb_bytes, thumb_ctype = thumb_payload
+            thumb_path = f"{favorite_user_id}/favorites/thumbs/{int(time.time() * 1000)}.jpg"
+            try:
+                supabase_admin.storage.from_(FAVORITES_BUCKET).upload(
+                    path=thumb_path,
+                    file=thumb_bytes,
+                    file_options={"content-type": thumb_ctype, "upsert": "false"},
+                )
+                thumb_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{thumb_path}"
+            except Exception as thumb_err:
+                logger.warning("upload_favorite thumbnail upload failed: %s", thumb_err)
         insert_data = {
             "user_id": favorite_user_id,
             "channelTitle": channel_title,
             "title": title,
             "description": description,
             "image_url": public_url,
-            "thumbnail_url": public_url,
+            "thumbnail_url": thumb_url,
         }
         try:
             if target_list:
@@ -7371,6 +7490,102 @@ def upload_favorite():
                 }
             ), 400
         return jsonify({"success": False, "error": "Upload failed. Please try again."}), 500
+
+
+@app.route("/api/favorites/update", methods=["POST", "OPTIONS"])
+def update_favorite():
+    """Update a favorite image title/description and optionally replace the image file."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _authenticate_upload_user()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server upload not configured"}), 503
+
+        fav_id = (request.form.get("favorite_id") or request.form.get("id") or "").strip()
+        title = (request.form.get("title") or "").strip()
+        if not fav_id:
+            return jsonify({"success": False, "error": "favorite_id is required"}), 400
+        if not title:
+            return jsonify({"success": False, "error": "title is required"}), 400
+
+        fr = (
+            supabase_admin.table("creator_favorites")
+            .select("*")
+            .eq("id", fav_id)
+            .limit(1)
+            .execute()
+        )
+        row = (fr.data or [None])[0]
+        if not row:
+            return jsonify({"success": False, "error": "Favorite not found"}), 404
+
+        fav_uid = str(row.get("user_id") or "")
+        can_edit = fav_uid == str(user_id) or _fl_storefront_can_access_favorite_user(user_id, fav_uid)
+        if _is_umbrella_collaborator_only(user_id):
+            can_edit = fav_uid == str(user_id)
+        if not can_edit:
+            return jsonify({"success": False, "error": "You cannot edit this image"}), 403
+
+        description = (request.form.get("description") or "").strip() or None
+        update_data = {
+            "title": title,
+            "description": description,
+        }
+
+        file = request.files.get("file")
+        if file and file.filename:
+            if not file.content_type or not file.content_type.startswith("image/"):
+                return jsonify({"success": False, "error": "File must be an image"}), 400
+            file.seek(0, 2)
+            size = file.tell()
+            file.seek(0)
+            if size > MAX_FAVORITE_IMAGE_SIZE:
+                return jsonify({"success": False, "error": "Image must be under 5MB"}), 400
+            ext = (file.filename.split(".")[-1] or "png").lower().replace(" ", "")[:10]
+            if ext not in ("png", "jpg", "jpeg", "gif", "webp"):
+                ext = "png"
+            path = f"{fav_uid}/favorites/{int(time.time() * 1000)}.{ext}"
+            file_bytes = file.read()
+            supabase_admin.storage.from_(FAVORITES_BUCKET).upload(
+                path=path,
+                file=file_bytes,
+                file_options={"content-type": file.content_type or "image/png", "upsert": "false"},
+            )
+            public_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{path}"
+            thumb_url = public_url
+            thumb_payload = _favorite_card_thumbnail_bytes(file_bytes)
+            if thumb_payload:
+                thumb_bytes, thumb_ctype = thumb_payload
+                thumb_path = f"{fav_uid}/favorites/thumbs/{int(time.time() * 1000)}.jpg"
+                try:
+                    supabase_admin.storage.from_(FAVORITES_BUCKET).upload(
+                        path=thumb_path,
+                        file=thumb_bytes,
+                        file_options={"content-type": thumb_ctype, "upsert": "false"},
+                    )
+                    thumb_url = f"{supabase_url.rstrip('/')}/storage/v1/object/public/{FAVORITES_BUCKET}/{thumb_path}"
+                except Exception as thumb_err:
+                    logger.warning("update_favorite thumbnail upload failed: %s", thumb_err)
+            update_data["image_url"] = public_url
+            update_data["thumbnail_url"] = thumb_url
+
+        up = (
+            supabase_admin.table("creator_favorites")
+            .update(update_data)
+            .eq("id", fav_id)
+            .execute()
+        )
+        out = (up.data or [None])[0]
+        if not out:
+            q = supabase_admin.table("creator_favorites").select("*").eq("id", fav_id).limit(1).execute()
+            out = (q.data or [None])[0]
+        return jsonify({"success": True, "favorite": out}), 200
+    except Exception as e:
+        logger.exception("update_favorite: %s", e)
+        return jsonify({"success": False, "error": "Update failed. Please try again."}), 500
 
 
 @app.route("/api/favorites/save-url", methods=["POST", "OPTIONS"])
@@ -9841,6 +10056,64 @@ def _umbrella_payout_balance_fields(lifetime_net, payouts):
     return umbrella_payout_balance_fields(lifetime_net, payouts)
 
 
+def _default_umbrella_owner_fee():
+    return {"fee_type": "none", "fee_value": 0}
+
+
+def _get_umbrella_owner_fee(storefront_owner_id):
+    """Load the storefront owner's collaborator fee. Missing table → no fee."""
+    from utils.payout import normalize_owner_collab_fee
+
+    if not supabase_admin or not storefront_owner_id:
+        return _default_umbrella_owner_fee()
+    try:
+        r = (
+            supabase_admin.table("umbrella_owner_fee_settings")
+            .select("fee_type, fee_value")
+            .eq("storefront_owner_id", str(storefront_owner_id))
+            .limit(1)
+            .execute()
+        )
+        row = (r.data or [None])[0]
+        if not row:
+            return _default_umbrella_owner_fee()
+        t, v = normalize_owner_collab_fee(row.get("fee_type"), row.get("fee_value"))
+        return {"fee_type": t, "fee_value": v}
+    except Exception as err:
+        err_s = str(err).lower()
+        if "umbrella_owner_fee_settings" not in err_s and "does not exist" not in err_s:
+            logger.warning("owner fee lookup failed: %s", err)
+        return _default_umbrella_owner_fee()
+
+
+def _save_umbrella_owner_fee(storefront_owner_id, fee_type, fee_value):
+    """Upsert storefront owner collaborator fee. Raises if the settings table is missing."""
+    from datetime import datetime, timezone
+    from utils.payout import normalize_owner_collab_fee
+
+    t, v = normalize_owner_collab_fee(fee_type, fee_value)
+    row = {
+        "storefront_owner_id": str(storefront_owner_id),
+        "fee_type": t,
+        "fee_value": v,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    existing = (
+        supabase_admin.table("umbrella_owner_fee_settings")
+        .select("storefront_owner_id")
+        .eq("storefront_owner_id", str(storefront_owner_id))
+        .limit(1)
+        .execute()
+    )
+    if existing.data:
+        supabase_admin.table("umbrella_owner_fee_settings").update(
+            {"fee_type": t, "fee_value": v, "updated_at": row["updated_at"]}
+        ).eq("storefront_owner_id", str(storefront_owner_id)).execute()
+    else:
+        supabase_admin.table("umbrella_owner_fee_settings").insert(row).execute()
+        return {"fee_type": t, "fee_value": v}
+
+
 @app.route("/api/favorite-lists/sales-summary", methods=["GET", "OPTIONS"])
 def favorite_lists_sales_summary():
     if request.method == "OPTIONS":
@@ -9859,17 +10132,25 @@ def favorite_lists_sales_summary():
         try:
             sales_result = (
                 supabase_admin.table("sales")
-                .select("id, favorite_list_id, amount, product_name")
+                .select("id, favorite_list_id, amount, product_name, created_at")
                 .eq("user_id", user_id)
                 .execute()
             )
             rows = sales_result.data or []
         except Exception as sales_err:
             err_s = str(sales_err).lower()
-            if "favorite_list_id" in err_s and "column" in err_s:
+            if "created_at" in err_s and "column" in err_s:
                 sales_result = (
                     supabase_admin.table("sales")
-                    .select("id, amount, product_name")
+                    .select("id, favorite_list_id, amount, product_name")
+                    .eq("user_id", user_id)
+                    .execute()
+                )
+                rows = [{**s, "created_at": None} for s in (sales_result.data or [])]
+            elif "favorite_list_id" in err_s and "column" in err_s:
+                sales_result = (
+                    supabase_admin.table("sales")
+                    .select("id, amount, product_name, created_at")
                     .eq("user_id", user_id)
                     .execute()
                 )
@@ -9877,14 +10158,19 @@ def favorite_lists_sales_summary():
             elif "product_name" in err_s and "column" in err_s:
                 sales_result = (
                     supabase_admin.table("sales")
-                    .select("id, favorite_list_id, amount")
+                    .select("id, favorite_list_id, amount, created_at")
                     .eq("user_id", user_id)
                     .execute()
                 )
                 rows = [{**s, "product_name": ""} for s in (sales_result.data or [])]
             else:
                 raise
-        from utils.payout import aggregate_sales_payout_totals
+        from utils.payout import (
+            aggregate_sales_payout_totals,
+            apply_owner_fee_to_collab_totals,
+            get_payout_for_sale,
+            owner_collab_fee_per_item,
+        )
 
         by_list = {}
         for s in rows:
@@ -9947,16 +10233,26 @@ def favorite_lists_sales_summary():
             lid for lid, meta in lists_map.items() if _is_collaborator_favorite_list(meta, uid)
         ]
         payouts_by_list = _umbrella_payouts_by_list(user_id, collab_list_ids)
+        owner_fee = _get_umbrella_owner_fee(user_id)
 
         out = []
+        owner_pages = []
         collaborator_owed_total = 0.0
         owner_sales = []
+        owner_fee_total = 0.0
+        collab_items_total = 0
         for key, agg in by_list.items():
             lid = agg["favorite_list_id"]
             meta = lists_map.get(str(lid)) if lid else None
             is_collab = _is_collaborator_favorite_list(meta, uid) if meta else False
             sale_lines = agg.get("sales") or []
             totals = aggregate_sales_payout_totals(sale_lines)
+            if is_collab:
+                totals = apply_owner_fee_to_collab_totals(
+                    totals, owner_fee["fee_type"], owner_fee["fee_value"]
+                )
+                owner_fee_total += float(totals.get("owner_fee_amount") or 0)
+                collab_items_total += int(totals.get("order_count") or 0)
             gross = totals["gross_amount"]
             platform_fee = totals["platform_fee_amount"]
             merch_cost = totals["merch_cost_amount"]
@@ -9972,6 +10268,18 @@ def favorite_lists_sales_summary():
             else:
                 display_name = "Not attributed (no favorites page in session)"
                 slug_out = None
+            if not is_collab and int(totals.get("order_count") or 0) > 0:
+                owner_pages.append({
+                    "favorite_list_id": lid,
+                    "display_name": display_name,
+                    "slug": slug_out,
+                    "order_count": totals["order_count"],
+                    "gross_amount": gross,
+                    "platform_fee_amount": platform_fee,
+                    "merch_cost_amount": merch_cost,
+                    "pay_owner_amount": pay_collaborator,
+                    "is_owner_page": True,
+                })
 
             payout_bal = _umbrella_payout_balance_fields(0, [])
             if is_collab and lid:
@@ -9998,8 +10306,25 @@ def favorite_lists_sales_summary():
                 "payout_stale": payout_bal.get("payout_stale", False) if is_collab else False,
                 "last_payout": payout_bal.get("last_payout"),
                 "recent_payouts": payout_bal.get("recent_payouts") or [],
+                "recent_sales": [],
             }
             if is_collab:
+                fee_per_item = owner_collab_fee_per_item(owner_fee["fee_type"], owner_fee["fee_value"])
+                collab_recent = []
+                for s in sale_lines:
+                    try:
+                        cs, _pf = get_payout_for_sale(s.get("product_name"), s.get("amount"), 1)
+                    except Exception:
+                        cs = 0.0
+                    collab_recent.append({
+                        "id": s.get("id"),
+                        "product_name": s.get("product_name") or "Item",
+                        "amount": round(float(s.get("amount") or 0), 2),
+                        "pay_collaborator_amount": round(max(0.0, float(cs or 0) - fee_per_item), 2),
+                        "created_at": s.get("created_at"),
+                    })
+                collab_recent.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+                row_out["recent_sales"] = collab_recent[:25]
                 member_uid = str((meta or {}).get("owner_user_id") or "")
                 is_active = member_uid in active_friend_ids
                 has_activity = (
@@ -10019,17 +10344,60 @@ def favorite_lists_sales_summary():
             return (row.get("display_name") or "").lower()
 
         out.sort(key=_sales_row_sort_key)
+        owner_pages.sort(key=_sales_row_sort_key)
         owner_totals = aggregate_sales_payout_totals(owner_sales)
+        owner_page_payout = float(owner_totals["pay_collaborator_amount"] or 0)
+        owner_fee_total = round(owner_fee_total, 2)
+
+        owner_recent_sales = []
+        for s in owner_sales:
+            try:
+                qty = 1
+                cs, _pf = get_payout_for_sale(s.get("product_name"), s.get("amount"), qty)
+            except Exception:
+                cs = 0.0
+            lid = s.get("favorite_list_id")
+            meta = lists_map.get(str(lid)) if lid else None
+            if lid and meta:
+                page_name = (meta.get("display_name") or meta.get("slug") or "Your page").strip() or "Your page"
+            elif lid:
+                page_name = "Removed or unknown favorites page"
+            else:
+                page_name = "Your storefront"
+            owner_recent_sales.append({
+                "id": s.get("id"),
+                "product_name": s.get("product_name") or "Item",
+                "amount": round(float(s.get("amount") or 0), 2),
+                "pay_owner_amount": round(float(cs or 0), 2),
+                "created_at": s.get("created_at"),
+                "favorite_list_id": lid,
+                "display_name": page_name,
+            })
+        owner_recent_sales.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+        owner_recent_sales = owner_recent_sales[:25]
+
         return jsonify(
             {
                 "success": True,
                 "by_list": out,
+                "owner_pages": owner_pages,
+                "owner_recent_sales": owner_recent_sales,
                 "collaborator_owed_total": round(collaborator_owed_total, 2),
+                "owner_fee": owner_fee,
                 "storefront_owner_summary": {
                     "gross_amount": owner_totals["gross_amount"],
                     "platform_fee_amount": owner_totals["platform_fee_amount"],
-                    "net_amount": owner_totals["pay_collaborator_amount"],
+                    "net_amount": owner_page_payout,
                     "merch_cost_amount": owner_totals["merch_cost_amount"],
+                    "owner_page_payout": round(owner_page_payout, 2),
+                    "owner_fee_amount": owner_fee_total,
+                    "owner_total_earnings": round(owner_page_payout + owner_fee_total, 2),
+                    "collaborator_item_count": collab_items_total,
+                    "owner_fee_type": owner_fee["fee_type"],
+                    "owner_fee_value": owner_fee["fee_value"],
+                    "owner_fee_per_item": owner_collab_fee_per_item(
+                        owner_fee["fee_type"], owner_fee["fee_value"]
+                    ),
                 },
                 "payout_note": (
                     "ScreenMerch pays you when your pending earnings reach $50 or more. "
@@ -10039,6 +10407,50 @@ def favorite_lists_sales_summary():
         ), 200
     except Exception as e:
         logger.exception("favorite_lists_sales_summary: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/favorite-lists/owner-fee", methods=["POST", "OPTIONS"])
+def favorite_lists_save_owner_fee():
+    """Storefront owner sets a percentage or flat per-item fee on collaborator sales."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        user_id, err = _validate_x_user_id_session()
+        if err is not None:
+            return err[0], err[1]
+        if not supabase_admin:
+            return jsonify({"success": False, "error": "Server not configured"}), 503
+        me = _cf_user_row(user_id)
+        if not me or me.get("role") != "creator":
+            return jsonify({"success": False, "error": "Only creators can set an owner fee"}), 403
+        if _is_umbrella_collaborator_only(user_id):
+            return jsonify({"success": False, "error": "Umbrella collaborators cannot set storefront owner fees"}), 403
+
+        body = request.get_json(silent=True) or {}
+        try:
+            saved = _save_umbrella_owner_fee(user_id, body.get("fee_type"), body.get("fee_value"))
+        except Exception as save_err:
+            err_s = str(save_err).lower()
+            if "umbrella_owner_fee_settings" in err_s or "does not exist" in err_s:
+                return jsonify(
+                    {
+                        "success": False,
+                        "error": "Owner fee table missing. Run backend/sql/umbrella_owner_fee_settings.sql in Supabase.",
+                    }
+                ), 503
+            raise
+        from utils.payout import owner_collab_fee_per_item
+
+        return jsonify(
+            {
+                "success": True,
+                "owner_fee": saved,
+                "owner_fee_per_item": owner_collab_fee_per_item(saved["fee_type"], saved["fee_value"]),
+            }
+        ), 200
+    except Exception as e:
+        logger.exception("favorite_lists_save_owner_fee: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -10099,6 +10511,7 @@ def favorite_lists_record_collaborator_payout():
         from utils.payout import (
             UMBRELLA_COLLABORATOR_PAYOUT_MINIMUM,
             aggregate_sales_payout_totals,
+            apply_owner_fee_to_collab_totals,
         )
 
         try:
@@ -10112,7 +10525,12 @@ def favorite_lists_record_collaborator_payout():
             sale_lines = sales_res.data or []
         except Exception:
             sale_lines = []
-        pay_collaborator = aggregate_sales_payout_totals(sale_lines)["pay_collaborator_amount"]
+        owner_fee = _get_umbrella_owner_fee(user_id)
+        pay_collaborator = apply_owner_fee_to_collab_totals(
+            aggregate_sales_payout_totals(sale_lines),
+            owner_fee["fee_type"],
+            owner_fee["fee_value"],
+        )["pay_collaborator_amount"]
         list_payouts = _umbrella_payouts_by_list(user_id, [favorite_list_id]).get(
             str(favorite_list_id), []
         )
@@ -10240,19 +10658,31 @@ def _storefront_collaborator_list_ids(storefront_owner_id):
 
 def _analytics_payout_fields_from_sales(sales_rows, storefront_owner_id=None):
     """Markup-based payout summary aligned with Umbrella tab (same $6/$6 model)."""
-    from utils.payout import get_payout_for_sale, split_sales_payout_totals
+    from utils.payout import apply_owner_fee_to_collab_totals, split_sales_payout_totals
 
     collab_ids = _storefront_collaborator_list_ids(storefront_owner_id) if storefront_owner_id else set()
     splits = split_sales_payout_totals(sales_rows, collab_ids)
     all_t = splits["all"]
     owner_t = splits["owner_direct"]
     collab_t = splits["collaborator_attributed"]
+    owner_fee = _get_umbrella_owner_fee(storefront_owner_id) if storefront_owner_id else _default_umbrella_owner_fee()
+    collab_adj = apply_owner_fee_to_collab_totals(
+        collab_t, owner_fee["fee_type"], owner_fee["fee_value"]
+    )
+    owner_page = float(owner_t["pay_collaborator_amount"] or 0)
+    owner_fee_amount = float(collab_adj.get("owner_fee_amount") or 0)
     return {
         "gross_amount": all_t["gross_amount"],
         "platform_fee_amount": all_t["platform_fee_amount"],
         "merch_cost_amount": all_t["merch_cost_amount"],
-        "owner_net_payout": owner_t["pay_collaborator_amount"],
-        "collaborator_pay_total": collab_t["pay_collaborator_amount"],
+        "owner_net_payout": round(owner_page, 2),
+        "collaborator_pay_total": collab_adj["pay_collaborator_amount"],
+        "owner_page_payout": round(owner_page, 2),
+        "owner_fee_amount": round(owner_fee_amount, 2),
+        "owner_total_earnings": round(owner_page + owner_fee_amount, 2),
+        "owner_fee_type": owner_fee["fee_type"],
+        "owner_fee_value": owner_fee["fee_value"],
+        "owner_fee_per_item": collab_adj.get("owner_fee_per_item", 0),
     }
 
 
@@ -10556,7 +10986,7 @@ def favorite_lists_my_analytics():
         payload = _analytics_payload_from_orders(all_orders, product_source_label=page_label)
         owner = _cf_user_row(owner_id)
         owner_label = (owner or {}).get("display_name") or (owner or {}).get("username") or "your storefront owner"
-        from utils.payout import aggregate_sales_payout_totals
+        from utils.payout import aggregate_sales_payout_totals, apply_owner_fee_to_collab_totals
 
         page_sales = []
         try:
@@ -10586,7 +11016,12 @@ def favorite_lists_my_analytics():
                 if isinstance(item, dict)
             ]
         # Single source of truth for collaborator + platform ($6 / $6 on standard items)
-        payout_totals = aggregate_sales_payout_totals(page_sales)
+        owner_fee = _get_umbrella_owner_fee(owner_id)
+        payout_totals = apply_owner_fee_to_collab_totals(
+            aggregate_sales_payout_totals(page_sales),
+            owner_fee["fee_type"],
+            owner_fee["fee_value"],
+        )
         pay_collaborator = payout_totals["pay_collaborator_amount"]
         platform_fee = payout_totals["platform_fee_amount"]
         list_payouts = _umbrella_payouts_by_list(owner_id, [member_list["id"]]).get(
@@ -10650,6 +11085,7 @@ def get_creator_settings():
         row = (r.data or [None])[0]
         if not row:
             return jsonify({"success": False, "error": "User not found"}), 404
+        row["header_opacity"] = _read_header_opacity(user_id)
         return jsonify({"success": True, "settings": row}), 200
     except Exception as e:
         logger.exception("get_creator_settings: %s", e)
@@ -10661,7 +11097,7 @@ def update_creator_settings():
     """
     Update creator personalization and payout settings using service role (bypasses RLS).
     Body: JSON with user_id (required) and any of: custom_logo_url, primary_color, secondary_color,
-    subdomain, custom_domain, hide_screenmerch_branding, custom_favicon_url, custom_meta_title,
+    header_opacity, subdomain, custom_domain, hide_screenmerch_branding, custom_favicon_url, custom_meta_title,
     custom_meta_description, personalization_enabled, paypal_email, tax_id.
     """
     if request.method == "OPTIONS":
@@ -10680,16 +11116,26 @@ def update_creator_settings():
             "paypal_email", "tax_id"
         }
         update_data = {k: data.get(k) for k in allowed if k in data}
-        if not update_data:
+        header_opacity = data.get("header_opacity") if "header_opacity" in data else None
+        if not update_data and header_opacity is None:
             return jsonify({"success": False, "error": "No allowed fields to update"}), 400
         if "subdomain" in update_data and update_data["subdomain"] is not None:
             update_data["subdomain"] = (update_data["subdomain"] or "").strip().lower() or None
         if "custom_domain" in update_data and update_data["custom_domain"] is not None:
             update_data["custom_domain"] = (update_data["custom_domain"] or "").strip().lower() or None
-        result = supabase_admin.table("users").update(update_data).eq("id", user_id).execute()
-        if not result.data:
-            logger.warning("update_creator_settings: no row updated for user_id=%s", user_id)
-        logger.info("Updated creator settings for user_id=%s keys=%s", user_id, list(update_data.keys()))
+        if update_data:
+            result = supabase_admin.table("users").update(update_data).eq("id", user_id).execute()
+            if not result.data:
+                logger.warning("update_creator_settings: no row updated for user_id=%s", user_id)
+        if header_opacity is not None:
+            if not _write_header_opacity(user_id, header_opacity):
+                return jsonify({"success": False, "error": "Failed to save header opacity"}), 500
+        logger.info(
+            "Updated creator settings for user_id=%s keys=%s opacity=%s",
+            user_id,
+            list(update_data.keys()),
+            header_opacity,
+        )
         return jsonify({"success": True}), 200
     except Exception as e:
         logger.exception("update_creator_settings: %s", e)

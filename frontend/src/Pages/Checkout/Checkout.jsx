@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
+import { emitCartUpdated, setToolsFocusCartIndex, writeCartItems } from '../../utils/merchSession';
 import {
   US_STATE_OPTIONS,
   CA_PROVINCE_OPTIONS,
@@ -412,6 +413,7 @@ const Checkout = () => {
           Object.keys(localStorage).forEach(key => { if (key.toLowerCase().includes('cart')) localStorage.removeItem(key); });
           Object.keys(sessionStorage).forEach(key => { if (key.toLowerCase().includes('cart')) sessionStorage.removeItem(key); });
         } catch (err) { /* ignore */ }
+        emitCartUpdated();
         window.location.href = data.url;
         return;
       }
@@ -436,6 +438,7 @@ const Checkout = () => {
           Object.keys(localStorage).forEach(key => { if (key.toLowerCase().includes('cart')) localStorage.removeItem(key); });
           Object.keys(sessionStorage).forEach(key => { if (key.toLowerCase().includes('cart')) sessionStorage.removeItem(key); });
         } catch (err) { /* ignore */ }
+        emitCartUpdated();
         window.location.href = data2.next_url;
       } else {
         alert(data?.error || data2?.error || 'Failed to start checkout');
@@ -446,6 +449,52 @@ const Checkout = () => {
       setIsCheckoutLoading(false);
     }
   }, [items, address, searchParams]);
+
+  const removeCartItem = (index) => {
+    const updated = items.filter((_, i) => i !== index);
+    setItems(updated);
+    setSubtotal(updated.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
+    setDesignPreferences((prev) => prev.filter((_, i) => i !== index));
+    writeCartItems(updated);
+    setShipping((s) => ({ ...s, calculated: false, cost: 0, error: '' }));
+    if (updated.length === 0) {
+      setShowDesignModal(false);
+    }
+  };
+
+  const startEditCartItem = (index) => {
+    const item = items[index];
+    if (!item) return;
+    const itemCategory = (item.category || localStorage.getItem('last_selected_category') || 'mens').trim() || 'mens';
+    try {
+      localStorage.setItem('last_selected_category', itemCategory);
+    } catch {}
+    setToolsFocusCartIndex(index);
+    try {
+      const raw = localStorage.getItem('pending_merch_data');
+      const data = raw ? JSON.parse(raw) : {};
+      const shot = item.selected_screenshot || item.screenshot;
+      if (shot) data.selected_screenshot = shot;
+      if (item.video_url || item.videoUrl) {
+        data.videoUrl = item.video_url || item.videoUrl;
+      }
+      if (item.video_title || item.videoTitle) {
+        data.videoTitle = item.video_title || item.videoTitle;
+      }
+      if (item.creator_name || item.creatorName) {
+        data.creatorName = item.creator_name || item.creatorName;
+      }
+      if (item.thumbnail) data.thumbnail = item.thumbnail;
+      if (item.screenshot_timestamp) data.screenshot_timestamp = item.screenshot_timestamp;
+      localStorage.setItem('pending_merch_data', JSON.stringify(data));
+    } catch {}
+    setShowDesignModal(false);
+    const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
+    const userEmail = localStorage.getItem('user_email') || '';
+    navigate(
+      `/product/browse?category=${encodeURIComponent(itemCategory)}&authenticated=${isAuthenticated}&email=${encodeURIComponent(userEmail)}&editCart=${index}`
+    );
+  };
 
   return (
     <div className="checkout-container">
@@ -516,6 +565,26 @@ const Checkout = () => {
                           className="item-screenshot"
                         />
                       )}
+                      <div className="item-card-actions">
+                        <button
+                          type="button"
+                          className="item-edit-btn"
+                          onClick={() => startEditCartItem(i)}
+                          title="Edit item"
+                          aria-label={`Edit ${ci.name || ci.product || 'item'}`}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          type="button"
+                          className="item-delete-btn"
+                          onClick={() => removeCartItem(i)}
+                          title="Remove item"
+                          aria-label={`Remove ${ci.name || ci.product || 'item'} from cart`}
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -843,10 +912,32 @@ const Checkout = () => {
                 const isShirt = SHIRT_CATEGORIES.includes(item.category);
                 return (
                   <div key={i} className="design-modal-item-block">
-                    <h3 className="design-modal-item-title">
-                      {itemName}
-                      {itemSize ? <span className="design-modal-item-size"> · {itemSize}</span> : null}
-                    </h3>
+                    <div className="design-modal-item-header">
+                      <h3 className="design-modal-item-title">
+                        {itemName}
+                        {itemSize ? <span className="design-modal-item-size"> · {itemSize}</span> : null}
+                      </h3>
+                      <div className="item-card-actions">
+                        <button
+                          type="button"
+                          className="item-edit-btn"
+                          onClick={() => startEditCartItem(i)}
+                          title="Edit item"
+                          aria-label={`Edit ${itemName}`}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          type="button"
+                          className="item-delete-btn"
+                          onClick={() => removeCartItem(i)}
+                          title="Remove item"
+                          aria-label={`Remove ${itemName} from cart`}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
                     {isShirt && (
                     <div className="design-modal-field">
                       <div className="design-modal-options design-modal-orientation-options">
@@ -900,7 +991,7 @@ const Checkout = () => {
                   };
                 });
                 setItems(updated);
-                try { localStorage.setItem('cart_items', JSON.stringify(updated)); } catch (e) { /* ignore */ }
+                writeCartItems(updated);
                 return updated;
               };
               const handleContinue = () => {

@@ -65,6 +65,41 @@ export function favoriteImageUrl(favorite) {
   return (favorite.image_url || favorite.thumbnail_url || favorite.thumbnail || '').trim();
 }
 
+/**
+ * Lightweight URL for grid/cards. Keeps full image_url for Make Merch / print.
+ * Uses a dedicated thumbnail when present; otherwise asks Supabase for a resized render.
+ */
+export function publicStorageCardUrl(src) {
+  const url = (src || '').trim();
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    if (
+      u.hostname.includes('supabase.co') &&
+      u.pathname.includes('/storage/v1/object/public/')
+    ) {
+      u.pathname = u.pathname.replace(
+        '/storage/v1/object/public/',
+        '/storage/v1/render/image/public/'
+      );
+      u.searchParams.set('width', '720');
+      u.searchParams.set('resize', 'contain');
+      u.searchParams.set('quality', '70');
+      return u.toString();
+    }
+  } catch (_) {}
+  return url;
+}
+
+export function favoriteCardThumbUrl(favorite) {
+  if (!favorite) return '';
+  const full = (favorite.image_url || '').trim();
+  const thumb = (favorite.thumbnail_url || favorite.thumbnail || '').trim();
+  if (thumb && full && thumb !== full) return thumb;
+  if (thumb && !full) return thumb;
+  return publicStorageCardUrl(full || thumb);
+}
+
 export function listPreviewImages(list) {
   if (!list) return [];
   if (Array.isArray(list.preview_images) && list.preview_images.length) {

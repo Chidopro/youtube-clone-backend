@@ -37,6 +37,23 @@ img{
   display: none;
 }
 
+/* Creator storefronts (*.screenmerch.com): hide 1-2-3 bar; keep on apex screenmerch.com */
+body.creator-storefront .user-flow-section,
+body.creator-storefront .home-page .user-flow-section,
+body.creator-storefront .merchandise-categories-page .user-flow-section,
+body.creator-storefront .product-page .user-flow-section {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  pointer-events: none !important;
+}
+
 .main-content-area--favorites,
 .main-content-area--storefront-subpage {
   padding-top: 0;

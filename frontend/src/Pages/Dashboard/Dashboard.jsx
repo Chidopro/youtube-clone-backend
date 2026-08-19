@@ -42,6 +42,20 @@ function todayPayoutInputDate() {
     return `${y}-${m}-${day}`;
 }
 
+const COLLAB_SHARE_PER_ITEM = 6;
+
+function ownerFeePerItem(feeType, feeValue) {
+    const t = String(feeType || 'none').toLowerCase();
+    const v = Number(feeValue) || 0;
+    if (t === 'percent') {
+        return Math.round(COLLAB_SHARE_PER_ITEM * (Math.min(100, Math.max(0, v)) / 100) * 100) / 100;
+    }
+    if (t === 'flat') {
+        return Math.round(Math.min(COLLAB_SHARE_PER_ITEM, Math.max(0, v)) * 100) / 100;
+    }
+    return 0;
+}
+
 function cleanFavoritePageNickname(raw) {
     return (raw || '')
         .replace(/\s*\(owner\)\s*/gi, ' ')
@@ -146,6 +160,7 @@ const Dashboard = ({ sidebar }) => {
                     const blob = item.getAsFile();
                     if (!blob) return;
                     const file = new File([blob], `framesnag-${Date.now()}.png`, { type: blob.type || 'image/png' });
+                    setEditingFavorite(null);
                     setNewFavorite({
                         title: 'From FrameSnag',
                         description: '',
@@ -180,6 +195,7 @@ const Dashboard = ({ sidebar }) => {
     const selectedFavoriteListIdRef = useRef(null);
     const [uploadingFavorite, setUploadingFavorite] = useState(false);
     const [showFavoriteModal, setShowFavoriteModal] = useState(false);
+    const [editingFavorite, setEditingFavorite] = useState(null);
     const [showPasteHint, setShowPasteHint] = useState(false);
     const [newFavorite, setNewFavorite] = useState({
         title: '',
@@ -209,6 +225,13 @@ const Dashboard = ({ sidebar }) => {
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
     const [collaboratorPayoutRows, setCollaboratorPayoutRows] = useState([]);
     const [collaboratorOwedTotal, setCollaboratorOwedTotal] = useState(0);
+    const [ownerPayoutRows, setOwnerPayoutRows] = useState([]);
+    const [ownerRecentSales, setOwnerRecentSales] = useState([]);
+    const [ownerEarningsSummary, setOwnerEarningsSummary] = useState(null);
+    const [ownerFeeType, setOwnerFeeType] = useState('none');
+    const [ownerFeeValue, setOwnerFeeValue] = useState('');
+    const [savingOwnerFee, setSavingOwnerFee] = useState(false);
+    const [ownerFeeMessage, setOwnerFeeMessage] = useState('');
     const [analyticsPayoutModal, setAnalyticsPayoutModal] = useState(null);
     const [analyticsPayoutAmount, setAnalyticsPayoutAmount] = useState('');
     const [analyticsPayoutDate, setAnalyticsPayoutDate] = useState('');
@@ -655,14 +678,31 @@ const Dashboard = ({ sidebar }) => {
         }
     };
 
-    const handleUploadFavorite = async () => {
-        if (!newFavorite.title || !newFavorite.image) {
-            alert('Please provide a title and image.');
-            return;
-        }
+    const resetFavoriteModal = () => {
+        setShowFavoriteModal(false);
+        setEditingFavorite(null);
+        setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+    };
 
-        // Prefer Flask/backend session user id (Google OAuth + umbrella email/password).
-        // Stale Supabase Auth sessions must not override the users-table id.
+    const openFavoriteUploadModal = () => {
+        setEditingFavorite(null);
+        setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
+        setShowFavoriteModal(true);
+    };
+
+    const handleEditFavorite = (favorite, event) => {
+        event.stopPropagation();
+        setEditingFavorite(favorite);
+        setNewFavorite({
+            title: favorite.title || '',
+            description: favorite.description || '',
+            image: null,
+            imagePreview: favorite.image_url || favorite.thumbnail_url || null
+        });
+        setShowFavoriteModal(true);
+    };
+
+    const getFavoriteAuthHeaders = async () => {
         let userId = user?.id || null;
         const isFlaskAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
         const storedUserRaw = localStorage.getItem('user');
@@ -674,41 +714,28 @@ const Dashboard = ({ sidebar }) => {
                 storedUser = null;
             }
         }
-        if (!userId && storedUser?.id) {
-            userId = storedUser.id;
-            console.log('Using user ID from localStorage session:', userId);
-        }
+        if (!userId && storedUser?.id) userId = storedUser.id;
 
         const { data: { user: supabaseUser }, error: authErr } = await supabase.auth.getUser();
-
-        if (!userId && supabaseUser?.id) {
-            userId = supabaseUser.id;
-            console.log('Using Supabase Auth user ID:', userId);
-        } else if (!userId && storedUser?.email) {
-            const { data: userRecord, error: userError } = await supabase
+        if (!userId && supabaseUser?.id) userId = supabaseUser.id;
+        else if (!userId && storedUser?.email) {
+            const { data: userRecord } = await supabase
                 .from('users')
                 .select('id')
                 .eq('email', storedUser.email)
                 .maybeSingle();
-            if (userRecord?.id) {
-                userId = userRecord.id;
-                console.log('Found user ID from users table by email:', userId);
-            } else {
-                console.error('User not found in users table:', userError);
-            }
+            if (userRecord?.id) userId = userRecord.id;
         }
 
         if (!userId) {
             console.error('Auth error:', authErr);
-            alert('Authentication required. Please sign in again from your invite link.');
-            return;
+            return { error: 'Authentication required. Please sign in again from your invite link.' };
         }
 
         const useBackendUpload = isFlaskAuthenticated || !supabaseUser;
         const accountEmail = (user?.email || storedUser?.email || supabaseUser?.email || '').trim().toLowerCase();
         if (useBackendUpload && !accountEmail) {
-            alert('Your session is missing your email. Please sign out and sign in again with your invited email.');
-            return;
+            return { error: 'Your session is missing your email. Please sign out and sign in again with your invited email.' };
         }
         if (accountEmail && userId) {
             const synced = await fetchMyProfileFromBackend(userId);
@@ -719,6 +746,84 @@ const Dashboard = ({ sidebar }) => {
                 setUser(merged);
             }
         }
+
+        let sessionToken = typeof localStorage !== 'undefined' && localStorage.getItem('auth_token');
+        if (!sessionToken) sessionToken = await claimSessionTokenIfNeeded(userId);
+        const headers = { 'X-User-Id': userId };
+        if (accountEmail) headers['X-User-Email'] = accountEmail;
+        if (sessionToken) headers['X-Session-Token'] = sessionToken;
+        return { userId, accountEmail, sessionToken, useBackendUpload, supabaseUser, storedUser, headers };
+    };
+
+    const handleUpdateFavorite = async () => {
+        if (!editingFavorite?.id) return;
+        if (!newFavorite.title.trim()) {
+            alert('Please provide a title.');
+            return;
+        }
+        if (newFavorite.image && newFavorite.image.size > 5 * 1024 * 1024) {
+            alert('File size must be less than 5MB.');
+            return;
+        }
+
+        const auth = await getFavoriteAuthHeaders();
+        if (auth.error) {
+            alert(auth.error);
+            return;
+        }
+
+        try {
+            setUploadingFavorite(true);
+            const formData = new FormData();
+            formData.append('favorite_id', editingFavorite.id);
+            formData.append('title', newFavorite.title.trim());
+            if (newFavorite.description) formData.append('description', newFavorite.description);
+            formData.append('user_id', auth.userId);
+            if (auth.accountEmail) formData.append('email', auth.accountEmail);
+            if (auth.sessionToken) formData.append('session_token', auth.sessionToken);
+            if (newFavorite.image) formData.append('file', newFavorite.image);
+
+            const res = await fetch(`${getBackendUrl()}/api/favorites/update`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: auth.headers,
+                body: formData
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || !json.success) {
+                alert(json.error || `Update failed (${res.status})`);
+                return;
+            }
+            if (json.favorite) {
+                setFavorites(prev => prev.map(fav => fav.id === editingFavorite.id ? { ...fav, ...json.favorite } : fav));
+            }
+            resetFavoriteModal();
+            alert('Image updated successfully!');
+        } catch (error) {
+            console.error('Error updating favorite:', error);
+            alert(`Failed to update image: ${error.message || 'Unknown error'}`);
+        } finally {
+            setUploadingFavorite(false);
+        }
+    };
+
+    const handleUploadFavorite = async () => {
+        if (editingFavorite) {
+            await handleUpdateFavorite();
+            return;
+        }
+        if (!newFavorite.title || !newFavorite.image) {
+            alert('Please provide a title and image.');
+            return;
+        }
+
+        const auth = await getFavoriteAuthHeaders();
+        if (auth.error) {
+            alert(auth.error);
+            return;
+        }
+        let userId = auth.userId;
+        const { useBackendUpload, supabaseUser, storedUser, accountEmail, sessionToken, headers } = auth;
 
         try {
             setUploadingFavorite(true);
@@ -741,12 +846,7 @@ const Dashboard = ({ sidebar }) => {
                 formData.append('channel_title', channelTitle);
                 if (accountEmail) formData.append('email', accountEmail);
                 if (selectedFavoriteListId) formData.append('list_id', selectedFavoriteListId);
-                let sessionToken = typeof localStorage !== 'undefined' && localStorage.getItem('auth_token');
-                if (!sessionToken) sessionToken = await claimSessionTokenIfNeeded(userId);
                 if (sessionToken) formData.append('session_token', sessionToken);
-                const headers = { 'X-User-Id': userId };
-                if (accountEmail) headers['X-User-Email'] = accountEmail;
-                if (sessionToken) headers['X-Session-Token'] = sessionToken;
                 const res = await fetch(`${getBackendUrl()}/api/favorites/upload`, {
                     method: 'POST',
                     credentials: 'include',
@@ -770,8 +870,7 @@ const Dashboard = ({ sidebar }) => {
                         setUser(merged);
                     }
                     setFavorites(prev => [json.favorite, ...prev]);
-                    setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
-                    setShowFavoriteModal(false);
+                    resetFavoriteModal();
                     alert('Favorite uploaded successfully!');
                 } else {
                     alert(json.error || 'Upload failed');
@@ -857,8 +956,7 @@ const Dashboard = ({ sidebar }) => {
                         alert(`Failed to save favorite: ${retryError.message || 'Unknown error'}.`);
                     } else {
                         setFavorites(prev => [retryData_result, ...prev]);
-                        setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
-                        setShowFavoriteModal(false);
+                        resetFavoriteModal();
                         alert('Favorite uploaded successfully!');
                     }
                 } else {
@@ -867,8 +965,7 @@ const Dashboard = ({ sidebar }) => {
             } else {
                 console.log('Favorite saved successfully:', data);
                 setFavorites(prev => [data, ...prev]);
-                setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
-                setShowFavoriteModal(false);
+                resetFavoriteModal();
                 alert('Favorite uploaded successfully!');
             }
         } catch (error) {
@@ -1228,6 +1325,14 @@ const Dashboard = ({ sidebar }) => {
                         const collabRows = (sumData?.by_list || []).filter((r) => r.is_collaborator_page);
                         setCollaboratorPayoutRows(collabRows);
                         setCollaboratorOwedTotal(Number(sumData?.collaborator_owed_total || 0));
+                        setOwnerPayoutRows(sumData?.owner_pages || []);
+                        setOwnerRecentSales(sumData?.owner_recent_sales || []);
+                        const os = sumData?.storefront_owner_summary || null;
+                        setOwnerEarningsSummary(os);
+                        const feeType = os?.owner_fee_type || sumData?.owner_fee?.fee_type || 'none';
+                        const feeVal = os?.owner_fee_value ?? sumData?.owner_fee?.fee_value ?? 0;
+                        setOwnerFeeType(feeType);
+                        setOwnerFeeValue(feeType === 'none' ? '' : String(feeVal));
                     }
                 } catch (_) {
                     /* non-fatal */
@@ -1235,11 +1340,39 @@ const Dashboard = ({ sidebar }) => {
             } else {
                 setCollaboratorPayoutRows([]);
                 setCollaboratorOwedTotal(0);
+                setOwnerPayoutRows([]);
+                setOwnerRecentSales([]);
+                setOwnerEarningsSummary(null);
             }
         } catch (error) {
             console.error('Error fetching analytics:', error);
         } finally {
             setAnalyticsLoading(false);
+        }
+    };
+
+    const saveOwnerFee = async (e) => {
+        e.preventDefault();
+        setSavingOwnerFee(true);
+        setOwnerFeeMessage('');
+        try {
+            const { ok, data } = await favoriteListsJson('/api/favorite-lists/owner-fee', {
+                method: 'POST',
+                body: JSON.stringify({
+                    fee_type: ownerFeeType,
+                    fee_value: ownerFeeType === 'none' ? 0 : Number(ownerFeeValue) || 0,
+                }),
+            });
+            if (!ok) {
+                setOwnerFeeMessage(data?.error || 'Could not save owner fee');
+                return;
+            }
+            setOwnerFeeMessage('Saved. Collaborator pay and your earnings now use this rate.');
+            await fetchAnalytics();
+        } catch (err) {
+            setOwnerFeeMessage(err.message || 'Network error');
+        } finally {
+            setSavingOwnerFee(false);
         }
     };
 
@@ -1676,17 +1809,21 @@ const Dashboard = ({ sidebar }) => {
                             <button
                                 type="button"
                                 className="add-favorite-btn favorites-upload-btn"
-                                onClick={() => {
-                                    setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
-                                    setShowFavoriteModal(true);
-                                }}
+                                onClick={openFavoriteUploadModal}
                             >
                                 Upload
                             </button>
                             )}
                         </div>
-                        {umbrellaOnly && favorites.length > 0 && (
+                        {umbrellaOnly && (
                             <div className="umbrella-fav-under-actions umbrella-fav-under-actions--below-bar">
+                                <button
+                                    type="button"
+                                    className="add-favorite-btn favorites-upload-btn"
+                                    onClick={openFavoriteUploadModal}
+                                >
+                                    Upload image
+                                </button>
                                 <button
                                     type="button"
                                     className="add-favorite-btn favorites-upload-btn"
@@ -1721,10 +1858,10 @@ const Dashboard = ({ sidebar }) => {
                                     <div className="framesnag-instructions">
                                         <p><strong>How to install:</strong></p>
                                         <ol>
-                                            <li>Click &quot;Install FrameSnag&quot; below to download the extension ZIP</li>
-                                            <li>Unzip the file, then open Chrome → Extensions → Developer mode → Load unpacked</li>
-                                            <li>Select the unzipped FrameSnag folder</li>
-                                            <li>Open any YouTube video and click the FrameSnag icon to capture and add to your page</li>
+                                            <li>Click &quot;Install FrameSnag&quot; below to open the Chrome Web Store</li>
+                                            <li>Click Add to Chrome</li>
+                                            <li>Open one of your YouTube videos and click the FrameSnag icon to capture</li>
+                                            <li>Send captures to your ScreenMerch page (or paste with Ctrl+V on Pages)</li>
                                         </ol>
                                     </div>
                                     <div className="framesnag-promo-code">
@@ -1732,9 +1869,8 @@ const Dashboard = ({ sidebar }) => {
                                         <code className="promo-code">SCREENMERCH</code>
                                     </div>
                                 </div>
-                                <a 
-                                    href="https://framesnag.com/download/FrameSnag-extension.zip"
-                                    download="FrameSnag-extension.zip"
+                                <a
+                                    href="https://chromewebstore.google.com/detail/framesnag-for-screenmerch/hfokckkkdojjgfgknpakccbfmbakkilf"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="framesnag-btn"
@@ -1792,6 +1928,13 @@ const Dashboard = ({ sidebar }) => {
                                         >
                                             Make Merch
                                         </button>
+                                        <button
+                                            className="edit-video-btn"
+                                            onClick={(e) => handleEditFavorite(favorite, e)}
+                                            title="Edit Image"
+                                        >
+                                            ✏️
+                                        </button>
                                         <button 
                                             className="delete-video-btn" 
                                             onClick={(e) => {
@@ -1810,36 +1953,26 @@ const Dashboard = ({ sidebar }) => {
                                 <div className="placeholder-content">
                                     <h3>No pages content yet</h3>
                                     <p>Upload your images and videos for users to create merchandise with!</p>
+                                    {!umbrellaOnly && (
                                     <div className="umbrella-fav-under-actions">
                                         <button
                                             className="add-favorite-btn"
-                                            onClick={() => {
-                                                setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
-                                                setShowFavoriteModal(true);
-                                            }}
+                                            onClick={openFavoriteUploadModal}
                                         >
-                                            + Add Your First Favorite
+                                            Upload image
                                         </button>
-                                        {umbrellaOnly && (
-                                            <button
-                                                type="button"
-                                                className="add-favorite-btn favorites-upload-btn"
-                                                onClick={() => navigate('/upload')}
-                                            >
-                                                Upload video
-                                            </button>
-                                        )}
                                     </div>
+                                    )}
                                 </div>
                             </div>
                         )}
                         
                         {/* Favorite Upload Modal — portaled so sticky navbar cannot cover it */}
                         {showFavoriteModal && createPortal(
-                            <div className="favorite-modal-overlay" onClick={() => setShowFavoriteModal(false)}>
+                            <div className="favorite-modal-overlay" onClick={resetFavoriteModal}>
                                 <div className="favorite-modal-content" onClick={(e) => e.stopPropagation()} ref={modalContentRef}>
-                                    <span className="favorite-modal-close" onClick={() => setShowFavoriteModal(false)}>&times;</span>
-                                    <h2>Upload Favorite Image</h2>
+                                    <span className="favorite-modal-close" onClick={resetFavoriteModal}>&times;</span>
+                                    <h2>{editingFavorite ? 'Edit Image' : 'Upload Favorite Image'}</h2>
                                 <div className="upload-form">
                                     <div className="form-group">
                                         <label>Title *</label>
@@ -1860,7 +1993,7 @@ const Dashboard = ({ sidebar }) => {
                                         />
                                     </div>
                                     <div className="form-group">
-                                        <label>Image *</label>
+                                        <label>{editingFavorite ? 'Image' : 'Image *'}</label>
                                         <input
                                             type="file"
                                             accept="image/*"
@@ -1879,6 +2012,9 @@ const Dashboard = ({ sidebar }) => {
                                                 }
                                             }}
                                         />
+                                        {editingFavorite && !newFavorite.image && (
+                                            <p className="edit-video-tip">Choose a new file only if you want to replace the current image.</p>
+                                        )}
                                         {newFavorite.imagePreview && (
                                             <img 
                                                 src={newFavorite.imagePreview} 
@@ -1891,16 +2027,15 @@ const Dashboard = ({ sidebar }) => {
                                         <button 
                                             className="save-btn" 
                                             onClick={handleUploadFavorite}
-                                            disabled={uploadingFavorite || !newFavorite.title || !newFavorite.image}
+                                            disabled={uploadingFavorite || !newFavorite.title || (!editingFavorite && !newFavorite.image)}
                                         >
-                                            {uploadingFavorite ? 'Uploading...' : 'Upload Favorite'}
+                                            {uploadingFavorite
+                                                ? (editingFavorite ? 'Saving...' : 'Uploading...')
+                                                : (editingFavorite ? 'Save Changes' : 'Upload Favorite')}
                                         </button>
                                         <button 
                                             className="cancel-btn" 
-                                            onClick={() => {
-                                                setShowFavoriteModal(false);
-                                                setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
-                                            }}
+                                            onClick={resetFavoriteModal}
                                         >
                                             Cancel
                                         </button>
@@ -2029,64 +2164,6 @@ const Dashboard = ({ sidebar }) => {
                                 
                                 {/* Enhanced Sales Chart */}
                                 <div className="sales-chart-section">
-                                    {/* Daily Sales Chart */}
-                                    <div className="chart-section">
-                                        <h4>📅 Daily Sales (Last 7 Days)</h4>
-                                        <div className="daily-chart-container">
-                                            <div className="daily-chart-bars">
-                                                {analyticsData.daily_sales && analyticsData.daily_sales.length > 0 ? (() => {
-                                                    const dailySales = analyticsData.daily_sales;
-                                                    const maxSales = Math.max(...dailySales.map(d => d.sales_count || 0), 1);
-                                                    const maxBarHeightPx = 160;
-                                                    return dailySales.map((dayData, i) => {
-                                                        const isToday = i === dailySales.length - 1;
-                                                        const salesCount = dayData.sales_count || 0;
-                                                        const netRevenue = dayData.net_revenue || 0;
-                                                        const revenue = dayData.revenue || 0;
-                                                        const barHeightPx = salesCount > 0 ? Math.max((salesCount / maxSales) * maxBarHeightPx, 20) : 0;
-                                                        return (
-                                                            <div key={i} className="daily-bar-container">
-                                                                <div 
-                                                                    className={`daily-bar ${salesCount > 0 ? 'has-sales' : 'no-sales'} ${isToday ? 'today' : ''}`}
-                                                                    style={{ height: `${barHeightPx}px` }}
-                                                                    title={`${dayData.date_display}: ${salesCount} sales | Gross: $${revenue.toFixed(2)} | Your payout: $${netRevenue.toFixed(2)}`}
-                                                                >
-                                                                    <span className="daily-bar-value">{salesCount}</span>
-                                                                </div>
-                                                                <div className="daily-bar-label">{dayData.date_display}</div>
-                                                                {salesCount > 0 && (
-                                                                    <div className="daily-bar-revenue">${Number(revenue).toFixed(2)}</div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    });
-                                                })() : (
-                                                    // Fallback if daily_sales is not available yet
-                                                    Array.from({length: 7}, (_, i) => {
-                                                        const date = new Date();
-                                                        date.setDate(date.getDate() - (6 - i));
-                                                        const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                                                        const isToday = i === 6;
-                                                        const salesCount = 0;
-                                                        
-                                                        return (
-                                                            <div key={i} className="daily-bar-container">
-                                                                <div 
-                                                                    className={`daily-bar no-sales ${isToday ? 'today' : ''}`}
-                                                                    style={{height: '0px'}}
-                                                                    title={`${dateStr}: 0 sales`}
-                                                                >
-                                                                    <span className="daily-bar-value">0</span>
-                                                                </div>
-                                                                <div className="daily-bar-label">{dateStr}</div>
-                                                            </div>
-                                                        );
-                                                    })
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
                                     {/* Weekly Summary */}
                                     <div className="weekly-summary">
                                         <h4>📊 Weekly Summary</h4>
@@ -2171,6 +2248,143 @@ const Dashboard = ({ sidebar }) => {
                                         </div>
                                             );
                                         })()}
+                                        {!umbrellaOnly ? (
+                                            <div className="collaborator-payout-panel owner-earnings-panel">
+                                                <h5>Storefront owner purchase log</h5>
+                                                <p className="hint">
+                                                    ScreenMerch pays you $6.00 per item sold on your pages when pending earnings reach $50.
+                                                    Charge collaborators a percentage of their $6.00 share or a flat amount per item — that fee comes out of what you would otherwise pay them.
+                                                </p>
+                                                <ul className="collaborator-payout-list">
+                                                    {(() => {
+                                                        const ownerItems = ownerPayoutRows.reduce((sum, row) => sum + Number(row.order_count ?? 0), 0);
+                                                        const ownerPayout = Number(
+                                                            ownerEarningsSummary?.owner_page_payout
+                                                            ?? ownerPayoutRows.reduce((sum, row) => sum + Number(row.pay_owner_amount ?? 0), 0)
+                                                        );
+                                                        return (
+                                                            <li>
+                                                                <div className="collab-payout-row-main">
+                                                                    <strong>Storefront owner payout</strong>
+                                                                    <span>
+                                                                        {ownerItems} {ownerItems === 1 ? 'item' : 'items'} · Your payout ${ownerPayout.toFixed(2)}
+                                                                    </span>
+                                                                </div>
+                                                            </li>
+                                                        );
+                                                    })()}
+                                                    <li>
+                                                        <div className="collab-payout-row-main">
+                                                            <strong>From collaborator fees</strong>
+                                                            <span>
+                                                                You keep ${Number(ownerEarningsSummary?.owner_fee_amount ?? 0).toFixed(2)}
+                                                                {ownerFeeType === 'none' || Number(ownerEarningsSummary?.owner_fee_amount ?? 0) <= 0
+                                                                    ? ' · No Sales Fee'
+                                                                    : ''}
+                                                            </span>
+                                                        </div>
+                                                    </li>
+                                                </ul>
+                                                {ownerRecentSales.length > 0 ? (
+                                                    <details className="owner-purchase-log-details">
+                                                        <summary>
+                                                            View purchase log ({ownerRecentSales.length})
+                                                        </summary>
+                                                        <ul className="collaborator-payout-list owner-purchase-log">
+                                                            {ownerRecentSales.map((sale, idx) => (
+                                                                <li key={String(sale.id || idx)}>
+                                                                    <div className="collab-payout-row-main">
+                                                                        <strong>{sale.product_name || 'Item'}</strong>
+                                                                        <span>
+                                                                            {sale.display_name || 'Your page'}
+                                                                            {' · '}
+                                                                            {formatPayoutDate(sale.created_at)}
+                                                                            {' · '}
+                                                                            Your payout ${Number(sale.pay_owner_amount ?? 0).toFixed(2)}
+                                                                        </span>
+                                                                    </div>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </details>
+                                                ) : null}
+                                                <form className="owner-fee-form" onSubmit={saveOwnerFee}>
+                                                    <div className="owner-fee-type" role="radiogroup" aria-label="Collaborator fee type">
+                                                        <label>
+                                                            <input
+                                                                type="radio"
+                                                                name="owner-fee-type"
+                                                                checked={ownerFeeType === 'none'}
+                                                                onChange={() => {
+                                                                    setOwnerFeeType('none');
+                                                                    setOwnerFeeValue('');
+                                                                    setOwnerFeeMessage('');
+                                                                }}
+                                                            />
+                                                            No extra fee
+                                                        </label>
+                                                        <label>
+                                                            <input
+                                                                type="radio"
+                                                                name="owner-fee-type"
+                                                                checked={ownerFeeType === 'percent'}
+                                                                onChange={() => {
+                                                                    setOwnerFeeType('percent');
+                                                                    setOwnerFeeValue((prev) => prev || '10');
+                                                                    setOwnerFeeMessage('');
+                                                                }}
+                                                            />
+                                                            Percentage
+                                                        </label>
+                                                        <label>
+                                                            <input
+                                                                type="radio"
+                                                                name="owner-fee-type"
+                                                                checked={ownerFeeType === 'flat'}
+                                                                onChange={() => {
+                                                                    setOwnerFeeType('flat');
+                                                                    setOwnerFeeValue((prev) => prev || '1');
+                                                                    setOwnerFeeMessage('');
+                                                                }}
+                                                            />
+                                                            Flat rate / item
+                                                        </label>
+                                                    </div>
+                                                    {ownerFeeType !== 'none' ? (
+                                                        <label className="owner-fee-value-label">
+                                                            {ownerFeeType === 'percent' ? 'Percent of $6.00 share' : 'Dollars per item sold'}
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                max={ownerFeeType === 'percent' ? '100' : '6'}
+                                                                step={ownerFeeType === 'percent' ? '1' : '0.25'}
+                                                                value={ownerFeeValue}
+                                                                onChange={(e) => setOwnerFeeValue(e.target.value)}
+                                                                required
+                                                            />
+                                                        </label>
+                                                    ) : null}
+                                                    <p className="owner-fee-preview">
+                                                        {(() => {
+                                                            const perItem = ownerFeePerItem(ownerFeeType, ownerFeeValue);
+                                                            const collabKeeps = Math.max(0, COLLAB_SHARE_PER_ITEM - perItem);
+                                                            if (ownerFeeType === 'none' || perItem <= 0) {
+                                                                return 'Collaborators keep the full $6.00 per item.';
+                                                            }
+                                                            return `You keep $${perItem.toFixed(2)} of each collaborator item; they keep $${collabKeeps.toFixed(2)}.`;
+                                                        })()}
+                                                    </p>
+                                                    <button type="submit" className="btn-save-owner-fee" disabled={savingOwnerFee}>
+                                                        {savingOwnerFee ? 'Saving…' : 'Save rate'}
+                                                    </button>
+                                                    {ownerFeeMessage ? (
+                                                        <p className={`owner-fee-message${ownerFeeMessage.startsWith('Saved') ? ' ok' : ' error'}`}>
+                                                            {ownerFeeMessage}
+                                                        </p>
+                                                    ) : null}
+                                                </form>
+                                            </div>
+                                        ) : null}
                                         {!umbrellaOnly && collaboratorPayoutRows.length > 0 ? (
                                             <div className="collaborator-payout-panel">
                                                 <h5>Collaborator payouts</h5>
@@ -2216,6 +2430,27 @@ const Dashboard = ({ sidebar }) => {
                                                                         Record payment
                                                                     </button>
                                                                 ) : null}
+                                                                {(row.recent_sales || []).length > 0 ? (
+                                                                    <details className="owner-purchase-log-details collab-purchase-log-details">
+                                                                        <summary>
+                                                                            View purchase log ({row.recent_sales.length})
+                                                                        </summary>
+                                                                        <ul className="collaborator-payout-list owner-purchase-log">
+                                                                            {row.recent_sales.map((sale, idx) => (
+                                                                                <li key={String(sale.id || idx)}>
+                                                                                    <div className="collab-payout-row-main">
+                                                                                        <strong>{sale.product_name || 'Item'}</strong>
+                                                                                        <span>
+                                                                                            {formatPayoutDate(sale.created_at)}
+                                                                                            {' · '}
+                                                                                            Pay collaborator ${Number(sale.pay_collaborator_amount ?? 0).toFixed(2)}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    </details>
+                                                                ) : null}
                                                             </li>
                                                         );
                                                     })}
@@ -2234,65 +2469,9 @@ const Dashboard = ({ sidebar }) => {
                                             </p>
                                         ) : null}
                                     </div>
-                                    
-                                    {/* Recent Sales Activity */}
-                                    <div className="recent-activity">
-                                        <h4>🕒 Recent Sales Activity</h4>
-                                        <div className="activity-list">
-                                            {analyticsData.recent_sales && analyticsData.recent_sales.length > 0 ? (
-                                                analyticsData.recent_sales.slice(0, 5).map((sale, index) => {
-                                                    // Format time ago
-                                                    let timeAgo = 'Recently';
-                                                    try {
-                                                        if (sale.created_at && sale.created_at !== 'N/A') {
-                                                            const saleDate = new Date(sale.created_at);
-                                                            const now = new Date();
-                                                            const diffMs = now - saleDate;
-                                                            const diffMins = Math.floor(diffMs / 60000);
-                                                            const diffHours = Math.floor(diffMs / 3600000);
-                                                            const diffDays = Math.floor(diffMs / 86400000);
-                                                            
-                                                            if (diffMins < 1) {
-                                                                timeAgo = 'Just now';
-                                                            } else if (diffMins < 60) {
-                                                                timeAgo = `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
-                                                            } else if (diffHours < 24) {
-                                                                timeAgo = `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
-                                                            } else {
-                                                                timeAgo = `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
-                                                            }
-                                                        }
-                                                    } catch (e) {
-                                                        timeAgo = 'Recently';
-                                                    }
-                                                    
-                                                    return (
-                                                        <div key={index} className="activity-item">
-                                                            <div className="activity-icon">💰</div>
-                                                            <div className="activity-details">
-                                                                <div className="activity-title">Sale completed</div>
-                                                                <div className="activity-subtitle">Product: {sale.product} | Share: ${sale.net_amount?.toFixed(2) || '0.00'}</div>
-                                                            </div>
-                                                            <div className="activity-time">{timeAgo}</div>
-                                                        </div>
-                                                    );
-                                                })
-                                            ) : (
-                                                <div className="activity-item">
-                                                    <div className="activity-icon">📊</div>
-                                                    <div className="activity-details">
-                                                        <div className="activity-title">No recent sales</div>
-                                                        <div className="activity-subtitle">Start making sales to see activity here</div>
-                                                    </div>
-                                                    <div className="activity-time">—</div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                {/* Products Sold Chart */}
-                                <div className="products-sold-chart">
+
+                                    {/* Products Sold Chart — same card as payouts, no gap/bar */}
+                                    <div className="products-sold-chart">
                                     <h3>🛍️ Products Sold (Last 7 Days)</h3>
                                     
                                     {analyticsData.products_sold && analyticsData.products_sold.length > 0 ? (
@@ -2307,14 +2486,14 @@ const Dashboard = ({ sidebar }) => {
                                                             <div className="product-name">{product.product}</div>
                                                             <div className="product-stats">
                                                                 <span className="quantity">{product.quantity} sold</span>
-                                                                <span className="revenue">${product.revenue.toFixed(2)}</span>
+                                                                <span className="revenue">Gross ${product.revenue.toFixed(2)}</span>
                                                             </div>
                                                         </div>
                                                         <div className="product-chart-bar-container">
                                                             <div 
                                                                 className="product-chart-bar" 
                                                                 style={{width: `${barWidth}%`}}
-                                                                title={`${product.quantity} units sold - $${product.revenue.toFixed(2)} revenue`}
+                                                                title={`${product.quantity} units sold - Gross $${product.revenue.toFixed(2)}`}
                                                             >
                                                                 <span className="bar-label">{product.quantity}</span>
                                                             </div>
@@ -2330,10 +2509,8 @@ const Dashboard = ({ sidebar }) => {
                                             <p>Start creating content to see your sales data here!</p>
                                         </div>
                                     )}
+                                    </div>
                                 </div>
-                                
-
-                                
 
                             </div>
                         </div>

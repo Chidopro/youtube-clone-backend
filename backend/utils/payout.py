@@ -159,3 +159,58 @@ def split_sales_payout_totals(sale_lines, collaborator_list_ids=None):
         "owner_direct": aggregate_sales_payout_totals(owner_lines),
         "collaborator_attributed": aggregate_sales_payout_totals(collab_lines),
     }
+
+
+def normalize_owner_collab_fee(fee_type, fee_value):
+    """Clamp storefront-owner collaborator fee to a supported type and range."""
+    t = str(fee_type or "none").strip().lower()
+    if t not in ("none", "percent", "flat"):
+        t = "none"
+    try:
+        v = float(fee_value or 0)
+    except (TypeError, ValueError):
+        v = 0.0
+    if t == "percent":
+        v = max(0.0, min(100.0, v))
+    elif t == "flat":
+        v = max(0.0, min(CREATOR_SHARE_PER_MARKUP_SALE, v))
+    else:
+        v = 0.0
+    return t, round(v, 2)
+
+
+def owner_collab_fee_per_item(fee_type, fee_value):
+    """Dollars the storefront owner keeps from each collaborator item ($6 share)."""
+    t, v = normalize_owner_collab_fee(fee_type, fee_value)
+    if t == "percent":
+        return round(CREATOR_SHARE_PER_MARKUP_SALE * (v / 100.0), 2)
+    if t == "flat":
+        return round(v, 2)
+    return 0.0
+
+
+def apply_owner_fee_to_collab_totals(collab_totals, fee_type, fee_value):
+    """
+    Split the $6/item collaborator share into owner fee vs remaining collaborator pay.
+
+    Percentage is of the $6 collaborator share. Flat rate is dollars per item sold.
+    Owner fee never exceeds the original collaborator share.
+    """
+    totals = dict(collab_totals or {})
+    items = 0
+    try:
+        items = max(0, int(totals.get("order_count") or 0))
+    except (TypeError, ValueError):
+        items = 0
+    full_collab = round(float(totals.get("pay_collaborator_amount") or 0), 2)
+    per_item = owner_collab_fee_per_item(fee_type, fee_value)
+    owner_from_collab = round(min(full_collab, per_item * items), 2)
+    collab_remaining = round(max(0.0, full_collab - owner_from_collab), 2)
+    t, v = normalize_owner_collab_fee(fee_type, fee_value)
+    totals["pay_collaborator_amount"] = collab_remaining
+    totals["owner_fee_amount"] = owner_from_collab
+    totals["owner_fee_per_item"] = per_item
+    totals["collaborator_share_before_fee"] = full_collab
+    totals["owner_fee_type"] = t
+    totals["owner_fee_value"] = v
+    return totals

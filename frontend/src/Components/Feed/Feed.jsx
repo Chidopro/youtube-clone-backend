@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import './Feed.css'
 import { useNavigate } from 'react-router-dom'
+import { publicStorageCardUrl } from '../../utils/favoriteListsApi'
 
 const HUB_ROTATE_MS = 12000;
 
@@ -26,8 +27,36 @@ function rotatingUrl(urls, hubKey, tick) {
 }
 
 function HubThumb({ src, emptyLabel }) {
-  if (src) {
-    return <img src={src} alt="" />;
+  const [current, setCurrent] = useState(src || '');
+
+  useEffect(() => {
+    setCurrent(src || '');
+  }, [src]);
+
+  if (current) {
+    return (
+      <img
+        src={current}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={() => {
+          try {
+            const u = new URL(current);
+            if (u.pathname.includes('/storage/v1/render/image/public/')) {
+              u.pathname = u.pathname.replace(
+                '/storage/v1/render/image/public/',
+                '/storage/v1/object/public/'
+              );
+              u.search = '';
+              setCurrent(u.toString());
+              return;
+            }
+          } catch (_) {}
+          setCurrent('');
+        }}
+      />
+    );
   }
   return (
     <div className="hub-card-empty" aria-hidden="true">
@@ -57,11 +86,11 @@ const Feed = ({
     [videos]
   );
   const favoriteUrls = useMemo(
-    () => uniqueUrls(Array.isArray(favoritesPreview) ? favoritesPreview : []),
+    () => uniqueUrls((Array.isArray(favoritesPreview) ? favoritesPreview : []).map(publicStorageCardUrl)),
     [favoritesPreview]
   );
   const friendUrls = useMemo(
-    () => uniqueUrls(Array.isArray(friendPagePreview) ? friendPagePreview : []),
+    () => uniqueUrls((Array.isArray(friendPagePreview) ? friendPagePreview : []).map(publicStorageCardUrl)),
     [friendPagePreview]
   );
 

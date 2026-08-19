@@ -236,6 +236,63 @@
   border-color: #667eea;
 }
 
+.header-opacity-setting .setting-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.opacity-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #667eea;
+}
+
+.opacity-slider {
+  display: block;
+  width: 100%;
+  height: 10px;
+  margin: 4px 0 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #e8edf5;
+  border: 1px solid #d0d7e2;
+}
+
+.opacity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #667eea;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.opacity-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #667eea;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.opacity-preview {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 8px;
+  background-color: #ffffff;
+  background-size: cover;
+}
+
 .settings-actions {
   margin-top: 30px;
   padding-top: 20px;

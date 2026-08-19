@@ -15,8 +15,28 @@ import { supabase } from '../../supabaseClient'
 import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from '../../utils/userService'
 import { AdminService } from '../../utils/adminService'
 import { useCreator } from '../../contexts/CreatorContext'
-import { getSubdomain } from '../../utils/subdomainService'
+import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService'
+import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import Sidebar from '../Sidebar/Sidebar'
+
+const isUsableHexColor = (value) =>
+    typeof value === 'string' && /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value.trim());
+
+const hexToRgba = (hex, alpha) => {
+    const raw = String(hex || '').trim().replace('#', '');
+    const full = raw.length === 3 ? raw.split('').map((c) => c + c).join('') : raw;
+    if (!/^[A-Fa-f0-9]{6}$/.test(full)) return `rgba(255,255,255,${alpha})`;
+    const r = parseInt(full.slice(0, 2), 16);
+    const g = parseInt(full.slice(2, 4), 16);
+    const b = parseInt(full.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const clampOpacityPercent = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 100;
+    return Math.max(0, Math.min(100, Math.round(n)));
+};
 
 const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) => {
     const creatorContext = useCreator();
@@ -31,6 +51,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [oauthProcessing, setOauthProcessing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [cartCount, setCartCount] = useState(0);
     const [isOrderProcessingAdmin, setIsOrderProcessingAdmin] = useState(false);
     const [isFullAdmin, setIsFullAdmin] = useState(false);
     /** Order-processing-only admins see Admin Portal only; master admins keep Dashboard + Channel invites */
@@ -45,6 +66,16 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     const isOrderSuccessPage = location.pathname === '/success' || location.pathname === '/order-success';
     const [logoOrientation, setLogoOrientation] = useState('square');
 
+    // Storefront only: Personalization primary+secondary → header gradient; otherwise white
+    const storefrontHeaderGradient = (() => {
+        if (!isCreatorStorefrontHostname()) return null;
+        if (!isUsableHexColor(creatorSettings?.primary_color) || !isUsableHexColor(creatorSettings?.secondary_color)) {
+            return null;
+        }
+        const alpha = clampOpacityPercent(creatorSettings?.header_opacity) / 100;
+        return `linear-gradient(135deg, ${hexToRgba(creatorSettings.primary_color, alpha)} 0%, ${hexToRgba(creatorSettings.secondary_color, alpha)} 100%)`;
+    })();
+
     const classifyLogoOrientation = (img) => {
         const next = (!img?.naturalWidth || !img?.naturalHeight)
             ? 'square'
@@ -57,6 +88,19 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
             setLogoOrientation('square');
         }
     }, [creatorSettings?.custom_logo_url]);
+
+    useEffect(() => {
+        const refreshCartCount = () => setCartCount(getCartItemCount());
+        refreshCartCount();
+        window.addEventListener(CART_UPDATED_EVENT, refreshCartCount);
+        window.addEventListener('storage', refreshCartCount);
+        window.addEventListener('focus', refreshCartCount);
+        return () => {
+            window.removeEventListener(CART_UPDATED_EVENT, refreshCartCount);
+            window.removeEventListener('storage', refreshCartCount);
+            window.removeEventListener('focus', refreshCartCount);
+        };
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -780,7 +824,10 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
 
     return (
         <>
-            <nav className={`flex-div${dropdownOpen ? ' nav-dropdown-active' : ''}${logoOrientation === 'horizontal' ? ' nav--logo-horizontal' : ''}`}>
+            <nav
+                className={`flex-div${dropdownOpen ? ' nav-dropdown-active' : ''}${logoOrientation === 'horizontal' ? ' nav--logo-horizontal' : ''}${storefrontHeaderGradient ? ' nav--brand-gradient' : ''}`}
+                style={storefrontHeaderGradient ? { background: storefrontHeaderGradient } : undefined}
+            >
                 <div className="nav-left flex-div">
                     <img
                         src={menu_icon}
@@ -804,10 +851,10 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                             setSidebar(prev => !prev);
                         }}
                     >
-                        <svg width="4" height="18" viewBox="0 0 4 18" aria-hidden="true">
-                            <circle cx="2" cy="2" r="1.7" fill="currentColor" />
-                            <circle cx="2" cy="9" r="1.7" fill="currentColor" />
-                            <circle cx="2" cy="16" r="1.7" fill="currentColor" />
+                        <svg width="6" height="20" viewBox="0 0 6 20" aria-hidden="true">
+                            <circle cx="3" cy="3" r="2.2" fill="currentColor" />
+                            <circle cx="3" cy="10" r="2.2" fill="currentColor" />
+                            <circle cx="3" cy="17" r="2.2" fill="currentColor" />
                         </svg>
                     </button>
                 </div>
@@ -836,7 +883,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         </Link>
                     )}
                 </div>
-                {sidebar && !isOrderSuccessPage && (
+                {sidebar && !isOrderSuccessPage && createPortal(
                     <div className="nav-mobile-menu" role="dialog" aria-label="Menu">
                         <button
                             type="button"
@@ -852,7 +899,8 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                                 setSidebar={setSidebar}
                             />
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
                 <div className="nav-center-right flex-div">
                     <div className="nav-middle flex-div">
@@ -1013,6 +1061,18 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                             </button>
                         </>
                     )}
+                    <button
+                        type="button"
+                        className="nav-cart-btn"
+                        onClick={() => navigate('/checkout')}
+                        aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
+                        title="Cart"
+                    >
+                        <svg className="nav-cart-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="currentColor" d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2zM7.16 14h9.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0 0 21.07 5H6.21l-.94-2H1v2h2l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L7.16 14z" />
+                        </svg>
+                        {cartCount > 0 ? <span className="nav-cart-badge">{cartCount > 99 ? '99+' : cartCount}</span> : null}
+                    </button>
                     </div>
                 </div>
             </nav>

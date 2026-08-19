@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG } from '../../config/printAreaConfig';
+import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
-import { consumeToolsFocusCartIndex } from '../../utils/merchSession';
+import { consumeToolsFocusCartIndex, writeCartItems } from '../../utils/merchSession';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -45,7 +45,7 @@ const ProductPreviewWithDrag = ({
   const dragStartTextPositionRef = useRef({ x: 50, y: 50 }); // When text drag starts, store text %
   const totalDragDeltaRef = useRef({ x: 0, y: 0 }); // Accumulated pixel delta during text drag
   const [processedImage, setProcessedImage] = useState(screenshot);
-  const textDragMode = Boolean(textEnabled && onTextPositionChange);
+  const textDragMode = false;
   const [screenshotDisplaySize, setScreenshotDisplaySize] = useState({ width: 150, height: 150 });
   const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
 
@@ -408,6 +408,7 @@ const ProductPreviewWithDrag = ({
     const startPos = { x: e.clientX, y: e.clientY };
     setDragStart(startPos);
     lastDragPositionRef.current = startPos;
+    currentDragPositionRef.current = { x: offsetX, y: offsetY };
     if (textDragMode) {
       dragStartTextPositionRef.current = { x: textOffsetX, y: textOffsetY };
       totalDragDeltaRef.current = { x: 0, y: 0 };
@@ -421,6 +422,7 @@ const ProductPreviewWithDrag = ({
     const startPos = { x: touch.clientX, y: touch.clientY };
     setDragStart(startPos);
     lastDragPositionRef.current = startPos;
+    currentDragPositionRef.current = { x: offsetX, y: offsetY };
     if (textDragMode) {
       dragStartTextPositionRef.current = { x: textOffsetX, y: textOffsetY };
       totalDragDeltaRef.current = { x: 0, y: 0 };
@@ -428,89 +430,82 @@ const ProductPreviewWithDrag = ({
   };
 
   useEffect(() => {
-    if (isDragging) {
-      const handleMove = (e) => {
-        if (e.touches) e.preventDefault();
-        const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
-        const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
-        if (clientX === undefined || clientY === undefined) return;
-        
-        const sensitivityMultiplier = 0.75;
-        const deltaX = (clientX - lastDragPositionRef.current.x) * sensitivityMultiplier;
-        const deltaY = (clientY - lastDragPositionRef.current.y) * sensitivityMultiplier;
-        lastDragPositionRef.current = { x: clientX, y: clientY };
-        
-        if (textDragMode && onTextPositionChange) {
-          totalDragDeltaRef.current.x += deltaX;
-          totalDragDeltaRef.current.y += deltaY;
-          const refW = productImageSize.width || screenshotDisplaySize.width || 300;
-          const refH = productImageSize.height || screenshotDisplaySize.height || 300;
-          const start = dragStartTextPositionRef.current;
-          const percentX = Math.max(0, Math.min(100, start.x + (totalDragDeltaRef.current.x / refW) * 100));
-          const percentY = Math.max(0, Math.min(100, start.y + (totalDragDeltaRef.current.y / refH) * 100));
-          onTextPositionChange(percentX, percentY);
-          return;
-        }
-        
-        const newX = offsetX + deltaX;
-        const newY = offsetY + deltaY;
-        const scaledWidth = screenshotDisplaySize.width * (screenshotScale / 100);
-        const scaledHeight = screenshotDisplaySize.height * (screenshotScale / 100);
-        
-        if (productImageSize.width > 0 && productImageSize.height > 0) {
-          const maxOffsetX = productImageSize.width * 0.4;
-          const maxOffsetYUp = productImageSize.height * 0.6;
-          const maxOffsetYDown = productImageSize.height * 0.4;
-          let clampedX = Math.max(-maxOffsetX, Math.min(maxOffsetX, newX));
-          let clampedY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, newY));
-          currentDragPositionRef.current = { x: clampedX, y: clampedY };
-          onOffsetChange(clampedX, clampedY);
-        } else {
-          const maxOffsetX = Math.max(scaledWidth, scaledHeight) * 0.5;
-          const maxOffsetYUp = Math.max(scaledWidth, scaledHeight) * 1.2;
-          const maxOffsetYDown = Math.max(scaledWidth, scaledHeight) * 0.5;
-          const clampedX = Math.max(-maxOffsetX, Math.min(maxOffsetX, newX));
-          const clampedY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, newY));
-          onOffsetChange(clampedX, clampedY);
-        }
+    if (!isDragging) return;
+
+    const clampOffsets = (x, y) => {
+      if (productImageSize.width > 0 && productImageSize.height > 0) {
+        const maxOffsetX = productImageSize.width * 0.4;
+        const maxOffsetYUp = productImageSize.height * 0.6;
+        const maxOffsetYDown = productImageSize.height * 0.4;
+        return {
+          x: Math.max(-maxOffsetX, Math.min(maxOffsetX, x)),
+          y: Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, y)),
+        };
+      }
+      const scaledWidth = screenshotDisplaySize.width * (screenshotScale / 100);
+      const scaledHeight = screenshotDisplaySize.height * (screenshotScale / 100);
+      const maxOffsetX = Math.max(scaledWidth, scaledHeight) * 0.5;
+      const maxOffsetYUp = Math.max(scaledWidth, scaledHeight) * 1.2;
+      const maxOffsetYDown = Math.max(scaledWidth, scaledHeight) * 0.5;
+      return {
+        x: Math.max(-maxOffsetX, Math.min(maxOffsetX, x)),
+        y: Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, y)),
       };
-      
-      const handleUp = () => {
-        if (textDragMode && onTextPositionChange) {
-          setIsDragging(false);
-          return;
-        }
-        if (productImageSize.width > 0 && productImageSize.height > 0) {
-          const maxOffsetX = productImageSize.width * 0.4;
-          const maxOffsetYUp = productImageSize.height * 0.6;
-          const maxOffsetYDown = productImageSize.height * 0.4;
-          const currentX = currentDragPositionRef.current.x;
-          const currentY = currentDragPositionRef.current.y;
-          const snapThresholdX = productImageSize.width * 0.03;
-          const snapThresholdY = productImageSize.height * 0.03;
-          let finalX = Math.abs(currentX) < snapThresholdX ? 0 : currentX;
-          let finalY = Math.abs(currentY) < snapThresholdY ? 0 : currentY;
-          finalX = Math.max(-maxOffsetX, Math.min(maxOffsetX, finalX));
-          finalY = Math.max(-maxOffsetYUp, Math.min(maxOffsetYDown, finalY));
-          onOffsetChange(finalX, finalY);
-        }
-        setIsDragging(false);
-      };
-      
-      document.addEventListener('mousemove', handleMove);
-      document.addEventListener('mouseup', handleUp);
-      document.addEventListener('touchmove', handleMove, { passive: false });
-      document.addEventListener('touchend', handleUp);
-      document.addEventListener('touchcancel', handleUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMove);
-        document.removeEventListener('mouseup', handleUp);
-        document.removeEventListener('touchmove', handleMove);
-        document.removeEventListener('touchend', handleUp);
-        document.removeEventListener('touchcancel', handleUp);
-      };
-    }
-  }, [isDragging, dragStart, onOffsetChange, onTextPositionChange, textDragMode, textOffsetX, textOffsetY, screenshotDisplaySize, productImageSize, screenshotScale, offsetX, offsetY]);
+    };
+
+    const handleMove = (e) => {
+      if (e.touches) e.preventDefault();
+      const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
+      if (clientX === undefined || clientY === undefined) return;
+
+      // 1:1 with cursor so placement matches where you release
+      const deltaX = clientX - lastDragPositionRef.current.x;
+      const deltaY = clientY - lastDragPositionRef.current.y;
+      lastDragPositionRef.current = { x: clientX, y: clientY };
+
+      if (textDragMode && onTextPositionChange) {
+        totalDragDeltaRef.current.x += deltaX;
+        totalDragDeltaRef.current.y += deltaY;
+        const refW = productImageSize.width || screenshotDisplaySize.width || 300;
+        const refH = productImageSize.height || screenshotDisplaySize.height || 300;
+        const start = dragStartTextPositionRef.current;
+        const percentX = Math.max(0, Math.min(100, start.x + (totalDragDeltaRef.current.x / refW) * 100));
+        const percentY = Math.max(0, Math.min(100, start.y + (totalDragDeltaRef.current.y / refH) * 100));
+        onTextPositionChange(percentX, percentY);
+        return;
+      }
+
+      const next = clampOffsets(
+        currentDragPositionRef.current.x + deltaX,
+        currentDragPositionRef.current.y + deltaY
+      );
+      currentDragPositionRef.current = next;
+      onOffsetChange(next.x, next.y);
+    };
+
+    const handleUp = () => {
+      // Keep exact release position — do not snap back to center
+      if (!textDragMode && onOffsetChange) {
+        const { x, y } = currentDragPositionRef.current;
+        onOffsetChange(x, y);
+      }
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+    document.addEventListener('touchmove', handleMove, { passive: false });
+    document.addEventListener('touchend', handleUp);
+    document.addEventListener('touchcancel', handleUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+      document.removeEventListener('touchmove', handleMove);
+      document.removeEventListener('touchend', handleUp);
+      document.removeEventListener('touchcancel', handleUp);
+    };
+  }, [isDragging, onOffsetChange, onTextPositionChange, textDragMode, screenshotDisplaySize, productImageSize, screenshotScale]);
 
   return (
     <div 
@@ -541,93 +536,16 @@ const ProductPreviewWithDrag = ({
         }}
       />
       
-      {/* Print Area Indicator (for hats) - Shows where the print area is located */}
-      {(() => {
-        const productNameLower = (productName || '').toLowerCase();
-        const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
-        
-        if (isHat && productImageSize.width > 0 && screenshotDisplaySize.width > 0) {
-          // Calculate print area position (centered horizontally, moved up slightly for hats)
-          const printAreaWidth = screenshotDisplaySize.width;
-          const printAreaHeight = screenshotDisplaySize.height;
-          const left = (productImageSize.width - printAreaWidth) / 2;
-          // Move print area up by 8% of hat height (positioned above the bill but not too high)
-          const top = (productImageSize.height - printAreaHeight) / 2 - (productImageSize.height * 0.08);
-          
-          return (
-            <div
-              style={{
-                position: 'absolute',
-                left: `${(left / productImageSize.width) * 100}%`,
-                top: `${(top / productImageSize.height) * 100}%`,
-                width: `${(printAreaWidth / productImageSize.width) * 100}%`,
-                height: `${(printAreaHeight / productImageSize.height) * 100}%`,
-                border: '2px dashed #007bff',
-                borderRadius: '4px',
-                pointerEvents: 'none',
-                boxSizing: 'border-box',
-                opacity: 0.7,
-                zIndex: 1
-              }}
-            >
-              {/* Optional: Add corner markers */}
-              <div style={{
-                position: 'absolute',
-                top: '-2px',
-                left: '-2px',
-                width: '8px',
-                height: '8px',
-                border: '2px solid #007bff',
-                borderRadius: '2px',
-                backgroundColor: 'rgba(0, 123, 255, 0.2)'
-              }} />
-              <div style={{
-                position: 'absolute',
-                top: '-2px',
-                right: '-2px',
-                width: '8px',
-                height: '8px',
-                border: '2px solid #007bff',
-                borderRadius: '2px',
-                backgroundColor: 'rgba(0, 123, 255, 0.2)'
-              }} />
-              <div style={{
-                position: 'absolute',
-                bottom: '-2px',
-                left: '-2px',
-                width: '8px',
-                height: '8px',
-                border: '2px solid #007bff',
-                borderRadius: '2px',
-                backgroundColor: 'rgba(0, 123, 255, 0.2)'
-              }} />
-              <div style={{
-                position: 'absolute',
-                bottom: '-2px',
-                right: '-2px',
-                width: '8px',
-                height: '8px',
-                border: '2px solid #007bff',
-                borderRadius: '2px',
-                backgroundColor: 'rgba(0, 123, 255, 0.2)'
-              }} />
-            </div>
-          );
-        }
-        return null;
-      })()}
-      
       {/* Screenshot Overlay (Draggable) */}
       {processedImage && (
         <div
           style={{
             position: 'absolute',
             top: (() => {
-              // For hats, position higher to match print area indicator (moved up 8%)
               const productNameLower = (productName || '').toLowerCase();
               const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
               if (isHat && productImageSize.height > 0) {
-                return `${50 - 8}%`; // Move up 8% from center
+                return `${50 - 8}%`;
               }
               return '50%';
             })(),
@@ -638,7 +556,8 @@ const ProductPreviewWithDrag = ({
             WebkitUserSelect: 'none',
             WebkitTouchCallout: 'none',
             touchAction: 'none',
-            pointerEvents: 'auto'
+            pointerEvents: 'auto',
+            zIndex: 2
           }}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
@@ -848,6 +767,40 @@ const ToolsPage = () => {
   const [generating300Dpi, setGenerating300Dpi] = useState(false);
   const customFontsReadyRef = useRef(false);
 
+  // Lock horizontal page pan on mobile so it doesn't fight mockup drag / sliders
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.add('tools-page-active');
+    document.body.classList.add('tools-page-active');
+    let startX = 0;
+    let startY = 0;
+    const onTouchStart = (e) => {
+      if (!e.touches?.[0]) return;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    };
+    const onTouchMove = (e) => {
+      if (!e.touches?.[0]) return;
+      const el = e.target;
+      if (el?.closest?.('input[type="range"], select, .preview-image-wrapper, .preview-image-wrapper-compact')) {
+        return;
+      }
+      const dx = Math.abs(e.touches[0].clientX - startX);
+      const dy = Math.abs(e.touches[0].clientY - startY);
+      if (dx > dy && dx > 6) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => {
+      html.classList.remove('tools-page-active');
+      document.body.classList.remove('tools-page-active');
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchmove', onTouchMove);
+    };
+  }, []);
+
   // Ensure Google Fonts stylesheet is loaded and preload fringe fonts so canvas can use them
   useEffect(() => {
     let cancelled = false;
@@ -1040,10 +993,11 @@ const ToolsPage = () => {
           }
           // Auto-select Fit to Print Area to order's product so screenshot auto-resizes to print area (like cart tools)
           if (mapped.length > 0) {
-            const firstProductName = mapped[0].name;
-            if (firstProductName && Object.prototype.hasOwnProperty.call(PRINT_AREA_CONFIG, firstProductName)) {
+            const firstProductName = matchPrintAreaProductName(mapped[0].name);
+            if (firstProductName) {
               setSelectedProductName(firstProductName);
               setPrintAreaFit('product');
+              setProductSelectClicked(true);
             }
           }
           console.log(`📦 Loaded ${mapped.length} screenshot(s) from order ${trimmedOrderId} (same as Print Quality / email)`);
@@ -1207,11 +1161,20 @@ const ToolsPage = () => {
             setSelectedImage(screenshot);
             setIsUpgrading(false);
             const saved = slotStateRef.current[selectedCartProductIndex];
+            const matchedName = matchPrintAreaProductName(selectedProduct.name);
+            const resolvedName = (saved && saved.selectedProductName) || matchedName || '';
+            const savedFit = saved && saved.printAreaFit;
+            const userChoseNoFit = Boolean(saved && saved.selectedProductName && savedFit === 'none');
+            const resolvedFit = userChoseNoFit
+              ? 'none'
+              : (savedFit && savedFit !== 'none'
+                ? savedFit
+                : (resolvedName ? 'product' : 'none'));
             if (saved) {
               setEditedImageUrl(saved.editedImageUrl || '');
               setScreenshotScale(saved.screenshotScale ?? 100);
-              setSelectedProductName(saved.selectedProductName || '');
-              setPrintAreaFit(saved.printAreaFit || 'none');
+              setSelectedProductName(resolvedName);
+              setPrintAreaFit(resolvedFit);
               setImageOrientation(saved.imageOrientation || 'portrait');
               setImageOffsetX(saved.imageOffsetX ?? 0);
               setImageOffsetY(saved.imageOffsetY ?? 0);
@@ -1222,8 +1185,8 @@ const ToolsPage = () => {
             } else {
               setEditedImageUrl('');
               setScreenshotScale(100);
-              setSelectedProductName('');
-              setPrintAreaFit('none');
+              setSelectedProductName(resolvedName);
+              setPrintAreaFit(resolvedFit);
               setImageOrientation('portrait');
               setImageOffsetX(0);
               setImageOffsetY(0);
@@ -1232,6 +1195,7 @@ const ToolsPage = () => {
               const cartIndex = selectedProduct.originalCartIndex;
               setProductImageOffsets(prev => ({ ...prev, [cartIndex]: { x: 0, y: 0 } }));
             }
+            if (resolvedName) setProductSelectClicked(true);
             setTimeout(function clearSwitchFlag() {
               switchingSlotRef.current = false;
               setSlotSwitchTick(t => t + 1);
@@ -1322,6 +1286,28 @@ const ToolsPage = () => {
     // Load immediately
     loadScreenshot();
   }, [selectedCartProductIndex, cartProducts]); // Re-run when cart product selection changes
+
+  const autoFitCartIndexRef = useRef({});
+
+  // If Select Product is still empty (single-item cart hides the cart picker),
+  // match the previewed cart item automatically.
+  useEffect(() => {
+    if (selectedCartProductIndex === null) return;
+    const product = cartProducts[selectedCartProductIndex];
+    if (!product?.name) return;
+    const matched = matchPrintAreaProductName(product.name);
+    if (!matched) return;
+    setSelectedProductName((prev) => prev || matched);
+    if (!autoFitCartIndexRef.current[selectedCartProductIndex]) {
+      autoFitCartIndexRef.current[selectedCartProductIndex] = true;
+      setPrintAreaFit((prev) => {
+        if (prev && prev !== 'none') return prev;
+        if (imageOrientation === 'landscape') return prev;
+        return 'product';
+      });
+    }
+    setProductSelectClicked(true);
+  }, [selectedCartProductIndex, cartProducts, imageOrientation]);
 
   // Listen for storage events and set up upgrade checking
   useEffect(() => {
@@ -2312,7 +2298,7 @@ const ToolsPage = () => {
             ...cartItems[cartIndex],
             screenshot: dataUrl,
           };
-          localStorage.setItem('cart_items', JSON.stringify(cartItems));
+          writeCartItems(cartItems);
         }
       } catch (e) {
         console.warn('Could not persist rotated screenshot to cart:', e);
@@ -2579,7 +2565,7 @@ const ToolsPage = () => {
         console.log('💾 Updated screenshot for all cart items');
       }
       
-      localStorage.setItem('cart_items', JSON.stringify(updatedCart));
+      writeCartItems(updatedCart);
     } catch (e) {
       console.error('Failed to save edited image:', e);
     }
@@ -3428,7 +3414,7 @@ const ToolsPage = () => {
                         />
                         <span className="slider-value">{textOffsetY}%</span>
                       </div>
-                      <small style={{ color: '#666', display: 'block', marginTop: '6px' }}>Or drag the product mockup to move the text.</small>
+                      <small style={{ color: '#666', display: 'block', marginTop: '6px' }}>Or drag the product mockup to move the image and text together.</small>
                     </>
                   )}
                 </div>
