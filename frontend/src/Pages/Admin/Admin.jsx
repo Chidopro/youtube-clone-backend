@@ -24,6 +24,12 @@ const Admin = () => {
   const [payoutHistory, setPayoutHistory] = useState([]);
   const [creatorsPayoutList, setCreatorsPayoutList] = useState([]);
   const [payoutLoading, setPayoutLoading] = useState(false);
+  const [storefrontPayoutModal, setStorefrontPayoutModal] = useState(null);
+  const [storefrontPayoutAmount, setStorefrontPayoutAmount] = useState('');
+  const [storefrontPayoutDate, setStorefrontPayoutDate] = useState('');
+  const [storefrontPayoutNote, setStorefrontPayoutNote] = useState('');
+  const [storefrontPayoutMethod, setStorefrontPayoutMethod] = useState('paypal');
+  const [recordingStorefrontPayout, setRecordingStorefrontPayout] = useState(false);
   const [pendingApprovalUsers, setPendingApprovalUsers] = useState([]);
   const [pendingApprovalLoading, setPendingApprovalLoading] = useState(false);
   const [addToPendingEmail, setAddToPendingEmail] = useState('');
@@ -324,14 +330,17 @@ const Admin = () => {
   const loadPayouts = async () => {
     setPayoutLoading(true);
     try {
-      const [pending, history, creators] = await Promise.all([
+      const [pending, listPayload] = await Promise.all([
         AdminService.getPendingPayouts(),
-        AdminService.getPayoutHistory(),
         AdminService.getCreatorsPayoutList()
       ]);
       setPendingPayouts(pending);
-      setPayoutHistory(history);
-      setCreatorsPayoutList(creators);
+      setCreatorsPayoutList(listPayload.creators || []);
+      if (listPayload.payout_history?.length) {
+        setPayoutHistory(listPayload.payout_history);
+      } else {
+        setPayoutHistory(await AdminService.getPayoutHistory());
+      }
     } catch (error) {
       console.error('Error loading payouts:', error);
     } finally {
@@ -346,6 +355,59 @@ const Admin = () => {
       await loadPayouts();
     } else {
       alert(result.error || 'Failed to remove from list');
+    }
+  };
+
+  const todayPayoutInputDate = () => {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  };
+
+  const openStorefrontPayoutModal = (creator) => {
+    const pending = Number(creator.pending_amount || 0);
+    setStorefrontPayoutModal(creator);
+    setStorefrontPayoutAmount(pending > 0 ? pending.toFixed(2) : '');
+    setStorefrontPayoutDate(todayPayoutInputDate());
+    setStorefrontPayoutNote('');
+    setStorefrontPayoutMethod('paypal');
+  };
+
+  const closeStorefrontPayoutModal = () => {
+    if (recordingStorefrontPayout) return;
+    setStorefrontPayoutModal(null);
+  };
+
+  const submitStorefrontPayout = async (e) => {
+    e.preventDefault();
+    if (!storefrontPayoutModal?.id) return;
+    const amount = Number(storefrontPayoutAmount);
+    if (!amount || amount <= 0) {
+      alert('Enter a payment amount greater than zero.');
+      return;
+    }
+    setRecordingStorefrontPayout(true);
+    try {
+      const result = await AdminService.recordStorefrontPayout({
+        userId: storefrontPayoutModal.id,
+        amount,
+        paidAt: storefrontPayoutDate,
+        note: storefrontPayoutNote.trim(),
+        paymentMethod: storefrontPayoutMethod
+      });
+      if (result.success) {
+        setStorefrontPayoutModal(null);
+        await loadPayouts();
+        alert(`Recorded $${amount.toFixed(2)} paid to ${storefrontPayoutModal.display_name}. They will see this on their dashboard.`);
+      } else {
+        alert(result.error || 'Failed to record payment');
+      }
+    } catch (error) {
+      console.error('Error recording storefront payout:', error);
+      alert('Failed to record payment');
+    } finally {
+      setRecordingStorefrontPayout(false);
     }
   };
 
@@ -1232,20 +1294,18 @@ const Admin = () => {
       return;
     }
 
-    const confirmMessage = `Process payout of $${payout.pending_amount.toFixed(2)} to ${payout.display_name}?\n\nPayPal: ${payout.paypal_email}\n\nThis will mark ${payout.earnings_count} earnings as paid.`;
+    const confirmMessage = `Record a $${payout.pending_amount.toFixed(2)} payment to ${payout.display_name}?\n\nPayPal: ${payout.paypal_email}\n\nThis marks pending earnings as paid and shows on their storefront dashboard.`;
     if (!confirm(confirmMessage)) return;
 
     setPayoutLoading(true);
     try {
-      const earningsIds = payout.earnings.map(e => e.id);
       const result = await AdminService.processPayout(
         payout.user_id,
-        payout.pending_amount,
-        earningsIds
+        payout.pending_amount
       );
 
       if (result.success) {
-        alert(`Payout processed successfully! Amount: $${payout.pending_amount.toFixed(2)}`);
+        alert(`Payout recorded. Amount: $${payout.pending_amount.toFixed(2)}`);
         await loadPayouts();
       } else {
         alert(`Failed to process payout: ${result.error}`);
@@ -1954,8 +2014,12 @@ const Admin = () => {
           {activeTab === 'payouts' && isMasterAdmin && (
             <div className="admin-payouts">
               <div className="payouts-header">
-                <h3>💰 Payout Management</h3>
-                <p>Process payouts to creators who have reached the $50 minimum threshold</p>
+                <h3>Storefront owner payments</h3>
+                <p>
+                  Pay storefront owners off-platform (PayPal, etc.), then confirm the payment here.
+                  Confirmation appears in this list and on the owner&apos;s dashboard payment log.
+                  ScreenMerch.com itself does not receive a storefront-owner payout.
+                </p>
               </div>
 
               {payoutLoading ? (
@@ -1966,79 +2030,110 @@ const Admin = () => {
               ) : (
                 <>
                   <div className="payouts-section payouts-creators-list">
-                    <h4>Creators & payout info</h4>
-                    <p className="payouts-section-desc">All creators with PayPal email and pending balance. Process payouts from &quot;Pending Payouts&quot; when balance ≥ $50.</p>
+                    <h4>Storefront owners &amp; umbrella creators</h4>
+                    <p className="payouts-section-desc">
+                      Confirm a payment next to the storefront owner after you send it. Umbrella collaborators
+                      are paid by the storefront owner, not by ScreenMerch.
+                    </p>
                     {creatorsPayoutList.length === 0 ? (
                       <div className="no-payouts">
-                        <p>No creators found.</p>
+                        <p>No storefront owners found.</p>
                       </div>
                     ) : (
-                      <div className="payouts-table-wrap">
-                        <table className="payouts-table payouts-creators-table">
-                          <thead>
-                            <tr>
-                              <th>Creator</th>
-                              <th>Email</th>
-                              <th>Subdomain</th>
-                              <th>PayPal Email</th>
-                              <th>Pending</th>
-                              <th>Status</th>
-                              <th>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {creatorsPayoutList.map(c => (
-                              <tr key={c.id}>
-                                <td>
-                                  <div className="payout-creator-info">
-                                    <img src={c.profile_image_url || '/default-avatar.jpg'} alt="" className="payout-creator-avatar" onError={e => { e.target.src = '/default-avatar.jpg'; }} />
-                                    <span>{c.display_name}</span>
-                                  </div>
-                                </td>
-                                <td><span className="payout-email-cell">{c.email}</span></td>
-                                <td><span className="payout-subdomain-cell">{c.subdomain || '—'}</span></td>
-                                <td>
-                                  {c.paypal_email ? (
-                                    <span className="payout-paypal-ok">{c.paypal_email}</span>
-                                  ) : (
-                                    <span className="payout-paypal-missing">Not set</span>
-                                  )}
-                                </td>
-                                <td>
-                                  <span className="payout-amount-cell">${c.pending_amount.toFixed(2)}</span>
-                                </td>
-                                <td>
-                                  {c.pending_amount >= 50 && c.paypal_email ? (
-                                    <span className="payout-status-badge ready">Ready</span>
-                                  ) : !c.paypal_email ? (
-                                    <span className="payout-status-badge no-paypal">No PayPal</span>
-                                  ) : (
-                                    <span className="payout-status-badge below">Below $50</span>
-                                  )}
-                                </td>
-                                <td>
+                      <div className="storefront-payout-cards">
+                        {creatorsPayoutList.map(c => (
+                          <div key={c.id} className="storefront-payout-card">
+                            <div className="storefront-payout-card-head">
+                              <img
+                                src={c.profile_image_url || '/default-avatar.jpg'}
+                                alt=""
+                                className="payout-creator-avatar"
+                                onError={e => { e.target.src = '/default-avatar.jpg'; }}
+                              />
+                              <div className="storefront-payout-identity">
+                                <div className="storefront-payout-name-row">
+                                  <strong>{c.display_name}</strong>
                                   <button
                                     type="button"
-                                    className="action-btn delete"
-                                    onClick={() => handleRemoveFromPayoutList(c.id)}
-                                    title="Remove from list"
+                                    className="btn-confirm-storefront-payout"
+                                    onClick={() => openStorefrontPayoutModal(c)}
                                   >
-                                    Remove
+                                    Confirm payment
                                   </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                                </div>
+                                <div className="storefront-payout-meta">
+                                  <span>{c.email}</span>
+                                  {c.subdomain ? <span>{c.subdomain}.screenmerch.com</span> : null}
+                                </div>
+                                <div className="storefront-payout-meta">
+                                  {c.paypal_email ? (
+                                    <span className="payout-paypal-ok">PayPal: {c.paypal_email}</span>
+                                  ) : (
+                                    <span className="payout-paypal-missing">PayPal not set</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="storefront-payout-amounts">
+                                <div>
+                                  <span className="storefront-payout-amount-label">Pending</span>
+                                  <span className="payout-amount-cell">${Number(c.pending_amount || 0).toFixed(2)}</span>
+                                </div>
+                                <div>
+                                  <span className="storefront-payout-amount-label">Paid</span>
+                                  <span>${Number(c.paid_total || 0).toFixed(2)}</span>
+                                </div>
+                                {c.last_payout ? (
+                                  <div className="storefront-payout-last">
+                                    Last ${Number(c.last_payout.amount || 0).toFixed(2)}
+                                    {c.last_payout.paid_at
+                                      ? ` on ${new Date(c.last_payout.paid_at).toLocaleDateString()}`
+                                      : ''}
+                                  </div>
+                                ) : (
+                                  <div className="storefront-payout-last">No payments recorded yet</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="storefront-umbrella-row">
+                              <span className="storefront-umbrella-label">Umbrella creators</span>
+                              {(c.umbrella_collaborators || []).length > 0 ? (
+                                <ul className="storefront-umbrella-names">
+                                  {c.umbrella_collaborators.map((member) => (
+                                    <li key={member.user_id}>{member.display_name}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <span className="storefront-umbrella-empty">None</span>
+                              )}
+                            </div>
+                            <div className="storefront-payout-card-actions">
+                              {c.pending_amount >= 50 && c.paypal_email ? (
+                                <span className="payout-status-badge ready">Ready to pay</span>
+                              ) : !c.paypal_email ? (
+                                <span className="payout-status-badge no-paypal">No PayPal</span>
+                              ) : (
+                                <span className="payout-status-badge below">Below $50</span>
+                              )}
+                              <button
+                                type="button"
+                                className="action-btn delete"
+                                onClick={() => handleRemoveFromPayoutList(c.id)}
+                                title="Remove from list"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
 
                   <div className="payouts-section">
-                    <h4>Pending Payouts ({pendingPayouts.length})</h4>
+                    <h4>Pending payouts ≥ $50 ({pendingPayouts.length})</h4>
                     {pendingPayouts.length === 0 ? (
                       <div className="no-payouts">
-                        <p>No pending payouts. All creators with earnings above $50 have been paid.</p>
+                        <p>No storefront owners currently have $50 or more pending.</p>
                       </div>
                     ) : (
                       <div className="payouts-table">
@@ -2099,7 +2194,7 @@ const Admin = () => {
                                       cursor: payout.paypal_email ? 'pointer' : 'not-allowed'
                                     }}
                                   >
-                                    Process Payout
+                                    Record payment
                                   </button>
                                 </td>
                               </tr>
@@ -2111,7 +2206,7 @@ const Admin = () => {
                   </div>
 
                   <div className="payouts-section" style={{ marginTop: '40px' }}>
-                    <h4>Payout History</h4>
+                    <h4>Payment confirmation history</h4>
                     {payoutHistory.length === 0 ? (
                       <div className="no-payouts">
                         <p>No payout history yet.</p>
@@ -2121,11 +2216,12 @@ const Admin = () => {
                         <table>
                           <thead>
                             <tr>
-                              <th>Creator</th>
+                              <th>Storefront owner</th>
                               <th>Amount</th>
                               <th>Payment Method</th>
                               <th>Status</th>
-                              <th>Processed Date</th>
+                              <th>Paid date</th>
+                              <th>Note</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2148,8 +2244,9 @@ const Admin = () => {
                                 <td>
                                   {payout.processed_date 
                                     ? new Date(payout.processed_date).toLocaleDateString()
-                                    : new Date(payout.payout_date).toLocaleDateString()}
+                                    : (payout.payout_date ? new Date(payout.payout_date).toLocaleDateString() : '—')}
                                 </td>
+                                <td>{payout.notes || payout.note || '—'}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -2159,6 +2256,76 @@ const Admin = () => {
                   </div>
                 </>
               )}
+
+              {storefrontPayoutModal ? (
+                <div className="umbrella-payout-modal-backdrop" onClick={closeStorefrontPayoutModal} role="presentation">
+                  <div
+                    className="umbrella-payout-modal storefront-payout-modal"
+                    role="dialog"
+                    aria-labelledby="storefront-record-payout-title"
+                    onClick={(ev) => ev.stopPropagation()}
+                  >
+                    <h3 id="storefront-record-payout-title">Confirm storefront owner payment</h3>
+                    <p className="hint">
+                      Record that ScreenMerch paid <strong>{storefrontPayoutModal.display_name}</strong>
+                      {storefrontPayoutModal.paypal_email ? ` via ${storefrontPayoutModal.paypal_email}` : ''}.
+                      They will see this on their dashboard.
+                    </p>
+                    <form onSubmit={submitStorefrontPayout}>
+                      <label>
+                        Amount
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={storefrontPayoutAmount}
+                          onChange={(ev) => setStorefrontPayoutAmount(ev.target.value)}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Date paid
+                        <input
+                          type="date"
+                          value={storefrontPayoutDate}
+                          onChange={(ev) => setStorefrontPayoutDate(ev.target.value)}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Method
+                        <select
+                          value={storefrontPayoutMethod}
+                          onChange={(ev) => setStorefrontPayoutMethod(ev.target.value)}
+                        >
+                          <option value="paypal">PayPal</option>
+                          <option value="zelle">Zelle</option>
+                          <option value="venmo">Venmo</option>
+                          <option value="bank">Bank transfer</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </label>
+                      <label>
+                        Note (optional)
+                        <input
+                          type="text"
+                          placeholder="PayPal transaction ID or memo"
+                          value={storefrontPayoutNote}
+                          onChange={(ev) => setStorefrontPayoutNote(ev.target.value)}
+                        />
+                      </label>
+                      <div className="umbrella-payout-modal-actions">
+                        <button type="button" onClick={closeStorefrontPayoutModal} disabled={recordingStorefrontPayout}>
+                          Cancel
+                        </button>
+                        <button type="submit" disabled={recordingStorefrontPayout}>
+                          {recordingStorefrontPayout ? 'Saving…' : 'Confirm payment'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
 

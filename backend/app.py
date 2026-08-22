@@ -6116,11 +6116,126 @@ def admin_creators_payout_list():
         earnings_r = client.table("creator_earnings").select("user_id, creator_share").eq("status", "pending").execute()
         pending_by_user = {}
         for row in (earnings_r.data or []):
-            uid = row.get("user_id")
+            uid = str(row.get("user_id") or "")
+            if not uid:
+                continue
             amt = float(row.get("creator_share") or 0)
             pending_by_user[uid] = pending_by_user.get(uid, 0) + amt
+
+        collabs_by_owner = {}
+        try:
+            lists_r = (
+                client.table("creator_favorite_lists")
+                .select("storefront_owner_id, owner_user_id, display_name")
+                .execute()
+            )
+            member_ids = set()
+            for L in lists_r.data or []:
+                so = str(L.get("storefront_owner_id") or "")
+                ow = str(L.get("owner_user_id") or "")
+                if so and ow and so != ow:
+                    member_ids.add(ow)
+                    collabs_by_owner.setdefault(so, []).append({
+                        "user_id": ow,
+                        "display_name": (L.get("display_name") or "").strip(),
+                    })
+            names = {}
+            if member_ids:
+                ur = client.table("users").select("id, display_name, email, username").in_("id", list(member_ids)).execute()
+                for u in ur.data or []:
+                    names[str(u.get("id"))] = (
+                        (u.get("display_name") or u.get("username") or u.get("email") or "Collaborator").strip()
+                    )
+            for owner_id, members in collabs_by_owner.items():
+                seen = set()
+                cleaned = []
+                for m in members:
+                    mid = str(m.get("user_id") or "")
+                    if not mid or mid in seen:
+                        continue
+                    seen.add(mid)
+                    label = m.get("display_name") or names.get(mid) or "Collaborator"
+                    cleaned.append({"user_id": mid, "display_name": label})
+                collabs_by_owner[owner_id] = cleaned
+        except Exception as collab_err:
+            logger.warning("admin payout umbrella list failed: %s", collab_err)
+
+        try:
+            cf_r = (
+                client.table("channel_friends")
+                .select("channel_owner_id, friend_id")
+                .eq("status", "approved")
+                .execute()
+            )
+            extra_ids = set()
+            for row in cf_r.data or []:
+                owner_id = str(row.get("channel_owner_id") or "")
+                friend_id = str(row.get("friend_id") or "")
+                if not owner_id or not friend_id or owner_id == friend_id:
+                    continue
+                extra_ids.add(friend_id)
+                existing = {str(m.get("user_id")) for m in collabs_by_owner.get(owner_id, [])}
+                if friend_id not in existing:
+                    collabs_by_owner.setdefault(owner_id, []).append({
+                        "user_id": friend_id,
+                        "display_name": "",
+                    })
+            if extra_ids:
+                ur = client.table("users").select("id, display_name, email, username").in_("id", list(extra_ids)).execute()
+                names = {
+                    str(u.get("id")): (u.get("display_name") or u.get("username") or u.get("email") or "Collaborator").strip()
+                    for u in (ur.data or [])
+                }
+                for owner_id, members in collabs_by_owner.items():
+                    for m in members:
+                        if not m.get("display_name"):
+                            m["display_name"] = names.get(str(m.get("user_id")), "Collaborator")
+        except Exception as cf_err:
+            logger.warning("admin payout channel_friends lookup failed: %s", cf_err)
+
+        payouts_by_user = {}
+        try:
+            pr = (
+                client.table("payouts")
+                .select("id, user_id, amount, payment_method, status, payout_date, processed_date, notes")
+                .order("payout_date", desc=True)
+                .limit(300)
+                .execute()
+            )
+            for row in pr.data or []:
+                uid = str(row.get("user_id") or "")
+                if not uid:
+                    continue
+                payouts_by_user.setdefault(uid, []).append(row)
+        except Exception as pay_err:
+            logger.warning("admin payout history lookup failed: %s", pay_err)
+
         out = []
+        history = []
         for c in creators:
+            cid = str(c.get("id") or "")
+            payouts = payouts_by_user.get(cid) or []
+            completed = [
+                p for p in payouts
+                if str(p.get("status") or "completed").lower() not in ("failed", "cancelled")
+            ]
+            paid_total = round(sum(float(p.get("amount") or 0) for p in completed), 2)
+            last = completed[0] if completed else None
+            for p in completed:
+                history.append({
+                    "id": p.get("id"),
+                    "user_id": cid,
+                    "amount": round(float(p.get("amount") or 0), 2),
+                    "payment_method": p.get("payment_method") or "paypal",
+                    "status": p.get("status") or "completed",
+                    "payout_date": p.get("payout_date") or p.get("processed_date"),
+                    "processed_date": p.get("processed_date"),
+                    "notes": p.get("notes") or "",
+                    "user": {
+                        "display_name": c.get("display_name") or c.get("email"),
+                        "email": c.get("email") or "",
+                    },
+                })
             out.append({
                 "id": c.get("id"),
                 "display_name": c.get("display_name") or c.get("email") or "—",
@@ -6129,9 +6244,26 @@ def admin_creators_payout_list():
                 "subdomain": c.get("subdomain") or "",
                 "profile_image_url": c.get("profile_image_url"),
                 "status": c.get("status") or "active",
-                "pending_amount": round(pending_by_user.get(c.get("id"), 0), 2)
+                "pending_amount": round(pending_by_user.get(cid, 0), 2),
+                "paid_total": paid_total,
+                "last_payout": None if not last else {
+                    "amount": round(float(last.get("amount") or 0), 2),
+                    "paid_at": last.get("processed_date") or last.get("payout_date"),
+                    "note": last.get("notes") or "",
+                    "payment_method": last.get("payment_method") or "paypal",
+                },
+                "umbrella_collaborators": collabs_by_owner.get(cid, []),
             })
-        return jsonify({"success": True, "creators": out})
+        out = [
+            row for row in out
+            if row.get("subdomain")
+            or float(row.get("pending_amount") or 0) > 0
+            or float(row.get("paid_total") or 0) > 0
+            or (row.get("umbrella_collaborators") or [])
+        ]
+        out.sort(key=lambda row: (-float(row.get("pending_amount") or 0), str(row.get("display_name") or "").lower()))
+        history.sort(key=lambda r: str(r.get("payout_date") or ""), reverse=True)
+        return jsonify({"success": True, "creators": out, "payout_history": history[:80]})
     except Exception as e:
         logger.exception("admin_creators_payout_list: %s", e)
         return jsonify({"success": False, "error": str(e), "creators": []}), 500
@@ -6161,6 +6293,147 @@ def admin_remove_from_payout_list(user_id):
         return jsonify({"success": True, "message": "Removed from payout list"})
     except Exception as e:
         logger.exception("admin_remove_from_payout_list: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/admin/record-storefront-payout", methods=["POST", "OPTIONS"])
+@cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
+def admin_record_storefront_payout():
+    """Record a ScreenMerch → storefront-owner payment (PayPal etc.) so both admin and owner see it."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    try:
+        err, code = _require_master_admin()
+        if err is not None:
+            return err, code
+        client = supabase_admin if supabase_admin else supabase
+        if not client:
+            return jsonify({"success": False, "error": "Database unavailable"}), 500
+
+        body = request.get_json(silent=True) or {}
+        user_id = str(body.get("user_id") or "").strip()
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id is required"}), 400
+        try:
+            amount = round(float(body.get("amount") or 0), 2)
+        except (TypeError, ValueError):
+            amount = 0
+        if amount <= 0:
+            return jsonify({"success": False, "error": "amount must be greater than zero"}), 400
+
+        paid_at_raw = str(body.get("paid_at") or "").strip()
+        note = str(body.get("note") or "").strip()
+        method_raw = str(body.get("payment_method") or "paypal").strip().lower()
+        allowed_methods = {"paypal", "zelle", "venmo", "bank", "other"}
+        payment_method = method_raw if method_raw in allowed_methods else "paypal"
+
+        if paid_at_raw:
+            try:
+                if "T" in paid_at_raw:
+                    paid_at_dt = datetime.fromisoformat(paid_at_raw.replace("Z", "+00:00"))
+                else:
+                    paid_at_dt = datetime.fromisoformat(f"{paid_at_raw}T12:00:00").replace(tzinfo=timezone.utc)
+            except ValueError:
+                return jsonify({"success": False, "error": "paid_at must be a valid date"}), 400
+        else:
+            paid_at_dt = datetime.now(timezone.utc)
+        paid_at_iso = paid_at_dt.astimezone(timezone.utc).isoformat()
+
+        user_r = (
+            client.table("users")
+            .select("id, display_name, email, paypal_email, subdomain, role")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        owner = (user_r.data or [None])[0]
+        if not owner:
+            return jsonify({"success": False, "error": "Storefront owner not found"}), 404
+
+        payout_row = {
+            "user_id": user_id,
+            "amount": amount,
+            "payment_method": payment_method,
+            "status": "completed",
+            "payout_date": paid_at_iso,
+            "processed_date": paid_at_iso,
+            "notes": note or None,
+        }
+        payout_ins = client.table("payouts").insert(payout_row).execute()
+        payout = (payout_ins.data or [None])[0]
+        if not payout:
+            return jsonify({"success": False, "error": "Failed to save payout record"}), 500
+        payout_id = payout.get("id")
+
+        marked_ids = []
+        try:
+            earn_r = (
+                client.table("creator_earnings")
+                .select("id, creator_share, created_at")
+                .eq("user_id", user_id)
+                .eq("status", "pending")
+                .order("created_at")
+                .execute()
+            )
+            covered = 0.0
+            for row in earn_r.data or []:
+                if covered >= amount:
+                    break
+                eid = row.get("id")
+                if not eid:
+                    continue
+                marked_ids.append(eid)
+                covered += float(row.get("creator_share") or 0)
+            if marked_ids:
+                upd = {"status": "paid", "updated_at": paid_at_iso}
+                if payout_id:
+                    upd["payout_id"] = payout_id
+                client.table("creator_earnings").update(upd).in_("id", marked_ids).execute()
+        except Exception as earn_err:
+            logger.warning("record-storefront-payout earnings update failed: %s", earn_err)
+
+        remaining_pending = 0.0
+        try:
+            left_r = (
+                client.table("creator_earnings")
+                .select("creator_share")
+                .eq("user_id", user_id)
+                .eq("status", "pending")
+                .execute()
+            )
+            remaining_pending = round(sum(float(r.get("creator_share") or 0) for r in (left_r.data or [])), 2)
+        except Exception:
+            remaining_pending = 0.0
+
+        try:
+            client.table("users").update({
+                "last_payout_date": paid_at_iso,
+                "pending_payout": remaining_pending,
+            }).eq("id", user_id).execute()
+        except Exception:
+            try:
+                client.table("users").update({"last_payout_date": paid_at_iso}).eq("id", user_id).execute()
+            except Exception as user_err:
+                logger.warning("record-storefront-payout user totals update failed: %s", user_err)
+
+        return jsonify({
+            "success": True,
+            "payout": {
+                "id": payout_id,
+                "user_id": user_id,
+                "amount": amount,
+                "payment_method": payment_method,
+                "status": "completed",
+                "paid_at": paid_at_iso,
+                "payout_date": paid_at_iso,
+                "note": note,
+                "owner_name": owner.get("display_name") or owner.get("email"),
+                "earnings_marked": len(marked_ids),
+                "pending_remaining": remaining_pending,
+            },
+        })
+    except Exception as e:
+        logger.exception("admin_record_storefront_payout: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -10057,6 +10330,40 @@ def _umbrella_payout_balance_fields(lifetime_net, payouts):
     return umbrella_payout_balance_fields(lifetime_net, payouts)
 
 
+def _screenmerch_payouts_for_user(user_id):
+    """Completed ScreenMerch → storefront-owner payouts (PayPal confirmation ledger)."""
+    if not supabase_admin or not user_id:
+        return []
+    try:
+        r = (
+            supabase_admin.table("payouts")
+            .select("id, amount, payment_method, status, payout_date, processed_date, notes, created_at")
+            .eq("user_id", str(user_id))
+            .order("payout_date", desc=True)
+            .limit(25)
+            .execute()
+        )
+        rows = []
+        for row in r.data or []:
+            status = (row.get("status") or "completed").lower()
+            if status in ("failed", "cancelled"):
+                continue
+            rows.append({
+                "id": row.get("id"),
+                "amount": round(float(row.get("amount") or 0), 2),
+                "payment_method": row.get("payment_method") or "paypal",
+                "status": status,
+                "paid_at": row.get("processed_date") or row.get("payout_date") or row.get("created_at"),
+                "payout_date": row.get("payout_date"),
+                "note": row.get("notes") or "",
+                "notes": row.get("notes") or "",
+            })
+        return rows
+    except Exception as err:
+        logger.warning("screenmerch payouts lookup failed: %s", err)
+        return []
+
+
 def _default_umbrella_owner_fee():
     return {"fee_type": "none", "fee_value": 0}
 
@@ -10497,6 +10804,8 @@ def favorite_lists_sales_summary():
             })
         owner_recent_sales.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
         owner_recent_sales = owner_recent_sales[:25]
+        sm_payouts = _screenmerch_payouts_for_user(user_id)
+        sm_paid_total = round(sum(float(p.get("amount") or 0) for p in sm_payouts), 2)
 
         return jsonify(
             {
@@ -10515,6 +10824,8 @@ def favorite_lists_sales_summary():
                     "owner_total_earnings": round(owner_page_payout + owner_fee_total, 2),
                     "collaborator_item_count": collab_items_total,
                 },
+                "screenmerch_payouts": sm_payouts,
+                "screenmerch_paid_total": sm_paid_total,
                 "payout_note": (
                     "ScreenMerch pays you when your pending earnings reach $50 or more. "
                     "You are responsible for paying umbrella collaborators monthly when their owed balance exceeds $50."

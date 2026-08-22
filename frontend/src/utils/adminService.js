@@ -1098,8 +1098,8 @@ export class AdminService {
   }
 
   /**
-   * Get all creators with payout-related info (for admin Payouts page list).
-   * @returns {Promise<Array>} List of { id, display_name, email, paypal_email, subdomain, profile_image_url, status, pending_amount }
+   * Get all storefront owners with payout-related info (for admin Payouts page list).
+   * @returns {Promise<{creators: Array, payout_history: Array}>}
    */
   static async getCreatorsPayoutList() {
     try {
@@ -1113,10 +1113,13 @@ export class AdminService {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      return data.creators || [];
+      return {
+        creators: data.creators || [],
+        payout_history: data.payout_history || []
+      };
     } catch (error) {
       console.error('Error fetching creators payout list:', error);
-      return [];
+      return { creators: [], payout_history: [] };
     }
   }
 
@@ -1172,45 +1175,43 @@ export class AdminService {
   }
 
   /**
-   * Process a payout (mark as paid)
-   * @param {string} userId - User ID
-   * @param {number} amount - Payout amount
-   * @param {Array} earningsIds - Array of earnings IDs to mark as paid
-   * @returns {Promise<Object>} Result object
+   * Record a ScreenMerch payment to a storefront owner (PayPal confirmation ledger).
+   * Also marks pending creator_earnings as paid (oldest first) up to the amount.
    */
-  static async processPayout(userId, amount, earningsIds) {
+  static async recordStorefrontPayout({ userId, amount, paidAt, note, paymentMethod }) {
     try {
-      // Create payout record
-      const { data: payout, error: payoutError } = await supabase
-        .from('payouts')
-        .insert({
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser?.userEmail) return { success: false, error: 'Not authenticated' };
+      const base = getAdminApiBase();
+      const res = await fetch(`${base}/api/admin/record-storefront-payout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Email': currentUser.userEmail
+        },
+        credentials: 'include',
+        body: JSON.stringify({
           user_id: userId,
-          amount: amount,
-          payment_method: 'paypal',
-          status: 'completed',
-          processed_date: new Date().toISOString()
+          amount,
+          paid_at: paidAt || undefined,
+          note: note || undefined,
+          payment_method: paymentMethod || 'paypal'
         })
-        .select()
-        .single();
-
-      if (payoutError) throw payoutError;
-
-      // Update earnings status to 'paid' and link to payout
-      const { error: earningsError } = await supabase
-        .from('creator_earnings')
-        .update({
-          status: 'paid',
-          payout_id: payout.id
-        })
-        .in('id', earningsIds);
-
-      if (earningsError) throw earningsError;
-
-      return { success: true, payout };
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { success: false, error: data.error || res.statusText };
+      return { success: true, payout: data.payout };
     } catch (error) {
-      console.error('Error processing payout:', error);
+      console.error('Error recording storefront payout:', error);
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Process a payout (mark as paid). Uses the admin API so the owner dashboard log updates.
+   */
+  static async processPayout(userId, amount) {
+    return this.recordStorefrontPayout({ userId, amount, paymentMethod: 'paypal' });
   }
 
   /**

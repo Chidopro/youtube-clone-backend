@@ -313,6 +313,8 @@ const Dashboard = ({ sidebar }) => {
     const [ownerPayoutRows, setOwnerPayoutRows] = useState([]);
     const [ownerRecentSales, setOwnerRecentSales] = useState([]);
     const [ownerEarningsSummary, setOwnerEarningsSummary] = useState(null);
+    const [screenmerchPayouts, setScreenmerchPayouts] = useState([]);
+    const [screenmerchPaidTotal, setScreenmerchPaidTotal] = useState(0);
     const [collabFeeDrafts, setCollabFeeDrafts] = useState({});
     const [savingCollabFeeId, setSavingCollabFeeId] = useState(null);
     const [collabFeeMessages, setCollabFeeMessages] = useState({});
@@ -1489,6 +1491,8 @@ const Dashboard = ({ sidebar }) => {
                         setOwnerPayoutRows(sumData?.owner_pages || []);
                         setOwnerRecentSales(sumData?.owner_recent_sales || []);
                         setOwnerEarningsSummary(sumData?.storefront_owner_summary || null);
+                        setScreenmerchPayouts(sumData?.screenmerch_payouts || []);
+                        setScreenmerchPaidTotal(Number(sumData?.screenmerch_paid_total || 0));
                         const drafts = {};
                         collabRows.forEach((r) => {
                             const id = String(r.favorite_list_id);
@@ -1510,6 +1514,8 @@ const Dashboard = ({ sidebar }) => {
                 setOwnerPayoutRows([]);
                 setOwnerRecentSales([]);
                 setOwnerEarningsSummary(null);
+                setScreenmerchPayouts([]);
+                setScreenmerchPaidTotal(0);
                 setCollabFeeDrafts({});
             }
         } catch (error) {
@@ -2442,13 +2448,15 @@ const Dashboard = ({ sidebar }) => {
                                             const ownerPayout = Number(ps.owner_net_payout ?? 0);
                                             const collabPayTotal = collabPay;
                                             const merchCost = Number(ps.merch_cost_amount ?? 0);
-                                            const netLabel = umbrellaOnly ? 'Your payout' : 'Your payout';
+                                            const netLabel = umbrellaOnly
+                                                ? 'Your payout'
+                                                : (isMasterAdmin ? 'Creator payouts' : 'Your payout');
                                             const netValue = umbrellaOnly
                                                 ? (collabPay || (Number(analyticsData.collaborator_net_owed ?? 0) + Number(analyticsData.paid_total ?? 0)))
                                                 : ownerPayout;
                                             const netSubtitle = umbrellaOnly
                                                 ? 'Earned on your page ($6/item)'
-                                                : 'From your page sales ($6/item)';
+                                                : (isMasterAdmin ? 'Owed to storefront owners ($6/item)' : 'From your page sales ($6/item)');
                                             return (
                                         <div className="summary-grid">
                                             <div className="summary-card">
@@ -2485,7 +2493,7 @@ const Dashboard = ({ sidebar }) => {
                                                     <div className="summary-subtitle">Fulfillment overhead</div>
                                                 </div>
                                             ) : null}
-                                            {!umbrellaOnly && collaboratorPayoutRows.length > 0 ? (
+                                            {!umbrellaOnly && !isMasterAdmin && collaboratorPayoutRows.length > 0 ? (
                                                 <div className="summary-card highlight-collab">
                                                     <div className="summary-label">Owed to collaborators</div>
                                                     <div className="summary-value">${collaboratorOwedTotal.toFixed(2)}</div>
@@ -2502,7 +2510,16 @@ const Dashboard = ({ sidebar }) => {
                                         </div>
                                             );
                                         })()}
-                                        {!umbrellaOnly ? (
+                                        {isMasterAdmin && !umbrellaOnly ? (
+                                            <div className="collaborator-payout-panel owner-earnings-panel">
+                                                <h5>Storefront owner payments</h5>
+                                                <p className="hint">
+                                                    ScreenMerch.com does not earn a storefront-owner payout. Record PayPal (or other) payments to storefront owners in{' '}
+                                                    <strong>Admin → Payouts</strong>. Each confirmation appears here on that owner&apos;s dashboard.
+                                                </p>
+                                            </div>
+                                        ) : null}
+                                        {!umbrellaOnly && !isMasterAdmin ? (
                                             <div className="collaborator-payout-panel owner-earnings-panel">
                                                 <h5>Storefront owner purchase log</h5>
                                                 <p className="hint">
@@ -2564,7 +2581,36 @@ const Dashboard = ({ sidebar }) => {
                                                 ) : null}
                                             </div>
                                         ) : null}
-                                        {!umbrellaOnly && collaboratorPayoutRows.length > 0 ? (
+                                        {!umbrellaOnly && !isMasterAdmin ? (
+                                            <div className="collaborator-payout-panel owner-earnings-panel">
+                                                <h5>Payments from ScreenMerch</h5>
+                                                <p className="hint">
+                                                    When ScreenMerch confirms a PayPal (or other) payment to you, it appears here as your payment record.
+                                                </p>
+                                                {screenmerchPayouts.length > 0 ? (
+                                                    <ul className="collaborator-payout-list owner-purchase-log">
+                                                        {screenmerchPayouts.map((payout) => (
+                                                            <li key={String(payout.id)}>
+                                                                <div className="collab-payout-row-main">
+                                                                    <strong>Paid ${Number(payout.amount || 0).toFixed(2)}</strong>
+                                                                    <span>
+                                                                        {formatPayoutDate(payout.paid_at || payout.payout_date)}
+                                                                        {payout.payment_method ? ` · ${payout.payment_method}` : ''}
+                                                                        {payout.note || payout.notes ? ` · ${payout.note || payout.notes}` : ''}
+                                                                    </span>
+                                                                </div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                ) : (
+                                                    <p className="hint">No ScreenMerch payouts recorded yet.</p>
+                                                )}
+                                                {screenmerchPaidTotal > 0 ? (
+                                                    <p className="hint">Total received: ${screenmerchPaidTotal.toFixed(2)}</p>
+                                                ) : null}
+                                            </div>
+                                        ) : null}
+                                        {!umbrellaOnly && !isMasterAdmin && collaboratorPayoutRows.length > 0 ? (
                                             <div className="collaborator-payout-panel">
                                                 <h5>Collaborator payouts</h5>
                                                 <p className="hint">

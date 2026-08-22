@@ -1320,6 +1320,210 @@ tr:hover {
   color: #664d03;
 }
 
+.storefront-payout-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.storefront-payout-card {
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #fff;
+}
+
+.storefront-payout-card-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.storefront-payout-identity {
+  flex: 1;
+  min-width: 220px;
+}
+
+.storefront-payout-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.storefront-payout-name-row strong {
+  font-size: 1.05rem;
+  color: #1f2937;
+}
+
+.btn-confirm-storefront-payout {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  background: #198754;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-confirm-storefront-payout:hover {
+  background: #157347;
+}
+
+.storefront-payout-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.storefront-payout-amounts {
+  min-width: 140px;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.storefront-payout-amount-label {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 0.75rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.storefront-payout-last {
+  font-size: 0.8rem;
+  color: #495057;
+}
+
+.storefront-umbrella-row {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f3f5;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.storefront-umbrella-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6c757d;
+}
+
+.storefront-umbrella-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.storefront-umbrella-names li {
+  background: #eef6ff;
+  color: #0d47a1;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.85rem;
+}
+
+.storefront-umbrella-empty {
+  font-size: 0.85rem;
+  color: #adb5bd;
+}
+
+.storefront-payout-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.umbrella-payout-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+  padding: 16px;
+}
+
+.umbrella-payout-modal {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.umbrella-payout-modal h3 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+}
+
+.umbrella-payout-modal .hint {
+  margin: 0 0 14px;
+  font-size: 0.9rem;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+.umbrella-payout-modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.umbrella-payout-modal label input,
+.umbrella-payout-modal label select {
+  padding: 8px 10px;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.umbrella-payout-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.umbrella-payout-modal-actions button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #ced4da;
+  background: #f8f9fa;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.umbrella-payout-modal-actions button[type="submit"] {
+  background: #198754;
+  border-color: #198754;
+  color: #fff;
+}
+
 /* ========== Pending Approval page (single spot under Payouts) ========== */
 .admin-pending-approval {
   max-width: 900px;
