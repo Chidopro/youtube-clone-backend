@@ -11911,17 +11911,27 @@ def auth_signup_creator_email_only():
 
 # Verify-email is handled by auth blueprint: routes/auth.py auth_verify_email
 
-@app.route("/api/analytics", methods=["GET"])
+@app.route("/api/analytics", methods=["GET", "OPTIONS"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def get_analytics():
     """Get analytics data for creator dashboard - PRECISE tracking by user_id"""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
     try:
         # Get user ID and channel ID from query parameters - user_id is REQUIRED for precise tracking
         user_id = request.args.get('user_id')
         channel_id = request.args.get('channel_id')
+        scope = (request.args.get('scope') or '').strip().lower()
+        platform_wide = False
+        if scope in ('all', 'platform'):
+            err, code = _require_master_admin()
+            if err is not None:
+                return err, code
+            platform_wide = True
+            user_id = None
         
         # Validate user_id is provided for precise tracking
-        if not user_id:
+        if not platform_wide and not user_id:
             logger.warning("⚠️ Analytics request missing user_id - returning empty data for security")
             return jsonify({
                 'total_sales': 0,
@@ -11934,7 +11944,7 @@ def get_analytics():
                 'videos_with_sales': []
             })
         
-        logger.info(f"📊 Analytics request - User ID: {user_id}, Channel ID: {channel_id}")
+        logger.info(f"📊 Analytics request - User ID: {user_id}, Channel ID: {channel_id}, platform_wide={platform_wide}")
         
         # Sales table is the source of truth; order_store only fills gaps (no double-count)
         all_orders = []
@@ -11948,31 +11958,30 @@ def get_analytics():
             # IMPORTANT: Use service role client for precise tracking (bypasses RLS)
             client_to_use = supabase_admin if supabase_admin else supabase
             
-            # Build query based on filters - user_id is REQUIRED for precise tracking
+            # Build query based on filters
+            query = client_to_use.table('sales').select(
+                'id,product_name,amount,image_url,user_id,channel_id,creator_name,video_title,created_at,favorite_list_id'
+            )
             if user_id:
-                # PRECISE TRACKING: Filter by user_id to ensure creator only sees their own sales
-                query = client_to_use.table('sales').select(
-                    'id,product_name,amount,image_url,user_id,channel_id,creator_name,video_title,created_at,favorite_list_id'
-                )
-                query = query.eq('user_id', user_id)  # CRITICAL: Only get sales for this creator
-                
-                if channel_id:
-                    query = query.eq('channel_id', channel_id)
-                    logger.info(f"🔍 Filtering sales by channel_id: {channel_id}")
-                
+                query = query.eq('user_id', user_id)
                 logger.info(f"✅ PRECISE TRACKING: Filtering sales by user_id: {user_id}")
-                sales_result = query.execute()
+            elif platform_wide:
+                logger.info("✅ MASTER ADMIN: Loading sales for all storefronts")
             elif channel_id:
-                # If only channel_id provided (fallback)
-                query = client_to_use.table('sales').select('id,product_name,amount,image_url,user_id,channel_id')
                 query = query.eq('channel_id', channel_id)
                 logger.info(f"🔍 Filtering sales by channel_id: {channel_id}")
-                sales_result = query.execute()
             else:
-                # No user_id provided - return empty for security (precise tracking requires user_id)
                 logger.warning("⚠️ Analytics request missing user_id - returning empty sales for security")
-                sales_result = type('obj', (object,), {'data': []})()  # Empty result
+                sales_result = type('obj', (object,), {'data': []})()
                 sales_rows = []
+                query = None
+
+            if channel_id and query is not None and user_id:
+                query = query.eq('channel_id', channel_id)
+                logger.info(f"🔍 Filtering sales by channel_id: {channel_id}")
+
+            if query is not None:
+                sales_result = query.execute()
             sales_rows = list(sales_result.data or [])
             
             for sale in sales_rows:
@@ -12037,7 +12046,9 @@ def get_analytics():
             od['total_value'] = total_value
             all_orders.append(od)
         
-        payout_summary = _analytics_payout_fields_from_sales(sales_rows, user_id)
+        payout_summary = _analytics_payout_fields_from_sales(
+            sales_rows, None if platform_wide else user_id
+        )
         from utils.payout import aggregate_sales_payout_totals, split_sales_payout_totals
         
         # Calculate analytics
@@ -12123,7 +12134,10 @@ def get_analytics():
                 except Exception:
                     pass
             day_totals = aggregate_sales_payout_totals(day_lines)
-            day_splits = split_sales_payout_totals(day_lines, _storefront_collaborator_list_ids(user_id))
+            day_splits = split_sales_payout_totals(
+                day_lines,
+                _storefront_collaborator_list_ids(user_id) if user_id else set(),
+            )
             day_sales_count = day_totals['order_count']
             day_revenue = day_totals['gross_amount']
             day_owner_net = day_splits['owner_direct']['pay_collaborator_amount']
@@ -12201,6 +12215,7 @@ def get_analytics():
                 )[:10]
             ],
             'payout_summary': payout_summary,
+            'platform_wide': platform_wide,
         }
         
         return jsonify(analytics_data)

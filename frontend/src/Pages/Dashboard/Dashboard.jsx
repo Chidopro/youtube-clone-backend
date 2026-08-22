@@ -1432,13 +1432,20 @@ const Dashboard = ({ sidebar }) => {
                 const BACKEND_URL =
                     (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
                     'https://screenmerch.fly.dev';
-
-                const response = await fetch(`${BACKEND_URL}/api/analytics?user_id=${user.id}`, {
+                const email = (user?.email || userProfile?.email || '').trim().toLowerCase();
+                const headers = {
+                    Accept: 'application/json',
+                    'Cache-Control': 'no-cache',
+                };
+                if (isMasterAdmin && email) {
+                    headers['X-User-Email'] = email;
+                }
+                const qs = isMasterAdmin
+                    ? 'scope=all'
+                    : `user_id=${encodeURIComponent(user.id)}`;
+                const response = await fetch(`${BACKEND_URL}/api/analytics?${qs}`, {
                     method: 'GET',
-                    headers: {
-                        Accept: 'application/json',
-                        'Cache-Control': 'no-cache',
-                    },
+                    headers,
                 });
 
                 if (!response.ok) {
@@ -1605,10 +1612,10 @@ const Dashboard = ({ sidebar }) => {
     };
 
     useEffect(() => {
-        if (activeTab === 'analytics' && umbrellaOnly && user?.id) {
+        if (activeTab === 'analytics' && user?.id) {
             fetchAnalytics();
         }
-    }, [activeTab, umbrellaOnly, user?.id]);
+    }, [activeTab, umbrellaOnly, user?.id, isMasterAdmin]);
 
 
 
@@ -2303,7 +2310,7 @@ const Dashboard = ({ sidebar }) => {
                         <div className="sales-analytics-section">
                             <div className="section-header">
                                 <h2>
-                                    📊 Sales Analytics Dashboard
+                                    📊 Sales Analytics Dashboard{isMasterAdmin ? ' — all storefronts' : ''}
                                     {umbrellaOnly && analyticsData.page_name ? ` — ${analyticsData.page_name}` : ''}
                                 </h2>
                                 {umbrellaOnly ? (
