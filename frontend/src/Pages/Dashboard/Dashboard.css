@@ -3206,20 +3206,6 @@
     margin: 0 0 16px;
 }
 
-.favorite-pages-toolbar {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    flex: 1;
-    min-width: 0;
-    margin-bottom: 0;
-    padding: 14px 16px;
-    background: #f6f7f9;
-    border-radius: 10px;
-    border: 1px solid #e8eaed;
-}
-
 .favorites-tab-controls {
     display: flex;
     align-items: flex-start;
@@ -3233,61 +3219,62 @@
     align-self: flex-start;
 }
 
-.favorite-pages-choose-row {
+.favorite-pages-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+    padding: 14px 16px;
+    background: #f6f7f9;
+    border-radius: 10px;
+    border: 1px solid #e8eaed;
+}
+
+.favorite-pages-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 12px 16px;
+    gap: 8px;
 }
 
-.favorite-pages-upload-btns {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-}
-
-.favorite-pages-label {
+.favorite-pages-gutter {
+    flex: 0 0 7.4rem;
+    width: 7.4rem;
+    box-sizing: border-box;
     font-size: 1.15rem;
     font-weight: 700;
     color: #222;
     white-space: nowrap;
+    line-height: 34px;
 }
 
-.favorite-pages-select,
-.favorite-pages-choose-row .favorites-upload-btn {
+.favorite-pages-toolbar .favorite-pages-ctrl,
+.favorite-pages-toolbar .add-favorite-btn.favorites-upload-btn {
     box-sizing: border-box;
-    min-width: 200px;
-    height: 42px;
+    flex: 0 0 168px;
+    width: 168px;
+    min-width: 168px;
+    max-width: 168px;
+    height: 34px;
+    padding: 0 10px;
     border-radius: 8px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    line-height: 32px;
 }
 
 .favorite-pages-select {
-    max-width: 100%;
-    padding: 0 12px;
     border: 1px solid #ccc;
     background: #fff;
 }
 
-.favorite-pages-choose-row .favorites-upload-btn {
-    align-self: center;
+.favorite-pages-toolbar .add-favorite-btn.favorites-upload-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0 16px;
-}
-
-.favorite-page-delete {
-    margin-left: 4px;
-}
-
-.favorite-pages-new {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
+    line-height: 1;
+    white-space: nowrap;
 }
 
 .favorite-pages-input {
@@ -3300,9 +3287,13 @@
 }
 
 .favorite-pages-input--name {
-    flex: 0 1 220px;
-    max-width: 240px;
-    min-width: 160px;
+    flex: 0 0 168px;
+}
+
+.favorite-pages-toolbar .save-btn {
+    height: 34px;
+    padding: 0 14px;
+    line-height: 32px;
 }
 
 .favorite-card-page-row {

@@ -1930,11 +1930,11 @@ const Dashboard = ({ sidebar }) => {
                         )}
                         {userProfile?.role === 'creator' && !umbrellaOnly && favoritePages.length > 0 && (
                             <div className="favorite-pages-toolbar">
-                                <div className="favorite-pages-choose-row">
-                                    <label className="favorite-pages-label" htmlFor="dashboard-fav-list-select">Choose Page</label>
+                                <div className="favorite-pages-row">
+                                    <label className="favorite-pages-gutter" htmlFor="dashboard-fav-list-select">Choose Page</label>
                                     <select
                                         id="dashboard-fav-list-select"
-                                        className="favorite-pages-select"
+                                        className="favorite-pages-select favorite-pages-ctrl"
                                         value={selectedFavoriteListId || ''}
                                         onChange={(e) => handleFavoriteListChange(e.target.value)}
                                     >
@@ -1957,6 +1957,20 @@ const Dashboard = ({ sidebar }) => {
                                             </optgroup>
                                         )}
                                     </select>
+                                    <button
+                                        type="button"
+                                        className="add-favorite-btn favorites-upload-btn favorite-pages-ctrl"
+                                        onClick={openFavoriteUploadModal}
+                                    >
+                                        Image Upload
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="add-favorite-btn favorites-upload-btn favorite-pages-ctrl"
+                                        onClick={() => navigate('/upload')}
+                                    >
+                                        Video Upload
+                                    </button>
                                     {favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_primary === false
                                         && !favoritePages.find((l) => l.id === selectedFavoriteListId)?.is_collaborator_page && (
                                         <button
@@ -1968,30 +1982,15 @@ const Dashboard = ({ sidebar }) => {
                                             Delete page
                                         </button>
                                     )}
-                                    <div className="favorite-pages-upload-btns">
-                                        <button
-                                            type="button"
-                                            className="add-favorite-btn favorites-upload-btn"
-                                            onClick={openFavoriteUploadModal}
-                                        >
-                                            Image Upload
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="add-favorite-btn favorites-upload-btn"
-                                            onClick={() => navigate('/upload')}
-                                        >
-                                            Video Upload
-                                        </button>
-                                    </div>
                                 </div>
-                                <div className="favorite-pages-new">
+                                <div className="favorite-pages-row">
+                                    <span className="favorite-pages-gutter" aria-hidden="true" />
                                     <input
                                         type="text"
                                         placeholder="New page name"
                                         value={newPageName}
                                         onChange={(e) => setNewPageName(e.target.value)}
-                                        className="favorite-pages-input favorite-pages-input--name"
+                                        className="favorite-pages-input favorite-pages-input--name favorite-pages-ctrl"
                                     />
                                     <button
                                         type="button"
