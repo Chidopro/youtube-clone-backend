@@ -6,7 +6,7 @@ import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
 import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../utils/userService';
-import { getBackendUrl } from '../../config/apiConfig';
+import { getBackendUrl, apiJoin } from '../../config/apiConfig';
 import { requestVideoOptimize } from '../../utils/videoOptimize';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
@@ -173,7 +173,7 @@ const Dashboard = ({ sidebar }) => {
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchParams] = useSearchParams();
-    const [activeTab, setActiveTab] = useState('videos');
+    const [activeTab, setActiveTab] = useState('favorites');
     const [umbrellaOnly, setUmbrellaOnly] = useState(false);
 
     // Open tab when URL has ?tab= (e.g. from navbar logo edit or FrameSnag "Add to Favorites")
@@ -189,6 +189,7 @@ const Dashboard = ({ sidebar }) => {
         }
         if (tab === 'personalization') setActiveTab('personalization');
         if (tab === 'analytics') setActiveTab('analytics');
+        if (tab === 'videos') setActiveTab('videos');
         if (tab === 'favorites') {
             setActiveTab('favorites');
             setShowPasteHint(true); // Show "press Ctrl+V" hint when sent from FrameSnag
@@ -223,6 +224,12 @@ const Dashboard = ({ sidebar }) => {
         return () => { cancelled = true; };
     }, [user?.id, userProfile?.role]);
 
+    useEffect(() => {
+        if (!umbrellaOnly && activeTab === 'videos') {
+            setActiveTab('favorites');
+        }
+    }, [umbrellaOnly, activeTab]);
+
     // Paste-from-FrameSnag: storefront owners only (umbrella collaborators upload manually)
     useEffect(() => {
         if (activeTab !== 'favorites' || umbrellaOnly) return;
@@ -236,6 +243,7 @@ const Dashboard = ({ sidebar }) => {
                     if (!blob) return;
                     const file = new File([blob], `framesnag-${Date.now()}.png`, { type: blob.type || 'image/png' });
                     setEditingFavorite(null);
+                    setThumbnailTargetVideoId('');
                     setNewFavorite({
                         title: 'From FrameSnag',
                         description: '',
@@ -270,6 +278,9 @@ const Dashboard = ({ sidebar }) => {
     const selectedFavoriteListIdRef = useRef(null);
     const [uploadingFavorite, setUploadingFavorite] = useState(false);
     const [showFavoriteModal, setShowFavoriteModal] = useState(false);
+    const [showPageUploadChooser, setShowPageUploadChooser] = useState(false);
+    const [thumbnailTargetVideoId, setThumbnailTargetVideoId] = useState('');
+    const [otherPageVideos, setOtherPageVideos] = useState([]);
     const [editingFavorite, setEditingFavorite] = useState(null);
     const [showPasteHint, setShowPasteHint] = useState(false);
     const [newFavorite, setNewFavorite] = useState({
@@ -484,6 +495,34 @@ const Dashboard = ({ sidebar }) => {
             localStorage.setItem('screenmerch_framesnag_origin', window.location.origin);
         } catch (_) {}
     };
+
+    const selectedFavoritePage = favoritePages.find((p) => p.id === selectedFavoriteListId) || null;
+    const pageVideosUserId = selectedFavoritePage?.is_collaborator_page
+        ? (selectedFavoritePage.owner_user_id || null)
+        : (user?.id || null);
+    const pageVideos = pageVideosUserId && String(pageVideosUserId) === String(user?.id)
+        ? videos
+        : otherPageVideos;
+
+    useEffect(() => {
+        if (!pageVideosUserId || String(pageVideosUserId) === String(user?.id)) {
+            setOtherPageVideos([]);
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch(
+                    `${apiJoin('/api/videos')}?user_id=${encodeURIComponent(pageVideosUserId)}&limit=100`
+                );
+                const data = res.ok ? await res.json().catch(() => []) : [];
+                if (!cancelled) setOtherPageVideos(Array.isArray(data) ? data : []);
+            } catch (_) {
+                if (!cancelled) setOtherPageVideos([]);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [pageVideosUserId, user?.id]);
 
     useEffect(() => {
         selectedFavoriteListIdRef.current = selectedFavoriteListId;
@@ -755,18 +794,59 @@ const Dashboard = ({ sidebar }) => {
     const resetFavoriteModal = () => {
         setShowFavoriteModal(false);
         setEditingFavorite(null);
+        setThumbnailTargetVideoId('');
         setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
     };
 
     const openFavoriteUploadModal = () => {
+        setShowPageUploadChooser(false);
         setEditingFavorite(null);
+        setThumbnailTargetVideoId('');
         setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
         setShowFavoriteModal(true);
+    };
+
+    const openPageUploadChooser = () => {
+        setShowPageUploadChooser(true);
+    };
+
+    const ownVideosForThumbnail = videos.filter((v) => String(v.user_id || user?.id) === String(user?.id));
+
+    const applyUploadedImageAsThumbnail = async (imageUrl) => {
+        const videoId = thumbnailTargetVideoId;
+        if (!videoId || !imageUrl) return '';
+        try {
+            const result = await AdminService.updateVideo(videoId, { thumbnail: imageUrl });
+            if (result.success) {
+                setVideos((prev) => prev.map((v) => (
+                    String(v.id) === String(videoId) ? { ...v, thumbnail: imageUrl } : v
+                )));
+                return ' Thumbnail applied to the selected video.';
+            }
+        } catch (err) {
+            console.error('Error applying video thumbnail:', err);
+        }
+        return ' Image saved, but the video thumbnail could not be updated.';
+    };
+
+    const openVideoForMerch = (video) => {
+        const merchData = {
+            thumbnail: video.thumbnail || video.thumbnail_url || '',
+            screenshots: video.screenshots || [],
+            videoUrl: video.video_url || '',
+            videoTitle: video.title || 'Unknown Video',
+            creatorName: userProfile?.display_name || userProfile?.username || 'Unknown Creator',
+            videoId: video.id,
+        };
+        localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+        localStorage.setItem('creator_favorites_mode', 'true');
+        navigate('/product/browse?category=mens&creatorMode=favorites');
     };
 
     const handleEditFavorite = (favorite, event) => {
         event.stopPropagation();
         setEditingFavorite(favorite);
+        setThumbnailTargetVideoId('');
         setNewFavorite({
             title: favorite.title || '',
             description: favorite.description || '',
@@ -871,8 +951,10 @@ const Dashboard = ({ sidebar }) => {
             if (json.favorite) {
                 setFavorites(prev => prev.map(fav => fav.id === editingFavorite.id ? { ...fav, ...json.favorite } : fav));
             }
+            const imageUrl = json.favorite?.image_url || json.favorite?.thumbnail_url || editingFavorite?.image_url;
+            const extra = await applyUploadedImageAsThumbnail(imageUrl);
             resetFavoriteModal();
-            alert('Image updated successfully!');
+            alert('Image updated successfully!' + extra);
         } catch (error) {
             console.error('Error updating favorite:', error);
             alert(`Failed to update image: ${error.message || 'Unknown error'}`);
@@ -944,8 +1026,9 @@ const Dashboard = ({ sidebar }) => {
                         setUser(merged);
                     }
                     setFavorites(prev => [json.favorite, ...prev]);
+                    const extra = await applyUploadedImageAsThumbnail(json.favorite?.image_url || json.favorite?.thumbnail_url);
                     resetFavoriteModal();
-                    alert('Favorite uploaded successfully!');
+                    alert('Favorite uploaded successfully!' + extra);
                 } else {
                     alert(json.error || 'Upload failed');
                 }
@@ -1030,8 +1113,9 @@ const Dashboard = ({ sidebar }) => {
                         alert(`Failed to save favorite: ${retryError.message || 'Unknown error'}.`);
                     } else {
                         setFavorites(prev => [retryData_result, ...prev]);
+                        const extra = await applyUploadedImageAsThumbnail(publicUrl);
                         resetFavoriteModal();
-                        alert('Favorite uploaded successfully!');
+                        alert('Favorite uploaded successfully!' + extra);
                     }
                 } else {
                     alert(`Failed to save favorite: ${error.message || 'Unknown error'}`);
@@ -1039,8 +1123,9 @@ const Dashboard = ({ sidebar }) => {
             } else {
                 console.log('Favorite saved successfully:', data);
                 setFavorites(prev => [data, ...prev]);
+                const extra = await applyUploadedImageAsThumbnail(publicUrl);
                 resetFavoriteModal();
-                alert('Favorite uploaded successfully!');
+                alert('Favorite uploaded successfully!' + extra);
             }
         } catch (error) {
             console.error('Error uploading favorite:', error);
@@ -1640,19 +1725,21 @@ const Dashboard = ({ sidebar }) => {
         <div className={`dashboard-container ${sidebar ? "" : " large-container"}`}>
             {/* Tab Navigation */}
             <div className="dashboard-tabs">
+                {umbrellaOnly ? (
                 <button 
                     className={`tab-button ${activeTab === 'videos' ? 'active' : ''}`}
                     onClick={() => setActiveTab('videos')}
                 >
                     📹 Videos ({videos.length})
                 </button>
+                ) : null}
                 <button 
                     className={`tab-button ${activeTab === 'favorites' ? 'active' : ''}`}
                     onClick={() => {
                         setActiveTab('favorites');
                     }}
                 >
-                    ⭐ Pages ({favorites.length})
+                    ⭐ Pages ({favoritePages.length})
                 </button>
                 {umbrellaOnly ? (
                 <button
@@ -1703,7 +1790,7 @@ const Dashboard = ({ sidebar }) => {
             {/* Tab Content */}
             <div className="tab-content">
                 {/* Videos Tab */}
-                {activeTab === 'videos' && (
+                {umbrellaOnly && activeTab === 'videos' && (
                     <div className="videos-tab">
                         {/* Getting Started Tips - Moved to top */}
                         <div className="getting-started-section">
@@ -1911,7 +1998,7 @@ const Dashboard = ({ sidebar }) => {
                             <button
                                 type="button"
                                 className="add-favorite-btn favorites-upload-btn"
-                                onClick={openFavoriteUploadModal}
+                                onClick={openPageUploadChooser}
                             >
                                 Upload
                             </button>
@@ -1950,6 +2037,125 @@ const Dashboard = ({ sidebar }) => {
                             </div>
                         )}
 
+                        <section className="page-media-section" aria-label="Images on this page">
+                            <h3>Images ({favorites.length})</h3>
+                            {favorites.length > 0 ? (
+                                <div className="page-media-scroller">
+                                    {favorites.map((favorite) => (
+                                        <div
+                                            key={favorite.id}
+                                            className="dashboard-video-card"
+                                        >
+                                            <span className="page-item-badge page-item-badge--image">Image</span>
+                                            <img
+                                                src={favorite.image_url || favorite.thumbnail_url || 'https://via.placeholder.com/320x180?text=No+Image'}
+                                                alt={favorite.title}
+                                                className="dashboard-video-thumbnail"
+                                            />
+                                            <div className="dashboard-video-info">
+                                                <h4>{favorite.title}</h4>
+                                                {favorite.description && <p>{favorite.description}</p>}
+                                                <span className="video-views">{new Date(favorite.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            {userProfile?.role === 'creator' && !umbrellaOnly && favoritePages.length > 1 && (
+                                                <div className="favorite-card-page-row">
+                                                    <label htmlFor={`fav-list-${favorite.id}`}>Page</label>
+                                                    <select
+                                                        id={`fav-list-${favorite.id}`}
+                                                        className="favorite-card-list-select"
+                                                        value={String(favorite.list_id || selectedFavoriteListId || favoritePages[0]?.id || '')}
+                                                        disabled={movingFavoriteId === favorite.id || savingFavoritePage}
+                                                        onChange={(e) => {
+                                                            const v = e.target.value;
+                                                            handleMoveFavoriteToList(favorite, v);
+                                                        }}
+                                                    >
+                                                        {favoritePages.map((p) => (
+                                                            <option key={p.id} value={p.id}>
+                                                                {favoritePageSelectLabel(p)}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                            <button
+                                                className="make-merch-btn-favorite-dashboard"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleMakeMerchFromFavorite(favorite);
+                                                }}
+                                            >
+                                                Make Merch
+                                            </button>
+                                            <button
+                                                className="edit-video-btn"
+                                                onClick={(e) => handleEditFavorite(favorite, e)}
+                                                title="Edit Image"
+                                            >
+                                                ✏️
+                                            </button>
+                                            <button
+                                                className="delete-video-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteFavorite(favorite.id, favorite.title);
+                                                }}
+                                                title="Delete Favorite"
+                                            >
+                                                🗑️
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="page-media-empty">No images on this page yet. Use Upload to add artwork, screenshots, or a custom thumbnail.</p>
+                            )}
+                        </section>
+
+                        <section className="page-media-section" aria-label="Videos on this page">
+                            <h3>Videos ({pageVideos.length})</h3>
+                            {pageVideos.length > 0 ? (
+                                <div className="page-media-scroller">
+                                    {pageVideos.map((video) => {
+                                        const canManage = String(video.user_id || '') === String(user?.id || '');
+                                        return (
+                                            <div
+                                                key={video.id}
+                                                className="dashboard-video-card"
+                                                onClick={() => {
+                                                    if (canManage) openVideoForMerch(video);
+                                                    else navigate(`/video/${video.categoryId || 0}/${video.id}`);
+                                                }}
+                                            >
+                                                <span className="page-item-badge">Video</span>
+                                                <img
+                                                    src={video.thumbnail || video.thumbnail_url || 'https://via.placeholder.com/320x180?text=No+Thumbnail'}
+                                                    alt={video.title}
+                                                    className="dashboard-video-thumbnail"
+                                                />
+                                                <div className="dashboard-video-info">
+                                                    <h4>{video.title}</h4>
+                                                    <span className="video-views">{video.created_at ? new Date(video.created_at).toLocaleDateString() : ''}</span>
+                                                </div>
+                                                {canManage ? (
+                                                    <>
+                                                        <button className="edit-video-btn" onClick={(e) => handleEditVideo(video, e)} title="Edit Video">
+                                                            ✏️
+                                                        </button>
+                                                        <button className="delete-video-btn" onClick={(e) => handleDeleteVideo(video.id, video.title, e)} title="Delete Video">
+                                                            🗑️
+                                                        </button>
+                                                    </>
+                                                ) : null}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <p className="page-media-empty">No videos on this page yet. Use Upload to add a video.</p>
+                            )}
+                        </section>
+
                         {/* FrameSnag — storefront owners only */}
                         {!umbrellaOnly && (
                         <div className="framesnag-promo-section">
@@ -1982,100 +2188,17 @@ const Dashboard = ({ sidebar }) => {
                             </div>
                         </div>
                         )}
-
-                                                {favorites.length > 0 ? (
-                            <div className="dashboard-video-grid">
-                                {favorites.map(favorite => (
-                                    <div 
-                                        key={favorite.id} 
-                                        className="dashboard-video-card"
-                                    >
-                                        <img 
-                                            src={favorite.image_url || favorite.thumbnail_url || 'https://via.placeholder.com/320x180?text=No+Image'} 
-                                            alt={favorite.title} 
-                                            className="dashboard-video-thumbnail" 
-                                        />
-                                        <div className="dashboard-video-info">
-                                            <h4>{favorite.title}</h4>
-                                            {favorite.description && <p>{favorite.description}</p>}
-                                            <span className="video-views">{new Date(favorite.created_at).toLocaleDateString()}</span>
-                                        </div>
-                                        {userProfile?.role === 'creator' && !umbrellaOnly && favoritePages.length > 1 && (
-                                            <div className="favorite-card-page-row">
-                                                <label htmlFor={`fav-list-${favorite.id}`}>Page</label>
-                                                <select
-                                                    id={`fav-list-${favorite.id}`}
-                                                    className="favorite-card-list-select"
-                                                    value={String(favorite.list_id || selectedFavoriteListId || favoritePages[0]?.id || '')}
-                                                    disabled={movingFavoriteId === favorite.id || savingFavoritePage}
-                                                    onChange={(e) => {
-                                                        const v = e.target.value;
-                                                        handleMoveFavoriteToList(favorite, v);
-                                                    }}
-                                                >
-                                                    {favoritePages.map((p) => (
-                                                        <option key={p.id} value={p.id}>
-                                                            {favoritePageSelectLabel(p)}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        )}
-                                        <button 
-                                            className="make-merch-btn-favorite-dashboard"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleMakeMerchFromFavorite(favorite);
-                                            }}
-                                        >
-                                            Make Merch
-                                        </button>
-                                        <button
-                                            className="edit-video-btn"
-                                            onClick={(e) => handleEditFavorite(favorite, e)}
-                                            title="Edit Image"
-                                        >
-                                            ✏️
-                                        </button>
-                                        <button 
-                                            className="delete-video-btn" 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteFavorite(favorite.id, favorite.title);
-                                            }} 
-                                            title="Delete Favorite"
-                                        >
-                                            🗑️
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className={`no-videos-placeholder${umbrellaOnly ? ' no-videos-placeholder--umbrella' : ''}`}>
-                                <div className="placeholder-content">
-                                    <h3>No pages content yet</h3>
-                                    <p>Upload your images and videos for users to create merchandise with!</p>
-                                    {!umbrellaOnly && (
-                                    <div className="umbrella-fav-under-actions">
-                                        <button
-                                            className="add-favorite-btn"
-                                            onClick={openFavoriteUploadModal}
-                                        >
-                                            Upload image
-                                        </button>
-                                    </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
                         
                         {/* Favorite Upload Modal — portaled so sticky navbar cannot cover it */}
                         {showFavoriteModal && createPortal(
                             <div className="favorite-modal-overlay" onClick={resetFavoriteModal}>
                                 <div className="favorite-modal-content" onClick={(e) => e.stopPropagation()} ref={modalContentRef}>
                                     <span className="favorite-modal-close" onClick={resetFavoriteModal}>&times;</span>
-                                    <h2>{editingFavorite ? 'Edit Image' : 'Upload Favorite Image'}</h2>
+                                    <h2>{editingFavorite ? 'Edit Image' : 'Upload Image'}</h2>
                                 <div className="upload-form">
+                                    <p className="edit-video-tip">
+                                        Add page artwork, or upload a catchy thumbnail you created and apply it to a video below.
+                                    </p>
                                     <div className="form-group">
                                         <label>Title *</label>
                                         <input
@@ -2125,6 +2248,27 @@ const Dashboard = ({ sidebar }) => {
                                             />
                                         )}
                                     </div>
+                                    {ownVideosForThumbnail.length > 0 ? (
+                                        <div className="form-group">
+                                            <label htmlFor="favorite-thumb-video">Use as video thumbnail (optional)</label>
+                                            <select
+                                                id="favorite-thumb-video"
+                                                className="favorite-thumb-video-select"
+                                                value={thumbnailTargetVideoId}
+                                                onChange={(e) => setThumbnailTargetVideoId(e.target.value)}
+                                            >
+                                                <option value="">Don&apos;t apply as a thumbnail</option>
+                                                {ownVideosForThumbnail.map((v) => (
+                                                    <option key={v.id} value={v.id}>
+                                                        {v.title || 'Untitled video'}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="edit-video-tip">
+                                                Choose a video if this image is a catchy thumbnail you created.
+                                            </p>
+                                        </div>
+                                    ) : null}
                                     <div className="form-actions">
                                         <button 
                                             className="save-btn" 
@@ -2133,7 +2277,7 @@ const Dashboard = ({ sidebar }) => {
                                         >
                                             {uploadingFavorite
                                                 ? (editingFavorite ? 'Saving...' : 'Uploading...')
-                                                : (editingFavorite ? 'Save Changes' : 'Upload Favorite')}
+                                                : (editingFavorite ? 'Save Changes' : 'Upload Image')}
                                         </button>
                                         <button 
                                             className="cancel-btn" 
@@ -2143,6 +2287,37 @@ const Dashboard = ({ sidebar }) => {
                                         </button>
                                     </div>
                                 </div>
+                                </div>
+                            </div>,
+                            document.body
+                        )}
+                        {showPageUploadChooser && createPortal(
+                            <div className="favorite-modal-overlay" onClick={() => setShowPageUploadChooser(false)}>
+                                <div className="favorite-modal-content page-upload-chooser" onClick={(e) => e.stopPropagation()}>
+                                    <span className="favorite-modal-close" onClick={() => setShowPageUploadChooser(false)}>&times;</span>
+                                    <h2>Upload</h2>
+                                    <p className="edit-video-tip">Choose video or image. Images can also be used as a custom video thumbnail.</p>
+                                    <div className="page-upload-chooser-options">
+                                        <button
+                                            type="button"
+                                            className="page-upload-choice"
+                                            onClick={openFavoriteUploadModal}
+                                        >
+                                            <strong>Image</strong>
+                                            <span>Page artwork, merch, or a catchy video thumbnail</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="page-upload-choice"
+                                            onClick={() => {
+                                                setShowPageUploadChooser(false);
+                                                navigate('/upload');
+                                            }}
+                                        >
+                                            <strong>Video</strong>
+                                            <span>Upload a video to this storefront</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>,
                             document.body

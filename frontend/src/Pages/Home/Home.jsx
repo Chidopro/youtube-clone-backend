@@ -247,7 +247,8 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           </Link>
         ) : null}
 
-        {/* User Flow Section — hidden on creator storefronts via body.creator-storefront CSS */}
+        {/* User Flow Section — hidden on main site; also hidden on storefronts via CSS */}
+        {!isMainSite ? (
         <div
           className="user-flow-section"
           onMouseEnter={() => setIsHovering(true)}
@@ -298,6 +299,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
             </div>
           </div>
         </div>
+        ) : null}
 
         <ColorPickerModal
           isOpen={showColorPicker}
@@ -347,13 +349,13 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
                   className={`storefront-empty-card${canEdit ? ' storefront-empty-card--clickable' : ''}`}
                   role={canEdit ? 'button' : undefined}
                   tabIndex={canEdit ? 0 : undefined}
-                  onClick={canEdit ? () => navigate('/dashboard?tab=videos') : undefined}
+                  onClick={canEdit ? () => navigate('/dashboard?tab=favorites') : undefined}
                   onKeyDown={
                     canEdit
                       ? (e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            navigate('/dashboard?tab=videos');
+                            navigate('/dashboard?tab=favorites');
                           }
                         }
                       : undefined

@@ -62,6 +62,112 @@
     gap: 20px;
 }
 
+.page-media-section {
+    margin: 0 0 22px;
+}
+
+.page-media-section h3 {
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+    color: #222;
+}
+
+.page-media-scroller {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 4px 14px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+}
+
+.page-media-scroller .dashboard-video-card {
+    flex: 0 0 260px;
+    width: 260px;
+    max-width: 260px;
+    scroll-snap-align: start;
+}
+
+.page-media-empty {
+    margin: 0 0 8px;
+    color: #6b7280;
+    font-size: 0.92rem;
+}
+
+.page-item-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.page-item-badge--image {
+    background: rgba(102, 126, 234, 0.92);
+}
+
+.page-upload-chooser {
+    max-width: 480px;
+}
+
+.page-upload-chooser-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.page-upload-choice {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 18px 14px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.page-upload-choice:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+
+.page-upload-choice strong {
+    font-size: 1.05rem;
+    color: #1f2937;
+}
+
+.page-upload-choice span {
+    font-size: 0.88rem;
+    color: #6b7280;
+    line-height: 1.35;
+}
+
+@media (max-width: 560px) {
+    .page-upload-chooser-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+.favorite-thumb-video-select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: #fff;
+}
+
 .dashboard-video-card {
     background: #f8f9fa;
     border-radius: 8px;
