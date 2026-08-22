@@ -114,51 +114,6 @@
     background: rgba(102, 126, 234, 0.92);
 }
 
-.page-upload-chooser {
-    max-width: 480px;
-}
-
-.page-upload-chooser-options {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 8px;
-}
-
-.page-upload-choice {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    text-align: left;
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
-    padding: 18px 14px;
-    background: #fff;
-    cursor: pointer;
-}
-
-.page-upload-choice:hover {
-    border-color: #667eea;
-    background: #f8f9ff;
-}
-
-.page-upload-choice strong {
-    font-size: 1.05rem;
-    color: #1f2937;
-}
-
-.page-upload-choice span {
-    font-size: 0.88rem;
-    color: #6b7280;
-    line-height: 1.35;
-}
-
-@media (max-width: 560px) {
-    .page-upload-chooser-options {
-        grid-template-columns: 1fr;
-    }
-}
-
 .favorite-thumb-video-select {
     width: 100%;
     padding: 8px 10px;
@@ -3283,6 +3238,17 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 10px 14px;
+}
+
+.favorite-pages-upload-btns {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.favorite-pages-choose-row .favorites-upload-btn {
+    align-self: center;
 }
 
 .favorite-pages-label {

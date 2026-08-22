@@ -278,7 +278,6 @@ const Dashboard = ({ sidebar }) => {
     const selectedFavoriteListIdRef = useRef(null);
     const [uploadingFavorite, setUploadingFavorite] = useState(false);
     const [showFavoriteModal, setShowFavoriteModal] = useState(false);
-    const [showPageUploadChooser, setShowPageUploadChooser] = useState(false);
     const [thumbnailTargetVideoId, setThumbnailTargetVideoId] = useState('');
     const [otherPageVideos, setOtherPageVideos] = useState([]);
     const [editingFavorite, setEditingFavorite] = useState(null);
@@ -799,15 +798,10 @@ const Dashboard = ({ sidebar }) => {
     };
 
     const openFavoriteUploadModal = () => {
-        setShowPageUploadChooser(false);
         setEditingFavorite(null);
         setThumbnailTargetVideoId('');
         setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
         setShowFavoriteModal(true);
-    };
-
-    const openPageUploadChooser = () => {
-        setShowPageUploadChooser(true);
     };
 
     const ownVideosForThumbnail = videos.filter((v) => String(v.user_id || user?.id) === String(user?.id));
@@ -1974,6 +1968,22 @@ const Dashboard = ({ sidebar }) => {
                                             Delete page
                                         </button>
                                     )}
+                                    <div className="favorite-pages-upload-btns">
+                                        <button
+                                            type="button"
+                                            className="add-favorite-btn favorites-upload-btn"
+                                            onClick={openFavoriteUploadModal}
+                                        >
+                                            Image Upload
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="add-favorite-btn favorites-upload-btn"
+                                            onClick={() => navigate('/upload')}
+                                        >
+                                            Video Upload
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="favorite-pages-new">
                                     <input
@@ -1994,15 +2004,6 @@ const Dashboard = ({ sidebar }) => {
                                 </div>
                             </div>
                         )}
-                            {!umbrellaOnly && (
-                            <button
-                                type="button"
-                                className="add-favorite-btn favorites-upload-btn"
-                                onClick={openPageUploadChooser}
-                            >
-                                Upload
-                            </button>
-                            )}
                         </div>
                         {umbrellaOnly && (
                             <div className="umbrella-fav-under-actions umbrella-fav-under-actions--below-bar">
@@ -2287,37 +2288,6 @@ const Dashboard = ({ sidebar }) => {
                                         </button>
                                     </div>
                                 </div>
-                                </div>
-                            </div>,
-                            document.body
-                        )}
-                        {showPageUploadChooser && createPortal(
-                            <div className="favorite-modal-overlay" onClick={() => setShowPageUploadChooser(false)}>
-                                <div className="favorite-modal-content page-upload-chooser" onClick={(e) => e.stopPropagation()}>
-                                    <span className="favorite-modal-close" onClick={() => setShowPageUploadChooser(false)}>&times;</span>
-                                    <h2>Upload</h2>
-                                    <p className="edit-video-tip">Choose video or image. Images can also be used as a custom video thumbnail.</p>
-                                    <div className="page-upload-chooser-options">
-                                        <button
-                                            type="button"
-                                            className="page-upload-choice"
-                                            onClick={openFavoriteUploadModal}
-                                        >
-                                            <strong>Image</strong>
-                                            <span>Page artwork, merch, or a catchy video thumbnail</span>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="page-upload-choice"
-                                            onClick={() => {
-                                                setShowPageUploadChooser(false);
-                                                navigate('/upload');
-                                            }}
-                                        >
-                                            <strong>Video</strong>
-                                            <span>Upload a video to this storefront</span>
-                                        </button>
-                                    </div>
                                 </div>
                             </div>,
                             document.body
