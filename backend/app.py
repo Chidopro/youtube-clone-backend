@@ -9615,6 +9615,7 @@ def favorite_lists_mine():
                 (L.get("display_name") or "").lower(),
             )
         )
+        lists = [_scrub_owner_fee_tagline(L) for L in lists]
         return jsonify(
             {
                 "success": True,
@@ -10007,7 +10008,7 @@ def public_favorites_by_list():
             .order("created_at", desc=True)
             .execute()
         )
-        return jsonify({"success": True, "list": row, "favorites": fr.data or []}), 200
+        return jsonify({"success": True, "list": _scrub_owner_fee_tagline(row), "favorites": fr.data or []}), 200
     except Exception as e:
         logger.exception("public_favorites_by_list: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
@@ -10060,6 +10061,11 @@ def _default_umbrella_owner_fee():
     return {"fee_type": "none", "fee_value": 0}
 
 
+# Fee table was never created in production. Rates are stored on the collaborator
+# page's unused page_tagline until umbrella_owner_fee_settings exists.
+_OWNER_FEE_TAG_PREFIX = "__SMFEE__"
+
+
 def _normalize_owner_fee_row(row):
     from utils.payout import normalize_owner_collab_fee
 
@@ -10069,10 +10075,55 @@ def _normalize_owner_fee_row(row):
     return {"fee_type": t, "fee_value": v}
 
 
+def _fee_from_page_tagline(tagline):
+    raw = (tagline or "").strip()
+    if not raw.startswith(_OWNER_FEE_TAG_PREFIX):
+        return None
+    try:
+        payload = json.loads(raw[len(_OWNER_FEE_TAG_PREFIX):])
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return _normalize_owner_fee_row(payload)
+
+
+def _scrub_owner_fee_tagline(row):
+    """Hide internal fee blobs from API list payloads."""
+    if not isinstance(row, dict):
+        return row
+    tag = row.get("page_tagline")
+    if isinstance(tag, str) and tag.startswith(_OWNER_FEE_TAG_PREFIX):
+        row = dict(row)
+        row["page_tagline"] = None
+    return row
+
+
+def _load_owner_fees_from_list_taglines(storefront_owner_id):
+    out = {}
+    if not supabase_admin or not storefront_owner_id:
+        return out
+    try:
+        r = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("id, page_tagline")
+            .eq("storefront_owner_id", str(storefront_owner_id))
+            .execute()
+        )
+    except Exception as err:
+        logger.warning("owner fee tagline lookup failed: %s", err)
+        return out
+    for row in r.data or []:
+        parsed = _fee_from_page_tagline(row.get("page_tagline"))
+        if parsed and row.get("id"):
+            out[str(row["id"])] = parsed
+    return out
+
+
 def _get_umbrella_owner_fees_by_list(storefront_owner_id):
     """
     Map favorite_list_id → fee. Key None is the legacy storefront-wide fallback.
-    Missing table or column → empty map (no fee).
+    Missing table or column → empty map (no fee), then page_tagline fallback.
     """
     out = {}
     if not supabase_admin or not storefront_owner_id:
@@ -10088,7 +10139,6 @@ def _get_umbrella_owner_fees_by_list(storefront_owner_id):
             lid = row.get("favorite_list_id")
             key = str(lid) if lid else None
             out[key] = _normalize_owner_fee_row(row)
-        return out
     except Exception as err:
         err_s = str(err).lower()
         missing_col = "favorite_list_id" in err_s and (
@@ -10108,10 +10158,12 @@ def _get_umbrella_owner_fees_by_list(storefront_owner_id):
                     out[None] = _normalize_owner_fee_row(row)
             except Exception as fallback_err:
                 logger.warning("owner fee legacy lookup failed: %s", fallback_err)
-            return out
-        if "umbrella_owner_fee_settings" not in err_s and "does not exist" not in err_s:
+        elif "umbrella_owner_fee_settings" not in err_s and "does not exist" not in err_s:
             logger.warning("owner fee lookup failed: %s", err)
-        return out
+    tagline_fees = _load_owner_fees_from_list_taglines(storefront_owner_id)
+    for key, fee in tagline_fees.items():
+        out.setdefault(key, fee)
+    return out
 
 
 def _get_umbrella_owner_fee(storefront_owner_id, favorite_list_id=None):
@@ -10140,22 +10192,41 @@ def _save_umbrella_owner_fee(storefront_owner_id, favorite_list_id, fee_type, fe
         "fee_value": v,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
-    existing = (
-        supabase_admin.table("umbrella_owner_fee_settings")
-        .select("storefront_owner_id")
-        .eq("storefront_owner_id", str(storefront_owner_id))
-        .eq("favorite_list_id", list_id)
-        .limit(1)
-        .execute()
+    try:
+        existing = (
+            supabase_admin.table("umbrella_owner_fee_settings")
+            .select("storefront_owner_id")
+            .eq("storefront_owner_id", str(storefront_owner_id))
+            .eq("favorite_list_id", list_id)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            supabase_admin.table("umbrella_owner_fee_settings").update(
+                {"fee_type": t, "fee_value": v, "updated_at": row["updated_at"]}
+            ).eq("storefront_owner_id", str(storefront_owner_id)).eq(
+                "favorite_list_id", list_id
+            ).execute()
+        else:
+            supabase_admin.table("umbrella_owner_fee_settings").insert(row).execute()
+        return {"fee_type": t, "fee_value": v, "favorite_list_id": list_id}
+    except Exception as err:
+        err_s = str(err).lower()
+        table_missing = (
+            "umbrella_owner_fee_settings" in err_s
+            or "does not exist" in err_s
+            or ("favorite_list_id" in err_s and ("column" in err_s or "schema" in err_s))
+        )
+        if not table_missing:
+            raise
+        logger.warning("owner fee table unavailable, saving on favorite list: %s", err)
+
+    encoded = _OWNER_FEE_TAG_PREFIX + json.dumps(
+        {"fee_type": t, "fee_value": v}, separators=(",", ":")
     )
-    if existing.data:
-        supabase_admin.table("umbrella_owner_fee_settings").update(
-            {"fee_type": t, "fee_value": v, "updated_at": row["updated_at"]}
-        ).eq("storefront_owner_id", str(storefront_owner_id)).eq(
-            "favorite_list_id", list_id
-        ).execute()
-    else:
-        supabase_admin.table("umbrella_owner_fee_settings").insert(row).execute()
+    supabase_admin.table("creator_favorite_lists").update(
+        {"page_tagline": encoded, "updated_at": row["updated_at"]}
+    ).eq("id", list_id).eq("storefront_owner_id", str(storefront_owner_id)).execute()
     return {"fee_type": t, "fee_value": v, "favorite_list_id": list_id}
 
 
@@ -10490,20 +10561,9 @@ def favorite_lists_save_owner_fee():
         if not _is_collaborator_favorite_list(meta, user_id):
             return jsonify({"success": False, "error": "Owner fees only apply to umbrella collaborator pages"}), 400
 
-        try:
-            saved = _save_umbrella_owner_fee(
-                user_id, favorite_list_id, body.get("fee_type"), body.get("fee_value")
-            )
-        except Exception as save_err:
-            err_s = str(save_err).lower()
-            if "umbrella_owner_fee_settings" in err_s or "does not exist" in err_s or "favorite_list_id" in err_s:
-                return jsonify(
-                    {
-                        "success": False,
-                        "error": "Owner fee table missing per-collaborator column. Run backend/sql/umbrella_owner_fee_settings.sql in Supabase.",
-                    }
-                ), 503
-            raise
+        saved = _save_umbrella_owner_fee(
+            user_id, favorite_list_id, body.get("fee_type"), body.get("fee_value")
+        )
         from utils.payout import owner_collab_fee_per_item
 
         return jsonify(
