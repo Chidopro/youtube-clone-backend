@@ -1,5 +1,5 @@
 // frontend/src/Pages/Products/MerchandiseCategories.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './MerchandiseCategories.css';
 import '../Home/Home.css';
 import AuthModal from '../../Components/AuthModal/AuthModal';
@@ -7,6 +7,30 @@ import { useCreator } from '../../contexts/CreatorContext';
 
 const MerchandiseCategories = ({ sidebar }) => {
   const { creatorSettings } = useCreator();
+
+  useEffect(() => {
+    const prev = window.history.scrollRestoration;
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    const toTop = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      const main = document.querySelector('.main-content-area');
+      if (main) main.scrollTop = 0;
+    };
+    toTop();
+    const frame = requestAnimationFrame(toTop);
+    const timer = window.setTimeout(toTop, 0);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      if ('scrollRestoration' in window.history && prev) {
+        window.history.scrollRestoration = prev;
+      }
+    };
+  }, []);
   // Enable debug logs via ?debug=1
   if (new URLSearchParams(location.search).has('debug')) {
     window.__DEBUG__ = true;

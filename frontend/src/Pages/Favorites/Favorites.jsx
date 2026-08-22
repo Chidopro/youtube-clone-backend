@@ -164,6 +164,7 @@ const Favorites = ({ sidebar }) => {
     }
 
     navigate('/merchandise');
+    window.scrollTo(0, 0);
   };
 
   const openVideo = (video) => {

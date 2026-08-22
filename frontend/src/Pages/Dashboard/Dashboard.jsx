@@ -1162,6 +1162,7 @@ const Dashboard = ({ sidebar }) => {
         
         // Navigate to merchandise categories page
         navigate('/merchandise');
+        window.scrollTo(0, 0);
     };
 
     const handleDeleteFavorite = async (favoriteId, favoriteTitle) => {
