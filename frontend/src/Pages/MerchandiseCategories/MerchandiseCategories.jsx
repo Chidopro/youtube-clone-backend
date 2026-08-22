@@ -1,5 +1,5 @@
 // frontend/src/Pages/Products/MerchandiseCategories.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import './MerchandiseCategories.css';
 import '../Home/Home.css';
 import AuthModal from '../../Components/AuthModal/AuthModal';
@@ -8,8 +8,7 @@ import { useCreator } from '../../contexts/CreatorContext';
 const MerchandiseCategories = ({ sidebar }) => {
   const { creatorSettings } = useCreator();
 
-  useEffect(() => {
-    const prev = window.history.scrollRestoration;
+  useLayoutEffect(() => {
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }
@@ -22,13 +21,10 @@ const MerchandiseCategories = ({ sidebar }) => {
     };
     toTop();
     const frame = requestAnimationFrame(toTop);
-    const timer = window.setTimeout(toTop, 0);
+    const timers = [0, 50, 150, 350].map((ms) => window.setTimeout(toTop, ms));
     return () => {
       cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
-      if ('scrollRestoration' in window.history && prev) {
-        window.history.scrollRestoration = prev;
-      }
+      timers.forEach((id) => window.clearTimeout(id));
     };
   }, []);
   // Enable debug logs via ?debug=1

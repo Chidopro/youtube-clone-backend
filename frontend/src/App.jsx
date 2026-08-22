@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import Navbar from "./Components/Navbar/Navbar";
 import Footer from "./Components/Footer/Footer";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
@@ -250,6 +250,31 @@ const App = () => {
   useEffect(() => {
     setSidebar(false);
   }, [location.pathname]);
+
+  // Open each route at the true top so sticky header never covers the first heading.
+  // Video pages position themselves, so leave those alone.
+  useLayoutEffect(() => {
+    if (/^\/video\//.test(location.pathname)) return;
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    const toTop = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      const main = document.querySelector(".main-content-area");
+      if (main) main.scrollTop = 0;
+    };
+    toTop();
+    const frame = requestAnimationFrame(toTop);
+    const t1 = window.setTimeout(toTop, 50);
+    const t2 = window.setTimeout(toTop, 200);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [location.pathname, location.search]);
 
   // Hide main sidebar for third tier profile pages
   const shouldShowSidebar = sidebar && !(currentProfileTier?.isThirdTier);

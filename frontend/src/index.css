@@ -4,6 +4,10 @@
   box-sizing: border-box;
   font-family: sans-serif;
 }
+html {
+  scroll-padding-top: 80px;
+  overflow-anchor: none;
+}
 a{
   text-decoration: none;
   color: #5a5a5a;
