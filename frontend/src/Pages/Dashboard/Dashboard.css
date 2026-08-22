@@ -1038,6 +1038,13 @@
     gap: 10px;
 }
 
+.collab-fee-form {
+    flex: 1 1 100%;
+    margin-top: 6px;
+    padding-top: 10px;
+    border-top: 1px dashed #d7e8df;
+}
+
 .owner-fee-type {
     display: flex;
     flex-wrap: wrap;

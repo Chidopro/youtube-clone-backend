@@ -10060,40 +10060,82 @@ def _default_umbrella_owner_fee():
     return {"fee_type": "none", "fee_value": 0}
 
 
-def _get_umbrella_owner_fee(storefront_owner_id):
-    """Load the storefront owner's collaborator fee. Missing table → no fee."""
+def _normalize_owner_fee_row(row):
     from utils.payout import normalize_owner_collab_fee
 
+    t, v = normalize_owner_collab_fee(
+        (row or {}).get("fee_type"), (row or {}).get("fee_value")
+    )
+    return {"fee_type": t, "fee_value": v}
+
+
+def _get_umbrella_owner_fees_by_list(storefront_owner_id):
+    """
+    Map favorite_list_id → fee. Key None is the legacy storefront-wide fallback.
+    Missing table or column → empty map (no fee).
+    """
+    out = {}
     if not supabase_admin or not storefront_owner_id:
-        return _default_umbrella_owner_fee()
+        return out
     try:
         r = (
             supabase_admin.table("umbrella_owner_fee_settings")
-            .select("fee_type, fee_value")
+            .select("favorite_list_id, fee_type, fee_value")
             .eq("storefront_owner_id", str(storefront_owner_id))
-            .limit(1)
             .execute()
         )
-        row = (r.data or [None])[0]
-        if not row:
-            return _default_umbrella_owner_fee()
-        t, v = normalize_owner_collab_fee(row.get("fee_type"), row.get("fee_value"))
-        return {"fee_type": t, "fee_value": v}
+        for row in r.data or []:
+            lid = row.get("favorite_list_id")
+            key = str(lid) if lid else None
+            out[key] = _normalize_owner_fee_row(row)
+        return out
     except Exception as err:
         err_s = str(err).lower()
+        missing_col = "favorite_list_id" in err_s and (
+            "column" in err_s or "schema cache" in err_s
+        )
+        if missing_col:
+            try:
+                r = (
+                    supabase_admin.table("umbrella_owner_fee_settings")
+                    .select("fee_type, fee_value")
+                    .eq("storefront_owner_id", str(storefront_owner_id))
+                    .limit(1)
+                    .execute()
+                )
+                row = (r.data or [None])[0]
+                if row:
+                    out[None] = _normalize_owner_fee_row(row)
+            except Exception as fallback_err:
+                logger.warning("owner fee legacy lookup failed: %s", fallback_err)
+            return out
         if "umbrella_owner_fee_settings" not in err_s and "does not exist" not in err_s:
             logger.warning("owner fee lookup failed: %s", err)
-        return _default_umbrella_owner_fee()
+        return out
 
 
-def _save_umbrella_owner_fee(storefront_owner_id, fee_type, fee_value):
-    """Upsert storefront owner collaborator fee. Raises if the settings table is missing."""
+def _get_umbrella_owner_fee(storefront_owner_id, favorite_list_id=None):
+    """Load the fee for one collaborator page (or the legacy storefront-wide fee)."""
+    from utils.payout import resolve_owner_collab_fee
+
+    return resolve_owner_collab_fee(
+        _get_umbrella_owner_fees_by_list(storefront_owner_id),
+        favorite_list_id,
+    )
+
+
+def _save_umbrella_owner_fee(storefront_owner_id, favorite_list_id, fee_type, fee_value):
+    """Upsert per-collaborator owner fee. Raises if the settings table is missing."""
     from datetime import datetime, timezone
     from utils.payout import normalize_owner_collab_fee
 
+    if not favorite_list_id:
+        raise ValueError("favorite_list_id is required")
     t, v = normalize_owner_collab_fee(fee_type, fee_value)
+    list_id = str(favorite_list_id)
     row = {
         "storefront_owner_id": str(storefront_owner_id),
+        "favorite_list_id": list_id,
         "fee_type": t,
         "fee_value": v,
         "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -10102,16 +10144,19 @@ def _save_umbrella_owner_fee(storefront_owner_id, fee_type, fee_value):
         supabase_admin.table("umbrella_owner_fee_settings")
         .select("storefront_owner_id")
         .eq("storefront_owner_id", str(storefront_owner_id))
+        .eq("favorite_list_id", list_id)
         .limit(1)
         .execute()
     )
     if existing.data:
         supabase_admin.table("umbrella_owner_fee_settings").update(
             {"fee_type": t, "fee_value": v, "updated_at": row["updated_at"]}
-        ).eq("storefront_owner_id", str(storefront_owner_id)).execute()
+        ).eq("storefront_owner_id", str(storefront_owner_id)).eq(
+            "favorite_list_id", list_id
+        ).execute()
     else:
         supabase_admin.table("umbrella_owner_fee_settings").insert(row).execute()
-        return {"fee_type": t, "fee_value": v}
+    return {"fee_type": t, "fee_value": v, "favorite_list_id": list_id}
 
 
 @app.route("/api/favorite-lists/sales-summary", methods=["GET", "OPTIONS"])
@@ -10170,6 +10215,7 @@ def favorite_lists_sales_summary():
             apply_owner_fee_to_collab_totals,
             get_payout_for_sale,
             owner_collab_fee_per_item,
+            resolve_owner_collab_fee,
         )
 
         by_list = {}
@@ -10233,7 +10279,7 @@ def favorite_lists_sales_summary():
             lid for lid, meta in lists_map.items() if _is_collaborator_favorite_list(meta, uid)
         ]
         payouts_by_list = _umbrella_payouts_by_list(user_id, collab_list_ids)
-        owner_fee = _get_umbrella_owner_fee(user_id)
+        fees_by_list = _get_umbrella_owner_fees_by_list(user_id)
 
         out = []
         owner_pages = []
@@ -10247,9 +10293,10 @@ def favorite_lists_sales_summary():
             is_collab = _is_collaborator_favorite_list(meta, uid) if meta else False
             sale_lines = agg.get("sales") or []
             totals = aggregate_sales_payout_totals(sale_lines)
+            list_fee = resolve_owner_collab_fee(fees_by_list, lid) if is_collab else _default_umbrella_owner_fee()
             if is_collab:
                 totals = apply_owner_fee_to_collab_totals(
-                    totals, owner_fee["fee_type"], owner_fee["fee_value"]
+                    totals, list_fee["fee_type"], list_fee["fee_value"]
                 )
                 owner_fee_total += float(totals.get("owner_fee_amount") or 0)
                 collab_items_total += int(totals.get("order_count") or 0)
@@ -10309,7 +10356,11 @@ def favorite_lists_sales_summary():
                 "recent_sales": [],
             }
             if is_collab:
-                fee_per_item = owner_collab_fee_per_item(owner_fee["fee_type"], owner_fee["fee_value"])
+                fee_per_item = owner_collab_fee_per_item(list_fee["fee_type"], list_fee["fee_value"])
+                row_out["owner_fee_type"] = list_fee["fee_type"]
+                row_out["owner_fee_value"] = list_fee["fee_value"]
+                row_out["owner_fee_per_item"] = fee_per_item
+                row_out["owner_fee_amount"] = round(float(totals.get("owner_fee_amount") or 0), 2)
                 collab_recent = []
                 for s in sale_lines:
                     try:
@@ -10383,7 +10434,6 @@ def favorite_lists_sales_summary():
                 "owner_pages": owner_pages,
                 "owner_recent_sales": owner_recent_sales,
                 "collaborator_owed_total": round(collaborator_owed_total, 2),
-                "owner_fee": owner_fee,
                 "storefront_owner_summary": {
                     "gross_amount": owner_totals["gross_amount"],
                     "platform_fee_amount": owner_totals["platform_fee_amount"],
@@ -10393,11 +10443,6 @@ def favorite_lists_sales_summary():
                     "owner_fee_amount": owner_fee_total,
                     "owner_total_earnings": round(owner_page_payout + owner_fee_total, 2),
                     "collaborator_item_count": collab_items_total,
-                    "owner_fee_type": owner_fee["fee_type"],
-                    "owner_fee_value": owner_fee["fee_value"],
-                    "owner_fee_per_item": owner_collab_fee_per_item(
-                        owner_fee["fee_type"], owner_fee["fee_value"]
-                    ),
                 },
                 "payout_note": (
                     "ScreenMerch pays you when your pending earnings reach $50 or more. "
@@ -10412,7 +10457,7 @@ def favorite_lists_sales_summary():
 
 @app.route("/api/favorite-lists/owner-fee", methods=["POST", "OPTIONS"])
 def favorite_lists_save_owner_fee():
-    """Storefront owner sets a percentage or flat per-item fee on collaborator sales."""
+    """Storefront owner sets a percentage or flat per-item fee on one collaborator's sales."""
     if request.method == "OPTIONS":
         return jsonify(success=True)
     try:
@@ -10428,15 +10473,34 @@ def favorite_lists_save_owner_fee():
             return jsonify({"success": False, "error": "Umbrella collaborators cannot set storefront owner fees"}), 403
 
         body = request.get_json(silent=True) or {}
+        favorite_list_id = body.get("favorite_list_id")
+        if not favorite_list_id:
+            return jsonify({"success": False, "error": "favorite_list_id is required"}), 400
+
+        lr = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("id, owner_user_id, storefront_owner_id")
+            .eq("id", favorite_list_id)
+            .limit(1)
+            .execute()
+        )
+        meta = (lr.data or [None])[0]
+        if not meta or str(meta.get("storefront_owner_id") or "") != str(user_id):
+            return jsonify({"success": False, "error": "Favorites page not found on your storefront"}), 404
+        if not _is_collaborator_favorite_list(meta, user_id):
+            return jsonify({"success": False, "error": "Owner fees only apply to umbrella collaborator pages"}), 400
+
         try:
-            saved = _save_umbrella_owner_fee(user_id, body.get("fee_type"), body.get("fee_value"))
+            saved = _save_umbrella_owner_fee(
+                user_id, favorite_list_id, body.get("fee_type"), body.get("fee_value")
+            )
         except Exception as save_err:
             err_s = str(save_err).lower()
-            if "umbrella_owner_fee_settings" in err_s or "does not exist" in err_s:
+            if "umbrella_owner_fee_settings" in err_s or "does not exist" in err_s or "favorite_list_id" in err_s:
                 return jsonify(
                     {
                         "success": False,
-                        "error": "Owner fee table missing. Run backend/sql/umbrella_owner_fee_settings.sql in Supabase.",
+                        "error": "Owner fee table missing per-collaborator column. Run backend/sql/umbrella_owner_fee_settings.sql in Supabase.",
                     }
                 ), 503
             raise
@@ -10525,7 +10589,7 @@ def favorite_lists_record_collaborator_payout():
             sale_lines = sales_res.data or []
         except Exception:
             sale_lines = []
-        owner_fee = _get_umbrella_owner_fee(user_id)
+        owner_fee = _get_umbrella_owner_fee(user_id, favorite_list_id)
         pay_collaborator = apply_owner_fee_to_collab_totals(
             aggregate_sales_payout_totals(sale_lines),
             owner_fee["fee_type"],
@@ -10658,31 +10722,31 @@ def _storefront_collaborator_list_ids(storefront_owner_id):
 
 def _analytics_payout_fields_from_sales(sales_rows, storefront_owner_id=None):
     """Markup-based payout summary aligned with Umbrella tab (same $6/$6 model)."""
-    from utils.payout import apply_owner_fee_to_collab_totals, split_sales_payout_totals
+    from utils.payout import apply_per_list_owner_fees, split_sales_payout_totals
 
     collab_ids = _storefront_collaborator_list_ids(storefront_owner_id) if storefront_owner_id else set()
     splits = split_sales_payout_totals(sales_rows, collab_ids)
     all_t = splits["all"]
     owner_t = splits["owner_direct"]
-    collab_t = splits["collaborator_attributed"]
-    owner_fee = _get_umbrella_owner_fee(storefront_owner_id) if storefront_owner_id else _default_umbrella_owner_fee()
-    collab_adj = apply_owner_fee_to_collab_totals(
-        collab_t, owner_fee["fee_type"], owner_fee["fee_value"]
+    collab_lines = [
+        ln
+        for ln in (sales_rows or [])
+        if str(ln.get("favorite_list_id") or "") in collab_ids
+    ]
+    fees_by_list = (
+        _get_umbrella_owner_fees_by_list(storefront_owner_id) if storefront_owner_id else {}
     )
+    collab_pay, owner_fee_amount = apply_per_list_owner_fees(collab_lines, fees_by_list)
     owner_page = float(owner_t["pay_collaborator_amount"] or 0)
-    owner_fee_amount = float(collab_adj.get("owner_fee_amount") or 0)
     return {
         "gross_amount": all_t["gross_amount"],
         "platform_fee_amount": all_t["platform_fee_amount"],
         "merch_cost_amount": all_t["merch_cost_amount"],
         "owner_net_payout": round(owner_page, 2),
-        "collaborator_pay_total": collab_adj["pay_collaborator_amount"],
+        "collaborator_pay_total": collab_pay,
         "owner_page_payout": round(owner_page, 2),
         "owner_fee_amount": round(owner_fee_amount, 2),
         "owner_total_earnings": round(owner_page + owner_fee_amount, 2),
-        "owner_fee_type": owner_fee["fee_type"],
-        "owner_fee_value": owner_fee["fee_value"],
-        "owner_fee_per_item": collab_adj.get("owner_fee_per_item", 0),
     }
 
 
@@ -11016,7 +11080,7 @@ def favorite_lists_my_analytics():
                 if isinstance(item, dict)
             ]
         # Single source of truth for collaborator + platform ($6 / $6 on standard items)
-        owner_fee = _get_umbrella_owner_fee(owner_id)
+        owner_fee = _get_umbrella_owner_fee(owner_id, member_list["id"])
         payout_totals = apply_owner_fee_to_collab_totals(
             aggregate_sales_payout_totals(page_sales),
             owner_fee["fee_type"],

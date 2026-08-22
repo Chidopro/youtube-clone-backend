@@ -214,3 +214,40 @@ def apply_owner_fee_to_collab_totals(collab_totals, fee_type, fee_value):
     totals["owner_fee_type"] = t
     totals["owner_fee_value"] = v
     return totals
+
+
+def resolve_owner_collab_fee(fees_by_list, favorite_list_id=None):
+    """Per-collaborator fee, else storefront-wide fallback, else no fee."""
+    fees_by_list = fees_by_list or {}
+    if favorite_list_id not in (None, ""):
+        keyed = fees_by_list.get(str(favorite_list_id))
+        if keyed:
+            return keyed
+    fallback = fees_by_list.get(None) or fees_by_list.get("")
+    if fallback:
+        return fallback
+    return {"fee_type": "none", "fee_value": 0.0}
+
+
+def apply_per_list_owner_fees(collab_lines, fees_by_list):
+    """
+    Apply a possibly different owner fee to each collaborator's sales and sum.
+
+    Returns (adjusted_collab_pay_total, owner_fee_total).
+    """
+    grouped = {}
+    for line in collab_lines or []:
+        key = str(line.get("favorite_list_id") or "")
+        grouped.setdefault(key, []).append(line)
+    pay_total = 0.0
+    fee_total = 0.0
+    for flid, lines in grouped.items():
+        fee = resolve_owner_collab_fee(fees_by_list, flid or None)
+        adj = apply_owner_fee_to_collab_totals(
+            aggregate_sales_payout_totals(lines),
+            fee.get("fee_type"),
+            fee.get("fee_value"),
+        )
+        pay_total += float(adj.get("pay_collaborator_amount") or 0)
+        fee_total += float(adj.get("owner_fee_amount") or 0)
+    return round(pay_total, 2), round(fee_total, 2)

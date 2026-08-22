@@ -56,6 +56,81 @@ function ownerFeePerItem(feeType, feeValue) {
     return 0;
 }
 
+function CollaboratorFeeForm({
+    listId,
+    feeType,
+    feeValue,
+    onTypeChange,
+    onValueChange,
+    onSave,
+    saving,
+    message,
+}) {
+    const perItem = ownerFeePerItem(feeType, feeValue);
+    const collabKeeps = Math.max(0, COLLAB_SHARE_PER_ITEM - perItem);
+    const preview =
+        feeType === 'none' || perItem <= 0
+            ? 'This creator keeps the full $6.00 per item.'
+            : `You keep $${perItem.toFixed(2)} of each item; they keep $${collabKeeps.toFixed(2)}.`;
+    const radioName = `owner-fee-type-${listId}`;
+    return (
+        <form className="owner-fee-form collab-fee-form" onSubmit={onSave}>
+            <div className="owner-fee-type" role="radiogroup" aria-label="Sales fee for this creator">
+                <label>
+                    <input
+                        type="radio"
+                        name={radioName}
+                        checked={feeType === 'none'}
+                        onChange={() => onTypeChange('none')}
+                    />
+                    No extra fee
+                </label>
+                <label>
+                    <input
+                        type="radio"
+                        name={radioName}
+                        checked={feeType === 'percent'}
+                        onChange={() => onTypeChange('percent')}
+                    />
+                    Percentage
+                </label>
+                <label>
+                    <input
+                        type="radio"
+                        name={radioName}
+                        checked={feeType === 'flat'}
+                        onChange={() => onTypeChange('flat')}
+                    />
+                    Flat rate / item
+                </label>
+            </div>
+            {feeType !== 'none' ? (
+                <label className="owner-fee-value-label">
+                    {feeType === 'percent' ? 'Percent of $6.00 share' : 'Dollars per item sold'}
+                    <input
+                        type="number"
+                        min="0"
+                        max={feeType === 'percent' ? '100' : '6'}
+                        step={feeType === 'percent' ? '1' : '0.25'}
+                        value={feeValue}
+                        onChange={(e) => onValueChange(e.target.value)}
+                        required
+                    />
+                </label>
+            ) : null}
+            <p className="owner-fee-preview">{preview}</p>
+            <button type="submit" className="btn-save-owner-fee" disabled={saving}>
+                {saving ? 'Saving…' : 'Save rate'}
+            </button>
+            {message ? (
+                <p className={`owner-fee-message${message.startsWith('Saved') ? ' ok' : ' error'}`}>
+                    {message}
+                </p>
+            ) : null}
+        </form>
+    );
+}
+
 function cleanFavoritePageNickname(raw) {
     return (raw || '')
         .replace(/\s*\(owner\)\s*/gi, ' ')
@@ -228,10 +303,9 @@ const Dashboard = ({ sidebar }) => {
     const [ownerPayoutRows, setOwnerPayoutRows] = useState([]);
     const [ownerRecentSales, setOwnerRecentSales] = useState([]);
     const [ownerEarningsSummary, setOwnerEarningsSummary] = useState(null);
-    const [ownerFeeType, setOwnerFeeType] = useState('none');
-    const [ownerFeeValue, setOwnerFeeValue] = useState('');
-    const [savingOwnerFee, setSavingOwnerFee] = useState(false);
-    const [ownerFeeMessage, setOwnerFeeMessage] = useState('');
+    const [collabFeeDrafts, setCollabFeeDrafts] = useState({});
+    const [savingCollabFeeId, setSavingCollabFeeId] = useState(null);
+    const [collabFeeMessages, setCollabFeeMessages] = useState({});
     const [analyticsPayoutModal, setAnalyticsPayoutModal] = useState(null);
     const [analyticsPayoutAmount, setAnalyticsPayoutAmount] = useState('');
     const [analyticsPayoutDate, setAnalyticsPayoutDate] = useState('');
@@ -1327,12 +1401,18 @@ const Dashboard = ({ sidebar }) => {
                         setCollaboratorOwedTotal(Number(sumData?.collaborator_owed_total || 0));
                         setOwnerPayoutRows(sumData?.owner_pages || []);
                         setOwnerRecentSales(sumData?.owner_recent_sales || []);
-                        const os = sumData?.storefront_owner_summary || null;
-                        setOwnerEarningsSummary(os);
-                        const feeType = os?.owner_fee_type || sumData?.owner_fee?.fee_type || 'none';
-                        const feeVal = os?.owner_fee_value ?? sumData?.owner_fee?.fee_value ?? 0;
-                        setOwnerFeeType(feeType);
-                        setOwnerFeeValue(feeType === 'none' ? '' : String(feeVal));
+                        setOwnerEarningsSummary(sumData?.storefront_owner_summary || null);
+                        const drafts = {};
+                        collabRows.forEach((r) => {
+                            const id = String(r.favorite_list_id);
+                            const feeType = r.owner_fee_type || 'none';
+                            const feeVal = r.owner_fee_value ?? 0;
+                            drafts[id] = {
+                                feeType,
+                                feeValue: feeType === 'none' ? '' : String(feeVal),
+                            };
+                        });
+                        setCollabFeeDrafts(drafts);
                     }
                 } catch (_) {
                     /* non-fatal */
@@ -1343,6 +1423,7 @@ const Dashboard = ({ sidebar }) => {
                 setOwnerPayoutRows([]);
                 setOwnerRecentSales([]);
                 setOwnerEarningsSummary(null);
+                setCollabFeeDrafts({});
             }
         } catch (error) {
             console.error('Error fetching analytics:', error);
@@ -1351,29 +1432,50 @@ const Dashboard = ({ sidebar }) => {
         }
     };
 
-    const saveOwnerFee = async (e) => {
+    const saveCollabFee = async (e, row) => {
         e.preventDefault();
-        setSavingOwnerFee(true);
-        setOwnerFeeMessage('');
+        const listId = String(row.favorite_list_id);
+        const draft = collabFeeDrafts[listId] || { feeType: 'none', feeValue: '' };
+        setSavingCollabFeeId(listId);
+        setCollabFeeMessages((prev) => ({ ...prev, [listId]: '' }));
         try {
             const { ok, data } = await favoriteListsJson('/api/favorite-lists/owner-fee', {
                 method: 'POST',
                 body: JSON.stringify({
-                    fee_type: ownerFeeType,
-                    fee_value: ownerFeeType === 'none' ? 0 : Number(ownerFeeValue) || 0,
+                    favorite_list_id: listId,
+                    fee_type: draft.feeType,
+                    fee_value: draft.feeType === 'none' ? 0 : Number(draft.feeValue) || 0,
                 }),
             });
             if (!ok) {
-                setOwnerFeeMessage(data?.error || 'Could not save owner fee');
+                setCollabFeeMessages((prev) => ({
+                    ...prev,
+                    [listId]: data?.error || 'Could not save owner fee',
+                }));
                 return;
             }
-            setOwnerFeeMessage('Saved. Collaborator pay and your earnings now use this rate.');
+            setCollabFeeMessages((prev) => ({
+                ...prev,
+                [listId]: 'Saved. This creator\'s pay now uses this rate.',
+            }));
             await fetchAnalytics();
         } catch (err) {
-            setOwnerFeeMessage(err.message || 'Network error');
+            setCollabFeeMessages((prev) => ({
+                ...prev,
+                [listId]: err.message || 'Network error',
+            }));
         } finally {
-            setSavingOwnerFee(false);
+            setSavingCollabFeeId(null);
         }
+    };
+
+    const updateCollabFeeDraft = (listId, patch) => {
+        const id = String(listId);
+        setCollabFeeDrafts((prev) => ({
+            ...prev,
+            [id]: { ...(prev[id] || { feeType: 'none', feeValue: '' }), ...patch },
+        }));
+        setCollabFeeMessages((prev) => ({ ...prev, [id]: '' }));
     };
 
     const openAnalyticsPayoutModal = (row) => {
@@ -2253,7 +2355,7 @@ const Dashboard = ({ sidebar }) => {
                                                 <h5>Storefront owner purchase log</h5>
                                                 <p className="hint">
                                                     ScreenMerch pays you $6.00 per item sold on your pages when pending earnings reach $50.
-                                                    Charge collaborators a percentage of their $6.00 share or a flat amount per item — that fee comes out of what you would otherwise pay them.
+                                                    Fees you set under each collaborator below come out of what you would otherwise pay them.
                                                 </p>
                                                 <ul className="collaborator-payout-list">
                                                     {(() => {
@@ -2278,7 +2380,7 @@ const Dashboard = ({ sidebar }) => {
                                                             <strong>From collaborator fees</strong>
                                                             <span>
                                                                 You keep ${Number(ownerEarningsSummary?.owner_fee_amount ?? 0).toFixed(2)}
-                                                                {ownerFeeType === 'none' || Number(ownerEarningsSummary?.owner_fee_amount ?? 0) <= 0
+                                                                {Number(ownerEarningsSummary?.owner_fee_amount ?? 0) <= 0
                                                                     ? ' · No Sales Fee'
                                                                     : ''}
                                                             </span>
@@ -2308,81 +2410,6 @@ const Dashboard = ({ sidebar }) => {
                                                         </ul>
                                                     </details>
                                                 ) : null}
-                                                <form className="owner-fee-form" onSubmit={saveOwnerFee}>
-                                                    <div className="owner-fee-type" role="radiogroup" aria-label="Collaborator fee type">
-                                                        <label>
-                                                            <input
-                                                                type="radio"
-                                                                name="owner-fee-type"
-                                                                checked={ownerFeeType === 'none'}
-                                                                onChange={() => {
-                                                                    setOwnerFeeType('none');
-                                                                    setOwnerFeeValue('');
-                                                                    setOwnerFeeMessage('');
-                                                                }}
-                                                            />
-                                                            No extra fee
-                                                        </label>
-                                                        <label>
-                                                            <input
-                                                                type="radio"
-                                                                name="owner-fee-type"
-                                                                checked={ownerFeeType === 'percent'}
-                                                                onChange={() => {
-                                                                    setOwnerFeeType('percent');
-                                                                    setOwnerFeeValue((prev) => prev || '10');
-                                                                    setOwnerFeeMessage('');
-                                                                }}
-                                                            />
-                                                            Percentage
-                                                        </label>
-                                                        <label>
-                                                            <input
-                                                                type="radio"
-                                                                name="owner-fee-type"
-                                                                checked={ownerFeeType === 'flat'}
-                                                                onChange={() => {
-                                                                    setOwnerFeeType('flat');
-                                                                    setOwnerFeeValue((prev) => prev || '1');
-                                                                    setOwnerFeeMessage('');
-                                                                }}
-                                                            />
-                                                            Flat rate / item
-                                                        </label>
-                                                    </div>
-                                                    {ownerFeeType !== 'none' ? (
-                                                        <label className="owner-fee-value-label">
-                                                            {ownerFeeType === 'percent' ? 'Percent of $6.00 share' : 'Dollars per item sold'}
-                                                            <input
-                                                                type="number"
-                                                                min="0"
-                                                                max={ownerFeeType === 'percent' ? '100' : '6'}
-                                                                step={ownerFeeType === 'percent' ? '1' : '0.25'}
-                                                                value={ownerFeeValue}
-                                                                onChange={(e) => setOwnerFeeValue(e.target.value)}
-                                                                required
-                                                            />
-                                                        </label>
-                                                    ) : null}
-                                                    <p className="owner-fee-preview">
-                                                        {(() => {
-                                                            const perItem = ownerFeePerItem(ownerFeeType, ownerFeeValue);
-                                                            const collabKeeps = Math.max(0, COLLAB_SHARE_PER_ITEM - perItem);
-                                                            if (ownerFeeType === 'none' || perItem <= 0) {
-                                                                return 'Collaborators keep the full $6.00 per item.';
-                                                            }
-                                                            return `You keep $${perItem.toFixed(2)} of each collaborator item; they keep $${collabKeeps.toFixed(2)}.`;
-                                                        })()}
-                                                    </p>
-                                                    <button type="submit" className="btn-save-owner-fee" disabled={savingOwnerFee}>
-                                                        {savingOwnerFee ? 'Saving…' : 'Save rate'}
-                                                    </button>
-                                                    {ownerFeeMessage ? (
-                                                        <p className={`owner-fee-message${ownerFeeMessage.startsWith('Saved') ? ' ok' : ' error'}`}>
-                                                            {ownerFeeMessage}
-                                                        </p>
-                                                    ) : null}
-                                                </form>
                                             </div>
                                         ) : null}
                                         {!umbrellaOnly && collaboratorPayoutRows.length > 0 ? (
@@ -2390,15 +2417,23 @@ const Dashboard = ({ sidebar }) => {
                                                 <h5>Collaborator payouts</h5>
                                                 <p className="hint">
                                                     Record off-platform payments to umbrella collaborators when their owed balance exceeds $50.
+                                                    Set a percentage or flat per-item fee under each creator — that amount stays with you instead of being paid to them.
                                                 </p>
                                                 <ul className="collaborator-payout-list">
                                                     {collaboratorPayoutRows.map((row) => {
+                                                        const listId = String(row.favorite_list_id);
                                                         const balance = Number(row.balance_owed ?? 0);
                                                         const payCollab = Number(row.pay_collaborator_amount ?? 0);
                                                         const isPaidUp = row.is_paid_up ?? (payCollab > 0 && balance <= 0);
                                                         const canRecord = row.can_record_payout ?? (payCollab > 0 && balance >= 50);
+                                                        const draft = collabFeeDrafts[listId] || {
+                                                            feeType: row.owner_fee_type || 'none',
+                                                            feeValue: (row.owner_fee_type || 'none') === 'none'
+                                                                ? ''
+                                                                : String(row.owner_fee_value ?? 0),
+                                                        };
                                                         return (
-                                                            <li key={String(row.favorite_list_id)}>
+                                                            <li key={listId}>
                                                                 <div className="collab-payout-row-main">
                                                                     <strong>{row.display_name}</strong>
                                                                     <span>
@@ -2430,6 +2465,23 @@ const Dashboard = ({ sidebar }) => {
                                                                         Record payment
                                                                     </button>
                                                                 ) : null}
+                                                                <CollaboratorFeeForm
+                                                                    listId={listId}
+                                                                    feeType={draft.feeType}
+                                                                    feeValue={draft.feeValue}
+                                                                    onTypeChange={(nextType) => {
+                                                                        updateCollabFeeDraft(listId, {
+                                                                            feeType: nextType,
+                                                                            feeValue: nextType === 'none'
+                                                                                ? ''
+                                                                                : (draft.feeValue || (nextType === 'percent' ? '10' : '1')),
+                                                                        });
+                                                                    }}
+                                                                    onValueChange={(nextValue) => updateCollabFeeDraft(listId, { feeValue: nextValue })}
+                                                                    onSave={(e) => saveCollabFee(e, row)}
+                                                                    saving={savingCollabFeeId === listId}
+                                                                    message={collabFeeMessages[listId] || ''}
+                                                                />
                                                                 {(row.recent_sales || []).length > 0 ? (
                                                                     <details className="owner-purchase-log-details collab-purchase-log-details">
                                                                         <summary>
