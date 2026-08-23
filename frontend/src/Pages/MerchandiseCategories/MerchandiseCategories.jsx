@@ -4,9 +4,12 @@ import './MerchandiseCategories.css';
 import '../Home/Home.css';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { useCreator } from '../../contexts/CreatorContext';
+import { readPendingMerchData } from '../../utils/merchSession';
+import { useNavigate } from 'react-router-dom';
 
 const MerchandiseCategories = ({ sidebar }) => {
   const { creatorSettings } = useCreator();
+  const navigate = useNavigate();
 
   useLayoutEffect(() => {
     if ('scrollRestoration' in window.history) {
@@ -35,17 +38,7 @@ const MerchandiseCategories = ({ sidebar }) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
-  // Read pending merch data from localStorage (safely)
-  const pendingMerchData = (() => {
-    try {
-      const raw = localStorage.getItem('pending_merch_data');
-      return raw ? JSON.parse(raw) : {};
-    } catch (e) {
-      console.warn('Invalid pending_merch_data. Clearing…');
-      localStorage.removeItem('pending_merch_data');
-      return {};
-    }
-  })();
+  const pendingMerchData = readPendingMerchData() || {};
 
   const screenshots = pendingMerchData.screenshots || [];
   const thumbnail = pendingMerchData.thumbnail || '';
@@ -79,8 +72,7 @@ const MerchandiseCategories = ({ sidebar }) => {
     const productUrl = `/product/browse?category=${encodeURIComponent(category)}&authenticated=${isAuthenticated}&email=${encodeURIComponent(userEmail)}`;
     if (window.__DEBUG__) console.log('🛍️ Navigating to product page:', productUrl);
 
-    // Use window.location for reliable navigation on mobile
-    window.location.href = window.location.origin + productUrl;
+    navigate(productUrl);
   };
 
   const handleCategoryClick = (category) => {

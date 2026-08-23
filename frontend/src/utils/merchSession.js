@@ -13,18 +13,48 @@ export function normalizeVideoUrl(url) {
   }
 }
 
+let pendingMerchMemory = null;
+let cartItemsMemory = null;
+
+const PENDING_JSON_BUDGET = 2.2 * 1024 * 1024;
+
+function compactMerchData(data) {
+  const clean = { ...(data || {}) };
+  let json = JSON.stringify(clean);
+  if (json.length <= PENDING_JSON_BUDGET) return { clean, json };
+  const shots = Array.isArray(clean.screenshots) ? clean.screenshots.filter(Boolean) : [];
+  const keep = clean.selected_screenshot || shots[0] || clean.thumbnail || '';
+  clean.screenshots = keep ? [keep] : [];
+  if (clean.thumbnail && String(clean.thumbnail).startsWith('data:') && clean.thumbnail !== keep) {
+    clean.thumbnail = keep;
+  }
+  json = JSON.stringify(clean);
+  return { clean, json };
+}
+
 export function savePendingMerchData(merchData) {
+  const clean = { ...(merchData || {}) };
   try {
-    let prev = null;
-    try {
-      const prevRaw = localStorage.getItem('pending_merch_data');
-      prev = prevRaw ? JSON.parse(prevRaw) : null;
-    } catch {
-      prev = null;
+    let prev = pendingMerchMemory;
+    if (!prev) {
+      try {
+        const prevRaw = localStorage.getItem('pending_merch_data');
+        prev = prevRaw ? JSON.parse(prevRaw) : null;
+      } catch {
+        prev = null;
+      }
+    }
+    if (!prev) {
+      try {
+        const prevRaw = sessionStorage.getItem('pending_merch_data');
+        prev = prevRaw ? JSON.parse(prevRaw) : null;
+      } catch {
+        prev = null;
+      }
     }
 
     const prevUrl = normalizeVideoUrl(prev?.videoUrl || prev?.video_url || '');
-    const nextUrl = normalizeVideoUrl(merchData?.videoUrl || merchData?.video_url || '');
+    const nextUrl = normalizeVideoUrl(clean?.videoUrl || clean?.video_url || '');
     const videoChanged = Boolean(prevUrl && nextUrl && prevUrl !== nextUrl);
 
     if (videoChanged) {
@@ -43,16 +73,72 @@ export function savePendingMerchData(merchData) {
       }
     }
 
-    const clean = { ...merchData };
-    // Fresh video session should not keep an edited image from a prior tools visit
     if (videoChanged || !clean.edited_screenshot) {
       delete clean.edited_screenshot;
     }
 
-    localStorage.setItem('pending_merch_data', JSON.stringify(clean));
+    const packed = compactMerchData(clean);
+    pendingMerchMemory = packed.clean;
+    const json = packed.json;
+    try {
+      localStorage.setItem('pending_merch_data', json);
+    } catch {
+      try {
+        localStorage.removeItem('pending_merch_data');
+      } catch {
+        /* ignore */
+      }
+    }
+    try {
+      sessionStorage.setItem('pending_merch_data', json);
+    } catch {
+      /* memory still has the screenshots for this tab */
+    }
   } catch (e) {
     console.warn('Failed saving pending_merch_data:', e);
+    pendingMerchMemory = merchData && typeof merchData === 'object' ? merchData : pendingMerchMemory;
+    try {
+      sessionStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+    } catch {
+      /* ignore */
+    }
   }
+}
+
+export function readPendingMerchData() {
+  const parse = (raw) => {
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(raw);
+      return data && typeof data === 'object' ? data : null;
+    } catch {
+      return null;
+    }
+  };
+  const hasShots = (data) =>
+    Boolean(
+      data &&
+        (data.screenshots?.length ||
+          data.selected_screenshot ||
+          data.edited_screenshot ||
+          data.thumbnail)
+    );
+
+  if (hasShots(pendingMerchMemory)) return pendingMerchMemory;
+
+  try {
+    const fromSession = parse(sessionStorage.getItem('pending_merch_data'));
+    if (hasShots(fromSession)) return fromSession;
+  } catch {
+    /* ignore */
+  }
+  try {
+    const fromLocal = parse(localStorage.getItem('pending_merch_data'));
+    if (hasShots(fromLocal)) return fromLocal;
+  } catch {
+    /* ignore */
+  }
+  return pendingMerchMemory || {};
 }
 
 /** Focus Tools on a specific cart item (original cart index). */
@@ -82,13 +168,24 @@ export function consumeToolsFocusCartIndex() {
 
 export const CART_UPDATED_EVENT = 'screenmerch-cart-updated';
 
-export function getCartItemCount() {
+export function readCartItems() {
+  if (Array.isArray(cartItemsMemory)) return cartItemsMemory;
   try {
-    const items = JSON.parse(localStorage.getItem('cart_items') || '[]');
-    return Array.isArray(items) ? items.length : 0;
+    const fromSession = JSON.parse(sessionStorage.getItem('cart_items') || 'null');
+    if (Array.isArray(fromSession)) return fromSession;
   } catch {
-    return 0;
+    /* ignore */
   }
+  try {
+    const fromLocal = JSON.parse(localStorage.getItem('cart_items') || '[]');
+    return Array.isArray(fromLocal) ? fromLocal : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getCartItemCount() {
+  return readCartItems().length;
 }
 
 export function emitCartUpdated() {
@@ -100,10 +197,16 @@ export function emitCartUpdated() {
 }
 
 export function writeCartItems(items) {
+  cartItemsMemory = Array.isArray(items) ? items : [];
+  const json = JSON.stringify(cartItemsMemory);
   try {
-    localStorage.setItem('cart_items', JSON.stringify(Array.isArray(items) ? items : []));
+    localStorage.setItem('cart_items', json);
   } catch {
-    /* ignore */
+    try {
+      sessionStorage.setItem('cart_items', json);
+    } catch {
+      /* memory still has the cart for this tab */
+    }
   }
   emitCartUpdated();
 }

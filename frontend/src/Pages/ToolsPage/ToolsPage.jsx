@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
-import { consumeToolsFocusCartIndex, writeCartItems } from '../../utils/merchSession';
+import { consumeToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems } from '../../utils/merchSession';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -320,13 +320,24 @@ const ProductPreviewWithDrag = ({
     const processImage = async () => {
       if (!screenshot) return;
 
+      // Default Tools path: do not rasterize into a PNG. Portrait frames from
+      // uploads like Samurai Dog become multi-MB PNGs on iPhone and the overlay
+      // never appears. Feather/corners still go through canvas below.
+      if (!featherEdge && !cornerRadius) {
+        setProcessedImage(screenshot);
+        return;
+      }
+
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      if (typeof screenshot === 'string' && !screenshot.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = img.width;
+          canvas.height = img.height;
 
         // Draw image
         ctx.drawImage(img, 0, 0);
@@ -394,8 +405,12 @@ const ProductPreviewWithDrag = ({
           ctx.globalCompositeOperation = 'source-over';
         }
 
-        setProcessedImage(canvas.toDataURL('image/png'));
+        setProcessedImage(canvas.toDataURL('image/jpeg', 0.85));
+        } catch {
+          setProcessedImage(screenshot);
+        }
       };
+      img.onerror = () => setProcessedImage(screenshot);
       img.src = screenshot;
     };
 
@@ -1038,7 +1053,7 @@ const ToolsPage = () => {
 
     const loadCartProducts = () => {
       try {
-        const cartItems = JSON.parse(localStorage.getItem('cart_items') || '[]');
+        const cartItems = readCartItems();
         if (cartItems && cartItems.length > 0) {
           // Filter items that have screenshots, preserving original cart index
           const productsWithScreenshots = cartItems
@@ -1091,8 +1106,7 @@ const ToolsPage = () => {
             ) {
               let nextIndex = productsWithScreenshots.length - 1;
               try {
-                const raw = localStorage.getItem('pending_merch_data');
-                const data = raw ? JSON.parse(raw) : null;
+                const data = readPendingMerchData();
                 const wanted = data?.selected_screenshot || '';
                 if (wanted) {
                   const matched = productsWithScreenshots.findIndex(
@@ -1205,10 +1219,9 @@ const ToolsPage = () => {
           }
         }
         
-        // Priority 2: Fallback to pending_merch_data
-        const raw = localStorage.getItem('pending_merch_data');
-        if (raw) {
-          const data = JSON.parse(raw);
+        // Priority 2: Fallback to pending merch session
+        const data = readPendingMerchData();
+        if (data && (data.screenshots?.length || data.selected_screenshot || data.thumbnail || data.edited_screenshot)) {
           // Priority: edited screenshot > selected screenshot > first screenshot > thumbnail
           const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
           if (screenshot) {
@@ -1333,18 +1346,15 @@ const ToolsPage = () => {
     
     // Listen for custom event (when print quality upgrade completes in same tab)
     const handleLocalStorageUpdate = () => {
-      const raw = localStorage.getItem('pending_merch_data');
-      if (raw) {
-        try {
-          const data = JSON.parse(raw);
-          const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
-          if (screenshot && screenshot !== imageUrl) {
-            setImageUrl(screenshot);
-            setSelectedImage(screenshot);
-          }
-        } catch (e) {
-          console.warn('Could not parse storage data:', e);
+      try {
+        const data = readPendingMerchData();
+        const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
+        if (screenshot && screenshot !== imageUrl) {
+          setImageUrl(screenshot);
+          setSelectedImage(screenshot);
         }
+      } catch (e) {
+        console.warn('Could not parse storage data:', e);
       }
     };
     
@@ -2286,7 +2296,7 @@ const ToolsPage = () => {
       });
 
       try {
-        const cartItems = JSON.parse(localStorage.getItem('cart_items') || '[]');
+        const cartItems = readCartItems();
         const selected =
           selectedCartProductIndex !== null ? cartProducts[selectedCartProductIndex] : null;
         const cartIndex =
@@ -2305,18 +2315,15 @@ const ToolsPage = () => {
       }
 
       try {
-        const raw = localStorage.getItem('pending_merch_data');
-        if (raw) {
-          const data = JSON.parse(raw);
-          data.edited_screenshot = dataUrl;
-          data.selected_screenshot = dataUrl;
-          if (Array.isArray(data.screenshots) && data.screenshots.length) {
-            data.screenshots = [dataUrl, ...data.screenshots.slice(1)];
-          }
-          localStorage.setItem('pending_merch_data', JSON.stringify(data));
+        const data = { ...readPendingMerchData() };
+        data.edited_screenshot = dataUrl;
+        data.selected_screenshot = dataUrl;
+        if (Array.isArray(data.screenshots) && data.screenshots.length) {
+          data.screenshots = [dataUrl, ...data.screenshots.slice(1)];
         }
+        savePendingMerchData(data);
       } catch (e) {
-        console.warn('Could not persist rotated screenshot to pending_merch_data:', e);
+        console.warn('Could not persist rotated screenshot to pending merch session:', e);
       }
     };
     img.onerror = () => alert('Could not load image to rotate.');
@@ -2484,10 +2491,9 @@ const ToolsPage = () => {
       return;
     }
     
-    // Save edited image to localStorage
+    // Save edited image to merch session
     try {
-      const raw = localStorage.getItem('pending_merch_data');
-      const data = raw ? JSON.parse(raw) : {};
+      const data = { ...readPendingMerchData() };
       data.edited_screenshot = editedImageUrl;
       data.tools_used = {
         featherEdge,
@@ -2507,10 +2513,10 @@ const ToolsPage = () => {
         imageOffsetX,
         imageOffsetY
       };
-      localStorage.setItem('pending_merch_data', JSON.stringify(data));
+      savePendingMerchData(data);
       
       // Also update cart items if they exist
-      const cartItems = JSON.parse(localStorage.getItem('cart_items') || '[]');
+      const cartItems = readCartItems();
       let updatedCart;
       
       // If a specific cart product is selected, only update that one

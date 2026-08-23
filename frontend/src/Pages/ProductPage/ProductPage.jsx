@@ -8,7 +8,7 @@ import { getBackendUrl } from '../../config/apiConfig';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
-import { setToolsFocusCartIndex, writeCartItems } from '../../utils/merchSession';
+import { setToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems } from '../../utils/merchSession';
 import './ProductPage.css';
 
 const IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
@@ -60,8 +60,7 @@ const ProductPage = ({ sidebar }) => {
   const availabilityReqSeqByIndex = useRef({});
   const [cartItems, setCartItems] = useState(() => {
     try {
-      const raw = localStorage.getItem('cart_items');
-      return raw ? JSON.parse(raw) : [];
+      return readCartItems();
     } catch (e) {
       return [];
     }
@@ -393,17 +392,10 @@ const ProductPage = ({ sidebar }) => {
         /* profile optional — backend fills channel title if missing */
       }
 
-      const raw = localStorage.getItem('pending_merch_data');
+      const merchData = readPendingMerchData();
       let videoTitle = screenshotLabel || 'Screenshot';
-      if (raw) {
-        try {
-          const merchData = JSON.parse(raw);
-          if (merchData.videoTitle) {
-            videoTitle = `${merchData.videoTitle} - ${screenshotLabel}`;
-          }
-        } catch (e) {
-          console.warn('Could not parse pending_merch_data');
-        }
+      if (merchData?.videoTitle) {
+        videoTitle = `${merchData.videoTitle} - ${screenshotLabel}`;
       }
 
       let listId = null;
@@ -550,12 +542,11 @@ const ProductPage = ({ sidebar }) => {
     const screenshotUrl = selectedScreenshotUrl || getSelectedScreenshotUrl()
       || editingCartItem?.selected_screenshot || editingCartItem?.screenshot;
 
-    // Get video metadata from localStorage (including screenshot_timestamp for email/order)
+    // Get video metadata from merch session (including screenshot_timestamp for email/order)
     let videoMetadata = {};
     try {
-      const raw = localStorage.getItem('pending_merch_data');
-      if (raw) {
-        const merchData = JSON.parse(raw);
+      const merchData = readPendingMerchData();
+      if (merchData && typeof merchData === 'object') {
         videoMetadata = {
           video_url: merchData.videoUrl,
           video_title: merchData.videoTitle,
@@ -565,7 +556,7 @@ const ProductPage = ({ sidebar }) => {
         };
       }
     } catch (e) {
-      console.warn('Could not load video metadata from localStorage:', e);
+      console.warn('Could not load video metadata from merch session:', e);
     }
     const filledVideoMetadata = Object.fromEntries(
       Object.entries(videoMetadata).filter(([, value]) => value != null && value !== '')
@@ -617,18 +608,17 @@ const ProductPage = ({ sidebar }) => {
       } else if (lastTouchedCartIndexRef.current != null) {
         setToolsFocusCartIndex(lastTouchedCartIndexRef.current);
       } else {
-        const items = JSON.parse(localStorage.getItem('cart_items') || '[]');
+        const items = readCartItems();
         if (Array.isArray(items) && items.length > 0) {
           setToolsFocusCartIndex(items.length - 1);
         }
       }
       const urlToSave = selectedScreenshotUrl || getSelectedScreenshotUrl();
       if (urlToSave) {
-        const raw = localStorage.getItem('pending_merch_data');
-        const data = raw ? JSON.parse(raw) : {};
+        const data = { ...readPendingMerchData() };
         data.selected_screenshot = urlToSave;
         delete data.edited_screenshot;
-        localStorage.setItem('pending_merch_data', JSON.stringify(data));
+        savePendingMerchData(data);
       }
     } catch (e) {
       console.warn('Could not prepare tools focus:', e);
@@ -652,12 +642,11 @@ const ProductPage = ({ sidebar }) => {
     checkCreatorStatus();
   }, [creatorMode]);
 
-  // Load fallback screenshots/thumbnail from localStorage in case backend data is empty
+  // Load fallback screenshots/thumbnail from merch session in case backend data is empty
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('pending_merch_data');
-      if (raw) {
-        const d = JSON.parse(raw);
+      const d = readPendingMerchData();
+      if (d && (d.screenshots?.length || d.thumbnail)) {
         setFallbackImages({
           screenshots: Array.isArray(d?.screenshots) ? d.screenshots.slice(0, 6) : [],
           thumbnail: d?.thumbnail || ''
@@ -679,7 +668,7 @@ const ProductPage = ({ sidebar }) => {
         }
       }
     } catch (e) {
-      console.warn('Invalid pending_merch_data in localStorage, ignoring');
+      console.warn('Invalid pending_merch_data, ignoring');
     }
   }, [productId, creatorMode, category]);
 

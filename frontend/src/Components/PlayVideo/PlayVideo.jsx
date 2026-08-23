@@ -11,6 +11,103 @@ import AuthModal from '../AuthModal/AuthModal'
 import { useCreator } from '../../contexts/CreatorContext'
 import { savePendingMerchData } from '../../utils/merchSession'
 
+// Before 28 Jul 2026, mobile captured the on-screen player box (~small JPEG).
+// "screenshot/print fidelity" switched that to native videoWidth x videoHeight.
+// Portrait uploads (Samurai Dog) then produced multi-MB JPEGs; iPhone Make Merch
+// drops them and Tools looks empty. Copy the frame 1:1 (iOS-safe), then shrink
+// the bitmap — never draw the <video> scaled (that path can be blank on Safari).
+const SCREENSHOT_MAX_EDGE = 1080;
+const SCREENSHOT_JPEG_QUALITY = 0.8;
+
+function exportCanvasJpeg(canvas) {
+    try {
+        const url = canvas.toDataURL('image/jpeg', SCREENSHOT_JPEG_QUALITY);
+        return url && url.length > 100 ? url : null;
+    } catch {
+        return null;
+    }
+}
+
+function downsampleCanvasJpeg(sourceCanvas) {
+    if (!sourceCanvas || !sourceCanvas.width || !sourceCanvas.height) return null;
+    const scale = Math.min(1, SCREENSHOT_MAX_EDGE / Math.max(sourceCanvas.width, sourceCanvas.height));
+    if (scale >= 1) return exportCanvasJpeg(sourceCanvas);
+    try {
+        const small = document.createElement('canvas');
+        small.width = Math.max(1, Math.round(sourceCanvas.width * scale));
+        small.height = Math.max(1, Math.round(sourceCanvas.height * scale));
+        const ctx = small.getContext('2d');
+        if (!ctx) return exportCanvasJpeg(sourceCanvas);
+        ctx.drawImage(sourceCanvas, 0, 0, small.width, small.height);
+        return exportCanvasJpeg(small) || exportCanvasJpeg(sourceCanvas);
+    } catch {
+        return exportCanvasJpeg(sourceCanvas);
+    }
+}
+
+function captureVideoFrameJpeg(videoElement) {
+    if (!videoElement) return null;
+    const srcW = videoElement.videoWidth;
+    const srcH = videoElement.videoHeight;
+    if (!srcW || !srcH) return null;
+
+    try {
+        const full = document.createElement('canvas');
+        full.width = srcW;
+        full.height = srcH;
+        const ctx = full.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(videoElement, 0, 0);
+        const jpeg = downsampleCanvasJpeg(full);
+        if (jpeg) return jpeg;
+    } catch {
+        /* fall through to the pre-Jul-28 mobile path */
+    }
+
+    try {
+        const rect = videoElement.getBoundingClientRect();
+        const w = Math.max(1, Math.round(rect.width || videoElement.clientWidth || srcW));
+        const h = Math.max(1, Math.round(rect.height || videoElement.clientHeight || srcH));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(videoElement, 0, 0, w, h);
+        return exportCanvasJpeg(canvas);
+    } catch {
+        return null;
+    }
+}
+
+function capDataUrlJpeg(dataUrl) {
+    return new Promise((resolve) => {
+        if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
+            resolve(dataUrl);
+            return;
+        }
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const full = document.createElement('canvas');
+                full.width = img.naturalWidth || img.width;
+                full.height = img.naturalHeight || img.height;
+                const ctx = full.getContext('2d');
+                if (!ctx) {
+                    resolve(dataUrl);
+                    return;
+                }
+                ctx.drawImage(img, 0, 0);
+                resolve(downsampleCanvasJpeg(full) || dataUrl);
+            } catch {
+                resolve(dataUrl);
+            }
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+    });
+}
+
 // Mobile detection hook
 const useIsMobile = () => {
     const [isMobile, setIsMobile] = useState(false);
@@ -56,6 +153,7 @@ const PlayVideo = ({
     const videoId = propVideoId || params.videoId;
     const { isMobile, isMobilePortrait } = useIsMobile();
     const { creatorSettings } = useCreator();
+    const navigate = useNavigate();
     const [video, setVideo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isBuffering, setIsBuffering] = useState(false);
@@ -378,8 +476,9 @@ const PlayVideo = ({
             if (response.ok) {
                 const result = await response.json();
                 if (result.success && result.screenshot) {
+                    const screenshot = await capDataUrlJpeg(result.screenshot);
                     setScreenshots(prev => {
-                        const newScreenshots = prev.length < 6 ? [...prev, result.screenshot] : prev;
+                        const newScreenshots = prev.length < 6 ? [...prev, screenshot] : prev;
                         showGreenFlagConfirmation(prev.length);
                         return newScreenshots;
                     });
@@ -489,26 +588,7 @@ const PlayVideo = ({
                 return null; // Let it fall back to server-side capture
             }
             
-            // Create a canvas element
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // Use intrinsic video frame size (not CSS display box).
-            // On mobile the player is often letterboxed/cropped in a non-16:9 box;
-            // sizing the canvas to getBoundingClientRect() stretched the saved JPEG.
-            const videoWidth = videoElement.videoWidth;
-            const videoHeight = videoElement.videoHeight;
-            canvas.width = videoWidth;
-            canvas.height = videoHeight;
-            
-            // Draw the current video frame 1:1 into the canvas
-            ctx.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
-            
-            // Convert to data URL with high quality
-            const screenshotData = canvas.toDataURL('image/jpeg', 0.92);
-            
-            // console.log('Client-side screenshot captured successfully');
-            return screenshotData;
+            return captureVideoFrameJpeg(videoElement);
             
         } catch (error) {
             console.error('Error capturing video frame:', error);
@@ -572,7 +652,7 @@ const PlayVideo = ({
             savePendingMerchData(merchData);
             const email = localStorage.getItem('user_email') || '';
             const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
-            window.location.href = `/merchandise${qs}`;
+            navigate(`/merchandise${qs}`);
             return;
         }
         
@@ -847,7 +927,7 @@ const PlayVideo = ({
                         const result = await response.json();
                         
                         if (result.success && result.screenshot) {
-                            fullScreenshot = result.screenshot;
+                            fullScreenshot = await capDataUrlJpeg(result.screenshot);
                             useServerScreenshot = true;
                             console.log('Server screenshot captured successfully');
                         } else {
@@ -865,22 +945,7 @@ const PlayVideo = ({
             // Fallback to client-side screenshot capture if server failed
             if (!fullScreenshot) {
                 console.log('Using client-side screenshot capture as fallback');
-                const tempCanvas = document.createElement('canvas');
-                const tempCtx = tempCanvas.getContext('2d');
-                
-                // Get video dimensions
-                const videoWidth = videoElement.videoWidth || videoElement.clientWidth;
-                const videoHeight = videoElement.videoHeight || videoElement.clientHeight;
-                
-                // Set canvas to video dimensions
-                tempCanvas.width = videoWidth;
-                tempCanvas.height = videoHeight;
-                
-                // Draw current video frame to canvas
-                tempCtx.drawImage(videoElement, 0, 0, videoWidth, videoHeight);
-                
-                // Convert to data URL
-                fullScreenshot = tempCanvas.toDataURL('image/png');
+                fullScreenshot = captureVideoFrameJpeg(videoElement);
                 useServerScreenshot = false;
             }
             
@@ -936,7 +1001,8 @@ const PlayVideo = ({
                     );
                     
                     // Convert to data URL
-                    const croppedImageUrl = canvas.toDataURL('image/jpeg', 0.9);
+                    const croppedImageUrl = downsampleCanvasJpeg(canvas)
+                        || canvas.toDataURL('image/jpeg', SCREENSHOT_JPEG_QUALITY);
                     
                     // console.log('Crop successful, image size:', finalCropWidth, 'x', finalCropHeight);
                     
@@ -1023,7 +1089,7 @@ const PlayVideo = ({
             if (data.success) {
                 const email = localStorage.getItem('user_email') || '';
                 const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
-                window.location.href = `/merchandise${qs}`;
+                navigate(`/merchandise${qs}`);
             } else {
                 console.error('Failed to create product:', data);
                 alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
@@ -1039,7 +1105,7 @@ const PlayVideo = ({
         setShowAuthModal(false);
         const email = localStorage.getItem('user_email') || '';
         const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
-        window.location.href = `/merchandise${qs}`;
+        navigate(`/merchandise${qs}`);
     };
 
     // Test video playback function

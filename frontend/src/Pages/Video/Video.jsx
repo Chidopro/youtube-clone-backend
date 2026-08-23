@@ -3,13 +3,14 @@ import PlayVideo, { ScreenmerchImages } from "../../Components/PlayVideo/PlayVid
 import Recommended from "../../Components/Recommended/Recommended";
 import AuthModal from "../../Components/AuthModal/AuthModal";
 import './Video.css'
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useCreator } from '../../contexts/CreatorContext';
 import { savePendingMerchData } from '../../utils/merchSession';
 
 const Video = ({ sidebar }) => {
 
   const {videoId,categoryId} = useParams();
+  const navigate = useNavigate();
   // State for thumbnail/screenshots
   const [thumbnail, setThumbnail] = useState(null);
   const [screenshots, setScreenshots] = useState([]);
@@ -213,7 +214,7 @@ const Video = ({ sidebar }) => {
 
     const email = localStorage.getItem('user_email') || '';
     const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
-    window.location.href = `/merchandise${qs}`;
+    navigate(`/merchandise${qs}`);
   };
 
   const handleMakeMerch = async () => {
