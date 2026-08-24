@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import './Profile.css';
 import '../../Components/ChannelHeader/ChannelHeaderShared.css';
 import { API_CONFIG, getBackendUrl } from '../../config/apiConfig';
+import { savePendingMerchData } from '../../utils/merchSession';
 
 const Profile = ({ sidebar }) => {
   const { username } = useParams();
@@ -111,7 +112,7 @@ const Profile = ({ sidebar }) => {
         videoTitle: favorite.title || 'Favorite Image',
         creatorName: favorite.channeltitle || favorite.channelTitle || profile?.display_name || profile?.username || 'Unknown Creator'
       };
-      localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+      savePendingMerchData(merchData);
       
       // Redirect to login or show auth modal
       alert('Please log in to create merchandise');
@@ -126,7 +127,7 @@ const Profile = ({ sidebar }) => {
       videoTitle: favorite.title || 'Favorite Image',
       creatorName: favorite.channelTitle || profile?.display_name || profile?.username || 'Unknown Creator'
     };
-    localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+    savePendingMerchData(merchData);
     
     try {
       const requestData = {

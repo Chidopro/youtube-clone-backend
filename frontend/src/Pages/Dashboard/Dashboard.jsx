@@ -8,6 +8,7 @@ import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../utils/userService';
 import { getBackendUrl, apiJoin } from '../../config/apiConfig';
 import { requestVideoOptimize } from '../../utils/videoOptimize';
+import { savePendingMerchData } from '../../utils/merchSession';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.jsx';
@@ -834,7 +835,7 @@ const Dashboard = ({ sidebar }) => {
             creatorName: userProfile?.display_name || userProfile?.username || 'Unknown Creator',
             videoId: video.id,
         };
-        localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+        savePendingMerchData(merchData);
         localStorage.setItem('creator_favorites_mode', 'true');
         navigate('/product/browse?category=mens&creatorMode=favorites');
     };
@@ -1147,7 +1148,7 @@ const Dashboard = ({ sidebar }) => {
                 videoTitle: favorite.title || 'Favorite Image',
                 creatorName: favorite.channeltitle || favorite.channelTitle || userProfile?.display_name || userProfile?.username || 'Unknown Creator'
             };
-            localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+            savePendingMerchData(merchData);
             alert('Please log in to create merchandise');
             return;
         }
@@ -1160,7 +1161,7 @@ const Dashboard = ({ sidebar }) => {
             videoTitle: favorite.title || 'Favorite Image',
             creatorName: favorite.channeltitle || favorite.channelTitle || userProfile?.display_name || userProfile?.username || 'Unknown Creator'
         };
-        localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+        savePendingMerchData(merchData);
         
         // Navigate to merchandise categories page
         navigate('/merchandise');
@@ -1855,7 +1856,7 @@ const Dashboard = ({ sidebar }) => {
                                                     creatorName: userProfile?.display_name || userProfile?.username || 'Unknown Creator',
                                                     videoId: video.id
                                                 };
-                                                localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+                                                savePendingMerchData(merchData);
                                                 localStorage.setItem('creator_favorites_mode', 'true');
                                                 // Navigate to product page in creator favorites mode
                                                 navigate('/product/browse?category=mens&creatorMode=favorites');

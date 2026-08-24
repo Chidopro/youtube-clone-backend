@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSubdomain } from '../../utils/subdomainService';
-import { emitCartUpdated } from '../../utils/merchSession';
+import { emitCartUpdated, writeCartItems } from '../../utils/merchSession';
 import './OrderSuccess.css';
 
 const OrderSuccess = () => {
@@ -40,8 +40,8 @@ const OrderSuccess = () => {
     (function clearCartCompletely() {
       try {
         // Clear all cart-related storage
+        writeCartItems([]);
         localStorage.removeItem('cart');
-        localStorage.removeItem('cart_items');
         localStorage.removeItem('cartData');
         localStorage.removeItem('persistent_cart');
         

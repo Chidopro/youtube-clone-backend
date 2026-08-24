@@ -19,7 +19,10 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    host: true
+    host: true,
+    watch: {
+      ignored: ['**/dist/**', '**/.tmp-verify/**']
+    }
   },
   preview: {
     port: 3000,

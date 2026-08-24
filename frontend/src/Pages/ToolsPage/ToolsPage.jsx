@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
-import { consumeToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, CART_UPDATED_EVENT } from '../../utils/merchSession';
+import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT } from '../../utils/merchSession';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -25,11 +25,13 @@ function isApparelChestPrintProduct(productName) {
   if (n.includes('all-over') || n.includes('all over')) return false;
   if (n.includes('swimsuit') || n.includes('leggings')) return false;
   if (n.includes('hat') || n.includes('cap')) return false;
+  // Tanks keep the 17" typical-width mapping below. Baby-jersey chest
+  // fraction (7/18) is too small for racerback/tank print boxes even at 150%.
+  if (n.includes('tank')) return false;
   return (
     n.includes('shirt') ||
     n.includes('tee') ||
     n.includes('hoodie') ||
-    n.includes('tank') ||
     n.includes('sweatshirt') ||
     n.includes('jersey') ||
     n.includes('body suit') ||
@@ -37,6 +39,36 @@ function isApparelChestPrintProduct(productName) {
     n.includes('crop top') ||
     n.includes('long sleeve')
   );
+}
+
+// Sync Product Specific fit before first paint when a cart item is already known
+// (order_id path sets this after fetch; cart Tools used to wait on effects).
+function getInitialCartPrintFit() {
+  if (typeof window === 'undefined') return { name: '', fit: 'none' };
+  try {
+    const q = window.location.search;
+    if (q && new URLSearchParams(q).get('order_id')) {
+      return { name: '', fit: 'none' };
+    }
+    const items = readCartItems();
+    if (!Array.isArray(items) || items.length === 0) return { name: '', fit: 'none' };
+
+    const withShots = items
+      .map((item, originalIndex) => ({ item, originalIndex }))
+      .filter(({ item }) => item && item.screenshot && String(item.screenshot).trim() !== '');
+    if (!withShots.length) return { name: '', fit: 'none' };
+
+    const focusOriginal = peekToolsFocusCartIndex();
+    let chosen = withShots[withShots.length - 1];
+    if (focusOriginal != null) {
+      const matched = withShots.find((p) => p.originalIndex === focusOriginal);
+      if (matched) chosen = matched;
+    }
+    const name = matchPrintAreaProductName(chosen.item.name) || '';
+    return { name, fit: name ? 'product' : 'none' };
+  } catch {
+    return { name: '', fit: 'none' };
+  }
 }
 
 // Component for product preview with draggable screenshot
@@ -74,7 +106,7 @@ const ProductPreviewWithDrag = ({
   const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
 
   // Calculate screenshot display size based on product print area
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Use selectedProductName if available and printAreaFit is 'product', otherwise use productName
     const effectiveProductName = (printAreaFit === 'product' && selectedProductName) ? selectedProductName : productName;
     
@@ -82,8 +114,21 @@ const ProductPreviewWithDrag = ({
 
     const calculateSize = () => {
       const hasProductImage = productImageSize.width > 0 && productImageSize.height > 0;
-      const displayedProductWidth = productImageSize.width;
-      const displayedProductHeight = productImageSize.height;
+      let displayedProductWidth = productImageSize.width;
+      let displayedProductHeight = productImageSize.height;
+
+      // Before the mockup reports a painted rect, size from the stage width
+      // (img is width:100%). Same print-area math — not a 400×400 guess.
+      if (!hasProductImage && containerRef.current) {
+        const stageW = containerRef.current.getBoundingClientRect().width;
+        if (stageW >= 2) {
+          displayedProductWidth = stageW;
+          const img = productImageRef.current;
+          if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
+            displayedProductHeight = stageW * (img.naturalHeight / img.naturalWidth);
+          }
+        }
+      }
 
       try {
         // Get print area dimensions for this product
@@ -93,7 +138,7 @@ const ProductPreviewWithDrag = ({
         
         // Wait for the painted mockup. A 400×400 fallback sizes the overlay
         // as if the photo were huge, which sticks on phones when layout is late.
-        if (printDimensions && hasProductImage && displayedProductWidth > 0) {
+        if (printDimensions && displayedProductWidth > 0) {
           // Calculate size based on print area dimensions and product image size
           // Direct mapping: print area inches → percentage of product image
           // This ensures consistent sizing across all product types
@@ -143,7 +188,7 @@ const ProductPreviewWithDrag = ({
             
             // Set bounds for hats (can be larger percentage since print area is on front panel)
             const maxWidth = displayedProductWidth * 0.80;
-            const maxHeight = displayedProductHeight * 0.50; // Hats are taller, print area is on front panel
+            const maxHeight = displayedProductHeight > 0 ? displayedProductHeight * 0.50 : Number.POSITIVE_INFINITY; // Hats are taller, print area is on front panel
             
             if (finalWidth > maxWidth) {
               finalWidth = maxWidth;
@@ -156,7 +201,7 @@ const ProductPreviewWithDrag = ({
             
             // Ensure minimum size for visibility
             const minWidth = displayedProductWidth * 0.40;
-            const minHeight = displayedProductHeight * 0.20;
+            const minHeight = displayedProductHeight > 0 ? displayedProductHeight * 0.20 : 0;
             
             if (finalWidth < minWidth) {
               finalWidth = minWidth;
@@ -201,7 +246,7 @@ const ProductPreviewWithDrag = ({
             // Keep tall prints on the garment, not the full photo. Baby Jersey
             // (7×8 at 7/18 width) is ~44% of mockup width in height and must
             // not be clamped.
-            const maxHeight = displayedProductHeight * 0.65;
+            const maxHeight = displayedProductHeight > 0 ? displayedProductHeight * 0.65 : Number.POSITIVE_INFINITY;
             if (finalHeight > maxHeight) {
               finalHeight = maxHeight;
               finalWidth = isSquare ? finalHeight : finalHeight * printAspectRatio;
@@ -243,7 +288,9 @@ const ProductPreviewWithDrag = ({
           // For square products, ensure width and height are always equal
           if (isSquare) {
             // Use the larger of width or height to ensure full coverage, then make square
-            const baseSize = Math.min(displayedProductWidth, displayedProductHeight);
+            const baseSize = displayedProductHeight > 0
+              ? Math.min(displayedProductWidth, displayedProductHeight)
+              : displayedProductWidth;
             const squareSize = Math.max(finalWidth, finalHeight);
             // Use the larger dimension to ensure coverage, but don't exceed product bounds
             finalWidth = Math.min(squareSize, baseSize * 0.75);
@@ -267,7 +314,7 @@ const ProductPreviewWithDrag = ({
             // For non-square products, apply reasonable maximum bounds
             // But prioritize coverage - if print area requires larger size, allow it
             const maxWidth = displayedProductWidth * 0.80; // Allow up to 80% of product width
-            const maxHeight = displayedProductHeight * 0.80; // Allow up to 80% of product height
+            const maxHeight = displayedProductHeight > 0 ? displayedProductHeight * 0.80 : Number.POSITIVE_INFINITY;
             
             // Only clamp if we exceed maximum, but maintain aspect ratio
             if (finalWidth > maxWidth) {
@@ -304,10 +351,13 @@ const ProductPreviewWithDrag = ({
           });
           
           console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}px (${(finalWidth/displayedProductWidth*100).toFixed(1)}% x ${(finalHeight/displayedProductHeight*100).toFixed(1)}% of product)`);
-        } else if (hasProductImage) {
+        } else if (displayedProductWidth > 0) {
           // Fallback: use a percentage of the painted mockup, not a 400px guess
           const fallbackPercent = effectiveProductName.toLowerCase().includes('cropped') ? 0.25 : 0.30;
-          const fallbackSize = Math.min(displayedProductWidth, displayedProductHeight) * fallbackPercent;
+          const fallbackBase = displayedProductHeight > 0
+            ? Math.min(displayedProductWidth, displayedProductHeight)
+            : displayedProductWidth;
+          const fallbackSize = fallbackBase * fallbackPercent;
           setScreenshotDisplaySize({ width: fallbackSize, height: fallbackSize });
         }
       } catch (e) {
@@ -320,20 +370,34 @@ const ProductPreviewWithDrag = ({
     };
 
     calculateSize();
+    const raf = requestAnimationFrame(calculateSize);
+    return () => cancelAnimationFrame(raf);
   }, [productName, productSize, productImageSize, selectedProductName, printAreaFit, productImage]);
 
   // Measure the painted mockup only. naturalWidth is the file size and
   // makes the overlay huge on phones (then too tall once width is matched).
   const measureProductImage = () => {
     const img = productImageRef.current;
-    if (!img) return;
-    const rect = img.getBoundingClientRect();
-    let width = rect.width || img.clientWidth || img.offsetWidth;
-    let height = rect.height || img.clientHeight || img.offsetHeight;
+    const stage = containerRef.current;
+    if (!img && !stage) return;
+    const rect = img ? img.getBoundingClientRect() : { width: 0, height: 0 };
+    let width = rect.width || img?.clientWidth || img?.offsetWidth || 0;
+    let height = rect.height || img?.clientHeight || img?.offsetHeight || 0;
     // iOS can report width before height:auto has resolved. Infer painted
     // height from file aspect — never use naturalWidth as the overlay size.
-    if (width >= 2 && height < 2 && img.naturalWidth > 0 && img.naturalHeight > 0) {
+    if (width >= 2 && height < 2 && img && img.naturalWidth > 0 && img.naturalHeight > 0) {
       height = width * (img.naturalHeight / img.naturalWidth);
+    }
+    // Cached/mobile: img rect can be 0 on first layout. Stage width is the
+    // mockup's CSS width (img is 100%).
+    if (width < 2 && stage) {
+      const stageW = stage.getBoundingClientRect().width;
+      if (stageW >= 2) {
+        width = stageW;
+        if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
+          height = width * (img.naturalHeight / img.naturalWidth);
+        }
+      }
     }
     if (width < 2 || height < 2) return;
     setProductImageSize((prev) => {
@@ -356,6 +420,10 @@ const ProductPreviewWithDrag = ({
     measureProductImage();
     const img = productImageRef.current;
     const stage = containerRef.current;
+    // Cached images (especially iOS) may not fire onLoad again.
+    if (img?.complete) {
+      handleProductImageLoad();
+    }
     const observer = typeof ResizeObserver !== 'undefined'
       ? new ResizeObserver(() => measureProductImage())
       : null;
@@ -365,7 +433,17 @@ const ProductPreviewWithDrag = ({
     }
     window.addEventListener('resize', measureProductImage);
     window.addEventListener('orientationchange', measureProductImage);
+    let measureCancelled = false;
+    const tickMeasure = (attempt) => {
+      if (measureCancelled) return;
+      measureProductImage();
+      if (attempt < 8) {
+        requestAnimationFrame(() => tickMeasure(attempt + 1));
+      }
+    };
+    requestAnimationFrame(() => tickMeasure(0));
     return () => {
+      measureCancelled = true;
       observer?.disconnect();
       window.removeEventListener('resize', measureProductImage);
       window.removeEventListener('orientationchange', measureProductImage);
@@ -383,7 +461,9 @@ const ProductPreviewWithDrag = ({
 
       // Default Tools path: do not rasterize into a PNG. Portrait frames from
       // uploads like Samurai Dog become multi-MB PNGs on iPhone and the overlay
-      // never appears. Feather/corners still go through canvas below.
+      // never appears. If Angle Radius / feather are already baked into the
+      // screenshot (editedImageUrl), skip a second clip — it cut a square
+      // frame off at the rounded corners and JPEG-filled the gaps.
       if (!featherEdge && !cornerRadius) {
         setProcessedImage(screenshot);
         return;
@@ -673,13 +753,15 @@ const ProductPreviewWithDrag = ({
             
             return (
               <img 
-                className="product-preview-overlay"
+                className={`product-preview-overlay${printAreaFit && printAreaFit !== 'none' ? ' product-preview-overlay-fit' : ''}`}
                 src={processedImage}
                 alt="Screenshot overlay"
                 style={{
                   width: `${scaledWidth}px`,
                   height: `${scaledHeight}px`,
-                  objectFit: 'contain',
+                  // Cover keeps a landscape screenshot filling the print box
+                  // before crop finishes; contain letterboxes it as landscape.
+                  objectFit: printAreaFit && printAreaFit !== 'none' ? 'cover' : 'contain',
                   display: 'block',
                   pointerEvents: 'none',
                   userSelect: 'none',
@@ -808,12 +890,12 @@ const ToolsPage = () => {
   const [textSize, setTextSize] = useState(24);
   const [textOffsetX, setTextOffsetX] = useState(50); // 0-100, 50 = center
   const [textOffsetY, setTextOffsetY] = useState(50); // 0-100, 50 = center
-  const [printAreaFit, setPrintAreaFit] = useState('none'); // 'none', 'horizontal', 'square', 'vertical', 'product'
+  const [printAreaFit, setPrintAreaFit] = useState(() => getInitialCartPrintFit().fit); // 'none', 'horizontal', 'square', 'vertical', 'product'
   const [imageOrientation, setImageOrientation] = useState('portrait'); // 'portrait' | 'landscape' - landscape forces No Fit for uncropped view
   const [imageOffsetX, setImageOffsetX] = useState(0); // -100 to 100 (percentage)
   const [imageOffsetY, setImageOffsetY] = useState(0); // -100 to 100 (percentage)
   const [editedImageUrl, setEditedImageUrl] = useState('');
-  const [selectedProductName, setSelectedProductName] = useState('');
+  const [selectedProductName, setSelectedProductName] = useState(() => getInitialCartPrintFit().name);
   const [currentImageDimensions, setCurrentImageDimensions] = useState({ width: 0, height: 0 });
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [upgradeFailed, setUpgradeFailed] = useState(false);
@@ -823,7 +905,7 @@ const ToolsPage = () => {
   const [productImageOffsets, setProductImageOffsets] = useState({}); // Store image offsets for each cart product {cartIndex: {x: 0, y: 0}}
   const [screenshotScale, setScreenshotScale] = useState(100); // Screenshot size scale (percentage: 50-150%)
   const [screenshotSizeInteracted, setScreenshotSizeInteracted] = useState(false); // Track if screenshot size has been adjusted
-  const [productSelectClicked, setProductSelectClicked] = useState(false); // Track if product select has been clicked
+  const [productSelectClicked, setProductSelectClicked] = useState(() => Boolean(getInitialCartPrintFit().name)); // Track if product select has been clicked
   const [orderScreenshotsLoading, setOrderScreenshotsLoading] = useState(false);
   const [orderScreenshotsError, setOrderScreenshotsError] = useState(null);
   // True when opened from admin email (Edit Tools link). Init from URL so first paint is correct.
@@ -839,6 +921,8 @@ const ToolsPage = () => {
   const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
   // Per-slot edit state (keyed by cart product index) so each of up-to-5 products has its own edits; no carry-over when switching
   const slotStateRef = useRef({});
+  // True when the user picked Fit Type / landscape (do not treat initial 'none' as a choice)
+  const fitUserSetRef = useRef({});
   // When true, apply-edits effect must skip so it doesn't overwrite with previous product's image (same effect batch race)
   const switchingSlotRef = useRef(false);
   const [slotSwitchTick, setSlotSwitchTick] = useState(0);
@@ -935,8 +1019,6 @@ const ToolsPage = () => {
   // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    // Reset pulse state on mount to ensure it shows
-    setProductSelectClicked(false);
   }, []);
 
   // Load tool page state from localStorage on mount (skip when opened from email/order link so we always start clean)
@@ -992,7 +1074,8 @@ const ToolsPage = () => {
       printQualityImageUrl,
       printQualityMeta,
       offsetX: offset.x,
-      offsetY: offset.y
+      offsetY: offset.y,
+      fitUserSet: Boolean(fitUserSetRef.current[idx])
     };
   }, [selectedCartProductIndex, cartProducts, editedImageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets]);
 
@@ -1248,26 +1331,33 @@ const ToolsPage = () => {
               }
             }
             // Avoid clobbering an in-progress edit when cart poll reloads the same image
-            if (screenshot === imageUrl && !switchingSlotRef.current) {
-              return;
-            }
-            if (screenshot !== imageUrl) {
-              upgradeTriggeredRef.current = false;
-            }
-            setImageUrl(screenshot);
-            setSelectedImage(screenshot);
-            setIsUpgrading(false);
             const saved = slotStateRef.current[selectedCartProductIndex];
             const matchedName = matchPrintAreaProductName(selectedProduct.name);
             const resolvedName = (saved && saved.selectedProductName) || matchedName || '';
             const savedFit = saved && saved.printAreaFit;
-            const userChoseNoFit = Boolean(saved && saved.selectedProductName && savedFit === 'none');
+            const userChoseNoFit = Boolean(saved && saved.fitUserSet && savedFit === 'none');
             const resolvedFit = userChoseNoFit
               ? 'none'
               : (savedFit && savedFit !== 'none'
                 ? savedFit
                 : (resolvedName ? 'product' : 'none'));
+            if (screenshot === imageUrl && !switchingSlotRef.current) {
+              // Same image, but first load used to skip Product Specific forever.
+              if (!userChoseNoFit && resolvedName) {
+                setSelectedProductName((prev) => prev || resolvedName);
+                setPrintAreaFit((prev) => (prev && prev !== 'none' ? prev : 'product'));
+              }
+              return;
+            }
+            if (screenshot !== imageUrl) {
+              upgradeTriggeredRef.current = false;
+              fitUserSetRef.current[selectedCartProductIndex] = false;
+            }
+            setImageUrl(screenshot);
+            setSelectedImage(screenshot);
+            setIsUpgrading(false);
             if (saved && screenshot === screenshotFromCart) {
+              fitUserSetRef.current[selectedCartProductIndex] = Boolean(saved.fitUserSet);
               setEditedImageUrl(saved.editedImageUrl || '');
               setScreenshotScale(saved.screenshotScale ?? 100);
               setSelectedProductName(resolvedName);
@@ -1280,6 +1370,7 @@ const ToolsPage = () => {
               const cartIndex = selectedProduct.originalCartIndex;
               setProductImageOffsets(prev => ({ ...prev, [cartIndex]: { x: saved.offsetX ?? 0, y: saved.offsetY ?? 0 } }));
             } else {
+              fitUserSetRef.current[selectedCartProductIndex] = false;
               setEditedImageUrl('');
               setScreenshotScale(100);
               setSelectedProductName(resolvedName);
@@ -1302,11 +1393,25 @@ const ToolsPage = () => {
           }
         }
         
-        // Priority 2: Fallback to pending merch session
+        // Priority 2: Only an explicitly chosen working shot. Do not fall back to
+        // screenshots[0]/thumbnail — that keeps the previous image after cart-empty
+        // or when the user goes back to pick another video/image.
         const data = readPendingMerchData();
-        if (data && (data.screenshots?.length || data.selected_screenshot || data.thumbnail || data.edited_screenshot)) {
-          // Priority: edited screenshot > selected screenshot > first screenshot > thumbnail
-          const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
+        const cartEmpty = !cartProducts.length;
+        const screenshot = cartEmpty
+          ? (data?.selected_screenshot || '')
+          : (data?.edited_screenshot || data?.selected_screenshot || '');
+        if (!screenshot) {
+          slotStateRef.current = {};
+          if (imageUrl || editedImageUrl) {
+            setImageUrl('');
+            setSelectedImage('');
+            setEditedImageUrl('');
+            setPrintQualityImageUrl('');
+            setPrintQualityMeta(null);
+          }
+        } else if (data && (data.screenshots?.length || data.selected_screenshot || data.thumbnail || data.edited_screenshot)) {
+          // Priority: edited screenshot > selected screenshot (never gallery leftovers)
           if (screenshot) {
             // Reset upgrade trigger if image changed
             if (screenshot !== imageUrl) {
@@ -1314,6 +1419,10 @@ const ToolsPage = () => {
             }
             setImageUrl(screenshot);
             setSelectedImage(screenshot);
+            if (cartEmpty) {
+              setEditedImageUrl('');
+              slotStateRef.current = {};
+            }
             // Reset upgrading state when new image loads (will be set again when image actually loads)
             setIsUpgrading(false);
           }
@@ -1362,6 +1471,7 @@ const ToolsPage = () => {
           // Load selected product name
           if (data.selected_product_name) {
             setSelectedProductName(data.selected_product_name);
+            setPrintAreaFit((prev) => (prev && prev !== 'none' ? prev : 'product'));
           }
         }
         
@@ -1397,6 +1507,7 @@ const ToolsPage = () => {
     if (!autoFitCartIndexRef.current[selectedCartProductIndex]) {
       autoFitCartIndexRef.current[selectedCartProductIndex] = true;
       setPrintAreaFit((prev) => {
+        if (fitUserSetRef.current[selectedCartProductIndex]) return prev;
         if (prev && prev !== 'none') return prev;
         if (imageOrientation === 'landscape') return prev;
         return 'product';
@@ -1408,21 +1519,29 @@ const ToolsPage = () => {
   // Listen for storage events and set up upgrade checking
   useEffect(() => {
     // Listen for storage events (when print quality upgrade completes from other tabs)
+    const applyWorkingScreenshot = (data) => {
+      const cartEmpty = readCartItems().length === 0;
+      const screenshot = cartEmpty
+        ? (data?.selected_screenshot || '')
+        : (data?.edited_screenshot || data?.selected_screenshot || '');
+      if (!screenshot) {
+        if (imageUrl || editedImageUrl) {
+          setImageUrl('');
+          setSelectedImage('');
+          setEditedImageUrl('');
+        }
+      } else if (screenshot !== imageUrl) {
+        setImageUrl(screenshot);
+        setSelectedImage(screenshot);
+      }
+    };
+
     const handleStorageChange = (e) => {
-      if (e.key === 'pending_merch_data' && e.newValue) {
-        // Reload screenshot when storage changes
-        const raw = localStorage.getItem('pending_merch_data');
-        if (raw) {
-          try {
-            const data = JSON.parse(raw);
-            const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
-            if (screenshot && screenshot !== imageUrl) {
-              setImageUrl(screenshot);
-              setSelectedImage(screenshot);
-            }
-          } catch (e) {
-            console.warn('Could not parse storage data:', e);
-          }
+      if (e.key === 'pending_merch_data' || e.key === 'cart_items') {
+        try {
+          applyWorkingScreenshot(readPendingMerchData());
+        } catch (err) {
+          console.warn('Could not parse storage data:', err);
         }
       }
     };
@@ -1430,19 +1549,16 @@ const ToolsPage = () => {
     // Listen for custom event (when print quality upgrade completes in same tab)
     const handleLocalStorageUpdate = () => {
       try {
-        const data = readPendingMerchData();
-        const screenshot = data.edited_screenshot || data.selected_screenshot || data.screenshots?.[0] || data.thumbnail || '';
-        if (screenshot && screenshot !== imageUrl) {
-          setImageUrl(screenshot);
-          setSelectedImage(screenshot);
-        }
-      } catch (e) {
-        console.warn('Could not parse storage data:', e);
+        applyWorkingScreenshot(readPendingMerchData());
+      } catch (err) {
+        console.warn('Could not parse storage data:', err);
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('localStorageUpdated', handleLocalStorageUpdate);
+    window.addEventListener(PENDING_MERCH_UPDATED_EVENT, handleLocalStorageUpdate);
+    window.addEventListener(CART_UPDATED_EVENT, handleLocalStorageUpdate);
     
     // Also check periodically for upgrades (backup in case events don't fire)
     // Check more frequently for first 10 seconds, then every 5 seconds for up to 70 seconds total
@@ -1474,23 +1590,30 @@ const ToolsPage = () => {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('localStorageUpdated', handleLocalStorageUpdate);
+      window.removeEventListener(PENDING_MERCH_UPDATED_EVENT, handleLocalStorageUpdate);
+      window.removeEventListener(CART_UPDATED_EVENT, handleLocalStorageUpdate);
       clearInterval(checkInterval);
     };
   }, [searchParams, imageUrl]);
 
-  // Helper function to draw rounded rectangle
+  // Same quadratic path used to clip the image and to paint the frame.
+  const addRoundedRectPath = (ctx, x, y, width, height, radius) => {
+    const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.lineTo(x + width, y + height - r);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.lineTo(x + r, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  };
+
   const drawRoundedRect = (ctx, x, y, width, height, radius) => {
     ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
+    addRoundedRectPath(ctx, x, y, width, height, radius);
   };
 
   // Manual 300 DPI upgrade function (no longer automatic)
@@ -1884,9 +2007,22 @@ const ToolsPage = () => {
   useEffect(() => {
     if (!imageUrl) return;
     if (switchingSlotRef.current) return;
+    // Don't rasterize Original/uncropped while Product Specific is still pending.
+    const idx = selectedCartProductIndex;
+    const awaitingAutoProductFit =
+      idx !== null &&
+      cartProducts[idx] &&
+      printAreaFit === 'none' &&
+      imageOrientation !== 'landscape' &&
+      !fitUserSetRef.current[idx] &&
+      matchPrintAreaProductName(cartProducts[idx].name);
+    if (awaitingAutoProductFit) return;
+    if (printAreaFit === 'product' && !selectedProductName) return;
+    let cancelled = false;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = async () => {
+      if (cancelled) return;
       // Store current image dimensions
       const newDimensions = { width: img.width, height: img.height };
       setCurrentImageDimensions(newDimensions);
@@ -2215,82 +2351,90 @@ const ToolsPage = () => {
         ctx.globalCompositeOperation = 'source-over';
       }
 
-      // Apply frame border
+      // Paint the frame as a filled ring on the same path as the image clip.
+      // A stroke using the raw % slider looked square; this follows Angle Radius.
       if (frameEnabled) {
-        ctx.strokeStyle = frameColor;
-        ctx.lineWidth = frameWidth;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        
-        const maxCornerRadius = Math.min(canvas.width, canvas.height) / 2;
-        const isCircle = cornerRadius >= 100;
-        const effectiveCornerRadius = isCircle ? maxCornerRadius : cornerRadius;
-        
-        // Draw outer frame
+        ctx.fillStyle = frameColor;
         if (isCircle) {
           ctx.beginPath();
+          ctx.arc(canvas.width / 2, canvas.height / 2, maxCornerRadius, 0, Math.PI * 2);
           ctx.arc(
             canvas.width / 2,
             canvas.height / 2,
-            maxCornerRadius - frameWidth / 2,
+            Math.max(0, maxCornerRadius - frameWidth),
             0,
-            Math.PI * 2
+            Math.PI * 2,
+            true
           );
+          ctx.fill('evenodd');
         } else if (effectiveCornerRadius > 0) {
-          drawRoundedRect(
-            ctx, 
-            frameWidth / 2, 
-            frameWidth / 2, 
-            canvas.width - frameWidth, 
-            canvas.height - frameWidth, 
-            Math.max(0, effectiveCornerRadius - frameWidth / 2)
-          );
-        } else {
           ctx.beginPath();
-          ctx.rect(
-            frameWidth / 2, 
-            frameWidth / 2, 
-            canvas.width - frameWidth, 
-            canvas.height - frameWidth
+          addRoundedRectPath(ctx, 0, 0, canvas.width, canvas.height, effectiveCornerRadius);
+          addRoundedRectPath(
+            ctx,
+            frameWidth,
+            frameWidth,
+            canvas.width - frameWidth * 2,
+            canvas.height - frameWidth * 2,
+            Math.max(0, effectiveCornerRadius - frameWidth)
           );
+          ctx.fill('evenodd');
+        } else {
+          ctx.fillRect(0, 0, canvas.width, frameWidth);
+          ctx.fillRect(0, 0, frameWidth, canvas.height);
+          ctx.fillRect(canvas.width - frameWidth, 0, frameWidth, canvas.height);
+          ctx.fillRect(0, canvas.height - frameWidth, canvas.width, frameWidth);
         }
-        ctx.stroke();
-        
-        // Draw inner frame for double frame effect
+
         if (doubleFrame) {
-          const innerFrameOffset = frameWidth * 1.5; // Space between frames
-          const innerFrameWidth = frameWidth * 0.7; // Slightly thinner inner frame
-          
-          ctx.lineWidth = innerFrameWidth;
-          
+          const innerFrameOffset = frameWidth * 1.5;
+          const innerFrameWidth = frameWidth * 0.7;
+          const innerOuter = frameWidth + innerFrameOffset;
+          const innerInner = innerOuter + innerFrameWidth;
+
           if (isCircle) {
             ctx.beginPath();
             ctx.arc(
               canvas.width / 2,
               canvas.height / 2,
-              maxCornerRadius - frameWidth - innerFrameOffset,
+              Math.max(0, maxCornerRadius - innerOuter),
               0,
               Math.PI * 2
             );
-          } else if (effectiveCornerRadius > 0) {
-            drawRoundedRect(
-              ctx, 
-              frameWidth + innerFrameOffset, 
-              frameWidth + innerFrameOffset, 
-              canvas.width - (frameWidth + innerFrameOffset) * 2, 
-              canvas.height - (frameWidth + innerFrameOffset) * 2, 
-              Math.max(0, effectiveCornerRadius - frameWidth - innerFrameOffset)
+            ctx.arc(
+              canvas.width / 2,
+              canvas.height / 2,
+              Math.max(0, maxCornerRadius - innerInner),
+              0,
+              Math.PI * 2,
+              true
             );
+            ctx.fill('evenodd');
+          } else if (effectiveCornerRadius > 0) {
+            ctx.beginPath();
+            addRoundedRectPath(
+              ctx,
+              innerOuter,
+              innerOuter,
+              canvas.width - innerOuter * 2,
+              canvas.height - innerOuter * 2,
+              Math.max(0, effectiveCornerRadius - innerOuter)
+            );
+            addRoundedRectPath(
+              ctx,
+              innerInner,
+              innerInner,
+              canvas.width - innerInner * 2,
+              canvas.height - innerInner * 2,
+              Math.max(0, effectiveCornerRadius - innerInner)
+            );
+            ctx.fill('evenodd');
           } else {
             ctx.beginPath();
-            ctx.rect(
-              frameWidth + innerFrameOffset, 
-              frameWidth + innerFrameOffset, 
-              canvas.width - (frameWidth + innerFrameOffset) * 2, 
-              canvas.height - (frameWidth + innerFrameOffset) * 2
-            );
+            ctx.rect(innerOuter, innerOuter, canvas.width - innerOuter * 2, canvas.height - innerOuter * 2);
+            ctx.rect(innerInner, innerInner, canvas.width - innerInner * 2, canvas.height - innerInner * 2);
+            ctx.fill('evenodd');
           }
-          ctx.stroke();
         }
       }
 
@@ -2306,6 +2450,7 @@ const ToolsPage = () => {
             // Fallback font will be used
           }
         }
+        if (cancelled) return;
         ctx.save();
         // Headline-style: textSize 100 = ~22% of image min dimension so it stands out (not sentence-sized)
         const minDim = Math.min(canvas.width, canvas.height);
@@ -2337,13 +2482,18 @@ const ToolsPage = () => {
           return;
         }
       }
+      if (cancelled) return;
       setEditedImageUrl(dataUrl);
     };
     img.onerror = () => {
+      if (cancelled) return;
       console.error('Failed to load image');
     };
     img.src = imageUrl;
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, fitProductSize, slotSwitchTick]);
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, fitProductSize, slotSwitchTick, selectedCartProductIndex, cartProducts, imageOrientation]);
 
   const rotateScreenshotClockwise = () => {
     const src = (imageUrl || '').trim();
@@ -2872,8 +3022,8 @@ const ToolsPage = () => {
                                 textOffsetX={textOffsetX}
                                 textOffsetY={textOffsetY}
                                 onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
-                                featherEdge={featherEdge}
-                                cornerRadius={cornerRadius}
+                                featherEdge={editedImageUrl ? 0 : featherEdge}
+                                cornerRadius={editedImageUrl ? 0 : cornerRadius}
                                 printAreaFit={printAreaFit}
                                 selectedProductName={selectedProductName}
                                 screenshotScale={screenshotScale}
@@ -2952,8 +3102,8 @@ const ToolsPage = () => {
                               textOffsetX={textOffsetX}
                               textOffsetY={textOffsetY}
                               onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
-                              featherEdge={featherEdge}
-                              cornerRadius={cornerRadius}
+                              featherEdge={editedImageUrl ? 0 : featherEdge}
+                              cornerRadius={editedImageUrl ? 0 : cornerRadius}
                               printAreaFit={printAreaFit}
                               selectedProductName={selectedProductName}
                               screenshotScale={screenshotScale}
@@ -3012,8 +3162,8 @@ const ToolsPage = () => {
                             textOffsetX={textOffsetX}
                             textOffsetY={textOffsetY}
                             onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
-                            featherEdge={featherEdge}
-                            cornerRadius={cornerRadius}
+                            featherEdge={editedImageUrl ? 0 : featherEdge}
+                            cornerRadius={editedImageUrl ? 0 : cornerRadius}
                             printAreaFit={printAreaFit}
                             selectedProductName={selectedProductName}
                             screenshotScale={screenshotScale}
@@ -3206,7 +3356,8 @@ const ToolsPage = () => {
                       printQualityImageUrl,
                       printQualityMeta,
                       offsetX: offset.x,
-                      offsetY: offset.y
+                      offsetY: offset.y,
+                      fitUserSet: Boolean(fitUserSetRef.current[oldIndex])
                     };
                   }
                   setSelectedCartProductIndex(newIndex);
@@ -3255,6 +3406,9 @@ const ToolsPage = () => {
                     onChange={() => {
                       setImageOrientation('landscape');
                       setPrintAreaFit('none'); // No Fit = uncropped landscape image
+                      if (selectedCartProductIndex !== null) {
+                        fitUserSetRef.current[selectedCartProductIndex] = true;
+                      }
                     }}
                   />
                   <span>Landscape (No Fit – show more image, less crop)</span>
@@ -3305,6 +3459,9 @@ const ToolsPage = () => {
                 onChange={(e) => {
                   const value = e.target.value;
                   setPrintAreaFit(value);
+                  if (selectedCartProductIndex !== null) {
+                    fitUserSetRef.current[selectedCartProductIndex] = true;
+                  }
                   if (value !== 'none') setImageOrientation('portrait'); // Fit type = portrait mode
                   setImageOffsetX(0);
                   setImageOffsetY(0);

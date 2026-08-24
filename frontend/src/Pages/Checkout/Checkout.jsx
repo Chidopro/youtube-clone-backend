@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
-import { emitCartUpdated, setToolsFocusCartIndex, writeCartItems } from '../../utils/merchSession';
+import { emitCartUpdated, setToolsFocusCartIndex, writeCartItems, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
 import {
   US_STATE_OPTIONS,
   CA_PROVINCE_OPTIONS,
@@ -57,8 +57,7 @@ const Checkout = () => {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('cart_items');
-      const parsed = raw ? JSON.parse(raw) : [];
+      const parsed = readCartItems();
       setItems(parsed);
       setSubtotal(parsed.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
     } catch (e) {
@@ -406,12 +405,12 @@ const Checkout = () => {
       const data = await res.json();
       if (data?.url) {
         try {
+          writeCartItems([]);
           localStorage.removeItem('cart');
-          localStorage.removeItem('cart_items');
           localStorage.removeItem('cartData');
           localStorage.removeItem('persistent_cart');
-          Object.keys(localStorage).forEach(key => { if (key.toLowerCase().includes('cart')) localStorage.removeItem(key); });
-          Object.keys(sessionStorage).forEach(key => { if (key.toLowerCase().includes('cart')) sessionStorage.removeItem(key); });
+          Object.keys(localStorage).forEach(key => { if (key.toLowerCase().includes('cart') && key !== 'cart_items') localStorage.removeItem(key); });
+          Object.keys(sessionStorage).forEach(key => { if (key.toLowerCase().includes('cart') && key !== 'cart_items') sessionStorage.removeItem(key); });
         } catch (err) { /* ignore */ }
         emitCartUpdated();
         window.location.href = data.url;
@@ -431,12 +430,12 @@ const Checkout = () => {
       const data2 = await res2.json();
       if (data2?.next_url) {
         try {
+          writeCartItems([]);
           localStorage.removeItem('cart');
-          localStorage.removeItem('cart_items');
           localStorage.removeItem('cartData');
           localStorage.removeItem('persistent_cart');
-          Object.keys(localStorage).forEach(key => { if (key.toLowerCase().includes('cart')) localStorage.removeItem(key); });
-          Object.keys(sessionStorage).forEach(key => { if (key.toLowerCase().includes('cart')) sessionStorage.removeItem(key); });
+          Object.keys(localStorage).forEach(key => { if (key.toLowerCase().includes('cart') && key !== 'cart_items') localStorage.removeItem(key); });
+          Object.keys(sessionStorage).forEach(key => { if (key.toLowerCase().includes('cart') && key !== 'cart_items') sessionStorage.removeItem(key); });
         } catch (err) { /* ignore */ }
         emitCartUpdated();
         window.location.href = data2.next_url;
@@ -471,22 +470,8 @@ const Checkout = () => {
     } catch {}
     setToolsFocusCartIndex(index);
     try {
-      const raw = localStorage.getItem('pending_merch_data');
-      const data = raw ? JSON.parse(raw) : {};
       const shot = item.selected_screenshot || item.screenshot;
-      if (shot) data.selected_screenshot = shot;
-      if (item.video_url || item.videoUrl) {
-        data.videoUrl = item.video_url || item.videoUrl;
-      }
-      if (item.video_title || item.videoTitle) {
-        data.videoTitle = item.video_title || item.videoTitle;
-      }
-      if (item.creator_name || item.creatorName) {
-        data.creatorName = item.creator_name || item.creatorName;
-      }
-      if (item.thumbnail) data.thumbnail = item.thumbnail;
-      if (item.screenshot_timestamp) data.screenshot_timestamp = item.screenshot_timestamp;
-      localStorage.setItem('pending_merch_data', JSON.stringify(data));
+      if (shot) applySelectedScreenshot(shot);
     } catch {}
     setShowDesignModal(false);
     const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';

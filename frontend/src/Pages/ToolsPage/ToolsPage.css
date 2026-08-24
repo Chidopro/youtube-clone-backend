@@ -235,6 +235,10 @@ body.tools-page-active .main-content-inner {
   object-fit: contain;
 }
 
+.product-preview-overlay-fit {
+  object-fit: cover;
+}
+
 .preview-image-wrapper-compact {
   width: 100%;
   min-height: 150px;
@@ -940,6 +944,10 @@ body.tools-page-active .main-content-inner {
   body.tools-page-active .product-preview-overlay {
     max-width: none !important;
     max-height: none !important;
+  }
+
+  body.tools-page-active .product-preview-overlay-fit {
+    object-fit: cover;
   }
 
   body.tools-page-active .screenshot-size-under-preview {

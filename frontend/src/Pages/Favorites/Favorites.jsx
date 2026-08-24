@@ -5,6 +5,7 @@ import { getSubdomain } from '../../utils/subdomainService';
 import { fetchPublicFavoritesByList, favoriteImageUrl, favoriteCardThumbUrl } from '../../utils/favoriteListsApi';
 import { favoriteListPageHeading } from '../../utils/favoriteListLabels';
 import { apiJoin } from '../../config/apiConfig';
+import { savePendingMerchData } from '../../utils/merchSession';
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
 import './Favorites.css';
 
@@ -152,7 +153,7 @@ const Favorites = ({ sidebar }) => {
       creatorName: currentCreator?.display_name || 'Creator',
       screenshot_timestamp: '0:00',
     };
-    localStorage.setItem('pending_merch_data', JSON.stringify(merchData));
+    savePendingMerchData(merchData);
     localStorage.setItem('creator_favorites_mode', 'false');
     if (listMeta?.id) {
       try {

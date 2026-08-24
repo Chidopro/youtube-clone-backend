@@ -2231,10 +2231,9 @@ def serve_static_image(filename):
     static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'images')
     response = send_from_directory(static_dir, clean_filename)
     
-    # Add cache-busting headers for mobile compatibility
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
+    # Product mockups are stable files. Caching them makes category grids appear
+    # immediately instead of re-downloading every PNG on each click.
+    response.headers['Cache-Control'] = 'public, max-age=604800, immutable'
     # Allow cross-origin so screenmerch.com can load images from this backend
     origin = request.headers.get('Origin')
     if origin:

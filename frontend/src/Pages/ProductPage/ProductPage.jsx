@@ -39,9 +39,18 @@ const getProductImageUrl = (product, preferPreview = true) => {
   return `${getImgBase()}/${url}`;
 };
 
-// Stable cache key per productData so img src doesn't change every render (prevents images never loading)
+// Cart screenshots still need a unique query when the same URL is reused.
 const getCacheBuster = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-const getStableImageQuery = (productData) => productData?.timestamp ? `v=${productData.timestamp}` : `v=0`;
+const categoryBrowseCache = new Map();
+
+const preloadImageUrls = (urls) => {
+  (urls || []).forEach((url) => {
+    if (!url || typeof url !== 'string') return;
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = url;
+  });
+};
 
 const ProductPage = ({ sidebar }) => {
   const { productId } = useParams();
@@ -153,6 +162,10 @@ const ProductPage = ({ sidebar }) => {
 
     // Persist for mobile reloads
     try { localStorage.setItem('last_selected_category', newCategory); } catch {}
+    try {
+      const staticProducts = getStaticProductsForCategory(newCategory);
+      preloadImageUrls(staticProducts.map((p) => p.preview_image || p.main_image));
+    } catch {}
 
     // Navigate (iOS-safe fallback)
     try {
@@ -480,6 +493,10 @@ const ProductPage = ({ sidebar }) => {
   const persistCart = (items) => {
     setCartItems(items);
     writeCartItems(items);
+    if (!items.length) {
+      setSelectedScreenshot(null);
+      setSelectedScreenshotUrl(null);
+    }
   };
 
   const checkSelectionAvailability = async (product, index, color, size) => {
@@ -671,16 +688,53 @@ const ProductPage = ({ sidebar }) => {
 
   useEffect(() => {
     const wantedCategory = category;
-    const wantedProductId = productId || 'browse';
     const controller = new AbortController();
 
     if (window.__DEBUG__) {
     console.log('🔄 useEffect triggered with:', { productId, category, authenticated, email });
     }
 
+    const withDisplayUrls = (data) => {
+      const base = getBackendUrl().replace(/\/$/, '');
+      const imgBase = `${base}/static/images`;
+      const productsWithUrls = (data.products || []).map((p) => {
+        if (!p) return p;
+        const previewUrl = p.preview_image_url || (p.preview_image ? (p.preview_image.startsWith('/') ? base + p.preview_image : (p.preview_image.startsWith('http') ? ensureHttps(p.preview_image) : `${imgBase}/${p.preview_image}`)) : '');
+        const mainUrl = p.main_image_url || (p.main_image ? (p.main_image.startsWith('/') ? base + p.main_image : (p.main_image.startsWith('http') ? ensureHttps(p.main_image) : `${imgBase}/${p.main_image}`)) : '');
+        return { ...p, _displayImageUrl: previewUrl || mainUrl || `${imgBase}/placeholder.png` };
+      });
+      return { ...data, products: productsWithUrls };
+    };
+
+    const paintProducts = (data) => {
+      const next = withDisplayUrls(data);
+      setProductData(next);
+      preloadImageUrls((next.products || []).map((p) => p._displayImageUrl));
+    };
+
+    const cached = categoryBrowseCache.get(wantedCategory);
+    if (cached) {
+      paintProducts(cached);
+      setLoading(false);
+      setError(null);
+    } else {
+      const staticProducts = getStaticProductsForCategory(wantedCategory);
+      if (staticProducts.length) {
+        setProductData((prev) => withDisplayUrls({
+          success: true,
+          products: staticProducts,
+          category: wantedCategory,
+          product: prev?.product || { thumbnail_url: '', screenshots: [] }
+        }));
+        preloadImageUrls(staticProducts.map((p) => p.preview_image || p.main_image));
+        setLoading(false);
+      } else if (!productData) {
+        setLoading(true);
+      }
+    }
+
     const fetchProductData = async () => {
       try {
-        setLoading(true);
         setError(null); // Clear any previous errors
 
         // Handle browse mode - use 'browse' when productId is undefined or 'dynamic'
@@ -689,8 +743,8 @@ const ProductPage = ({ sidebar }) => {
 
         const apiBase = getBackendUrl().replace(/\/$/, '');
         const url = isBrowseMode
-          ? `${apiBase}/api/product/browse?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}&mobile=${Date.now()}&cache=${Math.random()}`
-          : `${apiBase}/api/product/${actualProductId}?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}&v=${Date.now()}&mobile=${Date.now()}&cache=${Math.random()}`;
+          ? `${apiBase}/api/product/browse?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}`
+          : `${apiBase}/api/product/${actualProductId}?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}`;
 
         // Enable debug for mobile
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -721,12 +775,7 @@ const ProductPage = ({ sidebar }) => {
           timeoutId = setTimeout(() => controller.abort(), 30000);
           response = await fetch(url, {
           method: 'GET',
-            cache: 'no-cache',
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0'
-            },
+            cache: 'default',
             signal: controller.signal
         });
           clearTimeout(timeoutId);
@@ -796,16 +845,8 @@ const ProductPage = ({ sidebar }) => {
           setLoading(false);
           return;
         }
-        // Normalize products with stable image URLs so they persist across re-renders/category switches
-        const base = getBackendUrl().replace(/\/$/, '');
-        const imgBase = `${base}/static/images`;
-        const productsWithUrls = (data.products || []).map((p) => {
-          if (!p) return p;
-          const previewUrl = p.preview_image_url || (p.preview_image ? (p.preview_image.startsWith('/') ? base + p.preview_image : (p.preview_image.startsWith('http') ? ensureHttps(p.preview_image) : `${imgBase}/${p.preview_image}`)) : '');
-          const mainUrl = p.main_image_url || (p.main_image ? (p.main_image.startsWith('/') ? base + p.main_image : (p.main_image.startsWith('http') ? ensureHttps(p.main_image) : `${imgBase}/${p.main_image}`)) : '');
-          return { ...p, _displayImageUrl: previewUrl || mainUrl || `${imgBase}/placeholder.png` };
-        });
-        setProductData({ ...data, products: productsWithUrls });
+        categoryBrowseCache.set(wantedCategory, data);
+        paintProducts(data);
       } catch (err) {
         if (err?.name === 'AbortError') return;
         console.error('Error fetching product data:', err);
@@ -1347,15 +1388,16 @@ const ProductPage = ({ sidebar }) => {
                         <div className="product-image-wrapper">
                           <img
                             className={isApparelCategory ? "product-image-clear" : "product-image-normal"}
-                            src={safeUrl + (safeUrl.includes('?') ? '&' : '?') + getStableImageQuery(productData)}
+                            src={safeUrl}
                             alt={product.name}
-                            loading="lazy"
+                            loading={index < 8 ? 'eager' : 'lazy'}
+                            fetchPriority={index < 4 ? 'high' : 'auto'}
+                            decoding="async"
                             referrerPolicy="no-referrer"
                             onError={(e) => {
                               const fallback = getProductImageUrl(product, false);
                               if (fallback && e.currentTarget.src !== fallback) {
-                                const q = getStableImageQuery(productData);
-                                e.currentTarget.src = fallback + (fallback.includes('?') ? '&' : '?') + q;
+                                e.currentTarget.src = fallback;
                               } else {
                                 e.currentTarget.src = `${getImgBase()}/placeholder.png`;
                               }
