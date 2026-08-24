@@ -728,6 +728,9 @@
     width: auto !important;
     max-width: none !important;
     margin: 0 !important;
+    max-height: calc(100vh - 96px);
+    min-height: 0;
+    overflow: hidden;
   }
 
   .video-page-container .screenmerch-actions--sidebar {
@@ -735,13 +738,16 @@
     grid-template-columns: 1fr 1fr;
     gap: 12px;
     width: 100%;
-    margin: auto 0 0 0 !important;
+    margin: 0 !important;
+    padding: 8px 0 0 0;
     box-sizing: border-box;
+    flex-shrink: 0;
+    background: #fff;
   }
 
   .video-page-container .screenmerch-images-grid {
     flex: 1 1 auto;
-    gap: 12px;
+    gap: 8px;
     width: 100%;
     min-height: 0;
     grid-template-rows: repeat(3, minmax(0, 1fr));
@@ -751,6 +757,21 @@
   .video-page-container .screenmerch-image-box {
     min-height: 0;
     height: 100%;
+    padding: 4px;
+  }
+
+  .video-page-container .screenmerch-image-box:hover {
+    transform: none;
+  }
+
+  .video-page-container .screenmerch-placeholder {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .video-page-container .screenmerch-preview {
+    max-height: 100%;
   }
 }
 
