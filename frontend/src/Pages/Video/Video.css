@@ -217,7 +217,7 @@
   .main-container {
     flex: 1;
     display: flex;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: flex-start;
     padding: 0;
     gap: 12px;
@@ -263,23 +263,31 @@
   padding: 10px 20px 10px 20px;
   display: flex;
   flex-direction: column;
-  height: fit-content;
+  min-height: 0;
 }
 
 @media (min-width: 769px) {
   .screenshots-section {
-    padding: 0 10px 10px 10px;
+    padding: 8px 10px 10px 10px;
+    align-self: stretch;
+  }
+
+  .screenshots-section .screenmerch-images-grid {
+    order: 1;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .screenshots-section .screenmerch-actions--sidebar {
-    margin: 0 0 6px 0;
+    order: 2;
+    margin: auto 0 0 0;
   }
 }
 
 .screenshots-section .screenmerch-actions--sidebar {
   display: flex;
   gap: 8px;
-  margin: 0 0 8px 0;
+  margin: 12px 0 0 0;
   flex-shrink: 0;
 }
 
@@ -699,7 +707,7 @@
   .video-page-container .main-container {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-    align-items: start;
+    align-items: stretch;
     column-gap: 12px;
     width: 100%;
     max-width: none;
@@ -727,14 +735,22 @@
     grid-template-columns: 1fr 1fr;
     gap: 12px;
     width: 100%;
-    margin: 0 0 12px 0 !important;
+    margin: auto 0 0 0 !important;
     box-sizing: border-box;
   }
 
   .video-page-container .screenmerch-images-grid {
+    flex: 1 1 auto;
     gap: 12px;
     width: 100%;
+    min-height: 0;
+    grid-template-rows: repeat(3, minmax(0, 1fr));
     box-sizing: border-box;
+  }
+
+  .video-page-container .screenmerch-image-box {
+    min-height: 0;
+    height: 100%;
   }
 }
 

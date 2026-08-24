@@ -366,6 +366,12 @@ const Video = ({ sidebar }) => {
             </div>
           )}
           
+          <ScreenmerchImages 
+            thumbnail={thumbnail} 
+            screenshots={screenshots} 
+            onDeleteScreenshot={handleDeleteScreenshot} 
+            onCropScreenshot={handleCropScreenshot} 
+          />
           {!isMobile && (
             <div className="screenmerch-actions screenmerch-actions--sidebar">
               <button
@@ -385,12 +391,6 @@ const Video = ({ sidebar }) => {
               </button>
             </div>
           )}
-          <ScreenmerchImages 
-            thumbnail={thumbnail} 
-            screenshots={screenshots} 
-            onDeleteScreenshot={handleDeleteScreenshot} 
-            onCropScreenshot={handleCropScreenshot} 
-          />
         </div>
        </div>
 
