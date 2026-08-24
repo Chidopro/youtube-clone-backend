@@ -166,6 +166,59 @@ export function consumeToolsFocusCartIndex() {
   }
 }
 
+export function peekToolsFocusCartIndex() {
+  try {
+    const raw = localStorage.getItem('tools_focus_cart_index');
+    if (raw == null || raw === '') return null;
+    const idx = parseInt(raw, 10);
+    return Number.isNaN(idx) ? null : idx;
+  } catch {
+    return null;
+  }
+}
+
+/** Replace the working screenshot and drop the previous Tools edit. */
+export function applySelectedScreenshot(url) {
+  if (!url || typeof url !== 'string') return;
+  const prev = readPendingMerchData() || {};
+  const oldShot = prev.selected_screenshot || prev.edited_screenshot || '';
+  const next = { ...prev, selected_screenshot: url };
+  delete next.edited_screenshot;
+  savePendingMerchData(next);
+
+  try {
+    const cart = readCartItems();
+    if (!Array.isArray(cart) || cart.length === 0) return;
+
+    let idx = peekToolsFocusCartIndex();
+    if (idx == null || !cart[idx]) {
+      idx = cart.findIndex(
+        (item) =>
+          item &&
+          (item.screenshot === oldShot ||
+            item.selected_screenshot === oldShot ||
+            item.screenshot === prev.selected_screenshot ||
+            item.screenshot === prev.edited_screenshot)
+      );
+    }
+    if (idx < 0 && cart.length === 1) idx = 0;
+    if (idx < 0 || !cart[idx]) return;
+
+    const nextCart = cart.map((item, i) => {
+      if (i !== idx) return item;
+      const updated = { ...item, screenshot: url, selected_screenshot: url };
+      if (updated.toolSettings) {
+        updated.toolSettings = { ...updated.toolSettings, editedImageUrl: '', screenshot: url };
+      }
+      return updated;
+    });
+    writeCartItems(nextCart);
+    setToolsFocusCartIndex(idx);
+  } catch {
+    /* ignore */
+  }
+}
+
 export const CART_UPDATED_EVENT = 'screenmerch-cart-updated';
 
 export function readCartItems() {

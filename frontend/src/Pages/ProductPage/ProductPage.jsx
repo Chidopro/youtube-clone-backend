@@ -8,7 +8,7 @@ import { getBackendUrl } from '../../config/apiConfig';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
-import { setToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems } from '../../utils/merchSession';
+import { setToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
 import './ProductPage.css';
 
 const IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
@@ -615,10 +615,7 @@ const ProductPage = ({ sidebar }) => {
       }
       const urlToSave = selectedScreenshotUrl || getSelectedScreenshotUrl();
       if (urlToSave) {
-        const data = { ...readPendingMerchData() };
-        data.selected_screenshot = urlToSave;
-        delete data.edited_screenshot;
-        savePendingMerchData(data);
+        applySelectedScreenshot(urlToSave);
       }
     } catch (e) {
       console.warn('Could not prepare tools focus:', e);
@@ -1182,6 +1179,8 @@ const ProductPage = ({ sidebar }) => {
                   >
                     <div onClick={() => {
                       setSelectedScreenshot('thumbnail');
+                      setSelectedScreenshotUrl(thumbnailUrl);
+                      applySelectedScreenshot(thumbnailUrl);
                       if (creatorMode) setSelectedScreenshotForFavorite('thumbnail');
                     }} style={{ cursor: 'pointer' }}>
                       <img 
@@ -1228,6 +1227,7 @@ const ProductPage = ({ sidebar }) => {
                         <div onClick={() => {
                           setSelectedScreenshot(originalIndex);
                           setSelectedScreenshotUrl(screenshot);
+                          applySelectedScreenshot(screenshot);
                           if (creatorMode) setSelectedScreenshotForFavorite(originalIndex);
                         }} style={{ cursor: 'pointer' }}>
                           <img 

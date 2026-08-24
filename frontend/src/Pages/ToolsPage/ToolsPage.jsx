@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
-import { consumeToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems } from '../../utils/merchSession';
+import { consumeToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, CART_UPDATED_EVENT } from '../../utils/merchSession';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -16,6 +16,28 @@ const TEXT_TOOL_GOOGLE_FONTS = [
   'Pacifico'
 ];
 const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Orbitron:wght@400;700&family=Bebas+Neue&family=Creepster&family=Dela+Gothic+One&family=Long+Cang&family=Pacifico&display=swap';
+
+// Women's / men's / kids garments that use a chest print on a framed mockup photo.
+// All-over, swim, and leggings stay on their existing paths.
+function isApparelChestPrintProduct(productName) {
+  if (!productName) return false;
+  const n = productName.toLowerCase();
+  if (n.includes('all-over') || n.includes('all over')) return false;
+  if (n.includes('swimsuit') || n.includes('leggings')) return false;
+  if (n.includes('hat') || n.includes('cap')) return false;
+  return (
+    n.includes('shirt') ||
+    n.includes('tee') ||
+    n.includes('hoodie') ||
+    n.includes('tank') ||
+    n.includes('sweatshirt') ||
+    n.includes('jersey') ||
+    n.includes('body suit') ||
+    n.includes('bodysuit') ||
+    n.includes('crop top') ||
+    n.includes('long sleeve')
+  );
+}
 
 // Component for product preview with draggable screenshot
 const ProductPreviewWithDrag = ({ 
@@ -34,7 +56,9 @@ const ProductPreviewWithDrag = ({
   cornerRadius,
   printAreaFit,
   selectedProductName,
-  screenshotScale = 100
+  screenshotScale = 100,
+  imageOffsetX = 0,
+  imageOffsetY = 0
 }) => {
   const containerRef = useRef(null);
   const productImageRef = useRef(null);
@@ -57,16 +81,9 @@ const ProductPreviewWithDrag = ({
     if (!effectiveProductName) return;
 
     const calculateSize = () => {
-      // For products without preview images, use a default size for calculation
-      // Reset productImageSize when product changes to force recalculation
-      const hasProductImage = productImageRef.current && productImageSize.width > 0;
-      const defaultProductSize = { width: 400, height: 400 }; // Default size for calculation when no product image
-      const effectiveProductSize = hasProductImage ? productImageSize : defaultProductSize;
-      
-      if (!hasProductImage && !productImageRef.current) {
-        // If no product image ref exists, we'll still calculate but use defaults
-        // This allows size calculation for products without previews
-      }
+      const hasProductImage = productImageSize.width > 0 && productImageSize.height > 0;
+      const displayedProductWidth = productImageSize.width;
+      const displayedProductHeight = productImageSize.height;
 
       try {
         // Get print area dimensions for this product
@@ -74,10 +91,9 @@ const ProductPreviewWithDrag = ({
         
         console.log(`🔍 [SIZE_CALC] Product: "${effectiveProductName}" (from ${printAreaFit === 'product' && selectedProductName ? 'dropdown' : 'cart'}), Size: "${productSize || 'default'}", Print Area:`, printDimensions);
         
-        if (printDimensions && effectiveProductSize.width > 0) {
-          const displayedProductWidth = effectiveProductSize.width;
-          const displayedProductHeight = effectiveProductSize.height;
-          
+        // Wait for the painted mockup. A 400×400 fallback sizes the overlay
+        // as if the photo were huge, which sticks on phones when layout is late.
+        if (printDimensions && hasProductImage && displayedProductWidth > 0) {
           // Calculate size based on print area dimensions and product image size
           // Direct mapping: print area inches → percentage of product image
           // This ensures consistent sizing across all product types
@@ -159,6 +175,46 @@ const ProductPreviewWithDrag = ({
             console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}px (${(finalWidth/displayedProductWidth*100).toFixed(1)}% x ${(finalHeight/displayedProductHeight*100).toFixed(1)}% of product)`);
             return; // Exit early for hats
           }
+
+          // Apparel (women/men/kids shirts, tees, hoodies, tanks, sweatshirts,
+          // baby/toddler): size to a shared mockup-relative chest print region,
+          // same pattern as hats (explicit % of the displayed mockup).
+          //
+          // Why Baby Jersey already looks perfect: it is 7×8 and does not match
+          // kids/youth/hoodie/tank, so it uses the default typical garment width
+          // of 18" → overlay width = 7/18 of the *full* mockup photo. Shirt
+          // mockups frame the chest similarly, so that fraction matches the
+          // visual print box. Mapping 12"/18" onto the full photo (~67%) is
+          // far larger than the actual chest on the same style of photo.
+          if (isApparelChestPrintProduct(effectiveProductName)) {
+            const babyJerseyPrint = getPrintAreaDimensions('Baby Jersey T-Shirt', null, 'front');
+            const defaultTypicalGarmentWidthInches = 18;
+            const chestWidthFraction = (babyJerseyPrint?.width || 7) / defaultTypicalGarmentWidthInches;
+
+            let finalWidth = displayedProductWidth * chestWidthFraction;
+            let finalHeight = finalWidth / printAspectRatio;
+
+            if (isSquare) {
+              finalHeight = finalWidth;
+            }
+
+            // Keep tall prints on the garment, not the full photo. Baby Jersey
+            // (7×8 at 7/18 width) is ~44% of mockup width in height and must
+            // not be clamped.
+            const maxHeight = displayedProductHeight * 0.65;
+            if (finalHeight > maxHeight) {
+              finalHeight = maxHeight;
+              finalWidth = isSquare ? finalHeight : finalHeight * printAspectRatio;
+            }
+
+            setScreenshotDisplaySize({
+              width: finalWidth,
+              height: finalHeight
+            });
+
+            console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}px (${(finalWidth/displayedProductWidth*100).toFixed(1)}% x ${(finalHeight/displayedProductHeight*100).toFixed(1)}% of product) [apparel chest]`);
+            return;
+          }
           
           // For non-hat products, calculate size to ensure full print area coverage
           // Calculate based on print area dimensions to ensure even coverage
@@ -168,54 +224,21 @@ const ProductPreviewWithDrag = ({
           // Estimate product dimensions in inches for scaling
           // Typical product widths: kids ~14", womens/mens ~18-20", hoodies ~20"
           let typicalProductWidthInches = 18;
-          let typicalProductHeightInches = 24; // Typical shirt/hoodie height
-          
-          // Override based on product type (remove duplicate declaration)
           
           if (productNameLower.includes('kids') || productNameLower.includes('youth')) {
             typicalProductWidthInches = 14;
-            typicalProductHeightInches = 18;
           } else if (productNameLower.includes('hoodie')) {
             typicalProductWidthInches = 20;
-            typicalProductHeightInches = 26;
           } else if (productNameLower.includes('tank')) {
             typicalProductWidthInches = 17;
-            typicalProductHeightInches = 22;
           }
           
-          // Calculate what percentage of product the print area represents (with 5% buffer for safety)
-          const printWidthPercent = (printWidthInches / typicalProductWidthInches) * 1.05;
-          const printHeightPercent = (printHeightInches / typicalProductHeightInches) * 1.05;
-          
-          // Calculate base dimensions to cover print area
-          let baseWidth = displayedProductWidth * printWidthPercent;
-          let baseHeight = displayedProductHeight * printHeightPercent;
-          
-          // Calculate dimensions maintaining print area aspect ratio
-          // Try width-based first
-          let finalWidth = baseWidth;
+          // Map configured print inches onto the mockup. Height comes only from
+          // the print-area aspect (width x height in printAreaConfig) — do not
+          // also scale from mockup photo height or the overlay becomes too tall.
+          const printWidthPercent = printWidthInches / typicalProductWidthInches;
+          let finalWidth = displayedProductWidth * printWidthPercent;
           let finalHeight = finalWidth / printAspectRatio;
-          
-          // Check if height-based gives better coverage
-          const heightBasedWidth = baseHeight * printAspectRatio;
-          const heightBasedHeight = baseHeight;
-          
-          // Use whichever ensures both dimensions cover their print areas
-          // If width-based height doesn't cover print height, use height-based
-          if (finalHeight < displayedProductHeight * printHeightPercent) {
-            finalWidth = heightBasedWidth;
-            finalHeight = heightBasedHeight;
-          }
-          
-          // Ensure we cover both dimensions
-          if (finalWidth < displayedProductWidth * printWidthPercent) {
-            finalWidth = displayedProductWidth * printWidthPercent;
-            finalHeight = finalWidth / printAspectRatio;
-          }
-          if (finalHeight < displayedProductHeight * printHeightPercent) {
-            finalHeight = displayedProductHeight * printHeightPercent;
-            finalWidth = finalHeight * printAspectRatio;
-          }
           
           // For square products, ensure width and height are always equal
           if (isSquare) {
@@ -268,15 +291,10 @@ const ProductPreviewWithDrag = ({
             // Ensure minimum size for visibility (at least 30% width, 25% height)
             // But don't override if we need larger for print area coverage
             const minWidth = displayedProductWidth * 0.30;
-            const minHeight = displayedProductHeight * 0.25;
             
-            if (finalWidth < minWidth && finalWidth < displayedProductWidth * printWidthPercent) {
-              finalWidth = Math.max(minWidth, displayedProductWidth * printWidthPercent);
+            if (finalWidth < minWidth) {
+              finalWidth = minWidth;
               finalHeight = finalWidth / printAspectRatio;
-            }
-            if (finalHeight < minHeight && finalHeight < displayedProductHeight * printHeightPercent) {
-              finalHeight = Math.max(minHeight, displayedProductHeight * printHeightPercent);
-              finalWidth = finalHeight * printAspectRatio;
             }
           }
           
@@ -286,34 +304,77 @@ const ProductPreviewWithDrag = ({
           });
           
           console.log(`📐 [PRINT_AREA] ${effectiveProductName} (${productSize || 'default'}): Print ${printDimensions.width}"x${printDimensions.height}" (AR: ${printAspectRatio.toFixed(2)}) → ${finalWidth.toFixed(0)}x${finalHeight.toFixed(0)}px (${(finalWidth/displayedProductWidth*100).toFixed(1)}% x ${(finalHeight/displayedProductHeight*100).toFixed(1)}% of product)`);
-        } else {
-          // Fallback: use a percentage of product image size based on product type
+        } else if (hasProductImage) {
+          // Fallback: use a percentage of the painted mockup, not a 400px guess
           const fallbackPercent = effectiveProductName.toLowerCase().includes('cropped') ? 0.25 : 0.30;
-          const fallbackSize = Math.min(productImageSize.width, productImageSize.height) * fallbackPercent;
+          const fallbackSize = Math.min(displayedProductWidth, displayedProductHeight) * fallbackPercent;
           setScreenshotDisplaySize({ width: fallbackSize, height: fallbackSize });
         }
       } catch (e) {
         console.warn('Could not calculate print area size:', e);
-        // Fallback: use a percentage of product image size
-        const fallbackSize = Math.min(productImageSize.width, productImageSize.height) * 0.25;
-        setScreenshotDisplaySize({ width: fallbackSize, height: fallbackSize });
+        if (productImageSize.width > 0 && productImageSize.height > 0) {
+          const fallbackSize = Math.min(productImageSize.width, productImageSize.height) * 0.25;
+          setScreenshotDisplaySize({ width: fallbackSize, height: fallbackSize });
+        }
       }
     };
 
     calculateSize();
   }, [productName, productSize, productImageSize, selectedProductName, printAreaFit, productImage]);
 
-  // Measure product image when it loads
-  const handleProductImageLoad = (e) => {
-    const img = e.target;
-    const newSize = {
-      width: img.offsetWidth || img.naturalWidth,
-      height: img.offsetHeight || img.naturalHeight
-    };
-    setProductImageSize(newSize);
-    // Force recalculation when image loads, especially after product selection
-    // This ensures size updates correctly when switching products
+  // Measure the painted mockup only. naturalWidth is the file size and
+  // makes the overlay huge on phones (then too tall once width is matched).
+  const measureProductImage = () => {
+    const img = productImageRef.current;
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    let width = rect.width || img.clientWidth || img.offsetWidth;
+    let height = rect.height || img.clientHeight || img.offsetHeight;
+    // iOS can report width before height:auto has resolved. Infer painted
+    // height from file aspect — never use naturalWidth as the overlay size.
+    if (width >= 2 && height < 2 && img.naturalWidth > 0 && img.naturalHeight > 0) {
+      height = width * (img.naturalHeight / img.naturalWidth);
+    }
+    if (width < 2 || height < 2) return;
+    setProductImageSize((prev) => {
+      if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) {
+        return prev;
+      }
+      return { width, height };
+    });
   };
+
+  const handleProductImageLoad = () => {
+    measureProductImage();
+    requestAnimationFrame(() => {
+      measureProductImage();
+      requestAnimationFrame(measureProductImage);
+    });
+  };
+
+  useLayoutEffect(() => {
+    measureProductImage();
+    const img = productImageRef.current;
+    const stage = containerRef.current;
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => measureProductImage())
+      : null;
+    if (observer) {
+      if (img) observer.observe(img);
+      if (stage) observer.observe(stage);
+    }
+    window.addEventListener('resize', measureProductImage);
+    window.addEventListener('orientationchange', measureProductImage);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measureProductImage);
+      window.removeEventListener('orientationchange', measureProductImage);
+    };
+  }, [productImage, productName]);
+
+  useEffect(() => {
+    setProcessedImage(screenshot);
+  }, [screenshot]);
 
   // Process image with effects in real-time
   useEffect(() => {
@@ -525,6 +586,7 @@ const ProductPreviewWithDrag = ({
   return (
     <div 
       ref={containerRef}
+      className="product-preview-stage"
       style={{
         position: 'relative',
         width: '100%',
@@ -540,6 +602,7 @@ const ProductPreviewWithDrag = ({
       {/* Product Image */}
       <img 
         ref={productImageRef}
+        className="product-preview-mockup"
         src={productImage} 
         alt={productName}
         onLoad={handleProductImageLoad}
@@ -572,7 +635,8 @@ const ProductPreviewWithDrag = ({
             WebkitTouchCallout: 'none',
             touchAction: 'none',
             pointerEvents: 'auto',
-            zIndex: 2
+            zIndex: 2,
+            overflow: 'hidden'
           }}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
@@ -609,6 +673,7 @@ const ProductPreviewWithDrag = ({
             
             return (
               <img 
+                className="product-preview-overlay"
                 src={processedImage}
                 alt="Screenshot overlay"
                 style={{
@@ -1038,15 +1103,6 @@ const ToolsPage = () => {
     return () => { cancelled = true; };
   }, [searchParams]);
 
-  // Auto-adjust screenshot scale to 100% when product is selected (mobile only)
-  // This ensures the screenshot is proportionately sized to fit the print area
-  useEffect(() => {
-    if (selectedProductName && printAreaFit === 'product') {
-      // Reset scale to 100% for proper proportional sizing
-      setScreenshotScale(100);
-    }
-  }, [selectedProductName, printAreaFit]);
-
   // Load cart products on mount and when component becomes visible (skip when order_id in URL — those come from order API)
   useEffect(() => {
     if (searchParams.get('order_id')) return;
@@ -1145,12 +1201,14 @@ const ToolsPage = () => {
     };
     
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener(CART_UPDATED_EVENT, loadCartProducts);
     
     // Also check periodically in case localStorage is updated in same tab
     const checkInterval = setInterval(loadCartProducts, 2000);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener(CART_UPDATED_EVENT, loadCartProducts);
       clearInterval(checkInterval);
     };
   }, [selectedCartProductIndex, searchParams]); // Re-run if selected index becomes invalid or order_id is removed
@@ -1163,7 +1221,32 @@ const ToolsPage = () => {
         if (selectedCartProductIndex !== null && cartProducts.length > 0 && cartProducts[selectedCartProductIndex]) {
           const selectedProduct = cartProducts[selectedCartProductIndex];
           if (selectedProduct.screenshot && selectedProduct.screenshot.trim() !== '') {
-            const screenshot = selectedProduct.screenshot;
+            const screenshotFromCart = selectedProduct.screenshot;
+            const pending = readPendingMerchData() || {};
+            const preferred = pending.selected_screenshot || '';
+            const pendingEdited = pending.edited_screenshot || '';
+            let screenshot = screenshotFromCart;
+            if (preferred && preferred !== screenshotFromCart && !pendingEdited) {
+              screenshot = preferred;
+              try {
+                const cartItems = readCartItems();
+                const origIdx = selectedProduct.originalCartIndex;
+                if (Array.isArray(cartItems) && cartItems[origIdx]) {
+                  cartItems[origIdx] = {
+                    ...cartItems[origIdx],
+                    screenshot: preferred,
+                    selected_screenshot: preferred
+                  };
+                  writeCartItems(cartItems);
+                }
+              } catch (_) { /* ignore */ }
+              if (slotStateRef.current[selectedCartProductIndex]) {
+                slotStateRef.current[selectedCartProductIndex] = {
+                  ...slotStateRef.current[selectedCartProductIndex],
+                  editedImageUrl: ''
+                };
+              }
+            }
             // Avoid clobbering an in-progress edit when cart poll reloads the same image
             if (screenshot === imageUrl && !switchingSlotRef.current) {
               return;
@@ -1184,7 +1267,7 @@ const ToolsPage = () => {
               : (savedFit && savedFit !== 'none'
                 ? savedFit
                 : (resolvedName ? 'product' : 'none'));
-            if (saved) {
+            if (saved && screenshot === screenshotFromCart) {
               setEditedImageUrl(saved.editedImageUrl || '');
               setScreenshotScale(saved.screenshotScale ?? 100);
               setSelectedProductName(resolvedName);
@@ -1792,6 +1875,11 @@ const ToolsPage = () => {
     });
   };
 
+  const selectedCartProduct = (selectedCartProductIndex !== null && cartProducts[selectedCartProductIndex])
+    ? cartProducts[selectedCartProductIndex]
+    : null;
+  const fitProductSize = selectedCartProduct?.size || null;
+
   // Apply edits to image
   useEffect(() => {
     if (!imageUrl) return;
@@ -1867,7 +1955,7 @@ const ToolsPage = () => {
         if (printAreaFit === 'product' && selectedProductName) {
           // Use new helper function that supports size-specific dimensions
           // For now, size is null (will use default), but can be added later
-          const dimensions = getPrintAreaDimensions(selectedProductName, null, 'front');
+          const dimensions = getPrintAreaDimensions(selectedProductName, fitProductSize, 'front');
           if (dimensions) {
             targetAspect = getAspectRatio(dimensions.width, dimensions.height);
           } else {
@@ -2238,14 +2326,24 @@ const ToolsPage = () => {
       }
 
       // Convert to data URL
-      const dataUrl = canvas.toDataURL('image/png');
+      let dataUrl;
+      try {
+        dataUrl = canvas.toDataURL('image/png');
+      } catch (_) {
+        try {
+          dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        } catch (err) {
+          console.error('Failed to export edited image', err);
+          return;
+        }
+      }
       setEditedImageUrl(dataUrl);
     };
     img.onerror = () => {
       console.error('Failed to load image');
     };
     img.src = imageUrl;
-  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, slotSwitchTick]);
+  }, [imageUrl, featherEdge, cornerRadius, frameEnabled, frameColor, frameWidth, doubleFrame, textEnabled, textContent, textFont, textColor, textSize, textOffsetX, textOffsetY, printAreaFit, imageOffsetX, imageOffsetY, selectedProductName, fitProductSize, slotSwitchTick]);
 
   const rotateScreenshotClockwise = () => {
     const src = (imageUrl || '').trim();
@@ -2397,7 +2495,7 @@ const ToolsPage = () => {
       };
       if (selectedProductName && printAreaFit === 'product') {
         try {
-          const dims = getPrintAreaDimensions(selectedProductName, null, 'front');
+          const dims = getPrintAreaDimensions(selectedProductName, fitProductSize, 'front');
           if (dims && dims.width && dims.height) {
             const scale = screenshotScale / 100;
             payload.print_area_width = dims.width * scale;
@@ -2757,6 +2855,7 @@ const ToolsPage = () => {
                           return (
                             <div style={{ position: 'relative' }}>
                               <ProductPreviewWithDrag
+                                key={currentImage || 'placeholder'}
                                 productImage={placeholderImage}
                                 screenshot={currentImage}
                                 productName={productName}
@@ -2778,6 +2877,8 @@ const ToolsPage = () => {
                                 printAreaFit={printAreaFit}
                                 selectedProductName={selectedProductName}
                                 screenshotScale={screenshotScale}
+                                imageOffsetX={imageOffsetX}
+                                imageOffsetY={imageOffsetY}
                               />
                               <div style={{
                                 position: 'absolute',
@@ -2834,6 +2935,7 @@ const ToolsPage = () => {
                         if (currentImage) {
                           return (
                             <ProductPreviewWithDrag
+                              key={currentImage || 'hat'}
                               productImage={hatImage}
                               screenshot={currentImage}
                               productName={productName}
@@ -2855,6 +2957,8 @@ const ToolsPage = () => {
                               printAreaFit={printAreaFit}
                               selectedProductName={selectedProductName}
                               screenshotScale={screenshotScale}
+                              imageOffsetX={imageOffsetX}
+                              imageOffsetY={imageOffsetY}
                             />
                           );
                         } else {
@@ -2891,6 +2995,7 @@ const ToolsPage = () => {
                         const productImg = product.productImage || getPlaceholderProductImage();
                         return (
                           <ProductPreviewWithDrag
+                            key={currentImage || 'preview'}
                             productImage={productImg}
                             screenshot={currentImage}
                             productName={productName}
@@ -2912,6 +3017,8 @@ const ToolsPage = () => {
                             printAreaFit={printAreaFit}
                             selectedProductName={selectedProductName}
                             screenshotScale={screenshotScale}
+                            imageOffsetX={imageOffsetX}
+                            imageOffsetY={imageOffsetY}
                           />
                         );
                       }

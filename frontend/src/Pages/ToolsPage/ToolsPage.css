@@ -211,6 +211,30 @@ body.tools-page-active .main-content-inner {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
+/* Same mockup box on desktop and mobile: width-capped, natural aspect. */
+.product-preview-stage {
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+  height: auto;
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+
+.product-preview-mockup {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  max-height: none;
+  display: block;
+}
+
+.product-preview-overlay {
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+}
+
 .preview-image-wrapper-compact {
   width: 100%;
   min-height: 150px;
@@ -894,9 +918,28 @@ body.tools-page-active .main-content-inner {
     margin-bottom: 8px !important;
   }
 
-  body.tools-page-active .cart-products-preview-section-compact img {
-    max-height: 26vh;
-    width: auto;
+  /* Same stage as desktop: 200px cap, height:auto. Do not squash or
+     override overlay width — px size comes from the painted mockup. */
+  body.tools-page-active .product-preview-stage {
+    max-width: 200px;
+    width: 100%;
+    height: auto;
+    margin-left: auto;
+    margin-right: auto;
+    flex-shrink: 0;
+  }
+
+  body.tools-page-active .product-preview-mockup {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100%;
+    max-height: none !important;
+    object-fit: unset;
+  }
+
+  body.tools-page-active .product-preview-overlay {
+    max-width: none !important;
+    max-height: none !important;
   }
 
   body.tools-page-active .screenshot-size-under-preview {
