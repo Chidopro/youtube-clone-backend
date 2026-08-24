@@ -32,20 +32,35 @@ const Video = ({ sidebar }) => {
 
   // Check if device is mobile and orientation
   useEffect(() => {
-    const checkMobile = () => {
+    const applyLayout = () => {
       const mobile = window.innerWidth <= 768;
       const portrait = mobile && window.innerHeight > window.innerWidth;
       setIsMobile(mobile);
       setIsMobilePortrait(portrait);
+      const navbar = document.querySelector('nav');
+      const page = document.querySelector('.video-page-container');
+      const player = document.querySelector('.video-page-container .video-container')
+        || document.querySelector('.video-page-container .video-viewer');
+      const navHeight = navbar ? Math.ceil(navbar.getBoundingClientRect().height) : 56;
+      const playerViewportTop = player ? Math.round(player.getBoundingClientRect().top) : navHeight;
+      const offset = `${Math.max(navHeight, playerViewportTop)}px`;
+      document.documentElement.style.setProperty('--video-nav-offset', offset);
+      if (page) page.style.setProperty('--video-nav-offset', offset);
     };
     
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    window.addEventListener('orientationchange', checkMobile);
+    applyLayout();
+    const navbar = document.querySelector('nav');
+    const navObserver = (navbar && typeof ResizeObserver !== 'undefined')
+      ? new ResizeObserver(applyLayout)
+      : null;
+    if (navbar && navObserver) navObserver.observe(navbar);
+    window.addEventListener('resize', applyLayout);
+    window.addEventListener('orientationchange', applyLayout);
     
     return () => {
-      window.removeEventListener('resize', checkMobile);
-      window.removeEventListener('orientationchange', checkMobile);
+      if (navObserver) navObserver.disconnect();
+      window.removeEventListener('resize', applyLayout);
+      window.removeEventListener('orientationchange', applyLayout);
     };
   }, []);
 
@@ -86,16 +101,24 @@ const Video = ({ sidebar }) => {
             });
           }
         } else {
-          const row = document.querySelector('.video-page-container .main-container');
+          const player = document.querySelector('.video-page-container .video-container')
+            || document.querySelector('.video-page-container .video-viewer');
           const navbar = document.querySelector('nav');
-          if (row) {
-            const navbarHeight = navbar ? navbar.offsetHeight : 80;
-            const rowTop = row.getBoundingClientRect().top + window.scrollY;
-            const targetScrollPosition = Math.max(0, rowTop - navbarHeight - 20);
+          const page = document.querySelector('.video-page-container');
+          const navbarHeight = navbar ? Math.ceil(navbar.getBoundingClientRect().height) : 56;
+          if (player) {
+            const playerTop = player.getBoundingClientRect().top + window.scrollY;
+            const targetScrollPosition = Math.max(0, playerTop - navbarHeight - 4);
             window.scrollTo({
               top: targetScrollPosition,
               behavior: 'smooth'
             });
+            window.setTimeout(() => {
+              const top = Math.max(navbarHeight, Math.round(player.getBoundingClientRect().top));
+              const next = `${top}px`;
+              document.documentElement.style.setProperty('--video-nav-offset', next);
+              if (page) page.style.setProperty('--video-nav-offset', next);
+            }, 450);
           } else {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
@@ -338,7 +361,7 @@ const Video = ({ sidebar }) => {
          </div>
 
         {/* Middle Column - Screenshots */}
-        <div className="screenshots-section" id="screenshotsSection" style={{ position: 'relative' }}>
+        <div className="screenshots-section" id="screenshotsSection">
           {/* Screenshot Counter - Mobile Only on Video Page */}
           {isMobile && videoId && (
             <div 

@@ -208,8 +208,8 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    padding-top: 20px;
-    padding-bottom: 10px;
+    padding-top: 0;
+    padding-bottom: 8px;
     width: 100%;
     max-width: none;
   }
@@ -264,12 +264,13 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  position: relative;
 }
 
 @media (min-width: 769px) {
   .screenshots-section {
     padding: 8px 10px 10px 10px;
-    align-self: stretch;
+    align-self: start;
   }
 
   .screenshots-section .screenmerch-images-grid {
@@ -280,7 +281,7 @@
 
   .screenshots-section .screenmerch-actions--sidebar {
     order: 2;
-    margin: auto 0 0 0;
+    margin: 0;
   }
 }
 
@@ -707,7 +708,7 @@
   .video-page-container .main-container {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
-    align-items: stretch;
+    align-items: start;
     column-gap: 12px;
     width: 100%;
     max-width: none;
@@ -728,9 +729,17 @@
     width: auto !important;
     max-width: none !important;
     margin: 0 !important;
-    max-height: calc(100vh - 96px);
+    align-self: start;
+    position: relative !important;
+    top: 0 !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    height: calc(100dvh - var(--video-nav-offset, 80px) - 8px);
+    max-height: calc(100dvh - var(--video-nav-offset, 80px) - 8px);
     min-height: 0;
     overflow: hidden;
+    box-sizing: border-box;
   }
 
   .video-page-container .screenmerch-actions--sidebar {
@@ -741,37 +750,55 @@
     margin: 0 !important;
     padding: 8px 0 0 0;
     box-sizing: border-box;
-    flex-shrink: 0;
+    flex: 0 0 auto;
     background: #fff;
   }
 
   .video-page-container .screenmerch-images-grid {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     gap: 8px;
     width: 100%;
     min-height: 0;
+    overflow: hidden;
+    align-content: start;
     grid-template-rows: repeat(3, minmax(0, 1fr));
     box-sizing: border-box;
   }
 
   .video-page-container .screenmerch-image-box {
-    min-height: 0;
+    min-height: 0 !important;
     height: 100%;
     padding: 4px;
+    overflow: hidden;
   }
 
   .video-page-container .screenmerch-image-box:hover {
     transform: none;
   }
 
+  .video-page-container .screenmerch-img-wrapper {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .video-page-container .screenmerch-placeholder {
     height: 100%;
     min-height: 0;
     max-height: none;
+    margin-top: 0;
   }
 
   .video-page-container .screenmerch-preview {
     max-height: 100%;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
   }
 }
 
