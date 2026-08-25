@@ -988,6 +988,12 @@ const Checkout = () => {
               const handleGoToTools = () => {
                 if (!applyOrientationToCart()) return;
                 setShowDesignModal(false);
+                try {
+                  const cart = readCartItems();
+                  if (Array.isArray(cart) && cart.length > 0) {
+                    setToolsFocusCartIndex(cart.length - 1);
+                  }
+                } catch (_) { /* ignore */ }
                 navigate('/tools');
               };
               return (

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import './Feed.css'
 import { useNavigate } from 'react-router-dom'
-import { publicStorageCardUrl } from '../../utils/favoriteListsApi'
+import { publicStorageCardUrl, fetchPublicFavoriteLists } from '../../utils/favoriteListsApi'
+import { getSubdomain } from '../../utils/subdomainService'
 
 const HUB_ROTATE_MS = 12000;
 
@@ -124,7 +125,15 @@ const Feed = ({
             <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" />
             <h2>My Page</h2>
           </button>
-          <button type="button" className="card hub-card" onClick={() => navigate('/friend-pages')}>
+          <button
+            type="button"
+            className="card hub-card"
+            onPointerEnter={() => {
+              const sub = getSubdomain();
+              if (sub) fetchPublicFavoriteLists(sub, { lite: true });
+            }}
+            onClick={() => navigate('/friend-pages')}
+          >
             <HubThumb src={hubThumbs.friend} emptyLabel="No Friends Yet" />
             <h2>My Friends</h2>
           </button>

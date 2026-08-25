@@ -9814,9 +9814,11 @@ def _fl_ensure_primary_list(owner_id):
     if r.data:
         pid = r.data[0]["id"]
         try:
+            # Owner-created extra pages must share the storefront or they never
+            # appear in public Pages / /favorites/:slug.
             supabase_admin.table("creator_favorite_lists").update(
                 {"storefront_owner_id": owner_id}
-            ).eq("id", pid).is_("storefront_owner_id", "null").execute()
+            ).eq("owner_user_id", owner_id).is_("storefront_owner_id", "null").execute()
         except Exception:
             pass
     else:
@@ -9846,6 +9848,59 @@ def _fl_ensure_primary_list(owner_id):
     except Exception:
         pass
     return pid
+
+
+def _fl_lists_for_storefront(owner_id):
+    """Pages on this storefront, including owner extras missing storefront_owner_id."""
+    by_id = {}
+    if not supabase_admin or not owner_id:
+        return []
+    cols = "id, slug, display_name, is_primary, sort_order, owner_user_id, storefront_owner_id"
+    try:
+        lr = (
+            supabase_admin.table("creator_favorite_lists")
+            .select(cols)
+            .eq("storefront_owner_id", owner_id)
+            .execute()
+        )
+        for row in lr.data or []:
+            if row.get("id"):
+                by_id[row["id"]] = row
+    except Exception as err:
+        logger.warning("_fl_lists_for_storefront storefront query: %s", err)
+    try:
+        own = (
+            supabase_admin.table("creator_favorite_lists")
+            .select(cols)
+            .eq("owner_user_id", owner_id)
+            .execute()
+        )
+        for row in own.data or []:
+            lid = row.get("id")
+            if not lid:
+                continue
+            by_id.setdefault(lid, row)
+            if not row.get("storefront_owner_id"):
+                try:
+                    supabase_admin.table("creator_favorite_lists").update(
+                        {"storefront_owner_id": owner_id}
+                    ).eq("id", lid).is_("storefront_owner_id", "null").execute()
+                    fixed = dict(row)
+                    fixed["storefront_owner_id"] = owner_id
+                    by_id[lid] = fixed
+                except Exception:
+                    pass
+    except Exception as err:
+        logger.warning("_fl_lists_for_storefront owner query: %s", err)
+    lists = list(by_id.values())
+    lists.sort(
+        key=lambda L: (
+            0 if L.get("is_primary") else 1,
+            L.get("sort_order") or 0,
+            (L.get("display_name") or "").lower(),
+        )
+    )
+    return lists
 
 
 @app.route("/api/favorite-lists/mine", methods=["GET", "OPTIONS"])
@@ -10053,6 +10108,7 @@ def favorite_lists_create():
             .insert(
                 {
                     "owner_user_id": user_id,
+                    "storefront_owner_id": user_id,
                     "slug": slug,
                     "display_name": display_name[:120],
                     "sort_order": next_ord,
@@ -10134,25 +10190,10 @@ def public_favorite_lists():
             return jsonify({"success": True, "lists": []}), 200
         owner_id = cr.data[0]["id"]
         _fl_ensure_primary_list(owner_id)
-        try:
-            lr = (
-                supabase_admin.table("creator_favorite_lists")
-                .select("id, slug, display_name, is_primary, sort_order, owner_user_id, storefront_owner_id")
-                .eq("storefront_owner_id", owner_id)
-                .execute()
-            )
-            lists = lr.data or []
-        except Exception:
-            lr = (
-                supabase_admin.table("creator_favorite_lists")
-                .select("id, slug, display_name, is_primary, sort_order, owner_user_id, storefront_owner_id")
-                .eq("owner_user_id", owner_id)
-                .execute()
-            )
-            lists = lr.data or []
-        lists.sort(key=lambda L: (0 if L.get("is_primary") else 1, L.get("sort_order") or 0, (L.get("display_name") or "").lower()))
+        lists = _fl_lists_for_storefront(owner_id)
         approved_ids = _approved_umbrella_friend_ids(owner_id)
         paused_ids = _paused_umbrella_friend_ids(owner_id)
+        lite = (request.args.get("lite") or "").strip().lower() in ("1", "true", "yes")
         safe_lists = []
         for L in lists:
             # Collaborator pages only while membership is approved (removed/paused stay hidden)
@@ -10171,40 +10212,48 @@ def public_favorite_lists():
                         except Exception:
                             pass
                     continue
-            L = _fl_sync_stale_collaborator_slug(L)
+            if not lite:
+                L = _fl_sync_stale_collaborator_slug(L)
             dn = (L.get("display_name") or L.get("slug") or "Favorites").strip()
             if L.get("is_primary") or L.get("slug") == "owner":
                 dn = "Main Favorites"
             elif is_collab:
-                owner_u = _cf_user_row(L.get("owner_user_id"))
-                nick = _fl_list_page_nickname(
-                    L.get("display_name"),
-                    _umbrella_collaborator_label(owner_u),
-                ) or dn
+                if lite:
+                    nick = _fl_list_page_nickname(L.get("display_name")) or dn
+                else:
+                    owner_u = _cf_user_row(L.get("owner_user_id"))
+                    nick = _fl_list_page_nickname(
+                        L.get("display_name"),
+                        _umbrella_collaborator_label(owner_u),
+                    ) or dn
                 dn = nick if "Favorites" in nick else f"{nick} Favorites"
             elif "@" in dn:
-                owner_u = _cf_user_row(L.get("owner_user_id"))
-                nick = _fl_list_page_nickname(
-                    L.get("display_name"),
-                    _umbrella_collaborator_label(owner_u),
-                )
+                if lite:
+                    nick = _fl_list_page_nickname(L.get("display_name")) or dn
+                else:
+                    owner_u = _cf_user_row(L.get("owner_user_id"))
+                    nick = _fl_list_page_nickname(
+                        L.get("display_name"),
+                        _umbrella_collaborator_label(owner_u),
+                    )
                 dn = nick + (" Favorites" if nick and "Favorites" not in nick else "")
             preview_images = []
-            try:
-                fr = (
-                    supabase_admin.table("creator_favorites")
-                    .select("image_url, thumbnail_url")
-                    .eq("list_id", L.get("id"))
-                    .order("created_at", desc=True)
-                    .limit(8)
-                    .execute()
-                )
-                for fav in fr.data or []:
-                    img = (fav.get("image_url") or fav.get("thumbnail_url") or "").strip()
-                    if img and img not in preview_images:
-                        preview_images.append(img)
-            except Exception as preview_err:
-                logger.warning("public_favorite_lists preview for %s: %s", L.get("id"), preview_err)
+            if not lite:
+                try:
+                    fr = (
+                        supabase_admin.table("creator_favorites")
+                        .select("image_url, thumbnail_url")
+                        .eq("list_id", L.get("id"))
+                        .order("created_at", desc=True)
+                        .limit(8)
+                        .execute()
+                    )
+                    for fav in fr.data or []:
+                        img = (fav.get("image_url") or fav.get("thumbnail_url") or "").strip()
+                        if img and img not in preview_images:
+                            preview_images.append(img)
+                except Exception as preview_err:
+                    logger.warning("public_favorite_lists preview for %s: %s", L.get("id"), preview_err)
             safe_lists.append({
                 **L,
                 "display_name": dn[:120],
@@ -10241,16 +10290,31 @@ def public_favorites_by_list():
                 .limit(1)
                 .execute()
             )
+            row = (lr.data or [None])[0]
         except Exception:
-            lr = (
-                supabase_admin.table("creator_favorite_lists")
-                .select("*")
-                .eq("owner_user_id", owner_id)
-                .eq("slug", slug)
-                .limit(1)
-                .execute()
-            )
-        row = (lr.data or [None])[0]
+            row = None
+        if not row:
+            try:
+                lr = (
+                    supabase_admin.table("creator_favorite_lists")
+                    .select("*")
+                    .eq("owner_user_id", owner_id)
+                    .eq("slug", slug)
+                    .limit(1)
+                    .execute()
+                )
+                row = (lr.data or [None])[0]
+                if row and not row.get("storefront_owner_id"):
+                    try:
+                        supabase_admin.table("creator_favorite_lists").update(
+                            {"storefront_owner_id": owner_id}
+                        ).eq("id", row["id"]).is_("storefront_owner_id", "null").execute()
+                        row = dict(row)
+                        row["storefront_owner_id"] = owner_id
+                    except Exception:
+                        pass
+            except Exception:
+                row = None
         if not row:
             return jsonify({"success": False, "error": "List not found"}), 404
         is_collab = (

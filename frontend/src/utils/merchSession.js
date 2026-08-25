@@ -194,7 +194,7 @@ export function savePendingMerchData(merchData) {
   }
 }
 
-export function readPendingMerchData() {
+export function readPendingMerchData(options = {}) {
   const parse = (raw) => {
     if (!raw) return null;
     try {
@@ -227,6 +227,10 @@ export function readPendingMerchData() {
   }
   const stored = (hasShots(fromSession) ? fromSession : null) || (hasShots(fromLocal) ? fromLocal : null);
 
+  if (options.ignoreMemory) {
+    return stored || {};
+  }
+
   // Dashboard/Favorites may write storage without updating in-memory cache.
   if (pendingMerchMemory && stored) {
     const memId = sourceIdentity(pendingMerchMemory);
@@ -239,6 +243,21 @@ export function readPendingMerchData() {
   if (hasShots(pendingMerchMemory)) return pendingMerchMemory;
   if (stored) return stored;
   return pendingMerchMemory || {};
+}
+
+/**
+ * Drop in-memory cart/screenshot caches and re-read storage.
+ * Phone Tools kept the previous product image because module memory
+ * outlived the last cart write; a manual refresh cleared that memory.
+ */
+export function resyncMerchSessionFromStorage() {
+  cartItemsMemory = null;
+  pendingMerchMemory = null;
+  const cart = readCartItems({ ignoreMemory: true });
+  const pending = readPendingMerchData({ ignoreMemory: true });
+  cartItemsMemory = Array.isArray(cart) ? cart : [];
+  pendingMerchMemory = pending && typeof pending === 'object' ? pending : {};
+  return { cart: cartItemsMemory, pending: pendingMerchMemory };
 }
 
 /** Focus Tools on a specific cart item (original cart index). */
@@ -347,8 +366,8 @@ function persistCartStore(store, json, isEmpty) {
   }
 }
 
-export function readCartItems() {
-  if (Array.isArray(cartItemsMemory)) return cartItemsMemory;
+export function readCartItems(options = {}) {
+  if (!options.ignoreMemory && Array.isArray(cartItemsMemory)) return cartItemsMemory;
   let fromLocal = null;
   let localKeyExists = false;
   try {

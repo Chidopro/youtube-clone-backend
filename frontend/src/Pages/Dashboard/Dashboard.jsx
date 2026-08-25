@@ -9,7 +9,7 @@ import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../util
 import { getBackendUrl, apiJoin } from '../../config/apiConfig';
 import { requestVideoOptimize } from '../../utils/videoOptimize';
 import { savePendingMerchData } from '../../utils/merchSession';
-import { favoriteListsJson } from '../../utils/favoriteListsApi';
+import { favoriteListsJson, linkOwnerExtraPagesToStorefront } from '../../utils/favoriteListsApi';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.jsx';
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
@@ -548,6 +548,8 @@ const Dashboard = ({ sidebar }) => {
             const listUserId = data?.user_id || user.id;
             if (ok && data?.lists?.length) {
                 setFavoritePages(data.lists);
+                const ownerId = data.user_id || user.id;
+                void linkOwnerExtraPagesToStorefront(ownerId, data.lists);
                 const collabList = data.lists.find((l) => l.storefront_owner_id) || null;
                 const primary = data.is_umbrella_only
                     ? collabList
@@ -661,6 +663,9 @@ const Dashboard = ({ sidebar }) => {
             }));
             setNewPageName('');
             if (created?.id && user?.id) {
+                void linkOwnerExtraPagesToStorefront(user.id, [
+                    { ...created, owner_user_id: created.owner_user_id || user.id },
+                ]);
                 setSelectedFavoriteListId(created.id);
                 await reloadFavoritesForList(user.id, created.id);
             }
@@ -1945,7 +1950,7 @@ const Dashboard = ({ sidebar }) => {
                         )}
                         {userProfile?.role === 'creator' && !umbrellaOnly && favoritePages.length > 0 && (
                             <div className="favorite-pages-toolbar">
-                                <div className="favorite-pages-row">
+                                <div className="favorite-pages-row favorite-pages-row--main">
                                     <label className="favorite-pages-gutter" htmlFor="dashboard-fav-list-select">Choose Page</label>
                                     <select
                                         id="dashboard-fav-list-select"
@@ -1998,7 +2003,7 @@ const Dashboard = ({ sidebar }) => {
                                         </button>
                                     )}
                                 </div>
-                                <div className="favorite-pages-row">
+                                <div className="favorite-pages-row favorite-pages-row--create">
                                     <span className="favorite-pages-gutter" aria-hidden="true" />
                                     <input
                                         type="text"
@@ -2179,7 +2184,7 @@ const Dashboard = ({ sidebar }) => {
                                     <h3>📸 Capture YouTube Screenshots with FrameSnag</h3>
                                     <p>Capture high-quality thumbnails and screenshots from your YouTube videos, then add them to your page!</p>
                                     <div className="framesnag-instructions">
-                                        <p><strong>How to install:</strong></p>
+                                        <p><strong>How to install (desktop only):</strong></p>
                                         <ol>
                                             <li>Click &quot;Install FrameSnag&quot; below to open the Chrome Web Store</li>
                                             <li>Click Add to Chrome</li>

@@ -1041,7 +1041,10 @@ const ProductPage = ({ sidebar }) => {
 
   // Show ToolsPage when category is thumbnails
   if (category === 'thumbnails') {
-    return <ToolsPage />;
+    const shotKey = cartItems
+      .map((c) => `${c.name}:${String(c.screenshot || '').length}:${String(c.image || '').slice(-24)}`)
+      .join('|');
+    return <ToolsPage key={`thumb-tools-${shotKey}`} />;
   }
 
   return (

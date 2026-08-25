@@ -1,13 +1,19 @@
 /* Dashboard Container */
 .dashboard-container {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     min-height: 100vh;
     background-color: #f8f9fa;
     padding: 0;
+    overflow-x: hidden;
+    box-sizing: border-box;
 }
 
 .dashboard-container.large-container {
     margin-left: 0;
+    padding-left: 0;
+    padding-right: 0;
 }
 
 .dashboard-loading, .dashboard-error {
@@ -524,6 +530,10 @@
     border-bottom: 1px solid #e3e3e3;
     padding: 0 30px;
     gap: 0;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
 }
 
 .tab-button {
@@ -537,6 +547,7 @@
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
+    flex: 0 0 auto;
 }
 
 .tab-button:hover {
@@ -552,6 +563,9 @@
 
 .tab-content {
     padding: 30px;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
 }
 
 /* Analytics Tab Styles */
@@ -3294,6 +3308,89 @@
     height: 34px;
     padding: 0 14px;
     line-height: 32px;
+}
+
+@media (max-width: 768px) {
+    .favorites-tab-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .favorite-pages-toolbar {
+        width: 100%;
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .favorite-pages-gutter {
+        flex: 1 1 100%;
+        width: auto;
+        max-width: none;
+        line-height: 1.3;
+    }
+
+    .favorite-pages-toolbar .favorite-pages-row--create .favorite-pages-gutter {
+        display: none;
+    }
+
+    .favorite-pages-toolbar .favorite-pages-select.favorite-pages-ctrl {
+        flex: 1 1 100%;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+    }
+
+    .favorite-pages-toolbar .favorite-pages-row--main .add-favorite-btn.favorites-upload-btn {
+        flex: 1 1 calc(50% - 4px);
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        padding: 0 8px;
+        font-size: 0.82rem;
+        box-sizing: border-box;
+    }
+
+    .favorite-pages-toolbar .favorite-pages-row--main .favorite-page-delete {
+        flex: 1 1 100%;
+    }
+
+    .favorite-pages-toolbar .favorite-pages-row--create {
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .favorite-pages-toolbar .favorite-pages-row--create .favorite-pages-input.favorite-pages-ctrl,
+    .favorite-pages-toolbar .favorite-pages-row--create .favorite-pages-input--name {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        height: 34px;
+    }
+
+    .favorite-pages-toolbar .favorite-pages-row--create .save-btn {
+        flex: 0 0 auto;
+        align-self: center;
+        height: 34px;
+        margin: 0;
+        white-space: nowrap;
+        padding: 0 12px;
+    }
+
+    .umbrella-fav-under-actions {
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+
+    .umbrella-fav-under-actions .add-favorite-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 10px 8px;
+        font-size: 0.85rem;
+        text-align: center;
+    }
 }
 
 .favorite-card-page-row {

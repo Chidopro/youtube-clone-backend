@@ -132,6 +132,15 @@ nav.nav-dropdown-active {
     border-color: #999;
 }
 
+.nav-right > a[href="/upload"],
+.nav-right .nav-upload-spacer {
+    display: none;
+}
+
+.nav-right .subscribe-btn + .user-profile-menu {
+    margin-left: 10px;
+}
+
 nav .sign-in-btn,
 nav .nav-right .subscribe-btn {
     box-sizing: border-box;

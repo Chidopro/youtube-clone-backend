@@ -12,6 +12,13 @@ export function isCollaboratorFavoriteList(list, storefrontOwnerId) {
   return String(list.owner_user_id) !== String(storefrontOwnerId);
 }
 
+/** Hamburger / Home: My Page + friend pages only. Extra owner pages stay on My Page. */
+export function isStorefrontNavList(list, storefrontOwnerId) {
+  if (!list) return false;
+  if (list.is_primary || list.slug === 'owner' || list.is_collaborator_page) return true;
+  return isCollaboratorFavoriteList(list, storefrontOwnerId);
+}
+
 /** Sidebar / hamburger menu label — page nickname */
 export function favoriteListSidebarLabel(list, storefrontOwnerId) {
   if (!list) return 'My Page';

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
-import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT } from '../../utils/merchSession';
+import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT } from '../../utils/merchSession';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -43,6 +43,18 @@ function isApparelChestPrintProduct(productName) {
 
 // Sync Product Specific fit before first paint when a cart item is already known
 // (order_id path sets this after fetch; cart Tools used to wait on effects).
+function shotFingerprint(url) {
+  const s = String(url || '');
+  if (!s) return '';
+  return `${s.length}:${s.slice(0, 40)}:${s.slice(-40)}`;
+}
+
+function cartIdentity(products) {
+  return (products || [])
+    .map((p) => `${p.originalCartIndex}|${p.name}|${shotFingerprint(p.productImage)}|${shotFingerprint(p.screenshot)}`)
+    .join(';');
+}
+
 function getInitialCartPrintFit() {
   if (typeof window === 'undefined') return { name: '', fit: 'none' };
   try {
@@ -234,13 +246,39 @@ const ProductPreviewWithDrag = ({
           if (isApparelChestPrintProduct(effectiveProductName)) {
             const babyJerseyPrint = getPrintAreaDimensions('Baby Jersey T-Shirt', null, 'front');
             const defaultTypicalGarmentWidthInches = 18;
-            const chestWidthFraction = (babyJerseyPrint?.width || 7) / defaultTypicalGarmentWidthInches;
+            const isHoodieOrSweat =
+              productNameLower.includes('hoodie') || productNameLower.includes('sweatshirt');
+            // Hoodies show more of the garment than baby jersey. Size from the
+            // real print width so the chest box fills evenly on both axes.
+            const typicalGarmentWidthInches = isHoodieOrSweat
+              ? ((productNameLower.includes('youth') || productNameLower.includes('kids')) ? 16 : 18)
+              : defaultTypicalGarmentWidthInches;
+            const printWidthForFraction = isHoodieOrSweat
+              ? printDimensions.width
+              : (babyJerseyPrint?.width || 7);
+            const chestWidthFraction = printWidthForFraction / typicalGarmentWidthInches;
 
             let finalWidth = displayedProductWidth * chestWidthFraction;
+            if (isHoodieOrSweat) {
+              const maxW = displayedProductWidth * 0.50;
+              const minW = displayedProductWidth * 0.34;
+              if (finalWidth > maxW) finalWidth = maxW;
+              if (finalWidth < minW) finalWidth = minW;
+            }
             let finalHeight = finalWidth / printAspectRatio;
-
-            if (isSquare) {
+            if (isSquare && !isHoodieOrSweat) {
               finalHeight = finalWidth;
+            }
+            // kidhoodiepreview.png has one painted print box for every size.
+            // XS is 10×7 (Printful crop), but that box on the photo is closer
+            // to 10×9 — 10×7 leaves the bottom of the print region uncovered.
+            const isYouthHoodie =
+              isHoodieOrSweat &&
+              (productNameLower.includes('youth') || productNameLower.includes('kids'));
+            if (isYouthHoodie && printDimensions.width > 0) {
+              // Keep the width-matched box. Stretch height by 1/8 so the
+              // painted print region is covered without changing left/right.
+              finalHeight = (finalWidth / printAspectRatio) * (8 / 7);
             }
 
             // Keep tall prints on the garment, not the full photo. Baby Jersey
@@ -249,7 +287,9 @@ const ProductPreviewWithDrag = ({
             const maxHeight = displayedProductHeight > 0 ? displayedProductHeight * 0.65 : Number.POSITIVE_INFINITY;
             if (finalHeight > maxHeight) {
               finalHeight = maxHeight;
-              finalWidth = isSquare ? finalHeight : finalHeight * printAspectRatio;
+              if (!isYouthHoodie) {
+                finalWidth = isSquare ? finalHeight : finalHeight * printAspectRatio;
+              }
             }
 
             setScreenshotDisplaySize({
@@ -456,6 +496,7 @@ const ProductPreviewWithDrag = ({
 
   // Process image with effects in real-time
   useEffect(() => {
+    let cancelled = false;
     const processImage = async () => {
       if (!screenshot) return;
 
@@ -465,7 +506,7 @@ const ProductPreviewWithDrag = ({
       // screenshot (editedImageUrl), skip a second clip — it cut a square
       // frame off at the rounded corners and JPEG-filled the gaps.
       if (!featherEdge && !cornerRadius) {
-        setProcessedImage(screenshot);
+        if (!cancelled) setProcessedImage(screenshot);
         return;
       }
 
@@ -474,6 +515,7 @@ const ProductPreviewWithDrag = ({
         img.crossOrigin = 'anonymous';
       }
       img.onload = () => {
+        if (cancelled) return;
         try {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
@@ -546,16 +588,19 @@ const ProductPreviewWithDrag = ({
           ctx.globalCompositeOperation = 'source-over';
         }
 
-        setProcessedImage(canvas.toDataURL('image/jpeg', 0.85));
+        if (!cancelled) setProcessedImage(canvas.toDataURL('image/jpeg', 0.85));
         } catch {
-          setProcessedImage(screenshot);
+          if (!cancelled) setProcessedImage(screenshot);
         }
       };
-      img.onerror = () => setProcessedImage(screenshot);
+      img.onerror = () => {
+        if (!cancelled) setProcessedImage(screenshot);
+      };
       img.src = screenshot;
     };
 
     processImage();
+    return () => { cancelled = true; };
   }, [screenshot, featherEdge, cornerRadius]);
 
   const handleMouseDown = (e) => {
@@ -683,6 +728,7 @@ const ProductPreviewWithDrag = ({
       <img 
         ref={productImageRef}
         className="product-preview-mockup"
+        key={productImage || 'mockup'}
         src={productImage} 
         alt={productName}
         onLoad={handleProductImageLoad}
@@ -702,13 +748,25 @@ const ProductPreviewWithDrag = ({
             top: (() => {
               const productNameLower = (productName || '').toLowerCase();
               const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
+              const isHoodie = productNameLower.includes('hoodie') || productNameLower.includes('sweatshirt');
               if (isHat && productImageSize.height > 0) {
                 return `${50 - 8}%`;
               }
+              if (isHoodie) return '52%';
               return '50%';
             })(),
             left: '50%',
-            transform: `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`,
+            transform: (() => {
+              const productNameLower = (productName || '').toLowerCase();
+              const isYouthHoodie =
+                (productNameLower.includes('hoodie') || productNameLower.includes('sweatshirt')) &&
+                (productNameLower.includes('youth') || productNameLower.includes('kids'));
+              // Extra 1/8 of height hangs down so left/right and the top stay put.
+              const downShift = isYouthHoodie
+                ? screenshotDisplaySize.height * (screenshotScale / 100) * (1 / 16)
+                : 0;
+              return `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY + downShift}px))`;
+            })(),
             cursor: isDragging ? 'grabbing' : 'grab',
             userSelect: 'none',
             WebkitUserSelect: 'none',
@@ -724,20 +782,23 @@ const ProductPreviewWithDrag = ({
           {(() => {
             const productNameLower = (productName || '').toLowerCase();
             const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
+            const isHoodie = productNameLower.includes('hoodie') || productNameLower.includes('sweatshirt');
+            const isYouthHoodie =
+              isHoodie &&
+              (productNameLower.includes('youth') || productNameLower.includes('kids'));
             const scaleFactor = screenshotScale / 100;
             const aspectRatio = screenshotDisplaySize.width / screenshotDisplaySize.height;
             const isSquare = Math.abs(aspectRatio - 1.0) < 0.01; // Check if display size is square
             let scaledWidth, scaledHeight;
             
-            if (isSquare) {
+            if (isHoodie || isHat) {
+              // Scale from width so left/right stay the control axis.
+              scaledWidth = screenshotDisplaySize.width * scaleFactor;
+              scaledHeight = screenshotDisplaySize.height * scaleFactor;
+            } else if (isSquare) {
               // For square products: Scale both dimensions equally to maintain square shape
               scaledWidth = screenshotDisplaySize.width * scaleFactor;
               scaledHeight = scaledWidth; // Force square
-            } else if (isHat) {
-              // For hats: Scale primarily based on width to fill horizontal print area
-              // This ensures the width grows more than height when enlarging
-              scaledWidth = screenshotDisplaySize.width * scaleFactor;
-              scaledHeight = scaledWidth / aspectRatio; // Maintain aspect ratio
             } else {
               // For shirts and other products: Use balanced scaling (original logic)
               if (screenshotDisplaySize.width <= screenshotDisplaySize.height) {
@@ -753,15 +814,15 @@ const ProductPreviewWithDrag = ({
             
             return (
               <img 
-                className={`product-preview-overlay${printAreaFit && printAreaFit !== 'none' ? ' product-preview-overlay-fit' : ''}`}
+                className={`product-preview-overlay${printAreaFit && printAreaFit !== 'none' ? ' product-preview-overlay-fit' : ''}${isYouthHoodie ? ' product-preview-overlay-youth-hoodie' : ''}`}
+                key={processedImage || 'overlay'}
                 src={processedImage}
                 alt="Screenshot overlay"
                 style={{
                   width: `${scaledWidth}px`,
                   height: `${scaledHeight}px`,
-                  // Cover keeps a landscape screenshot filling the print box
-                  // before crop finishes; contain letterboxes it as landscape.
-                  objectFit: printAreaFit && printAreaFit !== 'none' ? 'cover' : 'contain',
+                  // Stretch only: cover was cropping the sides when height grew.
+                  objectFit: isYouthHoodie ? 'fill' : (printAreaFit && printAreaFit !== 'none' ? 'cover' : 'contain'),
                   display: 'block',
                   pointerEvents: 'none',
                   userSelect: 'none',
@@ -869,6 +930,7 @@ const getPlaceholderProductImage = () => {
 
 const ToolsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const canvasRef = useRef(null);
   const imageRef = useRef(null);
@@ -921,6 +983,10 @@ const ToolsPage = () => {
   const orderIdLoadedRef = useRef(null); // Avoid re-fetching same order when effect re-runs
   // Per-slot edit state (keyed by cart product index) so each of up-to-5 products has its own edits; no carry-over when switching
   const slotStateRef = useRef({});
+  const cartCountRef = useRef(0);
+  const cartIdentityRef = useRef('');
+  const entrySelectRef = useRef(true);
+  const [sessionEpoch, setSessionEpoch] = useState(0);
   // True when the user picked Fit Type / landscape (do not treat initial 'none' as a choice)
   const fitUserSetRef = useRef({});
   // When true, apply-edits effect must skip so it doesn't overwrite with previous product's image (same effect batch race)
@@ -1021,6 +1087,43 @@ const ToolsPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Phone: module memory kept the previous cart/screenshot after adding a
+  // new product. A manual refresh dropped that cache. Re-read storage on
+  // every Tools visit and when iOS restores the page from bfcache.
+  useEffect(() => {
+    resyncMerchSessionFromStorage();
+    entrySelectRef.current = true;
+    slotStateRef.current = {};
+    cartIdentityRef.current = '';
+    cartCountRef.current = 0;
+  }, [location.key]);
+
+  useEffect(() => {
+    const onPageShow = (event) => {
+      if (!event.persisted) return;
+      resyncMerchSessionFromStorage();
+      entrySelectRef.current = true;
+      slotStateRef.current = {};
+      cartIdentityRef.current = '';
+      cartCountRef.current = 0;
+      setImageUrl('');
+      setSelectedImage('');
+      setEditedImageUrl('');
+      setSessionEpoch((n) => n + 1);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      resyncMerchSessionFromStorage();
+      setSessionEpoch((n) => n + 1);
+    };
+    window.addEventListener('pageshow', onPageShow);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pageshow', onPageShow);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
   // Load tool page state from localStorage on mount (skip when opened from email/order link so we always start clean)
   useEffect(() => {
     const fromOrder = searchParams.get('order_id') || (typeof window !== 'undefined' && window.location.href && window.location.href.includes('order_id='));
@@ -1029,8 +1132,8 @@ const ToolsPage = () => {
       const savedState = localStorage.getItem('tools_page_state');
       if (savedState) {
         const state = JSON.parse(savedState);
-        if (state.screenshotScale !== undefined) setScreenshotScale(state.screenshotScale);
-        if (state.productImageOffsets) setProductImageOffsets(state.productImageOffsets);
+        // Do not restore screenshotScale or productImageOffsets — those belong
+        // to the previous cart item and shove a newly added product off-center.
         // Do NOT restore selectedCartProductIndex — it often points at a leftover
         // item from a previous video. Selection is set from focus index / latest cart item.
         console.log('📦 Restored tool page state from localStorage');
@@ -1075,9 +1178,10 @@ const ToolsPage = () => {
       printQualityMeta,
       offsetX: offset.x,
       offsetY: offset.y,
-      fitUserSet: Boolean(fitUserSetRef.current[idx])
+      fitUserSet: Boolean(fitUserSetRef.current[idx]),
+      sourceScreenshot: imageUrl || cartProducts[idx].screenshot || ''
     };
-  }, [selectedCartProductIndex, cartProducts, editedImageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets]);
+  }, [selectedCartProductIndex, cartProducts, editedImageUrl, imageUrl, screenshotScale, selectedProductName, printAreaFit, imageOrientation, imageOffsetX, imageOffsetY, printQualityImageUrl, printQualityMeta, productImageOffsets]);
 
   // When order_id is in URL (e.g. from email "Edit Tools" link), load screenshots from order (same API as Print Quality page)
   useEffect(() => {
@@ -1192,6 +1296,9 @@ const ToolsPage = () => {
 
     const loadCartProducts = () => {
       try {
+        if (entrySelectRef.current) {
+          resyncMerchSessionFromStorage();
+        }
         const cartItems = readCartItems();
         if (cartItems && cartItems.length > 0) {
           // Filter items that have screenshots, preserving original cart index
@@ -1211,63 +1318,82 @@ const ToolsPage = () => {
               filteredIndex // Also store filtered index for dropdown
             }));
           
-          // Restore tool settings from cart items if available
-          if (productsWithScreenshots.length > 0) {
-            const firstProduct = productsWithScreenshots[0];
-            if (firstProduct.toolSettings) {
-              const settings = firstProduct.toolSettings;
-              if (settings.screenshotScale !== undefined) setScreenshotScale(settings.screenshotScale);
-              if (settings.offsetX !== undefined && settings.offsetY !== undefined) {
-                setProductImageOffsets(prev => ({
-                  ...prev,
-                  [firstProduct.originalCartIndex]: { x: settings.offsetX, y: settings.offsetY }
-                }));
-              }
-            }
-          }
-          
           setCartProducts(productsWithScreenshots);
           
-          // Prefer the cart item we just added / focused; otherwise keep current
-          // selection (or fall back to most recent when none/invalid).
+          // Newest cart item wins. Do not match pending_merch screenshot — that
+          // is the previous video and findIndex returns the oldest duplicate.
           if (productsWithScreenshots.length > 0) {
-            const focusOriginal = consumeToolsFocusCartIndex();
+            const lastIndex = productsWithScreenshots.length - 1;
+            const focusOriginal = peekToolsFocusCartIndex();
+            const identity = cartIdentity(productsWithScreenshots);
+            const identityChanged = identity !== cartIdentityRef.current;
+            cartIdentityRef.current = identity;
+            const cartGrew = productsWithScreenshots.length > cartCountRef.current;
+            cartCountRef.current = productsWithScreenshots.length;
+            const forceEntry = entrySelectRef.current;
+            if (forceEntry) entrySelectRef.current = false;
+            let nextIndex = lastIndex;
             if (focusOriginal != null) {
+              consumeToolsFocusCartIndex();
               const matched = productsWithScreenshots.findIndex(
                 (p) => p.originalCartIndex === focusOriginal
               );
-              setSelectedCartProductIndex(
-                matched >= 0 ? matched : productsWithScreenshots.length - 1
-              );
+              nextIndex = matched >= 0 ? matched : lastIndex;
+            } else if (forceEntry || cartGrew) {
+              nextIndex = lastIndex;
             } else if (
-              selectedCartProductIndex === null ||
-              selectedCartProductIndex >= productsWithScreenshots.length
+              selectedCartProductIndex !== null &&
+              selectedCartProductIndex < productsWithScreenshots.length
             ) {
-              let nextIndex = productsWithScreenshots.length - 1;
-              try {
-                const data = readPendingMerchData();
-                const wanted = data?.selected_screenshot || '';
-                if (wanted) {
-                  const matched = productsWithScreenshots.findIndex(
-                    (p) => p.screenshot === wanted
-                  );
-                  if (matched >= 0) nextIndex = matched;
-                }
-              } catch {
-                /* ignore */
+              nextIndex = selectedCartProductIndex;
+            }
+            const chosen = productsWithScreenshots[nextIndex];
+            if (identityChanged && chosen) {
+              const slot = slotStateRef.current[nextIndex];
+              if (slot && slot.sourceScreenshot && slot.sourceScreenshot !== chosen.screenshot) {
+                delete slotStateRef.current[nextIndex];
+                setEditedImageUrl('');
               }
+            }
+            if (nextIndex !== selectedCartProductIndex || forceEntry) {
               setSelectedCartProductIndex(nextIndex);
+              const matchedName = matchPrintAreaProductName(chosen?.name) || '';
+              if (matchedName) {
+                setSelectedProductName(matchedName);
+                setPrintAreaFit('product');
+              }
+              const settings = chosen?.toolSettings;
+              if (settings?.screenshotScale !== undefined) {
+                setScreenshotScale(settings.screenshotScale);
+              } else {
+                setScreenshotScale(100);
+              }
+              if (chosen && settings && settings.offsetX !== undefined && settings.offsetY !== undefined) {
+                setProductImageOffsets(prev => ({
+                  ...prev,
+                  [chosen.originalCartIndex]: { x: settings.offsetX, y: settings.offsetY }
+                }));
+              } else if (chosen) {
+                setProductImageOffsets(prev => ({
+                  ...prev,
+                  [chosen.originalCartIndex]: { x: 0, y: 0 }
+                }));
+              }
             }
             if (productsWithScreenshots.length > 1) {
               console.log(`🛍️ Found ${productsWithScreenshots.length} products in cart`);
             }
           }
         } else {
+          cartCountRef.current = 0;
+          cartIdentityRef.current = '';
           setCartProducts([]);
           setSelectedCartProductIndex(null);
         }
       } catch (e) {
         console.warn('Could not load cart items:', e);
+        cartCountRef.current = 0;
+        cartIdentityRef.current = '';
         setCartProducts([]);
         setSelectedCartProductIndex(null);
       }
@@ -1294,7 +1420,7 @@ const ToolsPage = () => {
       window.removeEventListener(CART_UPDATED_EVENT, loadCartProducts);
       clearInterval(checkInterval);
     };
-  }, [selectedCartProductIndex, searchParams]); // Re-run if selected index becomes invalid or order_id is removed
+  }, [selectedCartProductIndex, searchParams, sessionEpoch, location.key]); // Re-run on Tools visit, bfcache, or cart selection
 
   // Load screenshot and product name from localStorage or URL params
   useEffect(() => {
@@ -1309,7 +1435,9 @@ const ToolsPage = () => {
             const preferred = pending.selected_screenshot || '';
             const pendingEdited = pending.edited_screenshot || '';
             let screenshot = screenshotFromCart;
-            if (preferred && preferred !== screenshotFromCart && !pendingEdited) {
+            // Never replace a cart item that already has art with leftover
+            // pending_merch from a previous product.
+            if (!screenshotFromCart && preferred && !pendingEdited) {
               screenshot = preferred;
               try {
                 const cartItems = readCartItems();
@@ -1352,11 +1480,17 @@ const ToolsPage = () => {
             if (screenshot !== imageUrl) {
               upgradeTriggeredRef.current = false;
               fitUserSetRef.current[selectedCartProductIndex] = false;
+              setEditedImageUrl('');
             }
             setImageUrl(screenshot);
             setSelectedImage(screenshot);
             setIsUpgrading(false);
-            if (saved && screenshot === screenshotFromCart) {
+            const savedMatchesSource = Boolean(
+              saved &&
+              screenshot === screenshotFromCart &&
+              (!saved.sourceScreenshot || saved.sourceScreenshot === screenshot)
+            );
+            if (savedMatchesSource) {
               fitUserSetRef.current[selectedCartProductIndex] = Boolean(saved.fitUserSet);
               setEditedImageUrl(saved.editedImageUrl || '');
               setScreenshotScale(saved.screenshotScale ?? 100);
@@ -1416,6 +1550,7 @@ const ToolsPage = () => {
             // Reset upgrade trigger if image changed
             if (screenshot !== imageUrl) {
               upgradeTriggeredRef.current = false;
+              setEditedImageUrl('');
             }
             setImageUrl(screenshot);
             setSelectedImage(screenshot);
@@ -1533,6 +1668,7 @@ const ToolsPage = () => {
       } else if (screenshot !== imageUrl) {
         setImageUrl(screenshot);
         setSelectedImage(screenshot);
+        setEditedImageUrl('');
       }
     };
 
@@ -2881,9 +3017,6 @@ const ToolsPage = () => {
             {/* Cart Products Preview Section - Show only selected product */}
             {cartProducts.length > 0 && selectedCartProductIndex !== null && cartProducts[selectedCartProductIndex] && (
               <div className="cart-products-preview-section-compact">
-                <h3 style={{ marginTop: '10px', marginBottom: '15px', fontSize: '18px', fontWeight: 'bold' }}>
-                  Product Preview ({selectedCartProductIndex + 1} of {cartProducts.length})
-                </h3>
               {(() => {
                 const product = cartProducts[selectedCartProductIndex];
                 const cartIndex = product.originalCartIndex;
@@ -2891,13 +3024,19 @@ const ToolsPage = () => {
                 const currentImage = editedImageUrl || imageUrl;
                 
                 return (
-                  <div style={{
+                  <div className="product-preview-inner-card" style={{
                     background: 'white',
                     padding: '15px',
                     borderRadius: '8px',
                     border: '2px solid #dee2e6',
                     position: 'relative'
                   }}>
+                    <h3 className="product-preview-heading">
+                      <span className="edit-tools-inline-title">Edit Tools</span>
+                      <span className="product-preview-heading-label">
+                        Product Preview ({selectedCartProductIndex + 1} of {cartProducts.length})
+                      </span>
+                    </h3>
                     <div style={{
                       position: 'relative',
                       marginBottom: '10px',
@@ -3005,7 +3144,7 @@ const ToolsPage = () => {
                           return (
                             <div style={{ position: 'relative' }}>
                               <ProductPreviewWithDrag
-                                key={currentImage || 'placeholder'}
+                                key={`${cartIndex}|${shotFingerprint(placeholderImage)}|${shotFingerprint(currentImage)}`}
                                 productImage={placeholderImage}
                                 screenshot={currentImage}
                                 productName={productName}
@@ -3085,7 +3224,7 @@ const ToolsPage = () => {
                         if (currentImage) {
                           return (
                             <ProductPreviewWithDrag
-                              key={currentImage || 'hat'}
+                              key={`${cartIndex}|${shotFingerprint(hatImage)}|${shotFingerprint(currentImage)}`}
                               productImage={hatImage}
                               screenshot={currentImage}
                               productName={productName}
@@ -3145,7 +3284,7 @@ const ToolsPage = () => {
                         const productImg = product.productImage || getPlaceholderProductImage();
                         return (
                           <ProductPreviewWithDrag
-                            key={currentImage || 'preview'}
+                            key={`${cartIndex}|${shotFingerprint(productImg)}|${shotFingerprint(currentImage)}`}
                             productImage={productImg}
                             screenshot={currentImage}
                             productName={productName}
@@ -3357,7 +3496,8 @@ const ToolsPage = () => {
                       printQualityMeta,
                       offsetX: offset.x,
                       offsetY: offset.y,
-                      fitUserSet: Boolean(fitUserSetRef.current[oldIndex])
+                      fitUserSet: Boolean(fitUserSetRef.current[oldIndex]),
+                      sourceScreenshot: imageUrl || cartProducts[oldIndex].screenshot || ''
                     };
                   }
                   setSelectedCartProductIndex(newIndex);
@@ -3769,6 +3909,7 @@ const ToolsPage = () => {
                       }}>
                         {editedImageUrl ? (
                           <img 
+                            key={editedImageUrl}
                             src={editedImageUrl} 
                             alt="Screenshot Preview" 
                             style={{ 
@@ -3780,6 +3921,7 @@ const ToolsPage = () => {
                           />
                         ) : imageUrl ? (
                           <img 
+                            key={imageUrl}
                             src={imageUrl} 
                             alt="Screenshot Preview" 
                             style={{ 

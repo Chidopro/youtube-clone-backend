@@ -6,7 +6,7 @@ import { apiJoin } from '../../config/apiConfig';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { fetchPublicFavoriteLists } from '../../utils/favoriteListsApi';
-import { favoriteListSidebarLabel } from '../../utils/favoriteListLabels';
+import { favoriteListSidebarLabel, isStorefrontNavList } from '../../utils/favoriteListLabels';
 
 const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
   const [showSubs, setShowSubs] = useState(true);
@@ -88,7 +88,7 @@ const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
       try {
         const { ok, data } = await fetchPublicFavoriteLists(sub);
         if (!cancelled && ok && data?.success && Array.isArray(data.lists) && data.lists.length > 0) {
-          setFavLists(data.lists);
+          setFavLists(data.lists.filter((L) => isStorefrontNavList(L, currentCreator?.id)));
         } else if (!cancelled) {
           setFavLists([]);
         }

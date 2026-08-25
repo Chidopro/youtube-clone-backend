@@ -49,12 +49,21 @@
   padding: 24px 30px 40px;
   max-width: 1400px;
   margin: 0 auto;
+  min-width: 0;
+  width: 100%;
 }
 
 .favorites-page--in-container {
   padding: 20px 24px 40px;
-  max-width: none;
+  max-width: 100%;
   margin: 0;
+}
+
+/* Let the Images/Videos rows own sideways scroll instead of the page. */
+.container.favorites-root {
+  overflow-x: visible !important;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .favorites-page.large-container {
@@ -163,10 +172,95 @@
   margin: 0;
 }
 
-.favorites-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+.favorites-shelves {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.favorites-extra-page {
+  min-width: 0;
+  max-width: 100%;
+  padding-top: 8px;
+  border-top: 1px solid rgba(128, 128, 128, 0.28);
+}
+
+.favorites-extra-page-title {
+  margin: 0 0 14px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.favorites-extra-empty {
+  margin: 0;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.favorites-shelf {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.favorites-shelf-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  width: fit-content;
+  padding-bottom: 8px;
+  background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-repeat: no-repeat;
+  background-position: left bottom;
+  background-size: 100% 3px;
+}
+
+.favorites-shelf-scroller {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.favorites-shelf-track {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 2px 14px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  scrollbar-gutter: stable;
+}
+
+.favorites-shelf-scrollbar {
+  display: none;
+}
+
+.favorites-shelf-track::-webkit-scrollbar {
+  height: 8px;
+}
+
+.favorites-shelf-track::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 999px;
+}
+
+.favorites-shelf-track .favorites-card {
+  flex: 0 0 280px;
+  width: 280px;
+  min-width: 280px;
+  max-width: 280px;
+  scroll-snap-align: start;
 }
 
 .favorites-card {
@@ -217,25 +311,6 @@
   background: #2c3e50;
   border-color: #2c3e50;
   color: #fff;
-}
-
-.page-item-badge {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 1;
-  background: rgba(0, 0, 0, 0.72);
-  color: #fff;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-.page-item-badge--image {
-  background: rgba(102, 126, 234, 0.92);
 }
 
 .page-item-meta {
@@ -311,8 +386,11 @@
 }
 
 @media (max-width: 1100px) {
-  .favorites-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .favorites-shelf-track .favorites-card {
+    flex: 0 0 260px;
+    width: 260px;
+    min-width: 260px;
+    max-width: 260px;
   }
 }
 
@@ -330,16 +408,66 @@
     overflow: hidden !important;
   }
 
-  .favorites-page {
-    padding: 15px 20px;
+  .favorites-page,
+  .favorites-page--in-container {
+    padding: 15px 12px 28px;
   }
 
   .favorites-page-title {
     font-size: 20px;
   }
 
-  .favorites-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
+  .favorites-shelf-title {
+    font-size: 16px;
+  }
+
+  .favorites-extra-page-title {
+    font-size: 18px;
+  }
+
+  .favorites-shelf-track {
+    gap: 0;
+    padding: 0 0 8px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    scrollbar-gutter: auto;
+  }
+
+  .favorites-shelf-track::-webkit-scrollbar {
+    display: none;
+    height: 0;
+  }
+
+  .favorites-shelf-track .favorites-card {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  .favorites-shelf-scrollbar {
+    display: block;
+    position: relative;
+    height: 5px;
+    margin: 2px 0 8px;
+    border-radius: 999px;
+    background: #9a9a9a;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  .favorites-shelf-scroller:not(.has-overflow) .favorites-shelf-scrollbar {
+    display: none;
+  }
+
+  .favorites-shelf-scrollbar-thumb {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-radius: 999px;
+    background: #ededed;
+    pointer-events: none;
   }
 }

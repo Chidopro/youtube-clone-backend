@@ -2,53 +2,60 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
-import { fetchPublicFavoriteLists } from '../../utils/favoriteListsApi';
+import { fetchPublicFavoriteLists, peekPublicFavoriteLists } from '../../utils/favoriteListsApi';
 import { friendPageLabel, isCollaboratorFavoriteList } from '../../utils/favoriteListLabels';
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
 import './FriendPages.css';
 
+function umbrellaFriendPages(lists, ownerId) {
+  const all = Array.isArray(lists) ? lists : [];
+  return all.filter((L) => {
+    if (L.is_primary || L.slug === 'owner') return false;
+    if (ownerId) return isCollaboratorFavoriteList(L, ownerId);
+    return true;
+  });
+}
+
 const FriendPages = ({ sidebar }) => {
   const navigate = useNavigate();
-  const { currentCreator, creatorSettings } = useCreator();
-  const [pages, setPages] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { currentCreator } = useCreator();
+  const cachedLists = peekPublicFavoriteLists(getSubdomain());
+  const [pages, setPages] = useState(() => umbrellaFriendPages(cachedLists, currentCreator?.id));
+  const [loading, setLoading] = useState(cachedLists == null);
   const [error, setError] = useState('');
-
-  const accentPrimary = creatorSettings?.primary_color || '#e91e8c';
-  const accentSecondary = creatorSettings?.secondary_color || '#7cb342';
-  const pageStyle = {
-    '--friend-accent-a': accentPrimary,
-    '--friend-accent-b': accentSecondary,
-  };
 
   useEffect(() => {
     const run = async () => {
       const sub = getSubdomain();
-      if (!sub || !currentCreator?.id) {
+      if (!sub) {
         setPages([]);
         setLoading(false);
         return;
       }
-      setLoading(true);
+      const cached = peekPublicFavoriteLists(sub);
+      if (cached) {
+        setPages(umbrellaFriendPages(cached, currentCreator?.id));
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
       setError('');
       try {
-        const { ok, data } = await fetchPublicFavoriteLists(sub);
+        const { ok, data } = await fetchPublicFavoriteLists(sub, { lite: true });
         if (!ok || !data?.success) {
-          setError(data?.error || 'Could not load friends list');
-          setPages([]);
+          if (!cached) {
+            setError(data?.error || 'Could not load friends list');
+            setPages([]);
+          }
         } else {
           const lists = Array.isArray(data.lists) ? data.lists : [];
-          const friends = lists.filter(
-            (L) =>
-              !L.is_primary &&
-              L.slug !== 'owner' &&
-              isCollaboratorFavoriteList(L, currentCreator.id)
-          );
-          setPages(friends);
+          setPages(umbrellaFriendPages(lists, currentCreator?.id));
         }
       } catch (e) {
-        setError(e.message || 'Network error');
-        setPages([]);
+        if (!cached) {
+          setError(e.message || 'Network error');
+          setPages([]);
+        }
       }
       setLoading(false);
     };
@@ -59,7 +66,7 @@ const FriendPages = ({ sidebar }) => {
     <div className={`container ${sidebar ? '' : ' large-container'}`}>
       <StorefrontFlowBanner />
 
-      <div className="friend-pages friend-pages--in-container" style={pageStyle}>
+      <div className="friend-pages friend-pages--in-container">
         <div className="friend-pages-toolbar">
           <button
             type="button"
@@ -87,7 +94,7 @@ const FriendPages = ({ sidebar }) => {
 
         {!loading && pages.length > 0 ? (
           <ul className="friend-pages-list">
-            {pages.map((L, index) => {
+            {pages.map((L) => {
               const label = friendPageLabel(L, currentCreator?.id);
               const to =
                 L.slug === 'owner' ? '/favorites' : `/favorites/${encodeURIComponent(L.slug)}`;
@@ -95,7 +102,7 @@ const FriendPages = ({ sidebar }) => {
                 <li key={L.id}>
                   <button
                     type="button"
-                    className={`friend-pages-item friend-pages-item--tone-${(index % 3) + 1}`}
+                    className="friend-pages-item"
                     onClick={() => navigate(to)}
                   >
                     <span className="friend-pages-item-name">{label}</span>

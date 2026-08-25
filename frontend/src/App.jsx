@@ -340,7 +340,7 @@ const App = () => {
                 <Route path="/payment-portal" element={<PaymentPortal />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/payment-setup" element={<PaymentSetup />} />
-                <Route path="/tools" element={<ToolsPage />} />
+                <Route path="/tools" element={<ToolsPage key={location.key} />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/set-password" element={<RequestSetPassword />} />
                 <Route path="/admin-signup" element={<AdminSignup />} />

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getSubdomain, getCreatorFromSubdomain, getCreatorFromCustomDomain } from '../utils/subdomainService';
+import { fetchPublicFavoriteLists } from '../utils/favoriteListsApi';
 import { normalizeStorageUrl } from '../utils/storageUrl';
 import { supabase } from '../supabaseClient';
 
@@ -152,6 +153,12 @@ export const CreatorProvider = ({ children }) => {
       window.removeEventListener('creatorSettingsUpdated', handleSettingsUpdate);
     };
   }, []);
+
+  useEffect(() => {
+    if (!currentCreator) return;
+    const sub = getSubdomain() || currentCreator.subdomain;
+    if (sub) fetchPublicFavoriteLists(sub, { lite: true });
+  }, [currentCreator?.id, currentCreator?.subdomain]);
 
   return (
     <CreatorContext.Provider value={{ currentCreator, creatorSettings, loading, refreshCreator: detectCreator }}>

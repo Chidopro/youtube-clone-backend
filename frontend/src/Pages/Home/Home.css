@@ -114,6 +114,11 @@ body {
     padding-left: 5%;
     padding-right: 5%;
   }
+
+  .dashboard-container.large-container {
+    padding-left: 0;
+    padding-right: 0;
+  }
 }
 
 /* User Flow Section Styles */

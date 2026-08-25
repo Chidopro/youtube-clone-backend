@@ -204,6 +204,17 @@ body.tools-page-active .main-content-inner {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
+.product-preview-heading {
+  margin-top: 10px;
+  margin-bottom: 15px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.edit-tools-inline-title {
+  display: none;
+}
+
 .tools-preview-section-compact {
   background: white;
   border-radius: 12px;
@@ -237,6 +248,10 @@ body.tools-page-active .main-content-inner {
 
 .product-preview-overlay-fit {
   object-fit: cover;
+}
+
+.product-preview-overlay-youth-hoodie {
+  object-fit: fill !important;
 }
 
 .preview-image-wrapper-compact {
@@ -720,6 +735,52 @@ body.tools-page-active .main-content-inner {
   .tools-page-header h1 {
     font-size: 2rem;
   }
+
+  /* Mobile: Edit Tools sits beside Product Preview. Do not wait for body.tools-page-active. */
+  .tools-page-container:has(.product-preview-heading) .tools-page-header {
+    display: none !important;
+  }
+
+  .product-preview-heading {
+    display: flex !important;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.45em;
+    width: 100%;
+    text-align: center;
+    font-size: 15px !important;
+    font-weight: 400;
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
+    line-height: 1.25;
+  }
+
+  .edit-tools-inline-title {
+    display: inline !important;
+    flex: 0 0 auto;
+    font-weight: 700;
+    color: #111;
+    white-space: nowrap;
+  }
+
+  .product-preview-heading-label {
+    flex: 0 0 auto;
+    font-weight: 400;
+    color: #111;
+    white-space: nowrap;
+  }
+
+  .product-preview-inner-card {
+    padding: 10px 10px 8px !important;
+  }
+
+  .cart-products-preview-section-compact {
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
   
   .preview-image-wrapper {
     min-height: 300px;
@@ -861,7 +922,12 @@ body.tools-page-active .main-content-inner {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding: 0.5rem;
+    padding: 0.25rem 0.5rem 0.5rem;
+  }
+
+  /* Move Edit Tools onto the Product Preview row to raise the mockup. */
+  body.tools-page-active .tools-page-container:has(.product-preview-heading) .tools-page-header {
+    display: none;
   }
 
   body.tools-page-active .tools-page-header {
@@ -909,17 +975,48 @@ body.tools-page-active .main-content-inner {
   }
 
   body.tools-page-active .cart-products-preview-section-compact {
-    padding: 10px;
+    padding: 0;
     max-height: none;
     overflow: visible;
     display: flex;
     flex-direction: column;
+    background: transparent;
+    box-shadow: none;
   }
 
-  body.tools-page-active .cart-products-preview-section-compact h3 {
+  body.tools-page-active .product-preview-heading {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.45em;
+    width: 100%;
+    text-align: center;
     font-size: 15px !important;
+    font-weight: 400;
     margin-top: 0 !important;
     margin-bottom: 8px !important;
+    line-height: 1.25;
+  }
+
+  body.tools-page-active .edit-tools-inline-title {
+    display: inline;
+    flex: 0 0 auto;
+    font-weight: 700;
+    color: #111;
+    white-space: nowrap;
+  }
+
+  body.tools-page-active .product-preview-heading-label {
+    flex: 0 0 auto;
+    font-weight: 400;
+    color: #111;
+    white-space: nowrap;
+  }
+
+  body.tools-page-active .product-preview-inner-card {
+    padding: 10px 10px 8px !important;
   }
 
   /* Same stage as desktop: 200px cap, height:auto. Do not squash or
@@ -948,6 +1045,10 @@ body.tools-page-active .main-content-inner {
 
   body.tools-page-active .product-preview-overlay-fit {
     object-fit: cover;
+  }
+
+  body.tools-page-active .product-preview-overlay-youth-hoodie {
+    object-fit: fill !important;
   }
 
   body.tools-page-active .screenshot-size-under-preview {
@@ -994,6 +1095,10 @@ body.tools-page-active .main-content-inner {
     margin-left: 0 !important;
     margin-bottom: 0.5rem;
     padding: 0 0.5rem;
+  }
+  
+  .tools-page-container:has(.product-preview-heading) .tools-page-header {
+    display: none !important;
   }
   
   .tools-page-header h1 {
