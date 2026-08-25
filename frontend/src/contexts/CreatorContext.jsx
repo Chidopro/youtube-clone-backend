@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getSubdomain, getCreatorFromSubdomain, getCreatorFromCustomDomain } from '../utils/subdomainService';
+import { getSubdomain, getCreatorFromSubdomain, getCreatorFromCustomDomain, peekCachedStorefrontBrand, rememberStorefrontBrand } from '../utils/subdomainService';
 import { fetchPublicFavoriteLists } from '../utils/favoriteListsApi';
 import { normalizeStorageUrl } from '../utils/storageUrl';
 import { supabase } from '../supabaseClient';
@@ -8,8 +8,8 @@ const CreatorContext = createContext(null);
 
 export const CreatorProvider = ({ children }) => {
   const [currentCreator, setCurrentCreator] = useState(null);
-  const [creatorSettings, setCreatorSettings] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [creatorSettings, setCreatorSettings] = useState(() => peekCachedStorefrontBrand());
+  const [loading, setLoading] = useState(() => !peekCachedStorefrontBrand());
 
   const detectCreator = async () => {
     setLoading(true);
@@ -59,6 +59,7 @@ export const CreatorProvider = ({ children }) => {
           // Always set creatorSettings if we have user data (so Footer can access hide_screenmerch_branding)
           // This allows branding settings to apply even if personalization_enabled is false
           setCreatorSettings(userData);
+          rememberStorefrontBrand(userData);
           
           // Always apply colors if they exist (even if personalization_enabled is false)
           // This allows colors to be applied immediately after saving

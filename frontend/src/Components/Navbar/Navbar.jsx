@@ -64,6 +64,9 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     const navigate = useNavigate();
     const location = useLocation();
     const isOrderSuccessPage = location.pathname === '/success' || location.pathname === '/order-success';
+    const isStorefront = isCreatorStorefrontHostname();
+    const customLogoUrl = (creatorSettings?.custom_logo_url || '').trim();
+    const logoSrc = customLogoUrl || (!isStorefront ? logo : '');
     const [logoOrientation, setLogoOrientation] = useState('square');
 
     // Storefront only: Personalization primary+secondary → header gradient; otherwise white
@@ -860,22 +863,29 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                 </div>
                 <div className={`navbar-logo-wrap navbar-logo-wrap--${logoOrientation}`}>
                     <Link to="/" onClick={() => { resetCategory(); setSearchQuery(''); }}>
+                        {logoSrc ? (
                         <img
-                            key={`navbar-logo-${creatorSettings?.custom_logo_url || 'default'}`}
-                            src={creatorSettings?.custom_logo_url || logo}
+                            key={`navbar-logo-${customLogoUrl || 'default'}`}
+                            src={logoSrc}
                             alt="Logo"
-                            className={`logo${creatorSettings?.custom_logo_url ? ' logo--custom' : ''} logo--${logoOrientation}${isOrderSuccessPage ? ' order-success-logo' : ''}`}
+                            className={`logo${customLogoUrl ? ' logo--custom' : ''} logo--${logoOrientation}${isOrderSuccessPage ? ' order-success-logo' : ''}`}
                             onLoad={(e) => classifyLogoOrientation(e.target)}
                             ref={(el) => {
                                 if (el?.complete && el.naturalWidth) classifyLogoOrientation(el);
                             }}
                             onError={(e) => {
                                 e.target.onerror = null;
+                                if (isStorefront) {
+                                    e.target.removeAttribute('src');
+                                    e.target.style.visibility = 'hidden';
+                                    return;
+                                }
                                 e.target.src = logo;
                                 setLogoOrientation('square');
-                                if (creatorSettings?.custom_logo_url) console.warn('Custom logo failed to load. Check URL is public and correct:', creatorSettings.custom_logo_url);
+                                if (customLogoUrl) console.warn('Custom logo failed to load. Check URL is public and correct:', customLogoUrl);
                             }}
                         />
+                        ) : null}
                     </Link>
                     {location.pathname.includes('/dashboard') && user && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && (
                         <Link to="/dashboard?tab=personalization" className="navbar-logo-edit" aria-label="Edit logo in Personalization" title="Edit logo">

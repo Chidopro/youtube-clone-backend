@@ -35,9 +35,9 @@
 }
 
 @media (max-width: 768px) {
-  /* Sit a bit lower in the video frame */
+  /* Raise toward the visual center of the video frame */
   .play-icon-overlay {
-    margin-top: 28px;
+    margin-top: 8px;
   }
 }
 

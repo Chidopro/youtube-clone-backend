@@ -22,6 +22,38 @@ export const isCreatorStorefrontHostname = () => {
   return h.endsWith('.screenmerch.com');
 };
 
+function storefrontBrandKey() {
+  if (typeof window === 'undefined') return '';
+  return `sm_storefront_brand_${window.location.hostname.toLowerCase()}`;
+}
+
+/** Sync read of last storefront logo so the navbar does not flash ScreenMerch. */
+export function peekCachedStorefrontBrand() {
+  if (!isCreatorStorefrontHostname()) return null;
+  try {
+    const raw = localStorage.getItem(storefrontBrandKey());
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const custom_logo_url = String(parsed?.custom_logo_url || '').trim();
+    if (!custom_logo_url) return null;
+    return { custom_logo_url };
+  } catch (_) {
+    return null;
+  }
+}
+
+export function rememberStorefrontBrand(settings) {
+  if (!isCreatorStorefrontHostname()) return;
+  const custom_logo_url = String(settings?.custom_logo_url || '').trim();
+  try {
+    if (!custom_logo_url) {
+      localStorage.removeItem(storefrontBrandKey());
+      return;
+    }
+    localStorage.setItem(storefrontBrandKey(), JSON.stringify({ custom_logo_url }));
+  } catch (_) {}
+}
+
 export const getSubdomain = () => {
   const hostname = window.location.hostname;
   const parts = hostname.split('.');
