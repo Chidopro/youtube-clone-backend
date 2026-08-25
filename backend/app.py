@@ -6196,7 +6196,7 @@ def admin_creators_payout_list():
         try:
             pr = (
                 client.table("payouts")
-                .select("id, user_id, amount, payment_method, status, payout_date, processed_date, notes")
+                .select("*")
                 .order("payout_date", desc=True)
                 .limit(300)
                 .execute()
@@ -6295,6 +6295,33 @@ def admin_remove_from_payout_list(user_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+_PGRST_MISSING_COL = re.compile(r"Could not find the '([^']+)' column", re.I)
+
+
+def _pgrst_missing_column(err):
+    return (_PGRST_MISSING_COL.search(str(err or "")) or [None, None])[1]
+
+
+def _payouts_insert(client, row):
+    """Insert a payouts row, dropping columns the live schema does not have."""
+    payload = dict(row)
+    last_err = None
+    for _ in range(12):
+        try:
+            return client.table("payouts").insert(payload).execute()
+        except Exception as e:
+            last_err = e
+            col = _pgrst_missing_column(e)
+            if not col or col not in payload:
+                raise
+            dropped = payload.pop(col)
+            if col == "payment_method" and dropped:
+                extra = f"Method: {dropped}"
+                existing = str(payload.get("notes") or "").strip()
+                payload["notes"] = f"{existing} · {extra}".strip(" ·") if existing else extra
+    raise last_err
+
+
 @app.route("/api/admin/record-storefront-payout", methods=["POST", "OPTIONS"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def admin_record_storefront_payout():
@@ -6358,7 +6385,7 @@ def admin_record_storefront_payout():
             "processed_date": paid_at_iso,
             "notes": note or None,
         }
-        payout_ins = client.table("payouts").insert(payout_row).execute()
+        payout_ins = _payouts_insert(client, payout_row)
         payout = (payout_ins.data or [None])[0]
         if not payout:
             return jsonify({"success": False, "error": "Failed to save payout record"}), 500
@@ -10400,7 +10427,7 @@ def _screenmerch_payouts_for_user(user_id):
     try:
         r = (
             supabase_admin.table("payouts")
-            .select("id, amount, payment_method, status, payout_date, processed_date, notes, created_at")
+            .select("*")
             .eq("user_id", str(user_id))
             .order("payout_date", desc=True)
             .limit(25)

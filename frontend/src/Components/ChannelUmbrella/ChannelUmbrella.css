@@ -346,6 +346,7 @@
   color: #fff;
   width: 100%;
   max-width: 140px;
+  touch-action: manipulation;
 }
 
 .btn-payout-history {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
@@ -66,6 +66,7 @@ const ChannelUmbrella = () => {
   const [payoutError, setPayoutError] = useState('');
   const [recordingPayout, setRecordingPayout] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState({});
+  const ignoreBackdropUntilRef = useRef(0);
 
   const loadSalesSummary = useCallback(async () => {
     setSalesLoading(true);
@@ -142,6 +143,7 @@ const ChannelUmbrella = () => {
 
   const openPayoutModal = (row) => {
     const balance = Number(row.balance_owed ?? 0);
+    ignoreBackdropUntilRef.current = Date.now() + 500;
     setPayoutModal(row);
     setPayoutAmount(balance > 0 ? balance.toFixed(2) : '');
     setPayoutDate(todayInputDate());
@@ -149,8 +151,9 @@ const ChannelUmbrella = () => {
     setPayoutError('');
   };
 
-  const closePayoutModal = () => {
+  const closePayoutModal = (force = false) => {
     if (recordingPayout) return;
+    if (!force && Date.now() < ignoreBackdropUntilRef.current) return;
     setPayoutModal(null);
   };
 
@@ -611,7 +614,12 @@ const ChannelUmbrella = () => {
                         <button
                           type="button"
                           className="btn-record-payout"
-                          onClick={() => openPayoutModal(row)}
+                          onPointerDown={(ev) => ev.stopPropagation()}
+                          onClick={(ev) => {
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                            openPayoutModal(row);
+                          }}
                         >
                           Confirm payment + date
                         </button>
@@ -667,7 +675,14 @@ const ChannelUmbrella = () => {
       </section>
 
       {payoutModal ? createPortal(
-        <div className="umbrella-payout-modal-backdrop" onClick={closePayoutModal} role="presentation">
+        <div
+          className="umbrella-payout-modal-backdrop"
+          onClick={(ev) => {
+            if (ev.target !== ev.currentTarget) return;
+            closePayoutModal();
+          }}
+          role="presentation"
+        >
           <div
             className="umbrella-payout-modal"
             role="dialog"
@@ -715,7 +730,7 @@ const ChannelUmbrella = () => {
                 />
               </label>
               <div className="umbrella-payout-modal-actions">
-                <button type="button" onClick={closePayoutModal} disabled={recordingPayout}>
+                <button type="button" onClick={() => closePayoutModal(true)} disabled={recordingPayout}>
                   Cancel
                 </button>
                 <button type="submit" disabled={recordingPayout}>

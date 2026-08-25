@@ -401,7 +401,7 @@ const Admin = () => {
         await loadPayouts();
         alert(`Recorded $${amount.toFixed(2)} paid to ${storefrontPayoutModal.display_name}. They will see this on their dashboard.`);
       } else {
-        alert(result.error || 'Failed to record payment');
+        alert(typeof result.error === 'string' ? result.error : (result.error?.message || 'Failed to record payment'));
       }
     } catch (error) {
       console.error('Error recording storefront payout:', error);
