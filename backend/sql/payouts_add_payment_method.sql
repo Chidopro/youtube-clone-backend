@@ -13,4 +13,8 @@ ALTER TABLE public.payouts
 ALTER TABLE public.payouts
   ADD COLUMN IF NOT EXISTS notes TEXT;
 
+-- Older payouts tables required this; inserts now send a fallback when the owner has no PayPal.
+ALTER TABLE public.payouts
+  ALTER COLUMN paypal_email DROP NOT NULL;
+
 NOTIFY pgrst, 'reload schema';

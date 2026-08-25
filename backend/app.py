@@ -6296,14 +6296,20 @@ def admin_remove_from_payout_list(user_id):
 
 
 _PGRST_MISSING_COL = re.compile(r"Could not find the '([^']+)' column", re.I)
+_NOT_NULL_COL = re.compile(r'null value in column "([^"]+)"', re.I)
 
 
 def _pgrst_missing_column(err):
     return (_PGRST_MISSING_COL.search(str(err or "")) or [None, None])[1]
 
 
+def _not_null_column(err):
+    m = _NOT_NULL_COL.search(str(err or ""))
+    return m.group(1) if m else None
+
+
 def _payouts_insert(client, row):
-    """Insert a payouts row, dropping columns the live schema does not have."""
+    """Insert a payouts row, adapting to whatever columns the live payouts table has."""
     payload = dict(row)
     last_err = None
     for _ in range(12):
@@ -6311,14 +6317,25 @@ def _payouts_insert(client, row):
             return client.table("payouts").insert(payload).execute()
         except Exception as e:
             last_err = e
-            col = _pgrst_missing_column(e)
-            if not col or col not in payload:
-                raise
-            dropped = payload.pop(col)
-            if col == "payment_method" and dropped:
-                extra = f"Method: {dropped}"
-                existing = str(payload.get("notes") or "").strip()
-                payload["notes"] = f"{existing} · {extra}".strip(" ·") if existing else extra
+            missing = _pgrst_missing_column(e)
+            if missing and missing in payload:
+                dropped = payload.pop(missing)
+                if missing == "payment_method" and dropped:
+                    extra = f"Method: {dropped}"
+                    existing = str(payload.get("notes") or "").strip()
+                    payload["notes"] = f"{existing} · {extra}".strip(" ·") if existing else extra
+                continue
+            required = _not_null_column(e)
+            if required and not payload.get(required):
+                if required == "paypal_email":
+                    payload[required] = (
+                        str(payload.get("paypal_email") or "").strip()
+                        or "unspecified"
+                    )
+                    continue
+                payload[required] = ""
+                continue
+            raise
     raise last_err
 
 
@@ -6376,10 +6393,16 @@ def admin_record_storefront_payout():
         if not owner:
             return jsonify({"success": False, "error": "Storefront owner not found"}), 404
 
+        paypal_email = (
+            str(owner.get("paypal_email") or "").strip()
+            or str(owner.get("email") or "").strip()
+            or "unspecified"
+        )
         payout_row = {
             "user_id": user_id,
             "amount": amount,
             "payment_method": payment_method,
+            "paypal_email": paypal_email,
             "status": "completed",
             "payout_date": paid_at_iso,
             "processed_date": paid_at_iso,

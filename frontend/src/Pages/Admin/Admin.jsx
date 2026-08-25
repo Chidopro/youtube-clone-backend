@@ -2268,7 +2268,9 @@ const Admin = () => {
                     <h3 id="storefront-record-payout-title">Confirm storefront owner payment</h3>
                     <p className="hint">
                       Record that ScreenMerch paid <strong>{storefrontPayoutModal.display_name}</strong>
-                      {storefrontPayoutModal.paypal_email ? ` via ${storefrontPayoutModal.paypal_email}` : ''}.
+                      {storefrontPayoutModal.paypal_email
+                        ? ` via ${storefrontPayoutModal.paypal_email}`
+                        : ' (no PayPal on file — the payment will still be recorded)'}.
                       They will see this on their dashboard.
                     </p>
                     <form onSubmit={submitStorefrontPayout}>
