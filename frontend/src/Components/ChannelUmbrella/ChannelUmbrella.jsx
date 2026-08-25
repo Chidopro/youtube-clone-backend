@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
@@ -62,6 +63,7 @@ const ChannelUmbrella = () => {
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutDate, setPayoutDate] = useState(todayInputDate());
   const [payoutNoteInput, setPayoutNoteInput] = useState('');
+  const [payoutError, setPayoutError] = useState('');
   const [recordingPayout, setRecordingPayout] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState({});
 
@@ -144,6 +146,7 @@ const ChannelUmbrella = () => {
     setPayoutAmount(balance > 0 ? balance.toFixed(2) : '');
     setPayoutDate(todayInputDate());
     setPayoutNoteInput('');
+    setPayoutError('');
   };
 
   const closePayoutModal = () => {
@@ -153,30 +156,37 @@ const ChannelUmbrella = () => {
 
   const submitPayout = async (e) => {
     e.preventDefault();
-    if (!payoutModal?.favorite_list_id) return;
+    if (!payoutModal?.favorite_list_id) {
+      setPayoutError('This collaborator page is missing an ID, so the payment cannot be saved. Refresh and try again.');
+      return;
+    }
     const amount = Number(payoutAmount);
     if (!amount || amount <= 0) {
-      setMsg({ type: 'error', text: 'Enter a payment amount greater than zero.' });
+      setPayoutError('Enter a payment amount greater than zero.');
       return;
     }
     if (amount < 50) {
-      setMsg({ type: 'error', text: 'Minimum collaborator payout is $50.' });
+      setPayoutError('Minimum collaborator payout is $50.');
       return;
     }
     setRecordingPayout(true);
+    setPayoutError('');
     setMsg({ type: '', text: '' });
     try {
       const { ok, data } = await favoriteListsJson('/api/favorite-lists/record-collaborator-payout', {
         method: 'POST',
         body: JSON.stringify({
-          favorite_list_id: payoutModal.favorite_list_id,
+          favorite_list_id: payoutModal.favorite_list_id
+            ? String(payoutModal.favorite_list_id)
+            : undefined,
+          display_name: payoutModal.display_name || undefined,
           amount,
           paid_at: payoutDate,
           note: payoutNoteInput.trim() || undefined,
         }),
       });
       if (!ok) {
-        setMsg({ type: 'error', text: data?.error || 'Could not record payment' });
+        setPayoutError(data?.error || 'Could not record payment');
         return;
       }
       setMsg({
@@ -186,7 +196,7 @@ const ChannelUmbrella = () => {
       setPayoutModal(null);
       await loadSalesSummary();
     } catch (err) {
-      setMsg({ type: 'error', text: err.message || 'Network error' });
+      setPayoutError(err.message || 'Network error');
     } finally {
       setRecordingPayout(false);
     }
@@ -547,6 +557,10 @@ const ChannelUmbrella = () => {
         {!salesLoading && !salesError && salesByList.length > 0 ? (
           <>
             <h3 className="channel-umbrella-subheading">Umbrella collaborators (you pay monthly)</h3>
+            <p className="hint">
+              These balances are what you owe collaborators. ScreenMerch does not pay them.
+              Pay them off-platform (PayPal, Zelle, etc.), then use Confirm payment + date to log it.
+            </p>
           <div className="umbrella-earnings-table-wrap">
           <table className="channel-umbrella-earnings-table">
             <thead>
@@ -556,13 +570,12 @@ const ChannelUmbrella = () => {
                 <th className="col-num">Gross</th>
                 <th className="col-num">Platform fee</th>
                 <th className="col-num">Merch cost</th>
-                <th className="col-num">Pay collaborator</th>
-                <th className="col-num">Balance owed</th>
+                <th className="col-num" title="Pay collaborator">Collab</th>
+                <th className="col-num" title="Balance owed">Balance</th>
                 <th className="col-action">Confirm payment</th>
               </tr>
             </thead>
-            <tbody>
-              {salesByList.map((row) => {
+            {salesByList.map((row) => {
                 const balance = Number(row.balance_owed ?? 0);
                 const gross = Number(row.gross_amount ?? row.total_amount ?? 0);
                 const fee = Number(row.platform_fee_amount ?? 0);
@@ -574,15 +587,15 @@ const ChannelUmbrella = () => {
                 const canRecord = row.can_record_payout ?? (payCollab > 0 && balance >= 50);
                 const isPaidUp = row.is_paid_up ?? (payCollab > 0 && balance <= 0);
                 return (
-                  <React.Fragment key={listKey}>
+                  <tbody key={listKey}>
                   <tr className="umbrella-row-collaborator">
-                    <td className="col-page">{row.display_name || '—'}</td>
-                    <td className="col-num">{row.order_count}</td>
-                    <td className="col-num">${gross.toFixed(2)}</td>
-                    <td className="col-num">${fee.toFixed(2)}</td>
-                    <td className="col-num">${merchCost.toFixed(2)}</td>
-                    <td className="col-num col-pay">${payCollab.toFixed(2)}</td>
-                    <td className="col-num">
+                    <td className="col-page" data-label="Page">{row.display_name || '—'}</td>
+                    <td className="col-num" data-label="Items">{row.order_count}</td>
+                    <td className="col-num" data-label="Gross">${gross.toFixed(2)}</td>
+                    <td className="col-num" data-label="Platform fee">${fee.toFixed(2)}</td>
+                    <td className="col-num" data-label="Merch cost">${merchCost.toFixed(2)}</td>
+                    <td className="col-num col-pay" data-label="Pay collaborator">${payCollab.toFixed(2)}</td>
+                    <td className="col-num" data-label="Balance owed">
                       {payCollab <= 0 ? (
                         <span className="umbrella-amount-zero">$0.00</span>
                       ) : isPaidUp ? (
@@ -593,7 +606,7 @@ const ChannelUmbrella = () => {
                         <span className="umbrella-amount-zero">$0.00</span>
                       )}
                     </td>
-                    <td className="col-action">
+                    <td className="col-action" data-label="Confirm payment">
                       {canRecord ? (
                         <button
                           type="button"
@@ -610,24 +623,27 @@ const ChannelUmbrella = () => {
                   {(lastPaid || history.length > 0) ? (
                     <tr className="umbrella-row-payout-meta">
                       <td colSpan={8}>
-                        {lastPaid ? (
-                          <span className="umbrella-last-paid">
-                            Last paid ${Number(lastPaid.amount || 0).toFixed(2)} on {formatPaidDate(lastPaid.paid_at)}
-                            {lastPaid.note ? ` · ${lastPaid.note}` : ''}
-                          </span>
-                        ) : null}
-                        {history.length > 0 ? (
-                          <button
-                            type="button"
-                            className="btn-payout-history"
-                            onClick={() => setExpandedHistory((prev) => ({
-                              ...prev,
-                              [listKey]: !prev[listKey],
-                            }))}
-                          >
-                            {expandedHistory[listKey] ? 'Hide' : 'Show'} payment history
-                          </button>
-                        ) : null}
+                        <div className="umbrella-last-paid-row">
+                          {lastPaid ? (
+                            <span className="umbrella-last-paid">
+                              Last paid ${Number(lastPaid.amount || 0).toFixed(2)} on {formatPaidDate(lastPaid.paid_at)}
+                              {lastPaid.note ? ` · ${lastPaid.note}` : ''}
+                              {history.length > 0 ? '\u00a0' : ''}
+                            </span>
+                          ) : null}
+                          {history.length > 0 ? (
+                            <button
+                              type="button"
+                              className="btn-payout-history"
+                              onClick={() => setExpandedHistory((prev) => ({
+                                ...prev,
+                                [listKey]: !prev[listKey],
+                              }))}
+                            >
+                              {expandedHistory[listKey] ? 'Hide' : 'Show'} payment history
+                            </button>
+                          ) : null}
+                        </div>
                         {expandedHistory[listKey] && history.length > 0 ? (
                           <ul className="umbrella-payout-history">
                             {history.map((p) => (
@@ -641,17 +657,16 @@ const ChannelUmbrella = () => {
                       </td>
                     </tr>
                   ) : null}
-                  </React.Fragment>
+                  </tbody>
                 );
               })}
-            </tbody>
           </table>
           </div>
           </>
         ) : null}
       </section>
 
-      {payoutModal ? (
+      {payoutModal ? createPortal(
         <div className="umbrella-payout-modal-backdrop" onClick={closePayoutModal} role="presentation">
           <div
             className="umbrella-payout-modal"
@@ -661,8 +676,14 @@ const ChannelUmbrella = () => {
           >
             <h3 id="record-payout-title">Confirm payment + date</h3>
             <p className="hint">
-              Confirm you paid <strong>{payoutModal.display_name || 'collaborator'}</strong> off-platform.
+              This does not send money. After you pay{' '}
+              <strong>{payoutModal.display_name || 'collaborator'}</strong> yourself
+              (PayPal, Zelle, cash), log the amount and date here.
+              ScreenMerch pays your storefront earnings separately.
             </p>
+            {payoutError ? (
+              <p className="channel-umbrella-msg error" role="alert">{payoutError}</p>
+            ) : null}
             <form onSubmit={submitPayout}>
               <label>
                 Amount
@@ -703,7 +724,8 @@ const ChannelUmbrella = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </div>
   );

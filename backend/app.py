@@ -10776,7 +10776,7 @@ def favorite_lists_sales_summary():
                 )
 
             row_out = {
-                "favorite_list_id": lid,
+                "favorite_list_id": str(lid) if lid else None,
                 "display_name": display_name,
                 "slug": slug_out,
                 "order_count": totals["order_count"],
@@ -10969,6 +10969,33 @@ def favorite_lists_record_collaborator_payout():
 
         body = request.get_json(silent=True) or {}
         favorite_list_id = body.get("favorite_list_id")
+        if favorite_list_id not in (None, ""):
+            favorite_list_id = str(favorite_list_id).strip()
+        else:
+            favorite_list_id = ""
+        display_name_hint = (body.get("display_name") or "").strip()
+        if not favorite_list_id and display_name_hint:
+            try:
+                name_res = (
+                    supabase_admin.table("creator_favorite_lists")
+                    .select("id, display_name, slug, owner_user_id, storefront_owner_id")
+                    .eq("storefront_owner_id", str(user_id))
+                    .execute()
+                )
+                hint = display_name_hint.lower()
+                match = next(
+                    (
+                        L
+                        for L in (name_res.data or [])
+                        if str(L.get("display_name") or "").strip().lower() == hint
+                        or str(L.get("slug") or "").strip().lower() == hint
+                    ),
+                    None,
+                )
+                if match and match.get("id"):
+                    favorite_list_id = str(match.get("id"))
+            except Exception as name_err:
+                logger.warning("record-collaborator-payout name lookup: %s", name_err)
         if not favorite_list_id:
             return jsonify({"success": False, "error": "favorite_list_id is required"}), 400
         try:
@@ -11016,11 +11043,15 @@ def favorite_lists_record_collaborator_payout():
             sales_res = (
                 supabase_admin.table("sales")
                 .select("product_name, amount, favorite_list_id")
-                .eq("user_id", str(user_id))
-                .eq("favorite_list_id", str(favorite_list_id))
+                .eq("user_id", user_id)
                 .execute()
             )
-            sale_lines = sales_res.data or []
+            want_list = str(favorite_list_id)
+            sale_lines = [
+                s
+                for s in (sales_res.data or [])
+                if str(s.get("favorite_list_id") or "") == want_list
+            ]
         except Exception:
             sale_lines = []
         owner_fee = _get_umbrella_owner_fee(user_id, favorite_list_id)
@@ -11053,7 +11084,7 @@ def favorite_lists_record_collaborator_payout():
                     "error": f"Payment amount must be at least ${min_pay:.0f}.",
                 }
             ), 400
-        if amount > balance_owed:
+        if amount > round(balance_owed + 0.009, 2):
             return jsonify(
                 {
                     "success": False,
@@ -11061,16 +11092,27 @@ def favorite_lists_record_collaborator_payout():
                 }
             ), 400
 
+        collab_uid = meta.get("owner_user_id")
+        try:
+            collab_uid = str(uuid.UUID(str(collab_uid))) if collab_uid else None
+        except (TypeError, ValueError, AttributeError):
+            collab_uid = None
+
         row = {
             "storefront_owner_id": str(user_id),
             "favorite_list_id": str(favorite_list_id),
-            "collaborator_user_id": meta.get("owner_user_id"),
             "amount": amount,
             "paid_at": paid_at_dt.isoformat(),
             "note": note,
         }
+        if collab_uid:
+            row["collaborator_user_id"] = collab_uid
+
+        def _insert_payout(payload):
+            return supabase_admin.table("umbrella_collaborator_payouts").insert(payload).execute()
+
         try:
-            ins = supabase_admin.table("umbrella_collaborator_payouts").insert(row).execute()
+            ins = _insert_payout(row)
         except Exception as ins_err:
             err_s = str(ins_err).lower()
             if "umbrella_collaborator_payouts" in err_s or "does not exist" in err_s:
@@ -11080,9 +11122,24 @@ def favorite_lists_record_collaborator_payout():
                         "error": "Payout ledger table missing. Run backend/sql/umbrella_collaborator_payouts.sql in Supabase.",
                     }
                 ), 503
-            raise
+            if row.get("collaborator_user_id"):
+                row.pop("collaborator_user_id", None)
+                try:
+                    ins = _insert_payout(row)
+                except Exception as retry_err:
+                    logger.exception("favorite_lists_record_collaborator_payout retry: %s", retry_err)
+                    return jsonify(
+                        {"success": False, "error": ("Could not save payment: " + str(retry_err))[:280]}
+                    ), 500
+            else:
+                logger.exception("favorite_lists_record_collaborator_payout insert: %s", ins_err)
+                return jsonify(
+                    {"success": False, "error": ("Could not save payment: " + str(ins_err))[:280]}
+                ), 500
 
         payout_row = (ins.data or [row])[0]
+        if not ins.data:
+            return jsonify({"success": False, "error": "Payment was not saved. Refresh and try again."}), 500
         return jsonify({"success": True, "payout": payout_row}), 200
     except Exception as e:
         logger.exception("favorite_lists_record_collaborator_payout: %s", e)

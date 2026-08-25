@@ -251,7 +251,7 @@
 
 .channel-umbrella-earnings-table {
   width: 100%;
-  min-width: 720px;
+  min-width: 880px;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.9rem;
@@ -270,6 +270,8 @@
   font-weight: 600;
   font-size: 0.82rem;
   line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .channel-umbrella-earnings-table th.col-page,
@@ -282,8 +284,11 @@
 .channel-umbrella-earnings-table th.col-num,
 .channel-umbrella-earnings-table td.col-num {
   text-align: right;
-  white-space: nowrap;
   width: 10%;
+}
+
+.channel-umbrella-earnings-table td.col-num {
+  white-space: nowrap;
 }
 
 .channel-umbrella-earnings-table th.col-action,
@@ -346,13 +351,20 @@
 .btn-payout-history {
   background: transparent;
   color: #667eea;
-  padding-left: 0;
+  padding: 0;
+  margin-left: 0.35em;
+}
+
+.umbrella-last-paid-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
 }
 
 .umbrella-last-paid {
   font-size: 0.78rem;
   color: #6c757d;
-  margin-top: 4px;
 }
 
 .umbrella-payout-history {
@@ -393,7 +405,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1200;
+  z-index: 200010;
   padding: 16px;
 }
 
@@ -403,6 +415,8 @@
   padding: 20px 22px;
   width: 100%;
   max-width: 400px;
+  max-height: min(90vh, 640px);
+  overflow-y: auto;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
 }
 
@@ -450,4 +464,113 @@
 .umbrella-payout-modal-actions button[type="button"] {
   background: #e9ecef;
   color: #212529;
+}
+
+@media (max-width: 768px) {
+  .umbrella-earnings-table-wrap {
+    overflow: visible;
+  }
+
+  .channel-umbrella-earnings-table {
+    min-width: 0;
+    width: 100%;
+    table-layout: auto;
+    border-collapse: separate;
+    background: transparent;
+  }
+
+  .channel-umbrella-earnings-table thead {
+    display: none;
+  }
+
+  .channel-umbrella-earnings-table tbody {
+    display: block;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .channel-umbrella-earnings-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .channel-umbrella-earnings-table th,
+  .channel-umbrella-earnings-table td {
+    display: flex;
+    width: 100%;
+    max-width: none;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    text-align: right;
+    padding: 8px 14px;
+    border-bottom: 1px solid #f1f3f5;
+    white-space: normal;
+  }
+
+  .channel-umbrella-earnings-table td.col-page {
+    width: 100%;
+    font-size: 1.05rem;
+    padding-top: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #dee2e6;
+    background: #f8f9fa;
+  }
+
+  .channel-umbrella-earnings-table td.col-num,
+  .channel-umbrella-earnings-table td.col-action {
+    width: 100%;
+  }
+
+  .channel-umbrella-earnings-table td[data-label]::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #6c757d;
+    text-align: left;
+    flex: 1 1 auto;
+  }
+
+  .channel-umbrella-earnings-table td.col-action {
+    border-bottom: none;
+    padding-top: 10px;
+    padding-bottom: 12px;
+  }
+
+  .channel-umbrella-earnings-table td.col-action:has(.btn-record-payout) {
+    display: block;
+  }
+
+  .channel-umbrella-earnings-table td.col-action:has(.btn-record-payout)::before {
+    content: none;
+  }
+
+  .channel-umbrella-earnings-table .btn-record-payout {
+    max-width: none;
+    width: 100%;
+  }
+
+  .channel-umbrella-earnings-table .umbrella-row-payout-meta td {
+    display: block;
+    padding: 10px 14px 14px;
+    border-bottom: none;
+    background: #fafbfc;
+    text-align: left;
+  }
+
+  .channel-umbrella-earnings-table .umbrella-row-payout-meta td::before {
+    content: none;
+  }
+
+  .umbrella-last-paid-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .btn-payout-history {
+    margin-left: 0;
+  }
 }
