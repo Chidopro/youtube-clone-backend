@@ -12,6 +12,47 @@ PLATFORM_FEE_PER_MARKUP_SALE = 6.00
 # Minimum owed balance before a storefront owner can record an off-platform collaborator payout.
 UMBRELLA_COLLABORATOR_PAYOUT_MINIMUM = 50.0
 
+# Storefront-owner ScreenMerch payouts: on or about the 1st and 15th (Terms §10.2).
+CREATOR_PAYOUT_DAYS = (1, 15)
+
+
+def next_creator_payout_date(today=None):
+    """Next regular ScreenMerch payout day (1st or 15th)."""
+    from datetime import date, datetime, timezone
+
+    today = today or datetime.now(timezone.utc).date()
+    if today.day <= 1:
+        return date(today.year, today.month, 1)
+    if today.day <= 15:
+        return date(today.year, today.month, 15)
+    if today.month == 12:
+        return date(today.year + 1, 1, 1)
+    return date(today.year, today.month + 1, 1)
+
+
+def creator_earnings_pending_amount(client, user_id):
+    """Unpaid ScreenMerch → owner balance (same source as admin Pending)."""
+    if not client or not user_id:
+        return 0.0
+    try:
+        result = (
+            client.table("creator_earnings")
+            .select("creator_share")
+            .eq("user_id", str(user_id))
+            .eq("status", "pending")
+            .execute()
+        )
+    except Exception:
+        return 0.0
+    return round(sum(float(row.get("creator_share") or 0) for row in (result.data or [])), 2)
+
+
+def screenmerch_pending_fields(client, user_id):
+    return {
+        "screenmerch_pending_amount": creator_earnings_pending_amount(client, user_id),
+        "next_payout_date": next_creator_payout_date().isoformat(),
+    }
+
 
 def get_payout_for_sale(product_name, sale_amount, quantity=1):
     """

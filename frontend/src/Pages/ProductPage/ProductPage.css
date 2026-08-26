@@ -872,6 +872,16 @@
   margin: 0.5rem 0 0 0;
 }
 
+.shop-catalog-note {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 0 0.75rem;
+  text-align: center;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: #4b5563;
+}
+
 .cart-section {
   display: flex;
   flex-direction: column;

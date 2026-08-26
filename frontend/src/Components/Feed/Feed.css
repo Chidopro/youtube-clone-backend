@@ -7,6 +7,7 @@
   grid-template-columns: repeat(3, 1fr);
   grid-gap: 24px;
   margin-bottom: 28px;
+  align-items: start;
 }
 
 .feed {
@@ -72,6 +73,7 @@
   appearance: none;
   -webkit-appearance: none;
   overflow: hidden;
+  align-self: start;
 }
 
 .hub-card h2 {
@@ -99,6 +101,57 @@
 
 .hub-card img {
   background: #f0f2f5;
+}
+
+.hub-card > img,
+.hub-card > .hub-card-empty,
+.hub-card > .hub-shop-thumb {
+  flex: 0 0 auto;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.hub-shop-thumb {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 6px;
+  box-sizing: border-box;
+  background: #eef0f3;
+  border-radius: 5px 5px 0 0;
+  pointer-events: none;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.hub-shop-cell {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.card.hub-card .hub-shop-cell img,
+.hub-shop-cell img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: unset !important;
+  object-fit: contain;
+  border-radius: 0;
+  background: #fff;
+}
+
+.hub-shop-cell--emoji {
+  font-size: 14px;
+  line-height: 1;
 }
 
 @media (max-width: 900px) {

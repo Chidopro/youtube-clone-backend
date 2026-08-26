@@ -20,6 +20,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [isHovering, setIsHovering] = useState(false);
   const [favoritesPreview, setFavoritesPreview] = useState([]);
   const [friendPagePreview, setFriendPagePreview] = useState([]);
+  const [shopPreview, setShopPreview] = useState([]);
   const navigate = useNavigate();
   const { creatorSettings, currentCreator, refreshCreator, loading: creatorLoading } = useCreator();
   const isMainSite = !isCreatorStorefrontHostname();
@@ -97,6 +98,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         if (!creatorLoading) {
           setFavoritesPreview([]);
           setFriendPagePreview([]);
+          setShopPreview([]);
         }
         return;
       }
@@ -105,6 +107,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         if (!ok || !data?.success) {
           setFavoritesPreview([]);
           setFriendPagePreview([]);
+          setShopPreview([]);
           return;
         }
         const lists = Array.isArray(data.lists) ? data.lists : [];
@@ -131,6 +134,14 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
         }
         setFavoritesPreview(ownerImages);
 
+        const extraImages = lists
+          .filter(
+            (L) =>
+              !(L.is_primary || L.slug === 'owner') &&
+              !isCollaboratorFavoriteList(L, currentCreator.id)
+          )
+          .flatMap((L) => listPreviewImages(L));
+
         const friendLists = lists.filter(
           (L) =>
             !L.is_primary &&
@@ -150,10 +161,12 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           }
         }
         setFriendPagePreview(friendImages);
+        setShopPreview([...ownerImages, ...friendImages, ...extraImages]);
       } catch (err) {
         console.error('Error fetching hub previews:', err);
         setFavoritesPreview([]);
         setFriendPagePreview([]);
+        setShopPreview([]);
       }
     };
     fetchHubPreviews();
@@ -341,6 +354,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
               videos={videos}
               favoritesPreview={favoritesPreview}
               friendPagePreview={friendPagePreview}
+              shopPreview={shopPreview}
               showHubs
             />
             {videos.length === 0 && (

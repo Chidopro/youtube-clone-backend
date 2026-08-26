@@ -1115,11 +1115,12 @@ export class AdminService {
       const data = await res.json();
       return {
         creators: data.creators || [],
-        payout_history: data.payout_history || []
+        payout_history: data.payout_history || [],
+        next_payout_date: data.next_payout_date || ''
       };
     } catch (error) {
       console.error('Error fetching creators payout list:', error);
-      return { creators: [], payout_history: [] };
+      return { creators: [], payout_history: [], next_payout_date: '' };
     }
   }
 
@@ -1981,7 +1982,7 @@ export class AdminService {
   }
 
   /**
-   * Clear ALL platform revenue + sales analytics test data (master admin only).
+   * Clear ALL platform revenue, sales analytics, and payout ledger test data (master admin only).
    */
   static async resetPlatformRevenueData() {
     try {
@@ -2010,6 +2011,7 @@ export class AdminService {
       await this.logAdminAction('reset_platform_revenue_data', 'platform', 'all', {
         deleted_sales_count: result.deleted_sales_count,
         deleted_earnings_count: result.deleted_earnings_count,
+        deleted_screenmerch_payouts_count: result.deleted_screenmerch_payouts_count,
       });
       return result;
     } catch (error) {

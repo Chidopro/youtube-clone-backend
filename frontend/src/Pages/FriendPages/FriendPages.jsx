@@ -1,9 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
-import { fetchPublicFavoriteLists, peekPublicFavoriteLists } from '../../utils/favoriteListsApi';
+import {
+  fetchPublicFavoriteLists,
+  peekPublicFavoriteLists,
+  fetchPublicFavoritesByList,
+  listPreviewImages,
+  favoriteImageUrl,
+  publicStorageCardUrl,
+} from '../../utils/favoriteListsApi';
 import { friendPageLabel, isCollaboratorFavoriteList } from '../../utils/favoriteListLabels';
+import { HubThumb, rotatingUrl, uniqueUrls, HUB_ROTATE_MS } from '../../Components/Feed/Feed';
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
 import './FriendPages.css';
 
@@ -16,13 +24,54 @@ function umbrellaFriendPages(lists, ownerId) {
   });
 }
 
+function previewUrlsFromList(list) {
+  return uniqueUrls(
+    listPreviewImages(list).map((u) => publicStorageCardUrl(u, 1400))
+  );
+}
+
+async function attachPreviewUrls(lists, sub) {
+  const out = [];
+  for (const L of lists) {
+    let previewUrls = previewUrlsFromList(L);
+    if (!previewUrls.length) {
+      const slug = (L.slug || '').trim();
+      if (slug) {
+        const { ok, data } = await fetchPublicFavoritesByList(sub, slug);
+        if (ok && data?.success) {
+          previewUrls = uniqueUrls(
+            (data.favorites || [])
+              .map((f) => publicStorageCardUrl(favoriteImageUrl(f), 1400))
+              .filter(Boolean)
+          );
+        }
+      }
+    }
+    out.push({ ...L, previewUrls });
+  }
+  return out;
+}
+
 const FriendPages = ({ sidebar }) => {
   const navigate = useNavigate();
   const { currentCreator } = useCreator();
   const cachedLists = peekPublicFavoriteLists(getSubdomain());
-  const [pages, setPages] = useState(() => umbrellaFriendPages(cachedLists, currentCreator?.id));
+  const [pages, setPages] = useState(() =>
+    umbrellaFriendPages(cachedLists, currentCreator?.id).map((L) => ({
+      ...L,
+      previewUrls: previewUrlsFromList(L),
+    }))
+  );
   const [loading, setLoading] = useState(cachedLists == null);
   const [error, setError] = useState('');
+  const [tick, setTick] = useState(() => Math.floor(Date.now() / HUB_ROTATE_MS));
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setTick(Math.floor(Date.now() / HUB_ROTATE_MS));
+    }, Math.min(HUB_ROTATE_MS, 4000));
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const run = async () => {
@@ -34,22 +83,27 @@ const FriendPages = ({ sidebar }) => {
       }
       const cached = peekPublicFavoriteLists(sub);
       if (cached) {
-        setPages(umbrellaFriendPages(cached, currentCreator?.id));
+        setPages(
+          umbrellaFriendPages(cached, currentCreator?.id).map((L) => ({
+            ...L,
+            previewUrls: previewUrlsFromList(L),
+          }))
+        );
         setLoading(false);
       } else {
         setLoading(true);
       }
       setError('');
       try {
-        const { ok, data } = await fetchPublicFavoriteLists(sub, { lite: true });
+        const { ok, data } = await fetchPublicFavoriteLists(sub);
         if (!ok || !data?.success) {
           if (!cached) {
             setError(data?.error || 'Could not load friends list');
             setPages([]);
           }
         } else {
-          const lists = Array.isArray(data.lists) ? data.lists : [];
-          setPages(umbrellaFriendPages(lists, currentCreator?.id));
+          const lists = umbrellaFriendPages(data.lists, currentCreator?.id);
+          setPages(await attachPreviewUrls(lists, sub));
         }
       } catch (e) {
         if (!cached) {
@@ -61,6 +115,17 @@ const FriendPages = ({ sidebar }) => {
     };
     run();
   }, [currentCreator?.id]);
+
+  const thumbs = useMemo(
+    () =>
+      Object.fromEntries(
+        pages.map((L) => [
+          L.id || L.slug,
+          rotatingUrl(L.previewUrls, String(L.slug || L.id || 'friend'), tick),
+        ])
+      ),
+    [pages, tick]
+  );
 
   return (
     <div className={`container ${sidebar ? '' : ' large-container'}`}>
@@ -98,17 +163,16 @@ const FriendPages = ({ sidebar }) => {
               const label = friendPageLabel(L, currentCreator?.id);
               const to =
                 L.slug === 'owner' ? '/favorites' : `/favorites/${encodeURIComponent(L.slug)}`;
+              const key = L.id || L.slug;
               return (
-                <li key={L.id}>
+                <li key={key}>
                   <button
                     type="button"
                     className="friend-pages-item"
                     onClick={() => navigate(to)}
                   >
+                    <HubThumb src={thumbs[key]} emptyLabel={label} />
                     <span className="friend-pages-item-name">{label}</span>
-                    <span className="friend-pages-item-arrow" aria-hidden="true">
-                      →
-                    </span>
                   </button>
                 </li>
               );

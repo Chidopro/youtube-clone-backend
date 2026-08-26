@@ -175,26 +175,37 @@ export function favoriteImageUrl(favorite) {
  * Lightweight URL for grid/cards. Keeps full image_url for Make Merch / print.
  * Uses a dedicated thumbnail when present; otherwise asks Supabase for a resized render.
  */
-export function publicStorageCardUrl(src) {
+export function publicStorageCardUrl(src, width = 720) {
   const url = (src || '').trim();
   if (!url) return '';
+  const w = Number(width);
+  const px = Number.isFinite(w) && w >= 32 ? Math.round(w) : 720;
   try {
     const u = new URL(url);
-    if (
-      u.hostname.includes('supabase.co') &&
-      u.pathname.includes('/storage/v1/object/public/')
-    ) {
-      u.pathname = u.pathname.replace(
-        '/storage/v1/object/public/',
-        '/storage/v1/render/image/public/'
-      );
-      u.searchParams.set('width', '720');
+    const isSupabase = u.hostname.includes('supabase.co');
+    const isObject = u.pathname.includes('/storage/v1/object/public/');
+    const isRender = u.pathname.includes('/storage/v1/render/image/public/');
+    if (isSupabase && (isObject || isRender)) {
+      if (isObject) {
+        u.pathname = u.pathname.replace(
+          '/storage/v1/object/public/',
+          '/storage/v1/render/image/public/'
+        );
+      }
+      u.searchParams.set('width', String(px));
       u.searchParams.set('resize', 'contain');
-      u.searchParams.set('quality', '70');
+      u.searchParams.set('quality', px >= 1000 ? '82' : '70');
       return u.toString();
     }
   } catch (_) {}
   return url;
+}
+
+/** Sharper image for the 2-up My Page gallery. */
+export function favoriteGalleryUrl(favorite) {
+  if (!favorite) return '';
+  const full = (favorite.image_url || favorite.thumbnail_url || favorite.thumbnail || '').trim();
+  return publicStorageCardUrl(full, 1200) || full;
 }
 
 export function favoriteCardThumbUrl(favorite) {

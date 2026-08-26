@@ -369,7 +369,7 @@ def platform_revenue_attribution_for_earning(
 
 
 def reset_creator_sales_records(client, user_id, order_store=None, log=None):
-    """Clear sales + creator_earnings (+ in-memory orders) for one storefront owner."""
+    """Clear sales + earnings + payout ledgers (+ in-memory orders) for one storefront owner."""
     uid = str(user_id)
     deleted_sales = client.table("sales").delete().eq("user_id", uid).execute()
     deleted_sales_count = len(deleted_sales.data or [])
@@ -400,11 +400,21 @@ def reset_creator_sales_records(client, user_id, order_store=None, log=None):
         if log:
             log.warning("Could not delete umbrella_collaborator_payouts for %s: %s", uid, err)
 
+    # ScreenMerch → owner PayPal ledger (shown as "Payments from ScreenMerch")
+    deleted_screenmerch_payouts_count = 0
+    try:
+        sm_payouts_res = client.table("payouts").delete().eq("user_id", uid).execute()
+        deleted_screenmerch_payouts_count = len(sm_payouts_res.data or [])
+    except Exception as err:
+        if log:
+            log.warning("Could not delete payouts for %s: %s", uid, err)
+
     return {
         "deleted_sales_count": deleted_sales_count,
         "deleted_earnings_count": deleted_earnings_count,
         "purged_order_store_count": purged_order_store_count,
         "deleted_payouts_count": deleted_payouts_count,
+        "deleted_screenmerch_payouts_count": deleted_screenmerch_payouts_count,
     }
 
 
@@ -426,10 +436,12 @@ def _delete_all_table_rows(client, table_name, log=None):
 
 
 def reset_all_platform_sales_records(client, order_store=None, log=None):
-    """Master admin: wipe all sales analytics + platform revenue test data."""
+    """Master admin: wipe all sales analytics + payout ledgers + platform revenue test data."""
     deleted_sales_count = _delete_all_table_rows(client, "sales", log)
+    # Earnings first: creator_earnings.payout_id references payouts(id).
     deleted_earnings_count = _delete_all_table_rows(client, "creator_earnings", log)
     deleted_payouts_count = _delete_all_table_rows(client, "umbrella_collaborator_payouts", log)
+    deleted_screenmerch_payouts_count = _delete_all_table_rows(client, "payouts", log)
 
     purged_order_store_count = 0
     if order_store is not None:
@@ -440,5 +452,6 @@ def reset_all_platform_sales_records(client, order_store=None, log=None):
         "deleted_sales_count": deleted_sales_count,
         "deleted_earnings_count": deleted_earnings_count,
         "deleted_payouts_count": deleted_payouts_count,
+        "deleted_screenmerch_payouts_count": deleted_screenmerch_payouts_count,
         "purged_order_store_count": purged_order_store_count,
     }

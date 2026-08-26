@@ -1,11 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
-import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl } from '../../utils/favoriteListsApi';
+import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, favoriteGalleryUrl } from '../../utils/favoriteListsApi';
 import { favoriteListPageHeading } from '../../utils/favoriteListLabels';
 import { apiJoin } from '../../config/apiConfig';
 import { savePendingMerchData } from '../../utils/merchSession';
+import {
+  browseShopCategoryPath,
+  readShopAddIntent,
+  clearShopAddIntent,
+} from '../../utils/shopCategories';
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
 import './Favorites.css';
 
@@ -15,7 +20,7 @@ const sortNewest = (a, b) => {
   return tb - ta;
 };
 
-function FavoritesShelfTrack({ children, itemCount = 0 }) {
+function FavoritesShelfTrack({ children, itemCount = 0, pair = false, trio = false }) {
   const trackRef = useRef(null);
   const [bar, setBar] = useState({ canScroll: false, thumbPct: 100, leftPct: 0 });
 
@@ -56,7 +61,7 @@ function FavoritesShelfTrack({ children, itemCount = 0 }) {
 
   return (
     <div className={`favorites-shelf-scroller${bar.canScroll ? ' has-overflow' : ''}`}>
-      <div ref={trackRef} className="favorites-shelf-track">
+      <div ref={trackRef} className={`favorites-shelf-track${pair ? ' favorites-shelf-track--pair' : ''}${trio ? ' favorites-shelf-track--trio' : ''}`}>
         {children}
       </div>
       <div
@@ -78,7 +83,7 @@ function FavoriteImageCard({ item, onMakeMerch }) {
     <div className="favorites-card">
       <div className="favorites-card-image">
         <img
-          src={item.thumb || 'https://via.placeholder.com/320x180?text=No+Image'}
+          src={item.gallery || item.full || item.thumb || 'https://via.placeholder.com/640x480?text=No+Image'}
           alt={item.title}
           loading="lazy"
           decoding="async"
@@ -92,7 +97,6 @@ function FavoriteImageCard({ item, onMakeMerch }) {
       </div>
       <div className="favorites-card-content">
         <h3>{item.title}</h3>
-        <p>{item.description || '\u00A0'}</p>
         <button
           type="button"
           className="favorites-make-merch-btn"
@@ -112,6 +116,7 @@ const mapFavoriteImages = (favorites) =>
       id: `image-${f.id}`,
       title: f.title || 'Untitled',
       thumb: favoriteCardThumbUrl(f),
+      gallery: favoriteGalleryUrl(f),
       full: favoriteImageUrl(f),
       created_at: f.created_at || '',
       description: f.description || '',
@@ -122,16 +127,26 @@ const mapFavoriteImages = (favorites) =>
 const Favorites = ({ sidebar }) => {
   const navigate = useNavigate();
   const { listSlug } = useParams();
+  const [searchParams] = useSearchParams();
+  const fromShop = searchParams.get('from') === 'shop';
   const { currentCreator, loading: creatorLoading } = useCreator();
   const [images, setImages] = useState([]);
   const [videos, setVideos] = useState([]);
   const [listMeta, setListMeta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filter, setFilter] = useState('all'); // all | videos | images
   const [extraPages, setExtraPages] = useState([]);
+  const [shopAddIntent] = useState(() => (fromShop ? readShopAddIntent() : null));
 
   const effectiveSlug = (listSlug || 'owner').toLowerCase();
+
+  useEffect(() => {
+    if (!fromShop) clearShopAddIntent();
+  }, [fromShop]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [effectiveSlug]);
 
   useEffect(() => {
     const run = async () => {
@@ -268,12 +283,10 @@ const Favorites = ({ sidebar }) => {
     [extraPages, currentCreator?.id]
   );
 
-  const showImagesRow = filter !== 'videos';
-  const showVideosRow = filter !== 'images';
-  const visibleExtraPages = showImagesRow ? extraPageItems : [];
+  const visibleExtraPages = extraPageItems;
   const hasVisibleItems =
-    (showImagesRow && imageItems.length > 0) ||
-    (showVideosRow && videoItems.length > 0) ||
+    imageItems.length > 0 ||
+    videoItems.length > 0 ||
     visibleExtraPages.some((page) => page.images.length > 0);
 
   const handleMakeMerch = (favorite, pageList = listMeta) => {
@@ -301,7 +314,13 @@ const Favorites = ({ sidebar }) => {
       }
     }
 
-    navigate('/merchandise');
+    const shopIntent = readShopAddIntent();
+    clearShopAddIntent();
+    if (shopIntent?.category) {
+      navigate(browseShopCategoryPath(shopIntent.category, { fromShop: false }));
+    } else {
+      navigate('/merchandise');
+    }
     window.scrollTo(0, 0);
   };
 
@@ -324,53 +343,31 @@ const Favorites = ({ sidebar }) => {
             ←
           </button>
           <div className="favorites-toolbar-text">
-            <h1 className="favorites-page-title">{pageTitle}</h1>
+            <h1 className={`favorites-page-title${pageTitle === 'My Page' ? ' favorites-page-title--visually-hidden' : ''}`}>{pageTitle}</h1>
+            {shopAddIntent?.category ? (
+              <p className="favorites-shop-intent-note">
+                Select an image, then Make Merch to create your product.
+              </p>
+            ) : null}
             {error ? <p className="favorites-error">{error}</p> : null}
           </div>
         </div>
-
-        {!loading && !error ? (
-          <div className="page-filter-row" role="tablist" aria-label="Filter page content">
-            {[
-              { id: 'all', label: 'All' },
-              { id: 'videos', label: 'Videos' },
-              { id: 'images', label: 'Images' },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                role="tab"
-                aria-selected={filter === opt.id}
-                className={`page-filter-chip${filter === opt.id ? ' is-active' : ''}`}
-                onClick={() => setFilter(opt.id)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
 
         {loading ? <div className="favorites-loading">Loading page...</div> : null}
 
         {!loading && !hasVisibleItems && extraPageItems.length === 0 && !error ? (
           <div className="favorites-empty">
             <h2>Nothing here yet</h2>
-            <p>
-              {filter === 'videos'
-                ? 'No videos on this page yet. Check back later!'
-                : filter === 'images'
-                  ? 'No images on this page yet. Check back later!'
-                  : 'This page has no videos or images yet. Check back later!'}
-            </p>
+            <p>This page has no videos or images yet. Check back later!</p>
           </div>
         ) : null}
 
         {!loading && (hasVisibleItems || extraPageItems.length > 0) ? (
           <div className="favorites-shelves">
-            {showImagesRow && imageItems.length > 0 ? (
+            {imageItems.length > 0 ? (
               <section className="favorites-shelf" aria-label="Images">
                 <h2 className="favorites-shelf-title">Images</h2>
-                <FavoritesShelfTrack itemCount={imageItems.length}>
+                <FavoritesShelfTrack itemCount={imageItems.length} pair>
                   {imageItems.map((item) => (
                     <FavoriteImageCard key={item.id} item={item} onMakeMerch={handleMakeMerch} />
                   ))}
@@ -378,10 +375,10 @@ const Favorites = ({ sidebar }) => {
               </section>
             ) : null}
 
-            {showVideosRow && videoItems.length > 0 ? (
+            {videoItems.length > 0 ? (
               <section className="favorites-shelf" aria-label="Videos">
                 <h2 className="favorites-shelf-title">Videos</h2>
-                <FavoritesShelfTrack itemCount={videoItems.length}>
+                <FavoritesShelfTrack itemCount={videoItems.length} trio>
                   {videoItems.map((item) => (
                     <div className="favorites-card favorites-card--video" key={item.id}>
                       <div className="favorites-card-image">
@@ -417,7 +414,7 @@ const Favorites = ({ sidebar }) => {
               >
                 <h2 className="favorites-extra-page-title">{page.title}</h2>
                 {page.images.length > 0 ? (
-                  <FavoritesShelfTrack itemCount={page.images.length}>
+                  <FavoritesShelfTrack itemCount={page.images.length} pair>
                     {page.images.map((item) => (
                       <FavoriteImageCard
                         key={item.id}

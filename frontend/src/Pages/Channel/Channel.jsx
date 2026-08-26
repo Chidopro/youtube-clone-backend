@@ -202,7 +202,7 @@ const Channel = () => {
 
       <div className="channel-content">
         {videos.length > 0 ? (
-          <Feed videos={videos} />
+          <Feed videos={videos} showHubs={false} />
         ) : (
           <div className="no-videos">
             <p>No videos available</p>

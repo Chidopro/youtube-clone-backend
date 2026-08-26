@@ -9,6 +9,7 @@ import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import { setToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
+import { saveShopAddIntent } from '../../utils/shopCategories';
 import './ProductPage.css';
 
 const IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
@@ -97,6 +98,7 @@ const ProductPage = ({ sidebar }) => {
   
   const authenticated = searchParams.get('authenticated') === 'true';
   const email = searchParams.get('email') || '';
+  const isShopCatalog = searchParams.get('from') === 'shop';
   const openCart = searchParams.get('openCart') === 'true';
   const creatorMode = searchParams.get('creatorMode') === 'favorites';
   const editCartParam = searchParams.get('editCart');
@@ -158,6 +160,7 @@ const ProductPage = ({ sidebar }) => {
       `${base}?category=${encodeURIComponent(newCategory)}` +
       `&authenticated=${authenticated}` +
       `&email=${encodeURIComponent(email || '')}` +
+      (isShopCatalog ? '&from=shop' : '') +
       (isEditingCart ? `&editCart=${editingCartIndex}` : '');
 
     // Persist for mobile reloads
@@ -553,6 +556,17 @@ const ProductPage = ({ sidebar }) => {
   const handleAddToCart = async (product, index) => {
     const chosenColor = selectedColors[index] || (product?.options?.color?.[0] || 'Default');
     const chosenSize = selectedSizes[index] || (product?.options?.size?.[0] || 'One Size');
+    if (isShopCatalog) {
+      saveShopAddIntent({
+        category,
+        productName: product?.name || '',
+        color: chosenColor,
+        size: chosenSize,
+      });
+      navigate('/favorites?from=shop');
+      window.scrollTo(0, 0);
+      return;
+    }
     const isAvailable = await checkSelectionAvailability(product, index, chosenColor, chosenSize);
     if (!isAvailable) return;
     // Use the URL stored when user clicked a screenshot so we send the exact image they selected (not thumbnail by mistake)
@@ -658,6 +672,12 @@ const ProductPage = ({ sidebar }) => {
 
   // Load fallback screenshots/thumbnail from merch session in case backend data is empty
   useEffect(() => {
+    if (isShopCatalog) {
+      setFallbackImages({ screenshots: [], thumbnail: '' });
+      setSelectedScreenshot(null);
+      setSelectedScreenshotUrl(null);
+      return;
+    }
     try {
       const d = readPendingMerchData();
       if (d && (d.screenshots?.length || d.thumbnail)) {
@@ -684,7 +704,7 @@ const ProductPage = ({ sidebar }) => {
     } catch (e) {
       console.warn('Invalid pending_merch_data, ignoring');
     }
-  }, [productId, creatorMode, category]);
+  }, [productId, creatorMode, category, isShopCatalog]);
 
   useEffect(() => {
     const wantedCategory = category;
@@ -703,7 +723,13 @@ const ProductPage = ({ sidebar }) => {
         const mainUrl = p.main_image_url || (p.main_image ? (p.main_image.startsWith('/') ? base + p.main_image : (p.main_image.startsWith('http') ? ensureHttps(p.main_image) : `${imgBase}/${p.main_image}`)) : '');
         return { ...p, _displayImageUrl: previewUrl || mainUrl || `${imgBase}/placeholder.png` };
       });
-      return { ...data, products: productsWithUrls };
+      const next = { ...data, products: productsWithUrls };
+      if (!isShopCatalog) return next;
+      return {
+        ...next,
+        img_url: '',
+        product: { thumbnail_url: '', screenshots: [] },
+      };
     };
 
     const paintProducts = (data) => {
@@ -724,7 +750,7 @@ const ProductPage = ({ sidebar }) => {
           success: true,
           products: staticProducts,
           category: wantedCategory,
-          product: prev?.product || { thumbnail_url: '', screenshots: [] }
+          product: isShopCatalog ? { thumbnail_url: '', screenshots: [] } : (prev?.product || { thumbnail_url: '', screenshots: [] })
         }));
         preloadImageUrls(staticProducts.map((p) => p.preview_image || p.main_image));
         setLoading(false);
@@ -858,7 +884,7 @@ const ProductPage = ({ sidebar }) => {
 
     fetchProductData();
     return () => controller.abort();
-  }, [productId, category, authenticated, email]);
+  }, [productId, category, authenticated, email, isShopCatalog]);
 
   // Validate and reset sizes when products or colors change
   useEffect(() => {
@@ -1052,7 +1078,7 @@ const ProductPage = ({ sidebar }) => {
       {/* User Flow Section - Step 3 Only - Hide for All Products; storefronts hide via CSS */}
       {(() => {
         const categoryNormalized = (category || '').trim().toLowerCase();
-        return categoryNormalized !== 'all' && categoryNormalized !== 'all-products';
+        return !isShopCatalog && categoryNormalized !== 'all' && categoryNormalized !== 'all-products';
       })() && (
         <div
           className="user-flow-section"
@@ -1208,7 +1234,8 @@ const ProductPage = ({ sidebar }) => {
         return categoryNormalized !== 'all' && categoryNormalized !== 'all-products';
       })() && productData.products && productData.products.length > 0 && (
         <>
-          {/* Screenshot Selection Section */}
+          {/* Screenshot Selection Section — hidden in My Shop catalog (blank products only) */}
+          {!isShopCatalog && (
           <div className="screenshots-section">
             <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Pages' : 'Select Your Screenshot'}</h2>
             <p className="screenshots-subtitle">{creatorMode ? 'Choose which screenshot to save to your favorites' : 'Choose which screenshot to use for your custom merchandise'}</p>
@@ -1302,9 +1329,10 @@ const ProductPage = ({ sidebar }) => {
               </div>
             </div>
           </div>
+          )}
 
           {/* Save Favorite Button - Only in creator mode */}
-          {creatorMode && (
+          {creatorMode && !isShopCatalog && (
             <div className="tools-button-container">
               <button 
                 className="to-favorite-btn"
@@ -1316,8 +1344,8 @@ const ProductPage = ({ sidebar }) => {
             </div>
           )}
 
-          {/* Tools Page Button - Underneath screenshots, above cart/checkout - Hidden in creator mode */}
-          {!creatorMode && (
+          {/* Tools Page Button - Underneath screenshots, above cart/checkout - Hidden in creator mode and My Shop catalog */}
+          {!creatorMode && !isShopCatalog && (
             <div className="tools-button-container">
               <button 
                 className="tools-page-btn"
@@ -1333,7 +1361,7 @@ const ProductPage = ({ sidebar }) => {
             <div className="product-page-container">
               <div className="product-main">
           <div className="product-image-section">
-            {productData.img_url && (
+            {!isShopCatalog && productData.img_url && (
               <img 
                 src={productData.img_url.includes('?') ? `${productData.img_url}&v=${getCacheBuster()}` : `${productData.img_url}?v=${getCacheBuster()}`} 
                 alt="Product Preview" 
@@ -1345,6 +1373,11 @@ const ProductPage = ({ sidebar }) => {
           <div className="product-options-section">
             {/* Cart Buttons Above Products */}
             <div className="cart-section">
+              {isShopCatalog && (
+                <p className="shop-catalog-note">
+                  Products are shown without a design. Add to Cart opens My Page so you can pick an image first.
+                </p>
+              )}
               <div className="cart-section-buttons">
                 <button className="view-cart-btn" onClick={() => setIsCartOpen(true)}>View Cart</button>
                 <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>

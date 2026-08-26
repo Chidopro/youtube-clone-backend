@@ -6091,6 +6091,62 @@ def admin_pending_creators():
         return jsonify({"success": False, "error": str(e), "pending_creators": []}), 500
 
 
+_PAYOUT_LIST_HIDE_NOTE = "__SM_HIDE_PAYOUT_LIST__"
+
+
+def _payout_list_hidden_ids(client):
+    """User ids removed from the admin payout cards. Uses DB column when present, else a cancelled payout marker."""
+    hidden = set()
+    try:
+        r = client.table("users").select("id").eq("exclude_from_payout_list", True).execute()
+        for row in r.data or []:
+            uid = str(row.get("id") or "")
+            if uid:
+                hidden.add(uid)
+    except Exception:
+        pass
+    try:
+        r = client.table("payouts").select("user_id, notes, status").execute()
+        for row in r.data or []:
+            note = str(row.get("notes") or "").strip()
+            status = str(row.get("status") or "").strip().lower()
+            if note == _PAYOUT_LIST_HIDE_NOTE and status in ("cancelled", "failed", "canceled"):
+                uid = str(row.get("user_id") or "")
+                if uid:
+                    hidden.add(uid)
+    except Exception:
+        pass
+    return hidden
+
+
+def _hide_user_from_payout_list(client, user_id):
+    """Persist payout-list removal even when exclude_from_payout_list is not on users."""
+    uid = str(user_id)
+    try:
+        client.table("users").update({"exclude_from_payout_list": True}).eq("id", uid).eq("role", "creator").execute()
+    except Exception:
+        pass
+    hidden = _payout_list_hidden_ids(client)
+    if uid in hidden:
+        return True
+    now_iso = datetime.now(timezone.utc).isoformat()
+    marker = {
+        "user_id": uid,
+        "amount": 0,
+        "status": "cancelled",
+        "notes": _PAYOUT_LIST_HIDE_NOTE,
+        "paypal_email": "unspecified",
+        "payout_date": now_iso,
+        "processed_date": now_iso,
+    }
+    try:
+        _payouts_insert(client, marker)
+    except Exception:
+        marker["amount"] = 0.01
+        _payouts_insert(client, marker)
+    return True
+
+
 @app.route("/api/admin/creators-payout-list", methods=["GET", "OPTIONS"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def admin_creators_payout_list():
@@ -6110,8 +6166,14 @@ def admin_creators_payout_list():
         except Exception:
             r = client.table("users").select(select_cols).eq("role", "creator").order("display_name").execute()
         creators_raw = list(r.data or [])
-        # Exclude admins and users removed from payout list
-        creators = [c for c in creators_raw if not c.get("is_admin") and not c.get("exclude_from_payout_list")]
+        hidden_ids = _payout_list_hidden_ids(client)
+        # Exclude admins, hidden payout-list rows, and users removed from payout list
+        creators = [
+            c for c in creators_raw
+            if not c.get("is_admin")
+            and not c.get("exclude_from_payout_list")
+            and str(c.get("id") or "") not in hidden_ids
+        ]
         earnings_r = client.table("creator_earnings").select("user_id, creator_share").eq("status", "pending").execute()
         pending_by_user = {}
         for row in (earnings_r.data or []):
@@ -6202,12 +6264,17 @@ def admin_creators_payout_list():
                 .execute()
             )
             for row in pr.data or []:
+                if str(row.get("notes") or "").strip() == _PAYOUT_LIST_HIDE_NOTE:
+                    continue
                 uid = str(row.get("user_id") or "")
                 if not uid:
                     continue
                 payouts_by_user.setdefault(uid, []).append(row)
         except Exception as pay_err:
             logger.warning("admin payout history lookup failed: %s", pay_err)
+
+        from utils.payout import next_creator_payout_date
+        next_pay_iso = next_creator_payout_date().isoformat()
 
         out = []
         history = []
@@ -6216,7 +6283,7 @@ def admin_creators_payout_list():
             payouts = payouts_by_user.get(cid) or []
             completed = [
                 p for p in payouts
-                if str(p.get("status") or "completed").lower() not in ("failed", "cancelled")
+                if str(p.get("status") or "completed").lower() not in ("failed", "cancelled", "canceled")
             ]
             paid_total = round(sum(float(p.get("amount") or 0) for p in completed), 2)
             last = completed[0] if completed else None
@@ -6251,6 +6318,7 @@ def admin_creators_payout_list():
                     "note": last.get("notes") or "",
                     "payment_method": last.get("payment_method") or "paypal",
                 },
+                "next_payout_date": next_pay_iso,
                 "umbrella_collaborators": collabs_by_owner.get(cid, []),
             })
         out = [
@@ -6262,7 +6330,12 @@ def admin_creators_payout_list():
         ]
         out.sort(key=lambda row: (-float(row.get("pending_amount") or 0), str(row.get("display_name") or "").lower()))
         history.sort(key=lambda r: str(r.get("payout_date") or ""), reverse=True)
-        return jsonify({"success": True, "creators": out, "payout_history": history[:80]})
+        return jsonify({
+            "success": True,
+            "creators": out,
+            "payout_history": history[:80],
+            "next_payout_date": next_pay_iso,
+        })
     except Exception as e:
         logger.exception("admin_creators_payout_list: %s", e)
         return jsonify({"success": False, "error": str(e), "creators": []}), 500
@@ -6271,7 +6344,7 @@ def admin_creators_payout_list():
 @app.route("/api/admin/creators-payout-list/<user_id>/remove", methods=["POST", "DELETE", "OPTIONS"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def admin_remove_from_payout_list(user_id):
-    """Remove a user from the creators payout list (sets exclude_from_payout_list). Master Admin only."""
+    """Remove a user from the creators payout list. Master Admin only."""
     if request.method == "OPTIONS":
         return jsonify(success=True)
     try:
@@ -6283,12 +6356,7 @@ def admin_remove_from_payout_list(user_id):
         client = supabase_admin if supabase_admin else supabase
         if not client:
             return jsonify({"success": False, "error": "Database unavailable"}), 500
-        try:
-            client.table("users").update({"exclude_from_payout_list": True}).eq("id", user_id).eq("role", "creator").execute()
-        except Exception as col_err:
-            if "exclude_from_payout_list" in str(col_err) or "column" in str(col_err).lower():
-                return jsonify({"success": False, "error": "exclude_from_payout_list column missing; run migration database_exclude_from_payout_list.sql"}), 501
-            raise
+        _hide_user_from_payout_list(client, user_id)
         return jsonify({"success": True, "message": "Removed from payout list"})
     except Exception as e:
         logger.exception("admin_remove_from_payout_list: %s", e)
@@ -10919,6 +10987,9 @@ def favorite_lists_sales_summary():
         owner_recent_sales = owner_recent_sales[:25]
         sm_payouts = _screenmerch_payouts_for_user(user_id)
         sm_paid_total = round(sum(float(p.get("amount") or 0) for p in sm_payouts), 2)
+        from utils.payout import screenmerch_pending_fields
+
+        sm_pending = screenmerch_pending_fields(supabase_admin, user_id)
 
         return jsonify(
             {
@@ -10939,6 +11010,8 @@ def favorite_lists_sales_summary():
                 },
                 "screenmerch_payouts": sm_payouts,
                 "screenmerch_paid_total": sm_paid_total,
+                "screenmerch_pending_amount": sm_pending["screenmerch_pending_amount"],
+                "next_payout_date": sm_pending["next_payout_date"],
                 "payout_note": (
                     "ScreenMerch pays you when your pending earnings reach $50 or more. "
                     "You are responsible for paying umbrella collaborators monthly when their owed balance exceeds $50."
@@ -12530,6 +12603,10 @@ def get_analytics():
         payout_summary = _analytics_payout_fields_from_sales(
             sales_rows, None if platform_wide else user_id
         )
+        if user_id and not platform_wide:
+            from utils.payout import screenmerch_pending_fields
+
+            payout_summary.update(screenmerch_pending_fields(supabase_admin or supabase, user_id))
         from utils.payout import aggregate_sales_payout_totals, split_sales_payout_totals
         
         # Calculate analytics
@@ -13066,7 +13143,7 @@ def reset_sales():
 @app.route("/api/admin/reset-platform-revenue-data", methods=["POST", "OPTIONS"])
 @admin_required
 def reset_platform_revenue_data():
-    """Clear ALL sales + creator_earnings for Platform Revenue / analytics (master admin)."""
+    """Clear ALL sales, earnings, and payout ledgers for Platform Revenue / analytics (master admin)."""
     if request.method == "OPTIONS":
         response = jsonify({})
         origin = request.headers.get('Origin', '*')
@@ -13103,9 +13180,10 @@ def reset_platform_revenue_data():
         response = jsonify({
             "success": True,
             "message": (
-                "Platform revenue and sales analytics cleared. "
+                "Platform revenue, sales analytics, and payout records cleared. "
                 f"Removed {reset_result['deleted_sales_count']} sales, "
-                f"{reset_result['deleted_earnings_count']} earnings rows."
+                f"{reset_result['deleted_earnings_count']} earnings rows, "
+                f"{reset_result.get('deleted_screenmerch_payouts_count', 0)} ScreenMerch payouts."
             ),
             **reset_result,
         })

@@ -25,6 +25,15 @@ function isUmbrellaAutoPageName(name) {
 function formatPayoutDate(iso) {
     if (!iso) return '—';
     try {
+        const dateOnly = String(iso).slice(0, 10);
+        const parts = dateOnly.split('-').map(Number);
+        if (parts.length === 3 && parts[0] && parts[1] && parts[2] && !String(iso).includes('T')) {
+            return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+            });
+        }
         return new Date(iso).toLocaleDateString(undefined, {
             month: 'short',
             day: 'numeric',
@@ -316,6 +325,8 @@ const Dashboard = ({ sidebar }) => {
     const [ownerEarningsSummary, setOwnerEarningsSummary] = useState(null);
     const [screenmerchPayouts, setScreenmerchPayouts] = useState([]);
     const [screenmerchPaidTotal, setScreenmerchPaidTotal] = useState(0);
+    const [screenmerchPendingAmount, setScreenmerchPendingAmount] = useState(0);
+    const [nextPayoutDate, setNextPayoutDate] = useState('');
     const [collabFeeDrafts, setCollabFeeDrafts] = useState({});
     const [savingCollabFeeId, setSavingCollabFeeId] = useState(null);
     const [collabFeeMessages, setCollabFeeMessages] = useState({});
@@ -1486,6 +1497,12 @@ const Dashboard = ({ sidebar }) => {
                 platform_fee_amount: data.platform_fee_amount ?? data.payout_summary?.platform_fee_amount ?? 0,
                 pay_collaborator_amount: data.pay_collaborator_amount ?? data.payout_summary?.collaborator_pay_total ?? 0,
             });
+            if (data.payout_summary?.screenmerch_pending_amount != null) {
+                setScreenmerchPendingAmount(Number(data.payout_summary.screenmerch_pending_amount || 0));
+            }
+            if (data.payout_summary?.next_payout_date) {
+                setNextPayoutDate(data.payout_summary.next_payout_date);
+            }
 
             if (!umbrellaOnly) {
                 try {
@@ -1499,6 +1516,12 @@ const Dashboard = ({ sidebar }) => {
                         setOwnerEarningsSummary(sumData?.storefront_owner_summary || null);
                         setScreenmerchPayouts(sumData?.screenmerch_payouts || []);
                         setScreenmerchPaidTotal(Number(sumData?.screenmerch_paid_total || 0));
+                        if (sumData?.screenmerch_pending_amount != null) {
+                            setScreenmerchPendingAmount(Number(sumData.screenmerch_pending_amount || 0));
+                        }
+                        if (sumData?.next_payout_date) {
+                            setNextPayoutDate(sumData.next_payout_date);
+                        }
                         const drafts = {};
                         collabRows.forEach((r) => {
                             const id = String(r.favorite_list_id);
@@ -1522,6 +1545,8 @@ const Dashboard = ({ sidebar }) => {
                 setOwnerEarningsSummary(null);
                 setScreenmerchPayouts([]);
                 setScreenmerchPaidTotal(0);
+                setScreenmerchPendingAmount(0);
+                setNextPayoutDate('');
                 setCollabFeeDrafts({});
             }
         } catch (error) {
@@ -2452,6 +2477,12 @@ const Dashboard = ({ sidebar }) => {
                                                 )
                                                 : Number(ps.platform_fee_amount ?? 0);
                                             const ownerPayout = Number(ps.owner_net_payout ?? 0);
+                                            const pendingFromScreenmerch = Number(
+                                                ps.screenmerch_pending_amount
+                                                ?? screenmerchPendingAmount
+                                                ?? 0
+                                            );
+                                            const nextPay = ps.next_payout_date || nextPayoutDate;
                                             const collabPayTotal = collabPay;
                                             const merchCost = Number(ps.merch_cost_amount ?? 0);
                                             const netLabel = umbrellaOnly
@@ -2459,10 +2490,14 @@ const Dashboard = ({ sidebar }) => {
                                                 : (isMasterAdmin ? 'Creator payouts' : 'Your payout');
                                             const netValue = umbrellaOnly
                                                 ? (collabPay || (Number(analyticsData.collaborator_net_owed ?? 0) + Number(analyticsData.paid_total ?? 0)))
-                                                : ownerPayout;
+                                                : (isMasterAdmin ? ownerPayout : pendingFromScreenmerch);
                                             const netSubtitle = umbrellaOnly
                                                 ? 'Earned on your page ($6/item)'
-                                                : (isMasterAdmin ? 'Owed to storefront owners ($6/item)' : 'From your page sales ($6/item)');
+                                                : (isMasterAdmin
+                                                    ? 'Owed to storefront owners ($6/item)'
+                                                    : (pendingFromScreenmerch > 0
+                                                        ? `Pending payout ${formatPayoutDate(nextPay)}`
+                                                        : `Paid up · payout ${formatPayoutDate(nextPay)}`));
                                             return (
                                         <div className="summary-grid">
                                             <div className="summary-card">
@@ -2483,13 +2518,13 @@ const Dashboard = ({ sidebar }) => {
                                             <div className="summary-card">
                                                 <div className="summary-label">Platform fee</div>
                                                 <div className="summary-value">${platformFee.toFixed(2)}</div>
-                                                <div className="summary-subtitle">ScreenMerch ($6/item)</div>
+                                                <div className="summary-subtitle">ScreenMerch</div>
                                             </div>
                                             {!umbrellaOnly && collabPayTotal > 0 ? (
                                                 <div className="summary-card">
                                                     <div className="summary-label">Collaborator pay</div>
                                                     <div className="summary-value">${collabPayTotal.toFixed(2)}</div>
-                                                    <div className="summary-subtitle">Umbrella pages ($6/item)</div>
+                                                    <div className="summary-subtitle">Umbrella pages</div>
                                                 </div>
                                             ) : null}
                                             {!umbrellaOnly && merchCost > 0 ? (
@@ -2530,7 +2565,7 @@ const Dashboard = ({ sidebar }) => {
                                                 <h5>Storefront owner purchase log</h5>
                                                 <p className="hint">
                                                     ScreenMerch pays you $6.00 per item sold on your pages when pending earnings reach $50.
-                                                    Fees you set under each collaborator below come out of what you would otherwise pay them.
+                                                    If you choose to set a fee under a collaborator below, that amount comes out of what you would otherwise pay them — fees are optional, not required.
                                                 </p>
                                                 <ul className="collaborator-payout-list">
                                                     {(() => {
@@ -2588,17 +2623,20 @@ const Dashboard = ({ sidebar }) => {
                                             </div>
                                         ) : null}
                                         {!umbrellaOnly && !isMasterAdmin ? (
-                                            <div className="collaborator-payout-panel owner-earnings-panel">
+                                            <div className={`collaborator-payout-panel owner-earnings-panel${screenmerchPayouts.length > 0 ? ' screenmerch-payments-received' : ''}`}>
                                                 <h5>Payments from ScreenMerch</h5>
                                                 <p className="hint">
                                                     When ScreenMerch confirms a PayPal (or other) payment to you, it appears here as your payment record.
+                                                    Payout includes collaborator fees when applicable.
                                                 </p>
                                                 {screenmerchPayouts.length > 0 ? (
-                                                    <ul className="collaborator-payout-list owner-purchase-log">
+                                                    <ul className="collaborator-payout-list owner-purchase-log screenmerch-payment-list">
                                                         {screenmerchPayouts.map((payout) => (
-                                                            <li key={String(payout.id)}>
+                                                            <li key={String(payout.id)} className="screenmerch-payment-row">
                                                                 <div className="collab-payout-row-main">
-                                                                    <strong>Paid ${Number(payout.amount || 0).toFixed(2)}</strong>
+                                                                    <strong className="paid-up-label">
+                                                                        Paid ${Number(payout.amount || 0).toFixed(2)} ✓
+                                                                    </strong>
                                                                     <span>
                                                                         {formatPayoutDate(payout.paid_at || payout.payout_date)}
                                                                         {payout.payment_method ? ` · ${payout.payment_method}` : ''}
@@ -2612,7 +2650,9 @@ const Dashboard = ({ sidebar }) => {
                                                     <p className="hint">No ScreenMerch payouts recorded yet.</p>
                                                 )}
                                                 {screenmerchPaidTotal > 0 ? (
-                                                    <p className="hint">Total received: ${screenmerchPaidTotal.toFixed(2)}</p>
+                                                    <p className="screenmerch-paid-total">
+                                                        Total received: ${screenmerchPaidTotal.toFixed(2)} ✓
+                                                    </p>
                                                 ) : null}
                                             </div>
                                         ) : null}
@@ -2621,7 +2661,7 @@ const Dashboard = ({ sidebar }) => {
                                                 <h5>Collaborator payouts</h5>
                                                 <p className="hint">
                                                     Record off-platform payments to umbrella collaborators when their owed balance exceeds $50.
-                                                    Set a percentage or flat per-item fee under each creator — that amount stays with you instead of being paid to them.
+                                                    You can choose to set a percentage or flat per-item fee under each creator; if you do, that amount stays with you instead of being paid to them.
                                                 </p>
                                                 <ul className="collaborator-payout-list">
                                                     {collaboratorPayoutRows.map((row) => {
@@ -2640,19 +2680,30 @@ const Dashboard = ({ sidebar }) => {
                                                             <li key={listId}>
                                                                 <div className="collab-payout-row-main">
                                                                     <strong>{row.display_name}</strong>
-                                                                    <span>
-                                                                        Pay collaborator ${payCollab.toFixed(2)}
-                                                                        {' · '}
-                                                                        {payCollab <= 0 ? (
-                                                                            <>Owed $0.00</>
-                                                                        ) : isPaidUp ? (
-                                                                            <span className="paid-up-label">Paid up ✓</span>
-                                                                        ) : balance > 0 ? (
-                                                                            <>Owed <strong>${balance.toFixed(2)}</strong></>
-                                                                        ) : (
-                                                                            <>Owed $0.00</>
-                                                                        )}
-                                                                    </span>
+                                                                    <div className="collab-payout-amount-row">
+                                                                        <span>
+                                                                            Pay collaborator ${payCollab.toFixed(2)}
+                                                                            {' · '}
+                                                                            {payCollab <= 0 ? (
+                                                                                <>Owed $0.00</>
+                                                                            ) : isPaidUp ? (
+                                                                                <span className="paid-up-label">Paid up ✓</span>
+                                                                            ) : balance > 0 ? (
+                                                                                <>Owed <strong>${balance.toFixed(2)}</strong></>
+                                                                            ) : (
+                                                                                <>Owed $0.00</>
+                                                                            )}
+                                                                        </span>
+                                                                        {canRecord ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                className="btn-record-collab-payout"
+                                                                                onClick={() => openAnalyticsPayoutModal(row)}
+                                                                            >
+                                                                                Record payment
+                                                                            </button>
+                                                                        ) : null}
+                                                                    </div>
                                                                     {row.last_payout ? (
                                                                         <small>
                                                                             Last paid ${Number(row.last_payout.amount || 0).toFixed(2)} on {formatPayoutDate(row.last_payout.paid_at)}
@@ -2660,15 +2711,6 @@ const Dashboard = ({ sidebar }) => {
                                                                         </small>
                                                                     ) : null}
                                                                 </div>
-                                                                {canRecord ? (
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn-record-collab-payout"
-                                                                        onClick={() => openAnalyticsPayoutModal(row)}
-                                                                    >
-                                                                        Record payment
-                                                                    </button>
-                                                                ) : null}
                                                                 <CollaboratorFeeForm
                                                                     listId={listId}
                                                                     feeType={draft.feeType}

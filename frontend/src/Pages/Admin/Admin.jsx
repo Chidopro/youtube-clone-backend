@@ -6,6 +6,42 @@ import { getPrintAreaDimensions } from '../../config/printAreaConfig';
 import { API_CONFIG } from '../../config/apiConfig';
 import './Admin.css';
 
+const DEFAULT_AVATAR = '/default-avatar.svg';
+
+function formatPayoutDate(iso) {
+  if (!iso) return '—';
+  try {
+    const dateOnly = String(iso).slice(0, 10);
+    const parts = dateOnly.split('-').map(Number);
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2] && !String(iso).includes('T')) {
+      return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    }
+    return new Date(iso).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return '—';
+  }
+}
+
+function avatarSrc(url) {
+  const u = String(url || '').trim();
+  if (!u || u === 'null' || u === 'undefined') return DEFAULT_AVATAR;
+  return u;
+}
+
+function handleAvatarError(e) {
+  if (e.target.dataset.fallbackUsed) return;
+  e.target.dataset.fallbackUsed = 'true';
+  e.target.src = DEFAULT_AVATAR;
+}
+
 const Admin = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +59,7 @@ const Admin = () => {
   const [pendingPayouts, setPendingPayouts] = useState([]);
   const [payoutHistory, setPayoutHistory] = useState([]);
   const [creatorsPayoutList, setCreatorsPayoutList] = useState([]);
+  const [nextPayoutDate, setNextPayoutDate] = useState('');
   const [payoutLoading, setPayoutLoading] = useState(false);
   const [storefrontPayoutModal, setStorefrontPayoutModal] = useState(null);
   const [storefrontPayoutAmount, setStorefrontPayoutAmount] = useState('');
@@ -336,6 +373,7 @@ const Admin = () => {
       ]);
       setPendingPayouts(pending);
       setCreatorsPayoutList(listPayload.creators || []);
+      setNextPayoutDate(listPayload.next_payout_date || listPayload.creators?.[0]?.next_payout_date || '');
       if (listPayload.payout_history?.length) {
         setPayoutHistory(listPayload.payout_history);
       } else {
@@ -1143,18 +1181,18 @@ const Admin = () => {
 
   const handleClearPlatformRevenueData = async () => {
     if (!window.confirm(
-      '⚠️ This permanently deletes ALL sales and creator earnings used for Platform Revenue, creator analytics, and Umbrella “Sales by favorite page”. Operational fulfillment orders are not removed. Continue?'
+      '⚠️ This permanently deletes ALL sales, creator earnings, and payout records (including ScreenMerch PayPal payments shown on storefront dashboards). Used for Platform Revenue, creator analytics, and Umbrella “Sales by favorite page”. Operational fulfillment orders are not removed. Continue?'
     )) {
       return;
     }
-    if (!window.confirm('Final confirmation: clear all test sales and revenue data platform-wide?')) {
+    if (!window.confirm('Final confirmation: clear all test sales, revenue, and payout data platform-wide?')) {
       return;
     }
     try {
       const result = await AdminService.resetPlatformRevenueData();
       if (result.success) {
         alert(
-          `✅ Cleared test data. Sales: ${result.deleted_sales_count || 0}, earnings: ${result.deleted_earnings_count || 0}.`
+          `✅ Cleared test data. Sales: ${result.deleted_sales_count || 0}, earnings: ${result.deleted_earnings_count || 0}, ScreenMerch payouts: ${result.deleted_screenmerch_payouts_count || 0}.`
         );
         await loadPlatformRevenue();
       } else {
@@ -1601,16 +1639,10 @@ const Admin = () => {
                         <td>
                           <div className="user-info">
                             <img
-                              src={user.profile_image_url || user.user_metadata?.picture || user.picture || '/default-avatar.jpg'}
-                              alt={user.display_name}
+                              src={avatarSrc(user.profile_image_url || user.user_metadata?.picture || user.picture)}
+                              alt={user.display_name || ''}
                               className="user-avatar"
-                              onError={(e) => {
-                                if (!e.target.dataset.fallbackUsed) {
-                                  console.log('🖼️ Admin user image failed to load, using default');
-                                  e.target.dataset.fallbackUsed = 'true';
-                                  e.target.src = '/default-avatar.jpg';
-                                }
-                              }}
+                              onError={handleAvatarError}
                             />
                             <span>{user.display_name || 'No name'}</span>
                           </div>
@@ -2020,6 +2052,11 @@ const Admin = () => {
                   Confirmation appears in this list and on the owner&apos;s dashboard payment log.
                   ScreenMerch.com itself does not receive a storefront-owner payout.
                 </p>
+                {nextPayoutDate ? (
+                  <p className="payouts-send-by-reminder">
+                    Next creator payment must be sent by {formatPayoutDate(nextPayoutDate)} (1st and 15th).
+                  </p>
+                ) : null}
               </div>
 
               {payoutLoading ? (
@@ -2044,12 +2081,14 @@ const Admin = () => {
                         {creatorsPayoutList.map(c => (
                           <div key={c.id} className="storefront-payout-card">
                             <div className="storefront-payout-card-head">
-                              <img
-                                src={c.profile_image_url || '/default-avatar.jpg'}
-                                alt=""
-                                className="payout-creator-avatar"
-                                onError={e => { e.target.src = '/default-avatar.jpg'; }}
-                              />
+                              <div className="payout-creator-avatar-wrap">
+                                <img
+                                  src={avatarSrc(c.profile_image_url)}
+                                  alt=""
+                                  className="payout-creator-avatar"
+                                  onError={handleAvatarError}
+                                />
+                              </div>
                               <div className="storefront-payout-identity">
                                 <div className="storefront-payout-name-row">
                                   <strong>{c.display_name}</strong>
@@ -2074,6 +2113,13 @@ const Admin = () => {
                                 </div>
                               </div>
                               <div className="storefront-payout-amounts">
+                                {(c.next_payout_date || nextPayoutDate) ? (
+                                  <div className={`storefront-payout-due${Number(c.pending_amount || 0) > 0 ? ' is-due' : ''}`}>
+                                    {Number(c.pending_amount || 0) > 0
+                                      ? `Send by ${formatPayoutDate(c.next_payout_date || nextPayoutDate)}`
+                                      : `Next payout ${formatPayoutDate(c.next_payout_date || nextPayoutDate)}`}
+                                  </div>
+                                ) : null}
                                 <div>
                                   <span className="storefront-payout-amount-label">Pending</span>
                                   <span className="payout-amount-cell">${Number(c.pending_amount || 0).toFixed(2)}</span>
@@ -2153,12 +2199,10 @@ const Admin = () => {
                                 <td>
                                   <div className="user-info">
                                     <img
-                                      src={payout.profile_image_url || '/default-avatar.jpg'}
-                                      alt={payout.display_name}
+                                      src={avatarSrc(payout.profile_image_url)}
+                                      alt={payout.display_name || ''}
                                       className="user-avatar"
-                                      onError={(e) => {
-                                        e.target.src = '/default-avatar.jpg';
-                                      }}
+                                      onError={handleAvatarError}
                                     />
                                     <div>
                                       <div>{payout.display_name}</div>
@@ -3049,7 +3093,7 @@ const Admin = () => {
                     borderRadius: '4px',
                     cursor: 'pointer',
                   }}
-                  title="Delete all sales + earnings rows that power Platform Revenue, analytics, and Umbrella sales-by-page (test reset before go-live)"
+                  title="Delete all sales, earnings, and payout records that power Platform Revenue, analytics, storefront payment history, and Umbrella sales-by-page (test reset before go-live)"
                 >
                   🗑️ Clear All Test Sales Data
                 </button>

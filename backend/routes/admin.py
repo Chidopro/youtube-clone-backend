@@ -337,6 +337,16 @@ def _is_valid_uuid(value):
         return False
 
 
+def _role_counts(client):
+    """Count users by role for dashboard cards (storefront owners + umbrella creators)."""
+    creators_res = client.table("users").select("id").eq("role", "creator").execute()
+    customers_res = client.table("users").select("id").eq("role", "customer").execute()
+    return {
+        "creator_count": len(creators_res.data) if creators_res.data else 0,
+        "customer_count": len(customers_res.data) if customers_res.data else 0,
+    }
+
+
 @admin_bp.route("/api/admin/dashboard-stats", methods=["GET"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)
 def admin_dashboard_stats():
@@ -366,6 +376,8 @@ def admin_dashboard_stats():
                 if stats_row.get('pending_users') is None:
                     pending_res = client.table('users').select('id').eq('status', 'pending').execute()
                     stats_row['pending_users'] = len(pending_res.data) if pending_res.data else 0
+                if stats_row.get('creator_count') is None or stats_row.get('customer_count') is None:
+                    stats_row.update(_role_counts(client))
                 return jsonify(stats_row)
         except Exception:
             logger.warning("Could not use admin_dashboard_stats view, calculating manually")
@@ -415,6 +427,7 @@ def admin_dashboard_stats():
             # Get creator network subscriptions
             creator_network_subscriptions_result = client.table('user_subscriptions').select('id').eq('tier', 'creator_network').execute()
             creator_network_subscriptions = len(creator_network_subscriptions_result.data) if creator_network_subscriptions_result.data else 0
+            role_counts = _role_counts(client)
             
             # Get total orders/purchases
             orders_result = client.table('orders').select('order_id, status, total_amount').execute()
@@ -435,6 +448,8 @@ def admin_dashboard_stats():
                 "total_videos": total_videos,
                 "pending_videos": pending_videos,
                 "approved_videos": approved_videos,
+                "creator_count": role_counts["creator_count"],
+                "customer_count": role_counts["customer_count"],
                 "total_subscriptions": total_subscriptions,
                 "active_subscriptions": active_subscriptions,
                 "premium_subscriptions": premium_subscriptions,
@@ -2058,7 +2073,7 @@ def reset_sales():
 @admin_bp.route("/api/admin/reset-platform-revenue-data", methods=["POST", "OPTIONS"])
 @admin_required()
 def reset_platform_revenue_data():
-    """Clear ALL sales + creator_earnings used by Platform Revenue and creator analytics (master admin)."""
+    """Clear ALL sales, earnings, and payout ledgers used by Platform Revenue and creator analytics (master admin)."""
     if request.method == "OPTIONS":
         return _handle_cors_preflight()
 
@@ -2088,9 +2103,10 @@ def reset_platform_revenue_data():
         response = jsonify({
             "success": True,
             "message": (
-                "Platform revenue and sales analytics cleared. "
+                "Platform revenue, sales analytics, and payout records cleared. "
                 f"Removed {reset_result['deleted_sales_count']} sales, "
-                f"{reset_result['deleted_earnings_count']} earnings rows."
+                f"{reset_result['deleted_earnings_count']} earnings rows, "
+                f"{reset_result.get('deleted_screenmerch_payouts_count', 0)} ScreenMerch payouts."
             ),
             **reset_result,
         })

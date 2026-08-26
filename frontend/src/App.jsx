@@ -39,6 +39,7 @@ import HowItWorks from "./Pages/HowItWorks/HowItWorks";
 import FAQ from "./Pages/FAQ/FAQ";
 import Favorites from "./Pages/Favorites/Favorites";
 import FriendPages from "./Pages/FriendPages/FriendPages";
+import Shop from "./Pages/Shop/Shop";
 import UmbrellaJoin from "./Pages/UmbrellaJoin/UmbrellaJoin";
 import { API_CONFIG } from "./config/apiConfig";
 import { CreatorProvider } from "./contexts/CreatorContext";
@@ -281,9 +282,10 @@ const App = () => {
   
   const isFavoritesPage = /^\/favorites(\/|$)/.test(location.pathname);
   const isFriendPages = location.pathname === '/friend-pages';
+  const isShopPage = location.pathname === '/shop';
   const isVideoPage = /^\/video\//.test(location.pathname);
   const isOrderSuccessPage = location.pathname === '/order-success' || location.pathname === '/success';
-  const useStorefrontChrome = isFavoritesPage || isFriendPages;
+  const useStorefrontChrome = isFavoritesPage || isFriendPages || isShopPage;
   const showDesktopSidebar = shouldShowSidebar && !isMobile && !isOrderSuccessPage;
 
   console.log('🚀 App.jsx rendering - current path:', location.pathname);
@@ -349,6 +351,7 @@ const App = () => {
                 <Route path="/favorites" element={<Favorites sidebar={sidebar} />} />
                 <Route path="/favorites/:listSlug" element={<Favorites sidebar={sidebar} />} />
                 <Route path="/friend-pages" element={<FriendPages sidebar={sidebar} />} />
+                <Route path="/shop" element={<Shop sidebar={sidebar} />} />
                 {/* <Route path="/screenshot-selection" element={<ScreenshotSelection />} /> */}
               </Routes>
             </div>

@@ -29,7 +29,8 @@
   .creator-directory-subtitle-desktop {
     max-width: none;
     white-space: nowrap;
-    margin-bottom: 6px;
+    margin-top: 0;
+    margin-bottom: 12px;
     font-size: 1.05rem;
     line-height: 1.25;
   }

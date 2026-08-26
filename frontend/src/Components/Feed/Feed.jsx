@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { publicStorageCardUrl, fetchPublicFavoriteLists } from '../../utils/favoriteListsApi'
 import { getSubdomain } from '../../utils/subdomainService'
 
-const HUB_ROTATE_MS = 12000;
+export const HUB_ROTATE_MS = 12000;
 
-function uniqueUrls(list) {
+export function uniqueUrls(list) {
   const out = [];
   const seen = new Set();
   for (const u of list || []) {
@@ -19,7 +19,7 @@ function uniqueUrls(list) {
 }
 
 /** Stable-ish pick that advances every HUB_ROTATE_MS and differs per hub key. */
-function rotatingUrl(urls, hubKey, tick) {
+export function rotatingUrl(urls, hubKey, tick) {
   const list = uniqueUrls(urls);
   if (!list.length) return null;
   let salt = 0;
@@ -27,7 +27,7 @@ function rotatingUrl(urls, hubKey, tick) {
   return list[(tick + salt) % list.length];
 }
 
-function HubThumb({ src, emptyLabel }) {
+export function HubThumb({ src, emptyLabel }) {
   const [current, setCurrent] = useState(src || '');
 
   useEffect(() => {
@@ -70,7 +70,8 @@ const Feed = ({
   videos = [],
   favoritesPreview = null,
   friendPagePreview = null,
-  showHubs = true,
+  shopPreview = null,
+  showHubs = false,
 }) => {
   const navigate = useNavigate();
   const [tick, setTick] = useState(() => Math.floor(Date.now() / HUB_ROTATE_MS));
@@ -82,44 +83,36 @@ const Feed = ({
     return () => window.clearInterval(id);
   }, []);
 
-  const videoUrls = useMemo(
-    () => uniqueUrls(videos.map((v) => v.thumbnail || v.thumbnail_url).filter(Boolean)),
-    [videos]
-  );
   const favoriteUrls = useMemo(
-    () => uniqueUrls((Array.isArray(favoritesPreview) ? favoritesPreview : []).map(publicStorageCardUrl)),
+    () => uniqueUrls((Array.isArray(favoritesPreview) ? favoritesPreview : []).map((u) => publicStorageCardUrl(u, 1400))),
     [favoritesPreview]
   );
   const friendUrls = useMemo(
-    () => uniqueUrls((Array.isArray(friendPagePreview) ? friendPagePreview : []).map(publicStorageCardUrl)),
+    () => uniqueUrls((Array.isArray(friendPagePreview) ? friendPagePreview : []).map((u) => publicStorageCardUrl(u, 1400))),
     [friendPagePreview]
   );
+  const shopUrls = useMemo(() => {
+    const pageUrls = (Array.isArray(shopPreview) ? shopPreview : []).map((u) => publicStorageCardUrl(u, 1400));
+    const videoUrls = (videos || []).map((v) => v.thumbnail || v.thumbnail_url).filter(Boolean);
+    return uniqueUrls([...pageUrls, ...favoriteUrls, ...friendUrls, ...videoUrls]);
+  }, [shopPreview, videos, favoriteUrls, friendUrls]);
 
   const hubThumbs = useMemo(
     () => ({
-      videos: rotatingUrl(videoUrls, 'videos', tick),
+      shop: rotatingUrl(shopUrls, 'shop', tick),
       favorites: rotatingUrl(favoriteUrls, 'favorites', tick),
       friend: rotatingUrl(friendUrls, 'friend', tick),
     }),
-    [videoUrls, favoriteUrls, friendUrls, tick]
+    [shopUrls, favoriteUrls, friendUrls, tick]
   );
-
-  const scrollToVideos = () => {
-    const el = document.getElementById('storefront-videos');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-    navigate('/#storefront-videos');
-  };
 
   return (
     <div className="feed-wrap">
       {showHubs && (
         <div className="feed-hubs" aria-label="Storefront sections">
-          <button type="button" className="card hub-card" onClick={scrollToVideos}>
-            <HubThumb src={hubThumbs.videos} emptyLabel="No Videos Yet" />
-            <h2>My Videos</h2>
+          <button type="button" className="card hub-card" onClick={() => navigate('/shop')}>
+            <HubThumb src={hubThumbs.shop} emptyLabel="My Shop" />
+            <h2>My Shop</h2>
           </button>
           <button type="button" className="card hub-card" onClick={() => navigate('/favorites')}>
             <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" />

@@ -36,11 +36,16 @@ body {
 
 @media (min-width: 769px) {
   .home-launch-banner {
-    padding: 12px 24px;
+    padding: 12px 24px 4px;
+    margin-bottom: 4px;
     font-weight: 800;
     font-size: 1.65rem;
     letter-spacing: 0.02em;
     line-height: 1.25;
+  }
+
+  .home-launch-banner::after {
+    bottom: 2px;
   }
 }
 
