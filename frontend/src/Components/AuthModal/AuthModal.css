@@ -236,16 +236,33 @@
   color: #c62828;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .auth-modal-overlay {
-    padding: 12px;
+    /* Stay under the sticky header so Sign In / Sign Up remain visible */
+    z-index: 10040;
+    /* Header (~64–72px) plus a clear gap so the login card is not flush */
+    padding: calc(56px + 68px + env(safe-area-inset-top, 0px)) 16px 24px;
     align-items: flex-start;
   }
 
   .auth-modal {
     width: 100%;
-    max-height: calc(100vh - 24px);
-    max-height: calc(100dvh - 24px);
+    max-height: calc(100vh - 148px);
+    max-height: calc(100dvh - 148px);
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-modal-overlay {
+    padding: calc(56px + 64px + env(safe-area-inset-top, 0px)) 16px 24px;
+    align-items: flex-start;
+  }
+
+  .auth-modal {
+    width: 100%;
+    max-height: calc(100vh - 144px);
+    max-height: calc(100dvh - 144px);
     margin-top: 0;
   }
 

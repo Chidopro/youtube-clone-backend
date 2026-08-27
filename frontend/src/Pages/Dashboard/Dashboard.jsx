@@ -1943,6 +1943,12 @@ const Dashboard = ({ sidebar }) => {
                 {/* Favorites Tab */}
                 {activeTab === 'favorites' && (
                     <div className="favorites-tab">
+                        {!umbrellaOnly && (
+                        <p className="paste-hint">
+                            Paste from <a href="#framesnag-instructions">FrameSnag</a> (Ctrl+V) to add a captured image. Uploads go to the page selected below
+                            {favoritePages.some((p) => p.is_collaborator_page) ? ' — including umbrella collaborator pages.' : '.'}
+                        </p>
+                        )}
                         <div className={`favorites-tab-controls${umbrellaOnly ? ' favorites-tab-controls--umbrella' : ''}`}>
                         {userProfile?.role === 'creator' && umbrellaOnly && favoritePages.length > 0 && (
                             <div className="umbrella-fav-page-bar">
@@ -2002,6 +2008,21 @@ const Dashboard = ({ sidebar }) => {
                                             </optgroup>
                                         )}
                                     </select>
+                                    <input
+                                        type="text"
+                                        placeholder="New page name"
+                                        value={newPageName}
+                                        onChange={(e) => setNewPageName(e.target.value)}
+                                        className="favorite-pages-input favorite-pages-input--name favorite-pages-ctrl"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="save-btn"
+                                        disabled={savingFavoritePage || !newPageName.trim()}
+                                        onClick={handleCreateFavoritePage}
+                                    >
+                                        {savingFavoritePage ? '…' : 'Create page'}
+                                    </button>
                                     <button
                                         type="button"
                                         className="add-favorite-btn favorites-upload-btn favorite-pages-ctrl"
@@ -2028,24 +2049,6 @@ const Dashboard = ({ sidebar }) => {
                                         </button>
                                     )}
                                 </div>
-                                <div className="favorite-pages-row favorite-pages-row--create">
-                                    <span className="favorite-pages-gutter" aria-hidden="true" />
-                                    <input
-                                        type="text"
-                                        placeholder="New page name"
-                                        value={newPageName}
-                                        onChange={(e) => setNewPageName(e.target.value)}
-                                        className="favorite-pages-input favorite-pages-input--name favorite-pages-ctrl"
-                                    />
-                                    <button
-                                        type="button"
-                                        className="save-btn"
-                                        disabled={savingFavoritePage || !newPageName.trim()}
-                                        onClick={handleCreateFavoritePage}
-                                    >
-                                        {savingFavoritePage ? '…' : 'Create page'}
-                                    </button>
-                                </div>
                             </div>
                         )}
                         </div>
@@ -2066,12 +2069,6 @@ const Dashboard = ({ sidebar }) => {
                                     Upload video
                                 </button>
                             </div>
-                        )}
-                        {!umbrellaOnly && (
-                        <p className="paste-hint">
-                            Paste from FrameSnag (Ctrl+V) to add a captured image. Uploads go to the page selected above
-                            {favoritePages.some((p) => p.is_collaborator_page) ? ' — including umbrella collaborator pages.' : '.'}
-                        </p>
                         )}
 
                         {/* Prominent hint when sent from FrameSnag */}
@@ -2203,7 +2200,7 @@ const Dashboard = ({ sidebar }) => {
 
                         {/* FrameSnag — storefront owners only */}
                         {!umbrellaOnly && (
-                        <div className="framesnag-promo-section">
+                        <div className="framesnag-promo-section" id="framesnag-instructions">
                             <div className="framesnag-promo-content">
                                 <div className="framesnag-promo-text">
                                     <h3>📸 Capture YouTube Screenshots with FrameSnag</h3>
@@ -2756,7 +2753,12 @@ const Dashboard = ({ sidebar }) => {
                                             </div>
                                         ) : null}
                                         {umbrellaOnly && analyticsData.payout_note ? (
-                                            <p className="umbrella-analytics-payout-note">{analyticsData.payout_note}</p>
+                                            <p className="umbrella-analytics-payout-note">
+                                              {String(analyticsData.payout_note).replace(
+                                                /paying umbrella collaborators monthly/gi,
+                                                'paying umbrella collaborators bi-monthly'
+                                              )}
+                                            </p>
                                         ) : null}
                                         {umbrellaOnly && analyticsData.last_payout ? (
                                             <p className="umbrella-analytics-last-payout">

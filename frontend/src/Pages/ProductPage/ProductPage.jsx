@@ -9,7 +9,8 @@ import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import { setToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
-import { saveShopAddIntent } from '../../utils/shopCategories';
+import { isShopperSignedIn } from '../../utils/shopperAuth';
+import { saveShopAddIntent, SHOP_CATEGORIES } from '../../utils/shopCategories';
 import './ProductPage.css';
 
 const IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
@@ -95,10 +96,25 @@ const ProductPage = ({ sidebar }) => {
     const c = (qsCategory || localStorage.getItem('last_selected_category') || '').trim();
     return c || 'mens'; // final default if truly absent
   }, [qsCategory]);
+
+  const categoryDisplayName = useMemo(
+    () => SHOP_CATEGORIES.find((c) => c.category === category)?.name || 'Shop',
+    [category]
+  );
   
   const authenticated = searchParams.get('authenticated') === 'true';
   const email = searchParams.get('email') || '';
   const isShopCatalog = searchParams.get('from') === 'shop';
+  const isBrowseMode =
+    !productId || productId === 'browse' || productId === 'undefined' || productId === 'null';
+  const goToMainCategories = () => navigate(isShopCatalog ? '/shop' : '/merchandise');
+  const openCartIfSignedIn = () => {
+    if (isShopperSignedIn()) {
+      setIsCartOpen(true);
+      return;
+    }
+    navigate('/checkout');
+  };
   const openCart = searchParams.get('openCart') === 'true';
   const creatorMode = searchParams.get('creatorMode') === 'favorites';
   const editCartParam = searchParams.get('editCart');
@@ -116,7 +132,12 @@ const ProductPage = ({ sidebar }) => {
     
     // Open cart modal if openCart parameter is present
     if (openCart) {
-      setIsCartOpen(true);
+      if (isShopperSignedIn()) {
+        setIsCartOpen(true);
+      } else {
+        navigate('/checkout');
+        return;
+      }
       // Remove the parameter from URL to clean it up
       const newSearchParams = new URLSearchParams(searchParams);
       newSearchParams.delete('openCart');
@@ -706,6 +727,28 @@ const ProductPage = ({ sidebar }) => {
     }
   }, [productId, creatorMode, category, isShopCatalog]);
 
+  // When there is only one image on this page, select it automatically.
+  useEffect(() => {
+    if (isShopCatalog || selectedScreenshot != null) return;
+    const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
+    const baseShots = (productData?.product?.screenshots && productData.product.screenshots.length > 0)
+      ? productData.product.screenshots
+      : fallbackImages.screenshots;
+    const shots = (baseShots || []).filter((s) => s && s !== thumbnailUrl);
+    const options = [];
+    if (thumbnailUrl) options.push({ key: 'thumbnail', url: thumbnailUrl });
+    (shots || []).forEach((s) => {
+      const originalIndex = (baseShots || []).findIndex((item) => item === s);
+      options.push({ key: originalIndex, url: s });
+    });
+    if (options.length !== 1) return;
+    const only = options[0];
+    setSelectedScreenshot(only.key);
+    setSelectedScreenshotUrl(only.url);
+    applySelectedScreenshot(only.url);
+    if (creatorMode) setSelectedScreenshotForFavorite(only.key);
+  }, [isShopCatalog, selectedScreenshot, productData, fallbackImages, creatorMode]);
+
   useEffect(() => {
     const wantedCategory = category;
     const controller = new AbortController();
@@ -1074,7 +1117,7 @@ const ProductPage = ({ sidebar }) => {
   }
 
   return (
-    <div className={`container product-page ${sidebar ? "" : " large-container"}`}>
+    <div className={`container product-page${isShopCatalog ? ' product-page--shop-catalog' : ''}${sidebar ? '' : ' large-container'}`}>
       {/* User Flow Section - Step 3 Only - Hide for All Products; storefronts hide via CSS */}
       {(() => {
         const categoryNormalized = (category || '').trim().toLowerCase();
@@ -1134,7 +1177,19 @@ const ProductPage = ({ sidebar }) => {
         }
       })() && (
         <div className="all-products-info-container">
-          <h1 className="product-information-title">Product Information</h1>
+          <div className="shop-catalog-toolbar">
+            <button
+              type="button"
+              className="shop-catalog-back-btn"
+              onClick={goToMainCategories}
+              aria-label="Back to categories"
+            >
+              ←
+            </button>
+            <div className="shop-catalog-toolbar-text">
+              <h1 className="product-information-title">Product Information</h1>
+            </div>
+          </div>
           {(() => {
             if (window.__DEBUG__) {
               console.log('✅ Rendering All Products informational layout');
@@ -1237,8 +1292,8 @@ const ProductPage = ({ sidebar }) => {
           {/* Screenshot Selection Section — hidden in My Shop catalog (blank products only) */}
           {!isShopCatalog && (
           <div className="screenshots-section">
-            <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Pages' : 'Select Your Screenshot'}</h2>
-            <p className="screenshots-subtitle">{creatorMode ? 'Choose which screenshot to save to your favorites' : 'Choose which screenshot to use for your custom merchandise'}</p>
+            <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Pages' : 'Select Your Image'}</h2>
+            <p className="screenshots-subtitle">{creatorMode ? 'Choose which screenshot to save to your favorites' : 'Choose which image to use for your custom merchandise'}</p>
             <div className="screenshots-preview">
               <div className="screenshot-grid">
                 {/* Thumbnail */}
@@ -1373,19 +1428,48 @@ const ProductPage = ({ sidebar }) => {
           <div className="product-options-section">
             {/* Cart Buttons Above Products */}
             <div className="cart-section">
-              {isShopCatalog && (
-                <p className="shop-catalog-note">
-                  Products are shown without a design. Add to Cart opens My Page so you can pick an image first.
-                </p>
-              )}
-              <div className="cart-section-buttons">
-                <button className="view-cart-btn" onClick={() => setIsCartOpen(true)}>View Cart</button>
-                <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
-              </div>
-              {(category === 'womens' || category === 'mens' || category === 'kids') && (
-                <p className="product-mockup-color-notice product-mockup-color-notice-center">
-                  Product mockups show representative colors. Your order will be made in the colors you select.
-                </p>
+              {isBrowseMode ? (
+                <div className="shop-catalog-toolbar">
+                  <button
+                    type="button"
+                    className="shop-catalog-back-btn"
+                    onClick={goToMainCategories}
+                    aria-label="Back to categories"
+                  >
+                    ←
+                  </button>
+                  <div className="shop-catalog-toolbar-text">
+                    {isShopCatalog ? (
+                      <h1 className="shop-catalog-page-title">{categoryDisplayName}</h1>
+                    ) : (
+                      <>
+                        <div className="cart-section-buttons">
+                          <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
+                          <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+                        </div>
+                        {(category === 'womens' || category === 'mens' || category === 'kids') && (
+                          <p className="product-mockup-color-notice product-mockup-color-notice-center">
+                            Product mockups show representative colors. Your order will be made in the colors you select.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : isShopCatalog ? (
+                <h1 className="shop-catalog-page-title">{categoryDisplayName}</h1>
+              ) : (
+                <>
+                  <div className="cart-section-buttons">
+                    <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
+                    <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+                  </div>
+                  {(category === 'womens' || category === 'mens' || category === 'kids') && (
+                    <p className="product-mockup-color-notice product-mockup-color-notice-center">
+                      Product mockups show representative colors. Your order will be made in the colors you select.
+                    </p>
+                  )}
+                </>
               )}
             </div>
 
@@ -1577,7 +1661,13 @@ const ProductPage = ({ sidebar }) => {
                     disabled={variantAvailability[index]?.checking || variantAvailability[index]?.available === false}
                     onClick={() => handleAddToCart(product, index)}
                   >
-                    {variantAvailability[index]?.checking ? 'Checking...' : (isEditingCart ? 'Update Cart' : 'Add to Cart')}
+                    {variantAvailability[index]?.checking
+                      ? 'Checking...'
+                      : isShopCatalog
+                        ? 'Select Image'
+                        : isEditingCart
+                          ? 'Update Cart'
+                          : 'Add to Cart'}
                   </button>
                 </div>
               ))}
@@ -1585,7 +1675,7 @@ const ProductPage = ({ sidebar }) => {
 
             {/* Cart Buttons Below Products */}
             <div className="cart-section cart-section-bottom">
-              <button className="view-cart-btn" onClick={() => setIsCartOpen(true)}>View Cart</button>
+              <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
               <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
             </div>
           </div>

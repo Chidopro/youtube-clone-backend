@@ -6,6 +6,7 @@ import AuthModal from '../../Components/AuthModal/AuthModal';
 import { useCreator } from '../../contexts/CreatorContext';
 import { readPendingMerchData } from '../../utils/merchSession';
 import { useNavigate } from 'react-router-dom';
+import { isShopperSignedIn } from '../../utils/shopperAuth';
 
 const MerchandiseCategories = ({ sidebar }) => {
   const { creatorSettings } = useCreator();
@@ -78,15 +79,7 @@ const MerchandiseCategories = ({ sidebar }) => {
   const handleCategoryClick = (category) => {
     if (window.__DEBUG__) console.log('🖱️ Category selected:', category);
 
-    const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
-    const userEmail = localStorage.getItem('user_email') || '';
-
-    if (window.__DEBUG__) {
-      console.log('🔐 Auth check:', { isAuthenticated, userEmail });
-      console.log('📱 User Agent:', navigator.userAgent);
-    }
-
-    if (!isAuthenticated) {
+    if (!isShopperSignedIn()) {
       if (window.__DEBUG__) console.log('🔒 Not authenticated, showing auth modal');
       setSelectedCategory(category);
       setShowAuthModal(true);
@@ -148,9 +141,6 @@ const MerchandiseCategories = ({ sidebar }) => {
       <div className="merchandise-categories">
         <div className="categories-container">
           <h1 className="categories-title">Choose a Product Category</h1>
-          <p className="categories-subtitle">
-            Select a category to browse products for your custom merchandise
-          </p>
 
           <div className="categories-grid">
             {categories.map((cat, i) => (

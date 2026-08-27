@@ -36,7 +36,7 @@ const Shop = ({ sidebar }) => {
   const navigate = useNavigate();
 
   return (
-    <div className={`container ${sidebar ? '' : ' large-container'}`}>
+    <div className={`container shop-root ${sidebar ? '' : ' large-container'}`}>
       <StorefrontFlowBanner />
 
       <div className="shop-page shop-page--in-container">

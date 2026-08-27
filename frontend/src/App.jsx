@@ -283,9 +283,11 @@ const App = () => {
   const isFavoritesPage = /^\/favorites(\/|$)/.test(location.pathname);
   const isFriendPages = location.pathname === '/friend-pages';
   const isShopPage = location.pathname === '/shop';
+  const isToolsPage = location.pathname === '/tools' ||
+    (location.pathname === '/product/browse' && new URLSearchParams(location.search).get('category') === 'thumbnails');
   const isVideoPage = /^\/video\//.test(location.pathname);
   const isOrderSuccessPage = location.pathname === '/order-success' || location.pathname === '/success';
-  const useStorefrontChrome = isFavoritesPage || isFriendPages || isShopPage;
+  const useStorefrontChrome = isFavoritesPage || isFriendPages || isShopPage || isToolsPage;
   const showDesktopSidebar = shouldShowSidebar && !isMobile && !isOrderSuccessPage;
 
   console.log('🚀 App.jsx rendering - current path:', location.pathname);

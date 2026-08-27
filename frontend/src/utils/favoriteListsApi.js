@@ -226,6 +226,23 @@ export function listPreviewImages(list) {
   return single ? [single] : [];
 }
 
+/** Split public lists into homepage hub image URLs. */
+export function storefrontHubPreviews(lists, storefrontOwnerId) {
+  const all = Array.isArray(lists) ? lists : [];
+  const ownerList = all.find((L) => L.is_primary || L.slug === 'owner');
+  const ownerImages = listPreviewImages(ownerList);
+  const isFriend = (L) => {
+    if (!L || L.is_primary || L.slug === 'owner') return false;
+    if (L.is_collaborator_page) return true;
+    return isCollaboratorList(L, storefrontOwnerId);
+  };
+  const friendImages = all.filter(isFriend).flatMap((L) => listPreviewImages(L));
+  const extraImages = all
+    .filter((L) => !(L.is_primary || L.slug === 'owner') && !isFriend(L))
+    .flatMap((L) => listPreviewImages(L));
+  return { ownerImages, friendImages, extraImages };
+}
+
 export async function fetchPublicFavoritesByList(subdomain, listSlug) {
   const sub = (subdomain || '').trim().toLowerCase();
   const slug = (listSlug || 'owner').trim().toLowerCase() || 'owner';

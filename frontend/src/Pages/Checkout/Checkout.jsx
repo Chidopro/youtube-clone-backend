@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
 import { emitCartUpdated, setToolsFocusCartIndex, writeCartItems, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
+import { isShopperSignedIn } from '../../utils/shopperAuth';
+import AuthModal from '../../Components/AuthModal/AuthModal';
 import {
   US_STATE_OPTIONS,
   CA_PROVINCE_OPTIONS,
@@ -15,6 +17,8 @@ import './Checkout.css';
 const Checkout = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [signedIn, setSignedIn] = useState(() => isShopperSignedIn());
+  const [showAuthModal, setShowAuthModal] = useState(() => !isShopperSignedIn());
   const [items, setItems] = useState([]);
   const [subtotal, setSubtotal] = useState(0);
   const [shipping, setShipping] = useState({ cost: 0, method: 'Standard Shipping', loading: false, error: '', calculated: false });
@@ -56,6 +60,7 @@ const Checkout = () => {
   }, [designPreferences]);
 
   useEffect(() => {
+    if (!signedIn) return;
     try {
       const parsed = readCartItems();
       setItems(parsed);
@@ -64,19 +69,18 @@ const Checkout = () => {
       setItems([]);
       setSubtotal(0);
     }
-  }, []);
+  }, [signedIn]);
 
   // Show design modal only when cart has shirt items (Womens, Mens, Kids). Other categories go straight to checkout.
   useEffect(() => {
-    if (items.length > 0 && !designModalShownOnLoadRef.current) {
-      designModalShownOnLoadRef.current = true;
-      if (cartNeedsDesignModal(items)) {
-        setShowDesignModal(true);
-      } else {
-        setDesignConfirmed(true);
-      }
+    if (!signedIn || items.length === 0 || designModalShownOnLoadRef.current) return;
+    designModalShownOnLoadRef.current = true;
+    if (cartNeedsDesignModal(items)) {
+      setShowDesignModal(true);
+    } else {
+      setDesignConfirmed(true);
     }
-  }, [items.length]);
+  }, [signedIn, items.length]);
 
   // When design modal opens, init per-item preferences (orientation left empty so user must choose)
   useEffect(() => {
@@ -310,6 +314,10 @@ const Checkout = () => {
 
   /** Run actual checkout (build payload, POST, redirect). Call after design modal "Continue to Checkout". */
   const runCheckout = useCallback(async (cartOverride = null) => {
+    if (!isShopperSignedIn()) {
+      setShowAuthModal(true);
+      return;
+    }
     const cartToUse = Array.isArray(cartOverride) ? cartOverride : items;
     const zipValue = String(address.zip || '').trim();
     const countryValue = String(address.country_code || 'US').trim();
@@ -483,6 +491,20 @@ const Checkout = () => {
 
   return (
     <div className="checkout-container">
+      <AuthModal
+        isOpen={showAuthModal}
+        promptText="To view your cart and complete a purchase, please log in or create an account."
+        onClose={() => {
+          setShowAuthModal(false);
+          navigate('/');
+        }}
+        onSuccess={() => {
+          setSignedIn(true);
+          setShowAuthModal(false);
+        }}
+      />
+      {!signedIn ? null : (
+      <>
       <div className="checkout-header">
         <h1>Checkout</h1>
         <div className="checkout-progress">
@@ -1017,6 +1039,8 @@ const Checkout = () => {
         document.body
       )}
 
+      </>
+      )}
     </div>
   );
 };

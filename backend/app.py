@@ -11014,7 +11014,7 @@ def favorite_lists_sales_summary():
                 "next_payout_date": sm_pending["next_payout_date"],
                 "payout_note": (
                     "ScreenMerch pays you when your pending earnings reach $50 or more. "
-                    "You are responsible for paying umbrella collaborators monthly when their owed balance exceeds $50."
+                    "You are responsible for paying umbrella collaborators bi-monthly when their owed balance exceeds $50."
                 ),
             }
         ), 200

@@ -6,8 +6,7 @@ import './Home.css'
 import { useNavigate, Link } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService';
-import { fetchPublicFavoriteLists, fetchPublicFavoritesByList, listPreviewImages, favoriteImageUrl } from '../../utils/favoriteListsApi';
-import { isCollaboratorFavoriteList } from '../../utils/favoriteListLabels';
+import { fetchPublicFavoriteLists, fetchPublicFavoritesByList, favoriteImageUrl, peekPublicFavoriteLists, storefrontHubPreviews, publicStorageCardUrl } from '../../utils/favoriteListsApi';
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
 import { apiJoin } from '../../config/apiConfig';
 
@@ -21,6 +20,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [favoritesPreview, setFavoritesPreview] = useState([]);
   const [friendPagePreview, setFriendPagePreview] = useState([]);
   const [shopPreview, setShopPreview] = useState([]);
+  const [hubsLoading, setHubsLoading] = useState(() => isCreatorStorefrontHostname());
   const navigate = useNavigate();
   const { creatorSettings, currentCreator, refreshCreator, loading: creatorLoading } = useCreator();
   const isMainSite = !isCreatorStorefrontHostname();
@@ -90,38 +90,72 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
     fetchVideos();
   }, [category, currentCreator?.id, isMainSite, creatorLoading]);
 
-  // Hub previews: one favorite-lists call (includes preview_images per list)
+  // Hub previews: fetch in parallel with videos, reuse cache, then show all three hubs together
   useEffect(() => {
+    if (isMainSite) {
+      setHubsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const applyLists = (lists, ownerId) => {
+      const { ownerImages, friendImages, extraImages } = storefrontHubPreviews(lists, ownerId);
+      setFavoritesPreview(ownerImages);
+      setFriendPagePreview(friendImages);
+      setShopPreview([...ownerImages, ...friendImages, ...extraImages]);
+      [...ownerImages.slice(0, 1), ...friendImages.slice(0, 1)].forEach((url) => {
+        const src = publicStorageCardUrl(url, 1400);
+        if (!src) return;
+        const img = new Image();
+        img.src = src;
+      });
+      return { ownerImages, friendImages };
+    };
+
     const fetchHubPreviews = async () => {
       const sub = getSubdomain();
-      if (!sub || !currentCreator?.id || creatorLoading) {
-        if (!creatorLoading) {
-          setFavoritesPreview([]);
-          setFriendPagePreview([]);
-          setShopPreview([]);
-        }
+      if (!sub) {
+        setFavoritesPreview([]);
+        setFriendPagePreview([]);
+        setShopPreview([]);
+        setHubsLoading(false);
         return;
       }
+
+      const peeked = peekPublicFavoriteLists(sub);
+      if (peeked) {
+        const applied = applyLists(peeked, currentCreator?.id);
+        if (applied.ownerImages.length || applied.friendImages.length) {
+          setHubsLoading(false);
+        }
+      }
+
       try {
         const { ok, data } = await fetchPublicFavoriteLists(sub);
+        if (cancelled) return;
         if (!ok || !data?.success) {
-          setFavoritesPreview([]);
-          setFriendPagePreview([]);
-          setShopPreview([]);
+          if (!peeked) {
+            setFavoritesPreview([]);
+            setFriendPagePreview([]);
+            setShopPreview([]);
+          }
           return;
         }
         const lists = Array.isArray(data.lists) ? data.lists : [];
         const ownerList = lists.find((L) => L.is_primary || L.slug === 'owner');
-        let ownerImages = listPreviewImages(ownerList);
+        let { ownerImages, friendImages } = applyLists(lists, currentCreator?.id);
+
         if (!ownerImages.length && ownerList) {
           const { ok: okOwner, data: ownerData } = await fetchPublicFavoritesByList(
             sub,
             ownerList.slug || 'owner'
           );
-          if (okOwner && ownerData?.success) {
+          if (!cancelled && okOwner && ownerData?.success) {
             ownerImages = (ownerData.favorites || [])
               .map((f) => favoriteImageUrl(f))
               .filter(Boolean);
+            setFavoritesPreview(ownerImages);
           }
         }
         if (ownerList?.id) {
@@ -132,45 +166,56 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
             /* ignore */
           }
         }
-        setFavoritesPreview(ownerImages);
 
-        const extraImages = lists
-          .filter(
+        if (!friendImages.length) {
+          const friendLists = lists.filter(
             (L) =>
               !(L.is_primary || L.slug === 'owner') &&
-              !isCollaboratorFavoriteList(L, currentCreator.id)
-          )
-          .flatMap((L) => listPreviewImages(L));
-
-        const friendLists = lists.filter(
-          (L) =>
-            !L.is_primary &&
-            L.slug !== 'owner' &&
-            isCollaboratorFavoriteList(L, currentCreator.id)
-        );
-        let friendImages = friendLists.flatMap((L) => listPreviewImages(L));
-        if (!friendImages.length && friendLists.length) {
-          for (const L of friendLists) {
-            const slug = (L.slug || '').trim();
-            if (!slug) continue;
-            const { ok: okFriend, data: friendData } = await fetchPublicFavoritesByList(sub, slug);
-            if (!okFriend || !friendData?.success) continue;
-            friendImages.push(
-              ...(friendData.favorites || []).map((f) => favoriteImageUrl(f)).filter(Boolean)
-            );
+              (L.is_collaborator_page ||
+                (currentCreator?.id &&
+                  L.owner_user_id &&
+                  String(L.owner_user_id) !== String(currentCreator.id)))
+          );
+          if (friendLists.length) {
+            const extra = [];
+            for (const L of friendLists) {
+              const slug = (L.slug || '').trim();
+              if (!slug) continue;
+              const { ok: okFriend, data: friendData } = await fetchPublicFavoritesByList(sub, slug);
+              if (!okFriend || !friendData?.success) continue;
+              extra.push(
+                ...(friendData.favorites || []).map((f) => favoriteImageUrl(f)).filter(Boolean)
+              );
+            }
+            if (!cancelled && extra.length) {
+              friendImages = extra;
+              setFriendPagePreview(extra);
+            }
           }
         }
-        setFriendPagePreview(friendImages);
-        setShopPreview([...ownerImages, ...friendImages, ...extraImages]);
+
+        if (!cancelled) {
+          setShopPreview((prev) => {
+            const merged = [...ownerImages, ...friendImages, ...prev];
+            return merged.filter((u, i) => u && merged.indexOf(u) === i);
+          });
+        }
       } catch (err) {
         console.error('Error fetching hub previews:', err);
-        setFavoritesPreview([]);
-        setFriendPagePreview([]);
-        setShopPreview([]);
+        if (!cancelled && !peeked) {
+          setFavoritesPreview([]);
+          setFriendPagePreview([]);
+          setShopPreview([]);
+        }
+      } finally {
+        if (!cancelled) setHubsLoading(false);
       }
     };
     fetchHubPreviews();
-  }, [currentCreator?.id, creatorLoading]);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentCreator?.id, creatorLoading, isMainSite]);
 
   // Check if user can edit colors (must be authenticated and own the subdomain)
   useEffect(() => {
@@ -333,7 +378,9 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
 
 
         {/* Main site: creator directory. Subdomains: hub row + video feed. */}
-        {loading && <div style={{padding: 24}}>Loading...</div>}
+        {((isMainSite && loading) || (!isMainSite && (loading || hubsLoading))) && (
+          <div style={{padding: 24}}>Loading...</div>
+        )}
         {error && <div style={{padding: 24, color: 'red'}}>{error}</div>}
         {!loading && !error && isMainSite && (
           <CreatorDirectory
@@ -348,7 +395,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
             }}
           />
         )}
-        {!loading && !error && !isMainSite && (
+        {!loading && !hubsLoading && !error && !isMainSite && (
           <>
             <Feed
               videos={videos}

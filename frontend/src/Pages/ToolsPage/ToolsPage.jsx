@@ -936,6 +936,7 @@ const ToolsPage = () => {
   const imageRef = useRef(null);
   const leftColumnRef = useRef(null);
   const containerRef = useRef(null);
+  const backBtnRef = useRef(null);
   
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
@@ -968,6 +969,7 @@ const ToolsPage = () => {
   const [screenshotScale, setScreenshotScale] = useState(100); // Screenshot size scale (percentage: 50-150%)
   const [screenshotSizeInteracted, setScreenshotSizeInteracted] = useState(false); // Track if screenshot size has been adjusted
   const [productSelectClicked, setProductSelectClicked] = useState(() => Boolean(getInitialCartPrintFit().name)); // Track if product select has been clicked
+  const [fitPreviewImageUrl, setFitPreviewImageUrl] = useState('');
   const [orderScreenshotsLoading, setOrderScreenshotsLoading] = useState(false);
   const [orderScreenshotsError, setOrderScreenshotsError] = useState(null);
   // True when opened from admin email (Edit Tools link). Init from URL so first paint is correct.
@@ -998,10 +1000,17 @@ const ToolsPage = () => {
   const customFontsReadyRef = useRef(false);
 
   // Lock horizontal page pan on mobile so it doesn't fight mockup drag / sliders
-  useEffect(() => {
+  useLayoutEffect(() => {
     const html = document.documentElement;
     html.classList.add('tools-page-active');
     document.body.classList.add('tools-page-active');
+    return () => {
+      html.classList.remove('tools-page-active');
+      document.body.classList.remove('tools-page-active');
+    };
+  }, []);
+
+  useEffect(() => {
     let startX = 0;
     let startY = 0;
     const onTouchStart = (e) => {
@@ -1024,8 +1033,6 @@ const ToolsPage = () => {
     document.addEventListener('touchstart', onTouchStart, { passive: true });
     document.addEventListener('touchmove', onTouchMove, { passive: false });
     return () => {
-      html.classList.remove('tools-page-active');
-      document.body.classList.remove('tools-page-active');
       document.removeEventListener('touchstart', onTouchStart);
       document.removeEventListener('touchmove', onTouchMove);
     };
@@ -1064,21 +1071,35 @@ const ToolsPage = () => {
   // Calculate and set fixed position for left column
   useEffect(() => {
     const updateLeftColumnPosition = () => {
-      if (leftColumnRef.current && containerRef.current) {
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const leftPosition = containerRect.left + 100; // Add 100px for the grey spacer column
+      if (!containerRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const leftPosition = containerRect.left + 100; // Add 100px for the grey spacer column
+      if (leftColumnRef.current) {
         leftColumnRef.current.style.left = `${leftPosition}px`;
+      }
+      if (backBtnRef.current) {
+        // Left gutter beside Product Preview, just under the header bar.
+        backBtnRef.current.style.left = `${Math.round(containerRect.left)}px`;
+        const nav = document.querySelector('nav');
+        const belowHeader = Math.max(nav?.getBoundingClientRect().bottom || 0, 64);
+        backBtnRef.current.style.top = `${Math.round(belowHeader + 4)}px`;
       }
     };
 
-    // Update on mount and resize
     updateLeftColumnPosition();
+    const later = window.setTimeout(updateLeftColumnPosition, 250);
+    const later2 = window.setTimeout(updateLeftColumnPosition, 700);
     window.addEventListener('resize', updateLeftColumnPosition);
     window.addEventListener('scroll', updateLeftColumnPosition);
+    const logoImg = document.querySelector('.navbar-logo-wrap img.logo');
+    logoImg?.addEventListener('load', updateLeftColumnPosition);
 
     return () => {
+      window.clearTimeout(later);
+      window.clearTimeout(later2);
       window.removeEventListener('resize', updateLeftColumnPosition);
       window.removeEventListener('scroll', updateLeftColumnPosition);
+      logoImg?.removeEventListener('load', updateLeftColumnPosition);
     };
   }, []);
 
@@ -1638,7 +1659,10 @@ const ToolsPage = () => {
     if (!product?.name) return;
     const matched = matchPrintAreaProductName(product.name);
     if (!matched) return;
-    setSelectedProductName((prev) => prev || matched);
+    setSelectedProductName((prev) => {
+      if (fitUserSetRef.current[selectedCartProductIndex] && prev) return prev;
+      return matched || prev;
+    });
     if (!autoFitCartIndexRef.current[selectedCartProductIndex]) {
       autoFitCartIndexRef.current[selectedCartProductIndex] = true;
       setPrintAreaFit((prev) => {
@@ -1651,14 +1675,42 @@ const ToolsPage = () => {
     setProductSelectClicked(true);
   }, [selectedCartProductIndex, cartProducts, imageOrientation]);
 
+  // When Fit to Print names a product that is not the current cart item,
+  // load that product's mockup so the screenshot can be tested on it.
+  useEffect(() => {
+    const name = selectedProductName;
+    const cartProduct = selectedCartProductIndex != null ? cartProducts[selectedCartProductIndex] : null;
+    const cartMatched = cartProduct
+      ? (matchPrintAreaProductName(cartProduct.name) || cartProduct.name)
+      : '';
+    if (!name || name === cartMatched) {
+      setFitPreviewImageUrl('');
+      return;
+    }
+    let cancelled = false;
+    fetch(apiJoin(`/api/product-preview-url?name=${encodeURIComponent(name)}`))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.url) setFitPreviewImageUrl(data.url);
+        else if (!cancelled) setFitPreviewImageUrl('');
+      })
+      .catch(() => {
+        if (!cancelled) setFitPreviewImageUrl('');
+      });
+    return () => { cancelled = true; };
+  }, [selectedProductName, selectedCartProductIndex, cartProducts]);
+
   // Listen for storage events and set up upgrade checking
   useEffect(() => {
     // Listen for storage events (when print quality upgrade completes from other tabs)
     const applyWorkingScreenshot = (data) => {
-      const cartEmpty = readCartItems().length === 0;
-      const screenshot = cartEmpty
-        ? (data?.selected_screenshot || '')
-        : (data?.edited_screenshot || data?.selected_screenshot || '');
+      // Cart items own their screenshots. Do not paste leftover pending_merch
+      // art over every product when the user is testing other cart items.
+      const items = readCartItems();
+      if (Array.isArray(items) && items.length > 0) {
+        return;
+      }
+      const screenshot = data?.selected_screenshot || '';
       if (!screenshot) {
         if (imageUrl || editedImageUrl) {
           setImageUrl('');
@@ -2964,6 +3016,39 @@ const ToolsPage = () => {
     navigate('/checkout');
   };
 
+  const switchToCartSlot = (newIndex) => {
+    if (newIndex == null || !cartProducts[newIndex] || newIndex === selectedCartProductIndex) return;
+    switchingSlotRef.current = true;
+    const oldIndex = selectedCartProductIndex;
+    if (oldIndex !== null && cartProducts[oldIndex]) {
+      const cartIndex = cartProducts[oldIndex].originalCartIndex;
+      const offset = productImageOffsets[cartIndex] || { x: 0, y: 0 };
+      slotStateRef.current[oldIndex] = {
+        editedImageUrl,
+        screenshotScale,
+        selectedProductName,
+        printAreaFit,
+        imageOrientation,
+        imageOffsetX,
+        imageOffsetY,
+        printQualityImageUrl,
+        printQualityMeta,
+        offsetX: offset.x,
+        offsetY: offset.y,
+        fitUserSet: Boolean(fitUserSetRef.current[oldIndex]),
+        sourceScreenshot: imageUrl || cartProducts[oldIndex].screenshot || ''
+      };
+    }
+    setSelectedCartProductIndex(newIndex);
+    const matchedName = matchPrintAreaProductName(cartProducts[newIndex].name) || '';
+    if (matchedName) {
+      setSelectedProductName(matchedName);
+      setPrintAreaFit('product');
+      setProductSelectClicked(true);
+    }
+    setScreenshotSizeInteracted(false);
+  };
+
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -2979,6 +3064,21 @@ const ToolsPage = () => {
 
   return (
     <div className="tools-page-container" ref={containerRef}>
+      <button
+        type="button"
+        ref={backBtnRef}
+        className="tools-back-btn"
+        onClick={() => {
+          if (typeof window !== 'undefined' && window.history.length > 1) {
+            navigate(-1);
+            return;
+          }
+          navigate('/merchandise');
+        }}
+        aria-label="Back"
+      >
+        ←
+      </button>
       <div className="tools-page-header">
         <h1>Edit Tools</h1>
         <p className="tools-subtitle">Edit your screenshot with professional tools</p>
@@ -3022,6 +3122,8 @@ const ToolsPage = () => {
                 const cartIndex = product.originalCartIndex;
                 const offset = productImageOffsets[cartIndex] || { x: 0, y: 0 };
                 const currentImage = editedImageUrl || imageUrl;
+                const showingFitOverride = Boolean(fitPreviewImageUrl);
+                const displayName = showingFitOverride ? selectedProductName : product.name;
                 
                 return (
                   <div className="product-preview-inner-card" style={{
@@ -3062,15 +3164,17 @@ const ToolsPage = () => {
                         {selectedCartProductIndex + 1}
                       </span>
                       <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', wordBreak: 'break-word' }}>{product.name}</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px', wordBreak: 'break-word' }}>{displayName}</div>
+                        {!showingFitOverride && (
                         <div style={{ fontSize: '12px', color: '#666' }}>
                           {product.color} • {product.size}
                         </div>
+                        )}
                       </div>
                     </div>
                     {/* Product Preview - Handle different product types */}
                     {(() => {
-                      const productName = product.name || '';
+                      const productName = selectedProductName || product.name || '';
                       const isMug = isMugProduct(productName);
                       const isHat = isHatProduct(productName);
                       const isAllOverPrint = isAllOverPrintProduct(productName);
@@ -3281,7 +3385,7 @@ const ToolsPage = () => {
                       
                       // Regular products (shirts, etc.): Show normal preview (use placeholder when productImage missing, e.g. loaded from order_id)
                       if (currentImage) {
-                        const productImg = product.productImage || getPlaceholderProductImage();
+                        const productImg = fitPreviewImageUrl || product.productImage || getPlaceholderProductImage();
                         return (
                           <ProductPreviewWithDrag
                             key={`${cartIndex}|${shotFingerprint(productImg)}|${shotFingerprint(currentImage)}`}
@@ -3478,30 +3582,7 @@ const ToolsPage = () => {
                 value={selectedCartProductIndex !== null ? selectedCartProductIndex : ''}
                 onChange={(e) => {
                   const newIndex = parseInt(e.target.value);
-                  if (isNaN(newIndex) || !cartProducts[newIndex]) return;
-                  switchingSlotRef.current = true;
-                  const oldIndex = selectedCartProductIndex;
-                  if (oldIndex !== null && cartProducts[oldIndex]) {
-                    const cartIndex = cartProducts[oldIndex].originalCartIndex;
-                    const offset = productImageOffsets[cartIndex] || { x: 0, y: 0 };
-                    slotStateRef.current[oldIndex] = {
-                      editedImageUrl,
-                      screenshotScale,
-                      selectedProductName,
-                      printAreaFit,
-                      imageOrientation,
-                      imageOffsetX,
-                      imageOffsetY,
-                      printQualityImageUrl,
-                      printQualityMeta,
-                      offsetX: offset.x,
-                      offsetY: offset.y,
-                      fitUserSet: Boolean(fitUserSetRef.current[oldIndex]),
-                      sourceScreenshot: imageUrl || cartProducts[oldIndex].screenshot || ''
-                    };
-                  }
-                  setSelectedCartProductIndex(newIndex);
-                  console.log('Switched to product', newIndex + 1, '; loading slot', newIndex + 1);
+                  switchToCartSlot(newIndex);
                 }}
                 className="print-area-select"
                 style={{ width: '100%' }}
@@ -3572,13 +3653,22 @@ const ToolsPage = () => {
                   }
                 }}
                 onChange={(e) => {
-                  setSelectedProductName(e.target.value);
+                  const value = e.target.value;
+                  setSelectedProductName(value);
                   setProductSelectClicked(true);
-                  // Reset screenshot size interaction when product changes
                   setScreenshotSizeInteracted(false);
-                  // Auto-select product fit if product is selected
-                  if (e.target.value) {
+                  if (value) {
                     setPrintAreaFit('product');
+                  }
+                  if (selectedCartProductIndex !== null) {
+                    fitUserSetRef.current[selectedCartProductIndex] = true;
+                  }
+                  const matchIdx = cartProducts.findIndex((p) => {
+                    const n = matchPrintAreaProductName(p.name) || p.name;
+                    return n === value || p.name === value;
+                  });
+                  if (matchIdx >= 0) {
+                    switchToCartSlot(matchIdx);
                   }
                 }}
                 className={`print-area-select ${!productSelectClicked ? 'product-select-pulse' : ''}`}

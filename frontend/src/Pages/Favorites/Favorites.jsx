@@ -20,9 +20,14 @@ const sortNewest = (a, b) => {
   return tb - ta;
 };
 
-function FavoritesShelfTrack({ children, itemCount = 0, pair = false, trio = false }) {
+function FavoritesShelfTrack({ children, itemCount = 0, pair = false, trio = false, scrollRef = null }) {
   const trackRef = useRef(null);
   const [bar, setBar] = useState({ canScroll: false, thumbPct: 100, leftPct: 0 });
+
+  const setTrackEl = (el) => {
+    trackRef.current = el;
+    if (scrollRef) scrollRef.current = el;
+  };
 
   const updateBar = useCallback(() => {
     const el = trackRef.current;
@@ -61,7 +66,7 @@ function FavoritesShelfTrack({ children, itemCount = 0, pair = false, trio = fal
 
   return (
     <div className={`favorites-shelf-scroller${bar.canScroll ? ' has-overflow' : ''}`}>
-      <div ref={trackRef} className={`favorites-shelf-track${pair ? ' favorites-shelf-track--pair' : ''}${trio ? ' favorites-shelf-track--trio' : ''}`}>
+      <div ref={setTrackEl} className={`favorites-shelf-track${pair ? ' favorites-shelf-track--pair' : ''}${trio ? ' favorites-shelf-track--trio' : ''}`}>
         {children}
       </div>
       <div
@@ -124,6 +129,18 @@ const mapFavoriteImages = (favorites) =>
     }))
     .sort(sortNewest);
 
+function getShelfMaxScroll(el) {
+  if (!el) return 0;
+  const cards = el.querySelectorAll('.favorites-card');
+  const nativeMax = Math.max(0, el.scrollWidth - el.clientWidth);
+  if (!cards.length) return nativeMax;
+  const last = cards[cards.length - 1];
+  const paddingRight = parseFloat(window.getComputedStyle(el).paddingRight) || 0;
+  const lastEnd = last.offsetLeft + last.offsetWidth + paddingRight;
+  const showLast = Math.max(0, lastEnd - el.clientWidth);
+  return Math.max(0, Math.min(nativeMax, showLast));
+}
+
 const Favorites = ({ sidebar }) => {
   const navigate = useNavigate();
   const { listSlug } = useParams();
@@ -136,7 +153,58 @@ const Favorites = ({ sidebar }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [extraPages, setExtraPages] = useState([]);
-  const [shopAddIntent] = useState(() => (fromShop ? readShopAddIntent() : null));
+  const imageTrackRef = useRef(null);
+  const videoTrackRef = useRef(null);
+  const shelfScrollTargetRef = useRef(null);
+
+  const restoreShelfSnap = (el) => {
+    if (!el) return;
+    const saved = el.dataset.shelfSnap;
+    if (saved == null) return;
+    el.style.scrollSnapType = saved === 'none' ? '' : saved;
+    delete el.dataset.shelfSnap;
+  };
+
+  const scrollShelf = (direction) => {
+    const el = imageTrackRef.current || videoTrackRef.current;
+    if (!el) return;
+    const maxLeft = getShelfMaxScroll(el);
+    if (maxLeft <= 1) return;
+
+    const firstCard = el.querySelector('.favorites-card');
+    const styles = window.getComputedStyle(el);
+    const gap = parseFloat(styles.columnGap || styles.gap) || 16;
+    const step = firstCard ? firstCard.getBoundingClientRect().width + gap : Math.max(el.clientWidth * 0.9, 280);
+    const from = shelfScrollTargetRef.current != null ? shelfScrollTargetRef.current : el.scrollLeft;
+    const next = Math.max(0, Math.min(maxLeft, from + direction * step));
+    if (Math.abs(next - from) < 2) return;
+
+    if (el.dataset.shelfSnap == null) {
+      el.dataset.shelfSnap = styles.scrollSnapType || 'none';
+    }
+    el.style.scrollSnapType = 'none';
+    shelfScrollTargetRef.current = next;
+    el.scrollTo({ left: next, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const el = imageTrackRef.current || videoTrackRef.current;
+    if (!el) return;
+    let settle;
+    const onScroll = () => {
+      window.clearTimeout(settle);
+      settle = window.setTimeout(() => {
+        shelfScrollTargetRef.current = null;
+        restoreShelfSnap(el);
+      }, 160);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.clearTimeout(settle);
+      el.removeEventListener('scroll', onScroll);
+      restoreShelfSnap(el);
+    };
+  }, [loading]);
 
   const effectiveSlug = (listSlug || 'owner').toLowerCase();
 
@@ -337,20 +405,23 @@ const Favorites = ({ sidebar }) => {
           <button
             type="button"
             className="favorites-back-btn"
-            onClick={() => navigate(effectiveSlug !== 'owner' ? '/friend-pages' : '/')}
-            aria-label="Back"
+            onClick={() => scrollShelf(-1)}
+            aria-label="Scroll images left"
           >
             ←
           </button>
           <div className="favorites-toolbar-text">
             <h1 className={`favorites-page-title${pageTitle === 'My Page' ? ' favorites-page-title--visually-hidden' : ''}`}>{pageTitle}</h1>
-            {shopAddIntent?.category ? (
-              <p className="favorites-shop-intent-note">
-                Select an image, then Make Merch to create your product.
-              </p>
-            ) : null}
             {error ? <p className="favorites-error">{error}</p> : null}
           </div>
+          <button
+            type="button"
+            className="favorites-back-btn favorites-scroll-right-btn"
+            onClick={() => scrollShelf(1)}
+            aria-label="Scroll images right"
+          >
+            →
+          </button>
         </div>
 
         {loading ? <div className="favorites-loading">Loading page...</div> : null}
@@ -367,7 +438,7 @@ const Favorites = ({ sidebar }) => {
             {imageItems.length > 0 ? (
               <section className="favorites-shelf" aria-label="Images">
                 <h2 className="favorites-shelf-title">Images</h2>
-                <FavoritesShelfTrack itemCount={imageItems.length} pair>
+                <FavoritesShelfTrack itemCount={imageItems.length} pair scrollRef={imageTrackRef}>
                   {imageItems.map((item) => (
                     <FavoriteImageCard key={item.id} item={item} onMakeMerch={handleMakeMerch} />
                   ))}
@@ -378,7 +449,7 @@ const Favorites = ({ sidebar }) => {
             {videoItems.length > 0 ? (
               <section className="favorites-shelf" aria-label="Videos">
                 <h2 className="favorites-shelf-title">Videos</h2>
-                <FavoritesShelfTrack itemCount={videoItems.length} trio>
+                <FavoritesShelfTrack itemCount={videoItems.length} trio scrollRef={videoTrackRef}>
                   {videoItems.map((item) => (
                     <div className="favorites-card favorites-card--video" key={item.id}>
                       <div className="favorites-card-image">

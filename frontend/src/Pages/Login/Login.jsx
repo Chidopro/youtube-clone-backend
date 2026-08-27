@@ -5,6 +5,7 @@ import { supabase } from '../../supabaseClient';
 import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend } from '../../utils/userService';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
+import { safeAuthReturnPath } from '../../utils/shopperAuth';
 import CustomerLegalConsent from '../../Components/CustomerLegalConsent/CustomerLegalConsent';
 import './Login.css';
 
@@ -86,6 +87,8 @@ const Login = () => {
           goAfterAuth('/merchandise', navigate, { replace: true });
         } else if (returnTo === 'subscription-success') {
           goAfterAuth('/subscription-success', navigate, { replace: true });
+        } else if (safeAuthReturnPath(returnTo)) {
+          goAfterAuth(safeAuthReturnPath(returnTo), navigate, { replace: true });
         } else if (userRole === 'customer') {
           // Always redirect to home page for customers
           console.log('🔄 Already logged in as customer, redirecting to home');
@@ -124,6 +127,15 @@ const Login = () => {
       setMessage({ type: 'error', text: 'Your session expired. Please sign in again.' });
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    document.documentElement.classList.add('login-page-active');
+    document.body.classList.add('login-page-active');
+    return () => {
+      document.documentElement.classList.remove('login-page-active');
+      document.body.classList.remove('login-page-active');
+    };
+  }, []);
 
   const apiUrl = (endpoint) => {
     const base = getBackendUrl();
@@ -326,6 +338,8 @@ const Login = () => {
         }
       }
       localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('user_authenticated', 'true');
+      if (data?.user?.email) localStorage.setItem('user_email', data.user.email);
       
       // Store subdomain info for email login (similar to OAuth) to prevent redirect to main domain
       const currentHostname = window.location.hostname;
@@ -412,6 +426,8 @@ const Login = () => {
           } else if (returnTo === 'subscription-success') {
             console.log('🔄 Redirecting to subscription success');
             goAfterAuth('/subscription-success', navigate, { replace: true });
+          } else if (safeAuthReturnPath(returnTo)) {
+            goAfterAuth(safeAuthReturnPath(returnTo), navigate, { replace: true });
           } else if (userRole === 'customer') {
             // Always redirect to home page for customers
             console.log('🔄 Customer login, redirecting to home page');
@@ -467,9 +483,8 @@ const Login = () => {
     <div className="login-page">
       <div className="login-card">
         <div className="login-card-header">
-          <div className="login-logo">🎯</div>
           <h2 className="login-title">
-            {isCustomerSignup ? 'ScreenMerch Sign Up' : isLoginMode ? 'ScreenMerch Login' : 'ScreenMerch Sign Up'}
+            {isCustomerSignup ? 'Create your account' : isLoginMode ? 'Sign in' : 'Create your account'}
           </h2>
         </div>
 

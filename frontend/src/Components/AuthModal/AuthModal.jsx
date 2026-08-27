@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { apiJoin } from '../../config/apiConfig';
+import { persistShopperSession } from '../../utils/shopperAuth';
 import CustomerLegalConsent from '../CustomerLegalConsent/CustomerLegalConsent';
 import './AuthModal.css';
 
-const AuthModal = ({ isOpen, onClose, onSuccess }) => {
+const AuthModal = ({ isOpen, onClose, onSuccess, promptText }) => {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -92,23 +93,17 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
       }
 
       if (data.success) {
-        localStorage.setItem('user_authenticated', 'true');
-        localStorage.setItem('user_email', email.trim());
-        localStorage.setItem('customer_authenticated', 'true');
-        localStorage.setItem(
-          'customer_user',
-          JSON.stringify({
-            display_name: email.trim(),
-            email: email.trim(),
-            user_type: 'customer',
-          })
-        );
+        persistShopperSession(data, email.trim());
 
         setMessage({ type: 'success', text: data.message || 'Login successful! Redirecting...' });
 
         window.dispatchEvent(
           new CustomEvent('userLoggedIn', {
-            detail: { email: email.trim(), user_type: 'customer' },
+            detail: {
+              user: data.user || { email: email.trim(), role: 'customer' },
+              email: email.trim(),
+              user_type: data.user?.role || 'customer',
+            },
           })
         );
 
@@ -164,7 +159,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }) => {
           <div className="auth-message">
             <strong>Login Required</strong>
             <br />
-            To create merchandise, please log in or create an account with your email address.
+            {promptText || 'To create merchandise, please log in or create an account with your email address.'}
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">

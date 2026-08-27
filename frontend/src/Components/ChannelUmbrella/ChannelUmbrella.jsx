@@ -82,7 +82,12 @@ const ChannelUmbrella = () => {
         setSalesByList(data?.by_list || []);
         setCollaboratorOwedTotal(Number(data?.collaborator_owed_total || 0));
         setOwnerSummary(data?.storefront_owner_summary || null);
-        setPayoutNote(data?.payout_note || '');
+        setPayoutNote(
+          String(data?.payout_note || '').replace(
+            /paying umbrella collaborators monthly/gi,
+            'paying umbrella collaborators bi-monthly'
+          )
+        );
       }
     } catch (e) {
       setSalesError(e.message || 'Network error');
@@ -559,7 +564,7 @@ const ChannelUmbrella = () => {
         ) : null}
         {!salesLoading && !salesError && salesByList.length > 0 ? (
           <>
-            <h3 className="channel-umbrella-subheading">Umbrella collaborators (you pay monthly)</h3>
+            <h3 className="channel-umbrella-subheading">Umbrella collaborators (you pay bi-monthly)</h3>
             <p className="hint">
               These balances are what you owe collaborators. ScreenMerch does not pay them.
               Pay them off-platform (PayPal, Zelle, etc.), then use Confirm payment + date to log it.

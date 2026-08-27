@@ -268,7 +268,7 @@
 .category-box {
   background: white;
   border: 1px solid #e0e0e0;
-  border-radius: 12px;
+  border-radius: 0;
   padding: 2.5rem 1.5rem;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -872,14 +872,66 @@
   margin: 0.5rem 0 0 0;
 }
 
-.shop-catalog-note {
-  width: 100%;
-  max-width: 640px;
-  margin: 0 0 0.75rem;
+.shop-catalog-page-title {
+  display: block;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
   text-align: center;
-  font-size: 0.9rem;
-  line-height: 1.35;
-  color: #4b5563;
+}
+
+.shop-catalog-toolbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  position: relative;
+}
+
+.shop-catalog-back-btn {
+  grid-column: 1;
+  grid-row: 1;
+  z-index: 1;
+  justify-self: start;
+  background: none;
+  border: none;
+  color: #444;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.shop-catalog-back-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #000;
+}
+
+.shop-catalog-toolbar-text {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-width: 0;
+  pointer-events: none;
+}
+
+.shop-catalog-toolbar-text > * {
+  pointer-events: auto;
+}
+
+.shop-catalog-toolbar .product-information-title {
+  margin-bottom: 0.5rem;
 }
 
 .cart-section {
@@ -1291,6 +1343,36 @@
 }
 
 @media (max-width: 768px) {
+  .product-page--shop-catalog .shop-catalog-page-title {
+    display: block;
+    width: fit-content;
+    margin: 0 auto;
+    padding-top: 4px;
+    padding-bottom: 6px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    color: #1a1a1a;
+    background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-repeat: no-repeat;
+    background-position: center bottom;
+    background-size: 100% 3px;
+  }
+
+  .product-page--shop-catalog .cart-section-buttons,
+  .product-page--shop-catalog .cart-section-bottom,
+  .product-page--shop-catalog .product-mockup-color-notice,
+  .product-page--shop-catalog .product-image-section {
+    display: none !important;
+  }
+
+  .product-page--shop-catalog .cart-section {
+    align-items: flex-start;
+    margin-bottom: 12px;
+    padding-top: 18px;
+    gap: 0;
+  }
+
   .products-grid {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1rem;

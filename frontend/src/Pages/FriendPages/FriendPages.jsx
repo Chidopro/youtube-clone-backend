@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
@@ -65,6 +65,14 @@ const FriendPages = ({ sidebar }) => {
   const [loading, setLoading] = useState(cachedLists == null);
   const [error, setError] = useState('');
   const [tick, setTick] = useState(() => Math.floor(Date.now() / HUB_ROTATE_MS));
+  const listRef = useRef(null);
+
+  const scrollFriends = (direction) => {
+    const el = listRef.current;
+    if (!el) return;
+    const step = Math.max(el.clientWidth * 0.9, 280);
+    el.scrollBy({ left: direction * step, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -144,6 +152,14 @@ const FriendPages = ({ sidebar }) => {
           <div className="friend-pages-toolbar-text">
             <h1 className="friend-pages-title">My Friends</h1>
           </div>
+          <button
+            type="button"
+            className="friend-pages-back-btn friend-pages-scroll-right-btn"
+            onClick={() => scrollFriends(1)}
+            aria-label="Scroll friends right"
+          >
+            →
+          </button>
         </div>
 
         <div className="friend-pages-body">
@@ -158,7 +174,7 @@ const FriendPages = ({ sidebar }) => {
         ) : null}
 
         {!loading && pages.length > 0 ? (
-          <ul className="friend-pages-list">
+          <ul className="friend-pages-list" ref={listRef}>
             {pages.map((L) => {
               const label = friendPageLabel(L, currentCreator?.id);
               const to =
@@ -171,7 +187,9 @@ const FriendPages = ({ sidebar }) => {
                     className="friend-pages-item"
                     onClick={() => navigate(to)}
                   >
-                    <HubThumb src={thumbs[key]} emptyLabel={label} />
+                    <span className="friend-pages-item-thumb">
+                      <HubThumb src={thumbs[key]} emptyLabel={label} />
+                    </span>
                     <span className="friend-pages-item-name">{label}</span>
                   </button>
                 </li>

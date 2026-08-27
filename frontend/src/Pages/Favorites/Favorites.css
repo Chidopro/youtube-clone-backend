@@ -97,6 +97,12 @@
   border-radius: 8px;
 }
 
+.favorites-scroll-right-btn {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+}
+
 .favorites-toolbar-text {
   grid-column: 1 / -1;
   grid-row: 1;
@@ -126,13 +132,6 @@
   color: #c00;
   font-size: 14px;
   margin: 8px 0 0 0;
-  text-align: center;
-}
-
-.favorites-shop-intent-note {
-  margin: 8px 0 0 0;
-  font-size: 14px;
-  color: #4b5563;
   text-align: center;
 }
 
@@ -235,7 +234,7 @@
   width: calc((100% - 16px) / 2);
   min-width: calc((100% - 16px) / 2);
   max-width: calc((100% - 16px) / 2);
-  border-radius: 16px;
+  border-radius: 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
@@ -243,6 +242,7 @@
   height: 320px;
   max-height: 320px;
   aspect-ratio: auto;
+  border-radius: 0;
 }
 
 .favorites-shelf-track.favorites-shelf-track--pair .favorites-card-image img {
@@ -269,12 +269,13 @@
   width: calc((100% - 32px) / 3);
   min-width: calc((100% - 32px) / 3);
   max-width: calc((100% - 32px) / 3);
-  border-radius: 16px;
+  border-radius: 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .favorites-shelf-track.favorites-shelf-track--trio .favorites-card-image {
   aspect-ratio: 16 / 9;
+  border-radius: 0;
 }
 
 .favorites-shelf-scroller {
@@ -340,6 +341,7 @@
 
 .favorites-card--video {
   cursor: default;
+  border-radius: 0;
 }
 
 .page-filter-row {
@@ -553,9 +555,25 @@
     max-width: calc((100% - 16px) / 2);
   }
 
+  .favorites-shelf-track.favorites-shelf-track--trio {
+    gap: 12px;
+    padding: 4px 2px 10px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .favorites-shelf-track.favorites-shelf-track--trio .favorites-card {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
   .favorites-shelf-track.favorites-shelf-track--pair .favorites-card-image {
-    height: min(44vh, 400px);
-    max-height: 400px;
+    height: min(28vh, 240px);
+    max-height: 240px;
+    aspect-ratio: auto;
   }
 
   .favorites-shelf-scrollbar {
@@ -592,7 +610,8 @@
   }
 
   .favorites-shelf-track.favorites-shelf-track--pair .favorites-card-image {
-    height: min(48vh, 400px);
-    max-height: 400px;
+    height: min(30vh, 250px);
+    max-height: 250px;
+    aspect-ratio: auto;
   }
 }

@@ -39,7 +39,8 @@ export function HubThumb({ src, emptyLabel }) {
       <img
         src={current}
         alt=""
-        loading="lazy"
+        loading="eager"
+        fetchPriority="high"
         decoding="async"
         onError={() => {
           try {
@@ -110,10 +111,6 @@ const Feed = ({
     <div className="feed-wrap">
       {showHubs && (
         <div className="feed-hubs" aria-label="Storefront sections">
-          <button type="button" className="card hub-card" onClick={() => navigate('/shop')}>
-            <HubThumb src={hubThumbs.shop} emptyLabel="My Shop" />
-            <h2>My Shop</h2>
-          </button>
           <button type="button" className="card hub-card" onClick={() => navigate('/favorites')}>
             <HubThumb src={hubThumbs.favorites} emptyLabel="No Images Yet" />
             <h2>My Page</h2>
@@ -129,6 +126,10 @@ const Feed = ({
           >
             <HubThumb src={hubThumbs.friend} emptyLabel="No Friends Yet" />
             <h2>My Friends</h2>
+          </button>
+          <button type="button" className="card hub-card" onClick={() => navigate('/shop')}>
+            <HubThumb src={hubThumbs.shop} emptyLabel="My Shop" />
+            <h2>My Shop</h2>
           </button>
         </div>
       )}

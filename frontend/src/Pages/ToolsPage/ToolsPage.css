@@ -82,8 +82,34 @@
   min-height: 100vh;
   background: #f9f9f9;
   padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  position: relative;
+}
+
+.tools-back-btn {
+  position: fixed;
+  top: 112px;
+  z-index: 10100;
+  background: none;
+  border: none;
+  color: #444;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+  pointer-events: auto;
+}
+
+.tools-back-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #000;
 }
 
 html.tools-page-active,
@@ -92,6 +118,16 @@ body.tools-page-active {
   overflow-x: clip;
   overscroll-behavior-x: none;
   max-width: 100%;
+  background: #f9f9f9;
+}
+
+body.tools-page-active #root,
+body.tools-page-active #root > div,
+body.tools-page-active .main-content-area,
+body.tools-page-active .main-content-inner,
+body.tools-page-active .page-top-banner,
+body.tools-page-active .site-footer {
+  background: #f9f9f9;
 }
 
 body.tools-page-active #root,
@@ -100,6 +136,14 @@ body.tools-page-active .main-content-inner {
   overflow-x: clip;
   overscroll-behavior-x: none;
   max-width: 100%;
+}
+
+body.tools-page-active .main-content-area {
+  padding: 0;
+}
+
+body.tools-page-active .site-footer {
+  border-top-color: #ececec;
 }
 
 .tools-page-header {
@@ -144,21 +188,22 @@ body.tools-page-active .main-content-inner {
   top: 20px;
   width: 350px;
   align-items: flex-start;
-  height: calc(100vh - 40px);
+  height: auto;
+  max-height: calc(100vh - 40px);
   overflow-x: hidden;
   overflow-y: auto;
   z-index: 100;
-  background: #f9f9f9;
+  background: transparent;
 }
 
 .cart-products-preview-fixed {
   position: relative;
   z-index: 10;
-  background: #f9f9f9;
+  background: transparent;
   width: 100%;
   flex-shrink: 0;
   padding-top: 80px;
-  padding-bottom: 12px;
+  padding-bottom: 0;
 }
 
 .screenshot-size-under-preview {
@@ -209,6 +254,11 @@ body.tools-page-active .main-content-inner {
   margin-bottom: 15px;
   font-size: 18px;
   font-weight: bold;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
 }
 
 .edit-tools-inline-title {
@@ -725,6 +775,13 @@ body.tools-page-active .main-content-inner {
   
   .tools-left-column-spacer {
     display: none;
+  }
+
+  .tools-back-btn {
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+    margin: 0 0 8px -6px;
   }
   
   .tools-page-header {

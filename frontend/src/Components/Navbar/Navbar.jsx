@@ -17,6 +17,7 @@ import { AdminService } from '../../utils/adminService'
 import { useCreator } from '../../contexts/CreatorContext'
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService'
 import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
+import { isShopperSignedIn } from '../../utils/shopperAuth'
 import Sidebar from '../Sidebar/Sidebar'
 
 const isUsableHexColor = (value) =>
@@ -1053,8 +1054,16 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         <div className="sign-in-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
                             Processing...
                         </div>
+                    ) : isShopperSignedIn() || customerUser ? (
+                        <button
+                            className="sign-in-btn"
+                            onClick={handleLogout}
+                            title="Sign out"
+                        >
+                            Sign Out
+                        </button>
                     ) : (
-                        // Not logged in or customer - show Sign In button
+                        // Not logged in - show Sign In button
                         <>
                             <button 
                                 className="sign-in-btn" 
