@@ -272,8 +272,7 @@ const Dashboard = ({ sidebar }) => {
 
     const [currentUser, setCurrentUser] = useState(null);
     const [payoutData, setPayoutData] = useState({
-        paypal_email: '',
-        tax_id: ''
+        paypal_email: ''
     });
     const [payoutLoading, setPayoutLoading] = useState(false);
     const [payoutMessage, setPayoutMessage] = useState('');
@@ -428,8 +427,7 @@ const Dashboard = ({ sidebar }) => {
                     
                     // Load payout data if available
                     setPayoutData({
-                        paypal_email: profile.paypal_email || '',
-                        tax_id: profile.tax_id || ''
+                        paypal_email: profile.paypal_email || ''
                     });
                 } else {
                     // Fallback: For users without database profile, use localStorage data
@@ -2920,8 +2918,7 @@ const Dashboard = ({ sidebar }) => {
                                         }
 
                                         const updateData = {
-                                            paypal_email: payoutData.paypal_email.trim(),
-                                            tax_id: payoutData.tax_id.trim() || null
+                                            paypal_email: payoutData.paypal_email.trim()
                                         };
 
                                         const backendUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) || 'https://screenmerch.fly.dev';
@@ -2972,24 +2969,6 @@ const Dashboard = ({ sidebar }) => {
                                     />
                                     <p className="payout-help-text">
                                         This is where we'll send your earnings. Make sure it's a valid PayPal account.
-                                    </p>
-                                </div>
-
-                                <div className="payout-form-group">
-                                    <label htmlFor="tax-id" className="payout-label">
-                                        Tax ID / SSN (Optional)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="tax-id"
-                                        className="payout-input"
-                                        placeholder="Enter your Tax ID or SSN"
-                                        value={payoutData.tax_id}
-                                        onChange={(e) => setPayoutData({ ...payoutData, tax_id: e.target.value })}
-                                        disabled={payoutLoading}
-                                    />
-                                    <p className="payout-help-text">
-                                        Required for tax reporting in some jurisdictions. Your information is encrypted and secure.
                                     </p>
                                 </div>
 

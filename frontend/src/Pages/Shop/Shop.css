@@ -139,6 +139,25 @@
   line-height: 1.2;
 }
 
+@media (min-width: 701px) {
+  .shop-body {
+    max-width: 1200px;
+    padding: 0 12px;
+  }
+
+  .shop-category-grid {
+    gap: 16px;
+  }
+
+  .shop-tile {
+    padding: 12px 10px 14px;
+  }
+
+  .shop-tile-name {
+    font-size: 15px;
+  }
+}
+
 @media (hover: none) and (pointer: coarse) {
   .shop-tile:hover {
     transform: none;

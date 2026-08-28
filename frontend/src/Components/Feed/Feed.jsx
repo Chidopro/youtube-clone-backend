@@ -18,13 +18,60 @@ export function uniqueUrls(list) {
   return out;
 }
 
-/** Stable-ish pick that advances every HUB_ROTATE_MS and differs per hub key. */
-export function rotatingUrl(urls, hubKey, tick) {
+/** Same photo at different sizes / Supabase render vs object URLs. */
+export function imageIdentity(url) {
+  const s = String(url || '').trim();
+  if (!s) return '';
+  try {
+    const u = new URL(s);
+    const path = u.pathname
+      .replace('/storage/v1/render/image/public/', '/')
+      .replace('/storage/v1/object/public/', '/');
+    return `${u.host}${path}`.toLowerCase();
+  } catch {
+    return s.split('?')[0].toLowerCase();
+  }
+}
+
+function hubSalt(hubKey) {
+  let salt = 0;
+  const s = String(hubKey || '');
+  for (let i = 0; i < s.length; i += 1) salt += s.charCodeAt(i);
+  return salt;
+}
+
+/** Rotating pick; skips URLs already in usedKeys (same image identity). */
+export function pickRotatingUrl(urls, hubKey, tick, usedKeys = null) {
   const list = uniqueUrls(urls);
   if (!list.length) return null;
-  let salt = 0;
-  for (let i = 0; i < hubKey.length; i += 1) salt += hubKey.charCodeAt(i);
-  return list[(tick + salt) % list.length];
+  const n = list.length;
+  const start = ((tick + hubSalt(hubKey)) % n + n) % n;
+  for (let i = 0; i < n; i += 1) {
+    const url = list[(start + i) % n];
+    const key = imageIdentity(url);
+    if (!key) continue;
+    if (usedKeys && usedKeys.has(key)) continue;
+    if (usedKeys) usedKeys.add(key);
+    return url;
+  }
+  return null;
+}
+
+/** Stable-ish pick that advances every HUB_ROTATE_MS and differs per hub key. */
+export function rotatingUrl(urls, hubKey, tick) {
+  return pickRotatingUrl(urls, hubKey, tick);
+}
+
+/** Homepage hubs: never show the same photo on two cards when another unused image exists. */
+export function distinctHubThumbs({ favoriteUrls, friendUrls, shopPreferredUrls, shopUrls }, tick) {
+  const used = new Set();
+  const pick = (urls, key) =>
+    pickRotatingUrl(urls, key, tick, used) || pickRotatingUrl(urls, key, tick);
+  return {
+    favorites: pick(favoriteUrls, 'favorites'),
+    friend: pick(friendUrls, 'friend'),
+    shop: pick(shopPreferredUrls, 'shop') || pick(shopUrls, 'shop-more'),
+  };
 }
 
 export function HubThumb({ src, emptyLabel }) {
@@ -98,13 +145,23 @@ const Feed = ({
     return uniqueUrls([...pageUrls, ...favoriteUrls, ...friendUrls, ...videoUrls]);
   }, [shopPreview, videos, favoriteUrls, friendUrls]);
 
+  const shopPreferredUrls = useMemo(() => {
+    const taken = new Set(
+      [...favoriteUrls, ...friendUrls].map(imageIdentity).filter(Boolean)
+    );
+    return shopUrls.filter((url) => {
+      const key = imageIdentity(url);
+      return key && !taken.has(key);
+    });
+  }, [shopUrls, favoriteUrls, friendUrls]);
+
   const hubThumbs = useMemo(
-    () => ({
-      shop: rotatingUrl(shopUrls, 'shop', tick),
-      favorites: rotatingUrl(favoriteUrls, 'favorites', tick),
-      friend: rotatingUrl(friendUrls, 'friend', tick),
-    }),
-    [shopUrls, favoriteUrls, friendUrls, tick]
+    () =>
+      distinctHubThumbs(
+        { favoriteUrls, friendUrls, shopPreferredUrls, shopUrls },
+        tick
+      ),
+    [shopPreferredUrls, shopUrls, favoriteUrls, friendUrls, tick]
   );
 
   return (

@@ -1080,6 +1080,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                             </button>
                         </>
                     )}
+                    {isStorefront ? (
                     <button
                         type="button"
                         className="nav-cart-btn"
@@ -1092,6 +1093,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         </svg>
                         {cartCount > 0 ? <span className="nav-cart-badge">{cartCount > 99 ? '99+' : cartCount}</span> : null}
                     </button>
+                    ) : null}
                     </div>
                 </div>
             </nav>
