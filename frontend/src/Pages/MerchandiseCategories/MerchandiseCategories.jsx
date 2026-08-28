@@ -1,12 +1,10 @@
 // frontend/src/Pages/Products/MerchandiseCategories.jsx
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useLayoutEffect } from 'react';
 import './MerchandiseCategories.css';
 import '../Home/Home.css';
-import AuthModal from '../../Components/AuthModal/AuthModal';
 import { useCreator } from '../../contexts/CreatorContext';
 import { readPendingMerchData } from '../../utils/merchSession';
 import { useNavigate } from 'react-router-dom';
-import { isShopperSignedIn } from '../../utils/shopperAuth';
 
 const MerchandiseCategories = ({ sidebar }) => {
   const { creatorSettings } = useCreator();
@@ -35,9 +33,6 @@ const MerchandiseCategories = ({ sidebar }) => {
   if (new URLSearchParams(location.search).has('debug')) {
     window.__DEBUG__ = true;
   }
-
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
 
   const pendingMerchData = readPendingMerchData() || {};
 
@@ -78,27 +73,7 @@ const MerchandiseCategories = ({ sidebar }) => {
 
   const handleCategoryClick = (category) => {
     if (window.__DEBUG__) console.log('🖱️ Category selected:', category);
-
-    if (!isShopperSignedIn()) {
-      if (window.__DEBUG__) console.log('🔒 Not authenticated, showing auth modal');
-      setSelectedCategory(category);
-      setShowAuthModal(true);
-      return;
-    }
-
     navigateToCategory(category);
-  };
-
-  const handleAuthSuccess = () => {
-    if (window.__DEBUG__) console.log('🔓 Auth success');
-    // Same path as an already-logged-in shopper — do not call legacy create-product
-    // (that endpoint is unused by the browse flow and was causing a false error alert).
-    if (selectedCategory) {
-      const category = selectedCategory;
-      setSelectedCategory(null);
-      setShowAuthModal(false);
-      navigateToCategory(category);
-    }
   };
 
   return (
@@ -160,15 +135,6 @@ const MerchandiseCategories = ({ sidebar }) => {
             ))}
           </div>
         </div>
-
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => {
-            setShowAuthModal(false);
-            setSelectedCategory(null);
-          }}
-          onSuccess={handleAuthSuccess}
-        />
       </div>
     </div>
   );

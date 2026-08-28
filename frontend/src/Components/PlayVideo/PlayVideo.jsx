@@ -6,8 +6,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
 import { API_CONFIG } from '../../config/apiConfig'
 import { isOptimizedPlaybackUrl, needsVideoOptimize, requestVideoOptimize, screenshotSourceUrl } from '../../utils/videoOptimize'
-import { UserService } from '../../utils/userService'
-import AuthModal from '../AuthModal/AuthModal'
 import { useCreator } from '../../contexts/CreatorContext'
 import { savePendingMerchData } from '../../utils/merchSession'
 
@@ -168,29 +166,6 @@ const PlayVideo = ({
     
     // Track if video has been played
     const [videoHasPlayed, setVideoHasPlayed] = useState(false);
-    
-    // Auth modal state
-    const [showAuthModal, setShowAuthModal] = useState(false);
-    
-    // Check authentication state on component mount
-    useEffect(() => {
-        const isAuthenticated = localStorage.getItem('user_authenticated');
-        const googleAuthenticated = localStorage.getItem('isAuthenticated');
-        const isLoggedIn = (isAuthenticated === 'true') || (googleAuthenticated === 'true');
-        
-        console.log('🔄 PlayVideo mounted - Auth check:', {
-            user_authenticated: isAuthenticated,
-            isAuthenticated: googleAuthenticated,
-            isLoggedIn: isLoggedIn,
-            allLocalStorage: Object.keys(localStorage).filter(key => key.includes('auth') || key.includes('user'))
-        });
-        
-        // If user is authenticated, close any open auth modal
-        if (isLoggedIn && showAuthModal) {
-            console.log('✅ User is authenticated, closing auth modal');
-            setShowAuthModal(false);
-        }
-    }, [showAuthModal]);
     
     // Ref to track if screenshot function has been passed to prevent loops
     const screenshotFunctionPassedRef = useRef(false);
@@ -596,80 +571,20 @@ const PlayVideo = ({
         }
     }, []);
 
-    // Make Merch handler
+    // Make Merch handler — guests can walk the product flow; login is asked at checkout.
     const handleMakeMerch = async () => {
-        // Check if user is authenticated (check both auth types)
-        const isAuthenticated = localStorage.getItem('user_authenticated');
-        const googleAuthenticated = localStorage.getItem('isAuthenticated');
-        const isLoggedIn = (isAuthenticated === 'true') || (googleAuthenticated === 'true');
-        
-        console.log('🛍️ Make Merch - Auth check after login:', {
-            user_authenticated: isAuthenticated,
-            isAuthenticated: googleAuthenticated,
-            isLoggedIn: isLoggedIn,
-            allLocalStorage: Object.keys(localStorage).filter(key => key.includes('auth') || key.includes('user'))
-        });
-        
-        console.log('🛍️ Make Merch - Auth check:', {
-            user_authenticated: isAuthenticated,
-            isAuthenticated: googleAuthenticated,
-            isLoggedIn: isLoggedIn
-        });
-        
-        if (!isLoggedIn) {
-            // Store screenshot data for after login (include timestamp for email/order)
-            const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : (screenshotTimestamps[0] ?? 0);
-            const merchData = {
-                thumbnail,
-                videoUrl: video?.video_url || window.location.href,
-                screenshots: screenshots.slice(0, 6),
-                screenshot_timestamp: screenshotTimestamps[0] ?? currentTime,
-                videoTitle: video?.title || 'Unknown Video',
-                creatorName: video?.channelTitle || 'Unknown Creator'
-            };
-            savePendingMerchData(merchData);
-            
-            // Show simple auth modal instead of redirecting to complex login page
-            setShowAuthModal(true);
-            return;
-        }
-        
-        // Check if user is a creator
-        const isCreator = await UserService.isCreator();
-        
-        if (isCreator) {
-            // Same category page as customers (pending screenshots already saved above when not logged in;
-            // ensure saved when logged-in creator path runs)
-            const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : (screenshotTimestamps[0] ?? 0);
-            const merchData = {
-                thumbnail,
-                videoUrl: video?.video_url || window.location.href,
-                screenshots: screenshots.slice(0, 6),
-                screenshot_timestamp: screenshotTimestamps[0] ?? currentTime,
-                videoTitle: video?.title || 'Unknown Video',
-                creatorName: video?.channelTitle || 'Unknown Creator'
-            };
-            savePendingMerchData(merchData);
-            const email = localStorage.getItem('user_email') || '';
-            const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
-            navigate(`/merchandise${qs}`);
-            return;
-        }
-        
-        // console.log('✅ Authenticated - proceeding with merch creation');
-        // User is authenticated but not creator, use regular flow
         const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : (screenshotTimestamps[0] ?? 0);
-        const merchData = {
+        savePendingMerchData({
             thumbnail,
             videoUrl: video?.video_url || window.location.href,
             screenshots: screenshots.slice(0, 6),
             screenshot_timestamp: screenshotTimestamps[0] ?? currentTime,
             videoTitle: video?.title || 'Unknown Video',
             creatorName: video?.channelTitle || 'Unknown Creator'
-        };
-        savePendingMerchData(merchData);
-        
-        await createMerchProduct();
+        });
+        const email = localStorage.getItem('user_email') || '';
+        const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
+        navigate(`/merchandise${qs}`);
     };
     
     // Inline crop tool functions
@@ -1046,66 +961,6 @@ const PlayVideo = ({
         setIsDragging(false);
         setIsResizing(false);
         setResizeDirection(null);
-    };
-
-    // Create merch product function
-    const createMerchProduct = async () => {
-        try {
-            // console.log('🎯 CreateMerchProduct function called');
-            // console.log('Make Merch clicked, sending request to:', API_CONFIG.ENDPOINTS.CREATE_PRODUCT);
-            
-            const requestData = {
-                thumbnail,
-                videoUrl: video?.video_url || window.location.href,
-                screenshots: screenshots.slice(0, 6),
-                screenshot_timestamp: screenshotTimestamps[0] || 0, // Use first screenshot timestamp
-                videoTitle: video?.title || 'Unknown Video',
-                creatorName: video?.channelTitle || 'Unknown Creator'
-            };
-            
-            // console.log('Request data:', requestData);
-            
-            const response = await fetch(API_CONFIG.ENDPOINTS.CREATE_PRODUCT, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(requestData)
-            });
-            
-            // console.log('Response status:', response.status);
-            // console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Server error response:', errorText);
-                throw new Error(`Server error: ${response.status} - ${errorText}`);
-            }
-            
-            const data = await response.json();
-            // console.log('Response data:', data);
-            
-            if (data.success) {
-                const email = localStorage.getItem('user_email') || '';
-                const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
-                navigate(`/merchandise${qs}`);
-            } else {
-                console.error('Failed to create product:', data);
-                alert(`Failed to create merch product page: ${data.error || 'Unknown error'}`);
-            }
-        } catch (err) {
-            console.error('Make Merch error:', err);
-            alert(`Error connecting to merch server: ${err.message}. Please check the console for more details.`);
-        }
-    };
-
-    // handleAuthSuccess function to be called by AuthModal
-    const handleAuthSuccess = () => {
-        setShowAuthModal(false);
-        const email = localStorage.getItem('user_email') || '';
-        const qs = email ? `?authenticated=true&email=${encodeURIComponent(email)}` : '';
-        navigate(`/merchandise${qs}`);
     };
 
     // Test video playback function
@@ -1722,13 +1577,6 @@ const PlayVideo = ({
                     {/* Publisher info area */}
                 </div>
             </div>
-            
-                         {/* Authentication Modal */}
-             <AuthModal 
-                 isOpen={showAuthModal}
-                 onClose={() => setShowAuthModal(false)}
-                 onSuccess={handleAuthSuccess}
-             />
         </div>
     )
 }

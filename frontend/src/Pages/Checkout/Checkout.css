@@ -10,6 +10,56 @@
   box-sizing: border-box;
 }
 
+.checkout-sample-stop {
+  max-width: 640px;
+  margin: 48px auto 0;
+  padding: 32px 28px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+  text-align: center;
+}
+
+.checkout-sample-stop-kicker {
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #667eea;
+}
+
+.checkout-sample-stop h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0 0 16px;
+  letter-spacing: -0.02em;
+}
+
+.checkout-sample-stop p {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.checkout-sample-stop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.checkout-sample-stop-actions .btn-primary,
+.checkout-sample-stop-actions .btn-outline {
+  padding: 8px 18px;
+  font-size: 0.95rem;
+  min-height: 0;
+  line-height: 1.2;
+}
+
 .checkout-header {
   text-align: center;
   margin-bottom: 48px;

@@ -107,9 +107,8 @@
   pointer-events: auto;
 }
 
-.tools-back-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
-  color: #000;
+.tools-back-btn-preview {
+  display: none;
 }
 
 html.tools-page-active,
@@ -783,6 +782,38 @@ body.tools-page-active .site-footer {
     top: 0 !important;
     margin: 0 0 8px -6px;
   }
+
+  .tools-page-container:has(.product-preview-image-row) > .tools-back-btn-page {
+    display: none !important;
+  }
+
+  .product-preview-image-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .product-preview-image-row .tools-back-btn-preview {
+    display: flex;
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    padding: 0;
+    font-size: 22px;
+    z-index: 5;
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  .product-preview-visual {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
   
   .tools-page-header {
     margin-left: 0 !important;
@@ -1074,6 +1105,27 @@ body.tools-page-active .site-footer {
 
   body.tools-page-active .product-preview-inner-card {
     padding: 10px 10px 8px !important;
+  }
+
+  body.tools-page-active .product-preview-image-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  body.tools-page-active .product-preview-image-row .tools-back-btn-preview {
+    display: flex;
+    position: static !important;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    padding: 0;
+  }
+
+  body.tools-page-active .product-preview-visual {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   /* Same stage as desktop: 200px cap, height:auto. Do not squash or

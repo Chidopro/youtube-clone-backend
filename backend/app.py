@@ -4706,6 +4706,41 @@ def _creator_id_from_request_subdomain():
 
 # /api/videos: only the videos blueprint (routes/videos.py) must handle this. Do not add @app.route("/api/videos") here or CORS from screenmerch.com will fail.
 
+SOFT_LAUNCH_DEMO_SUBDOMAIN = "maxfreedom"
+
+
+def _demo_storefront_user_id():
+    """Maxfreedom sample-storefront owner id, or None."""
+    client = supabase_admin if supabase_admin else supabase
+    if not client:
+        return None
+    try:
+        result = client.table("users").select("id").eq(
+            "subdomain", SOFT_LAUNCH_DEMO_SUBDOMAIN
+        ).limit(1).execute()
+        if result.data:
+            return result.data[0].get("id")
+    except Exception as e:
+        logger.warning("demo storefront user lookup: %s", e)
+    return None
+
+
+def _soft_launch_slot_payload(row, spot):
+    """Public card for one claimed seat: subdomain when set, otherwise display name."""
+    if not isinstance(row, dict):
+        row = {}
+    subdomain = (row.get("subdomain") or "").strip()
+    name = (row.get("display_name") or row.get("username") or "").strip()
+    label = subdomain or name or f"Store {spot}"
+    return {
+        "spot": spot,
+        "label": label,
+        "status": row.get("status") or "pending",
+        "name": name,
+        "subdomain": subdomain,
+    }
+
+
 def _is_staff_or_excluded_creator(row):
     """Staff/admin and platform test identities — not soft-launch public seats."""
     if row.get("is_admin"):
@@ -4776,20 +4811,30 @@ def soft_launch_spots():
         r = client.table("users").select(
             "id, username, display_name, subdomain, is_admin, admin_role, email, status, created_at"
         ).eq("role", "creator").in_("status", ["active", "pending"]).order("created_at", desc=False).limit(100).execute()
+        eligible = [row for row in (r.data or []) if not _is_staff_or_excluded_creator(row)]
+        demo_row = next(
+            (
+                row for row in eligible
+                if (row.get("subdomain") or "").strip().lower() == SOFT_LAUNCH_DEMO_SUBDOMAIN
+            ),
+            None,
+        )
+        rest = [row for row in eligible if row is not demo_row]
+        if demo_row is None:
+            ordered = [{
+                "display_name": SOFT_LAUNCH_DEMO_SUBDOMAIN,
+                "username": SOFT_LAUNCH_DEMO_SUBDOMAIN,
+                "subdomain": SOFT_LAUNCH_DEMO_SUBDOMAIN,
+                "status": "active",
+            }] + rest
+        else:
+            ordered = [demo_row] + rest
         taken_slots = []
-        for row in (r.data or []):
-            if _is_staff_or_excluded_creator(row):
-                continue
+        for row in ordered:
             spot = len(taken_slots) + 1
             if spot > TOTAL:
                 break
-            taken_slots.append({
-                "spot": spot,
-                "label": f"Store {spot}",
-                "status": row.get("status") or "pending",
-                "name": (row.get("display_name") or row.get("username") or "").strip(),
-                "subdomain": (row.get("subdomain") or "").strip(),
-            })
+            taken_slots.append(_soft_launch_slot_payload(row, spot))
         claimed = len(taken_slots)
         available = max(0, TOTAL - claimed)
         return jsonify({
@@ -10719,18 +10764,38 @@ def _save_umbrella_owner_fee(storefront_owner_id, favorite_list_id, fee_type, fe
 
 
 @app.route("/api/favorite-lists/sales-summary", methods=["GET", "OPTIONS"])
+@app.route("/api/demo/sales-summary", methods=["GET", "OPTIONS"])
 def favorite_lists_sales_summary():
     if request.method == "OPTIONS":
         return jsonify(success=True)
     try:
-        user_id, err = _validate_x_user_id_session()
-        if err is not None:
-            return err[0], err[1]
+        is_demo = "/demo/sales-summary" in (request.path or "")
+        if is_demo:
+            user_id = _demo_storefront_user_id()
+            if not user_id:
+                return jsonify({
+                    "success": True,
+                    "by_list": [],
+                    "owner_pages": [],
+                    "owner_recent_sales": [],
+                    "collaborator_owed_total": 0,
+                    "storefront_owner_summary": None,
+                    "screenmerch_payouts": [],
+                    "screenmerch_paid_total": 0,
+                    "screenmerch_pending_amount": 0,
+                    "next_payout_date": "",
+                    "payout_note": "",
+                }), 200
+        else:
+            user_id, err = _validate_x_user_id_session()
+            if err is not None:
+                return err[0], err[1]
         if not supabase_admin:
             return jsonify({"success": False, "error": "Server not configured"}), 503
-        me = _cf_user_row(user_id)
-        if not me or me.get("role") != "creator":
-            return jsonify({"success": False, "error": "Only creators can view sales summary"}), 403
+        if not is_demo:
+            me = _cf_user_row(user_id)
+            if not me or me.get("role") != "creator":
+                return jsonify({"success": False, "error": "Only creators can view sales summary"}), 403
         by_list = {}
         # Use sales (same source as Platform Revenue + admin test reset), not orders.
         try:
@@ -12464,6 +12529,137 @@ def auth_signup_creator_email_only():
 # Email-only signup is handled by auth blueprint: routes/auth.py auth_signup_email_only
 
 # Verify-email is handled by auth blueprint: routes/auth.py auth_verify_email
+
+@app.route("/api/demo/analytics", methods=["GET", "OPTIONS"])
+def demo_storefront_analytics():
+    """Read-only Maxfreedom sample-storefront sales for the public tour dashboard."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    empty = {
+        "total_sales": 0,
+        "total_revenue": 0,
+        "avg_order_value": 0,
+        "products_sold_count": 0,
+        "videos_with_sales_count": 0,
+        "sales_data": [0] * 30,
+        "products_sold": [],
+        "videos_with_sales": [],
+        "recent_sales": [],
+        "daily_sales": [],
+        "payout_summary": {},
+        "demo": True,
+    }
+    try:
+        user_id = _demo_storefront_user_id()
+        if not user_id:
+            return jsonify(empty)
+        with app.test_request_context(f"/api/analytics?user_id={user_id}"):
+            return get_analytics()
+    except Exception as e:
+        logger.error(f"Demo analytics error: {e}")
+        return jsonify({"error": "Failed to load demo analytics"}), 500
+
+
+@app.route("/api/demo/umbrella", methods=["GET", "OPTIONS"])
+def demo_storefront_umbrella():
+    """Read-only Maxfreedom umbrella members and pending invites for the public tour."""
+    if request.method == "OPTIONS":
+        return jsonify(success=True)
+    empty = {
+        "success": True,
+        "members": [],
+        "pending": [],
+        "email_pending": [],
+        "subdomain": SOFT_LAUNCH_DEMO_SUBDOMAIN,
+    }
+    try:
+        user_id = _demo_storefront_user_id()
+        if not user_id or not supabase_admin:
+            return jsonify(empty)
+        r = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", user_id)
+            .in_("status", ["approved", "paused"])
+            .execute()
+        )
+        members = _cf_attach_user_summaries(r.data or [], "friend_id")
+        page_by_owner = {}
+        try:
+            lr = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("owner_user_id, display_name, slug")
+                .eq("storefront_owner_id", user_id)
+                .execute()
+            )
+            for L in lr.data or []:
+                oid = str(L.get("owner_user_id") or "")
+                if oid and oid not in page_by_owner:
+                    page_by_owner[oid] = L
+        except Exception:
+            pass
+        for row in members:
+            fid = str(row.get("friend_id") or "")
+            u = row.get("user") or {}
+            fallback = _umbrella_collaborator_label(u) or "Collaborator"
+            L = page_by_owner.get(fid)
+            if L:
+                page = _fl_list_page_nickname(L.get("display_name"), fallback) or fallback
+            else:
+                page = fallback
+            row["page_name"] = (page or "Collaborator")[:120]
+            if isinstance(row.get("user"), dict):
+                row["user"] = {
+                    "id": row["user"].get("id"),
+                    "display_name": row["user"].get("display_name"),
+                    "username": row["user"].get("username"),
+                    "email": row["user"].get("email"),
+                }
+        members.sort(
+            key=lambda row: (
+                0 if row.get("status") == "approved" else 1,
+                row.get("created_at") or "",
+            )
+        )
+        pending_r = (
+            supabase_admin.table("channel_friends")
+            .select("*")
+            .eq("channel_owner_id", user_id)
+            .eq("invited_by", "creator")
+            .eq("status", "pending")
+            .execute()
+        )
+        pending = _cf_attach_user_summaries(pending_r.data or [], "friend_id")
+        email_pending = []
+        try:
+            er = (
+                supabase_admin.table("umbrella_email_invites")
+                .select("id, invited_email, created_at, expires_at")
+                .eq("channel_owner_id", user_id)
+                .eq("status", "pending")
+                .execute()
+            )
+            for inv in er.data or []:
+                email_pending.append({
+                    "id": inv.get("id"),
+                    "invited_email": inv.get("invited_email"),
+                    "created_at": inv.get("created_at"),
+                    "expires_at": inv.get("expires_at"),
+                    "invite_url": "",
+                })
+        except Exception:
+            pass
+        return jsonify({
+            "success": True,
+            "members": members,
+            "pending": pending,
+            "email_pending": email_pending,
+            "subdomain": SOFT_LAUNCH_DEMO_SUBDOMAIN,
+        }), 200
+    except Exception as e:
+        logger.error(f"Demo umbrella error: {e}")
+        return jsonify({"success": False, "error": "Failed to load demo umbrella"}), 500
+
 
 @app.route("/api/analytics", methods=["GET", "OPTIONS"])
 @cross_origin(origins=["https://screenmerch.com", "https://www.screenmerch.com"], supports_credentials=True)

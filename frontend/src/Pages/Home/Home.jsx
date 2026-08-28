@@ -3,9 +3,11 @@ import Feed from "../../Components/Feed/Feed";
 import CreatorDirectory, { SCREENMERCH_INTRO_TITLE } from "../../Components/Feed/CreatorDirectory";
 import { supabase } from '../../supabaseClient';
 import './Home.css'
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService';
+import { isDemoStorefront } from '../../utils/demoStorefront';
+import DemoStorefrontWelcome from '../../Components/DemoStorefrontBanner/DemoStorefrontBanner';
 import { fetchPublicFavoriteLists, fetchPublicFavoritesByList, favoriteImageUrl, peekPublicFavoriteLists, storefrontHubPreviews, publicStorageCardUrl } from '../../utils/favoriteListsApi';
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
 import { apiJoin } from '../../config/apiConfig';
@@ -22,8 +24,25 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
   const [shopPreview, setShopPreview] = useState([]);
   const [hubsLoading, setHubsLoading] = useState(() => isCreatorStorefrontHostname());
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showDemoWelcome, setShowDemoWelcome] = useState(false);
   const { creatorSettings, currentCreator, refreshCreator, loading: creatorLoading } = useCreator();
   const isMainSite = !isCreatorStorefrontHostname();
+
+  useEffect(() => {
+    if (!isDemoStorefront()) return;
+    if (searchParams.get('from') === 'hub') {
+      setShowDemoWelcome(true);
+    }
+  }, [searchParams]);
+
+  const dismissDemoWelcome = () => {
+    setShowDemoWelcome(false);
+    if (searchParams.get('from') !== 'hub') return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('from');
+    setSearchParams(next, { replace: true });
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -382,7 +401,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           <div style={{padding: 24}}>Loading...</div>
         )}
         {error && <div style={{padding: 24, color: 'red'}}>{error}</div>}
-        {!loading && !error && isMainSite && (
+        {!loading && isMainSite && (
           <CreatorDirectory
             introVideo={introVideo}
             onIntroUpdated={(next) => {
@@ -446,6 +465,7 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
           </>
         )}
       </div>
+      <DemoStorefrontWelcome isOpen={showDemoWelcome} onClose={dismissDemoWelcome} />
     </>
   );
 };

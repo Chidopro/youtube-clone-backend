@@ -5,6 +5,7 @@ import { API_CONFIG, apiJoin } from '../../config/apiConfig';
 import { emitCartUpdated, setToolsFocusCartIndex, writeCartItems, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
+import { isDemoStorefront } from '../../utils/demoStorefront';
 import {
   US_STATE_OPTIONS,
   CA_PROVINCE_OPTIONS,
@@ -18,7 +19,7 @@ const Checkout = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [signedIn, setSignedIn] = useState(() => isShopperSignedIn());
-  const [showAuthModal, setShowAuthModal] = useState(() => !isShopperSignedIn());
+  const [showAuthModal, setShowAuthModal] = useState(() => !isDemoStorefront() && !isShopperSignedIn());
   const [items, setItems] = useState([]);
   const [subtotal, setSubtotal] = useState(0);
   const [shipping, setShipping] = useState({ cost: 0, method: 'Standard Shipping', loading: false, error: '', calculated: false });
@@ -314,6 +315,7 @@ const Checkout = () => {
 
   /** Run actual checkout (build payload, POST, redirect). Call after design modal "Continue to Checkout". */
   const runCheckout = useCallback(async (cartOverride = null) => {
+    if (isDemoStorefront()) return;
     if (!isShopperSignedIn()) {
       setShowAuthModal(true);
       return;
@@ -491,6 +493,29 @@ const Checkout = () => {
 
   return (
     <div className="checkout-container">
+      {isDemoStorefront() ? (
+        <div className="checkout-sample-stop" role="status">
+          <p className="checkout-sample-stop-kicker">Sample storefront</p>
+          <h1>These items are not for sale</h1>
+          <p>
+            Browse products and image tools page. Check out video snapshot tool, click Sign In to
+            view dashboard tools.
+          </p>
+          <div className="checkout-sample-stop-actions">
+            <button type="button" className="btn-primary" onClick={() => navigate('/')}>
+              Main
+            </button>
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => navigate('/subscription-tiers', { state: { intent: 'creator' } })}
+            >
+              Claim a storefront
+            </button>
+          </div>
+        </div>
+      ) : (
+      <>
       <AuthModal
         isOpen={showAuthModal}
         promptText="To view your cart and complete a purchase, please log in or create an account."
@@ -1039,6 +1064,8 @@ const Checkout = () => {
         document.body
       )}
 
+      </>
+      )}
       </>
       )}
     </div>

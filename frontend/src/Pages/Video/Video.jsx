@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import PlayVideo, { ScreenmerchImages } from "../../Components/PlayVideo/PlayVideo";
 import Recommended from "../../Components/Recommended/Recommended";
-import AuthModal from "../../Components/AuthModal/AuthModal";
 import './Video.css'
 import { useParams, useNavigate } from "react-router-dom";
 import { useCreator } from '../../contexts/CreatorContext';
@@ -18,7 +17,6 @@ const Video = ({ sidebar }) => {
   const [screenshotTimestamps, setScreenshotTimestamps] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [videoData, setVideoData] = useState(null);
   const videoRef = useRef(null);
   const captureScreenshotRef = useRef(null);
@@ -241,10 +239,6 @@ const Video = ({ sidebar }) => {
   };
 
   const handleMakeMerch = async () => {
-    const isAuthenticated = localStorage.getItem('user_authenticated');
-    const googleAuthenticated = localStorage.getItem('isAuthenticated');
-    const isLoggedIn = (isAuthenticated === 'true') || (googleAuthenticated === 'true');
-
     // Persist screenshots first so category page can use them
     try {
       const currentTime = videoRef.current ? videoRef.current.currentTime || 0 : 0;
@@ -263,17 +257,7 @@ const Video = ({ sidebar }) => {
       console.warn('Failed saving pending_merch_data:', e);
     }
 
-    if (!isLoggedIn) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    // Always go to category page (do not wait on create-product — large screenshots can hang)
-    goToMerchandiseCategories();
-  };
-
-  // After login from Make Merch modal — go straight to categories
-  const createMerchProduct = async () => {
+    // Login is asked at checkout, not here — guests can walk the product flow.
     goToMerchandiseCategories();
   };
 
@@ -416,13 +400,6 @@ const Video = ({ sidebar }) => {
           )}
         </div>
        </div>
-
-       {/* Authentication Modal */}
-       <AuthModal 
-         isOpen={showAuthModal}
-         onClose={() => setShowAuthModal(false)}
-         onSuccess={createMerchProduct}
-       />
      </div>
    );
  };

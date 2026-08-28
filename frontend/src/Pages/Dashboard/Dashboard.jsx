@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link, Navigate } from 'react-router-dom';
 import './Dashboard.css';
 import { supabase } from '../../supabaseClient';
 import { SubscriptionService } from '../../utils/subscriptionService';
@@ -9,10 +9,13 @@ import { fetchMyProfileFromBackend, claimSessionTokenIfNeeded } from '../../util
 import { getBackendUrl, apiJoin } from '../../config/apiConfig';
 import { requestVideoOptimize } from '../../utils/videoOptimize';
 import { savePendingMerchData } from '../../utils/merchSession';
-import { favoriteListsJson, linkOwnerExtraPagesToStorefront } from '../../utils/favoriteListsApi';
+import { favoriteListsJson, fetchFavoritesForList, fetchPublicFavoriteLists, linkOwnerExtraPagesToStorefront } from '../../utils/favoriteListsApi';
 import PersonalizationSettings from '../../Components/PersonalizationSettings/PersonalizationSettings.jsx';
 import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.jsx';
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
+import { useCreator } from '../../contexts/CreatorContext';
+import { DEMO_DASHBOARD_PATH, DEMO_STOREFRONT_SUBDOMAIN, isDemoPreviewSession, isDemoStorefront, isDemoStorefrontVisitor } from '../../utils/demoStorefront';
+import '../DemoDashboard/DemoDashboard.css';
 // Force Netlify rebuild
 
 /** Auto-generated umbrella list titles should not prefill the nickname field. */
@@ -75,6 +78,7 @@ function CollaboratorFeeForm({
     onSave,
     saving,
     message,
+    readOnly = false,
 }) {
     const perItem = ownerFeePerItem(feeType, feeValue);
     const collabKeeps = Math.max(0, COLLAB_SHARE_PER_ITEM - perItem);
@@ -92,6 +96,7 @@ function CollaboratorFeeForm({
                         name={radioName}
                         checked={feeType === 'none'}
                         onChange={() => onTypeChange('none')}
+                        disabled={readOnly}
                     />
                     No extra fee
                 </label>
@@ -101,6 +106,7 @@ function CollaboratorFeeForm({
                         name={radioName}
                         checked={feeType === 'percent'}
                         onChange={() => onTypeChange('percent')}
+                        disabled={readOnly}
                     />
                     Percentage
                 </label>
@@ -110,6 +116,7 @@ function CollaboratorFeeForm({
                         name={radioName}
                         checked={feeType === 'flat'}
                         onChange={() => onTypeChange('flat')}
+                        disabled={readOnly}
                     />
                     Flat rate / item
                 </label>
@@ -125,11 +132,12 @@ function CollaboratorFeeForm({
                         value={feeValue}
                         onChange={(e) => onValueChange(e.target.value)}
                         required
+                        disabled={readOnly}
                     />
                 </label>
             ) : null}
             <p className="owner-fee-preview">{preview}</p>
-            <button type="submit" className="btn-save-owner-fee" disabled={saving}>
+            <button type="submit" className="btn-save-owner-fee" disabled={saving || readOnly}>
                 {saving ? 'Saving…' : 'Save rate'}
             </button>
             {message ? (
@@ -148,6 +156,25 @@ function cleanFavoritePageNickname(raw) {
         .replace(/\s*Umbrella\s*Page\s*$/i, '')
         .replace(/\s*Favorites\s*$/i, '')
         .trim();
+}
+
+function withCollaboratorPageFlags(lists, storefrontOwnerId) {
+    return (lists || []).map((L) => {
+        const isCollab = !!(
+            L.is_collaborator_page
+            || (
+                L.storefront_owner_id
+                && L.owner_user_id
+                && String(L.storefront_owner_id) !== String(L.owner_user_id)
+            )
+            || (
+                storefrontOwnerId
+                && L.owner_user_id
+                && String(L.owner_user_id) !== String(storefrontOwnerId)
+            )
+        );
+        return { ...L, is_collaborator_page: isCollab };
+    });
 }
 
 function favoritePageSelectLabel(page) {
@@ -176,15 +203,17 @@ function favoritePageNameTaken(pages, name, { ignoreListId } = {}) {
     });
 }
 
-const Dashboard = ({ sidebar }) => {
+const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
+    const demoPreview = demoPreviewFromRoute || isDemoPreviewSession();
     const [user, setUser] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
     const [subscription, setSubscription] = useState(null);
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchParams] = useSearchParams();
-    const [activeTab, setActiveTab] = useState('favorites');
+    const [activeTab, setActiveTab] = useState(demoPreviewFromRoute ? 'analytics' : 'favorites');
     const [umbrellaOnly, setUmbrellaOnly] = useState(false);
+    const { currentCreator, loading: creatorLoading } = useCreator();
 
     // Open tab when URL has ?tab= (e.g. from navbar logo edit or FrameSnag "Add to Favorites")
     useEffect(() => {
@@ -207,7 +236,7 @@ const Dashboard = ({ sidebar }) => {
     }, [searchParams]);
 
     useEffect(() => {
-        if (!user?.id || userProfile?.role !== 'creator') {
+        if (demoPreview || !user?.id || userProfile?.role !== 'creator') {
             setUmbrellaOnly(false);
             return;
         }
@@ -242,7 +271,7 @@ const Dashboard = ({ sidebar }) => {
 
     // Paste-from-FrameSnag: storefront owners only (umbrella collaborators upload manually)
     useEffect(() => {
-        if (activeTab !== 'favorites' || umbrellaOnly) return;
+        if (activeTab !== 'favorites' || umbrellaOnly || demoPreview) return;
         const handlePaste = (e) => {
             const items = e.clipboardData?.items;
             if (!items) return;
@@ -268,7 +297,7 @@ const Dashboard = ({ sidebar }) => {
         };
         document.addEventListener('paste', handlePaste);
         return () => document.removeEventListener('paste', handlePaste);
-    }, [activeTab, umbrellaOnly]);
+    }, [activeTab, umbrellaOnly, demoPreview]);
 
     const [currentUser, setCurrentUser] = useState(null);
     const [payoutData, setPayoutData] = useState({
@@ -351,6 +380,7 @@ const Dashboard = ({ sidebar }) => {
 
 
     useEffect(() => {
+        if (demoPreview) return undefined;
         const fetchUserData = async () => {
             try {
                 // Check for authenticated user (email login or OAuth)
@@ -476,10 +506,59 @@ const Dashboard = ({ sidebar }) => {
             }
         };
         fetchUserData();
-    }, [navigate]);
+    }, [navigate, demoPreview]);
+
+    useEffect(() => {
+        if (!demoPreview) return undefined;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch(`${getBackendUrl()}/api/subdomain/${encodeURIComponent(DEMO_STOREFRONT_SUBDOMAIN)}`);
+                const data = await res.json().catch(() => ({}));
+                const creator = data?.creator;
+                if (cancelled || !creator?.id) {
+                    if (!cancelled) setLoading(false);
+                    return;
+                }
+                const previewUser = {
+                    id: creator.id,
+                    display_name: creator.display_name || DEMO_STOREFRONT_SUBDOMAIN,
+                    role: 'creator',
+                    subdomain: creator.subdomain || DEMO_STOREFRONT_SUBDOMAIN,
+                };
+                setUser(previewUser);
+                setUserProfile(previewUser);
+            } catch (err) {
+                console.error('Demo dashboard creator load failed:', err);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [demoPreview]);
 
     const reloadFavoritesForList = async (userId, listId, pages = favoritePages) => {
-        if (!userId || !listId) {
+        if (!listId) {
+            setFavorites([]);
+            return;
+        }
+        if (demoPreview) {
+            const page = pages.find((p) => p.id === listId);
+            if (!page) {
+                setFavorites([]);
+                return;
+            }
+            const favs = await fetchFavoritesForList(
+                DEMO_STOREFRONT_SUBDOMAIN,
+                page,
+                page.owner_user_id || userId
+            );
+            setFavorites(favs || []);
+            return;
+        }
+        if (!userId) {
             setFavorites([]);
             return;
         }
@@ -536,13 +615,58 @@ const Dashboard = ({ sidebar }) => {
     }, [pageVideosUserId, user?.id]);
 
     useEffect(() => {
+        if (!demoPreview || !user?.id) return undefined;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch(
+                    `${apiJoin('/api/videos')}?user_id=${encodeURIComponent(user.id)}&limit=100`
+                );
+                const data = res.ok ? await res.json().catch(() => []) : [];
+                if (!cancelled) setVideos(Array.isArray(data) ? data : []);
+            } catch (_) {
+                if (!cancelled) setVideos([]);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [demoPreview, user?.id]);
+
+    useEffect(() => {
         selectedFavoriteListIdRef.current = selectedFavoriteListId;
     }, [selectedFavoriteListId]);
 
     useEffect(() => {
-        if (activeTab !== 'favorites' || !user?.id || userProfile?.role !== 'creator') return;
+        if (!user?.id || userProfile?.role !== 'creator') return;
+        if (!demoPreview && activeTab !== 'favorites') return;
         let cancelled = false;
         (async () => {
+            if (demoPreview) {
+                const { ok, data } = await fetchPublicFavoriteLists(DEMO_STOREFRONT_SUBDOMAIN);
+                if (cancelled) return;
+                const lists = withCollaboratorPageFlags(data?.lists || [], user.id);
+                if (ok && lists.length) {
+                    setFavoritePages(lists);
+                    const primary = lists.find((l) => l.is_primary)
+                        || lists.find((l) => !l.is_collaborator_page)
+                        || lists[0];
+                    const prev = selectedFavoriteListIdRef.current;
+                    const nextId =
+                        prev && lists.some((l) => l.id === prev)
+                            ? prev
+                            : primary?.id || null;
+                    setSelectedFavoriteListId(nextId);
+                    if (nextId) {
+                        const page = lists.find((l) => l.id === nextId);
+                        await reloadFavoritesForList(page?.owner_user_id || user.id, nextId, lists);
+                    }
+                } else {
+                    setFavoritePages([]);
+                    setFavorites([]);
+                }
+                return;
+            }
             const { ok, data } = await favoriteListsJson('/api/favorite-lists/mine');
             if (cancelled) return;
             if (data?.is_umbrella_only) {
@@ -593,7 +717,7 @@ const Dashboard = ({ sidebar }) => {
             }
         })();
         return () => { cancelled = true; };
-    }, [activeTab, user?.id, userProfile?.role]);
+    }, [activeTab, user?.id, userProfile?.role, demoPreview]);
 
     const handleFavoriteListChange = (listId) => {
         if (!user?.id || !listId) return;
@@ -605,6 +729,7 @@ const Dashboard = ({ sidebar }) => {
     };
 
     const handleSaveUmbrellaPageName = async () => {
+        if (demoPreview) return;
         const name = umbrellaPageName.trim();
         const selectedList = favoritePages.find((l) => String(l.id) === String(selectedFavoriteListId));
         const collabList = selectedList?.is_collaborator_page
@@ -643,6 +768,7 @@ const Dashboard = ({ sidebar }) => {
     };
 
     const handleCreateFavoritePage = async () => {
+        if (demoPreview) return;
         const name = newPageName.trim();
         if (!name) {
             alert('Enter a display name for the new page.');
@@ -687,6 +813,7 @@ const Dashboard = ({ sidebar }) => {
     };
 
     const handleMoveFavoriteToList = async (favorite, targetListId) => {
+        if (demoPreview) return;
         if (!user?.id || !targetListId) return;
         const cur = favorite.list_id != null ? String(favorite.list_id) : '';
         if (cur === String(targetListId)) return;
@@ -716,6 +843,7 @@ const Dashboard = ({ sidebar }) => {
     };
 
     const handleDeleteFavoritePage = async () => {
+        if (demoPreview) return;
         const row = favoritePages.find((l) => l.id === selectedFavoriteListId);
         if (!row || row.is_primary) return;
         const n = favorites.length;
@@ -781,8 +909,8 @@ const Dashboard = ({ sidebar }) => {
 
 
     const handleDeleteVideo = async (videoId, videoTitle, event) => {
-        // Prevent the card click event from triggering
         event.stopPropagation();
+        if (demoPreview) return;
         
         // Show confirmation dialog
         const isConfirmed = window.confirm(`Are you sure you want to delete "${videoTitle}"? This action cannot be undone.`);
@@ -815,6 +943,7 @@ const Dashboard = ({ sidebar }) => {
     };
 
     const openFavoriteUploadModal = () => {
+        if (demoPreview) return;
         setEditingFavorite(null);
         setThumbnailTargetVideoId('');
         setNewFavorite({ title: '', description: '', image: null, imagePreview: null });
@@ -856,6 +985,7 @@ const Dashboard = ({ sidebar }) => {
 
     const handleEditFavorite = (favorite, event) => {
         event.stopPropagation();
+        if (demoPreview) return;
         setEditingFavorite(favorite);
         setThumbnailTargetVideoId('');
         setNewFavorite({
@@ -1183,6 +1313,7 @@ const Dashboard = ({ sidebar }) => {
     };
 
     const handleDeleteFavorite = async (favoriteId, favoriteTitle) => {
+        if (demoPreview) return;
         const isConfirmed = window.confirm(`Are you sure you want to delete "${favoriteTitle}"? This action cannot be undone.`);
         
         if (!isConfirmed) {
@@ -1211,6 +1342,7 @@ const Dashboard = ({ sidebar }) => {
 
     const handleEditVideo = (video, event) => {
         event.stopPropagation();
+        if (demoPreview) return;
         setEditingVideo(video);
         setEditVideoForm({
             title: video.title || '',
@@ -1446,9 +1578,17 @@ const Dashboard = ({ sidebar }) => {
                 }
                 data = payload;
             } else {
-                const BACKEND_URL =
-                    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL) ||
-                    'https://screenmerch.fly.dev';
+                const BACKEND_URL = getBackendUrl();
+                if (demoPreview) {
+                    const response = await fetch(`${BACKEND_URL}/api/demo/analytics`, {
+                        method: 'GET',
+                        headers: { Accept: 'application/json' },
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Analytics API error: ${response.status}`);
+                    }
+                    data = await response.json();
+                } else {
                 const email = (user?.email || userProfile?.email || '').trim().toLowerCase();
                 const headers = {
                     Accept: 'application/json',
@@ -1470,6 +1610,7 @@ const Dashboard = ({ sidebar }) => {
                 }
 
                 data = await response.json();
+                }
             }
 
             console.log('📊 Analytics data received:', data);
@@ -1504,7 +1645,20 @@ const Dashboard = ({ sidebar }) => {
 
             if (!umbrellaOnly) {
                 try {
-                    const { ok: sumOk, data: sumData } = await favoriteListsJson('/api/favorite-lists/sales-summary');
+                    let sumOk = false;
+                    let sumData = {};
+                    if (demoPreview) {
+                        const sumRes = await fetch(`${getBackendUrl()}/api/demo/sales-summary`, {
+                            method: 'GET',
+                            headers: { Accept: 'application/json' },
+                        });
+                        sumData = await sumRes.json().catch(() => ({}));
+                        sumOk = sumRes.ok && sumData?.success !== false;
+                    } else {
+                        const sum = await favoriteListsJson('/api/favorite-lists/sales-summary');
+                        sumOk = sum.ok;
+                        sumData = sum.data;
+                    }
                     if (sumOk) {
                         const collabRows = (sumData?.by_list || []).filter((r) => r.is_collaborator_page);
                         setCollaboratorPayoutRows(collabRows);
@@ -1650,12 +1804,20 @@ const Dashboard = ({ sidebar }) => {
         if (activeTab === 'analytics' && user?.id) {
             fetchAnalytics();
         }
-    }, [activeTab, umbrellaOnly, user?.id, isMasterAdmin]);
+    }, [activeTab, umbrellaOnly, user?.id, isMasterAdmin, demoPreview]);
 
 
+
+    if (!demoPreview && isDemoStorefront() && creatorLoading) {
+        return <div className="dashboard-loading">Loading your dashboard...</div>;
+    }
+
+    if (!demoPreview && isDemoStorefrontVisitor(currentCreator?.id)) {
+        return <Navigate to={DEMO_DASHBOARD_PATH} replace />;
+    }
 
     // Check if user has proper role or needs to be created/updated
-    if (currentUser && (!currentUser.role || currentUser.role !== 'creator')) {
+    if (!demoPreview && currentUser && (!currentUser.role || currentUser.role !== 'creator')) {
         console.log('User role issue:', currentUser.role, 'User:', currentUser);
         return <div className="dashboard-error">
             Access denied. Only creators can view this page.
@@ -1755,6 +1917,9 @@ const Dashboard = ({ sidebar }) => {
     }
 
     if (!user) {
+        if (demoPreview) {
+            return <div className="dashboard-loading">Loading your dashboard...</div>;
+        }
         return <div className="dashboard-error">Please log in to see your dashboard.</div>;
     }
 
@@ -2012,11 +2177,12 @@ const Dashboard = ({ sidebar }) => {
                                         value={newPageName}
                                         onChange={(e) => setNewPageName(e.target.value)}
                                         className="favorite-pages-input favorite-pages-input--name favorite-pages-ctrl"
+                                        disabled={demoPreview}
                                     />
                                     <button
                                         type="button"
                                         className="save-btn"
-                                        disabled={savingFavoritePage || !newPageName.trim()}
+                                        disabled={demoPreview || savingFavoritePage || !newPageName.trim()}
                                         onClick={handleCreateFavoritePage}
                                     >
                                         {savingFavoritePage ? '…' : 'Create page'}
@@ -2025,6 +2191,7 @@ const Dashboard = ({ sidebar }) => {
                                         type="button"
                                         className="add-favorite-btn favorites-upload-btn favorite-pages-ctrl"
                                         onClick={openFavoriteUploadModal}
+                                        disabled={demoPreview}
                                     >
                                         Image Upload
                                     </button>
@@ -2032,6 +2199,7 @@ const Dashboard = ({ sidebar }) => {
                                         type="button"
                                         className="add-favorite-btn favorites-upload-btn favorite-pages-ctrl"
                                         onClick={() => navigate('/upload')}
+                                        disabled={demoPreview}
                                     >
                                         Video Upload
                                     </button>
@@ -2040,7 +2208,7 @@ const Dashboard = ({ sidebar }) => {
                                         <button
                                             type="button"
                                             className="cancel-btn favorite-page-delete"
-                                            disabled={savingFavoritePage}
+                                            disabled={demoPreview || savingFavoritePage}
                                             onClick={handleDeleteFavoritePage}
                                         >
                                             Delete page
@@ -2104,7 +2272,7 @@ const Dashboard = ({ sidebar }) => {
                                                         id={`fav-list-${favorite.id}`}
                                                         className="favorite-card-list-select"
                                                         value={String(favorite.list_id || selectedFavoriteListId || favoritePages[0]?.id || '')}
-                                                        disabled={movingFavoriteId === favorite.id || savingFavoritePage}
+                                                        disabled={demoPreview || movingFavoriteId === favorite.id || savingFavoritePage}
                                                         onChange={(e) => {
                                                             const v = e.target.value;
                                                             handleMoveFavoriteToList(favorite, v);
@@ -2131,6 +2299,7 @@ const Dashboard = ({ sidebar }) => {
                                                 className="edit-video-btn"
                                                 onClick={(e) => handleEditFavorite(favorite, e)}
                                                 title="Edit Image"
+                                                disabled={demoPreview}
                                             >
                                                 ✏️
                                             </button>
@@ -2141,6 +2310,7 @@ const Dashboard = ({ sidebar }) => {
                                                     handleDeleteFavorite(favorite.id, favorite.title);
                                                 }}
                                                 title="Delete Favorite"
+                                                disabled={demoPreview}
                                             >
                                                 🗑️
                                             </button>
@@ -2157,7 +2327,7 @@ const Dashboard = ({ sidebar }) => {
                             {pageVideos.length > 0 ? (
                                 <div className="page-media-scroller">
                                     {pageVideos.map((video) => {
-                                        const canManage = String(video.user_id || '') === String(user?.id || '');
+                                        const canManage = !demoPreview && String(video.user_id || '') === String(user?.id || '');
                                         return (
                                             <div
                                                 key={video.id}
@@ -2569,12 +2739,21 @@ const Dashboard = ({ sidebar }) => {
                                                             ownerEarningsSummary?.owner_page_payout
                                                             ?? ownerPayoutRows.reduce((sum, row) => sum + Number(row.pay_owner_amount ?? 0), 0)
                                                         );
+                                                        const umbrellaPayout = screenmerchPaidTotal > 0
+                                                            ? Math.max(0, Number(screenmerchPaidTotal) - ownerPayout)
+                                                            : collaboratorPayoutRows.reduce(
+                                                                (sum, row) => sum + Number(row.pay_collaborator_amount ?? 0),
+                                                                0
+                                                            );
                                                         return (
                                                             <li>
                                                                 <div className="collab-payout-row-main">
                                                                     <strong>Storefront owner payout</strong>
                                                                     <span>
                                                                         {ownerItems} {ownerItems === 1 ? 'item' : 'items'} · Your payout ${ownerPayout.toFixed(2)}
+                                                                        {umbrellaPayout > 0
+                                                                            ? ` Umbrella Payout $${umbrellaPayout.toFixed(2)}`
+                                                                            : ''}
                                                                     </span>
                                                                 </div>
                                                             </li>
@@ -2694,6 +2873,7 @@ const Dashboard = ({ sidebar }) => {
                                                                                 type="button"
                                                                                 className="btn-record-collab-payout"
                                                                                 onClick={() => openAnalyticsPayoutModal(row)}
+                                                                                disabled={demoPreview}
                                                                             >
                                                                                 Record payment
                                                                             </button>
@@ -2722,6 +2902,7 @@ const Dashboard = ({ sidebar }) => {
                                                                     onSave={(e) => saveCollabFee(e, row)}
                                                                     saving={savingCollabFeeId === listId}
                                                                     message={collabFeeMessages[listId] || ''}
+                                                                    readOnly={demoPreview}
                                                                 />
                                                                 {(row.recent_sales || []).length > 0 ? (
                                                                     <details className="owner-purchase-log-details collab-purchase-log-details">
@@ -2874,7 +3055,7 @@ const Dashboard = ({ sidebar }) => {
                 {/* Personalization Tab */}
                 {activeTab === 'personalization' && (
                     <div className="personalization-tab">
-                        <PersonalizationSettings />
+                        <PersonalizationSettings readOnly={demoPreview} />
                     </div>
                 )}
 
@@ -2887,7 +3068,7 @@ const Dashboard = ({ sidebar }) => {
                                 <Link to="/channel-invites">Channel invites</Link> for each user.
                             </p>
                         </div>
-                        <ChannelUmbrella />
+                        <ChannelUmbrella previewMode={demoPreview} />
                     </div>
                 )}
 
@@ -2962,9 +3143,10 @@ const Dashboard = ({ sidebar }) => {
                                         id="paypal-email"
                                         className="payout-input"
                                         placeholder="your.email@example.com"
-                                        value={payoutData.paypal_email}
+                                        value={demoPreview ? 'creator@example.com' : payoutData.paypal_email}
                                         onChange={(e) => setPayoutData({ ...payoutData, paypal_email: e.target.value })}
-                                        disabled={payoutLoading}
+                                        disabled={payoutLoading || demoPreview}
+                                        readOnly={demoPreview}
                                         required
                                     />
                                     <p className="payout-help-text">
@@ -2976,7 +3158,7 @@ const Dashboard = ({ sidebar }) => {
                                     <button
                                         type="submit"
                                         className="payout-save-btn"
-                                        disabled={payoutLoading || !payoutData.paypal_email.trim()}
+                                        disabled={payoutLoading || demoPreview || !payoutData.paypal_email.trim()}
                                     >
                                         {payoutLoading ? (
                                             <>

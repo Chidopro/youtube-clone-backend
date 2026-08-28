@@ -14,7 +14,7 @@ const clampHeaderOpacity = (value) => {
   return Math.max(0, Math.min(100, Math.round(n)));
 };
 
-const PersonalizationSettings = () => {
+const PersonalizationSettings = ({ readOnly = false }) => {
   const { refreshCreator } = useCreator() || {};
   const [settings, setSettings] = useState({
     subdomain: (typeof window !== 'undefined' && getSubdomain()) || '',
@@ -322,6 +322,7 @@ const PersonalizationSettings = () => {
   };
 
   const handleSave = async () => {
+    if (readOnly) return;
     setSaving(true);
     setMessage('');
     setMessageType('');
@@ -711,6 +712,7 @@ const PersonalizationSettings = () => {
             type="checkbox"
             checked={settings.personalization_enabled}
             onChange={(e) => setSettings({...settings, personalization_enabled: e.target.checked})}
+            disabled={readOnly}
           />
           <span className="setting-label-text">Enable Personalization</span>
         </label>
@@ -727,6 +729,8 @@ const PersonalizationSettings = () => {
               onChange={(e) => setSettings({...settings, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
               placeholder="yourname"
               className="setting-input"
+              disabled={readOnly}
+              readOnly={readOnly}
             />
             <p className="help-text">
               Your app will be available at: <strong>{settings.subdomain || 'yourname'}.screenmerch.com</strong>
@@ -757,6 +761,8 @@ const PersonalizationSettings = () => {
               onChange={(e) => setSettings({...settings, custom_logo_url: e.target.value})}
               placeholder="https://example.com/logo.png"
               className="setting-input"
+              disabled={readOnly}
+              readOnly={readOnly}
             />
             <div className="logo-upload-row">
               <label className="logo-upload-btn">
@@ -769,7 +775,7 @@ const PersonalizationSettings = () => {
                     if (file) uploadLogoToSupabase(file);
                     e.target.value = '';
                   }}
-                  disabled={uploadingLogo}
+                  disabled={uploadingLogo || readOnly}
                 />
                 {uploadingLogo ? 'Uploading…' : 'Upload logo'}
               </label>
@@ -859,6 +865,8 @@ const PersonalizationSettings = () => {
               onChange={(e) => setSettings({...settings, custom_favicon_url: e.target.value})}
               placeholder="https://example.com/favicon.ico"
               className="setting-input"
+              disabled={readOnly}
+              readOnly={readOnly}
             />
             <p className="help-text">URL to your custom favicon (recommended: 32x32px ICO or PNG)</p>
           </div>
@@ -873,6 +881,8 @@ const PersonalizationSettings = () => {
               placeholder="Your Brand Name - Merchandise"
               className="setting-input"
               maxLength={255}
+              disabled={readOnly}
+              readOnly={readOnly}
             />
             <p className="help-text">Page title shown in browser tabs and search results</p>
           </div>
@@ -886,6 +896,8 @@ const PersonalizationSettings = () => {
               rows={3}
               className="setting-textarea"
               maxLength={500}
+              disabled={readOnly}
+              readOnly={readOnly}
             />
             <p className="help-text">Description shown in search engine results (recommended: 150-160 characters)</p>
           </div>
@@ -895,7 +907,7 @@ const PersonalizationSettings = () => {
       <div className="settings-actions">
         <button 
           onClick={handleSave} 
-          disabled={saving || !settings.personalization_enabled}
+          disabled={saving || readOnly || !settings.personalization_enabled}
           className="save-settings-btn"
         >
           {saving ? 'Saving...' : 'Save Settings'}

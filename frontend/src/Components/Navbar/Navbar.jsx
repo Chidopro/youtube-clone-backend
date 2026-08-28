@@ -18,6 +18,7 @@ import { useCreator } from '../../contexts/CreatorContext'
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService'
 import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
+import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
 import Sidebar from '../Sidebar/Sidebar'
 
 const isUsableHexColor = (value) =>
@@ -194,7 +195,14 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                 const loggedInUser = event.detail.user;
                 console.log('🔐 [NAVBAR] Received user from login event:', loggedInUser);
                 console.log('🔐 [NAVBAR] Initial user role:', loggedInUser.role, 'status:', loggedInUser.status);
-                
+
+                if (isDemoPreviewUser(loggedInUser)) {
+                    setUser(loggedInUser);
+                    setUserProfile(loggedInUser);
+                    setLoading(false);
+                    return;
+                }
+
                 // CRITICAL: Fetch profile from database FIRST before setting user state
                 // This ensures we have the correct role/status from the database
                 // Use ID if available, otherwise fallback to email
@@ -314,7 +322,16 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         const loggedInUser = JSON.parse(userData);
                         console.log('🔐 [FETCHUSER] Found authenticated user:', loggedInUser);
                         console.log('🔐 [FETCHUSER] Initial role from localStorage:', loggedInUser?.role, 'status:', loggedInUser?.status);
-                        
+
+                        if (isDemoPreviewUser(loggedInUser)) {
+                            if (isMounted) {
+                                setUser(loggedInUser);
+                                setUserProfile(loggedInUser);
+                                setLoading(false);
+                            }
+                            return;
+                        }
+
                         if (isMounted) {
                             // CRITICAL: Fetch from database FIRST before setting user state
                             // This ensures we have the correct role/status from database
@@ -563,7 +580,11 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     }, [user]);
 
     const handleLogin = () => {
-        // Navigate to login page
+        if (isDemoStorefront()) {
+            startDemoPreviewSession();
+            window.location.assign('/dashboard');
+            return;
+        }
         navigate('/login');
     };
 
@@ -599,6 +620,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
 
     const handleLogout = async () => {
         try {
+            endDemoPreviewSession();
             // Clear ALL authentication data
             localStorage.removeItem('user');
             localStorage.removeItem('isAuthenticated');
@@ -888,7 +910,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         />
                         ) : null}
                     </Link>
-                    {location.pathname.includes('/dashboard') && user && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && (
+                    {location.pathname.includes('/dashboard') && user && !isDemoPreviewUser(user) && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && (
                         <Link to="/dashboard?tab=personalization" className="navbar-logo-edit" aria-label="Edit logo in Personalization" title="Edit logo">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                         </Link>
@@ -927,7 +949,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         </div>
                     </div>
                     <div className="nav-right flex-div">
-                        {user && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && location.pathname !== '/creator-thank-you' && !(location.pathname === '/subscription-tiers' && (user?.status === 'pending' || user?.status === undefined)) ? (
+                        {user && !isDemoPreviewUser(user) && (user.role === 'creator' || user.role === 'admin') && (user.status === 'active' || user.status === undefined) && location.pathname !== '/creator-thank-you' && !(location.pathname === '/subscription-tiers' && (user?.status === 'pending' || user?.status === undefined)) ? (
                             console.log('🎥 Rendering upload link for creator:', user?.display_name, 'User object:', user) ||
                             <Link to="/upload"><img src={upload_icon} alt="Upload" /></Link>
                         ) : oauthProcessing ? (

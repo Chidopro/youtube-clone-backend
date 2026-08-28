@@ -1,0 +1,140 @@
+.demo-dashboard-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 20px 0;
+  padding: 14px 16px;
+  background: #eef0ff;
+  border: 1px solid rgba(102, 126, 234, 0.35);
+  border-radius: 10px;
+}
+
+.demo-dashboard-note p {
+  margin: 0;
+  max-width: 640px;
+  color: #333;
+  line-height: 1.4;
+}
+
+.demo-dashboard-note-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.demo-dashboard-link,
+.demo-dashboard-claim {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.demo-dashboard-link {
+  border: 1px solid #667eea;
+  background: #fff;
+  color: #4c3fb0;
+}
+
+.demo-dashboard-claim {
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.demo-page-list {
+  list-style: none;
+  margin: 0 20px 16px;
+  padding: 0;
+}
+
+.demo-page-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.demo-page-list span {
+  color: #666;
+  font-size: 0.92rem;
+}
+
+.demo-readonly-hint {
+  margin: 0 20px 24px;
+  color: #777;
+  font-size: 0.9rem;
+}
+
+.demo-swatch-row {
+  display: flex;
+  gap: 24px;
+  margin: 0 20px 16px;
+}
+
+.demo-swatch-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.demo-swatch-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #444;
+}
+
+.demo-swatch {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.demo-dashboard .payout-section,
+.demo-dashboard .favorites-tab,
+.demo-dashboard .analytics-tab,
+.demo-dashboard .personalization-tab,
+.demo-dashboard .umbrella-tab {
+  padding: 8px 0 24px;
+}
+
+.demo-dashboard .payout-form,
+.demo-dashboard .section-header {
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+.demo-dashboard .sales-chart-section,
+.demo-dashboard .analytics-overview-cards,
+.demo-dashboard .analytics-summary {
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+.demo-dashboard .collaborator-payout-panel {
+  margin: 24px 20px 0;
+}
+
+.demo-dashboard .payout-save-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .demo-dashboard-note {
+    margin: 12px 12px 0;
+  }
+}

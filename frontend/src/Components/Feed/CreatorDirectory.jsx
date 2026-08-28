@@ -7,6 +7,54 @@ import { requestVideoOptimize } from '../../utils/videoOptimize';
 import './Feed.css';
 import './CreatorDirectory.css';
 import { RESERVE_SLOT_THEMES, TOTAL_CREATOR_SPOTS } from './reserveSlotThemes';
+import { DEMO_STOREFRONT_SUBDOMAIN } from '../../utils/demoStorefront';
+import {
+  fetchPublicFavoriteLists,
+  publicStorageCardUrl,
+  storefrontHubPreviews,
+} from '../../utils/favoriteListsApi';
+import { HubThumb, rotatingUrl, uniqueUrls, HUB_ROTATE_MS } from './Feed';
+
+function collectSlotShuffleUrls(lists) {
+  const ownerId = (lists || []).find((L) => L?.is_primary || L?.slug === 'owner')
+    ?.storefront_owner_id;
+  const { ownerImages, friendImages, extraImages } = storefrontHubPreviews(lists, ownerId);
+  return uniqueUrls(
+    [...ownerImages, ...friendImages, ...extraImages].map((u) => publicStorageCardUrl(u, 900))
+  ).slice(0, 16);
+}
+
+/** Maxfreedom always occupies seat 1; remaining storefronts fill 2, 3, … in API order. */
+function pinSoftLaunchSlots(rawSlots, total) {
+  const slots = Array.isArray(rawSlots) ? rawSlots.map((s) => ({ ...s })) : [];
+  const demoKey = DEMO_STOREFRONT_SUBDOMAIN.toLowerCase();
+  const demoIdx = slots.findIndex(
+    (s) => (s.subdomain || '').trim().toLowerCase() === demoKey
+  );
+  let demo;
+  if (demoIdx >= 0) {
+    [demo] = slots.splice(demoIdx, 1);
+  } else {
+    demo = {
+      label: DEMO_STOREFRONT_SUBDOMAIN,
+      name: DEMO_STOREFRONT_SUBDOMAIN,
+      subdomain: DEMO_STOREFRONT_SUBDOMAIN,
+      status: 'active',
+    };
+  }
+  return [demo, ...slots].slice(0, total).map((slot, i) => {
+    const subdomain = (slot.subdomain || '').trim();
+    const name = (slot.name || '').trim();
+    const generic = /^store\s+\d+$/i.test((slot.label || '').trim());
+    return {
+      ...slot,
+      spot: i + 1,
+      subdomain,
+      name,
+      label: subdomain || name || (!generic && (slot.label || '').trim()) || `Store ${i + 1}`,
+    };
+  });
+}
 
 export const SCREENMERCH_INTRO_TITLE = 'ScreenMerch Introduction Video';
 
@@ -37,6 +85,8 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
   const thumbInputRef = useRef(null);
   const [claimedCount, setClaimedCount] = useState(0);
   const [takenBySpot, setTakenBySpot] = useState({});
+  const [imagesBySpot, setImagesBySpot] = useState({});
+  const [tick, setTick] = useState(() => Math.floor(Date.now() / HUB_ROTATE_MS));
 
   const availableCount = Math.max(0, TOTAL_CREATOR_SPOTS - claimedCount);
 
@@ -50,13 +100,10 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
         });
         const data = await res.json().catch(() => ({}));
         if (cancelled || !data?.success) return;
-        const claimed = Math.min(
-          TOTAL_CREATOR_SPOTS,
-          Math.max(0, Number(data.claimed) || 0)
-        );
-        setClaimedCount(claimed);
+        const pinned = pinSoftLaunchSlots(data.taken_slots, TOTAL_CREATOR_SPOTS);
+        setClaimedCount(Math.min(TOTAL_CREATOR_SPOTS, pinned.length));
         const map = {};
-        (data.taken_slots || []).forEach((slot) => {
+        pinned.forEach((slot) => {
           if (slot?.spot) map[slot.spot] = slot;
         });
         setTakenBySpot(map);
@@ -68,6 +115,57 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const claimed = Object.values(takenBySpot).filter((slot) => (slot?.subdomain || '').trim());
+    if (!claimed.length) {
+      setImagesBySpot({});
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      const bySub = {};
+      await Promise.all(
+        claimed.map(async (slot) => {
+          const sub = (slot.subdomain || '').trim().toLowerCase();
+          if (!sub || bySub[sub]) return;
+          try {
+            const { ok, data } = await fetchPublicFavoriteLists(sub);
+            if (!ok || !data?.success) return;
+            bySub[sub] = collectSlotShuffleUrls(data.lists || []);
+          } catch (_) {
+            /* leave this window on the gradient fallback */
+          }
+        })
+      );
+      if (cancelled) return;
+      const map = {};
+      claimed.forEach((slot) => {
+        const urls = bySub[(slot.subdomain || '').trim().toLowerCase()];
+        if (urls?.length) map[slot.spot] = urls;
+      });
+      setImagesBySpot(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [takenBySpot]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setTick(Math.floor(Date.now() / HUB_ROTATE_MS));
+    }, Math.min(HUB_ROTATE_MS, 4000));
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    Object.entries(imagesBySpot).forEach(([spot, urls]) => {
+      const next = rotatingUrl(urls, `spot-${spot}`, tick + 1);
+      if (!next) return;
+      const img = new Image();
+      img.src = next;
+    });
+  }, [imagesBySpot, tick]);
 
   useEffect(() => {
     if (introVideo) {
@@ -319,40 +417,62 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
         {/* 20 numbered reserve storefront slots */}
         {RESERVE_SLOT_THEMES.map((slot) => {
           const taken = takenBySpot[slot.spot];
-          const isTaken = Boolean(taken) || slot.spot <= claimedCount;
-          const storeLabel = taken?.label || `Store ${slot.spot}`;
+          const isTaken = Boolean(taken);
+          const subdomain = (taken?.subdomain || '').trim().toLowerCase();
+          const storeLabel = (taken?.label || subdomain || taken?.name || `Store ${slot.spot}`).trim();
+          const storeHref = subdomain ? `https://${subdomain}.screenmerch.com/` : '';
+          const canVisit = Boolean(storeHref);
+          const shuffleSrc = isTaken
+            ? rotatingUrl(imagesBySpot[slot.spot], `spot-${slot.spot}`, tick)
+            : null;
+          const openSlot = () => {
+            if (canVisit) {
+              const isDemo = subdomain === DEMO_STOREFRONT_SUBDOMAIN;
+              window.location.href = isDemo ? `${storeHref}?from=hub` : storeHref;
+              return;
+            }
+            if (!isTaken) openReserveCta();
+          };
           return (
             <div
               key={slot.spot}
-              className={`card reserve-slot-card${isTaken ? ' reserve-slot-card--taken' : ''}`}
-              onClick={isTaken ? undefined : openReserveCta}
+              className={`card reserve-slot-card${isTaken ? ' reserve-slot-card--taken' : ''}${canVisit ? ' reserve-slot-card--live' : ''}`}
+              onClick={isTaken && !canVisit ? undefined : openSlot}
               onKeyDown={
-                isTaken
+                isTaken && !canVisit
                   ? undefined
-                  : (e) => e.key === 'Enter' && openReserveCta()
+                  : (e) => e.key === 'Enter' && openSlot()
               }
-              role={isTaken ? 'group' : 'button'}
-              tabIndex={isTaken ? -1 : 0}
+              role={isTaken && !canVisit ? 'group' : 'button'}
+              tabIndex={isTaken && !canVisit ? -1 : 0}
               aria-label={
-                isTaken
-                  ? `${storeLabel} taken — soft launch spot ${slot.spot}`
-                  : `Reserve storefront spot number ${slot.spot}`
+                canVisit
+                  ? `Visit ${storeLabel} storefront, spot ${slot.spot}`
+                  : isTaken
+                    ? `${storeLabel} taken — soft launch spot ${slot.spot}`
+                    : `Reserve storefront spot number ${slot.spot}`
               }
-              aria-disabled={isTaken}
+              aria-disabled={isTaken && !canVisit}
             >
               <div
-                className={`reserve-slot-preview pattern-${slot.pattern}`}
+                className={`reserve-slot-preview pattern-${slot.pattern}${shuffleSrc ? ' reserve-slot-preview--shuffle' : ''}`}
                 style={{ background: slot.gradient }}
               >
-                <span className="reserve-slot-number">Spot #{slot.spot}</span>
+                {shuffleSrc ? (
+                  <div className="reserve-slot-shuffle" aria-hidden="true">
+                    <HubThumb key={shuffleSrc} src={shuffleSrc} emptyLabel="" />
+                  </div>
+                ) : null}
+                {!isTaken ? (
+                  <span className="reserve-slot-number">Spot #{slot.spot}</span>
+                ) : null}
                 {isTaken ? (
                   <>
-                    <span className="reserve-slot-taken-badge" aria-hidden="true">
-                      Taken
-                    </span>
-                    <p className="reserve-slot-store-label">{storeLabel}</p>
+                    {shuffleSrc ? null : (
+                      <p className="reserve-slot-store-label">{storeLabel}</p>
+                    )}
                     <span className="reserve-slot-cta-pill reserve-slot-cta-pill--taken">
-                      Claimed
+                      {canVisit ? 'Visit storefront' : 'Claimed'}
                     </span>
                   </>
                 ) : (
@@ -368,7 +488,11 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
               <h2>{isTaken ? storeLabel : 'Reserve your storefront'}</h2>
               <h3>
                 {isTaken
-                  ? `Soft launch seat claimed · Spot #${slot.spot}`
+                  ? (canVisit
+                    ? (subdomain === DEMO_STOREFRONT_SUBDOMAIN
+                      ? 'Take a tour of image and dashboard tools.'
+                      : `${subdomain}.screenmerch.com`)
+                    : 'Soft launch seat claimed')
                   : `Limited to ${TOTAL_CREATOR_SPOTS} creators · Spot #${slot.spot}`}
               </h3>
             </div>

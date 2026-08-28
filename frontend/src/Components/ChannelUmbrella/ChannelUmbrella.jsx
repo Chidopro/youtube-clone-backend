@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { fetchMyProfileFromBackend } from '../../utils/userService';
+import { getBackendUrl } from '../../config/apiConfig';
 import './ChannelUmbrella.css';
 
 const labelFor = (u) => {
@@ -42,7 +43,7 @@ const todayInputDate = () => {
   return `${y}-${m}-${day}`;
 };
 
-const ChannelUmbrella = () => {
+const ChannelUmbrella = ({ previewMode = false }) => {
   const [inviteInput, setInviteInput] = useState('');
   const [msg, setMsg] = useState({ type: '', text: '' });
   const [pending, setPending] = useState([]);
@@ -72,7 +73,20 @@ const ChannelUmbrella = () => {
     setSalesLoading(true);
     setSalesError('');
     try {
-      const { ok, data } = await favoriteListsJson('/api/favorite-lists/sales-summary');
+      let ok;
+      let data;
+      if (previewMode) {
+        const res = await fetch(`${getBackendUrl()}/api/demo/sales-summary`, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+        });
+        data = await res.json().catch(() => ({}));
+        ok = res.ok && data?.success !== false;
+      } else {
+        const result = await favoriteListsJson('/api/favorite-lists/sales-summary');
+        ok = result.ok;
+        data = result.data;
+      }
       if (!ok) {
         setSalesError(data?.error || 'Could not load attributed earnings');
         setSalesByList([]);
@@ -94,11 +108,27 @@ const ChannelUmbrella = () => {
     } finally {
       setSalesLoading(false);
     }
-  }, []);
+  }, [previewMode]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
+      if (previewMode) {
+        const res = await fetch(`${getBackendUrl()}/api/demo/umbrella`, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.success === false) {
+          setMsg({ type: 'error', text: data?.error || 'Could not load umbrella members' });
+        } else {
+          setPending(data.pending || []);
+          setEmailPending(data.email_pending || []);
+          setMembers(data.members || []);
+          setOwnerSubdomain((data.subdomain || '').trim().toLowerCase());
+        }
+        return;
+      }
       const [outRes, memRes] = await Promise.all([
         channelFriendsJson('/api/channel-friends/outgoing', { method: 'GET' }),
         channelFriendsJson('/api/channel-friends/members', { method: 'GET' }),
@@ -120,13 +150,14 @@ const ChannelUmbrella = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [previewMode]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
   useEffect(() => {
+    if (previewMode) return undefined;
     let cancelled = false;
     (async () => {
       try {
@@ -400,8 +431,9 @@ const ChannelUmbrella = () => {
           value={inviteInput}
           onChange={(ev) => setInviteInput(ev.target.value)}
           autoComplete="off"
+          disabled={previewMode}
         />
-        <button type="submit" disabled={!inviteInput.trim() || submitting}>
+        <button type="submit" disabled={previewMode || !inviteInput.trim() || submitting}>
           {submitting ? 'Sending…' : 'Send invite'}
         </button>
       </form>
@@ -497,7 +529,7 @@ const ChannelUmbrella = () => {
                 <button
                   type="button"
                   className="btn-resume-member"
-                  disabled={!!busy}
+                  disabled={previewMode || !!busy}
                   onClick={() => resumeMember(friendId, label)}
                 >
                   {busyMember === `resume:${friendId}` ? '…' : 'Resume'}
@@ -506,7 +538,7 @@ const ChannelUmbrella = () => {
                 <button
                   type="button"
                   className="btn-pause-member"
-                  disabled={!!busy}
+                  disabled={previewMode || !!busy}
                   onClick={() => pauseMember(friendId, label)}
                 >
                   {busyMember === `pause:${friendId}` ? '…' : 'Pause account'}
@@ -515,7 +547,7 @@ const ChannelUmbrella = () => {
               <button
                 type="button"
                 className="btn-delete-invite"
-                disabled={!!busy}
+                disabled={previewMode || !!busy}
                 onClick={() => removeMember(friendId, label)}
               >
                 {busyMember === `remove:${friendId}` ? '…' : 'Delete account'}
@@ -619,10 +651,12 @@ const ChannelUmbrella = () => {
                         <button
                           type="button"
                           className="btn-record-payout"
+                          disabled={previewMode}
                           onPointerDown={(ev) => ev.stopPropagation()}
                           onClick={(ev) => {
                             ev.preventDefault();
                             ev.stopPropagation();
+                            if (previewMode) return;
                             openPayoutModal(row);
                           }}
                         >

@@ -1077,7 +1077,7 @@ const ToolsPage = () => {
       if (leftColumnRef.current) {
         leftColumnRef.current.style.left = `${leftPosition}px`;
       }
-      if (backBtnRef.current) {
+      if (backBtnRef.current && !window.matchMedia('(max-width: 968px)').matches) {
         // Left gutter beside Product Preview, just under the header bar.
         backBtnRef.current.style.left = `${Math.round(containerRect.left)}px`;
         const nav = document.querySelector('nav');
@@ -3062,19 +3062,21 @@ const ToolsPage = () => {
     }
   };
 
+  const goBackFromTools = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate('/merchandise');
+  };
+
   return (
     <div className="tools-page-container" ref={containerRef}>
       <button
         type="button"
         ref={backBtnRef}
-        className="tools-back-btn"
-        onClick={() => {
-          if (typeof window !== 'undefined' && window.history.length > 1) {
-            navigate(-1);
-            return;
-          }
-          navigate('/merchandise');
-        }}
+        className="tools-back-btn tools-back-btn-page"
+        onClick={goBackFromTools}
         aria-label="Back"
       >
         ←
@@ -3139,13 +3141,13 @@ const ToolsPage = () => {
                         Product Preview ({selectedCartProductIndex + 1} of {cartProducts.length})
                       </span>
                     </h3>
-                    <div style={{
+                    <div className="product-preview-name-row" style={{
                       position: 'relative',
                       marginBottom: '10px',
                       minHeight: '30px',
                       padding: '0 36px'
                     }}>
-                      <span style={{
+                      <span className="product-preview-index-badge" style={{
                         position: 'absolute',
                         left: 0,
                         top: '50%',
@@ -3173,6 +3175,16 @@ const ToolsPage = () => {
                       </div>
                     </div>
                     {/* Product Preview - Handle different product types */}
+                    <div className="product-preview-image-row">
+                      <button
+                        type="button"
+                        className="tools-back-btn tools-back-btn-preview"
+                        onClick={goBackFromTools}
+                        aria-label="Back"
+                      >
+                        ←
+                      </button>
+                      <div className="product-preview-visual">
                     {(() => {
                       const productName = selectedProductName || product.name || '';
                       const isMug = isMugProduct(productName);
@@ -3418,6 +3430,8 @@ const ToolsPage = () => {
                       
                       return null;
                     })()}
+                      </div>
+                    </div>
                     {/* Screenshot Size — in the product card so it stays fully visible */}
                     <div className="tool-control-group screenshot-size-under-preview" style={{ marginTop: '12px', marginBottom: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '8px' }}>

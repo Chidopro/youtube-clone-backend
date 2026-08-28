@@ -6,6 +6,7 @@ import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend } from '../../utils/userService';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { safeAuthReturnPath } from '../../utils/shopperAuth';
+import { isDemoStorefront, startDemoPreviewSession, endDemoPreviewSession } from '../../utils/demoStorefront';
 import CustomerLegalConsent from '../../Components/CustomerLegalConsent/CustomerLegalConsent';
 import './Login.css';
 
@@ -38,6 +39,13 @@ const Login = () => {
 // Customer signup = email-only flow (from "Make a purchase" in Sign Up modal)
   const isCustomerSignup = location.pathname === '/signup' && location.state?.intent === 'customer';
   const requiresCustomerLegalAcceptance = !isLoginMode && !isCreatorSignup;
+  const sampleStorefrontLogin = isDemoStorefront();
+
+  useEffect(() => {
+    if (!sampleStorefrontLogin) return;
+    startDemoPreviewSession();
+    goAfterAuth('/dashboard', navigate, { replace: true });
+  }, [sampleStorefrontLogin, navigate]);
 
   // Force signup view if routed to /signup
   // Check if coming from "Start Free" flow (payment-setup with flow=new_user)
@@ -185,6 +193,13 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
+
+    if (isDemoStorefront()) {
+      startDemoPreviewSession();
+      setMessage({ type: 'success', text: 'Signed in. Opening the sample dashboard…' });
+      goAfterAuth('/dashboard', navigate);
+      return;
+    }
 
     if (!email.trim()) {
       setMessage({ type: 'error', text: 'Please enter your email.' });
@@ -456,6 +471,7 @@ const Login = () => {
   };
 
   const handleLogout = () => {
+    endDemoPreviewSession();
     // Clear all authentication data
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('user');
@@ -478,10 +494,21 @@ const Login = () => {
     setPassword('');
   };
 
+  if (sampleStorefrontLogin) {
+    return null;
+  }
 
   return (
     <div className="login-page">
       <div className="login-card">
+        <button
+          type="button"
+          className="login-close"
+          onClick={() => navigate('/')}
+          aria-label="Close"
+        >
+          ×
+        </button>
         <div className="login-card-header">
           <h2 className="login-title">
             {isCustomerSignup ? 'Create your account' : isLoginMode ? 'Sign in' : 'Create your account'}
@@ -490,14 +517,22 @@ const Login = () => {
 
         <div className="login-info">
           <strong>
-            {isCustomerSignup ? 'Make a purchase' : isLoginMode ? 'Login Required' : 'Create Account'}
+            {sampleStorefrontLogin
+              ? 'Sample storefront'
+              : isCustomerSignup
+                ? 'Make a purchase'
+                : isLoginMode
+                  ? 'Login Required'
+                  : 'Create Account'}
           </strong>
           <p>
-            {isCustomerSignup
-              ? 'Enter your email and we’ll send you a link to create your password. Then you can sign in and shop.'
-              : isLoginMode
-                ? 'To create merchandise, please log in or create an account with your email address.'
-                : 'Join ScreenMerch and start creating merch from your content.'}
+            {sampleStorefrontLogin
+              ? 'Sign in to open the Maxfreedom creator dashboard. No email or password is needed on this sample shop.'
+              : isCustomerSignup
+                ? 'Enter your email and we’ll send you a link to create your password. Then you can sign in and shop.'
+                : isLoginMode
+                  ? 'To create merchandise, please log in or create an account with your email address.'
+                  : 'Join ScreenMerch and start creating merch from your content.'}
           </p>
         </div>
 
@@ -540,8 +575,8 @@ const Login = () => {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={isLoading}
-              required
+              disabled={isLoading || sampleStorefrontLogin}
+              required={!sampleStorefrontLogin}
             />
           </div>
 
@@ -557,8 +592,8 @@ const Login = () => {
                   autoComplete={isLoginMode ? 'current-password' : 'new-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                  required
+                  disabled={isLoading || sampleStorefrontLogin}
+                  required={!sampleStorefrontLogin}
                 />
                 <button
                   type="button"
@@ -595,14 +630,14 @@ const Login = () => {
               isCustomerSignup ? 'Submit' : isLoginMode ? 'Sign In' : 'Create Account'
             )}
           </button>
-          {isLoginMode && !isCustomerSignup && (
+          {isLoginMode && !isCustomerSignup && !sampleStorefrontLogin && (
             <div className="login-forgot-wrap">
               <Link to="/set-password" className="login-forgot-link">Forgot password? Set password</Link>
             </div>
           )}
         </form>
 
-        {!isCustomerSignup && (
+        {!isCustomerSignup && !sampleStorefrontLogin && (
           <div className="login-toggle">
             <span>{isLoginMode ? "Don't have an account?" : "Already have an account?"}</span>
             <button className="login-toggle-btn" onClick={handleToggleMode} disabled={isLoading}>

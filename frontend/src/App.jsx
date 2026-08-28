@@ -40,6 +40,7 @@ import FAQ from "./Pages/FAQ/FAQ";
 import Favorites from "./Pages/Favorites/Favorites";
 import FriendPages from "./Pages/FriendPages/FriendPages";
 import Shop from "./Pages/Shop/Shop";
+import DemoDashboard from "./Pages/DemoDashboard/DemoDashboard";
 import UmbrellaJoin from "./Pages/UmbrellaJoin/UmbrellaJoin";
 import { API_CONFIG } from "./config/apiConfig";
 import { CreatorProvider } from "./contexts/CreatorContext";
@@ -319,6 +320,7 @@ const App = () => {
                 <Route path="/profile/:username" element={<Profile sidebar={sidebar} />} />
                 <Route path="/approve-subscription" element={<ApproveSubscription />} />
                 <Route path="/dashboard" element={<Dashboard sidebar={sidebar} />} />
+                <Route path="/demo/dashboard" element={<DemoDashboard sidebar={sidebar} />} />
                 <Route path="/channel-invites" element={<ChannelInvites />} />
                 <Route path="/subscription-tiers" element={<SubscriptionTiers />} />
                 <Route path="/subscription-success" element={<SubscriptionSuccess />} />

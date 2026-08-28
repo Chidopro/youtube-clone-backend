@@ -10,6 +10,7 @@ import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import { setToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
+import { isDemoStorefront } from '../../utils/demoStorefront';
 import { saveShopAddIntent, SHOP_CATEGORIES } from '../../utils/shopCategories';
 import './ProductPage.css';
 
@@ -678,6 +679,10 @@ const ProductPage = ({ sidebar }) => {
   // Check if user is a creator
   useEffect(() => {
     const checkCreatorStatus = async () => {
+      if (isDemoStorefront()) {
+        setIsCreator(false);
+        return;
+      }
       const creatorStatus = await UserService.isCreator();
       setIsCreator(creatorStatus);
       
