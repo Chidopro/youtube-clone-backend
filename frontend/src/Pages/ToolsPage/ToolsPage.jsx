@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName } from '../../config/printAreaConfig';
+import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName, getProductPrintFilter } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
 import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest } from '../../utils/merchSession';
 import { isDemoStorefront } from '../../utils/demoStorefront';
@@ -26,9 +26,6 @@ function isApparelChestPrintProduct(productName) {
   if (n.includes('all-over') || n.includes('all over')) return false;
   if (n.includes('swimsuit') || n.includes('leggings')) return false;
   if (n.includes('hat') || n.includes('cap')) return false;
-  // Tanks keep the 17" typical-width mapping below. Baby-jersey chest
-  // fraction (7/18) is too small for racerback/tank print boxes even at 150%.
-  if (n.includes('tank')) return false;
   return (
     n.includes('shirt') ||
     n.includes('tee') ||
@@ -38,8 +35,94 @@ function isApparelChestPrintProduct(productName) {
     n.includes('body suit') ||
     n.includes('bodysuit') ||
     n.includes('crop top') ||
-    n.includes('long sleeve')
+    n.includes('long sleeve') ||
+    n.includes('tank')
   );
+}
+
+/**
+ * Per-product overlay size/placement. Use this instead of changing the shared
+ * apparel formula — one SKU cannot move T-Shirt / Women's Shirt / etc.
+ * widthFrac / heightFrac are shares of the mockup photo (painted print box).
+ */
+const APPAREL_PRINT_OVERRIDES = {
+  "Men's Tank Top": {
+    widthFrac: 0.56,
+    heightFrac: 0.37,
+    top: 47.9,
+    left: 50.34,
+  },
+};
+
+function getApparelPrintOverride(productName) {
+  const name = matchPrintAreaProductName(productName) || String(productName || '').trim();
+  return APPAREL_PRINT_OVERRIDES[name] || null;
+}
+
+/** Overlay px for apparel: print W×H inches, scaled to the mockup photo. */
+function sizeApparelPrintOverlay(printW, printH, mockupW, mockupH, productName) {
+  const aspect = printW / printH;
+  const override = getApparelPrintOverride(productName);
+  if (override?.widthFrac) {
+    const width = mockupW * override.widthFrac;
+    const height = mockupH > 0 && override.heightFrac
+      ? mockupH * override.heightFrac
+      : width / aspect;
+    return { width, height };
+  }
+  const n = String(productName || '').toLowerCase();
+  const isWomens = n.includes('women');
+  const isTank = n.includes('tank');
+  const isBaby = n.includes('baby') || n.includes('toddler');
+  const isKids = !isBaby && (n.includes('kids') || n.includes('youth'));
+  const isHoodie = n.includes('hoodie') || n.includes('sweatshirt');
+
+  // Share of mockup width a 12" print should cover.
+  // T-Shirt: 0.525 was ~3 clicks too big. Tanks are a narrow garment in the photo.
+  const coverAt12in = isBaby
+    ? (7 / 18) * (12 / 7)
+    : isTank
+      ? 0.36
+      : isHoodie
+        ? 0.44
+        : isKids
+          ? 0.47
+          : isWomens
+            ? 0.545
+            : 0.509;
+
+  let width = mockupW * coverAt12in * (printW / 12);
+  let height = width / aspect;
+
+  const maxW = mockupW * (isBaby ? 0.50 : isTank ? 0.40 : 0.58);
+  const maxH = mockupH > 0
+    ? mockupH * (isHoodie ? 0.52 : isTank ? 0.44 : 0.62)
+    : Number.POSITIVE_INFINITY;
+  if (width > maxW) {
+    width = maxW;
+    height = width / aspect;
+  }
+  if (height > maxH) {
+    height = maxH;
+    width = height * aspect;
+  }
+  return { width, height };
+}
+
+/** Chest print box on the mockup photo (not geometric 50/50 of the PNG). */
+function apparelOverlayPlacement(productName) {
+  const override = getApparelPrintOverride(productName);
+  if (override && override.top != null) {
+    return { top: override.top, left: override.left ?? 50 };
+  }
+  const n = String(productName || '').toLowerCase();
+  if (n.includes('hat') || n.includes('cap')) return { top: 42, left: 50 };
+  if (n.includes('hoodie') || n.includes('sweatshirt')) return { top: 52, left: 50 };
+  if (n.includes('tank')) return { top: 44.8, left: 50.2 };
+  if (n.includes('women')) return { top: 43.0, left: 50.7 };
+  if (n.includes('baby') || n.includes('toddler')) return { top: 48, left: 50 };
+  if (n.includes('kids') || n.includes('youth')) return { top: 46.8, left: 50.2 };
+  return { top: 43.8, left: 50.35 };
 }
 
 // Sync Product Specific fit before first paint when a cart item is already known
@@ -288,63 +371,22 @@ const ProductPreviewWithDrag = ({
             return; // Exit early for hats
           }
 
-          // Apparel (women/men/kids shirts, tees, hoodies, tanks, sweatshirts,
-          // baby/toddler): size to a shared mockup-relative chest print region,
-          // same pattern as hats (explicit % of the displayed mockup).
-          //
-          // Why Baby Jersey already looks perfect: it is 7×8 and does not match
-          // kids/youth/hoodie/tank, so it uses the default typical garment width
-          // of 18" → overlay width = 7/18 of the *full* mockup photo. Shirt
-          // mockups frame the chest similarly, so that fraction matches the
-          // visual print box. Mapping 12"/18" onto the full photo (~67%) is
-          // far larger than the actual chest on the same style of photo.
+          // Apparel: size the overlay to this product's print W×H on the mockup.
           if (isApparelChestPrintProduct(effectiveProductName)) {
-            const babyJerseyPrint = getPrintAreaDimensions('Baby Jersey T-Shirt', null, 'front');
-            const defaultTypicalGarmentWidthInches = 18;
-            const isHoodieOrSweat =
-              productNameLower.includes('hoodie') || productNameLower.includes('sweatshirt');
-            // Hoodies show more of the garment than baby jersey. Size from the
-            // real print width so the chest box fills evenly on both axes.
-            const typicalGarmentWidthInches = isHoodieOrSweat
-              ? ((productNameLower.includes('youth') || productNameLower.includes('kids')) ? 16 : 18)
-              : defaultTypicalGarmentWidthInches;
-            const printWidthForFraction = isHoodieOrSweat
-              ? printDimensions.width
-              : (babyJerseyPrint?.width || 7);
-            const chestWidthFraction = printWidthForFraction / typicalGarmentWidthInches;
-
-            let finalWidth = displayedProductWidth * chestWidthFraction;
-            if (isHoodieOrSweat) {
-              const maxW = displayedProductWidth * 0.50;
-              const minW = displayedProductWidth * 0.34;
-              if (finalWidth > maxW) finalWidth = maxW;
-              if (finalWidth < minW) finalWidth = minW;
-            }
-            let finalHeight = finalWidth / printAspectRatio;
-            if (isSquare && !isHoodieOrSweat) {
-              finalHeight = finalWidth;
-            }
-            // kidhoodiepreview.png has one painted print box for every size.
-            // XS is 10×7 (Printful crop), but that box on the photo is closer
-            // to 10×9 — 10×7 leaves the bottom of the print region uncovered.
+            const sized = sizeApparelPrintOverlay(
+              printDimensions.width,
+              printDimensions.height,
+              displayedProductWidth,
+              displayedProductHeight,
+              effectiveProductName
+            );
+            let finalWidth = sized.width;
+            let finalHeight = sized.height;
             const isYouthHoodie =
-              isHoodieOrSweat &&
+              (productNameLower.includes('hoodie') || productNameLower.includes('sweatshirt')) &&
               (productNameLower.includes('youth') || productNameLower.includes('kids'));
             if (isYouthHoodie && printDimensions.width > 0) {
-              // Keep the width-matched box. Stretch height by 1/8 so the
-              // painted print region is covered without changing left/right.
               finalHeight = (finalWidth / printAspectRatio) * (8 / 7);
-            }
-
-            // Keep tall prints on the garment, not the full photo. Baby Jersey
-            // (7×8 at 7/18 width) is ~44% of mockup width in height and must
-            // not be clamped.
-            const maxHeight = displayedProductHeight > 0 ? displayedProductHeight * 0.65 : Number.POSITIVE_INFINITY;
-            if (finalHeight > maxHeight) {
-              finalHeight = maxHeight;
-              if (!isYouthHoodie) {
-                finalWidth = isSquare ? finalHeight : finalHeight * printAspectRatio;
-              }
             }
 
             setScreenshotDisplaySize({
@@ -801,16 +843,15 @@ const ProductPreviewWithDrag = ({
           style={{
             position: 'absolute',
             top: (() => {
-              const productNameLower = (productName || '').toLowerCase();
+              const placeName = selectedProductName || productName;
+              const productNameLower = (placeName || '').toLowerCase();
               const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
-              const isHoodie = productNameLower.includes('hoodie') || productNameLower.includes('sweatshirt');
               if (isHat && productImageSize.height > 0) {
                 return `${50 - 8}%`;
               }
-              if (isHoodie) return '52%';
-              return '50%';
+              return `${apparelOverlayPlacement(placeName).top}%`;
             })(),
-            left: '50%',
+            left: `${apparelOverlayPlacement(selectedProductName || productName).left}%`,
             transform: (() => {
               const productNameLower = (productName || '').toLowerCase();
               const isYouthHoodie =
@@ -836,48 +877,23 @@ const ProductPreviewWithDrag = ({
         >
           {(() => {
             const productNameLower = (productName || '').toLowerCase();
-            const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
-            const isHoodie = productNameLower.includes('hoodie') || productNameLower.includes('sweatshirt');
             const isYouthHoodie =
-              isHoodie &&
+              (productNameLower.includes('hoodie') || productNameLower.includes('sweatshirt')) &&
               (productNameLower.includes('youth') || productNameLower.includes('kids'));
             const scaleFactor = screenshotScale / 100;
-            const aspectRatio = screenshotDisplaySize.width / screenshotDisplaySize.height;
-            const isSquare = Math.abs(aspectRatio - 1.0) < 0.01; // Check if display size is square
-            let scaledWidth, scaledHeight;
-            
-            if (isHoodie || isHat) {
-              // Scale from width so left/right stay the control axis.
-              scaledWidth = screenshotDisplaySize.width * scaleFactor;
-              scaledHeight = screenshotDisplaySize.height * scaleFactor;
-            } else if (isSquare) {
-              // For square products: Scale both dimensions equally to maintain square shape
-              scaledWidth = screenshotDisplaySize.width * scaleFactor;
-              scaledHeight = scaledWidth; // Force square
-            } else {
-              // For shirts and other products: Use balanced scaling (original logic)
-              if (screenshotDisplaySize.width <= screenshotDisplaySize.height) {
-                // Width is smaller or equal - scale based on width, then calculate height
-                scaledWidth = screenshotDisplaySize.width * scaleFactor;
-                scaledHeight = scaledWidth / aspectRatio;
-              } else {
-                // Height is smaller - scale based on height, then calculate width
-                scaledHeight = screenshotDisplaySize.height * scaleFactor;
-                scaledWidth = scaledHeight * aspectRatio;
-              }
-            }
-            
+            const fitted = Boolean(printAreaFit && printAreaFit !== 'none');
+            const scaledWidth = screenshotDisplaySize.width * scaleFactor;
+            const scaledHeight = screenshotDisplaySize.height * scaleFactor;
             return (
               <img 
-                className={`product-preview-overlay${printAreaFit && printAreaFit !== 'none' ? ' product-preview-overlay-fit' : ''}${isYouthHoodie ? ' product-preview-overlay-youth-hoodie' : ''}`}
+                className={`product-preview-overlay${fitted ? ' product-preview-overlay-fit' : ''}${isYouthHoodie ? ' product-preview-overlay-youth-hoodie' : ''}`}
                 key={processedImage || 'overlay'}
                 src={processedImage}
                 alt="Screenshot overlay"
                 style={{
                   width: `${scaledWidth}px`,
                   height: `${scaledHeight}px`,
-                  // Stretch only: cover was cropping the sides when height grew.
-                  objectFit: isYouthHoodie ? 'fill' : (printAreaFit && printAreaFit !== 'none' ? 'cover' : 'contain'),
+                  objectFit: fitted ? 'fill' : 'contain',
                   display: 'block',
                   pointerEvents: 'none',
                   userSelect: 'none',
@@ -1048,6 +1064,7 @@ const ToolsPage = () => {
   // True when the user picked Fit Type / landscape (do not treat initial 'none' as a choice)
   const fitUserSetRef = useRef({});
   const autoFitCartIndexRef = useRef({});
+  const printFilterKeyRef = useRef('');
   // When true, apply-edits effect must skip so it doesn't overwrite with previous product's image (same effect batch race)
   const switchingSlotRef = useRef(false);
   const [slotSwitchTick, setSlotSwitchTick] = useState(0);
@@ -1172,6 +1189,7 @@ const ToolsPage = () => {
     cartCountRef.current = 0;
     entrySelectRef.current = true;
     autoFitCartIndexRef.current = {};
+    printFilterKeyRef.current = '';
     fitUserSetRef.current = {};
     setSelectedProductName('');
     setPrintAreaFit('none');
@@ -1483,9 +1501,10 @@ const ToolsPage = () => {
               delete slotStateRef.current[nextIndex];
               fitUserSetRef.current[nextIndex] = false;
               delete autoFitCartIndexRef.current[nextIndex];
+              printFilterKeyRef.current = '';
               setEditedImageUrl('');
               setFitPreviewImageUrl('');
-              setScreenshotSizeInteracted(false);
+              setScreenshotSizeInteracted(true);
               setImageOffsetX(0);
               setImageOffsetY(0);
               setImageOrientation('portrait');
@@ -1701,6 +1720,9 @@ const ToolsPage = () => {
               setPrintQualityMeta(null);
               const cartIndex = selectedProduct.originalCartIndex;
               setProductImageOffsets(prev => ({ ...prev, [cartIndex]: { x: 0, y: 0 } }));
+              if (resolvedFit === 'product' && resolvedName) {
+                setScreenshotSizeInteracted(true);
+              }
             }
             if (resolvedName) setProductSelectClicked(true);
             setTimeout(function clearSwitchFlag() {
@@ -1813,28 +1835,36 @@ const ToolsPage = () => {
     loadScreenshot();
   }, [selectedCartProductIndex, cartProducts]); // Re-run when cart product selection changes
 
-  // If Select Product is still empty (single-item cart hides the cart picker),
-  // match the previewed cart item automatically.
+  // Auto-apply this product's recorded print area (W×H) so the screenshot
+  // fills Product Preview without dragging Screenshot Size. Scale stays 100
+  // unless the shopper already saved a size for this cart item.
   useEffect(() => {
     if (selectedCartProductIndex === null) return;
     const product = cartProducts[selectedCartProductIndex];
     if (!product?.name) return;
-    const matched = matchPrintAreaProductName(product.name);
-    if (!matched) return;
-    setSelectedProductName((prev) => {
-      if (fitUserSetRef.current[selectedCartProductIndex] && prev) return prev;
-      return matched || prev;
-    });
-    if (!autoFitCartIndexRef.current[selectedCartProductIndex]) {
-      autoFitCartIndexRef.current[selectedCartProductIndex] = true;
-      setPrintAreaFit((prev) => {
-        if (fitUserSetRef.current[selectedCartProductIndex]) return prev;
-        if (prev && prev !== 'none') return prev;
-        if (imageOrientation === 'landscape') return prev;
-        return 'product';
-      });
+    if (fitUserSetRef.current[selectedCartProductIndex]) {
+      const matched = matchPrintAreaProductName(product.name);
+      if (matched) {
+        setSelectedProductName((prev) => prev || matched);
+        setProductSelectClicked(true);
+      }
+      return;
     }
+    if (imageOrientation === 'landscape') return;
+    const filter = getProductPrintFilter(product.name, product.size);
+    if (!filter) return;
+    const key = `${selectedCartProductIndex}|${product.originalCartIndex}|${filter.name}|${product.size || ''}|${filter.width}x${filter.height}`;
+    if (printFilterKeyRef.current === key) return;
+    printFilterKeyRef.current = key;
+    setSelectedProductName(filter.name);
+    setPrintAreaFit('product');
     setProductSelectClicked(true);
+    const savedScale = product.toolSettings?.screenshotScale;
+    if (savedScale === undefined) {
+      setScreenshotScale(100);
+    }
+    setScreenshotSizeInteracted(true);
+    autoFitCartIndexRef.current[selectedCartProductIndex] = true;
   }, [selectedCartProductIndex, cartProducts, imageOrientation]);
 
   // When Fit to Print names a product that is not the current cart item,
@@ -3229,13 +3259,23 @@ const ToolsPage = () => {
       };
     }
     setSelectedCartProductIndex(newIndex);
-    const matchedName = matchPrintAreaProductName(cartProducts[newIndex].name) || '';
+    printFilterKeyRef.current = '';
+    const filter = getProductPrintFilter(cartProducts[newIndex].name, cartProducts[newIndex].size);
+    const matchedName = filter?.name || matchPrintAreaProductName(cartProducts[newIndex].name) || '';
     if (matchedName) {
       setSelectedProductName(matchedName);
       setPrintAreaFit('product');
       setProductSelectClicked(true);
     }
-    setScreenshotSizeInteracted(false);
+    const savedScale = cartProducts[newIndex].toolSettings?.screenshotScale
+      ?? slotStateRef.current[newIndex]?.screenshotScale;
+    if (savedScale === undefined) {
+      setScreenshotScale(100);
+      setScreenshotSizeInteracted(true);
+    } else {
+      setScreenshotScale(savedScale);
+      setScreenshotSizeInteracted(true);
+    }
   };
 
   const handleFileUpload = (e) => {

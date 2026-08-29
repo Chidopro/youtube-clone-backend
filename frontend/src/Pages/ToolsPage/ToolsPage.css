@@ -296,7 +296,7 @@ body.tools-page-active .site-footer {
 }
 
 .product-preview-overlay-fit {
-  object-fit: cover;
+  object-fit: fill !important;
 }
 
 .product-preview-overlay-youth-hoodie {
@@ -1153,7 +1153,7 @@ body.tools-page-active .site-footer {
   }
 
   body.tools-page-active .product-preview-overlay-fit {
-    object-fit: cover;
+    object-fit: fill !important;
   }
 
   body.tools-page-active .product-preview-overlay-youth-hoodie {

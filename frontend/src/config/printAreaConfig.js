@@ -627,6 +627,24 @@ export const getPrintAreaAspectRatio = (productName, size = null, placement = 'f
   return getAspectRatio(dimensions.width, dimensions.height);
 };
 
+/**
+ * Print-area filter for Tools: crop/place the screenshot to this product's
+ * recorded width x height. Does not change overlay scale — the preview box
+ * already uses these inches.
+ */
+export function getProductPrintFilter(productName, size = null) {
+  const name = matchPrintAreaProductName(productName);
+  if (!name) return null;
+  const dimensions = getPrintAreaDimensions(name, size, 'front');
+  if (!dimensions || !dimensions.width || !dimensions.height) return null;
+  return {
+    name,
+    width: dimensions.width,
+    height: dimensions.height,
+    aspect: dimensions.width / dimensions.height,
+  };
+}
+
 // Helper function to calculate pixel dimensions at 300 DPI
 export const getPixelDimensions = (widthInches, heightInches, dpi = 300) => {
   return {
