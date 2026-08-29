@@ -16,9 +16,9 @@ import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from 
 import { AdminService } from '../../utils/adminService'
 import { useCreator } from '../../contexts/CreatorContext'
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService'
-import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
+import { CART_UPDATED_EVENT, getCartItemCount, writeCartItems } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
-import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
+import { DEMO_DASHBOARD_PATH, endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, isDemoStorefrontCartLocked, startDemoPreviewSession } from '../../utils/demoStorefront'
 import Sidebar from '../Sidebar/Sidebar'
 
 const isUsableHexColor = (value) =>
@@ -96,6 +96,10 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
 
     useEffect(() => {
         const refreshCartCount = () => setCartCount(getCartItemCount());
+        const onDashboard = location.pathname === '/dashboard' || location.pathname === DEMO_DASHBOARD_PATH;
+        if (isDemoStorefront() && (isDemoStorefrontCartLocked() || onDashboard)) {
+            writeCartItems([]);
+        }
         refreshCartCount();
         window.addEventListener(CART_UPDATED_EVENT, refreshCartCount);
         window.addEventListener('storage', refreshCartCount);
@@ -105,7 +109,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
             window.removeEventListener('storage', refreshCartCount);
             window.removeEventListener('focus', refreshCartCount);
         };
-    }, []);
+    }, [location.pathname]);
 
     useEffect(() => {
         let isMounted = true;
@@ -654,6 +658,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
     };
 
     const handleDeleteAccount = async () => {
+        if (isDemoPreviewUser(user)) return;
         if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
             try {
                 const result = await deleteUserAccount();
@@ -819,13 +824,17 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                 {!adminPortalOnlyMenu && (
                     <button
                         type="button"
+                        disabled={isDemoPreviewUser(user)}
+                        aria-disabled={isDemoPreviewUser(user)}
+                        title={isDemoPreviewUser(user) ? 'Not available on the sample dashboard tour' : undefined}
                         onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
+                            if (isDemoPreviewUser(user)) return;
                             setDropdownOpen(false);
                             handleDeleteAccount();
                         }}
-                        className="dropdown-item delete-account-btn"
+                        className={`dropdown-item delete-account-btn${isDemoPreviewUser(user) ? ' is-disabled' : ''}`}
                     >
                         Delete Account
                     </button>

@@ -320,7 +320,12 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
             className="home-launch-banner"
             aria-label="Launch announcement: The Content Creator Revolution Now Has a Storefront"
           >
-            The Content Creator Revolution Now Has a Storefront.
+            <span className="home-launch-banner-desktop">
+              The Content Creator Revolution Now Has a Storefront.
+            </span>
+            <span className="home-launch-banner-mobile">
+              The Creator Revolution Now Has a Storefront.
+            </span>
           </Link>
         ) : null}
 

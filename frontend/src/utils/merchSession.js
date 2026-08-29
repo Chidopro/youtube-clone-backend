@@ -3,6 +3,9 @@
  * When the user switches to a different video, clear leftover cart items,
  * tools page state, and edited screenshots from the previous video.
  */
+
+import { isDemoStorefrontCartLocked } from './demoStorefront';
+
 export function normalizeVideoUrl(url) {
   if (!url || typeof url !== 'string') return '';
   try {
@@ -415,10 +418,18 @@ export function emitCartUpdated() {
 }
 
 export function writeCartItems(items) {
+  const next = Array.isArray(items) ? items : [];
+  if (isDemoStorefrontCartLocked()) {
+    const current = Array.isArray(cartItemsMemory) ? cartItemsMemory : readCartItems();
+    const currentLen = Array.isArray(current) ? current.length : 0;
+    if (next.length > currentLen) {
+      return;
+    }
+  }
   const prevLen = Array.isArray(cartItemsMemory)
     ? cartItemsMemory.length
     : readCartItems().length;
-  cartItemsMemory = Array.isArray(items) ? items : [];
+  cartItemsMemory = next;
   const isEmpty = cartItemsMemory.length === 0;
   const json = JSON.stringify(cartItemsMemory);
   const localOk = persistCartStore(localStorage, json, isEmpty);

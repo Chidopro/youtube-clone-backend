@@ -74,6 +74,10 @@ const FriendPages = ({ sidebar }) => {
     el.scrollBy({ left: direction * step, behavior: 'smooth' });
   };
 
+  const goBackFromFriends = () => {
+    navigate('/');
+  };
+
   useEffect(() => {
     const id = window.setInterval(() => {
       setTick(Math.floor(Date.now() / HUB_ROTATE_MS));
@@ -144,7 +148,7 @@ const FriendPages = ({ sidebar }) => {
           <button
             type="button"
             className="friend-pages-back-btn"
-            onClick={() => navigate('/')}
+            onClick={goBackFromFriends}
             aria-label="Back"
           >
             ←

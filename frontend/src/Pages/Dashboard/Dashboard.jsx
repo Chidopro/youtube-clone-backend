@@ -2680,11 +2680,13 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                 <div className="summary-value">${netValue.toFixed(2)}</div>
                                                 <div className="summary-subtitle">{netSubtitle}</div>
                                             </div>
-                                            <div className="summary-card">
-                                                <div className="summary-label">Platform fee</div>
-                                                <div className="summary-value">${platformFee.toFixed(2)}</div>
-                                                <div className="summary-subtitle">ScreenMerch</div>
-                                            </div>
+                                            {isMasterAdmin ? (
+                                                <div className="summary-card">
+                                                    <div className="summary-label">Platform fee</div>
+                                                    <div className="summary-value">${platformFee.toFixed(2)}</div>
+                                                    <div className="summary-subtitle">ScreenMerch</div>
+                                                </div>
+                                            ) : null}
                                             {!umbrellaOnly && collabPayTotal > 0 ? (
                                                 <div className="summary-card">
                                                     <div className="summary-label">Collaborator pay</div>

@@ -391,15 +391,6 @@
   display: none;
 }
 
-.reserve-slot-preview--shuffle::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.58) 0%, rgba(0, 0, 0, 0.12) 42%, transparent 62%);
-}
-
 .reserve-slot-shuffle,
 .card .reserve-slot-shuffle img,
 .card .reserve-slot-shuffle .hub-card-empty {
@@ -426,11 +417,6 @@
   display: none;
 }
 
-.reserve-slot-preview--shuffle .reserve-slot-cta-pill {
-  z-index: 2;
-  margin: 0 0 10px;
-}
-
 .reserve-slot-number {
   position: absolute;
   top: 8px;
@@ -451,19 +437,8 @@
   z-index: 1;
   font-size: 2.25rem;
   line-height: 1;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
-}
-
-.reserve-slot-tagline {
-  position: relative;
-  z-index: 1;
-  font-size: 0.72rem;
-  font-weight: 600;
-  opacity: 0.95;
-  margin: 0 0 8px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  max-width: 90%;
 }
 
 .reserve-slot-cta-pill {
@@ -556,12 +531,13 @@
   margin-bottom: 10px;
 }
 
+.card.reserve-slot-card h3 strong {
+  font-weight: 800;
+  color: #222;
+}
+
 @media (max-width: 600px) {
   .reserve-slot-icon {
     font-size: 1.85rem;
-  }
-
-  .reserve-slot-tagline {
-    font-size: 0.65rem;
   }
 }

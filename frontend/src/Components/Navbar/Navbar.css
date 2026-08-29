@@ -990,6 +990,20 @@ nav .nav-right .subscribe-btn {
     color: #721c24;
 }
 
+.user-dropdown .delete-account-btn.is-disabled,
+.user-dropdown .delete-account-btn:disabled {
+    color: #9aa0a6;
+    font-weight: 500;
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.user-dropdown .delete-account-btn.is-disabled:hover,
+.user-dropdown .delete-account-btn:disabled:hover {
+    background: none;
+    color: #9aa0a6;
+}
+
 .nav-right {
     align-items: center;
     gap: 4px;

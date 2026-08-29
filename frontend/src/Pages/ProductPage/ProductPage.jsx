@@ -10,7 +10,7 @@ import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
 import { setToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
-import { isDemoStorefront } from '../../utils/demoStorefront';
+import { isDemoStorefront, isDemoStorefrontCartLocked, DEMO_CART_LOCKED_EVENT } from '../../utils/demoStorefront';
 import { saveShopAddIntent, SHOP_CATEGORIES } from '../../utils/shopCategories';
 import './ProductPage.css';
 
@@ -88,6 +88,17 @@ const ProductPage = ({ sidebar }) => {
   const productCardRefs = useRef([]);
   const editPrefillKeyRef = useRef('');
   const lastTouchedCartIndexRef = useRef(null);
+  const [demoCartLocked, setDemoCartLocked] = useState(() => isDemoStorefrontCartLocked());
+
+  useEffect(() => {
+    const sync = () => setDemoCartLocked(isDemoStorefrontCartLocked());
+    window.addEventListener(DEMO_CART_LOCKED_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(DEMO_CART_LOCKED_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
 
   // Read from query first
   const qsCategory = searchParams.get('category');
@@ -589,6 +600,7 @@ const ProductPage = ({ sidebar }) => {
       window.scrollTo(0, 0);
       return;
     }
+    if (demoCartLocked && !isEditingCart) return;
     const isAvailable = await checkSelectionAvailability(product, index, chosenColor, chosenSize);
     if (!isAvailable) return;
     // Use the URL stored when user clicked a screenshot so we send the exact image they selected (not thumbnail by mistake)
@@ -1457,6 +1469,11 @@ const ProductPage = ({ sidebar }) => {
                             Product mockups show representative colors. Your order will be made in the colors you select.
                           </p>
                         )}
+                        {demoCartLocked ? (
+                          <p className="demo-cart-locked-note">
+                            Sample storefront — adding to cart is closed after checkout.
+                          </p>
+                        ) : null}
                       </>
                     )}
                   </div>
@@ -1474,6 +1491,11 @@ const ProductPage = ({ sidebar }) => {
                       Product mockups show representative colors. Your order will be made in the colors you select.
                     </p>
                   )}
+                  {demoCartLocked ? (
+                    <p className="demo-cart-locked-note">
+                      Sample storefront — adding to cart is closed after checkout.
+                    </p>
+                  ) : null}
                 </>
               )}
             </div>
@@ -1663,7 +1685,16 @@ const ProductPage = ({ sidebar }) => {
                   )}
                   <button 
                     className="add-to-cart-btn"
-                    disabled={variantAvailability[index]?.checking || variantAvailability[index]?.available === false}
+                    disabled={
+                      (!isShopCatalog && demoCartLocked && !isEditingCart)
+                      || variantAvailability[index]?.checking
+                      || variantAvailability[index]?.available === false
+                    }
+                    title={
+                      !isShopCatalog && demoCartLocked && !isEditingCart
+                        ? 'Sample storefront — adding to cart is closed after checkout.'
+                        : undefined
+                    }
                     onClick={() => handleAddToCart(product, index)}
                   >
                     {variantAvailability[index]?.checking
@@ -1672,7 +1703,9 @@ const ProductPage = ({ sidebar }) => {
                         ? 'Select Image'
                         : isEditingCart
                           ? 'Update Cart'
-                          : 'Add to Cart'}
+                          : demoCartLocked
+                            ? 'Cart closed'
+                            : 'Add to Cart'}
                   </button>
                 </div>
               ))}

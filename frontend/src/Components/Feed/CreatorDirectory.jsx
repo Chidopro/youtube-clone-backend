@@ -471,17 +471,18 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
                     {shuffleSrc ? null : (
                       <p className="reserve-slot-store-label">{storeLabel}</p>
                     )}
-                    <span className="reserve-slot-cta-pill reserve-slot-cta-pill--taken">
-                      {canVisit ? 'Visit storefront' : 'Claimed'}
-                    </span>
+                    {canVisit ? null : (
+                      <span className="reserve-slot-cta-pill reserve-slot-cta-pill--taken">
+                        Claimed
+                      </span>
+                    )}
                   </>
                 ) : (
                   <>
                     <span className="reserve-slot-icon" aria-hidden="true">
                       {slot.icon}
                     </span>
-                    <p className="reserve-slot-tagline">{slot.tagline}</p>
-                    <span className="reserve-slot-cta-pill">Reserve — free</span>
+                    <span className="reserve-slot-cta-pill">Reserve Free</span>
                   </>
                 )}
               </div>
@@ -490,7 +491,7 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
                 {isTaken
                   ? (canVisit
                     ? (subdomain === DEMO_STOREFRONT_SUBDOMAIN
-                      ? 'Take a tour of image and dashboard tools.'
+                      ? <strong>Take a tour of image and dashboard tools.</strong>
                       : `${subdomain}.screenmerch.com`)
                     : 'Soft launch seat claimed')
                   : `Limited to ${TOTAL_CREATOR_SPOTS} creators · Spot #${slot.spot}`}

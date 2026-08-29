@@ -5,7 +5,7 @@ import { API_CONFIG, apiJoin } from '../../config/apiConfig';
 import { emitCartUpdated, setToolsFocusCartIndex, writeCartItems, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
-import { isDemoStorefront } from '../../utils/demoStorefront';
+import { isDemoStorefront, lockDemoStorefrontCart } from '../../utils/demoStorefront';
 import {
   US_STATE_OPTIONS,
   CA_PROVINCE_OPTIONS,
@@ -59,6 +59,12 @@ const Checkout = () => {
   useEffect(() => {
     designPreferencesRef.current = designPreferences;
   }, [designPreferences]);
+
+  useEffect(() => {
+    if (!isDemoStorefront()) return;
+    lockDemoStorefrontCart();
+    writeCartItems([]);
+  }, []);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -495,6 +501,21 @@ const Checkout = () => {
     <div className="checkout-container">
       {isDemoStorefront() ? (
         <div className="checkout-sample-stop" role="status">
+          <button
+            type="button"
+            className="checkout-sample-stop-back"
+            aria-label="Back to products"
+            onClick={() => {
+              const idx = window.history.state?.idx;
+              if (typeof idx === 'number' && idx > 0) {
+                navigate(-1);
+                return;
+              }
+              navigate('/merchandise');
+            }}
+          >
+            ← Back
+          </button>
           <p className="checkout-sample-stop-kicker">Sample storefront</p>
           <h1>These items are not for sale</h1>
           <p>

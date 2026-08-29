@@ -73,6 +73,10 @@ body {
   animation: none !important;
 }
 
+.home-launch-banner-mobile {
+  display: none;
+}
+
 /* Container for centering the banner */
 .container .home-launch-banner {
   display: block;
@@ -96,8 +100,23 @@ body {
     padding-top: 4px;
   }
   .home-launch-banner {
-    padding-top: 4px;
-    margin-bottom: 10px;
+    padding: 4px 0 0;
+    margin-bottom: 2px;
+    letter-spacing: 0;
+    white-space: nowrap;
+    font-size: clamp(0.78rem, 3.95vw, 1rem);
+  }
+
+  .home-launch-banner-desktop {
+    display: none;
+  }
+
+  .home-launch-banner-mobile {
+    display: inline;
+  }
+
+  .home-launch-banner::after {
+    bottom: 0;
   }
 }
 

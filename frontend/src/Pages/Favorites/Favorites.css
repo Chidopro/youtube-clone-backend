@@ -81,7 +81,8 @@
 .favorites-back-btn {
   grid-column: 1;
   grid-row: 1;
-  z-index: 1;
+  z-index: 3;
+  pointer-events: auto;
   justify-self: start;
   background: none;
   border: none;
@@ -103,6 +104,10 @@
   justify-self: end;
 }
 
+.favorites-media-tab {
+  display: none;
+}
+
 .favorites-toolbar-text {
   grid-column: 1 / -1;
   grid-row: 1;
@@ -116,6 +121,10 @@
 }
 
 .favorites-toolbar-text > * {
+  pointer-events: none;
+}
+
+.favorites-toolbar-text .favorites-error {
   pointer-events: auto;
 }
 
@@ -249,6 +258,10 @@
   object-fit: contain;
 }
 
+.favorites-shelf-track.favorites-shelf-track--pair .favorites-card--video .favorites-card-image img {
+  object-fit: cover;
+}
+
 .favorites-shelf-track.favorites-shelf-track--pair .favorites-card-content {
   padding: 12px 16px 14px;
 }
@@ -262,6 +275,12 @@
 .favorites-shelf-track.favorites-shelf-track--pair .favorites-make-merch-btn {
   font-size: 15px;
   padding: 11px 18px;
+}
+
+.favorites-shelf-track.favorites-shelf-track--pair .page-item-meta {
+  min-height: 0;
+  margin: 0 0 8px;
+  -webkit-line-clamp: 1;
 }
 
 .favorites-shelf-track.favorites-shelf-track--trio .favorites-card {
@@ -361,13 +380,69 @@
   }
 
   .favorites-toolbar {
-    margin-bottom: 0;
-    gap: 0 12px;
+    display: grid;
+    grid-template-columns: auto auto 1fr auto auto;
+    margin-bottom: 14px;
+    gap: 0 8px;
     align-items: center;
   }
 
   .favorites-back-btn {
     margin-top: 0;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .favorites-media-tab {
+    display: inline-flex;
+    align-items: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    color: #6b6b6b;
+    width: fit-content;
+    padding: 4px 2px 6px;
+    line-height: 1.2;
+    background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-repeat: no-repeat;
+    background-position: left bottom;
+    background-size: 100% 2px;
+    transition: color 0.15s ease;
+  }
+
+  .favorites-media-tab--images {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .favorites-media-tab--videos {
+    grid-column: 4;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .favorites-media-tab.is-active {
+    color: #1a1a1a;
+    font-weight: 700;
+    background-size: 100% 3px;
+  }
+
+  .favorites-media-tab:hover {
+    color: #1a1a1a;
+  }
+
+  .favorites-scroll-right-btn {
+    grid-column: 5;
+    grid-row: 1;
+  }
+
+  .favorites-toolbar-text {
+    grid-column: 3;
+    grid-row: 1;
   }
 
   .favorites-page-title--visually-hidden {
@@ -384,6 +459,15 @@
 
   .favorites-shelf-title {
     margin: 0 0 4px;
+  }
+
+  .favorites-media-switch .favorites-shelf-title {
+    display: none;
+  }
+
+  .favorites-media-switch[data-active="images"] .favorites-shelf--videos,
+  .favorites-media-switch[data-active="videos"] .favorites-shelf--images {
+    display: none;
   }
 }
 
