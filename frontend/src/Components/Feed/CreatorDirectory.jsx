@@ -372,15 +372,6 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
         <p className="creator-directory-subtitle creator-directory-subtitle-mobile">
           Free ScreenMerch storefront limited access soft launch
         </p>
-        <div className="creator-directory-counter" aria-live="polite">
-          <span>
-            <strong>{claimedCount}</strong> of <strong>{TOTAL_CREATOR_SPOTS}</strong> spots claimed
-          </span>
-          <span aria-hidden="true">·</span>
-          <span>
-            <strong>{availableCount}</strong> available
-          </span>
-        </div>
       </div>
 
       <div className="feed creator-directory-grid">
@@ -486,19 +477,29 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
                   </>
                 )}
               </div>
-              <h2>{isTaken ? storeLabel : 'Reserve your storefront'}</h2>
+              <h2>{isTaken ? storeLabel : 'Reserve Your Storefront'}</h2>
               <h3>
                 {isTaken
                   ? (canVisit
                     ? (subdomain === DEMO_STOREFRONT_SUBDOMAIN
-                      ? <strong>Take a tour of image and dashboard tools.</strong>
+                      ? <span className="reserve-slot-tour-line">Take a tour of image and dashboard tools.</span>
                       : `${subdomain}.screenmerch.com`)
                     : 'Soft launch seat claimed')
-                  : `Limited to ${TOTAL_CREATOR_SPOTS} creators · Spot #${slot.spot}`}
+                  : 'Limited free soft launch'}
               </h3>
             </div>
           );
         })}
+      </div>
+
+      <div className="creator-directory-counter" aria-live="polite">
+        <span>
+          <strong>{claimedCount}</strong> of <strong>{TOTAL_CREATOR_SPOTS}</strong> spots claimed
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>
+          <strong>{availableCount}</strong> available
+        </span>
       </div>
 
       {editOpen && (

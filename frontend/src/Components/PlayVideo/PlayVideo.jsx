@@ -1214,8 +1214,8 @@ const PlayVideo = ({
                         }}
                     />
                     
-                    {/* Play Video Overlay - Shows when video hasn't been played */}
-                    {!videoHasPlayed && !videoError && video && (
+                    {/* Play overlay is desktop-only; mobile uses native controls so playback isn't covered by a tint. */}
+                    {!isMobile && !videoHasPlayed && !videoError && video && (
                         <div 
                             onClick={async () => {
                                 if (videoRef.current) {

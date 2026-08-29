@@ -49,6 +49,20 @@ nav.nav-dropdown-active {
     }
 }
 
+/* Keep search off on phones, including landscape (width often ≥769px). */
+@media (max-width: 1023px) {
+    nav .nav-middle,
+    nav .nav-middle .search-box,
+    nav:not(.nav--logo-horizontal) .nav-middle,
+    nav:not(.nav--logo-horizontal) .nav-middle .search-box {
+        display: none !important;
+    }
+
+    nav .nav-center-right:not(:has(.nav-cart-btn)) {
+        padding-right: 10px;
+    }
+}
+
 /* Remove individual padding from nav-right since we're grouping */
 .nav-right {
     padding-right: 0; /* Remove individual padding since we're grouping */
@@ -1186,6 +1200,11 @@ nav .nav-right .subscribe-btn {
         right: 0 !important;
         bottom: 0 !important;
         padding-bottom: 6px !important;
+    }
+
+    /* Apex has no cart; inset Sign Up so its right edge is visible, not flush to the screen. */
+    .nav-center-right:not(:has(.nav-cart-btn)) {
+        right: 10px !important;
     }
 
     .nav-cart-btn {

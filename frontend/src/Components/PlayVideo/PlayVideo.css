@@ -151,10 +151,9 @@
 
 /* Mobile: keep video inline, prevent fullscreen takeover (scoped to play-video only) */
 @media (max-width: 768px) {
-  /* Hide fullscreen button on merch video player */
+  /* Hide fullscreen / cast; keep native play controls so there is no custom tint overlay */
   .play-video video::-webkit-media-controls-fullscreen-button,
-  .play-video video::-internal-media-controls-overlay-cast-button,
-  .play-video video::-webkit-media-controls-enclosure {
+  .play-video video::-internal-media-controls-overlay-cast-button {
     display: none !important;
   }
   

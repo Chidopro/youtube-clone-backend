@@ -431,10 +431,9 @@
     -webkit-transform: none !important;
   }
   
-  /* Hide fullscreen button on mobile */
+  /* Hide fullscreen / cast; keep native play controls */
   .video-viewer .video-container video::-webkit-media-controls-fullscreen-button,
-  .video-viewer .video-container video::-internal-media-controls-overlay-cast-button,
-  .video-viewer .video-container video::-webkit-media-controls-enclosure {
+  .video-viewer .video-container video::-internal-media-controls-overlay-cast-button {
     display: none !important;
   }
   

@@ -30,7 +30,7 @@
     max-width: none;
     white-space: nowrap;
     margin-top: 0;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     font-size: 1.05rem;
     line-height: 1.25;
   }
@@ -56,19 +56,21 @@
     font-size: 1rem;
     font-weight: 500;
     white-space: nowrap;
-    /* Raise sentence toward purple bar; extra bottom margin keeps counter in place */
-    margin: 0 0 14px;
+    margin: 0 0 16px;
     line-height: 1.2;
     max-width: none;
   }
 }
 
 .creator-directory-counter {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  margin: 18px auto 8px;
   background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
   border: 1px solid rgba(102, 126, 234, 0.25);
   border-radius: 999px;
@@ -76,8 +78,6 @@
   font-size: 0.8rem;
   font-weight: 600;
   color: #444;
-  /* Lift away from How it Works card (mobile + desktop) */
-  margin-bottom: 6px;
 }
 
 .creator-directory-counter strong {
@@ -531,9 +531,9 @@
   margin-bottom: 10px;
 }
 
-.card.reserve-slot-card h3 strong {
-  font-weight: 800;
-  color: #222;
+.card.reserve-slot-card h3 .reserve-slot-tour-line {
+  font-weight: 400;
+  color: #333;
 }
 
 @media (max-width: 600px) {

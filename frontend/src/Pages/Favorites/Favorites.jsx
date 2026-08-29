@@ -20,7 +20,13 @@ const sortNewest = (a, b) => {
   return tb - ta;
 };
 
-function FavoritesShelfTrack({ children, itemCount = 0, pair = false, trio = false, scrollRef = null }) {
+function FavoritesShelfTrack({
+  children,
+  itemCount = 0,
+  pair = false,
+  trio = false,
+  scrollRef = null,
+}) {
   const trackRef = useRef(null);
   const [bar, setBar] = useState({ canScroll: false, thumbPct: 100, leftPct: 0 });
 
@@ -156,7 +162,6 @@ const Favorites = ({ sidebar }) => {
   const imageTrackRef = useRef(null);
   const videoTrackRef = useRef(null);
   const shelfScrollTargetRef = useRef(null);
-  const [desktopMediaTab, setDesktopMediaTab] = useState('images');
 
   const restoreShelfSnap = (el) => {
     if (!el) return;
@@ -166,14 +171,7 @@ const Favorites = ({ sidebar }) => {
     delete el.dataset.shelfSnap;
   };
 
-  const getActiveShelfEl = () => {
-    const desktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 901px)').matches;
-    if (desktop) {
-      if (desktopMediaTab === 'videos') return videoTrackRef.current;
-      return imageTrackRef.current;
-    }
-    return imageTrackRef.current || videoTrackRef.current;
-  };
+  const getActiveShelfEl = () => imageTrackRef.current || videoTrackRef.current;
 
   const isOnFriendPage = () => {
     if (listMeta?.is_primary || listMeta?.slug === 'owner') return false;
@@ -228,7 +226,7 @@ const Favorites = ({ sidebar }) => {
       el.removeEventListener('scroll', onScroll);
       restoreShelfSnap(el);
     };
-  }, [loading, desktopMediaTab, images.length, videos.length]);
+  }, [loading, images.length, videos.length]);
 
   const effectiveSlug = (listSlug || 'owner').toLowerCase();
 
@@ -365,19 +363,6 @@ const Favorites = ({ sidebar }) => {
     [videos]
   );
 
-  useEffect(() => {
-    if (desktopMediaTab === 'images' && imageItems.length === 0 && videoItems.length > 0) {
-      setDesktopMediaTab('videos');
-    } else if (desktopMediaTab === 'videos' && videoItems.length === 0 && imageItems.length > 0) {
-      setDesktopMediaTab('images');
-    }
-  }, [desktopMediaTab, imageItems.length, videoItems.length]);
-
-  const selectDesktopMediaTab = (tab) => {
-    setDesktopMediaTab(tab);
-    shelfScrollTargetRef.current = null;
-  };
-
   const extraPageItems = useMemo(
     () =>
       extraPages.map((page) => ({
@@ -447,30 +432,10 @@ const Favorites = ({ sidebar }) => {
           >
             ←
           </button>
-          {imageItems.length > 0 ? (
-            <button
-              type="button"
-              className={`favorites-media-tab favorites-media-tab--images${desktopMediaTab === 'images' ? ' is-active' : ''}`}
-              onClick={() => selectDesktopMediaTab('images')}
-              aria-pressed={desktopMediaTab === 'images'}
-            >
-              Images
-            </button>
-          ) : null}
           <div className="favorites-toolbar-text">
             <h1 className={`favorites-page-title${pageTitle === 'My Page' ? ' favorites-page-title--visually-hidden' : ''}`}>{pageTitle}</h1>
             {error ? <p className="favorites-error">{error}</p> : null}
           </div>
-          {videoItems.length > 0 ? (
-            <button
-              type="button"
-              className={`favorites-media-tab favorites-media-tab--videos${desktopMediaTab === 'videos' ? ' is-active' : ''}`}
-              onClick={() => selectDesktopMediaTab('videos')}
-              aria-pressed={desktopMediaTab === 'videos'}
-            >
-              Videos
-            </button>
-          ) : null}
           <button
             type="button"
             className="favorites-back-btn favorites-scroll-right-btn"
@@ -492,7 +457,6 @@ const Favorites = ({ sidebar }) => {
 
         {!loading && (hasVisibleItems || extraPageItems.length > 0) ? (
           <div className="favorites-shelves">
-            <div className="favorites-media-switch" data-active={desktopMediaTab}>
             {imageItems.length > 0 ? (
               <section className="favorites-shelf favorites-shelf--images" aria-label="Images">
                 <h2 className="favorites-shelf-title">Images</h2>
@@ -520,7 +484,6 @@ const Favorites = ({ sidebar }) => {
                       </div>
                       <div className="favorites-card-content">
                         <h3>{item.title}</h3>
-                        <p className="page-item-meta">{item.raw.channelTitle || 'Creator'}</p>
                         <button
                           type="button"
                           className="favorites-make-merch-btn"
@@ -534,7 +497,6 @@ const Favorites = ({ sidebar }) => {
                 </FavoritesShelfTrack>
               </section>
             ) : null}
-            </div>
 
             {visibleExtraPages.map((page) => (
               <section
