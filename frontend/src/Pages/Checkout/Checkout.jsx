@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
-import { emitCartUpdated, setToolsFocusCartIndex, writeCartItems, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
+import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
@@ -59,11 +59,6 @@ const Checkout = () => {
   useEffect(() => {
     designPreferencesRef.current = designPreferences;
   }, [designPreferences]);
-
-  useEffect(() => {
-    if (!isDemoStorefront()) return;
-    writeCartItems([], { keepWorkingScreenshot: true });
-  }, []);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -484,6 +479,7 @@ const Checkout = () => {
       localStorage.setItem('last_selected_category', itemCategory);
     } catch {}
     setToolsFocusCartIndex(index);
+    if (isDemoStorefront()) setToolsPreviewNewest(false);
     try {
       const shot = item.selected_screenshot || item.screenshot;
       if (shot) applySelectedScreenshot(shot);

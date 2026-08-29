@@ -8,7 +8,7 @@ import { getBackendUrl } from '../../config/apiConfig';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
-import { setToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
+import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { saveShopAddIntent, SHOP_CATEGORIES } from '../../utils/shopCategories';
@@ -110,7 +110,7 @@ const ProductPage = ({ sidebar }) => {
     !productId || productId === 'browse' || productId === 'undefined' || productId === 'null';
   const goToMainCategories = () => navigate(isShopCatalog ? '/shop' : '/merchandise');
   const openCartIfSignedIn = () => {
-    if (isShopperSignedIn()) {
+    if (isDemoStorefront() || isShopperSignedIn()) {
       setIsCartOpen(true);
       return;
     }
@@ -133,7 +133,7 @@ const ProductPage = ({ sidebar }) => {
     
     // Open cart modal if openCart parameter is present
     if (openCart) {
-      if (isShopperSignedIn()) {
+      if (isDemoStorefront() || isShopperSignedIn()) {
         setIsCartOpen(true);
       } else {
         navigate('/checkout');
@@ -589,10 +589,7 @@ const ProductPage = ({ sidebar }) => {
       window.scrollTo(0, 0);
       return;
     }
-    if (isDemoStorefront()) {
-      navigate('/checkout');
-      return;
-    }
+    rememberToolsProductName(product?.name);
     const isAvailable = await checkSelectionAvailability(product, index, chosenColor, chosenSize);
     if (!isAvailable) return;
     // Use the URL stored when user clicked a screenshot so we send the exact image they selected (not thumbnail by mistake)
@@ -662,13 +659,16 @@ const ProductPage = ({ sidebar }) => {
     try {
       if (isEditingCart) {
         setToolsFocusCartIndex(editingCartIndex);
+        if (isDemoStorefront()) setToolsPreviewNewest(false);
       } else if (lastTouchedCartIndexRef.current != null) {
         setToolsFocusCartIndex(lastTouchedCartIndexRef.current);
+        if (isDemoStorefront()) setToolsPreviewNewest(true);
       } else {
         const items = readCartItems();
         if (Array.isArray(items) && items.length > 0) {
           setToolsFocusCartIndex(items.length - 1);
         }
+        if (isDemoStorefront()) setToolsPreviewNewest(true);
       }
       let urlToSave = selectedScreenshotUrl || getSelectedScreenshotUrl();
       if (!urlToSave) {
@@ -1520,6 +1520,7 @@ const ProductPage = ({ sidebar }) => {
                   key={product?.name ? `${product.name}-${index}` : index}
                   className={`product-card${highlightedProductIndex === index ? ' product-card-editing' : ''}`}
                   ref={(el) => { productCardRefs.current[index] = el; }}
+                  onPointerDown={() => rememberToolsProductName(product?.name)}
                 >
                   {/* Product Image - always show; stable URL so images load despite re-renders */}
                   {(() => {

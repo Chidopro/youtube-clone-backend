@@ -1,0 +1,13 @@
+---
+description: Deploy ScreenMerch frontend to production without asking
+alwaysApply: true
+---
+
+# Deploy frontend without asking
+
+After finishing frontend or UI work, deploy to production. Do not ask whether to deploy unless the user explicitly said not to.
+
+- Build: `npm run build` in `frontend/`
+- Deploy: `netlify deploy --prod --dir=frontend/dist --no-build --site eloquent-crumble-37c09e` from the repo root
+- Live site is `eloquent-crumble-37c09e` (`screenmerch.com` / `*.screenmerch.com`), not the linked `effervescent-palmier-c9d361` site
+- Frontend-only unless the change requires a Fly backend deploy

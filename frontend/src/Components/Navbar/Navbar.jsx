@@ -16,7 +16,7 @@ import { upsertUserProfile, deleteUserAccount, fetchMyProfileFromBackend } from 
 import { AdminService } from '../../utils/adminService'
 import { useCreator } from '../../contexts/CreatorContext'
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService'
-import { CART_UPDATED_EVENT, getCartItemCount, writeCartItems } from '../../utils/merchSession'
+import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
 import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
 import Sidebar from '../Sidebar/Sidebar'
@@ -96,9 +96,6 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
 
     useEffect(() => {
         const refreshCartCount = () => setCartCount(getCartItemCount());
-        if (isDemoStorefront()) {
-            writeCartItems([], { keepWorkingScreenshot: true });
-        }
         refreshCartCount();
         window.addEventListener(CART_UPDATED_EVENT, refreshCartCount);
         window.addEventListener('storage', refreshCartCount);
@@ -1114,7 +1111,17 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                     <button
                         type="button"
                         className="nav-cart-btn"
-                        onClick={() => navigate('/checkout')}
+                        onClick={() => {
+                            if (isDemoStorefront()) {
+                                let category = 'mens';
+                                try {
+                                    category = localStorage.getItem('last_selected_category') || 'mens';
+                                } catch (_) {}
+                                navigate(`/product/browse?category=${encodeURIComponent(category)}&openCart=true`);
+                                return;
+                            }
+                            navigate('/checkout');
+                        }}
                         aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
                         title="Cart"
                     >

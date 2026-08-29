@@ -65,6 +65,8 @@ function persistPendingObject(clean) {
   return packed.clean;
 }
 
+const TOOLS_EDITOR_RESET_KEY = 'tools_editor_reset';
+
 function clearToolsPageState() {
   try {
     localStorage.removeItem('tools_page_state');
@@ -77,6 +79,53 @@ function clearToolsPageState() {
     sessionStorage.removeItem('tools_focus_cart_index');
   } catch {
     /* ignore */
+  }
+}
+
+/** Remember which product the shopper last touched so Tools can open on it. */
+export function rememberToolsProductName(name) {
+  const trimmed = String(name || '').trim();
+  if (!trimmed) return;
+  try {
+    const data = { ...(readPendingMerchData() || {}) };
+    data.selected_product_name = trimmed;
+    savePendingMerchData(data);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Drop Fit-to-Print product, edits, and saved Tools UI so Back starts clean.
+ * Keeps the chosen screenshot so Tools can reopen on a newly selected product.
+ */
+export function resetToolsEditorSession() {
+  clearToolsPageState();
+  try {
+    sessionStorage.setItem(TOOLS_EDITOR_RESET_KEY, '1');
+  } catch {
+    /* ignore */
+  }
+  try {
+    const data = readPendingMerchData();
+    if (!data || typeof data !== 'object') return;
+    const next = { ...data };
+    delete next.selected_product_name;
+    delete next.edited_screenshot;
+    delete next.tools_used;
+    savePendingMerchData(next);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function consumeToolsEditorReset() {
+  try {
+    if (sessionStorage.getItem(TOOLS_EDITOR_RESET_KEY) !== '1') return false;
+    sessionStorage.removeItem(TOOLS_EDITOR_RESET_KEY);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -299,6 +348,47 @@ export function peekToolsFocusCartIndex() {
   }
 }
 
+const TOOLS_SEEN_CART_COUNT_KEY = 'tools_seen_cart_count';
+const TOOLS_PREVIEW_NEWEST_KEY = 'tools_preview_newest';
+
+/** How many cart products Tools last displayed. Used to detect a newly added item. */
+export function readToolsSeenCartCount() {
+  try {
+    const n = parseInt(sessionStorage.getItem(TOOLS_SEEN_CART_COUNT_KEY) || '0', 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function writeToolsSeenCartCount(count) {
+  try {
+    if (!count) sessionStorage.removeItem(TOOLS_SEEN_CART_COUNT_KEY);
+    else sessionStorage.setItem(TOOLS_SEEN_CART_COUNT_KEY, String(count));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function setToolsPreviewNewest(on = true) {
+  try {
+    if (on) localStorage.setItem(TOOLS_PREVIEW_NEWEST_KEY, '1');
+    else localStorage.removeItem(TOOLS_PREVIEW_NEWEST_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function consumeToolsPreviewNewest() {
+  try {
+    const on = localStorage.getItem(TOOLS_PREVIEW_NEWEST_KEY) === '1';
+    localStorage.removeItem(TOOLS_PREVIEW_NEWEST_KEY);
+    return on;
+  } catch {
+    return false;
+  }
+}
+
 /** Replace the working screenshot and drop the previous Tools edit. */
 export function applySelectedScreenshot(url) {
   if (!url || typeof url !== 'string') return;
@@ -369,8 +459,38 @@ function persistCartStore(store, json, isEmpty) {
   }
 }
 
+function dropLocalCart() {
+  try {
+    localStorage.removeItem('cart_items');
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Sample storefront cart is tab-scoped: refresh and Tools keep it,
+ * closing the tab starts empty. Real storefronts still use localStorage.
+ */
+function isTabScopedCart() {
+  try {
+    return isDemoStorefront();
+  } catch {
+    return false;
+  }
+}
+
 export function readCartItems(options = {}) {
   if (!options.ignoreMemory && Array.isArray(cartItemsMemory)) return cartItemsMemory;
+  if (isTabScopedCart()) {
+    dropLocalCart();
+    let fromSession = null;
+    try {
+      fromSession = parseCartArray(sessionStorage.getItem('cart_items'));
+    } catch {
+      /* ignore */
+    }
+    return Array.isArray(fromSession) ? fromSession : [];
+  }
   let fromLocal = null;
   let localKeyExists = false;
   try {
@@ -419,27 +539,21 @@ export function emitCartUpdated() {
 
 export function writeCartItems(items, options = {}) {
   const next = Array.isArray(items) ? items : [];
-  if (isDemoStorefront()) {
-    const current = Array.isArray(cartItemsMemory) ? cartItemsMemory : readCartItems();
-    const currentLen = Array.isArray(current) ? current.length : 0;
-    if (next.length > currentLen) {
-      return;
-    }
-  }
   const prevLen = Array.isArray(cartItemsMemory)
     ? cartItemsMemory.length
     : readCartItems().length;
   cartItemsMemory = next;
+  if (next.length > prevLen && isDemoStorefront()) setToolsPreviewNewest(true);
   const isEmpty = cartItemsMemory.length === 0;
   const json = JSON.stringify(cartItemsMemory);
-  const localOk = persistCartStore(localStorage, json, isEmpty);
   persistCartStore(sessionStorage, json, isEmpty);
-  // Quota failed on localStorage: drop a stale [] so read() can use session.
-  if (!isEmpty && !localOk) {
-    try {
-      localStorage.removeItem('cart_items');
-    } catch {
-      /* ignore */
+  if (isTabScopedCart()) {
+    dropLocalCart();
+  } else {
+    const localOk = persistCartStore(localStorage, json, isEmpty);
+    // Quota failed on localStorage: drop a stale [] so read() can use session.
+    if (!isEmpty && !localOk) {
+      dropLocalCart();
     }
   }
   if (prevLen > 0 && isEmpty && !options.keepWorkingScreenshot) {

@@ -1,0 +1,21 @@
+---
+description: Keep maxfreedom sample-store behavior off real creator storefronts
+alwaysApply: true
+---
+
+# Sample storefront isolation
+
+`maxfreedom.screenmerch.com` is the sample store (`isDemoStorefront()` in `frontend/src/utils/demoStorefront.js`). Real creator hosts such as `filialsons.screenmerch.com` must not inherit sample-only cart, checkout, or Tools shortcuts.
+
+Gate sample-only behavior with `isDemoStorefront()`. Do not use hostname checks that match every `*.screenmerch.com` storefront.
+
+Sample-only:
+
+- Tab-scoped cart (sessionStorage only; closing the tab clears it)
+- Checkout “These items are not for sale” and no real charges
+- Browse/cart without shopper sign-in
+- Apply Edits returns to browse with cart open, not checkout
+- Tools auto-selects the newest cart item and resets Product Preview
+- Tools can run from a pending screenshot with no cart item
+
+Real storefronts keep a persistent cart, real checkout, and Tools focus on the cart item being edited.

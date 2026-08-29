@@ -6,6 +6,7 @@ export const DEMO_DASHBOARD_PATH = '/demo/dashboard';
 export const DEMO_PREVIEW_SESSION_KEY = 'screenmerch_demo_preview_session';
 export const DEMO_PREVIEW_USER_ID = 'demo-preview';
 
+/** True only on maxfreedom.screenmerch.com — never other creator storefronts. */
 export function isDemoStorefront() {
   return getSubdomain() === DEMO_STOREFRONT_SUBDOMAIN;
 }

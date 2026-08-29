@@ -2,7 +2,8 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
-import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT } from '../../utils/merchSession';
+import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest } from '../../utils/merchSession';
+import { isDemoStorefront } from '../../utils/demoStorefront';
 import './ToolsPage.css';
 
 // Google Fonts used by the Text tool (fringe/style). Must be loaded before canvas can use them.
@@ -110,6 +111,7 @@ function getInitialCartPrintFit() {
     }
     const items = readCartItems();
     if (!Array.isArray(items) || items.length === 0) {
+      if (!isDemoStorefront()) return { name: '', fit: 'none' };
       const sessionProduct = sessionToolsProductFromPending();
       if (!sessionProduct) return { name: '', fit: 'none' };
       const name = matchPrintAreaProductName(sessionProduct.name) || sessionProduct.name || '';
@@ -121,11 +123,13 @@ function getInitialCartPrintFit() {
       .filter(({ item }) => item && item.screenshot && String(item.screenshot).trim() !== '');
     if (!withShots.length) return { name: '', fit: 'none' };
 
-    const focusOriginal = peekToolsFocusCartIndex();
     let chosen = withShots[withShots.length - 1];
-    if (focusOriginal != null) {
-      const matched = withShots.find((p) => p.originalIndex === focusOriginal);
-      if (matched) chosen = matched;
+    if (!isDemoStorefront()) {
+      const focusOriginal = peekToolsFocusCartIndex();
+      if (focusOriginal != null) {
+        const matched = withShots.find((p) => p.originalIndex === focusOriginal);
+        if (matched) chosen = matched;
+      }
     }
     const name = matchPrintAreaProductName(chosen.item.name) || '';
     return { name, fit: name ? 'product' : 'none' };
@@ -1043,6 +1047,7 @@ const ToolsPage = () => {
   const [sessionEpoch, setSessionEpoch] = useState(0);
   // True when the user picked Fit Type / landscape (do not treat initial 'none' as a choice)
   const fitUserSetRef = useRef({});
+  const autoFitCartIndexRef = useRef({});
   // When true, apply-edits effect must skip so it doesn't overwrite with previous product's image (same effect batch race)
   const switchingSlotRef = useRef(false);
   const [slotSwitchTick, setSlotSwitchTick] = useState(0);
@@ -1160,6 +1165,29 @@ const ToolsPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  const applyEditorReset = () => {
+    slotStateRef.current = {};
+    sessionPreviewUrlRef.current = '';
+    cartIdentityRef.current = '';
+    cartCountRef.current = 0;
+    entrySelectRef.current = true;
+    autoFitCartIndexRef.current = {};
+    fitUserSetRef.current = {};
+    setSelectedProductName('');
+    setPrintAreaFit('none');
+    setFitPreviewImageUrl('');
+    setCartProducts([]);
+    setSelectedCartProductIndex(null);
+    setProductImageOffsets({});
+    setScreenshotScale(100);
+    setEditedImageUrl('');
+    setImageOffsetX(0);
+    setImageOffsetY(0);
+    setImageOrientation('portrait');
+    setProductSelectClicked(false);
+    setScreenshotSizeInteracted(false);
+  };
+
   // Phone: module memory kept the previous cart/screenshot after adding a
   // new product. A manual refresh dropped that cache. Re-read storage on
   // every Tools visit and when iOS restores the page from bfcache.
@@ -1169,6 +1197,9 @@ const ToolsPage = () => {
     slotStateRef.current = {};
     cartIdentityRef.current = '';
     cartCountRef.current = 0;
+    if (consumeToolsEditorReset()) {
+      applyEditorReset();
+    }
   }, [location.key]);
 
   useEffect(() => {
@@ -1182,6 +1213,9 @@ const ToolsPage = () => {
       setImageUrl('');
       setSelectedImage('');
       setEditedImageUrl('');
+      if (consumeToolsEditorReset()) {
+        applyEditorReset();
+      }
       setSessionEpoch((n) => n + 1);
     };
     const onVisibility = () => {
@@ -1393,26 +1427,41 @@ const ToolsPage = () => {
           
           setCartProducts(productsWithScreenshots);
           
-          // Newest cart item wins. Do not match pending_merch screenshot — that
-          // is the previous video and findIndex returns the oldest duplicate.
+          // Sample store: newest cart item wins and resets preview.
+          // Real storefronts honor tools_focus_cart_index (edit this item).
           if (productsWithScreenshots.length > 0) {
             const lastIndex = productsWithScreenshots.length - 1;
-            const focusOriginal = peekToolsFocusCartIndex();
             const identity = cartIdentity(productsWithScreenshots);
             const identityChanged = identity !== cartIdentityRef.current;
             cartIdentityRef.current = identity;
-            const cartGrew = productsWithScreenshots.length > cartCountRef.current;
+            const previousCount = cartCountRef.current;
+            const addedWhileOpen = productsWithScreenshots.length > previousCount && previousCount > 0;
+            const cartGrew = productsWithScreenshots.length > previousCount;
             cartCountRef.current = productsWithScreenshots.length;
+            const demoStore = isDemoStorefront();
             const forceEntry = entrySelectRef.current;
             if (forceEntry) entrySelectRef.current = false;
+
+            let showNewest = false;
+            if (demoStore) {
+              const seenCount = readToolsSeenCartCount();
+              const newProductAdded = productsWithScreenshots.length > seenCount;
+              writeToolsSeenCartCount(productsWithScreenshots.length);
+              showNewest = consumeToolsPreviewNewest() || newProductAdded || addedWhileOpen;
+            }
+
             let nextIndex = lastIndex;
-            if (focusOriginal != null) {
+            const focusOriginal = peekToolsFocusCartIndex();
+            if (showNewest) {
+              if (focusOriginal != null) consumeToolsFocusCartIndex();
+              nextIndex = lastIndex;
+            } else if (focusOriginal != null) {
               consumeToolsFocusCartIndex();
               const matched = productsWithScreenshots.findIndex(
                 (p) => p.originalCartIndex === focusOriginal
               );
               nextIndex = matched >= 0 ? matched : lastIndex;
-            } else if (forceEntry || cartGrew) {
+            } else if (forceEntry || (!demoStore && cartGrew)) {
               nextIndex = lastIndex;
             } else if (
               selectedCartProductIndex !== null &&
@@ -1420,22 +1469,39 @@ const ToolsPage = () => {
             ) {
               nextIndex = selectedCartProductIndex;
             }
+
             const chosen = productsWithScreenshots[nextIndex];
-            if (identityChanged && chosen) {
+            if (identityChanged && chosen && !showNewest) {
               const slot = slotStateRef.current[nextIndex];
               if (slot && slot.sourceScreenshot && slot.sourceScreenshot !== chosen.screenshot) {
                 delete slotStateRef.current[nextIndex];
                 setEditedImageUrl('');
               }
             }
-            if (nextIndex !== selectedCartProductIndex || forceEntry) {
+            if (showNewest && chosen) {
+              switchingSlotRef.current = true;
+              delete slotStateRef.current[nextIndex];
+              fitUserSetRef.current[nextIndex] = false;
+              delete autoFitCartIndexRef.current[nextIndex];
+              setEditedImageUrl('');
+              setFitPreviewImageUrl('');
+              setScreenshotSizeInteracted(false);
+              setImageOffsetX(0);
+              setImageOffsetY(0);
+              setImageOrientation('portrait');
+            }
+            if (showNewest || nextIndex !== selectedCartProductIndex || forceEntry) {
               setSelectedCartProductIndex(nextIndex);
               const matchedName = matchPrintAreaProductName(chosen?.name) || '';
               if (matchedName) {
                 setSelectedProductName(matchedName);
                 setPrintAreaFit('product');
+                setProductSelectClicked(true);
+              } else {
+                setSelectedProductName('');
+                setPrintAreaFit('none');
               }
-              const settings = chosen?.toolSettings;
+              const settings = showNewest ? null : chosen?.toolSettings;
               if (settings?.screenshotScale !== undefined) {
                 setScreenshotScale(settings.screenshotScale);
               } else {
@@ -1458,7 +1524,7 @@ const ToolsPage = () => {
             }
           }
         } else {
-          const sessionProduct = sessionToolsProductFromPending();
+          const sessionProduct = isDemoStorefront() ? sessionToolsProductFromPending() : null;
           if (sessionProduct) {
             if (sessionPreviewUrlRef.current) {
               sessionProduct.productImage = sessionPreviewUrlRef.current;
@@ -1503,6 +1569,7 @@ const ToolsPage = () => {
           } else {
             cartCountRef.current = 0;
             cartIdentityRef.current = '';
+            writeToolsSeenCartCount(0);
             setCartProducts([]);
             setSelectedCartProductIndex(null);
           }
@@ -1511,6 +1578,7 @@ const ToolsPage = () => {
         console.warn('Could not load cart items:', e);
         cartCountRef.current = 0;
         cartIdentityRef.current = '';
+        writeToolsSeenCartCount(0);
         setCartProducts([]);
         setSelectedCartProductIndex(null);
       }
@@ -1744,8 +1812,6 @@ const ToolsPage = () => {
     // Load immediately
     loadScreenshot();
   }, [selectedCartProductIndex, cartProducts]); // Re-run when cart product selection changes
-
-  const autoFitCartIndexRef = useRef({});
 
   // If Select Product is still empty (single-item cart hides the cart picker),
   // match the previewed cart item automatically.
@@ -3050,23 +3116,26 @@ const ToolsPage = () => {
       // Also update cart items if they exist
       const cartItems = readCartItems();
       let updatedCart;
-      
-      // If a specific cart product is selected, only update that one
-      if (selectedCartProductIndex !== null && cartProducts.length > 0 && cartProducts[selectedCartProductIndex]) {
-        const selectedProduct = cartProducts[selectedCartProductIndex];
-        const cartIndex = selectedProduct.originalCartIndex;
+      const selectedProduct =
+        selectedCartProductIndex !== null && cartProducts.length > 0
+          ? cartProducts[selectedCartProductIndex]
+          : null;
+      const cartIndex = selectedProduct?.originalCartIndex;
+      const canUpdateCartItem =
+        selectedProduct &&
+        !selectedProduct.sessionOnly &&
+        Number.isInteger(cartIndex) &&
+        cartItems[cartIndex];
+
+      if (canUpdateCartItem) {
         const offsets = productImageOffsets[cartIndex] || { x: 0, y: 0 };
-        
-        // Use the original cart index to update the correct item
         updatedCart = cartItems.map((item, index) => {
-          // Check if this is the selected product using original cart index
           if (index === cartIndex) {
             return {
               ...item,
               screenshot: editedImageUrl,
               edited: true,
               tools_acknowledged: true,
-              // Save tool settings for this product
               toolSettings: {
                 screenshotScale,
                 offsetX: offsets.x,
@@ -3091,9 +3160,28 @@ const ToolsPage = () => {
           }
           return item;
         });
-        console.log(`💾 Updated screenshot for selected cart product: ${selectedProduct.name} (cart index: ${selectedProduct.originalCartIndex})`);
+        console.log(`💾 Updated screenshot for selected cart product: ${selectedProduct.name} (cart index: ${cartIndex})`);
+      } else if (selectedProduct) {
+        let category = '';
+        try { category = localStorage.getItem('last_selected_category') || ''; } catch (_) {}
+        updatedCart = [
+          ...cartItems,
+          {
+            name: selectedProduct.name || selectedProductName || 'Product',
+            price: 0,
+            image: selectedProduct.productImage || '',
+            color: selectedProduct.color && selectedProduct.color !== 'N/A' ? selectedProduct.color : 'Default',
+            size: selectedProduct.size && selectedProduct.size !== 'N/A' ? selectedProduct.size : 'One Size',
+            screenshot: editedImageUrl,
+            selected_screenshot: editedImageUrl,
+            qty: 1,
+            category,
+            edited: true,
+            tools_acknowledged: true,
+          }
+        ];
+        console.log(`💾 Added tools product to cart: ${selectedProduct.name}`);
       } else {
-        // No specific product selected, update all items (backward compatibility)
         updatedCart = cartItems.map(item => ({
           ...item,
           screenshot: editedImageUrl,
@@ -3107,8 +3195,13 @@ const ToolsPage = () => {
     } catch (e) {
       console.error('Failed to save edited image:', e);
     }
-    
-    // Navigate directly to cart
+
+    if (isDemoStorefront()) {
+      let category = 'mens';
+      try { category = localStorage.getItem('last_selected_category') || 'mens'; } catch (_) {}
+      navigate(`/product/browse?category=${encodeURIComponent(category)}&openCart=true`);
+      return;
+    }
     navigate('/checkout');
   };
 
@@ -3159,6 +3252,8 @@ const ToolsPage = () => {
   };
 
   const goBackFromTools = () => {
+    resetToolsEditorSession();
+    applyEditorReset();
     if (typeof window !== 'undefined' && window.history.length > 1) {
       navigate(-1);
       return;
