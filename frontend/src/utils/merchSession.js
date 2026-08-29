@@ -4,7 +4,7 @@
  * tools page state, and edited screenshots from the previous video.
  */
 
-import { isDemoStorefrontCartLocked } from './demoStorefront';
+import { isDemoStorefront } from './demoStorefront';
 
 export function normalizeVideoUrl(url) {
   if (!url || typeof url !== 'string') return '';
@@ -417,9 +417,9 @@ export function emitCartUpdated() {
   }
 }
 
-export function writeCartItems(items) {
+export function writeCartItems(items, options = {}) {
   const next = Array.isArray(items) ? items : [];
-  if (isDemoStorefrontCartLocked()) {
+  if (isDemoStorefront()) {
     const current = Array.isArray(cartItemsMemory) ? cartItemsMemory : readCartItems();
     const currentLen = Array.isArray(current) ? current.length : 0;
     if (next.length > currentLen) {
@@ -442,7 +442,7 @@ export function writeCartItems(items) {
       /* ignore */
     }
   }
-  if (prevLen > 0 && isEmpty) {
+  if (prevLen > 0 && isEmpty && !options.keepWorkingScreenshot) {
     clearWorkingScreenshot();
   }
   emitCartUpdated();

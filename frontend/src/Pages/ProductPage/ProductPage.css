@@ -847,14 +847,6 @@
   box-shadow: none;
 }
 
-.demo-cart-locked-note {
-  margin: 8px 0 0;
-  font-size: 0.88rem;
-  line-height: 1.4;
-  color: #64748b;
-  text-align: center;
-}
-
 .variant-unavailable-note {
   margin: 0.5rem 0 0.25rem;
   padding: 0.55rem 0.65rem;

@@ -18,7 +18,7 @@ import { useCreator } from '../../contexts/CreatorContext'
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService'
 import { CART_UPDATED_EVENT, getCartItemCount, writeCartItems } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
-import { DEMO_DASHBOARD_PATH, endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, isDemoStorefrontCartLocked, startDemoPreviewSession } from '../../utils/demoStorefront'
+import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
 import Sidebar from '../Sidebar/Sidebar'
 
 const isUsableHexColor = (value) =>
@@ -96,9 +96,8 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
 
     useEffect(() => {
         const refreshCartCount = () => setCartCount(getCartItemCount());
-        const onDashboard = location.pathname === '/dashboard' || location.pathname === DEMO_DASHBOARD_PATH;
-        if (isDemoStorefront() && (isDemoStorefrontCartLocked() || onDashboard)) {
-            writeCartItems([]);
+        if (isDemoStorefront()) {
+            writeCartItems([], { keepWorkingScreenshot: true });
         }
         refreshCartCount();
         window.addEventListener(CART_UPDATED_EVENT, refreshCartCount);

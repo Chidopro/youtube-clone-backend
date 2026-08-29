@@ -5,7 +5,7 @@ import { API_CONFIG, apiJoin } from '../../config/apiConfig';
 import { emitCartUpdated, setToolsFocusCartIndex, writeCartItems, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
-import { isDemoStorefront, lockDemoStorefrontCart } from '../../utils/demoStorefront';
+import { isDemoStorefront } from '../../utils/demoStorefront';
 import {
   US_STATE_OPTIONS,
   CA_PROVINCE_OPTIONS,
@@ -62,8 +62,7 @@ const Checkout = () => {
 
   useEffect(() => {
     if (!isDemoStorefront()) return;
-    lockDemoStorefrontCart();
-    writeCartItems([]);
+    writeCartItems([], { keepWorkingScreenshot: true });
   }, []);
 
   useEffect(() => {

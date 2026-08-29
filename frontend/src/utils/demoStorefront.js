@@ -70,29 +70,6 @@ export function loggedInUserId() {
   }
 }
 
-export const DEMO_CART_LOCKED_KEY = 'screenmerch_demo_cart_locked';
-export const DEMO_CART_LOCKED_EVENT = 'screenmerch-demo-cart-locked';
-
-/** After a sample-storefront visitor reaches checkout, block further cart adds. */
-export function lockDemoStorefrontCart() {
-  if (!isDemoStorefront()) return;
-  try {
-    localStorage.setItem(DEMO_CART_LOCKED_KEY, '1');
-  } catch (_) {}
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event(DEMO_CART_LOCKED_EVENT));
-  }
-}
-
-export function isDemoStorefrontCartLocked() {
-  if (!isDemoStorefront()) return false;
-  try {
-    return localStorage.getItem(DEMO_CART_LOCKED_KEY) === '1';
-  } catch (_) {
-    return false;
-  }
-}
-
 /** True when this visitor is looking at the sample storefront and is not its owner. */
 export function isDemoStorefrontVisitor(creatorId) {
   if (!isDemoStorefront()) return false;
