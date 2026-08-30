@@ -147,19 +147,7 @@ const ProductPage = ({ sidebar }) => {
     }
   }, [qsCategory, category, openCart, searchParams]);
 
-  // Categories for selection
-  const categories = [
-    { name: "Women's", emoji: "👩", category: "womens" },
-    { name: "Men's", emoji: "👨", category: "mens" },
-    { name: "Kids", emoji: "👶", category: "kids" },
-    { name: "Mugs", emoji: "☕", category: "mugs" },
-    { name: "Hats", emoji: "🧢", category: "hats" },
-    { name: "Bags", emoji: "👜", category: "bags" },
-    { name: "Pets", emoji: "🐕", category: "pets" },
-    { name: "Misc", emoji: "📦", category: "misc" },
-    { name: "Product Info", emoji: "🛍️", category: "all-products" },
-    { name: "Image Tools", emoji: "🛠️", category: "thumbnails" }
-  ];
+  const categories = SHOP_CATEGORIES;
 
   const handleCategoryClick = (newCategory) => {
     if (window.__DEBUG__) {
@@ -1315,8 +1303,8 @@ const ProductPage = ({ sidebar }) => {
           {/* Screenshot Selection Section — hidden in My Shop catalog (blank products only) */}
           {!isShopCatalog && (
           <div className="screenshots-section">
-            <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Pages' : 'Select Your Image'}</h2>
-            <p className="screenshots-subtitle">{creatorMode ? 'Choose which screenshot to save to your favorites' : 'Choose which image to use for your custom merchandise'}</p>
+            <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Pages' : 'Select Image'}</h2>
+            <p className="screenshots-subtitle">{creatorMode ? 'Choose which screenshot to save to your favorites' : 'For your custom merchandise'}</p>
             <div className="screenshots-preview">
               <div className="screenshot-grid">
                 {/* Thumbnail */}

@@ -75,9 +75,9 @@ nav.nav-dropdown-active {
     gap: 10px;
 }
 
-/* Sign In button styling */
+/* Sign In button – white fill, blue border + blue text */
 .sign-in-btn {
-    border: 1px solid #065fd4;
+    border: 2px solid #065fd4;
     padding: 8px 12px; /* Match Sign Up button padding */
     border-radius: 0;
     cursor: pointer;
@@ -92,25 +92,26 @@ nav.nav-dropdown-active {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    /* Pillow shape styling */
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    box-shadow: none;
     pointer-events: auto;
     z-index: 10001;
     position: relative;
-    background-color: #065fd4;
-    color: white;
+    background-color: #fff;
+    color: #065fd4;
 }
 
 /* Duplicate removed - styling now in main .sign-in-btn rule above */
 
 .sign-in-btn:hover {
-    background-color: #0448a0;
+    background-color: #e8f1fc;
+    color: #0448a0;
+    border-color: #0448a0;
     transform: translateY(-1px);
 }
 
-/* Sign Up button (subscribe-btn) - match Sign In for congruent styling */
+/* Sign Up button – white fill, red border + red text */
 .nav-right .subscribe-btn {
-    border: 1px solid #cc0000;
+    border: 2px solid #cc0000;
     padding: 8px 12px;
     border-radius: 0;
     cursor: pointer;
@@ -125,22 +126,24 @@ nav.nav-dropdown-active {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    box-shadow: none;
     pointer-events: auto;
     z-index: 10001; /* Match Sign In button z-index */
     position: relative; /* Match Sign In button position */
-    /* Only difference from Sign In button - color */
-    background: #cc0000;
-    color: white;
+    background: #fff;
+    color: #cc0000;
 }
 
 .nav-right .subscribe-btn:hover {
-    background: #a00000;
+    background: #fde8e8;
+    color: #a00000;
+    border-color: #a00000;
     transform: translateY(-1px);
 }
 
 .nav-right .subscribe-btn:disabled {
-    background: #999;
+    background: #fff;
+    color: #999;
     cursor: not-allowed;
     transform: none;
     border-color: #999;
@@ -588,16 +591,21 @@ nav .nav-right .subscribe-btn {
          flex-shrink: 0; /* Don't shrink */
          justify-content: center;
          align-items: center;
-         /* Pillow shape styling */
-         border: 1px solid #065fd4 !important;
-         box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+         border: 2px solid #065fd4 !important;
+         box-shadow: none;
          overflow: hidden;
          text-overflow: ellipsis;
          z-index: 10001;
          position: relative;
-         background-color: #065fd4 !important;
-         color: white !important;
+         background-color: #fff !important;
+         color: #065fd4 !important;
          height: 28px; /* Smaller height */
+     }
+
+     .sign-in-btn:hover {
+         background-color: #e8f1fc !important;
+         color: #0448a0 !important;
+         border-color: #0448a0 !important;
      }
      
      /* Start Free button mobile styling - COMPACT SIZE */
@@ -617,16 +625,21 @@ nav .nav-right .subscribe-btn {
          flex-shrink: 0; /* Don't shrink */
          justify-content: center;
          align-items: center;
-         /* Pillow shape styling */
-         border: 1px solid #cc0000 !important;
-         box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+         border: 2px solid #cc0000 !important;
+         box-shadow: none;
          overflow: hidden;
          text-overflow: ellipsis;
          z-index: 10001;
          position: relative;
-         background: #cc0000 !important;
-         color: white !important;
+         background: #fff !important;
+         color: #cc0000 !important;
          height: 28px; /* Smaller height */
+     }
+
+     .nav-right .subscribe-btn:hover {
+         background: #fde8e8 !important;
+         color: #a00000 !important;
+         border-color: #a00000 !important;
      }
      
      /* Override removed - complete styling now in rule above */
@@ -644,9 +657,9 @@ nav .nav-right .subscribe-btn {
         max-width: 40px;
         border-radius: 0;
         display: inline-flex; /* Ensure side-by-side layout on small screens */
-        border: 1px solid #065fd4;
-        background-color: #065fd4;
-        color: white;
+        border: 2px solid #065fd4;
+        background-color: #fff;
+        color: #065fd4;
         z-index: 10001;
         position: relative;
         height: 24px; /* Smaller height */
@@ -661,9 +674,9 @@ nav .nav-right .subscribe-btn {
         max-width: 40px;
         border-radius: 0;
         display: inline-flex; /* Ensure side-by-side layout on small screens */
-        border: 1px solid #cc0000;
-        background: #cc0000;
-        color: white;
+        border: 2px solid #cc0000;
+        background: #fff;
+        color: #cc0000;
         z-index: 10001;
         position: relative;
         height: 24px; /* Smaller height */
@@ -753,6 +766,24 @@ nav .nav-right .subscribe-btn {
         margin-left: 20px;
     }
 
+    /* Horizontal wordmark: 3-dots beside the logo text, not the bar bottom. */
+    nav.nav--logo-horizontal .nav-left,
+    nav.nav--logo-horizontal .nav-left.flex-div {
+        align-self: center;
+        padding-bottom: 0;
+    }
+
+    nav.nav--logo-horizontal .nav-left .menu-icon {
+        align-self: center;
+        margin-right: 0;
+    }
+
+    nav.nav--logo-horizontal .navbar-logo-wrap,
+    nav.nav--logo-horizontal .navbar-logo-wrap--square,
+    nav.nav--logo-horizontal .navbar-logo-wrap--horizontal {
+        margin-left: 2px;
+    }
+
     .navbar-logo-wrap .logo,
     .navbar-logo-wrap .logo.logo--horizontal,
     .navbar-logo-wrap .logo.logo--custom {
@@ -836,9 +867,9 @@ nav .nav-right .subscribe-btn {
         width: 68px;
         min-width: 68px;
         max-width: 68px;
-        border: 1px solid #065fd4;
-        background-color: #065fd4;
-        color: white;
+        border: 2px solid #065fd4;
+        background-color: #fff;
+        color: #065fd4;
         z-index: 10001;
         position: relative;
     }
@@ -857,9 +888,9 @@ nav .nav-right .subscribe-btn {
         width: 68px;
         min-width: 68px;
         max-width: 68px;
-        border: 1px solid #cc0000;
-        background: #cc0000;
-        color: white;
+        border: 2px solid #cc0000;
+        background: #fff;
+        color: #cc0000;
         z-index: 10001;
         position: relative;
     }
@@ -1209,5 +1240,19 @@ nav .nav-right .subscribe-btn {
 
     .nav-cart-btn {
         margin-right: 0 !important;
+    }
+
+    nav.nav--logo-horizontal .nav-left,
+    nav.nav--logo-horizontal .nav-left.flex-div {
+        bottom: auto !important;
+        top: 50%;
+        transform: translateY(-50%);
+        padding-bottom: 0 !important;
+        align-items: center !important;
+    }
+
+    nav.nav--logo-horizontal .navbar-logo-wrap,
+    nav.nav--logo-horizontal .navbar-logo-wrap--horizontal {
+        margin-left: 16px !important;
     }
 }

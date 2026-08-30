@@ -1,10 +1,37 @@
 // frontend/src/Pages/Products/MerchandiseCategories.jsx
-import React, { useLayoutEffect } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import './MerchandiseCategories.css';
 import '../Home/Home.css';
 import { useCreator } from '../../contexts/CreatorContext';
 import { readPendingMerchData } from '../../utils/merchSession';
 import { useNavigate } from 'react-router-dom';
+import { SHOP_CATEGORIES, shopCategoryThumbUrl } from '../../utils/shopCategories';
+
+function CategoryThumb({ preview, emoji }) {
+  const [failed, setFailed] = useState(false);
+  const src = shopCategoryThumbUrl(preview);
+
+  if (!src || failed) {
+    return (
+      <div className="category-emoji" aria-hidden="true">
+        {emoji}
+      </div>
+    );
+  }
+
+  return (
+    <div className="category-thumb">
+      <img
+        className="category-thumb-img"
+        src={src}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
+}
 
 const MerchandiseCategories = ({ sidebar }) => {
   const { creatorSettings } = useCreator();
@@ -44,19 +71,7 @@ const MerchandiseCategories = ({ sidebar }) => {
     console.log('📸 screenshots:', screenshots.length, 'thumbnail?', !!thumbnail);
   }
 
-  // Category definitions - All Products added
-  const categories = [
-    { name: "Women's", emoji: "👩", category: "womens" },
-    { name: "Men's", emoji: "👨", category: "mens" },
-    { name: "Kids", emoji: "👶", category: "kids" },
-    { name: "Mugs", emoji: "☕", category: "mugs" },
-    { name: "Hats", emoji: "🧢", category: "hats" },
-    { name: "Bags", emoji: "👜", category: "bags" },
-    { name: "Pets", emoji: "🐕", category: "pets" },
-    { name: "Miscellaneous", emoji: "📦", category: "misc" },
-    { name: "Product Info", emoji: "🛍️", category: "all-products" },
-    { name: "Image Tools", emoji: "🛠️", category: "thumbnails" }
-  ];
+  const categories = SHOP_CATEGORIES;
 
   const navigateToCategory = (category) => {
     const isAuthenticated = localStorage.getItem('user_authenticated') === 'true';
@@ -115,7 +130,7 @@ const MerchandiseCategories = ({ sidebar }) => {
 
       <div className="merchandise-categories">
         <div className="categories-container">
-          <h1 className="categories-title">Choose a Product Category</h1>
+          <h1 className="categories-title">Choose Category</h1>
 
           <div className="categories-grid">
             {categories.map((cat, i) => (
@@ -129,7 +144,7 @@ const MerchandiseCategories = ({ sidebar }) => {
                   window.__DEBUG__ && console.log('👆 touchstart:', cat.category)
                 }
               >
-                <div className="category-emoji" aria-hidden="true">{cat.emoji}</div>
+                <CategoryThumb preview={cat.preview} emoji={cat.emoji} />
                 <div className="category-name">{cat.name}</div>
               </button>
             ))}

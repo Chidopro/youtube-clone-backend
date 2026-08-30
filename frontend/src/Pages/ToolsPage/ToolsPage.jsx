@@ -133,7 +133,7 @@ const APPAREL_PRINT_OVERRIDES = {
     left: 52.2,
   },
   "T-Shirt": {
-    widthFrac: 0.541,
+    widthFrac: 0.56,
     heightFrac: 0.501,
     top: 42.5,
     left: 50.2,
@@ -409,6 +409,25 @@ function sizeApparelPrintOverlay(printW, printH, mockupW, mockupH, productName, 
   return { width, height };
 }
 
+/** Landscape: wide print that stays inside the portrait print box. */
+function overlaySizeForOrientation(width, height, orientation) {
+  if (orientation !== 'landscape' || !(width > 0 && height > 0)) {
+    return { width, height };
+  }
+  const boxW = width;
+  const boxH = height;
+  let w = boxH;
+  let h = boxW;
+  const fit = Math.min(boxW / w, boxH / h, 1);
+  w *= fit;
+  h *= fit;
+  if (w < h * 1.02) {
+    w = boxW;
+    h = Math.min(boxH, boxW / 1.5);
+  }
+  return { width: w, height: h };
+}
+
 /** Chest print box on the mockup photo (not geometric 50/50 of the PNG). */
 function apparelOverlayPlacement(productName, detected) {
   const box = resolveApparelPrintBox(productName, detected);
@@ -540,7 +559,8 @@ const ProductPreviewWithDrag = ({
   selectedProductName,
   screenshotScale = 100,
   imageOffsetX = 0,
-  imageOffsetY = 0
+  imageOffsetY = 0,
+  imageOrientation = 'portrait'
 }) => {
   const containerRef = useRef(null);
   const productImageRef = useRef(null);
@@ -1200,20 +1220,29 @@ const ProductPreviewWithDrag = ({
           onTouchStart={handleTouchStart}
         >
           {(() => {
-            const scaleFactor = screenshotScale / 100;
-            const fitted = Boolean(printAreaFit && printAreaFit !== 'none');
-            const scaledWidth = screenshotDisplaySize.width * scaleFactor;
-            const scaledHeight = screenshotDisplaySize.height * scaleFactor;
+            const scaleFactor = 1;
+            const oriented = overlaySizeForOrientation(
+              screenshotDisplaySize.width,
+              screenshotDisplaySize.height,
+              imageOrientation
+            );
+            const isLandscape = imageOrientation === 'landscape';
+            const fitted = Boolean(printAreaFit && printAreaFit !== 'none') || isLandscape;
+            const scaledWidth = oriented.width * scaleFactor;
+            const scaledHeight = oriented.height * scaleFactor;
+            const posX = Math.max(0, Math.min(100, 50 + imageOffsetX / 2));
+            const posY = Math.max(0, Math.min(100, 50 + imageOffsetY / 2));
             return (
               <img 
-                className={`product-preview-overlay${fitted ? ' product-preview-overlay-fit' : ''}`}
+                className={`product-preview-overlay${fitted ? ' product-preview-overlay-fit' : ''}${isLandscape ? ' product-preview-overlay-landscape' : ''}`}
                 key={processedImage || 'overlay'}
                 src={processedImage}
                 alt="Screenshot overlay"
                 style={{
                   width: `${scaledWidth}px`,
                   height: `${scaledHeight}px`,
-                  objectFit: fitted ? 'fill' : 'contain',
+                  objectFit: isLandscape ? 'cover' : (fitted ? 'fill' : 'contain'),
+                  objectPosition: `${posX}% ${posY}%`,
                   display: 'block',
                   pointerEvents: 'none',
                   userSelect: 'none',
@@ -1261,29 +1290,95 @@ const isHatProduct = (productName) => {
   return isHat;
 };
 
+const TOOLS_BLOCKED_CATEGORIES = {
+  bags: {
+    label: 'Bags',
+    products: [
+      'Laptop Sleeve',
+      'All-Over Print Drawstring',
+      'All Over Print Tote Pocket',
+      'All-Over Print Crossbody Bag',
+      'All-Over Print Utility Bag',
+      'Canvas Tote',
+      'Tote Bag',
+      'Large Canvas Bag',
+    ],
+  },
+  pets: {
+    label: 'Pets',
+    products: [
+      'Pet Bowl All-Over Print',
+      'Pet Bandana Collar',
+    ],
+  },
+  misc: {
+    label: 'Miscellaneous',
+    products: [
+      'Hardcover Bound Notebook',
+      'Apron',
+      'Jigsaw Puzzle with Tin',
+      'Greeting Card',
+    ],
+  },
+};
+
+const productNameMatchesListed = (productName, listedName) => {
+  const a = String(productName || '').toLowerCase().trim();
+  const b = String(listedName || '').toLowerCase().trim();
+  if (!a || !b) return false;
+  return a.includes(b) || b.includes(a);
+};
+
 const isAllOverPrintProduct = (productName) => {
   if (!productName) return false;
-  // Bags - all over print
-  const allOverPrintBags = [
-    "All-Over Print Drawstring",
-    "All Over Print Tote Pocket",
-    "All-Over Print Crossbody Bag",
-    "All-Over Print Utility Bag"
-  ];
-  // Pets - all over print
-  const allOverPrintPets = [
-    "Pet Bowl All-Over Print"
-  ];
-  // Misc - all over print
-  const allOverPrintMisc = ["Apron"]; // Only apron is all over print in misc
-  
-  const allOverPrintProducts = [...allOverPrintBags, ...allOverPrintPets, ...allOverPrintMisc];
-  return allOverPrintProducts.some(product => 
-    productName.includes(product) || product.includes(productName) ||
-    productName.toLowerCase().includes('all over print') ||
-    productName.toLowerCase().includes('all-over print')
-  );
+  const n = productName.toLowerCase();
+  return n.includes('all over print') || n.includes('all-over print') || n.includes('apron');
 };
+
+const getToolsUnavailableInfo = (productName, category) => {
+  const cat = String(category || '').toLowerCase().trim();
+  const blockedMeta = TOOLS_BLOCKED_CATEGORIES[cat];
+  if (blockedMeta) {
+    return {
+      title: `No Tools for ${blockedMeta.label}`,
+      message: `Editing tools (feather, corner radius, frame) are not available for ${blockedMeta.label.toLowerCase()} products.`,
+    };
+  }
+  if (productName) {
+    for (const meta of Object.values(TOOLS_BLOCKED_CATEGORIES)) {
+      if (meta.products.some((listed) => productNameMatchesListed(productName, listed))) {
+        return {
+          title: `No Tools for ${meta.label}`,
+          message: `Editing tools (feather, corner radius, frame) are not available for ${meta.label.toLowerCase()} products.`,
+        };
+      }
+    }
+  }
+  if (isAllOverPrintProduct(productName)) {
+    return {
+      title: 'No Tools for All-Over Print',
+      message: 'Editing tools (feather, corner radius, frame) are not available for all-over print products.',
+    };
+  }
+  return null;
+};
+
+const toolsUnavailableNoticeStyle = {
+  padding: '20px',
+  textAlign: 'center',
+  background: '#fff3cd',
+  border: '2px solid #ffc107',
+  borderRadius: '8px',
+  color: '#856404',
+};
+
+const ToolsUnavailableNotice = ({ info }) => (
+  <div style={toolsUnavailableNoticeStyle}>
+    <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚠️</div>
+    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>{info.title}</div>
+    <div style={{ fontSize: '14px' }}>{info.message}</div>
+  </div>
+);
 
 const isMiscProductNoPreview = (productName) => {
   if (!productName) return false;
@@ -1345,7 +1440,7 @@ const ToolsPage = () => {
   const [textOffsetX, setTextOffsetX] = useState(50); // 0-100, 50 = center
   const [textOffsetY, setTextOffsetY] = useState(50); // 0-100, 50 = center
   const [printAreaFit, setPrintAreaFit] = useState(() => getInitialCartPrintFit().fit); // 'none', 'horizontal', 'square', 'vertical', 'product'
-  const [imageOrientation, setImageOrientation] = useState('portrait'); // 'portrait' | 'landscape' - landscape forces No Fit for uncropped view
+  const [imageOrientation, setImageOrientation] = useState('portrait'); // 'portrait' | 'landscape' — landscape rotates the same print box wide
   const [imageOffsetX, setImageOffsetX] = useState(0); // -100 to 100 (percentage)
   const [imageOffsetY, setImageOffsetY] = useState(0); // -100 to 100 (percentage)
   const [editedImageUrl, setEditedImageUrl] = useState('');
@@ -1671,6 +1766,7 @@ const ToolsPage = () => {
               name: p.product || 'Product',
               color: p.color || 'N/A',
               size: p.size || 'N/A',
+              category: p.category || '',
               screenshot: p.screenshot || '',
               productImage: (p.preview_image_url && p.preview_image_url.trim()) || '', // Product mockup (same as cart tools)
               toolSettings: null,
@@ -1753,6 +1849,7 @@ const ToolsPage = () => {
               name: item.name || 'Product',
               color: item.color || 'N/A',
               size: item.size || 'N/A',
+              category: item.category || '',
               screenshot: item.screenshot || '',
               productImage: item.image || '', // Store product image from cart
               toolSettings: item.toolSettings || null // Store tool settings if they exist
@@ -2171,7 +2268,6 @@ const ToolsPage = () => {
       }
       return;
     }
-    if (imageOrientation === 'landscape') return;
     const filter = getProductPrintFilter(product.name, product.size);
     if (!filter) return;
     const key = `${selectedCartProductIndex}|${product.originalCartIndex}|${filter.name}|${product.size || ''}|${filter.width}x${filter.height}`;
@@ -2185,7 +2281,7 @@ const ToolsPage = () => {
     }
     setScreenshotSizeInteracted(true);
     autoFitCartIndexRef.current[selectedCartProductIndex] = true;
-  }, [selectedCartProductIndex, cartProducts, imageOrientation]);
+  }, [selectedCartProductIndex, cartProducts]);
 
   // When Fit to Print names a product that is not the current cart item,
   // load that product's mockup so the screenshot can be tested on it.
@@ -3728,7 +3824,7 @@ const ToolsPage = () => {
                       const productName = selectedProductName || product.name || '';
                       const isMug = isMugProduct(productName);
                       const isHat = isHatProduct(productName);
-                      const isAllOverPrint = isAllOverPrintProduct(productName);
+                      const toolsUnavailable = getToolsUnavailableInfo(product.name || productName, product.category);
                       const isMiscNoPreview = isMiscProductNoPreview(productName);
                       
                       // Debug logging for hat products
@@ -3736,24 +3832,8 @@ const ToolsPage = () => {
                         console.log('🎩 [HAT DETECTED] Product:', productName, 'Will use generic hat image');
                       }
                       
-                      // All-over-print products: Show notice, no preview, tools disabled
-                      if (isAllOverPrint) {
-                        return (
-                          <div style={{
-                            padding: '20px',
-                            textAlign: 'center',
-                            background: '#fff3cd',
-                            border: '2px solid #ffc107',
-                            borderRadius: '8px',
-                            color: '#856404'
-                          }}>
-                            <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚠️</div>
-                            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>No Tools for All-Over Print</div>
-                            <div style={{ fontSize: '14px' }}>
-                              Editing tools (feather, corner radius, frame) are not available for all-over print products.
-                            </div>
-                          </div>
-                        );
+                      if (toolsUnavailable) {
+                        return <ToolsUnavailableNotice info={toolsUnavailable} />;
                       }
                       
                       // Mugs: Show "Preview Not Available" message, but allow tools
@@ -3823,6 +3903,7 @@ const ToolsPage = () => {
                                 screenshotScale={screenshotScale}
                                 imageOffsetX={imageOffsetX}
                                 imageOffsetY={imageOffsetY}
+                                imageOrientation={imageOrientation}
                               />
                               <div style={{
                                 position: 'absolute',
@@ -3903,6 +3984,7 @@ const ToolsPage = () => {
                               screenshotScale={screenshotScale}
                               imageOffsetX={imageOffsetX}
                               imageOffsetY={imageOffsetY}
+                              imageOrientation={imageOrientation}
                             />
                           );
                         } else {
@@ -3963,6 +4045,7 @@ const ToolsPage = () => {
                             screenshotScale={screenshotScale}
                             imageOffsetX={imageOffsetX}
                             imageOffsetY={imageOffsetY}
+                            imageOrientation={imageOrientation}
                           />
                         );
                       }
@@ -3971,138 +4054,31 @@ const ToolsPage = () => {
                     })()}
                       </div>
                     </div>
-                    {/* Screenshot Size — in the product card so it stays fully visible */}
-                    <div className="tool-control-group screenshot-size-under-preview" style={{ marginTop: '12px', marginBottom: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '8px' }}>
-                        <h3 style={{ textAlign: 'center', margin: 0, fontSize: '15px' }}>Screenshot Size</h3>
-                        <button
-                          type="button"
-                          className="screenshot-rotate-btn"
-                          onClick={rotateScreenshotClockwise}
-                          title="Rotate 90° clockwise"
-                          aria-label="Rotate image 90 degrees clockwise"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path
-                              d="M12 4a8 8 0 1 1-7.07 4.07"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                            />
-                            <path
-                              d="M5 3v5h5"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                      <div className="slider-control">
-                        <div className={`${selectedProductName && !screenshotSizeInteracted ? 'screenshot-size-pulse' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderRadius: '4px' }}>
-                          <input
-                            type="range"
-                            min="50"
-                            max="150"
-                            value={screenshotScale}
-                            onMouseDown={() => setScreenshotSizeInteracted(true)}
-                            onTouchStart={() => setScreenshotSizeInteracted(true)}
-                            onChange={(e) => {
-                              setScreenshotScale(parseInt(e.target.value));
-                              setScreenshotSizeInteracted(true);
-                            }}
-                            onContextMenu={(e) => e.preventDefault()}
-                            onSelectStart={(e) => e.preventDefault()}
-                            className="slider"
-                            style={{
-                              flex: 1,
-                              userSelect: 'none',
-                              WebkitUserSelect: 'none',
-                              WebkitTouchCallout: 'none',
-                              touchAction: 'manipulation'
-                            }}
+                    {/* Rotate only — print-box sizing replaced Screenshot Size */}
+                    <div className="tool-control-group screenshot-rotate-under-preview" style={{ marginTop: '12px', marginBottom: 0, textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        className="screenshot-rotate-btn"
+                        onClick={rotateScreenshotClockwise}
+                        title="Rotate 90° clockwise"
+                        aria-label="Rotate image 90 degrees clockwise"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <path
+                            d="M12 4a8 8 0 1 1-7.07 4.07"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
                           />
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setScreenshotScale(Math.min(150, screenshotScale + 1));
-                                setScreenshotSizeInteracted(true);
-                              }}
-                              onContextMenu={(e) => e.preventDefault()}
-                              onSelectStart={(e) => e.preventDefault()}
-                              style={{
-                                background: '#667eea',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                width: '28px',
-                                height: '20px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '12px',
-                                padding: 0,
-                                lineHeight: 1,
-                                userSelect: 'none',
-                                WebkitUserSelect: 'none',
-                                WebkitTouchCallout: 'none',
-                                touchAction: 'manipulation'
-                              }}
-                              title="Increase size"
-                            >
-                              ▲
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setScreenshotScale(Math.max(50, screenshotScale - 1));
-                                setScreenshotSizeInteracted(true);
-                              }}
-                              onContextMenu={(e) => e.preventDefault()}
-                              onSelectStart={(e) => e.preventDefault()}
-                              style={{
-                                background: '#667eea',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                width: '28px',
-                                height: '20px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '12px',
-                                padding: 0,
-                                lineHeight: 1,
-                                userSelect: 'none',
-                                WebkitUserSelect: 'none',
-                                WebkitTouchCallout: 'none',
-                                touchAction: 'manipulation'
-                              }}
-                              title="Decrease size"
-                            >
-                              ▼
-                            </button>
-                          </div>
-                          <span
-                            className="slider-value"
-                            style={{
-                              minWidth: '50px',
-                              textAlign: 'right',
-                              userSelect: 'none',
-                              WebkitUserSelect: 'none',
-                              WebkitTouchCallout: 'none'
-                            }}
-                            onContextMenu={(e) => e.preventDefault()}
-                            onSelectStart={(e) => e.preventDefault()}
-                          >
-                            {screenshotScale}%
-                          </span>
-                        </div>
-                      </div>
+                          <path
+                            d="M5 3v5h5"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 );
@@ -4155,7 +4131,7 @@ const ToolsPage = () => {
             <h3>Fit to Print Area</h3>
             <p className="tool-description">Crop image to fit product print areas</p>
             
-            {/* Portrait / Landscape - landscape = No Fit for uncropped image */}
+            {/* Portrait = tuned print box. Landscape = same box, wide on the chest. */}
             <div className="select-control" style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Image orientation:</label>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -4179,13 +4155,15 @@ const ToolsPage = () => {
                     checked={imageOrientation === 'landscape'}
                     onChange={() => {
                       setImageOrientation('landscape');
-                      setPrintAreaFit('none'); // No Fit = uncropped landscape image
+                      if (selectedProductName && printAreaFit === 'none') {
+                        setPrintAreaFit('product');
+                      }
                       if (selectedCartProductIndex !== null) {
                         fitUserSetRef.current[selectedCartProductIndex] = true;
                       }
                     }}
                   />
-                  <span>Landscape (No Fit – show more image, less crop)</span>
+                  <span>Landscape (wide print inside the print area)</span>
                 </label>
               </div>
             </div>
@@ -4297,25 +4275,12 @@ const ToolsPage = () => {
               ? cartProducts[selectedCartProductIndex] 
               : null;
             const currentProductName = currentProduct?.name || '';
-            const toolsDisabled = isAllOverPrintProduct(currentProductName);
+            const toolsUnavailable = getToolsUnavailableInfo(currentProductName, currentProduct?.category);
             
-            if (toolsDisabled) {
+            if (toolsUnavailable) {
               return (
                 <div className="tool-control-group">
-                  <div style={{
-                    padding: '20px',
-                    textAlign: 'center',
-                    background: '#fff3cd',
-                    border: '2px solid #ffc107',
-                    borderRadius: '8px',
-                    color: '#856404'
-                  }}>
-                    <div style={{ fontSize: '24px', marginBottom: '10px' }}>⚠️</div>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Tools Not Available</div>
-                    <div style={{ fontSize: '14px' }}>
-                      Editing tools (feather, corner radius, frame) are not available for all-over print products.
-                    </div>
-                  </div>
+                  <ToolsUnavailableNotice info={toolsUnavailable} />
                 </div>
               );
             }
@@ -4648,9 +4613,9 @@ const ToolsPage = () => {
               ? cartProducts[selectedCartProductIndex] 
               : null;
             const currentProductName = currentProduct?.name || '';
-            const toolsDisabled = isAllOverPrintProduct(currentProductName);
+            const toolsUnavailable = getToolsUnavailableInfo(currentProductName, currentProduct?.category);
             
-            if (toolsDisabled) {
+            if (toolsUnavailable) {
               return null; // Don't show Framed Border if tools are disabled
             }
             

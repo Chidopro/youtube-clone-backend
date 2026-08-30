@@ -154,6 +154,16 @@
     line-height: 1.2;
 }
 
+.sidebar-product-info {
+    margin-top: 2px;
+    margin-bottom: 12px;
+}
+
+.sidebar-product-info.active .subscriber-name {
+    color: #ed3833;
+    font-weight: 600;
+}
+
 .tier-badge {
     font-size: 10px;
     padding: 1px 6px;

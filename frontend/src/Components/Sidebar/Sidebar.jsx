@@ -8,6 +8,8 @@ import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomain
 import { fetchPublicFavoriteLists } from '../../utils/favoriteListsApi';
 import { favoriteListSidebarLabel, isStorefrontNavList } from '../../utils/favoriteListLabels';
 
+const PRODUCT_INFO_PATH = '/product/browse?category=all-products';
+
 const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
   const [showSubs, setShowSubs] = useState(true);
   const [subscribers, setSubscribers] = useState([]);
@@ -105,6 +107,20 @@ const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
     setSidebar?.(false);
   };
 
+  const productInfoActive =
+    location.pathname === '/product/browse' &&
+    new URLSearchParams(location.search).get('category') === 'all-products';
+
+  const openProductInfo = () => {
+    try {
+      localStorage.setItem('last_selected_category', 'all-products');
+    } catch (_) {
+      /* ignore */
+    }
+    setCategory(0);
+    closeSidebar();
+  };
+
   return (
     <div className={`sidebar ${sidebar ? "" : "small-sidebar"}`}>
       <div className="shortcut-links">
@@ -113,7 +129,7 @@ const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
         </Link>
         <hr />
       </div>
-      {favLists.length > 0 && (
+      {isCreatorStorefrontHostname() && (
         <div className="subscribed-list" style={{ marginBottom: 8 }}>
           <h3 style={{ cursor: 'pointer' }} onClick={() => setShowFav((s) => !s)}>
             Pages {showFav ? '▲' : '▼'}
@@ -141,6 +157,15 @@ const Sidebar = ({ sidebar, category, setCategory, setSidebar }) => {
               )}
             </div>
           )}
+          <Link
+            to={PRODUCT_INFO_PATH}
+            className={`side-link subscriber-item sidebar-product-info ${productInfoActive ? 'active' : ''}`}
+            onClick={openProductInfo}
+          >
+            <div className="subscriber-info">
+              <p className="subscriber-name">Product Info</p>
+            </div>
+          </Link>
           <hr />
         </div>
       )}

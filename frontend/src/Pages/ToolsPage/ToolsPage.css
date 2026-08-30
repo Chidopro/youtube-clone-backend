@@ -299,6 +299,10 @@ body.tools-page-active .site-footer {
   object-fit: fill !important;
 }
 
+.product-preview-overlay-landscape {
+  object-fit: cover !important;
+}
+
 
 .preview-image-wrapper-compact {
   width: 100%;
@@ -1153,6 +1157,10 @@ body.tools-page-active .site-footer {
     object-fit: fill !important;
   }
 
+  body.tools-page-active .product-preview-overlay-landscape {
+    object-fit: cover !important;
+  }
+
   body.tools-page-active .screenshot-size-under-preview {
     flex-shrink: 0;
     overflow: visible !important;
@@ -1335,6 +1343,10 @@ body.tools-page-active .site-footer {
 
   body.tools-page-active .product-preview-overlay-fit {
     object-fit: fill !important;
+  }
+
+  body.tools-page-active .product-preview-overlay-landscape {
+    object-fit: cover !important;
   }
 }
 
