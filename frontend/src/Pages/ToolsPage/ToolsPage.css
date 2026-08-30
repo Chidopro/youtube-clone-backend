@@ -299,9 +299,6 @@ body.tools-page-active .site-footer {
   object-fit: fill !important;
 }
 
-.product-preview-overlay-youth-hoodie {
-  object-fit: fill !important;
-}
 
 .preview-image-wrapper-compact {
   width: 100%;
@@ -1156,10 +1153,6 @@ body.tools-page-active .site-footer {
     object-fit: fill !important;
   }
 
-  body.tools-page-active .product-preview-overlay-youth-hoodie {
-    object-fit: fill !important;
-  }
-
   body.tools-page-active .screenshot-size-under-preview {
     flex-shrink: 0;
     overflow: visible !important;
@@ -1319,6 +1312,29 @@ body.tools-page-active .site-footer {
     overflow-y: auto;
     flex: 1 1 auto;
     min-height: 0;
+  }
+
+  /* Same painted-mockup overlay as desktop: do not squash print-box size. */
+  body.tools-page-active .product-preview-stage {
+    max-width: 200px;
+    width: 100%;
+    height: auto;
+  }
+
+  body.tools-page-active .product-preview-mockup {
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    object-fit: unset;
+  }
+
+  body.tools-page-active .product-preview-overlay {
+    max-width: none !important;
+    max-height: none !important;
+  }
+
+  body.tools-page-active .product-preview-overlay-fit {
+    object-fit: fill !important;
   }
 }
 
