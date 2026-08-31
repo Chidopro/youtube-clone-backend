@@ -1,6 +1,8 @@
 import { getBackendUrl } from '../config/apiConfig';
 import { claimSessionTokenIfNeeded } from './userService';
 import { supabase } from '../supabaseClient';
+import { cleanFavoriteListNickname, isGenericFriendName } from './favoriteListLabels';
+import { DEMO_STOREFRONT_SUBDOMAIN } from './demoStorefront';
 
 async function authHeaders() {
   const raw = localStorage.getItem('user');
@@ -224,6 +226,110 @@ export function listPreviewImages(list) {
   }
   const single = (list.preview_image_url || '').trim();
   return single ? [single] : [];
+}
+
+const memberNickMemory = new Map();
+const memberPreviewMemory = new Map();
+
+export async function memberFavoritePreviewUrls(userId) {
+  const uid = String(userId || '').trim();
+  if (!uid) return [];
+  if (memberPreviewMemory.has(uid)) return memberPreviewMemory.get(uid);
+  try {
+    const { data, error } = await supabase
+      .from('creator_favorites')
+      .select('image_url, thumbnail_url')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false })
+      .limit(8);
+    if (error) {
+      memberPreviewMemory.set(uid, []);
+      return [];
+    }
+    const urls = (data || [])
+      .map((f) => String(f.image_url || f.thumbnail_url || '').trim())
+      .filter(Boolean);
+    memberPreviewMemory.set(uid, urls);
+    return urls;
+  } catch (_) {
+    memberPreviewMemory.set(uid, []);
+    return [];
+  }
+}
+
+async function storefrontsToSearchForNickname() {
+  const subs = new Set([DEMO_STOREFRONT_SUBDOMAIN]);
+  const here = (typeof window !== 'undefined' && window.location.hostname
+    ? window.location.hostname.split('.')[0]
+    : ''
+  ).toLowerCase();
+  if (here && here !== 'www' && here !== 'screenmerch') subs.add(here);
+  try {
+    const res = await fetch(`${getBackendUrl()}/api/creators/list`, { credentials: 'omit' });
+    const data = await res.json().catch(() => ({}));
+    for (const c of data.creators || []) {
+      const s = (c.subdomain || '').trim().toLowerCase();
+      if (s) subs.add(s);
+    }
+  } catch (_) {
+    /* ignore */
+  }
+  return [...subs];
+}
+
+/** Public nickname this creator already uses on another storefront (Pom, Gee, …). */
+export async function resolveMemberPublicNickname(userId) {
+  const uid = String(userId || '').trim();
+  if (!uid) return '';
+  if (memberNickMemory.has(uid)) return memberNickMemory.get(uid);
+  const subs = await storefrontsToSearchForNickname();
+  for (const sub of subs) {
+    try {
+      const { ok, data } = await fetchPublicFavoriteLists(sub, { lite: true });
+      if (!ok || !Array.isArray(data?.lists)) continue;
+      for (const L of data.lists) {
+        if (String(L.owner_user_id || '') !== uid) continue;
+        const nick = cleanFavoriteListNickname(L.member_label || L.display_name || L.slug);
+        if (nick && !/@/.test(nick) && !isGenericFriendName(nick)) {
+          memberNickMemory.set(uid, nick);
+          return nick;
+        }
+      }
+    } catch (_) {
+      /* try next storefront */
+    }
+  }
+  memberNickMemory.set(uid, '');
+  return '';
+}
+
+export async function withMemberPublicIdentity(list) {
+  if (!list?.owner_user_id) return list;
+  const nick = await resolveMemberPublicNickname(list.owner_user_id);
+  if (!nick) return list;
+  const current = cleanFavoriteListNickname(list.member_label || list.display_name || list.slug);
+  if (current && !isGenericFriendName(current) && !/@/.test(current)) return list;
+  return {
+    ...list,
+    member_label: nick,
+    display_name: `${nick} Favorites`,
+  };
+}
+
+export async function fetchMemberFavorites(userId) {
+  const uid = String(userId || '').trim();
+  if (!uid) return [];
+  try {
+    const { data, error } = await supabase
+      .from('creator_favorites')
+      .select('*')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false });
+    if (error) return [];
+    return data || [];
+  } catch (_) {
+    return [];
+  }
 }
 
 /** Split public lists into homepage hub image URLs. */

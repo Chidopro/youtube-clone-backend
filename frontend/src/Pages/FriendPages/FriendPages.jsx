@@ -9,10 +9,13 @@ import {
   listPreviewImages,
   favoriteImageUrl,
   publicStorageCardUrl,
+  memberFavoritePreviewUrls,
+  withMemberPublicIdentity,
 } from '../../utils/favoriteListsApi';
 import { friendPageLabel, isCollaboratorFavoriteList } from '../../utils/favoriteListLabels';
 import { HubThumb, rotatingUrl, uniqueUrls, HUB_ROTATE_MS } from '../../Components/Feed/Feed';
 import StorefrontFlowBanner from '../../Components/StorefrontFlowBanner/StorefrontFlowBanner';
+import { apiJoin } from '../../config/apiConfig';
 import './FriendPages.css';
 
 function umbrellaFriendPages(lists, ownerId) {
@@ -30,9 +33,28 @@ function previewUrlsFromList(list) {
   );
 }
 
+async function videoPreviewUrls(userId) {
+  if (!userId) return [];
+  try {
+    const res = await fetch(
+      `${apiJoin('/api/videos')}?user_id=${encodeURIComponent(userId)}&limit=8`
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return uniqueUrls(
+      (Array.isArray(data) ? data : [])
+        .map((v) => publicStorageCardUrl(v.thumbnail || v.thumbnail_url, 1400))
+        .filter(Boolean)
+    );
+  } catch (_) {
+    return [];
+  }
+}
+
 async function attachPreviewUrls(lists, sub) {
   const out = [];
-  for (const L of lists) {
+  for (const raw of lists) {
+    const L = await withMemberPublicIdentity(raw);
     let previewUrls = previewUrlsFromList(L);
     if (!previewUrls.length) {
       const slug = (L.slug || '').trim();
@@ -46,6 +68,14 @@ async function attachPreviewUrls(lists, sub) {
           );
         }
       }
+    }
+    if (!previewUrls.length) {
+      previewUrls = uniqueUrls(
+        (await memberFavoritePreviewUrls(L.owner_user_id)).map((u) => publicStorageCardUrl(u, 1400))
+      );
+    }
+    if (!previewUrls.length) {
+      previewUrls = await videoPreviewUrls(L.owner_user_id);
     }
     out.push({ ...L, previewUrls });
   }
@@ -75,6 +105,11 @@ const FriendPages = ({ sidebar }) => {
   };
 
   const goBackFromFriends = () => {
+    const el = listRef.current;
+    if (el && el.scrollLeft > 2) {
+      scrollFriends(-1);
+      return;
+    }
     navigate('/');
   };
 
@@ -192,7 +227,7 @@ const FriendPages = ({ sidebar }) => {
                     onClick={() => navigate(to)}
                   >
                     <span className="friend-pages-item-thumb">
-                      <HubThumb src={thumbs[key]} emptyLabel={label} />
+                      <HubThumb src={thumbs[key]} emptyLabel="Friend" />
                     </span>
                     <span className="friend-pages-item-name">{label}</span>
                   </button>

@@ -15,6 +15,7 @@ import ChannelUmbrella from '../../Components/ChannelUmbrella/ChannelUmbrella.js
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { DEMO_DASHBOARD_PATH, DEMO_STOREFRONT_SUBDOMAIN, isDemoPreviewSession, isDemoStorefront, isDemoStorefrontVisitor } from '../../utils/demoStorefront';
+import { collaboratorPayoutHeading } from '../../utils/favoriteListLabels';
 import '../DemoDashboard/DemoDashboard.css';
 // Force Netlify rebuild
 
@@ -187,7 +188,9 @@ function favoritePageSelectLabel(page) {
         const nick = cleanFavoritePageNickname(
             page.display_name || page.member_label || page.slug
         );
-        return nick || 'Page';
+        if (nick && !/^collaborator$/i.test(nick)) return nick;
+        const member = cleanFavoritePageNickname(page.member_label);
+        return member || 'Friend';
     }
     return cleanFavoritePageNickname(page.display_name) || page.slug || 'Page';
 }
@@ -2855,7 +2858,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                         return (
                                                             <li key={listId}>
                                                                 <div className="collab-payout-row-main">
-                                                                    <strong>{row.display_name}</strong>
+                                                                    <strong>{collaboratorPayoutHeading(row)}</strong>
                                                                     <div className="collab-payout-amount-row">
                                                                         <span>
                                                                             Pay collaborator ${payCollab.toFixed(2)}
@@ -3007,7 +3010,7 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                             >
                                 <h3 id="analytics-record-payout-title">Record collaborator payment</h3>
                                 <p className="hint">
-                                    Confirm you paid <strong>{analyticsPayoutModal.display_name || 'collaborator'}</strong> off-platform.
+                                    Confirm you paid <strong>{collaboratorPayoutHeading(analyticsPayoutModal)}</strong> off-platform.
                                 </p>
                                 <form onSubmit={submitAnalyticsPayout}>
                                     <label>

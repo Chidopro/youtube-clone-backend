@@ -230,32 +230,46 @@
 }
 
 .favorites-shelf-track--pair {
+  --shelf-gap: 16px;
+  --shelf-image-height: 320px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - var(--shelf-gap)) / 2);
+  gap: var(--shelf-gap);
   scroll-snap-type: x mandatory;
-  gap: 16px;
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
+}
+
+.favorites-shelf-track.favorites-shelf-track--pair::-webkit-scrollbar {
+  display: none;
+  height: 0;
 }
 
 .favorites-shelf-track.favorites-shelf-track--pair .favorites-card {
-  flex: 0 0 calc((100% - 16px) / 2);
-  width: calc((100% - 16px) / 2);
-  min-width: calc((100% - 16px) / 2);
-  max-width: calc((100% - 16px) / 2);
+  flex: none;
+  width: auto;
+  min-width: 0;
+  max-width: none;
   border-radius: 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
 }
 
-.favorites-shelf-track.favorites-shelf-track--pair .favorites-card-image {
-  height: 320px;
-  max-height: 320px;
-  aspect-ratio: auto;
+.favorites-shelf-track.favorites-shelf-track--pair .favorites-card-image,
+.favorites-shelf-track.favorites-shelf-track--pair .favorites-card--video .favorites-card-image {
+  height: var(--shelf-image-height);
+  min-height: var(--shelf-image-height);
+  max-height: var(--shelf-image-height);
+  aspect-ratio: unset;
   border-radius: 0;
 }
 
-.favorites-shelf-track.favorites-shelf-track--pair .favorites-card-image img {
-  object-fit: contain;
-}
-
+.favorites-shelf-track.favorites-shelf-track--pair .favorites-card-image img,
 .favorites-shelf-track.favorites-shelf-track--pair .favorites-card--video .favorites-card-image img {
   object-fit: cover;
+  width: 100%;
+  height: 100%;
 }
 
 .favorites-shelf-track.favorites-shelf-track--pair .favorites-card-content {
@@ -309,12 +323,26 @@
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 4px 2px 14px;
+  padding: 4px 0 14px;
   scroll-snap-type: x proximity;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
+}
+
+.favorites-shelf-track.favorites-shelf-track--pair {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - var(--shelf-gap, 16px)) / 2);
+  gap: var(--shelf-gap, 16px);
+}
+
+.favorites-shelf-track.favorites-shelf-track--pair .favorites-card {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  flex: none;
 }
 
 .favorites-shelf-scrollbar {
@@ -545,8 +573,9 @@
   }
 
   .favorites-shelf-track.favorites-shelf-track--pair {
-    gap: 16px;
-    padding: 4px 2px 10px;
+    gap: var(--shelf-gap);
+    padding: 4px 0 10px;
+    grid-auto-columns: calc((100% - var(--shelf-gap)) / 2);
   }
 
   .favorites-shelf-track::-webkit-scrollbar {
@@ -564,10 +593,10 @@
   }
 
   .favorites-shelf-track.favorites-shelf-track--pair .favorites-card {
-    flex: 0 0 calc((100% - 16px) / 2);
-    width: calc((100% - 16px) / 2);
-    min-width: calc((100% - 16px) / 2);
-    max-width: calc((100% - 16px) / 2);
+    flex: none;
+    width: auto;
+    min-width: 0;
+    max-width: none;
   }
 
   .favorites-shelf-track.favorites-shelf-track--trio {
@@ -585,10 +614,16 @@
     scroll-snap-stop: always;
   }
 
-  .favorites-shelf-track.favorites-shelf-track--pair .favorites-card-image {
-    height: min(28vh, 240px);
-    max-height: 240px;
-    aspect-ratio: auto;
+  .favorites-shelf-track.favorites-shelf-track--pair {
+    --shelf-image-height: min(28vh, 240px);
+  }
+
+  .favorites-shelf-track.favorites-shelf-track--pair .favorites-card-image,
+  .favorites-shelf-track.favorites-shelf-track--pair .favorites-card--video .favorites-card-image {
+    height: var(--shelf-image-height);
+    min-height: var(--shelf-image-height);
+    max-height: var(--shelf-image-height);
+    aspect-ratio: unset;
   }
 
   .favorites-shelf-scrollbar {
@@ -617,16 +652,24 @@
 }
 
 @media (max-width: 700px) {
-  .favorites-shelf-track.favorites-shelf-track--pair .favorites-card {
-    flex: 0 0 100%;
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
+  .favorites-shelf-track.favorites-shelf-track--pair {
+    --shelf-image-height: min(30vh, 250px);
+    grid-auto-columns: 100%;
+    gap: 0;
   }
 
-  .favorites-shelf-track.favorites-shelf-track--pair .favorites-card-image {
-    height: min(30vh, 250px);
-    max-height: 250px;
-    aspect-ratio: auto;
+  .favorites-shelf-track.favorites-shelf-track--pair .favorites-card {
+    flex: none;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .favorites-shelf-track.favorites-shelf-track--pair .favorites-card-image,
+  .favorites-shelf-track.favorites-shelf-track--pair .favorites-card--video .favorites-card-image {
+    height: var(--shelf-image-height);
+    min-height: var(--shelf-image-height);
+    max-height: var(--shelf-image-height);
+    aspect-ratio: unset;
   }
 }

@@ -53,7 +53,7 @@ const FAQ_SECTIONS = [
     items: [
       {
         q: 'How does a storefront owner send an umbrella invite?',
-        a: 'The storefront owner opens Dashboard → Umbrella (Collaborators), enters the invitee’s email or ScreenMerch username, and clicks Send invite. Email invites create a join link the owner copies and emails (ScreenMerch does not email the link automatically). Username invites go to people who already have a ScreenMerch account; they accept under Channel invites in the profile menu. The owner should set a subdomain in Personalization before sending email invites, since join links use that storefront address.',
+        a: 'The storefront owner opens Dashboard → Umbrella (My Friends), enters the invitee’s email or ScreenMerch username, and clicks Send invite. Email invites create a join link the owner copies and emails (ScreenMerch does not email the link automatically). Username invites go to people who already have a ScreenMerch account; they accept under Channel invites in the profile menu. The owner should set a subdomain in Personalization before sending email invites, since join links use that storefront address.',
       },
       {
         q: 'How do I join someone’s storefront?',

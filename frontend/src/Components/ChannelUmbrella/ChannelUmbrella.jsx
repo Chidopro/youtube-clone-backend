@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { channelFriendsJson } from '../../utils/channelFriendsApi';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
+import { collaboratorPayoutHeading } from '../../utils/favoriteListLabels';
 import { fetchMyProfileFromBackend } from '../../utils/userService';
 import { getBackendUrl } from '../../config/apiConfig';
 import './ChannelUmbrella.css';
@@ -230,7 +231,7 @@ const ChannelUmbrella = ({ previewMode = false }) => {
       }
       setMsg({
         type: 'ok',
-        text: `Recorded $${amount.toFixed(2)} paid to ${payoutModal.display_name || 'collaborator'} on ${formatPaidDate(payoutDate)}.`,
+        text: `Recorded $${amount.toFixed(2)} paid to ${collaboratorPayoutHeading(payoutModal)} on ${formatPaidDate(payoutDate)}.`,
       });
       setPayoutModal(null);
       await loadSalesSummary();
@@ -404,7 +405,7 @@ const ChannelUmbrella = ({ previewMode = false }) => {
     <div className="channel-umbrella">
       <section className="channel-umbrella-section" aria-labelledby="umbrella-collab-heading">
         <h2 id="umbrella-collab-heading" className="channel-umbrella-section-title">
-          Collaborators
+          My Friends
         </h2>
         <p className="hint">
           Invite by <strong>email</strong> and ScreenMerch emails them a join link automatically
@@ -505,7 +506,7 @@ const ChannelUmbrella = ({ previewMode = false }) => {
       {!loading && members.length === 0 ? <p className="hint">No approved umbrella members yet.</p> : null}
       {members.map((row) => {
         const label = pendingAccountLabel(row) || 'Member';
-        const pageName = (row.page_name || '').trim() || 'Collaborator';
+        const pageName = (row.page_name || '').trim() || 'Friend';
         const isPaused = row.status === 'paused';
         const friendId = row.friend_id;
         const busy = busyMember && String(busyMember).endsWith(`:${friendId}`);
@@ -629,7 +630,7 @@ const ChannelUmbrella = ({ previewMode = false }) => {
                 return (
                   <tbody key={listKey}>
                   <tr className="umbrella-row-collaborator">
-                    <td className="col-page" data-label="Page">{row.display_name || '—'}</td>
+                    <td className="col-page" data-label="Page">{collaboratorPayoutHeading(row)}</td>
                     <td className="col-num" data-label="Items">{row.order_count}</td>
                     <td className="col-num" data-label="Gross">${gross.toFixed(2)}</td>
                     <td className="col-num" data-label="Platform fee">${fee.toFixed(2)}</td>
@@ -731,7 +732,7 @@ const ChannelUmbrella = ({ previewMode = false }) => {
             <h3 id="record-payout-title">Confirm payment + date</h3>
             <p className="hint">
               This does not send money. After you pay{' '}
-              <strong>{payoutModal.display_name || 'collaborator'}</strong> yourself
+              <strong>{collaboratorPayoutHeading(payoutModal)}</strong> yourself
               (PayPal, Zelle, cash), log the amount and date here.
               ScreenMerch pays your storefront earnings separately.
             </p>

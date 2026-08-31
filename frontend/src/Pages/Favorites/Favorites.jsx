@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain } from '../../utils/subdomainService';
-import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, favoriteGalleryUrl } from '../../utils/favoriteListsApi';
+import { fetchPublicFavoritesByList, fetchOwnerExtraPages, fetchFavoritesForList, favoriteImageUrl, favoriteCardThumbUrl, favoriteGalleryUrl, withMemberPublicIdentity, fetchMemberFavorites } from '../../utils/favoriteListsApi';
 import { favoriteListPageHeading } from '../../utils/favoriteListLabels';
 import { apiJoin } from '../../config/apiConfig';
 import { savePendingMerchData } from '../../utils/merchSession';
@@ -274,9 +274,17 @@ const Favorites = ({ sidebar }) => {
           return;
         }
 
-        const list = data.list || null;
+        const list = await withMemberPublicIdentity(data.list || null);
         setListMeta(list);
-        setImages(data.favorites || []);
+        let favs = data.favorites || [];
+        if (
+          !favs.length &&
+          list?.owner_user_id &&
+          !(list.is_primary || list.slug === 'owner')
+        ) {
+          favs = await fetchMemberFavorites(list.owner_user_id);
+        }
+        setImages(favs);
         setLoading(false);
 
         if (list?.id) {

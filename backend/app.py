@@ -8211,29 +8211,65 @@ def _authenticate_upload_user():
     )
 
 
+_GENERIC_PAGE_NICKNAMES = frozenset({"collaborator", "friend", "member", "page", "umbrella"})
+
+
+def _fl_is_generic_page_nickname(nick):
+    n = (nick or "").strip().lower()
+    return (not n) or n in _GENERIC_PAGE_NICKNAMES
+
+
 def _umbrella_collaborator_label(user_row):
     """Public nickname for umbrella favorites (never expose raw email)."""
     name = ((user_row or {}).get("display_name") or (user_row or {}).get("username") or "").strip()
-    if name and "@" not in name:
+    if name and "@" not in name and not _fl_is_generic_page_nickname(name):
         return name[:80]
     local = ((user_row or {}).get("email") or "").split("@")[0].strip()
     if local and len(local) >= 2:
         return local[:80].title()
-    return "Collaborator"
+    return "Friend"
 
 
 def _fl_list_page_nickname(display_name, fallback=""):
     """Prefer saved favorites page nickname over email-derived labels."""
-    import re
-
     nick = (display_name or "").strip()
     nick = re.sub(r"\s*\(owner\)\s*", " ", nick, flags=re.I)
     nick = re.sub(r"\s*—?\s*collaborator\s*page\s*", " ", nick, flags=re.I)
     nick = re.sub(r"\s*Favorites\s*$", "", nick, flags=re.I).strip()
-    if nick and "@" not in nick:
+    if nick and "@" not in nick and not _fl_is_generic_page_nickname(nick):
         return nick[:80]
     fb = (fallback or "").strip()
-    return fb[:80] if fb else ""
+    if fb and "@" not in fb and not _fl_is_generic_page_nickname(fb):
+        return fb[:80]
+    return ""
+
+
+def _fl_member_preferred_nickname(member_user_id, current_display_name=""):
+    """Use this storefront's page name, else a nickname the member already uses (e.g. Pom)."""
+    nick = _fl_list_page_nickname(current_display_name)
+    if nick:
+        return nick
+    if not supabase_admin or not member_user_id:
+        return ""
+    try:
+        lr = (
+            supabase_admin.table("creator_favorite_lists")
+            .select("display_name, slug, is_primary")
+            .eq("owner_user_id", str(member_user_id))
+            .execute()
+        )
+        named = []
+        for row in lr.data or []:
+            n = _fl_list_page_nickname(row.get("display_name") or row.get("slug"))
+            if not n:
+                continue
+            named.append((0 if not row.get("is_primary") else 1, n))
+        named.sort(key=lambda item: (item[0], item[1].lower()))
+        if named:
+            return named[0][1]
+    except Exception as err:
+        logger.warning("_fl_member_preferred_nickname: %s", err)
+    return ""
 
 
 def _umbrella_member_list_for_user(user_id, owner_id=None):
@@ -8245,7 +8281,8 @@ def _umbrella_member_list_for_user(user_id, owner_id=None):
     if not oid:
         return None
     u = _cf_user_row(user_id)
-    _fl_ensure_umbrella_member_list(oid, user_id, _umbrella_collaborator_label(u))
+    label = _fl_member_preferred_nickname(user_id) or _umbrella_collaborator_label(u)
+    _fl_ensure_umbrella_member_list(oid, user_id, label)
     lr = (
         supabase_admin.table("creator_favorite_lists")
         .select("*")
@@ -8254,7 +8291,8 @@ def _umbrella_member_list_for_user(user_id, owner_id=None):
         .limit(1)
         .execute()
     )
-    return (lr.data or [None])[0]
+    row = (lr.data or [None])[0]
+    return _fl_sync_stale_collaborator_slug(row) if row else None
 
 
 def _fl_storefront_collaborator_lists(storefront_owner_id):
@@ -8280,9 +8318,8 @@ def _fl_storefront_collaborator_lists(storefront_owner_id):
         entry["is_collaborator_page"] = True
         u = _cf_user_row(fid)
         fallback = _umbrella_collaborator_label(u)
-        # Prefer the saved page nickname (e.g. Pom / Gee), not email-derived labels
         entry["member_label"] = (
-            _fl_list_page_nickname(member_list.get("display_name"), fallback) or fallback
+            _fl_member_preferred_nickname(fid, member_list.get("display_name")) or fallback
         )
         out.append(entry)
     out.sort(key=lambda L: (L.get("display_name") or L.get("member_label") or "").lower())
@@ -8682,25 +8719,14 @@ def _fl_ensure_umbrella_member_list(storefront_owner_id, member_user_id, display
     if not supabase_admin or not storefront_owner_id or not member_user_id:
         return None
     u = _cf_user_row(member_user_id)
-    label = (display_name or _umbrella_collaborator_label(u)).strip()
-    base_slug = _fl_slugify(label) or f"member-{str(member_user_id)[:8]}"
-    if base_slug == "owner":
-        base_slug = f"member-{str(member_user_id)[:8]}"
-    slug = base_slug
-    n = 1
-    while True:
-        ex = (
-            supabase_admin.table("creator_favorite_lists")
-            .select("id")
-            .eq("owner_user_id", member_user_id)
-            .eq("slug", slug)
-            .limit(1)
-            .execute()
-        )
-        if not ex.data:
-            break
-        n += 1
-        slug = f"{base_slug}-{n}"[:64]
+    label = (display_name or _fl_member_preferred_nickname(member_user_id) or _umbrella_collaborator_label(u)).strip()
+    if _fl_is_generic_page_nickname(label):
+        label = _umbrella_collaborator_label(u) or f"member-{str(member_user_id)[:8]}"
+    slug = _fl_unique_slug(
+        label or f"member-{str(member_user_id)[:8]}",
+        owner_user_id=member_user_id,
+        storefront_owner_id=storefront_owner_id,
+    )
     ex_store = (
         supabase_admin.table("creator_favorite_lists")
         .select("id")
@@ -8710,7 +8736,20 @@ def _fl_ensure_umbrella_member_list(storefront_owner_id, member_user_id, display
         .execute()
     )
     if ex_store.data:
-        return ex_store.data[0]["id"]
+        existing_id = ex_store.data[0]["id"]
+        try:
+            row = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("*")
+                .eq("id", existing_id)
+                .limit(1)
+                .execute()
+            )
+            if row.data:
+                _fl_sync_stale_collaborator_slug(row.data[0])
+        except Exception:
+            pass
+        return existing_id
     now_iso = datetime.now(timezone.utc).isoformat()
     try:
         ins = (
@@ -8749,7 +8788,7 @@ def _cf_complete_umbrella_membership(channel_owner_id, friend_id):
     except Exception:
         pass
     u = _cf_user_row(friend_id)
-    name = (u or {}).get("display_name") or (u or {}).get("username") or "Collaborator"
+    name = _umbrella_collaborator_label(u) or "Friend"
     _fl_ensure_umbrella_member_list(channel_owner_id, friend_id, name)
     return True, None
 
@@ -8978,7 +9017,7 @@ def channel_friends_members():
         for row in rows:
             fid = str(row.get("friend_id") or "")
             u = row.get("user") or {}
-            fallback = _umbrella_collaborator_label(u) or "Collaborator"
+            fallback = _umbrella_collaborator_label(u) or "Friend"
             L = page_by_owner.get(fid)
             if not L:
                 # Email twin user ids (same person, remapped account)
@@ -8996,7 +9035,7 @@ def channel_friends_members():
                 page = _fl_list_page_nickname(L.get("display_name"), fallback) or fallback
             else:
                 page = fallback
-            row["page_name"] = (page or "Collaborator")[:120]
+            row["page_name"] = (page or "Friend")[:120]
         # Approved first, then paused; stable by created_at
         rows.sort(
             key=lambda row: (
@@ -9877,22 +9916,40 @@ def _fl_slugify(raw):
 
 
 def _fl_unique_slug(base_slug, *, owner_user_id=None, storefront_owner_id=None, ignore_list_id=None):
-    """Pick a slug unused by other lists on this owner/storefront."""
+    """Pick a slug unused on this storefront and unused by this owner (DB unique is owner+slug)."""
     base = _fl_slugify(base_slug) or "page"
     if base == "owner":
         base = "page"
     slug = base
     n = 1
-    while True:
-        q = supabase_admin.table("creator_favorite_lists").select("id").eq("slug", slug)
-        if storefront_owner_id:
-            q = q.eq("storefront_owner_id", storefront_owner_id)
-        elif owner_user_id:
-            q = q.eq("owner_user_id", owner_user_id)
+
+    def _taken(q):
         if ignore_list_id:
             q = q.neq("id", ignore_list_id)
-        ex = q.limit(1).execute()
-        if not ex.data:
+        return bool((q.limit(1).execute()).data)
+
+    while True:
+        taken = False
+        if storefront_owner_id:
+            q = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("id")
+                .eq("slug", slug)
+                .eq("storefront_owner_id", storefront_owner_id)
+            )
+            taken = _taken(q)
+        if not taken and owner_user_id:
+            q = (
+                supabase_admin.table("creator_favorite_lists")
+                .select("id")
+                .eq("slug", slug)
+                .eq("owner_user_id", owner_user_id)
+            )
+            taken = _taken(q)
+        if not taken and not storefront_owner_id and not owner_user_id:
+            q = supabase_admin.table("creator_favorite_lists").select("id").eq("slug", slug)
+            taken = _taken(q)
+        if not taken:
             return slug
         n += 1
         slug = f"{base}-{n}"[:64]
@@ -9921,45 +9978,203 @@ def _fl_attach_orphan_favorites(user_id, list_id):
 
 
 def _fl_sync_stale_collaborator_slug(list_row):
-    """If nickname was renamed but slug stayed 'collaborator', update slug for public URLs."""
+    """Replace generic Collaborator names/slugs with the member's public nickname."""
     if not supabase_admin or not list_row or not list_row.get("id"):
         return list_row
     if list_row.get("is_primary") or (list_row.get("slug") or "") == "owner":
         return list_row
+    owner_uid = list_row.get("owner_user_id")
+    store_uid = list_row.get("storefront_owner_id")
+    is_collab = owner_uid and store_uid and str(owner_uid) != str(store_uid)
+    if not is_collab:
+        return list_row
+
+    u = _cf_user_row(owner_uid)
+    preferred = _fl_member_preferred_nickname(owner_uid, list_row.get("display_name"))
+    fallback = preferred or _umbrella_collaborator_label(u) or "Friend"
+    nick = preferred or _fl_list_page_nickname(list_row.get("display_name"), fallback) or fallback
+    stored_nick = _fl_list_page_nickname(list_row.get("display_name"))
     cur_slug = (list_row.get("slug") or "").strip().lower()
-    nick = _fl_list_page_nickname(list_row.get("display_name"))
-    if not nick:
-        return list_row
-    desired = _fl_slugify(nick)
-    if not desired or desired == cur_slug:
-        return list_row
-    stale = (
-        cur_slug in ("collaborator", "friend", "member")
+    updates = {}
+
+    desired_display = nick if "favorites" in nick.lower() else f"{nick} Favorites"
+    if (not stored_nick) or _fl_is_generic_page_nickname(stored_nick):
+        if (list_row.get("display_name") or "") != desired_display:
+            updates["display_name"] = desired_display[:120]
+
+    desired_slug = _fl_slugify(nick)
+    stale_slug = (
+        cur_slug in ("collaborator", "friend", "member", "page")
         or cur_slug.startswith("collaborator-")
         or cur_slug.startswith("member-")
     )
-    if not stale:
+    if desired_slug and desired_slug != cur_slug and (stale_slug or not stored_nick):
+        updates["slug"] = _fl_unique_slug(
+            nick,
+            owner_user_id=owner_uid,
+            storefront_owner_id=store_uid,
+            ignore_list_id=list_row.get("id"),
+        )
+
+    if not updates:
         return list_row
-    new_slug = _fl_unique_slug(
-        nick,
-        owner_user_id=list_row.get("owner_user_id"),
-        storefront_owner_id=list_row.get("storefront_owner_id"),
-        ignore_list_id=list_row.get("id"),
-    )
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     try:
         upd = (
             supabase_admin.table("creator_favorite_lists")
-            .update({"slug": new_slug, "updated_at": datetime.now(timezone.utc).isoformat()})
+            .update(updates)
             .eq("id", list_row["id"])
             .execute()
         )
         if upd.data:
             return upd.data[0]
         list_row = dict(list_row)
-        list_row["slug"] = new_slug
+        list_row.update(updates)
     except Exception as err:
+        # Same person can already have slug "gee" on maxfreedom; still save Gee/Pom names.
         logger.warning("_fl_sync_stale_collaborator_slug: %s", err)
+        name_only = {k: v for k, v in updates.items() if k != "slug"}
+        if "display_name" in name_only:
+            try:
+                upd = (
+                    supabase_admin.table("creator_favorite_lists")
+                    .update(name_only)
+                    .eq("id", list_row["id"])
+                    .execute()
+                )
+                if upd.data:
+                    return upd.data[0]
+                list_row = dict(list_row)
+                list_row.update(name_only)
+            except Exception as name_err:
+                logger.warning("_fl_sync_stale_collaborator_slug name: %s", name_err)
     return list_row
+
+
+def _dedupe_storefront_collaborator_slugs(storefront_owner_id, lists):
+    """Match maxfreedom: one public slug per collaborator page on a storefront."""
+    if not supabase_admin or not storefront_owner_id:
+        return lists
+    seen = {}
+    out = []
+    for row in lists or []:
+        if not _is_collaborator_favorite_list(row, storefront_owner_id):
+            out.append(row)
+            continue
+        slug = (row.get("slug") or "").strip().lower()
+        if slug and slug not in seen:
+            seen[slug] = row
+            out.append(row)
+            continue
+        nick = (
+            _fl_member_preferred_nickname(row.get("owner_user_id"), row.get("display_name"))
+            or _fl_list_page_nickname(row.get("display_name") or row.get("slug"))
+            or f"member-{str(row.get('owner_user_id') or '')[:8]}"
+        )
+        new_slug = _fl_unique_slug(
+            nick,
+            owner_user_id=row.get("owner_user_id"),
+            storefront_owner_id=storefront_owner_id,
+            ignore_list_id=row.get("id"),
+        )
+        if new_slug and new_slug != slug:
+            try:
+                upd = (
+                    supabase_admin.table("creator_favorite_lists")
+                    .update({
+                        "slug": new_slug,
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    .eq("id", row["id"])
+                    .execute()
+                )
+                row = (upd.data or [None])[0] or {**row, "slug": new_slug}
+            except Exception as err:
+                logger.warning("dedupe storefront collaborator slug: %s", err)
+        seen[(row.get("slug") or new_slug or slug)] = row
+        out.append(row)
+    return out
+
+
+def _fl_append_preview_url(images, url):
+    img = (url or "").strip()
+    if img and img not in images:
+        images.append(img)
+    return images
+
+
+def _fl_video_preview_images(user_id, limit=8):
+    """Video thumbnails for a creator — used when a friend page has no saved images."""
+    if not supabase_admin or not user_id:
+        return []
+    try:
+        vr = (
+            supabase_admin.table("videos2")
+            .select("thumbnail")
+            .eq("user_id", str(user_id))
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        out = []
+        for v in vr.data or []:
+            _fl_append_preview_url(out, v.get("thumbnail"))
+        return out
+    except Exception as err:
+        logger.warning("_fl_video_preview_images: %s", err)
+        return []
+
+
+def _fl_user_favorite_preview_images(user_id, limit=8):
+    if not supabase_admin or not user_id:
+        return []
+    try:
+        fr = (
+            supabase_admin.table("creator_favorites")
+            .select("image_url, thumbnail_url")
+            .eq("user_id", str(user_id))
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        out = []
+        for fav in fr.data or []:
+            _fl_append_preview_url(out, fav.get("image_url") or fav.get("thumbnail_url"))
+        return out
+    except Exception as err:
+        logger.warning("_fl_user_favorite_preview_images: %s", err)
+        return []
+
+
+def _fl_collect_preview_images(list_row, is_collab=False, limit=8):
+    """Favorite images first; fall back to that creator's other images, then video thumbs."""
+    images = []
+    list_id = list_row.get("id") if list_row else None
+    user_id = list_row.get("owner_user_id") if list_row else None
+    if is_collab and user_id and list_id:
+        _fl_attach_orphan_favorites(user_id, list_id)
+    if list_id:
+        try:
+            fr = (
+                supabase_admin.table("creator_favorites")
+                .select("image_url, thumbnail_url")
+                .eq("list_id", list_id)
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            for fav in fr.data or []:
+                _fl_append_preview_url(images, fav.get("image_url") or fav.get("thumbnail_url"))
+        except Exception as preview_err:
+            logger.warning("preview images for list %s: %s", list_id, preview_err)
+    if is_collab and len(images) < 2 and user_id:
+        for img in _fl_user_favorite_preview_images(user_id, limit):
+            _fl_append_preview_url(images, img)
+            if len(images) >= limit:
+                break
+    if is_collab and not images and user_id:
+        images = _fl_video_preview_images(user_id, limit)
+    return images[:limit]
 
 
 def _fl_ensure_primary_list(owner_id):
@@ -10056,6 +10271,13 @@ def _fl_lists_for_storefront(owner_id):
     except Exception as err:
         logger.warning("_fl_lists_for_storefront owner query: %s", err)
     lists = list(by_id.values())
+    lists = [
+        _fl_sync_stale_collaborator_slug(L)
+        if _is_collaborator_favorite_list(L, owner_id)
+        else L
+        for L in lists
+    ]
+    lists = _dedupe_storefront_collaborator_slugs(owner_id, lists)
     lists.sort(
         key=lambda L: (
             0 if L.get("is_primary") else 1,
@@ -10375,20 +10597,20 @@ def public_favorite_lists():
                         except Exception:
                             pass
                     continue
+            member_label = None
             if not lite:
                 L = _fl_sync_stale_collaborator_slug(L)
             dn = (L.get("display_name") or L.get("slug") or "Favorites").strip()
             if L.get("is_primary") or L.get("slug") == "owner":
                 dn = "Main Favorites"
             elif is_collab:
+                preferred = _fl_member_preferred_nickname(L.get("owner_user_id"), L.get("display_name"))
                 if lite:
-                    nick = _fl_list_page_nickname(L.get("display_name")) or dn
+                    nick = preferred or _fl_list_page_nickname(L.get("display_name")) or dn
                 else:
                     owner_u = _cf_user_row(L.get("owner_user_id"))
-                    nick = _fl_list_page_nickname(
-                        L.get("display_name"),
-                        _umbrella_collaborator_label(owner_u),
-                    ) or dn
+                    nick = preferred or _umbrella_collaborator_label(owner_u) or "Friend"
+                member_label = _fl_list_page_nickname(nick) or nick
                 dn = nick if "Favorites" in nick else f"{nick} Favorites"
             elif "@" in dn:
                 if lite:
@@ -10402,27 +10624,17 @@ def public_favorite_lists():
                 dn = nick + (" Favorites" if nick and "Favorites" not in nick else "")
             preview_images = []
             if not lite:
-                try:
-                    fr = (
-                        supabase_admin.table("creator_favorites")
-                        .select("image_url, thumbnail_url")
-                        .eq("list_id", L.get("id"))
-                        .order("created_at", desc=True)
-                        .limit(8)
-                        .execute()
-                    )
-                    for fav in fr.data or []:
-                        img = (fav.get("image_url") or fav.get("thumbnail_url") or "").strip()
-                        if img and img not in preview_images:
-                            preview_images.append(img)
-                except Exception as preview_err:
-                    logger.warning("public_favorite_lists preview for %s: %s", L.get("id"), preview_err)
-            safe_lists.append({
+                preview_images = _fl_collect_preview_images(L, is_collab=is_collab)
+            payload = {
                 **L,
                 "display_name": dn[:120],
+                "is_collaborator_page": bool(is_collab),
                 "preview_image_url": preview_images[0] if preview_images else None,
                 "preview_images": preview_images,
-            })
+            }
+            if member_label:
+                payload["member_label"] = member_label[:80]
+            safe_lists.append(payload)
         return jsonify({"success": True, "lists": safe_lists}), 200
     except Exception as e:
         logger.exception("public_favorite_lists: %s", e)
@@ -10497,6 +10709,15 @@ def public_favorites_by_list():
                         pass
                 return jsonify({"success": False, "error": "List not found"}), 404
         row = _fl_sync_stale_collaborator_slug(row)
+        if is_collab:
+            owner_u = _cf_user_row(row.get("owner_user_id"))
+            nick = _fl_member_preferred_nickname(
+                row.get("owner_user_id"), row.get("display_name")
+            ) or _umbrella_collaborator_label(owner_u) or "Friend"
+            row = dict(row)
+            row["member_label"] = nick[:80]
+            row["is_collaborator_page"] = True
+            row["display_name"] = nick if "Favorites" in nick else f"{nick} Favorites"
         # Repair favorites saved without list_id (old Save Favorite path)
         if row.get("owner_user_id") and row.get("id"):
             _fl_attach_orphan_favorites(row["owner_user_id"], row["id"])
@@ -10507,7 +10728,21 @@ def public_favorites_by_list():
             .order("created_at", desc=True)
             .execute()
         )
-        return jsonify({"success": True, "list": _scrub_owner_fee_tagline(row), "favorites": fr.data or []}), 200
+        favorites = list(fr.data or [])
+        if is_collab and not favorites and row.get("owner_user_id"):
+            try:
+                extra = (
+                    supabase_admin.table("creator_favorites")
+                    .select("*")
+                    .eq("user_id", str(row.get("owner_user_id")))
+                    .order("created_at", desc=True)
+                    .limit(24)
+                    .execute()
+                )
+                favorites = list(extra.data or [])
+            except Exception as extra_err:
+                logger.warning("collaborator fallback favorites: %s", extra_err)
+        return jsonify({"success": True, "list": _scrub_owner_fee_tagline(row), "favorites": favorites}), 200
     except Exception as e:
         logger.exception("public_favorites_by_list: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
@@ -10787,7 +11022,7 @@ def favorite_lists_sales_summary():
                     "payout_note": "",
                 }), 200
         else:
-            user_id, err = _validate_x_user_id_session()
+            user_id, err = _authenticated_users_id()
             if err is not None:
                 return err[0], err[1]
         if not supabase_admin:
@@ -10851,23 +11086,8 @@ def favorite_lists_sales_summary():
             by_list[key]["sales"].append(s)
         uid = str(user_id)
         lists_map = {}
-        try:
-            lr = (
-                supabase_admin.table("creator_favorite_lists")
-                .select("id, display_name, slug, owner_user_id, storefront_owner_id")
-                .eq("storefront_owner_id", user_id)
-                .execute()
-            )
-            for L in lr.data or []:
-                lists_map[str(L["id"])] = L
-        except Exception:
-            lr = (
-                supabase_admin.table("creator_favorite_lists")
-                .select("id, display_name, slug, owner_user_id, storefront_owner_id")
-                .eq("owner_user_id", user_id)
-                .execute()
-            )
-            for L in lr.data or []:
+        for L in _fl_lists_for_storefront(user_id):
+            if L and L.get("id"):
                 lists_map[str(L["id"])] = L
 
         active_friend_ids = set()
@@ -10890,7 +11110,6 @@ def favorite_lists_sales_summary():
         for list_id, meta in lists_map.items():
             if not _is_collaborator_favorite_list(meta, uid):
                 continue
-            # Only pre-seed empty rows for people still in the umbrella
             if str(meta.get("owner_user_id") or "") not in active_friend_ids:
                 continue
             if list_id not in by_list:
@@ -10931,7 +11150,16 @@ def favorite_lists_sales_summary():
             if not is_collab:
                 owner_sales.extend(sale_lines)
             if lid and meta:
-                display_name = (meta.get("display_name") or meta.get("slug") or "Favorites page").strip() or "Favorites page"
+                if is_collab:
+                    member_uid = str(meta.get("owner_user_id") or "")
+                    nick = (
+                        _fl_member_preferred_nickname(member_uid, meta.get("display_name"))
+                        or _fl_list_page_nickname(meta.get("display_name") or meta.get("slug"))
+                        or (meta.get("display_name") or meta.get("slug") or "Collaborator")
+                    )
+                    display_name = nick if "favorites" in str(nick).lower() else f"{nick} Favorites"
+                else:
+                    display_name = (meta.get("display_name") or meta.get("slug") or "Favorites page").strip() or "Favorites page"
                 slug_out = meta.get("slug")
             elif lid and not meta:
                 display_name = "Removed or unknown favorites page"
@@ -12601,13 +12829,13 @@ def demo_storefront_umbrella():
         for row in members:
             fid = str(row.get("friend_id") or "")
             u = row.get("user") or {}
-            fallback = _umbrella_collaborator_label(u) or "Collaborator"
+            fallback = _umbrella_collaborator_label(u) or "Friend"
             L = page_by_owner.get(fid)
             if L:
                 page = _fl_list_page_nickname(L.get("display_name"), fallback) or fallback
             else:
                 page = fallback
-            row["page_name"] = (page or "Collaborator")[:120]
+            row["page_name"] = (page or "Friend")[:120]
             if isinstance(row.get("user"), dict):
                 row["user"] = {
                     "id": row["user"].get("id"),

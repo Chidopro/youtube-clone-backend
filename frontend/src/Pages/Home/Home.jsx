@@ -8,7 +8,7 @@ import { useCreator } from '../../contexts/CreatorContext';
 import { getSubdomain, isCreatorStorefrontHostname } from '../../utils/subdomainService';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import DemoStorefrontWelcome from '../../Components/DemoStorefrontBanner/DemoStorefrontBanner';
-import { fetchPublicFavoriteLists, fetchPublicFavoritesByList, favoriteImageUrl, peekPublicFavoriteLists, storefrontHubPreviews, publicStorageCardUrl } from '../../utils/favoriteListsApi';
+import { fetchPublicFavoriteLists, fetchPublicFavoritesByList, favoriteImageUrl, peekPublicFavoriteLists, storefrontHubPreviews, publicStorageCardUrl, memberFavoritePreviewUrls } from '../../utils/favoriteListsApi';
 import ColorPickerModal from '../../Components/ColorPickerModal/ColorPickerModal';
 import { apiJoin } from '../../config/apiConfig';
 
@@ -199,12 +199,34 @@ const Home = ({sidebar, category, selectedCategory, setSelectedCategory}) => {
             const extra = [];
             for (const L of friendLists) {
               const slug = (L.slug || '').trim();
-              if (!slug) continue;
-              const { ok: okFriend, data: friendData } = await fetchPublicFavoritesByList(sub, slug);
-              if (!okFriend || !friendData?.success) continue;
-              extra.push(
-                ...(friendData.favorites || []).map((f) => favoriteImageUrl(f)).filter(Boolean)
-              );
+              if (slug) {
+                const { ok: okFriend, data: friendData } = await fetchPublicFavoritesByList(sub, slug);
+                if (okFriend && friendData?.success) {
+                  extra.push(
+                    ...(friendData.favorites || []).map((f) => favoriteImageUrl(f)).filter(Boolean)
+                  );
+                }
+              }
+              if (!extra.length && L.owner_user_id) {
+                extra.push(...(await memberFavoritePreviewUrls(L.owner_user_id)));
+              }
+              if (!extra.length && L.owner_user_id) {
+                try {
+                  const vRes = await fetch(
+                    `${apiJoin('/api/videos')}?user_id=${encodeURIComponent(L.owner_user_id)}&limit=8`
+                  );
+                  if (vRes.ok) {
+                    const vData = await vRes.json();
+                    extra.push(
+                      ...(Array.isArray(vData) ? vData : [])
+                        .map((v) => v.thumbnail || v.thumbnail_url)
+                        .filter(Boolean)
+                    );
+                  }
+                } catch (_) {
+                  /* ignore */
+                }
+              }
             }
             if (!cancelled && extra.length) {
               friendImages = extra;
