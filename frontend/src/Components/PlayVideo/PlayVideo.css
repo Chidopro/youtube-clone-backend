@@ -47,10 +47,6 @@
   user-select: none;
 }
 
-.play-video video::-webkit-media-controls {
-  display: flex !important;
-}
-
 .play-video video::-webkit-media-controls-panel {
   display: flex !important;
 }
@@ -155,6 +151,25 @@
   .play-video video::-webkit-media-controls-fullscreen-button,
   .play-video video::-internal-media-controls-overlay-cast-button {
     display: none !important;
+  }
+
+  /* Hide the native pause / ±10s overlay only while the video is playing */
+  .play-video video.mobile-playing::-webkit-media-controls-overlay-enclosure,
+  .play-video video.mobile-playing::-webkit-media-controls-overlay-play-button,
+  .play-video video.mobile-playing::-webkit-media-controls-rewind-button,
+  .play-video video.mobile-playing::-webkit-media-controls-return-to-realtime-button,
+  .play-video video.mobile-playing::-webkit-media-controls-skip-back-button,
+  .play-video video.mobile-playing::-webkit-media-controls-skip-forward-button,
+  .play-video video.mobile-playing::-webkit-media-controls-start-playback-button {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .play-video video.mobile-playing::-webkit-media-controls {
+    background: transparent !important;
   }
   
   /* Force inline playback on iOS and Android — do not target all site videos */
@@ -309,14 +324,11 @@
     touch-action: manipulation;
   }
   
-  /* Mobile-specific video controls */
-  .play-video video::-webkit-media-controls {
-    background: rgba(0,0,0,0.7);
-    border-radius: 0 0 12px 12px;
-  }
-  
+  /* Mobile: keep a slim bottom bar only — never tint the whole frame */
   .play-video video::-webkit-media-controls-panel {
     padding: 8px;
+    background: rgba(0,0,0,0.7);
+    border-radius: 0 0 12px 12px;
   }
   
   /* Larger touch targets for mobile */

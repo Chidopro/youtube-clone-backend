@@ -65,6 +65,69 @@ function persistPendingObject(clean) {
   return packed.clean;
 }
 
+/** Wide photo: crop/fill the portrait print box. Square/tall stay contain. */
+export const ARTWORK_LANDSCAPE_ASPECT = 1.15;
+
+export function artworkOrientationFromSize(width, height) {
+  if (!(width > 0 && height > 0)) return 'portrait';
+  return width / height >= ARTWORK_LANDSCAPE_ASPECT ? 'landscape' : 'portrait';
+}
+
+export function detectArtworkOrientation(url) {
+  return new Promise((resolve) => {
+    if (!url || typeof url !== 'string') {
+      resolve('portrait');
+      return;
+    }
+    const img = new Image();
+    img.onload = () => resolve(artworkOrientationFromSize(img.naturalWidth, img.naturalHeight));
+    img.onerror = () => resolve('portrait');
+    try {
+      img.src = url;
+    } catch {
+      resolve('portrait');
+    }
+  });
+}
+
+export function readArtworkOrientation() {
+  try {
+    const data = readPendingMerchData() || {};
+    return data.imageOrientation === 'landscape' ? 'landscape' : 'portrait';
+  } catch {
+    return 'portrait';
+  }
+}
+
+/** Persist orientation without emitting a merch-updated reload. */
+export function rememberArtworkOrientation(orientation) {
+  const next = orientation === 'landscape' ? 'landscape' : 'portrait';
+  try {
+    const prev = readPendingMerchData() || {};
+    if (prev.imageOrientation === next) return;
+    const packed = compactMerchData({ ...prev, imageOrientation: next });
+    pendingMerchMemory = packed.clean;
+    try {
+      localStorage.setItem('pending_merch_data', packed.json);
+    } catch {
+      /* ignore */
+    }
+    try {
+      sessionStorage.setItem('pending_merch_data', packed.json);
+    } catch {
+      /* ignore */
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+let orientationDetectUrl = '';
+
+function maybeDetectPendingOrientation(_clean) {
+  // Tools always opens Portrait. Landscape is a radio the shopper turns on.
+}
+
 const TOOLS_EDITOR_RESET_KEY = 'tools_editor_reset';
 
 function clearToolsPageState() {
@@ -213,6 +276,10 @@ export function savePendingMerchData(merchData) {
     if (sourceChanged || isFreshPickerSession) {
       clearToolsPageState();
     }
+    if (sourceChanged) {
+      delete clean.imageOrientation;
+      orientationDetectUrl = '';
+    }
 
     if (videoChanged) {
       try {
@@ -235,6 +302,7 @@ export function savePendingMerchData(merchData) {
     }
 
     persistPendingObject(clean);
+    maybeDetectPendingOrientation(clean);
   } catch (e) {
     console.warn('Failed saving pending_merch_data:', e);
     pendingMerchMemory = merchData && typeof merchData === 'object' ? merchData : pendingMerchMemory;
@@ -379,6 +447,14 @@ export function setToolsPreviewNewest(on = true) {
   }
 }
 
+export function peekToolsPreviewNewest() {
+  try {
+    return localStorage.getItem(TOOLS_PREVIEW_NEWEST_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export function consumeToolsPreviewNewest() {
   try {
     const on = localStorage.getItem(TOOLS_PREVIEW_NEWEST_KEY) === '1';
@@ -397,6 +473,8 @@ export function applySelectedScreenshot(url) {
   const oldShot = prev.selected_screenshot || prev.edited_screenshot || '';
   const next = { ...prev, selected_screenshot: url };
   delete next.edited_screenshot;
+  if (url !== oldShot) delete next.imageOrientation;
+  orientationDetectUrl = '';
   savePendingMerchData(next);
 
   try {
@@ -543,7 +621,7 @@ export function writeCartItems(items, options = {}) {
     ? cartItemsMemory.length
     : readCartItems().length;
   cartItemsMemory = next;
-  if (next.length > prevLen && isDemoStorefront()) setToolsPreviewNewest(true);
+  if (next.length > prevLen) setToolsPreviewNewest(true);
   const isEmpty = cartItemsMemory.length === 0;
   const json = JSON.stringify(cartItemsMemory);
   persistCartStore(sessionStorage, json, isEmpty);

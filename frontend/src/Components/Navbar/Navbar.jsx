@@ -857,7 +857,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
         <>
             <nav
                 className={`flex-div${dropdownOpen ? ' nav-dropdown-active' : ''}${logoOrientation === 'horizontal' ? ' nav--logo-horizontal' : ''}${storefrontHeaderGradient ? ' nav--brand-gradient' : ''}`}
-                style={storefrontHeaderGradient ? { background: storefrontHeaderGradient } : undefined}
+                style={storefrontHeaderGradient ? { backgroundColor: '#fff', backgroundImage: storefrontHeaderGradient } : undefined}
             >
                 <div className="nav-left flex-div">
                     <img

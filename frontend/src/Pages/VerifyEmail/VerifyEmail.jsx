@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { persistShopperSession, consumeAuthReturnPath, peekAuthReturnPath, safeAuthReturnPath } from '../../utils/shopperAuth';
 import './VerifyEmail.css';
 
 const BACKEND_URL =
@@ -8,7 +9,6 @@ const BACKEND_URL =
   "https://screenmerch.fly.dev";
 
 const VerifyEmail = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -99,11 +99,7 @@ const VerifyEmail = () => {
 
       const data = await response.json();
 
-      if (data?.token) localStorage.setItem('auth_token', data.token);
-      if (data?.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-        localStorage.setItem('isAuthenticated', 'true');
-      }
+      persistShopperSession(data, email);
 
       // Umbrella collaborator invite: complete membership after password is set
       if (inviteToken) {
@@ -146,11 +142,25 @@ const VerifyEmail = () => {
         sessionStorage.setItem('from_password_set', '1');
       } catch (_) {}
 
-      setMessage({ type: 'success', text: 'Email verified and password set successfully! Redirecting to home...' });
+      const nextPath =
+        safeAuthReturnPath(searchParams.get('next')) ||
+        consumeAuthReturnPath() ||
+        '/';
+      const dest =
+        typeof window !== 'undefined' && window.location?.origin
+          ? `${window.location.origin}${nextPath}`
+          : nextPath;
 
-      const homeUrl = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin + '/' : '/';
+      setMessage({
+        type: 'success',
+        text:
+          nextPath === '/checkout'
+            ? 'Email verified. Returning you to checkout…'
+            : 'Email verified and password set successfully! Redirecting…',
+      });
+
       setTimeout(() => {
-        window.location.replace(homeUrl);
+        window.location.replace(dest);
       }, 800);
     } catch (err) {
       setMessage({ type: 'error', text: err?.message || 'Verification failed. Please try again.' });
@@ -167,9 +177,13 @@ const VerifyEmail = () => {
       const endpoint = inviteToken
         ? `${BACKEND_URL}/api/umbrella-invites/signup-email`
         : `${BACKEND_URL}/api/auth/signup/email-only`;
+      const nextPath = safeAuthReturnPath(searchParams.get('next')) || peekAuthReturnPath();
       const body = inviteToken
         ? { invite_token: inviteToken }
-        : { email: email.trim().toLowerCase() };
+        : {
+            email: email.trim().toLowerCase(),
+            ...(nextPath ? { next: nextPath } : {}),
+          };
       const r = await fetch(endpoint, {
         method: 'POST',
         credentials: 'include',

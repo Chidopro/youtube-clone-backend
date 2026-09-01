@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { getBackendUrl } from '../../config/apiConfig';
+import { peekAuthReturnPath, safeAuthReturnPath } from '../../utils/shopperAuth';
 import './RequestSetPassword.css';
 
 const RequestSetPassword = () => {
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState(null);
@@ -20,10 +22,14 @@ const RequestSetPassword = () => {
 
     try {
       setIsLoading(true);
+      const nextPath = safeAuthReturnPath(searchParams.get('returnTo')) || peekAuthReturnPath();
       const response = await fetch(`${getBackendUrl()}/api/auth/request-set-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email: trimmed })
+        body: JSON.stringify({
+          email: trimmed,
+          ...(nextPath ? { next: nextPath } : {}),
+        })
       });
       const data = await response.json().catch(() => ({}));
 

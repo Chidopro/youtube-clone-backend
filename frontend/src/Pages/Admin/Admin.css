@@ -378,7 +378,7 @@
 }
 
 .admin-users .users-table-actions-header {
-  min-width: 200px;
+  min-width: 280px;
   position: sticky;
   right: 0;
   background: var(--sm-bg);
@@ -401,7 +401,7 @@
 }
 
 .admin-users .users-table-actions-cell {
-  min-width: 200px;
+  min-width: 280px;
   position: sticky;
   right: 0;
   background: inherit;
@@ -409,6 +409,10 @@
   border-left: 1px solid var(--sm-border);
   text-align: right;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .admin-users .users-table tbody tr:hover .users-table-actions-cell {
@@ -1824,6 +1828,23 @@ tr:hover {
 
 .pending-approval-btn-deny:hover {
   background: #c82333;
+}
+
+.suspended-accounts-section {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.suspended-accounts-section h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+}
+
+.suspended-accounts-section > p {
+  margin: 0 0 1rem;
+  color: #6c757d;
+  font-size: 0.95rem;
 }
 
 .pending-approval-grid {

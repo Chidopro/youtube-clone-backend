@@ -397,6 +397,7 @@ const Favorites = ({ sidebar }) => {
     const merchData = {
       thumbnail: imageUrl,
       screenshots: [imageUrl],
+      selected_screenshot: imageUrl,
       videoTitle: favorite.title || 'Image',
       creatorName: currentCreator?.display_name || 'Creator',
       screenshot_timestamp: '0:00',
@@ -468,7 +469,7 @@ const Favorites = ({ sidebar }) => {
             {imageItems.length > 0 ? (
               <section className="favorites-shelf favorites-shelf--images" aria-label="Images">
                 <h2 className="favorites-shelf-title">Images</h2>
-                <FavoritesShelfTrack itemCount={imageItems.length} pair scrollRef={imageTrackRef}>
+                <FavoritesShelfTrack itemCount={imageItems.length} trio scrollRef={imageTrackRef}>
                   {imageItems.map((item) => (
                     <FavoriteImageCard key={item.id} item={item} onMakeMerch={handleMakeMerch} />
                   ))}
@@ -479,7 +480,7 @@ const Favorites = ({ sidebar }) => {
             {videoItems.length > 0 ? (
               <section className="favorites-shelf favorites-shelf--videos" aria-label="Videos">
                 <h2 className="favorites-shelf-title">Videos</h2>
-                <FavoritesShelfTrack itemCount={videoItems.length} pair scrollRef={videoTrackRef}>
+                <FavoritesShelfTrack itemCount={videoItems.length} trio scrollRef={videoTrackRef}>
                   {videoItems.map((item) => (
                     <div className="favorites-card favorites-card--video" key={item.id}>
                       <div className="favorites-card-image">
@@ -514,7 +515,7 @@ const Favorites = ({ sidebar }) => {
               >
                 <h2 className="favorites-extra-page-title">{page.title}</h2>
                 {page.images.length > 0 ? (
-                  <FavoritesShelfTrack itemCount={page.images.length} pair>
+                  <FavoritesShelfTrack itemCount={page.images.length} trio>
                     {page.images.map((item) => (
                       <FavoriteImageCard
                         key={item.id}

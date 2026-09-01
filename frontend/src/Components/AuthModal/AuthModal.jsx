@@ -2,17 +2,24 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { apiJoin } from '../../config/apiConfig';
-import { persistShopperSession } from '../../utils/shopperAuth';
+import { persistShopperSession, peekAuthReturnPath, safeAuthReturnPath } from '../../utils/shopperAuth';
 import CustomerLegalConsent from '../CustomerLegalConsent/CustomerLegalConsent';
 import './AuthModal.css';
 
-const AuthModal = ({ isOpen, onClose, onSuccess, promptText }) => {
+const AuthModal = ({ isOpen, onClose, onSuccess, promptText, returnTo = '' }) => {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [acceptedCustomerLegal, setAcceptedCustomerLegal] = useState(false);
+
+  const authNextPath =
+    safeAuthReturnPath(returnTo) ||
+    peekAuthReturnPath() ||
+    (typeof window !== 'undefined' && window.location.pathname.startsWith('/checkout')
+      ? '/checkout'
+      : '');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,8 +50,13 @@ const AuthModal = ({ isOpen, onClose, onSuccess, promptText }) => {
       // Same-origin /api on *.screenmerch.com (Netlify → Fly). Avoids dead api.screenmerch.com.
       const url = apiJoin(endpoint);
 
+      const nextPath = authNextPath;
       const requestBody = isCustomerSignup
-        ? { email: email.trim(), accepted_terms_and_privacy: true }
+        ? {
+            email: email.trim(),
+            accepted_terms_and_privacy: true,
+            ...(nextPath ? { next: nextPath } : {}),
+          }
         : { email: email.trim(), password };
 
       const controller = new AbortController();
@@ -109,7 +121,6 @@ const AuthModal = ({ isOpen, onClose, onSuccess, promptText }) => {
 
         setTimeout(() => {
           onSuccess && onSuccess();
-          onClose();
         }, 400);
       } else {
         setMessage({ type: 'error', text: data.error || 'Authentication failed' });
@@ -217,7 +228,14 @@ const AuthModal = ({ isOpen, onClose, onSuccess, promptText }) => {
             </button>
             {isLoginMode && (
               <div className="auth-forgot-wrap">
-                <Link to="/set-password" className="auth-forgot-link" onClick={onClose}>
+                <Link
+                  to={
+                    authNextPath
+                      ? `/set-password?returnTo=${encodeURIComponent(authNextPath)}`
+                      : '/set-password'
+                  }
+                  className="auth-forgot-link"
+                >
                   Forgot password? Set password
                 </Link>
               </div>

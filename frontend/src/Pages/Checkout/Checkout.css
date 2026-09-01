@@ -192,6 +192,10 @@
   line-height: 1.6;
 }
 
+.checkout-signin-gate .btn-primary {
+  min-width: 220px;
+}
+
 .checkout-content {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 420px);

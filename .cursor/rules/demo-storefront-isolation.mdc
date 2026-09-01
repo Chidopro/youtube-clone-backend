@@ -15,7 +15,6 @@ Sample-only:
 - Checkout “These items are not for sale” and no real charges
 - Browse/cart without shopper sign-in
 - Apply Edits returns to browse with cart open, not checkout
-- Tools auto-selects the newest cart item and resets Product Preview
 - Tools can run from a pending screenshot with no cart item
 
-Real storefronts keep a persistent cart, real checkout, and Tools focus on the cart item being edited.
+Real storefronts keep a persistent cart, real checkout, and the same Tools “newest cart item” preview reset after Add to Cart. Editing a cart item from checkout still focuses that item.

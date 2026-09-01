@@ -66,35 +66,124 @@
 .screenshots-section {
   background: white;
   border-radius: 12px;
-  padding: 30px 20px;
-  margin: 20px auto;
-  margin-bottom: 2rem;
+  padding: 24px 20px 16px;
+  margin: 20px auto 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 1200px;
   text-align: center;
 }
 
+.screenshots-section--single {
+  width: fit-content;
+  max-width: min(100%, 280px);
+  padding: 20px 20px 12px;
+}
+
+.screenshots-section--single .screenshot-grid {
+  width: auto;
+}
+
+.screenshots-section--single .screenshot-item {
+  flex: 0 0 auto;
+  width: 186px;
+  max-width: 186px;
+}
+
+.screenshots-section-actions {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .product-page:not(.product-page--shop-catalog) .screenshots-section:not(.screenshots-section--single) {
+    margin-top: 0;
+    padding: 8px 16px 16px;
+    max-width: min(100%, 1680px);
+  }
+
+  .product-page:not(.product-page--shop-catalog) .screenshots-section:not(.screenshots-section--single) .screenshots-title {
+    margin: 0 0 8px;
+  }
+
+  .product-page:not(.product-page--shop-catalog) .screenshots-section:not(.screenshots-section--single) .screenshot-item {
+    max-width: 268px;
+  }
+
+  .screenshots-section--single {
+    width: min(100%, 400px);
+    max-width: min(100%, 400px);
+    padding: 20px 24px 16px;
+  }
+
+  .screenshots-section-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    width: min(100%, 360px);
+    margin: 12px auto 0;
+  }
+
+  .screenshots-section-actions .screenshots-subtitle {
+    margin: 0 0 4px;
+  }
+
+  .screenshots-section-actions .tools-page-btn {
+    width: 100%;
+    margin: 0;
+  }
+
+  .screenshots-section-actions .cart-section-buttons {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Keep the original Tools / Cart row for phones; hide the duplicates on desktop */
+  .screenshots-section ~ .tools-button-container:has(.tools-page-btn) {
+    display: none;
+  }
+
+  .screenshots-section ~ .product-page-container .cart-section:not(.cart-section-bottom) {
+    display: none;
+  }
+
+  .screenshots-section ~ .product-page-container {
+    margin-top: 4px;
+  }
+
+  .screenshots-section ~ .product-page-container .product-image-section:not(:has(img)) {
+    display: none;
+  }
+}
+
 .screenshots-title {
   color: #333;
   font-size: 1.8rem;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin: 0 0 12px;
 }
 
 .screenshots-subtitle {
   color: #666;
   font-size: 1rem;
-  margin-bottom: 25px;
+  margin: 0 0 8px;
 }
 
 .tools-button-container {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: center;
   width: min(100%, 360px);
-  margin: 12px auto 8px;
+  margin: 8px auto 4px;
   padding: 0 12px;
   box-sizing: border-box;
+}
+
+.screenshots-subtitle-above-buttons {
+  text-align: center;
+  margin: 0 0 8px;
 }
 
 .tools-page-btn {
@@ -125,9 +214,10 @@
 
 .screenshot-grid {
   display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
+  gap: 16px;
+  flex-wrap: nowrap;
   justify-content: center;
+  width: 100%;
 }
 
 .screenshot-item {
@@ -140,6 +230,16 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 186px;
+  box-sizing: border-box;
+}
+
+.screenshot-item > div {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .screenshot-item:hover {
@@ -149,14 +249,15 @@
 }
 
 .screenshot-item.selected {
-  border: 5px solid #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4), 0 8px 28px rgba(102, 126, 234, 0.5);
-  transform: scale(1.03);
+  border: 3px solid #667eea;
+  box-shadow: inset 0 0 0 3px rgba(102, 126, 234, 0.85);
+  z-index: 2;
 }
 
 .screenshot-image {
-  width: 180px;
-  height: 101px; /* 16:9 landscape to match capture/screenshot area */
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
   object-fit: contain;
   display: block;
   background: #f3f3f3; /* light matte — match capture/Tools previews, no black bars */
@@ -165,10 +266,11 @@
 .screenshot-label {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 8px 12px;
-  font-size: 0.85rem;
+  padding: 6px 8px;
+  font-size: 0.75rem;
   font-weight: 600;
   text-align: center;
+  white-space: nowrap;
 }
 
 .screenshot-item.selected .screenshot-label {
@@ -450,9 +552,14 @@
   }
 
   .screenshots-section {
-    padding: 16px 8px;
-    margin: 12px auto;
-    margin-bottom: 1rem;
+    padding: 12px 8px 8px;
+    margin: 12px auto 0;
+  }
+
+  .screenshots-section--single {
+    width: fit-content;
+    max-width: min(100%, 260px);
+    padding: 12px 16px 8px;
   }
 
   .screenshots-title {
@@ -462,13 +569,14 @@
 
   .screenshots-subtitle {
     font-size: 0.9rem;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
   }
 
   .screenshot-grid {
     gap: 10px;
     width: 100%;
     max-width: 100%;
+    flex-wrap: wrap;
     /* Prevent row stretch — that left blank white under shorter cards in portrait */
     align-items: flex-start;
     justify-content: center;
@@ -505,8 +613,8 @@
   }
 
   .screenshot-item.selected {
-    border: 5px solid #667eea !important;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4), 0 8px 28px rgba(102, 126, 234, 0.5) !important;
+    border: 3px solid #667eea !important;
+    box-shadow: inset 0 0 0 3px rgba(102, 126, 234, 0.85) !important;
     transform: none; /* scale caused uneven card heights in the flex row */
   }
 
@@ -959,10 +1067,25 @@
 .cart-section-bottom {
   flex-direction: row;
   width: min(100%, 360px);
-  margin: 2rem auto 0;
+  margin: 0 auto;
   padding: 0 12px;
   gap: 0.5rem;
   box-sizing: border-box;
+}
+
+.cart-section-bottom-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin: 2rem auto 0;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.product-mockup-color-notice-bottom {
+  margin: 0 0 0.75rem 0;
+  max-width: 640px;
 }
 
 .view-cart-btn,
@@ -1442,13 +1565,17 @@
   .cart-section-bottom {
     /* Keep side-by-side — .cart-section { column } would otherwise stack these */
     flex-direction: row !important;
-    margin-top: 1.5rem;
+    margin-top: 0;
     margin-bottom: 0;
     width: 100%;
     max-width: none;
-    padding: 0 12px;
+    padding: 0;
     gap: 0.5rem;
     box-sizing: border-box;
+  }
+
+  .cart-section-bottom-wrap {
+    margin-top: 1.5rem;
   }
 
   .tools-button-container,

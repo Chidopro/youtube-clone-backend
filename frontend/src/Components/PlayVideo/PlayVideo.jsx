@@ -160,12 +160,15 @@ const PlayVideo = ({
     const videoRef = propVideoRef || useRef(null);
     const pendingSeekRef = useRef(null);
     const playbackUrlRef = useRef('');
+    const playStartedAtRef = useRef(0);
     
     // Video container ref
     const [videoContainerRef] = useState(useRef(null));
     
     // Track if video has been played
     const [videoHasPlayed, setVideoHasPlayed] = useState(false);
+    // Mobile native controls draw a full-frame pause / ±10s overlay for ~3s after play.
+    const [mobilePlaying, setMobilePlaying] = useState(false);
     
     // Ref to track if screenshot function has been passed to prevent loops
     const screenshotFunctionPassedRef = useRef(false);
@@ -349,14 +352,37 @@ const PlayVideo = ({
         setVideoError(null);
         // Reset video played state when video changes
         setVideoHasPlayed(false);
+        setMobilePlaying(false);
     }, [videoId, setScreenshots]);
+
+    // Strip the native mobile overlay as soon as playback starts (CSS cannot hide it on iOS).
+    const hideMobileNativeOverlay = useCallback((el) => {
+        const videoElement = el || videoRef.current;
+        if (!isMobile || !videoElement) return;
+        playStartedAtRef.current = Date.now();
+        if (!videoElement.controls) return;
+        const resumeIfNeeded = !videoElement.paused;
+        videoElement.controls = false;
+        requestAnimationFrame(() => {
+            if (!videoElement.paused) videoElement.controls = false;
+            if (resumeIfNeeded && videoElement.paused) {
+                videoElement.play().catch(() => {});
+            }
+        });
+    }, [isMobile, videoRef]);
 
     // Listen for video play event using addEventListener for reliability
     useEffect(() => {
         const videoElement = videoRef.current;
         if (!videoElement) return;
+
+        const stripOverlay = () => {
+            hideMobileNativeOverlay(videoElement);
+            if (isMobile) setMobilePlaying(true);
+        };
         
         const handlePlay = () => {
+            stripOverlay();
             if (!videoHasPlayed) {
                 console.log('Video play event detected - activating step 2 red pulse');
                 setVideoHasPlayed(true);
@@ -367,13 +393,25 @@ const PlayVideo = ({
                 }
             }
         };
+
+        const handlePause = () => {
+            if (!isMobile || videoElement.seeking) return;
+            setMobilePlaying(false);
+            videoElement.controls = true;
+        };
         
         videoElement.addEventListener('play', handlePlay);
+        videoElement.addEventListener('playing', stripOverlay);
+        videoElement.addEventListener('pause', handlePause);
+        videoElement.addEventListener('ended', handlePause);
         
         return () => {
             videoElement.removeEventListener('play', handlePlay);
+            videoElement.removeEventListener('playing', stripOverlay);
+            videoElement.removeEventListener('pause', handlePause);
+            videoElement.removeEventListener('ended', handlePause);
         };
-    }, [videoRef, videoHasPlayed, onVideoPlayed]);
+    }, [videoRef, videoHasPlayed, onVideoPlayed, isMobile, hideMobileNativeOverlay]);
 
 
 
@@ -1089,8 +1127,9 @@ const PlayVideo = ({
                     <video 
                         key={videoId}
                         ref={videoRef} 
-                        controls
-                        controlsList="nodownload"
+                        className={isMobile && mobilePlaying ? 'mobile-playing' : ''}
+                        controls={!isMobile || !mobilePlaying}
+                        controlsList="nodownload nofullscreen noremoteplayback"
                         poster={video.thumbnail || ''}
                         width="100%" 
                         height={isMobile ? "320" : "360"}
@@ -1108,6 +1147,15 @@ const PlayVideo = ({
                         x-webkit-airplay="allow"
                         preload="auto"
                         disablePictureInPicture
+                        disableRemotePlayback
+                        onClick={() => {
+                            if (!isMobile || isCropMode) return;
+                            if (Date.now() - playStartedAtRef.current < 500) return;
+                            const el = videoRef.current;
+                            if (el && !el.paused) {
+                                el.pause();
+                            }
+                        }}
                         onCanPlay={() => {
                             // console.log('Video can play');
                             setLoading(false);
@@ -1163,6 +1211,10 @@ const PlayVideo = ({
                         onPlaying={() => {
                             // Video started playing
                             setIsBuffering(false);
+                            if (isMobile) {
+                                setMobilePlaying(true);
+                                hideMobileNativeOverlay();
+                            }
                         }}
                         onError={(e) => {
                             const videoElement = e.target;
@@ -1204,6 +1256,10 @@ const PlayVideo = ({
                             setLoading(false);
                         }}
                         onPlay={() => {
+                            if (isMobile) {
+                                setMobilePlaying(true);
+                                hideMobileNativeOverlay();
+                            }
                             if (!videoHasPlayed) {
                                 setVideoHasPlayed(true);
                                 // Safely call onVideoPlayed if it exists
@@ -1211,6 +1267,15 @@ const PlayVideo = ({
                                     onVideoPlayed();
                                 }
                             }
+                        }}
+                        onPause={() => {
+                            if (!isMobile) return;
+                            const el = videoRef.current;
+                            if (el?.seeking) return;
+                            setMobilePlaying(false);
+                        }}
+                        onEnded={() => {
+                            if (isMobile) setMobilePlaying(false);
                         }}
                     />
                     

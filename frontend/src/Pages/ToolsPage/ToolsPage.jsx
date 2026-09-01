@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { getPrintAreaConfig, getPrintAreaDimensions, getPrintAreaAspectRatio, getAspectRatio, getPixelDimensions, PRINT_AREA_CONFIG, matchPrintAreaProductName, getProductPrintFilter } from '../../config/printAreaConfig';
 import API_CONFIG, { apiJoin } from '../../config/apiConfig';
-import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest } from '../../utils/merchSession';
+import { consumeToolsFocusCartIndex, peekToolsFocusCartIndex, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, resyncMerchSessionFromStorage, CART_UPDATED_EVENT, PENDING_MERCH_UPDATED_EVENT, resetToolsEditorSession, consumeToolsEditorReset, readToolsSeenCartCount, writeToolsSeenCartCount, consumeToolsPreviewNewest, peekToolsPreviewNewest, rememberArtworkOrientation } from '../../utils/merchSession';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import './ToolsPage.css';
 
@@ -425,7 +425,25 @@ function overlaySizeForOrientation(width, height, orientation) {
     w = boxW;
     h = Math.min(boxH, boxW / 1.5);
   }
-  return { width: w, height: h };
+  // Keep a margin inside the painted print area so a 16:9 shot does not spill.
+  const inset = 0.86;
+  return { width: w * inset, height: h * inset };
+}
+
+function applyArtworkOrientation(_product, _screenshotUrl, userSetRef, setImageOrientation) {
+  if (userSetRef.current) return;
+  rememberArtworkOrientation('portrait');
+  setImageOrientation('portrait');
+}
+
+/** Fill the current print box. Portrait = full print area; Landscape = wide print inside it. */
+function overlayFitForPreview(printBox) {
+  return {
+    width: printBox.width,
+    height: printBox.height,
+    objectFit: 'cover',
+    cover: true
+  };
 }
 
 /** Chest print box on the mockup photo (not geometric 50/50 of the PNG). */
@@ -526,7 +544,7 @@ function getInitialCartPrintFit() {
     if (!withShots.length) return { name: '', fit: 'none' };
 
     let chosen = withShots[withShots.length - 1];
-    if (!isDemoStorefront()) {
+    if (!peekToolsPreviewNewest()) {
       const focusOriginal = peekToolsFocusCartIndex();
       if (focusOriginal != null) {
         const matched = withShots.find((p) => p.originalIndex === focusOriginal);
@@ -572,7 +590,7 @@ const ProductPreviewWithDrag = ({
   const totalDragDeltaRef = useRef({ x: 0, y: 0 }); // Accumulated pixel delta during text drag
   const [processedImage, setProcessedImage] = useState(screenshot);
   const textDragMode = false;
-  const [screenshotDisplaySize, setScreenshotDisplaySize] = useState({ width: 150, height: 150 });
+  const [screenshotDisplaySize, setScreenshotDisplaySize] = useState({ width: 0, height: 0 });
   const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
   const [detectedPrintBox, setDetectedPrintBox] = useState(null);
   const overlayFitKeyRef = useRef('');
@@ -612,18 +630,23 @@ const ProductPreviewWithDrag = ({
         if (aspect > 0) displayedProductHeight = stageW * aspect;
       }
 
+      // Mockup height can lag width. Infer it so we never leave a skinny
+      // 150×150 contain strip on screen.
+      if (displayedProductWidth >= 2 && displayedProductHeight < 2) {
+        const img = productImageRef.current;
+        if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
+          displayedProductHeight = displayedProductWidth * (img.naturalHeight / img.naturalWidth);
+        } else {
+          displayedProductHeight = displayedProductWidth * 1.25;
+        }
+      }
+
       const commitOverlaySize = (width, height) => {
-        const key = `${effectiveProductName}|${productSize || ''}`;
+        overlayFitKeyRef.current = `${effectiveProductName}|${productSize || ''}`;
         setScreenshotDisplaySize((prev) => {
-          if (
-            overlayFitKeyRef.current === key &&
-            prev.width > 24 &&
-            stageW >= 80 &&
-            width > prev.width * 1.08
-          ) {
+          if (Math.abs(prev.width - width) < 0.5 && Math.abs(prev.height - height) < 0.5) {
             return prev;
           }
-          overlayFitKeyRef.current = key;
           return { width, height };
         });
       };
@@ -1166,7 +1189,6 @@ const ProductPreviewWithDrag = ({
       style={{
         position: 'relative',
         width: '100%',
-        maxWidth: '200px',
         margin: '0 auto',
         cursor: isDragging ? 'grabbing' : 'grab',
         userSelect: 'none',
@@ -1192,7 +1214,7 @@ const ProductPreviewWithDrag = ({
       />
       
       {/* Screenshot Overlay (Draggable) */}
-      {processedImage && (
+      {processedImage && screenshotDisplaySize.width >= 8 && screenshotDisplaySize.height >= 8 && (
         <div
           style={{
             position: 'absolute',
@@ -1221,27 +1243,27 @@ const ProductPreviewWithDrag = ({
         >
           {(() => {
             const scaleFactor = 1;
-            const oriented = overlaySizeForOrientation(
+            const printBox = overlaySizeForOrientation(
               screenshotDisplaySize.width,
               screenshotDisplaySize.height,
               imageOrientation
             );
-            const isLandscape = imageOrientation === 'landscape';
-            const fitted = Boolean(printAreaFit && printAreaFit !== 'none') || isLandscape;
+            const oriented = overlayFitForPreview(printBox);
             const scaledWidth = oriented.width * scaleFactor;
             const scaledHeight = oriented.height * scaleFactor;
             const posX = Math.max(0, Math.min(100, 50 + imageOffsetX / 2));
             const posY = Math.max(0, Math.min(100, 50 + imageOffsetY / 2));
+            const overlayFitClass = ' product-preview-overlay-landscape';
             return (
               <img 
-                className={`product-preview-overlay${fitted ? ' product-preview-overlay-fit' : ''}${isLandscape ? ' product-preview-overlay-landscape' : ''}`}
+                className={`product-preview-overlay${overlayFitClass}`}
                 key={processedImage || 'overlay'}
                 src={processedImage}
                 alt="Screenshot overlay"
                 style={{
                   width: `${scaledWidth}px`,
                   height: `${scaledHeight}px`,
-                  objectFit: isLandscape ? 'cover' : (fitted ? 'fill' : 'contain'),
+                  objectFit: oriented.objectFit,
                   objectPosition: `${posX}% ${posY}%`,
                   display: 'block',
                   pointerEvents: 'none',
@@ -1440,7 +1462,7 @@ const ToolsPage = () => {
   const [textOffsetX, setTextOffsetX] = useState(50); // 0-100, 50 = center
   const [textOffsetY, setTextOffsetY] = useState(50); // 0-100, 50 = center
   const [printAreaFit, setPrintAreaFit] = useState(() => getInitialCartPrintFit().fit); // 'none', 'horizontal', 'square', 'vertical', 'product'
-  const [imageOrientation, setImageOrientation] = useState('portrait'); // 'portrait' | 'landscape' — landscape rotates the same print box wide
+  const [imageOrientation, setImageOrientation] = useState('portrait'); // 'portrait' | 'landscape'
   const [imageOffsetX, setImageOffsetX] = useState(0); // -100 to 100 (percentage)
   const [imageOffsetY, setImageOffsetY] = useState(0); // -100 to 100 (percentage)
   const [editedImageUrl, setEditedImageUrl] = useState('');
@@ -1482,6 +1504,7 @@ const ToolsPage = () => {
   const printFilterKeyRef = useRef('');
   // When true, apply-edits effect must skip so it doesn't overwrite with previous product's image (same effect batch race)
   const switchingSlotRef = useRef(false);
+  const orientationUserSetRef = useRef(false);
   const [slotSwitchTick, setSlotSwitchTick] = useState(0);
   const [printQualityImageUrl, setPrintQualityImageUrl] = useState(''); // 300 DPI image from API (parked for download)
   const [printQualityMeta, setPrintQualityMeta] = useState(null); // { dimensions: { width, height, dpi }, file_size, format, quality }
@@ -1616,6 +1639,7 @@ const ToolsPage = () => {
     setEditedImageUrl('');
     setImageOffsetX(0);
     setImageOffsetY(0);
+    orientationUserSetRef.current = false;
     setImageOrientation('portrait');
     setProductSelectClicked(false);
     setScreenshotSizeInteracted(false);
@@ -1852,6 +1876,7 @@ const ToolsPage = () => {
               category: item.category || '',
               screenshot: item.screenshot || '',
               productImage: item.image || '', // Store product image from cart
+              imageOrientation: item.imageOrientation || item.toolSettings?.imageOrientation || '',
               toolSettings: item.toolSettings || null // Store tool settings if they exist
             }))
             .filter(item => item.screenshot && item.screenshot.trim() !== '')
@@ -1862,8 +1887,8 @@ const ToolsPage = () => {
           
           setCartProducts(productsWithScreenshots);
           
-          // Sample store: newest cart item wins and resets preview.
-          // Real storefronts honor tools_focus_cart_index (edit this item).
+          // Newest cart item wins and resets preview after an add.
+          // Editing a specific item still honors tools_focus_cart_index.
           if (productsWithScreenshots.length > 0) {
             const lastIndex = productsWithScreenshots.length - 1;
             const identity = cartIdentity(productsWithScreenshots);
@@ -1877,13 +1902,10 @@ const ToolsPage = () => {
             const forceEntry = entrySelectRef.current;
             if (forceEntry) entrySelectRef.current = false;
 
-            let showNewest = false;
-            if (demoStore) {
-              const seenCount = readToolsSeenCartCount();
-              const newProductAdded = productsWithScreenshots.length > seenCount;
-              writeToolsSeenCartCount(productsWithScreenshots.length);
-              showNewest = consumeToolsPreviewNewest() || newProductAdded || addedWhileOpen;
-            }
+            const seenCount = readToolsSeenCartCount();
+            const newProductAdded = productsWithScreenshots.length > seenCount;
+            writeToolsSeenCartCount(productsWithScreenshots.length);
+            const showNewest = consumeToolsPreviewNewest() || newProductAdded || addedWhileOpen;
 
             let nextIndex = lastIndex;
             const focusOriginal = peekToolsFocusCartIndex();
@@ -1924,7 +1946,8 @@ const ToolsPage = () => {
               setScreenshotSizeInteracted(true);
               setImageOffsetX(0);
               setImageOffsetY(0);
-              setImageOrientation('portrait');
+              orientationUserSetRef.current = false;
+              applyArtworkOrientation(chosen, chosen?.screenshot, orientationUserSetRef, setImageOrientation);
             }
             if (showNewest || nextIndex !== selectedCartProductIndex || forceEntry) {
               setSelectedCartProductIndex(nextIndex);
@@ -2118,7 +2141,11 @@ const ToolsPage = () => {
               setScreenshotScale(saved.screenshotScale ?? 100);
               setSelectedProductName(resolvedName);
               setPrintAreaFit(resolvedFit);
-              setImageOrientation(saved.imageOrientation || 'portrait');
+              if (saved.imageOrientation === 'landscape' || saved.imageOrientation === 'portrait') {
+                setImageOrientation(saved.imageOrientation);
+              } else {
+                applyArtworkOrientation(selectedProduct, screenshot, orientationUserSetRef, setImageOrientation);
+              }
               setImageOffsetX(saved.imageOffsetX ?? 0);
               setImageOffsetY(saved.imageOffsetY ?? 0);
               setPrintQualityImageUrl(saved.printQualityImageUrl || '');
@@ -2131,7 +2158,8 @@ const ToolsPage = () => {
               setScreenshotScale(100);
               setSelectedProductName(resolvedName);
               setPrintAreaFit(resolvedFit);
-              setImageOrientation('portrait');
+              orientationUserSetRef.current = false;
+              applyArtworkOrientation(selectedProduct, screenshot, orientationUserSetRef, setImageOrientation);
               setImageOffsetX(0);
               setImageOffsetY(0);
               setPrintQualityImageUrl('');
@@ -2182,6 +2210,7 @@ const ToolsPage = () => {
             if (cartEmpty) {
               setEditedImageUrl('');
               slotStateRef.current = {};
+              applyArtworkOrientation(null, screenshot, orientationUserSetRef, setImageOrientation);
             }
             // Reset upgrading state when new image loads (will be set again when image actually loads)
             setIsUpgrading(false);
@@ -2873,18 +2902,57 @@ const ToolsPage = () => {
       tempCanvas.width = img.width;
       tempCanvas.height = img.height;
 
-      // Apply print area fit first (crop/resize to fit print area).
-      // Product Specific: do not center-crop. The overlay box is already the
-      // painted print area; cropping to print inches then filling that same
-      // box zooms the photo and clips edges. object-fit:fill keeps the full
-      // image in the box. Horizontal / Square / Vertical still crop.
+      // Horizontal / Square / Vertical still crop. Product Specific must not —
+      // that cover-crop runs after the first paint and zooms video stills too far.
       let sourceWidth = img.width;
       let sourceHeight = img.height;
       let sourceX = 0;
       let sourceY = 0;
-      
+
+      const cropToAspect = (targetAspect) => {
+        const imgW = img.width;
+        const imgH = img.height;
+        if (!(targetAspect > 0) || !(imgW > 0 && imgH > 0)) return;
+        const imgAspect = imgW / imgH;
+        let cropW;
+        let cropH;
+        if (imgAspect > targetAspect) {
+          cropH = imgH;
+          cropW = cropH * targetAspect;
+        } else {
+          cropW = imgW;
+          cropH = cropW / targetAspect;
+        }
+        // Keep cover size on open (no extra zoom). If the shopper uses the
+        // slider on the locked axis, zoom just enough for that pan.
+        const yNeed = Math.abs(imageOffsetY) / 100;
+        const xNeed = Math.abs(imageOffsetX) / 100;
+        if (imgH - cropH < 2 && yNeed > 0) {
+          cropH = imgH * (1 - Math.min(0.28, yNeed * 0.28));
+          cropW = cropH * targetAspect;
+        } else if (imgW - cropW < 2 && xNeed > 0) {
+          cropW = imgW * (1 - Math.min(0.28, xNeed * 0.28));
+          cropH = cropW / targetAspect;
+        }
+        if (cropW > imgW) {
+          cropW = imgW;
+          cropH = cropW / targetAspect;
+        }
+        if (cropH > imgH) {
+          cropH = imgH;
+          cropW = cropH * targetAspect;
+        }
+        const maxOffsetX = Math.max(0, imgW - cropW);
+        const maxOffsetY = Math.max(0, imgH - cropH);
+        sourceWidth = cropW;
+        sourceHeight = cropH;
+        sourceX = maxOffsetX / 2 + (imageOffsetX / 100) * (maxOffsetX / 2);
+        sourceX = Math.max(0, Math.min(sourceX, maxOffsetX));
+        sourceY = maxOffsetY / 2 - (imageOffsetY / 100) * (maxOffsetY / 2);
+        sourceY = Math.max(0, Math.min(sourceY, maxOffsetY));
+      };
+
       if (printAreaFit !== 'none' && printAreaFit !== 'product') {
-        const imgAspect = img.width / img.height;
         let targetAspect;
         switch (printAreaFit) {
           case 'horizontal':
@@ -2897,26 +2965,21 @@ const ToolsPage = () => {
             targetAspect = 0.67; // Taller (e.g., 2:3 or 3:4) - for tank tops, vertical shirts
             break;
           default:
-            targetAspect = imgAspect;
+            targetAspect = img.width / img.height;
         }
-        
-        // Calculate crop area to fit target aspect ratio
-        if (imgAspect > targetAspect) {
-          // Image is wider than target - crop width
-          sourceWidth = img.height * targetAspect;
-          const maxOffsetX = img.width - sourceWidth;
-          // Apply X offset: 0 = center, -100 = left (show left side), +100 = right (show right side)
-          sourceX = (img.width - sourceWidth) / 2 + (imageOffsetX / 100) * (maxOffsetX / 2);
-          sourceX = Math.max(0, Math.min(sourceX, maxOffsetX)); // Clamp to bounds
-        } else if (imgAspect < targetAspect) {
-          // Image is taller than target - crop height
-          sourceHeight = img.width / targetAspect;
-          const maxOffsetY = img.height - sourceHeight;
-          // Apply Y offset: 0 = center, -100 = up (show top), +100 = down (show bottom)
-          // Negative offset moves crop window up (towards top of image)
-          sourceY = (img.height - sourceHeight) / 2 - (imageOffsetY / 100) * (maxOffsetY / 2);
-          sourceY = Math.max(0, Math.min(sourceY, maxOffsetY)); // Clamp to bounds
-        }
+        cropToAspect(targetAspect);
+      }
+
+      const didCrop = sourceWidth < img.width - 1 || sourceHeight < img.height - 1 || sourceX > 1 || sourceY > 1;
+      const hasPixelEdits = Boolean(
+        featherEdge ||
+        cornerRadius ||
+        frameEnabled ||
+        (textEnabled && textContent && String(textContent).trim())
+      );
+      if (!didCrop && !hasPixelEdits) {
+        setEditedImageUrl('');
+        return;
       }
       
       // Update canvas size to match cropped area
@@ -3528,6 +3591,7 @@ const ToolsPage = () => {
     try {
       const data = { ...readPendingMerchData() };
       data.edited_screenshot = editedImageUrl;
+      data.imageOrientation = imageOrientation === 'landscape' ? 'landscape' : 'portrait';
       data.tools_used = {
         featherEdge,
         cornerRadius,
@@ -3543,6 +3607,7 @@ const ToolsPage = () => {
         textOffsetX,
         textOffsetY,
         printAreaFit,
+        imageOrientation,
         imageOffsetX,
         imageOffsetY
       };
@@ -3771,7 +3836,6 @@ const ToolsPage = () => {
                     position: 'relative'
                   }}>
                     <h3 className="product-preview-heading">
-                      <span className="edit-tools-inline-title">Edit Tools</span>
                       <span className="product-preview-heading-label">
                         Product Preview ({selectedCartProductIndex + 1} of {cartProducts.length})
                       </span>
@@ -4054,32 +4118,7 @@ const ToolsPage = () => {
                     })()}
                       </div>
                     </div>
-                    {/* Rotate only — print-box sizing replaced Screenshot Size */}
-                    <div className="tool-control-group screenshot-rotate-under-preview" style={{ marginTop: '12px', marginBottom: 0, textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        className="screenshot-rotate-btn"
-                        onClick={rotateScreenshotClockwise}
-                        title="Rotate 90° clockwise"
-                        aria-label="Rotate image 90 degrees clockwise"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                          <path
-                            d="M12 4a8 8 0 1 1-7.07 4.07"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M5 3v5h5"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    </div>
+                    <p className="edit-tools-under-preview">Edit Tools</p>
                   </div>
                 );
               })()}
@@ -4091,7 +4130,7 @@ const ToolsPage = () => {
         
         {/* Spacer to maintain grid layout since left column is fixed */}
         <div style={{ width: '100px', flexShrink: 0 }} className="tools-left-column-spacer"></div>
-        <div style={{ width: '350px', flexShrink: 0 }} className="tools-left-column-spacer"></div>
+        <div style={{ width: '400px', flexShrink: 0 }} className="tools-left-column-spacer"></div>
 
         {/* Right Column: Tools */}
         <div className="tools-controls-section">
@@ -4142,6 +4181,8 @@ const ToolsPage = () => {
                     value="portrait"
                     checked={imageOrientation === 'portrait'}
                     onChange={() => {
+                      orientationUserSetRef.current = true;
+                      rememberArtworkOrientation('portrait');
                       setImageOrientation('portrait');
                     }}
                   />
@@ -4154,6 +4195,8 @@ const ToolsPage = () => {
                     value="landscape"
                     checked={imageOrientation === 'landscape'}
                     onChange={() => {
+                      orientationUserSetRef.current = true;
+                      rememberArtworkOrientation('landscape');
                       setImageOrientation('landscape');
                       if (selectedProductName && printAreaFit === 'none') {
                         setPrintAreaFit('product');
@@ -4178,11 +4221,6 @@ const ToolsPage = () => {
               </label>
               <select
                 value={selectedProductName}
-                onClick={() => {
-                  if (!productSelectClicked) {
-                    setProductSelectClicked(true);
-                  }
-                }}
                 onChange={(e) => {
                   const value = e.target.value;
                   setSelectedProductName(value);
@@ -4190,6 +4228,10 @@ const ToolsPage = () => {
                   setScreenshotSizeInteracted(false);
                   if (value) {
                     setPrintAreaFit('product');
+                    if (!orientationUserSetRef.current) {
+                      rememberArtworkOrientation('portrait');
+                      setImageOrientation('portrait');
+                    }
                   }
                   if (selectedCartProductIndex !== null) {
                     fitUserSetRef.current[selectedCartProductIndex] = true;
@@ -4223,7 +4265,6 @@ const ToolsPage = () => {
                   if (selectedCartProductIndex !== null) {
                     fitUserSetRef.current[selectedCartProductIndex] = true;
                   }
-                  if (value !== 'none') setImageOrientation('portrait'); // Fit type = portrait mode
                   setImageOffsetX(0);
                   setImageOffsetY(0);
                 }}

@@ -9,6 +9,11 @@ nav{
     pointer-events: auto;
 }
 
+/* Opaque backing so scrolled page content cannot show through a low-opacity brand gradient. */
+nav.nav--brand-gradient {
+    background-color: #fff;
+}
+
 /* Storefront header gradient from Personalization (background only — keep controls as-is) */
 nav.nav--brand-gradient .nav-left {
     position: relative;

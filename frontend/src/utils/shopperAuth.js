@@ -6,6 +6,36 @@ export function safeAuthReturnPath(value) {
   return path;
 }
 
+const AUTH_RETURN_KEY = 'sm_auth_return_to';
+
+export function rememberAuthReturnPath(path) {
+  const safe = safeAuthReturnPath(path);
+  if (!safe) return;
+  try {
+    sessionStorage.setItem(AUTH_RETURN_KEY, safe);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function peekAuthReturnPath() {
+  try {
+    return safeAuthReturnPath(sessionStorage.getItem(AUTH_RETURN_KEY) || '');
+  } catch {
+    return '';
+  }
+}
+
+export function consumeAuthReturnPath() {
+  const next = peekAuthReturnPath();
+  try {
+    sessionStorage.removeItem(AUTH_RETURN_KEY);
+  } catch {
+    /* ignore */
+  }
+  return next;
+}
+
 /** True when the shopper has a real account session, not just a guest browser. */
 export function isShopperSignedIn() {
   try {

@@ -1,6 +1,9 @@
 """Helper utility functions for the ScreenMerch application"""
 import json
 import logging
+import os
+import re
+from urllib.parse import urlparse
 from flask import request
 
 logger = logging.getLogger(__name__)
@@ -142,6 +145,59 @@ def _cookie_domain():
     if host.endswith("screenmerch.fly.dev"):
         return "screenmerch.fly.dev"
     return None
+
+
+_FRONTEND_ORIGIN_RE = re.compile(r"^https://[a-z0-9-]+\.screenmerch\.com$")
+_FRONTEND_ORIGINS = {
+    "https://screenmerch.com",
+    "https://www.screenmerch.com",
+    "http://localhost:3000",
+    "http://localhost:5173",
+}
+
+
+def is_allowed_frontend_origin(origin):
+    if not origin or not isinstance(origin, str):
+        return False
+    origin = origin.strip().rstrip("/")
+    if origin in _FRONTEND_ORIGINS:
+        return True
+    return bool(_FRONTEND_ORIGIN_RE.match(origin))
+
+
+def safe_frontend_origin():
+    """Storefront or apex origin for auth emails. Prefer the shopper's host over FRONTEND_URL."""
+    origin = (request.headers.get("Origin") or "").strip().rstrip("/")
+    if is_allowed_frontend_origin(origin):
+        return origin
+    referer = (request.headers.get("Referer") or "").strip()
+    if referer:
+        try:
+            parsed = urlparse(referer)
+            candidate = f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+            if is_allowed_frontend_origin(candidate):
+                return candidate
+        except Exception:
+            pass
+    forwarded = (request.headers.get("X-Forwarded-Host") or "").split(",")[0].strip()
+    if forwarded:
+        candidate = f"https://{forwarded.split(':')[0]}".rstrip("/")
+        if is_allowed_frontend_origin(candidate):
+            return candidate
+    return os.getenv("FRONTEND_URL", "https://screenmerch.com").rstrip("/")
+
+
+def safe_auth_next_path(value):
+    """In-app path after email verify / set-password. Blocks off-site redirects."""
+    if not isinstance(value, str):
+        return ""
+    path = value.strip()
+    if not path.startswith("/") or path.startswith("//") or "\\" in path:
+        return ""
+    lowered = path.lower()
+    if lowered.startswith("/login") or lowered.startswith("/signup"):
+        return ""
+    return path
 
 
 def get_cookie_domain():

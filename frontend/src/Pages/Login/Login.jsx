@@ -5,7 +5,7 @@ import { supabase } from '../../supabaseClient';
 import { AdminService } from '../../utils/adminService';
 import { fetchMyProfileFromBackend } from '../../utils/userService';
 import { isCreatorStorefrontHostname } from '../../utils/subdomainService';
-import { safeAuthReturnPath } from '../../utils/shopperAuth';
+import { safeAuthReturnPath, consumeAuthReturnPath, peekAuthReturnPath } from '../../utils/shopperAuth';
 import { isDemoStorefront, startDemoPreviewSession, endDemoPreviewSession } from '../../utils/demoStorefront';
 import CustomerLegalConsent from '../../Components/CustomerLegalConsent/CustomerLegalConsent';
 import './Login.css';
@@ -165,6 +165,7 @@ const Login = () => {
     }
     try {
       setIsLoading(true);
+      const nextPath = safeAuthReturnPath(searchParams.get('returnTo')) || peekAuthReturnPath();
       const response = await fetch(apiUrl('/api/auth/signup/email-only'), {
         method: 'POST',
         credentials: 'include',
@@ -172,6 +173,7 @@ const Login = () => {
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           accepted_terms_and_privacy: true,
+          ...(nextPath ? { next: nextPath } : {}),
         })
       });
       const data = await response.json().catch(() => ({}));
@@ -434,22 +436,16 @@ const Login = () => {
         });
         
         setTimeout(() => {
-          const userRole = data?.user?.role || 'customer';
+          const remembered = consumeAuthReturnPath();
           if (returnTo === 'merch') {
-            console.log('🔄 Redirecting to merchandise');
             goAfterAuth('/merchandise', navigate, { replace: true });
           } else if (returnTo === 'subscription-success') {
-            console.log('🔄 Redirecting to subscription success');
             goAfterAuth('/subscription-success', navigate, { replace: true });
           } else if (safeAuthReturnPath(returnTo)) {
             goAfterAuth(safeAuthReturnPath(returnTo), navigate, { replace: true });
-          } else if (userRole === 'customer') {
-            // Always redirect to home page for customers
-            console.log('🔄 Customer login, redirecting to home page');
-            goAfterAuth('/', navigate, { replace: true });
+          } else if (remembered) {
+            goAfterAuth(remembered, navigate, { replace: true });
           } else {
-            // Creators and admins stay on homepage after login
-            console.log('🔄 Creator/Admin login, staying on homepage');
             goAfterAuth('/', navigate, { replace: true });
           }
         }, 700);

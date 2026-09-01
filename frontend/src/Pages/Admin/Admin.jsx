@@ -69,6 +69,7 @@ const Admin = () => {
   const [recordingStorefrontPayout, setRecordingStorefrontPayout] = useState(false);
   const [pendingApprovalUsers, setPendingApprovalUsers] = useState([]);
   const [pendingApprovalLoading, setPendingApprovalLoading] = useState(false);
+  const [suspendedUsers, setSuspendedUsers] = useState([]);
   const [addToPendingEmail, setAddToPendingEmail] = useState('');
   const [addToPendingMessage, setAddToPendingMessage] = useState('');
   const [addToPendingLoading, setAddToPendingLoading] = useState(false);
@@ -452,8 +453,12 @@ const Admin = () => {
   const loadPendingApprovalUsers = async () => {
     setPendingApprovalLoading(true);
     try {
-      const list = await AdminService.getPendingCreators();
+      const [list, suspendedResult] = await Promise.all([
+        AdminService.getPendingCreators(),
+        AdminService.getUsers(0, 100, '', 'suspended', 'all'),
+      ]);
       setPendingApprovalUsers(list);
+      setSuspendedUsers(suspendedResult.users || []);
     } catch (error) {
       console.error('Error loading pending approval:', error);
     } finally {
@@ -480,11 +485,23 @@ const Admin = () => {
     if (!window.confirm('Disapprove this creator? They will not be able to use the platform.')) return;
     const result = await AdminService.disapproveCreator(userId);
     if (result.success) {
-      alert('Creator disapproved.');
+      alert('Creator disapproved. They now appear under Suspended accounts — you can unsuspend them there.');
       await loadPendingApprovalUsers();
       loadStats();
     } else {
       alert(result.error || 'Failed to disapprove');
+    }
+  };
+
+  const handleUnsuspendUser = async (userId) => {
+    if (!window.confirm('Unsuspend this account and restore sign-in?')) return;
+    const result = await AdminService.activateUser(userId);
+    if (result.success) {
+      alert('Account unsuspended. They can sign in again.');
+      await Promise.all([loadPendingApprovalUsers(), loadUsers()]);
+      loadStats();
+    } else {
+      alert(result.error || 'Failed to unsuspend');
     }
   };
 
@@ -1225,7 +1242,7 @@ const Admin = () => {
         console.log(`Suspending user ${userId}...`);
         result = await AdminService.updateUserStatus(userId, 'suspended');
         console.log('Suspend result:', result);
-      } else if (action === 'activate') {
+      } else if (action === 'activate' || action === 'unsuspend') {
         console.log(`Activating user ${userId}...`);
         result = await AdminService.activateUser(userId);
         console.log('Activate result:', result);
@@ -1236,11 +1253,13 @@ const Admin = () => {
       }
 
       if (result.success) {
-        alert(`User ${action}d successfully`);
+        const successLabel = action === 'unsuspend' ? 'unsuspended' : `${action}d`;
+        alert(`User ${successLabel} successfully`);
         console.log('Reloading users...');
         await loadUsers();
-        if (action === 'approve' || action === 'activate') {
+        if (action === 'approve' || action === 'activate' || action === 'unsuspend') {
           loadSubscriptions();
+          loadPendingApprovalUsers();
         }
         console.log('Users reloaded');
       } else {
@@ -1837,6 +1856,18 @@ const Admin = () => {
                           </span>
                         </td>
                         <td className="users-table-actions-cell">
+                          {user.status === 'suspended' && (
+                            <button
+                              type="button"
+                              className="action-btn activate"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUnsuspendUser(user.id);
+                              }}
+                            >
+                              Unsuspend
+                            </button>
+                          )}
                           <select
                             className="admin-user-actions-select"
                             value=""
@@ -1845,6 +1876,7 @@ const Admin = () => {
                               if (!action) return;
                               if (action === 'approve') handleUserAction(user.id, 'approve');
                               else if (action === 'suspend') handleUserAction(user.id, 'suspend');
+                              else if (action === 'unsuspend') handleUnsuspendUser(user.id);
                               else if (action === 'activate') handleUserAction(user.id, 'activate');
                               else if (action === 'delete') handleUserAction(user.id, 'delete');
                               else if (action === 'reset-analytics') handleResetAnalytics(user.id, user.email);
@@ -1855,7 +1887,11 @@ const Admin = () => {
                             <option value="">Select...</option>
                             {user.status === 'pending' && <option value="approve">Approve</option>}
                             <option value="suspend" disabled={user.status === 'suspended'}>Suspend</option>
-                            <option value="activate" disabled={user.status === 'active' || user.status === 'pending'}>Activate</option>
+                            {user.status === 'suspended' ? (
+                              <option value="unsuspend">Unsuspend</option>
+                            ) : (
+                              <option value="activate" disabled={user.status === 'active' || user.status === 'pending'}>Activate</option>
+                            )}
                             <option value="delete">Delete</option>
                             {isMasterAdmin && user.role === 'creator' && <option value="reset-analytics">Reset Analytics</option>}
                           </select>
@@ -2379,7 +2415,7 @@ const Admin = () => {
             <div className="admin-pending-approval">
               <div className="pending-approval-header">
                 <h3>⏳ Pending Approval</h3>
-                <p>Review and approve or deny new creator sign-ups. Use the sidebar link under Payouts to open this page.</p>
+                <p>Review and approve or deny new creator sign-ups. Denied accounts move to Suspended below, where you can restore sign-in.</p>
                 <button type="button" onClick={loadPendingApprovalUsers} disabled={pendingApprovalLoading} className="pending-approval-refresh-btn">
                   {pendingApprovalLoading ? 'Loading…' : 'Refresh list'}
                 </button>
@@ -2483,6 +2519,74 @@ const Admin = () => {
                   </table>
                 </div>
               )}
+
+              <div className="suspended-accounts-section">
+                <h3>Suspended accounts</h3>
+                <p>These users cannot sign in. Unsuspend restores access.</p>
+                {pendingApprovalLoading ? null : suspendedUsers.length === 0 ? (
+                  <div className="pending-approval-empty">
+                    <p>No suspended accounts.</p>
+                  </div>
+                ) : (
+                  <div className="pending-approval-table-wrap">
+                    <table className="pending-approval-table">
+                      <thead>
+                        <tr>
+                          <th>User</th>
+                          <th>Email</th>
+                          <th>Role</th>
+                          <th>Updated</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {suspendedUsers.map(account => (
+                          <tr key={account.id} className="pending-approval-row">
+                            <td>
+                              <div className="pending-approval-creator-cell">
+                                <div className="pending-approval-avatar">
+                                  {account.profile_image_url ? (
+                                    <img src={account.profile_image_url} alt="" />
+                                  ) : (
+                                    <span className="pending-approval-initial">
+                                      {(account.display_name || account.email || '?').charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="pending-approval-name">{account.display_name || '—'}</span>
+                              </div>
+                            </td>
+                            <td className="pending-approval-email-cell">{account.email}</td>
+                            <td>{account.role || '—'}</td>
+                            <td className="pending-approval-date-cell">
+                              {account.updated_at
+                                ? new Date(account.updated_at).toLocaleDateString(undefined, {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                                : '—'}
+                            </td>
+                            <td>
+                              <div className="pending-approval-actions">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnsuspendUser(account.id)}
+                                  className="pending-approval-btn pending-approval-btn-activate"
+                                >
+                                  Unsuspend
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

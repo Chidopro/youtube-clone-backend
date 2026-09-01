@@ -241,36 +241,47 @@
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .friend-pages {
     padding: 16px 12px 32px;
+    overflow-x: hidden;
+    max-width: 100%;
   }
 
   .friend-pages-title {
     font-size: 22px;
   }
 
+  .friend-pages-scroll-right-btn {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
   .friend-pages-body {
-    overflow-x: visible;
+    overflow-x: hidden;
     overflow-y: visible;
+    max-width: 100%;
   }
 
   .friend-pages-list {
-    flex-flow: row nowrap;
-    align-items: start;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: stretch;
     gap: 16px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x mandatory;
-    touch-action: pan-x pan-y;
-    padding: 4px 2px 14px;
+    overflow-x: hidden;
+    overflow-y: visible;
+    scroll-snap-type: none;
+    overscroll-behavior-x: auto;
+    touch-action: pan-y;
+    padding: 4px 0 14px;
   }
 
   .friend-pages-list > li {
-    flex: 0 0 85%;
-    width: 85%;
-    max-width: 85%;
-    flex-basis: 85%;
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+    flex-basis: auto;
+    min-width: 0;
   }
 
   .friend-pages-item {

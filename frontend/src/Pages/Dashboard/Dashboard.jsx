@@ -2739,7 +2739,6 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                 </p>
                                                 <ul className="collaborator-payout-list">
                                                     {(() => {
-                                                        const ownerItems = ownerPayoutRows.reduce((sum, row) => sum + Number(row.order_count ?? 0), 0);
                                                         const ownerPayout = Number(
                                                             ownerEarningsSummary?.owner_page_payout
                                                             ?? ownerPayoutRows.reduce((sum, row) => sum + Number(row.pay_owner_amount ?? 0), 0)
@@ -2754,11 +2753,22 @@ const Dashboard = ({ sidebar, demoPreview: demoPreviewFromRoute = false }) => {
                                                             <li>
                                                                 <div className="collab-payout-row-main">
                                                                     <strong>Storefront owner payout</strong>
-                                                                    <span>
-                                                                        {ownerItems} {ownerItems === 1 ? 'item' : 'items'} · Your payout ${ownerPayout.toFixed(2)}
-                                                                        {umbrellaPayout > 0
-                                                                            ? ` Umbrella Payout $${umbrellaPayout.toFixed(2)}`
-                                                                            : ''}
+                                                                    <span className="owner-payout-equation">
+                                                                        <span>Your payout ${ownerPayout.toFixed(2)}</span>
+                                                                        {umbrellaPayout > 0 ? (
+                                                                            <>
+                                                                                <span className="owner-payout-op" aria-hidden="true">+</span>
+                                                                                <span>Umbrella Payout ${umbrellaPayout.toFixed(2)}</span>
+                                                                            </>
+                                                                        ) : null}
+                                                                        {screenmerchPaidTotal > 0 ? (
+                                                                            <>
+                                                                                <span className="owner-payout-op" aria-hidden="true">=</span>
+                                                                                <strong className="paid-up-label">
+                                                                                    ${Number(screenmerchPaidTotal).toFixed(2)} ✓
+                                                                                </strong>
+                                                                            </>
+                                                                        ) : null}
                                                                     </span>
                                                                 </div>
                                                             </li>

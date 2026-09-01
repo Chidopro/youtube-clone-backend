@@ -1250,6 +1250,18 @@
     font-weight: 600;
 }
 
+.owner-payout-equation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25em 0.45em;
+}
+
+.owner-payout-op {
+    font-weight: 700;
+    color: #1a202c;
+}
+
 .screenmerch-payments-received h5 {
     color: #198754;
 }

@@ -18,8 +18,9 @@ from googleapiclient.discovery import build
 
 # Import utilities
 from utils.helpers import (
-    _data_from_request, _return_url, _cookie_domain, 
-    get_cookie_domain, _allow_origin
+    _data_from_request, _return_url, _cookie_domain,
+    get_cookie_domain, _allow_origin,
+    safe_frontend_origin, safe_auth_next_path,
 )
 from utils.legal_acceptance import (
     customer_legal_acceptance_fields,
@@ -726,8 +727,11 @@ def auth_signup_email_only():
             # Send verification email (prefer config, fallback to env for Resend)
             resend_api_key = _get_config('RESEND_API_KEY') or os.getenv('RESEND_API_KEY')
             resend_from = _get_config('RESEND_FROM') or os.getenv('RESEND_FROM', 'noreply@screenmerch.com')
-            frontend_url = os.getenv("FRONTEND_URL", "https://screenmerch.com")
+            frontend_url = safe_frontend_origin()
+            next_path = safe_auth_next_path(data.get("next") or data.get("return_to") or "")
             verification_link = f"{frontend_url}/verify-email?token={verification_token}&email={quote(email, safe='')}"
+            if next_path:
+                verification_link += f"&next={quote(next_path, safe='/')}"
 
             logger.info(f"[signup/email-only] RESEND_API_KEY present: {bool(resend_api_key)}, RESEND_FROM: {resend_from or 'NOT SET'}")
             if resend_api_key:
@@ -826,8 +830,11 @@ def auth_request_set_password():
         }).eq('id', result.data[0]['id']).execute()
         resend_api_key = _get_config('RESEND_API_KEY')
         resend_from = _get_config('RESEND_FROM', 'noreply@screenmerch.com')
-        frontend_url = os.getenv("FRONTEND_URL", "https://screenmerch.com")
+        frontend_url = safe_frontend_origin()
+        next_path = safe_auth_next_path(data.get("next") or data.get("return_to") or "")
         link = f"{frontend_url}/verify-email?token={verification_token}&email={quote(email)}"
+        if next_path:
+            link += f"&next={quote(next_path, safe='/')}"
         if resend_api_key:
             try:
                 r = requests.post(

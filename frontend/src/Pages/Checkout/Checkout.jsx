@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_CONFIG, apiJoin } from '../../config/apiConfig';
 import { emitCartUpdated, setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readCartItems, applySelectedScreenshot } from '../../utils/merchSession';
-import { isShopperSignedIn } from '../../utils/shopperAuth';
+import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAuth';
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import {
@@ -59,6 +59,12 @@ const Checkout = () => {
   useEffect(() => {
     designPreferencesRef.current = designPreferences;
   }, [designPreferences]);
+
+  useEffect(() => {
+    if (!isDemoStorefront() && !isShopperSignedIn()) {
+      rememberAuthReturnPath('/checkout');
+    }
+  }, []);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -479,7 +485,7 @@ const Checkout = () => {
       localStorage.setItem('last_selected_category', itemCategory);
     } catch {}
     setToolsFocusCartIndex(index);
-    if (isDemoStorefront()) setToolsPreviewNewest(false);
+    setToolsPreviewNewest(false);
     try {
       const shot = item.selected_screenshot || item.screenshot;
       if (shot) applySelectedScreenshot(shot);
@@ -534,17 +540,26 @@ const Checkout = () => {
       <>
       <AuthModal
         isOpen={showAuthModal}
+        returnTo="/checkout"
         promptText="To view your cart and complete a purchase, please log in or create an account."
         onClose={() => {
           setShowAuthModal(false);
-          navigate('/');
         }}
         onSuccess={() => {
           setSignedIn(true);
           setShowAuthModal(false);
         }}
       />
-      {!signedIn ? null : (
+      {!signedIn ? (
+        <div className="empty-cart checkout-signin-gate">
+          <div className="empty-cart-icon">🛒</div>
+          <h2>Sign in to check out</h2>
+          <p>Your cart is saved. Sign in or create an account to finish your purchase.</p>
+          <button type="button" className="btn-primary" onClick={() => setShowAuthModal(true)}>
+            Sign in to continue
+          </button>
+        </div>
+      ) : (
       <>
       <div className="checkout-header">
         <h1>Checkout</h1>

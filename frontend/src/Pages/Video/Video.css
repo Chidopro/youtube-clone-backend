@@ -436,6 +436,20 @@
   .video-viewer .video-container video::-internal-media-controls-overlay-cast-button {
     display: none !important;
   }
+
+  .video-viewer .video-container video.mobile-playing::-webkit-media-controls-overlay-enclosure,
+  .video-viewer .video-container video.mobile-playing::-webkit-media-controls-overlay-play-button,
+  .video-viewer .video-container video.mobile-playing::-webkit-media-controls-rewind-button,
+  .video-viewer .video-container video.mobile-playing::-webkit-media-controls-skip-back-button,
+  .video-viewer .video-container video.mobile-playing::-webkit-media-controls-skip-forward-button {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .video-viewer .video-container video.mobile-playing::-webkit-media-controls {
+    background: transparent !important;
+  }
   
   .video-viewer .screenmerch-actions {
     margin: 8px 0 0 0 !important;

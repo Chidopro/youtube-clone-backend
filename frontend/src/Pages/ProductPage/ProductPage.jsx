@@ -8,7 +8,7 @@ import { getBackendUrl } from '../../config/apiConfig';
 import { favoriteListsJson } from '../../utils/favoriteListsApi';
 import { useCreator } from '../../contexts/CreatorContext';
 import { resolvePrintfulVariantId } from '../../utils/printfulVariants';
-import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName } from '../../utils/merchSession';
+import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPendingMerchData, savePendingMerchData, readCartItems, applySelectedScreenshot, rememberToolsProductName, rememberArtworkOrientation } from '../../utils/merchSession';
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { saveShopAddIntent, SHOP_CATEGORIES } from '../../utils/shopCategories';
@@ -330,15 +330,26 @@ const ProductPage = ({ sidebar }) => {
     });
   };
 
-  const getSelectedScreenshotUrl = () => {
-    const allShots = (productData?.product?.screenshots && productData.product.screenshots.length > 0)
+  const getVisibleScreenshots = () => {
+    const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
+    const baseShots = (productData?.product?.screenshots && productData.product.screenshots.length > 0)
       ? productData.product.screenshots
       : fallbackImages.screenshots;
+    return (baseShots || []).filter((s) => s && s !== thumbnailUrl);
+  };
+
+  const getSelectImageCount = () => {
+    const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
+    return (thumbnailUrl ? 1 : 0) + getVisibleScreenshots().length;
+  };
+
+  const getSelectedScreenshotUrl = () => {
     if (selectedScreenshot === 'thumbnail') {
       return productData?.product?.thumbnail_url || fallbackImages.thumbnail || '';
     }
-    if (typeof selectedScreenshot === 'number' && allShots && allShots[selectedScreenshot]) {
-      return allShots[selectedScreenshot];
+    const shots = getVisibleScreenshots();
+    if (typeof selectedScreenshot === 'number' && shots[selectedScreenshot]) {
+      return shots[selectedScreenshot];
     }
     return '';
   };
@@ -586,8 +597,10 @@ const ProductPage = ({ sidebar }) => {
 
     // Get video metadata from merch session (including screenshot_timestamp for email/order)
     let videoMetadata = {};
+    let pendingOrientation;
     try {
       const merchData = readPendingMerchData();
+      pendingOrientation = 'portrait';
       if (merchData && typeof merchData === 'object') {
         videoMetadata = {
           video_url: merchData.videoUrl,
@@ -621,6 +634,13 @@ const ProductPage = ({ sidebar }) => {
       // Include video metadata in cart item (screenshot_timestamp for email/Print Quality)
       ...filledVideoMetadata
     };
+    if (pendingOrientation) {
+      item.imageOrientation = pendingOrientation;
+      item.toolSettings = {
+        ...(item.toolSettings || {}),
+        imageOrientation: pendingOrientation
+      };
+    }
     const next = [...cartItems];
     if (isEditingCart) {
       next[editingCartIndex] = item;
@@ -642,21 +662,21 @@ const ProductPage = ({ sidebar }) => {
     setShowAddedToCartModal(true);
   };
 
-  const goToToolsPage = () => {
+  const goToToolsPage = async () => {
     // Prefer the item being edited or last updated, then the most recently added cart item.
     try {
       if (isEditingCart) {
         setToolsFocusCartIndex(editingCartIndex);
-        if (isDemoStorefront()) setToolsPreviewNewest(false);
+        setToolsPreviewNewest(false);
       } else if (lastTouchedCartIndexRef.current != null) {
         setToolsFocusCartIndex(lastTouchedCartIndexRef.current);
-        if (isDemoStorefront()) setToolsPreviewNewest(true);
+        setToolsPreviewNewest(true);
       } else {
         const items = readCartItems();
         if (Array.isArray(items) && items.length > 0) {
           setToolsFocusCartIndex(items.length - 1);
         }
-        if (isDemoStorefront()) setToolsPreviewNewest(true);
+        setToolsPreviewNewest(true);
       }
       let urlToSave = selectedScreenshotUrl || getSelectedScreenshotUrl();
       if (!urlToSave) {
@@ -675,6 +695,7 @@ const ProductPage = ({ sidebar }) => {
       }
       if (urlToSave) {
         applySelectedScreenshot(urlToSave);
+        rememberArtworkOrientation('portrait');
       }
     } catch (e) {
       console.warn('Could not prepare tools focus:', e);
@@ -742,15 +763,11 @@ const ProductPage = ({ sidebar }) => {
   useEffect(() => {
     if (isShopCatalog || selectedScreenshot != null) return;
     const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
-    const baseShots = (productData?.product?.screenshots && productData.product.screenshots.length > 0)
-      ? productData.product.screenshots
-      : fallbackImages.screenshots;
-    const shots = (baseShots || []).filter((s) => s && s !== thumbnailUrl);
+    const shots = getVisibleScreenshots();
     const options = [];
     if (thumbnailUrl) options.push({ key: 'thumbnail', url: thumbnailUrl });
-    (shots || []).forEach((s) => {
-      const originalIndex = (baseShots || []).findIndex((item) => item === s);
-      options.push({ key: originalIndex, url: s });
+    (shots || []).forEach((s, i) => {
+      options.push({ key: i, url: s });
     });
     if (options.length !== 1) return;
     const only = options[0];
@@ -1302,9 +1319,8 @@ const ProductPage = ({ sidebar }) => {
         <>
           {/* Screenshot Selection Section — hidden in My Shop catalog (blank products only) */}
           {!isShopCatalog && (
-          <div className="screenshots-section">
-            <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Pages' : 'Select Image'}</h2>
-            <p className="screenshots-subtitle">{creatorMode ? 'Choose which screenshot to save to your favorites' : 'For your custom merchandise'}</p>
+          <div className={`screenshots-section${getSelectImageCount() <= 1 ? ' screenshots-section--single' : ''}`}>
+            <h2 className="screenshots-title">{creatorMode ? 'Select Screenshot to Add to Pages' : (getSelectImageCount() <= 1 ? 'Selected Image' : 'Select Image')}</h2>
             <div className="screenshots-preview">
               <div className="screenshot-grid">
                 {/* Thumbnail */}
@@ -1327,45 +1343,24 @@ const ProductPage = ({ sidebar }) => {
                       />
                       <div className="screenshot-label">Thumbnail</div>
                     </div>
-                    {/* Only show individual save buttons when NOT in creator mode */}
-                    {isCreator && !creatorMode && (
-                      <button
-                        className="save-to-favorites-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSaveToFavorites(thumbnailUrl, 'Thumbnail');
-                        }}
-                        disabled={savingFavorite}
-                        title="Save to Pages"
-                      >
-                        {savingFavorite ? 'Saving...' : '⭐ Save to Pages'}
-                      </button>
-                    )}
                   </div>
                   ) : null;
                 })()}
                 
                 {/* Screenshots */}
                 {(() => {
-                  const thumbnailUrl = productData?.product?.thumbnail_url || fallbackImages.thumbnail;
-                  const baseShots = (productData?.product?.screenshots && productData.product.screenshots.length > 0)
-                    ? productData.product.screenshots
-                    : fallbackImages.screenshots;
-                  // Ensure we don't duplicate the thumbnail in the screenshots grid
-                  const shots = (baseShots || []).filter((s) => s && s !== thumbnailUrl);
+                  const shots = getVisibleScreenshots();
                   return shots && shots.length > 0 ? shots.map((screenshot, index) => {
-                    // Find the original index in the unfiltered array to match it correctly
-                    const originalIndex = baseShots.findIndex(s => s === screenshot);
                     return (
                       <div 
-                        key={index}
-                        className={`screenshot-item ${selectedScreenshot === originalIndex ? 'selected' : ''}`}
+                        key={`shot-${index}`}
+                        className={`screenshot-item ${selectedScreenshot === index ? 'selected' : ''}`}
                       >
                         <div onClick={() => {
-                          setSelectedScreenshot(originalIndex);
+                          setSelectedScreenshot(index);
                           setSelectedScreenshotUrl(screenshot);
                           applySelectedScreenshot(screenshot);
-                          if (creatorMode) setSelectedScreenshotForFavorite(originalIndex);
+                          if (creatorMode) setSelectedScreenshotForFavorite(index);
                         }} style={{ cursor: 'pointer' }}>
                           <img 
                             src={screenshot} 
@@ -1374,26 +1369,30 @@ const ProductPage = ({ sidebar }) => {
                           />
                           <div className="screenshot-label">Screenshot {index + 1}</div>
                         </div>
-                        {/* Only show individual save buttons when NOT in creator mode */}
-                        {isCreator && !creatorMode && (
-                          <button
-                            className="save-to-favorites-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSaveToFavorites(screenshot, `Screenshot ${index + 1}`);
-                            }}
-                            disabled={savingFavorite}
-                            title="Save to Pages"
-                          >
-                            {savingFavorite ? 'Saving...' : '⭐ Save to Pages'}
-                          </button>
-                        )}
                       </div>
                     );
                   }) : null;
                 })()}
               </div>
             </div>
+            {creatorMode && (
+              <p className="screenshots-subtitle">Choose which screenshot to save to your favorites</p>
+            )}
+            {!creatorMode && (
+              <div className="screenshots-section-actions">
+                <p className="screenshots-subtitle">For your custom merchandise</p>
+                <button
+                  className="tools-page-btn"
+                  onClick={goToToolsPage}
+                >
+                  Product Preview
+                </button>
+                <div className="cart-section-buttons">
+                  <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
+                  <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+                </div>
+              </div>
+            )}
           </div>
           )}
 
@@ -1413,11 +1412,12 @@ const ProductPage = ({ sidebar }) => {
           {/* Tools Page Button - Underneath screenshots, above cart/checkout - Hidden in creator mode and My Shop catalog */}
           {!creatorMode && !isShopCatalog && (
             <div className="tools-button-container">
+              <p className="screenshots-subtitle screenshots-subtitle-above-buttons">For your custom merchandise</p>
               <button 
                 className="tools-page-btn"
                 onClick={goToToolsPage}
               >
-                🛠️ Tools Page
+                Product Preview
               </button>
             </div>
           )}
@@ -1453,17 +1453,10 @@ const ProductPage = ({ sidebar }) => {
                     {isShopCatalog ? (
                       <h1 className="shop-catalog-page-title">{categoryDisplayName}</h1>
                     ) : (
-                      <>
-                        <div className="cart-section-buttons">
-                          <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
-                          <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
-                        </div>
-                        {(category === 'womens' || category === 'mens' || category === 'kids') && (
-                          <p className="product-mockup-color-notice product-mockup-color-notice-center">
-                            Product mockups show representative colors. Your order will be made in the colors you select.
-                          </p>
-                        )}
-                      </>
+                      <div className="cart-section-buttons">
+                        <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
+                        <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1475,11 +1468,6 @@ const ProductPage = ({ sidebar }) => {
                     <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
                     <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
                   </div>
-                  {(category === 'womens' || category === 'mens' || category === 'kids') && (
-                    <p className="product-mockup-color-notice product-mockup-color-notice-center">
-                      Product mockups show representative colors. Your order will be made in the colors you select.
-                    </p>
-                  )}
                 </>
               )}
             </div>
@@ -1689,9 +1677,16 @@ const ProductPage = ({ sidebar }) => {
             </div>
 
             {/* Cart Buttons Below Products */}
-            <div className="cart-section cart-section-bottom">
-              <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
-              <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+            <div className="cart-section-bottom-wrap">
+              {!isShopCatalog && (category === 'womens' || category === 'mens' || category === 'kids') && (
+                <p className="product-mockup-color-notice product-mockup-color-notice-center product-mockup-color-notice-bottom">
+                  Product mockups show representative colors. Your order will be made in the colors you select.
+                </p>
+              )}
+              <div className="cart-section cart-section-bottom">
+                <button className="view-cart-btn" onClick={openCartIfSignedIn}>View Cart</button>
+                <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
+              </div>
             </div>
           </div>
               </div>
@@ -1783,7 +1778,7 @@ const ProductPage = ({ sidebar }) => {
                     goToToolsPage();
                   }}
                 >
-                  Go to Tools Page
+                  Go to Product Preview
                 </button>
                 <button 
                   className="continue-shopping-btn"

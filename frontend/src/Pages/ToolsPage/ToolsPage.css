@@ -1,30 +1,24 @@
 /* Pulse animation for product selection - similar to homepage step 2 */
 @keyframes pulse {
   0% {
-    transform: scale(1);
     box-shadow: 0 0 0 0 rgba(118, 75, 162, 0.7);
   }
   50% {
-    transform: scale(1.02);
     box-shadow: 0 0 0 8px rgba(118, 75, 162, 0);
   }
   100% {
-    transform: scale(1);
     box-shadow: 0 0 0 0 rgba(118, 75, 162, 0);
   }
 }
 
 @-webkit-keyframes pulse {
   0% {
-    -webkit-transform: scale(1);
     -webkit-box-shadow: 0 0 0 0 rgba(118, 75, 162, 0.7);
   }
   50% {
-    -webkit-transform: scale(1.02);
     -webkit-box-shadow: 0 0 0 8px rgba(118, 75, 162, 0);
   }
   100% {
-    -webkit-transform: scale(1);
     -webkit-box-shadow: 0 0 0 0 rgba(118, 75, 162, 0);
   }
 }
@@ -148,7 +142,7 @@ body.tools-page-active .site-footer {
 .tools-page-header {
   text-align: center;
   margin-bottom: 2rem;
-  margin-left: 450px;
+  margin-left: 500px;
 }
 
 .tools-page-header h1 {
@@ -172,7 +166,7 @@ body.tools-page-active .site-footer {
 
 .tools-content-reorganized {
   display: grid;
-  grid-template-columns: 100px 350px 1fr;
+  grid-template-columns: 100px 400px 1fr;
   gap: 2rem;
   margin-top: 2rem;
   align-items: start;
@@ -185,7 +179,7 @@ body.tools-page-active .site-footer {
   align-self: start;
   position: fixed;
   top: 20px;
-  width: 350px;
+  width: 400px;
   align-items: flex-start;
   height: auto;
   max-height: calc(100vh - 40px);
@@ -252,15 +246,34 @@ body.tools-page-active .site-footer {
   margin-top: 10px;
   margin-bottom: 15px;
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 700;
+  color: #111;
   width: 100%;
   text-align: center;
   display: flex;
   justify-content: center;
-  align-items: baseline;
+  align-items: center;
 }
 
-.edit-tools-inline-title {
+.product-preview-heading-label {
+  display: block;
+  width: 100%;
+  color: #111;
+  font-weight: 700;
+  text-align: center;
+}
+
+.edit-tools-under-preview {
+  margin: 10px 0 0;
+  padding: 0;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.2;
+}
+
+.tools-page-container:has(.product-preview-heading) .tools-page-header {
   display: none;
 }
 
@@ -271,11 +284,11 @@ body.tools-page-active .site-footer {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
-/* Same mockup box on desktop and mobile: width-capped, natural aspect. */
+/* Desktop mockup is a bit larger; mobile keeps the 200px cap below. */
 .product-preview-stage {
   position: relative;
   width: 100%;
-  max-width: 200px;
+  max-width: 260px;
   height: auto;
   margin: 0 auto;
   flex-shrink: 0;
@@ -292,11 +305,11 @@ body.tools-page-active .site-footer {
 .product-preview-overlay {
   max-width: none;
   max-height: none;
-  object-fit: contain;
+  object-fit: cover;
 }
 
 .product-preview-overlay-fit {
-  object-fit: fill !important;
+  object-fit: cover !important;
 }
 
 .product-preview-overlay-landscape {
@@ -835,30 +848,30 @@ body.tools-page-active .site-footer {
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: center;
-    align-items: baseline;
-    gap: 0.45em;
+    align-items: center;
+    gap: 0;
     width: 100%;
     text-align: center;
     font-size: 15px !important;
-    font-weight: 400;
+    font-weight: 700;
+    color: #111;
     margin-top: 0 !important;
     margin-bottom: 8px !important;
     line-height: 1.25;
   }
 
-  .edit-tools-inline-title {
-    display: inline !important;
-    flex: 0 0 auto;
+  .product-preview-heading-label {
+    display: block;
+    width: 100%;
     font-weight: 700;
     color: #111;
+    text-align: center;
     white-space: nowrap;
   }
 
-  .product-preview-heading-label {
-    flex: 0 0 auto;
-    font-weight: 400;
-    color: #111;
-    white-space: nowrap;
+  .edit-tools-under-preview {
+    font-size: 15px;
+    margin-top: 8px;
   }
 
   .product-preview-inner-card {
@@ -953,6 +966,15 @@ body.tools-page-active .site-footer {
   .tools-page-container textarea {
     user-select: text !important;
     -webkit-user-select: text !important;
+  }
+
+  .tools-page-container select,
+  .tools-page-container option,
+  .print-area-select {
+    user-select: auto !important;
+    -webkit-user-select: auto !important;
+    -webkit-touch-callout: default !important;
+    touch-action: manipulation !important;
   }
 
   
@@ -1078,30 +1100,30 @@ body.tools-page-active .site-footer {
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: center;
-    align-items: baseline;
-    gap: 0.45em;
+    align-items: center;
+    gap: 0;
     width: 100%;
     text-align: center;
     font-size: 15px !important;
-    font-weight: 400;
+    font-weight: 700;
+    color: #111;
     margin-top: 0 !important;
     margin-bottom: 8px !important;
     line-height: 1.25;
   }
 
-  body.tools-page-active .edit-tools-inline-title {
-    display: inline;
-    flex: 0 0 auto;
+  body.tools-page-active .product-preview-heading-label {
+    display: block;
+    width: 100%;
     font-weight: 700;
     color: #111;
+    text-align: center;
     white-space: nowrap;
   }
 
-  body.tools-page-active .product-preview-heading-label {
-    flex: 0 0 auto;
-    font-weight: 400;
-    color: #111;
-    white-space: nowrap;
+  body.tools-page-active .edit-tools-under-preview {
+    font-size: 15px;
+    margin-top: 8px;
   }
 
   body.tools-page-active .product-preview-inner-card {
@@ -1154,7 +1176,7 @@ body.tools-page-active .site-footer {
   }
 
   body.tools-page-active .product-preview-overlay-fit {
-    object-fit: fill !important;
+    object-fit: cover !important;
   }
 
   body.tools-page-active .product-preview-overlay-landscape {
@@ -1310,6 +1332,15 @@ body.tools-page-active .site-footer {
     -webkit-user-select: text !important;
   }
 
+  .tools-page-container select,
+  .tools-page-container option,
+  .print-area-select {
+    user-select: auto !important;
+    -webkit-user-select: auto !important;
+    -webkit-touch-callout: default !important;
+    touch-action: manipulation !important;
+  }
+
   body.tools-page-active .tools-page-container {
     overflow: hidden;
     display: flex;
@@ -1342,7 +1373,7 @@ body.tools-page-active .site-footer {
   }
 
   body.tools-page-active .product-preview-overlay-fit {
-    object-fit: fill !important;
+    object-fit: cover !important;
   }
 
   body.tools-page-active .product-preview-overlay-landscape {
