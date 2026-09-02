@@ -71,6 +71,10 @@ const APPAREL_PRINT_OVERRIDES = {
     heightFrac: 0.521,
     top: 49.8,
     left: 49.6,
+    // Landscape only: print box is a tight crop of a fitted tank, so the
+    // full portrait width crowds the armholes. Portrait stays unchanged.
+    landscapeWidthScale: 0.94,
+    landscapeRightGrow: 0.03,
   },
   "Cropped Hoodie": {
     widthFrac: 0.389,
@@ -409,25 +413,24 @@ function sizeApparelPrintOverlay(printW, printH, mockupW, mockupH, productName, 
   return { width, height };
 }
 
-/** Landscape: wide print that stays inside the portrait print box. */
-function overlaySizeForOrientation(width, height, orientation) {
+/**
+ * Landscape uses the same product print-area width as portrait
+ * (`widthFrac` × mockup × cover scale). Height is a shorter band so a
+ * wide screenshot fills the print box left-to-right. A product can set
+ * `landscapeWidthScale` to inset that band, and `landscapeRightGrow` to
+ * extend only the right edge (left stays put).
+ */
+function overlaySizeForOrientation(width, height, orientation, productName) {
   if (orientation !== 'landscape' || !(width > 0 && height > 0)) {
-    return { width, height };
+    return { width, height, rightShift: 0 };
   }
-  const boxW = width;
-  const boxH = height;
-  let w = boxH;
-  let h = boxW;
-  const fit = Math.min(boxW / w, boxH / h, 1);
-  w *= fit;
-  h *= fit;
-  if (w < h * 1.02) {
-    w = boxW;
-    h = Math.min(boxH, boxW / 1.5);
-  }
-  // Keep a margin inside the painted print area so a 16:9 shot does not spill.
-  const inset = 0.86;
-  return { width: w * inset, height: h * inset };
+  const box = getApparelPrintOverride(productName);
+  const widthScale = box?.landscapeWidthScale > 0 ? box.landscapeWidthScale : 1;
+  let w = width * widthScale;
+  const h = Math.min(height, w / 1.5);
+  const rightGrow = box?.landscapeRightGrow > 0 ? w * box.landscapeRightGrow : 0;
+  w += rightGrow;
+  return { width: w, height: h, rightShift: rightGrow / 2 };
 }
 
 function applyArtworkOrientation(_product, _screenshotUrl, userSetRef, setImageOrientation) {
@@ -444,6 +447,46 @@ function overlayFitForPreview(printBox) {
     objectFit: 'cover',
     cover: true
   };
+}
+
+/** Pixel corner radius for the visible print box (100% = inscribed circle / pill). */
+function overlayCornerRadiusPx(cornerRadius, width, height) {
+  if (!(cornerRadius > 0) || !(width > 0) || !(height > 0)) return 0;
+  const maxRadius = Math.min(width, height) / 2;
+  return cornerRadius >= 100 ? maxRadius : (cornerRadius / 100) * maxRadius;
+}
+
+/**
+ * Feather the visible print-box edges, not the full screenshot.
+ * Nested X then Y masks — mask-composite is unreliable in Chromium.
+ */
+function overlayFeatherMaskStyle(featherEdge, width, height) {
+  if (!(featherEdge > 0) || !(width > 0) || !(height > 0)) return null;
+  const fx = (featherEdge / 100) * width * 0.5;
+  const fy = (featherEdge / 100) * height * 0.5;
+  const asMask = (image) => ({
+    maskImage: image,
+    maskRepeat: 'no-repeat',
+    maskSize: '100% 100%',
+    WebkitMaskImage: image,
+    WebkitMaskRepeat: 'no-repeat',
+    WebkitMaskSize: '100% 100%',
+  });
+  return {
+    x: asMask(`linear-gradient(to right, transparent 0px, #000 ${fx}px, #000 calc(100% - ${fx}px), transparent 100%)`),
+    y: asMask(`linear-gradient(to bottom, transparent 0px, #000 ${fy}px, #000 calc(100% - ${fy}px), transparent 100%)`),
+  };
+}
+
+/**
+ * Scale canvas frameWidth (source pixels) onto the visible print box.
+ */
+function overlayFramePx(frameWidth, overlayW, overlayH, sourceW, sourceH) {
+  const overlayMin = Math.min(overlayW, overlayH);
+  if (!(frameWidth > 0) || !(overlayMin > 0)) return 0;
+  const sourceMin = Math.min(sourceW, sourceH);
+  const scale = sourceMin > 0 ? overlayMin / sourceMin : overlayMin / 800;
+  return Math.max(2, frameWidth * scale);
 }
 
 /** Chest print box on the mockup photo (not geometric 50/50 of the PNG). */
@@ -573,6 +616,12 @@ const ProductPreviewWithDrag = ({
   onTextPositionChange,
   featherEdge,
   cornerRadius,
+  frameEnabled = false,
+  frameColor = '#FF0000',
+  frameWidth = 10,
+  doubleFrame = false,
+  sourceWidth = 0,
+  sourceHeight = 0,
   printAreaFit,
   selectedProductName,
   screenshotScale = 100,
@@ -588,7 +637,6 @@ const ProductPreviewWithDrag = ({
   const currentDragPositionRef = useRef({ x: 0, y: 0 }); // Track current position for snapping
   const dragStartTextPositionRef = useRef({ x: 50, y: 50 }); // When text drag starts, store text %
   const totalDragDeltaRef = useRef({ x: 0, y: 0 }); // Accumulated pixel delta during text drag
-  const [processedImage, setProcessedImage] = useState(screenshot);
   const textDragMode = false;
   const [screenshotDisplaySize, setScreenshotDisplaySize] = useState({ width: 0, height: 0 });
   const [productImageSize, setProductImageSize] = useState({ width: 0, height: 0 });
@@ -964,119 +1012,6 @@ const ProductPreviewWithDrag = ({
     };
   }, [productImage, productName]);
 
-  useEffect(() => {
-    setProcessedImage(screenshot);
-  }, [screenshot]);
-
-  // Process image with effects in real-time
-  useEffect(() => {
-    let cancelled = false;
-    const processImage = async () => {
-      if (!screenshot) return;
-
-      // Default Tools path: do not rasterize into a PNG. Portrait frames from
-      // uploads like Samurai Dog become multi-MB PNGs on iPhone and the overlay
-      // never appears. If Angle Radius / feather are already baked into the
-      // screenshot (editedImageUrl), skip a second clip — it cut a square
-      // frame off at the rounded corners and JPEG-filled the gaps.
-      if (!featherEdge && !cornerRadius) {
-        if (!cancelled) setProcessedImage(screenshot);
-        return;
-      }
-
-      const img = new Image();
-      if (typeof screenshot === 'string' && !screenshot.startsWith('data:')) {
-        img.crossOrigin = 'anonymous';
-      }
-      img.onload = () => {
-        if (cancelled) return;
-        try {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          canvas.width = img.width;
-          canvas.height = img.height;
-
-        // Draw image
-        ctx.drawImage(img, 0, 0);
-
-        // Apply corner radius
-        if (cornerRadius > 0) {
-          const maxRadius = Math.min(canvas.width, canvas.height) / 2;
-          // Convert percentage (0-100) to pixels
-          const radius = cornerRadius >= 100 ? maxRadius : Math.round((cornerRadius / 100) * maxRadius);
-          
-          const tempCanvas = document.createElement('canvas');
-          const tempCtx = tempCanvas.getContext('2d');
-          tempCanvas.width = canvas.width;
-          tempCanvas.height = canvas.height;
-          
-          tempCtx.fillStyle = 'white';
-          tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-          
-          if (cornerRadius >= 100) {
-            tempCtx.beginPath();
-            tempCtx.arc(canvas.width / 2, canvas.height / 2, radius, 0, Math.PI * 2);
-            tempCtx.fill();
-          } else {
-            tempCtx.beginPath();
-            tempCtx.moveTo(radius, 0);
-            tempCtx.lineTo(canvas.width - radius, 0);
-            tempCtx.quadraticCurveTo(canvas.width, 0, canvas.width, radius);
-            tempCtx.lineTo(canvas.width, canvas.height - radius);
-            tempCtx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - radius, canvas.height);
-            tempCtx.lineTo(radius, canvas.height);
-            tempCtx.quadraticCurveTo(0, canvas.height, 0, canvas.height - radius);
-            tempCtx.lineTo(0, radius);
-            tempCtx.quadraticCurveTo(0, 0, radius, 0);
-            tempCtx.closePath();
-            tempCtx.fill();
-          }
-          
-          ctx.globalCompositeOperation = 'destination-in';
-          ctx.drawImage(tempCanvas, 0, 0);
-          ctx.globalCompositeOperation = 'source-over';
-        }
-
-        // Apply feather edge
-        if (featherEdge > 0) {
-          const maskCanvas = document.createElement('canvas');
-          const maskCtx = maskCanvas.getContext('2d');
-          maskCanvas.width = canvas.width;
-          maskCanvas.height = canvas.height;
-          
-          maskCtx.fillStyle = 'white';
-          maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
-          
-          const gradient = maskCtx.createRadialGradient(
-            canvas.width / 2, canvas.height / 2, Math.min(canvas.width, canvas.height) / 2 - featherEdge,
-            canvas.width / 2, canvas.height / 2, Math.min(canvas.width, canvas.height) / 2
-          );
-          gradient.addColorStop(0, 'white');
-          gradient.addColorStop(1, 'transparent');
-          
-          maskCtx.fillStyle = gradient;
-          maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
-          
-          ctx.globalCompositeOperation = 'destination-in';
-          ctx.drawImage(maskCanvas, 0, 0);
-          ctx.globalCompositeOperation = 'source-over';
-        }
-
-        if (!cancelled) setProcessedImage(canvas.toDataURL('image/jpeg', 0.85));
-        } catch {
-          if (!cancelled) setProcessedImage(screenshot);
-        }
-      };
-      img.onerror = () => {
-        if (!cancelled) setProcessedImage(screenshot);
-      };
-      img.src = screenshot;
-    };
-
-    processImage();
-    return () => { cancelled = true; };
-  }, [screenshot, featherEdge, cornerRadius]);
-
   const handleMouseDown = (e) => {
     e.preventDefault();
     setIsDragging(true);
@@ -1214,21 +1149,26 @@ const ProductPreviewWithDrag = ({
       />
       
       {/* Screenshot Overlay (Draggable) */}
-      {processedImage && screenshotDisplaySize.width >= 8 && screenshotDisplaySize.height >= 8 && (
+      {screenshot && screenshotDisplaySize.width >= 8 && screenshotDisplaySize.height >= 8 && (() => {
+        const placeName = selectedProductName || productName;
+        const printBox = overlaySizeForOrientation(
+          screenshotDisplaySize.width,
+          screenshotDisplaySize.height,
+          imageOrientation,
+          placeName
+        );
+        const productNameLower = (placeName || '').toLowerCase();
+        const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
+        const topPct = (isHat && productImageSize.height > 0)
+          ? `${50 - 8}%`
+          : `${apparelOverlayPlacement(placeName, detectedPrintBox).top}%`;
+        return (
         <div
           style={{
             position: 'absolute',
-            top: (() => {
-              const placeName = selectedProductName || productName;
-              const productNameLower = (placeName || '').toLowerCase();
-              const isHat = productNameLower.includes('hat') || productNameLower.includes('cap');
-              if (isHat && productImageSize.height > 0) {
-                return `${50 - 8}%`;
-              }
-              return `${apparelOverlayPlacement(placeName, detectedPrintBox).top}%`;
-            })(),
-            left: `${apparelOverlayPlacement(selectedProductName || productName, detectedPrintBox).left}%`,
-            transform: `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`,
+            top: topPct,
+            left: `${apparelOverlayPlacement(placeName, detectedPrintBox).left}%`,
+            transform: `translate(calc(-50% + ${offsetX + (printBox.rightShift || 0)}px), calc(-50% + ${offsetY}px))`,
             cursor: isDragging ? 'grabbing' : 'grab',
             userSelect: 'none',
             WebkitUserSelect: 'none',
@@ -1243,41 +1183,101 @@ const ProductPreviewWithDrag = ({
         >
           {(() => {
             const scaleFactor = 1;
-            const printBox = overlaySizeForOrientation(
-              screenshotDisplaySize.width,
-              screenshotDisplaySize.height,
-              imageOrientation
-            );
             const oriented = overlayFitForPreview(printBox);
             const scaledWidth = oriented.width * scaleFactor;
             const scaledHeight = oriented.height * scaleFactor;
             const posX = Math.max(0, Math.min(100, 50 + imageOffsetX / 2));
             const posY = Math.max(0, Math.min(100, 50 + imageOffsetY / 2));
             const overlayFitClass = ' product-preview-overlay-landscape';
+            const clipRadius = overlayCornerRadiusPx(cornerRadius, scaledWidth, scaledHeight);
+            const featherMask = overlayFeatherMaskStyle(featherEdge, scaledWidth, scaledHeight);
+            const clipBox = {
+              width: `${scaledWidth}px`,
+              height: `${scaledHeight}px`,
+            };
+            const previewFrame = frameEnabled
+              ? overlayFramePx(frameWidth, scaledWidth, scaledHeight, sourceWidth, sourceHeight)
+              : 0;
+            const innerFrameOffset = previewFrame * 1.5;
+            const innerFrameWidth = previewFrame * 0.7;
+            const innerOuter = previewFrame + innerFrameOffset;
+            const innerRadius = Math.max(0, clipRadius - innerOuter);
             return (
-              <img 
-                className={`product-preview-overlay${overlayFitClass}`}
-                key={processedImage || 'overlay'}
-                src={processedImage}
-                alt="Screenshot overlay"
+              <div
                 style={{
-                  width: `${scaledWidth}px`,
-                  height: `${scaledHeight}px`,
-                  objectFit: oriented.objectFit,
-                  objectPosition: `${posX}% ${posY}%`,
-                  display: 'block',
-                  pointerEvents: 'none',
-                  userSelect: 'none',
-                  WebkitUserSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                  touchAction: 'none'
+                  ...clipBox,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
                 }}
-                draggable={false}
-              />
+              >
+                <div
+                  className="product-preview-overlay-clip"
+                  style={{
+                    ...clipBox,
+                    overflow: 'hidden',
+                    borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
+                    background: 'transparent',
+                    ...(featherMask?.x || {})
+                  }}
+                >
+                  <div style={{ ...clipBox, ...(featherMask?.y || {}) }}>
+                    <img 
+                      className={`product-preview-overlay${overlayFitClass}`}
+                      key={screenshot || 'overlay'}
+                      src={screenshot}
+                      alt="Screenshot overlay"
+                      style={{
+                        ...clipBox,
+                        objectFit: oriented.objectFit,
+                        objectPosition: `${posX}% ${posY}%`,
+                        display: 'block',
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
+                        WebkitTouchCallout: 'none',
+                        touchAction: 'none',
+                        borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0
+                      }}
+                      draggable={false}
+                    />
+                  </div>
+                </div>
+                {previewFrame > 0 && (
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: clipRadius > 0 ? `${clipRadius}px` : 0,
+                      border: `${previewFrame}px solid ${frameColor}`,
+                      boxSizing: 'border-box',
+                      pointerEvents: 'none'
+                    }}
+                  />
+                )}
+                {previewFrame > 0 && doubleFrame && (
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      top: innerOuter,
+                      right: innerOuter,
+                      bottom: innerOuter,
+                      left: innerOuter,
+                      borderRadius: innerRadius,
+                      border: `${innerFrameWidth}px solid ${frameColor}`,
+                      boxSizing: 'border-box',
+                      pointerEvents: 'none'
+                    }}
+                  />
+                )}
+              </div>
             );
           })()}
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
@@ -2421,18 +2421,14 @@ const ToolsPage = () => {
     };
   }, [searchParams, imageUrl]);
 
-  // Same quadratic path used to clip the image and to paint the frame.
+  // Circular-arc rounded rect so mid-range Angle Radius is actually visible.
   const addRoundedRectPath = (ctx, x, y, width, height, radius) => {
     const r = Math.max(0, Math.min(radius, width / 2, height / 2));
     ctx.moveTo(x + r, y);
-    ctx.lineTo(x + width - r, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
-    ctx.lineTo(x + width, y + height - r);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
-    ctx.lineTo(x + r, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.arcTo(x + width, y, x + width, y + height, r);
+    ctx.arcTo(x + width, y + height, x, y + height, r);
+    ctx.arcTo(x, y + height, x, y, r);
+    ctx.arcTo(x, y, x + width, y, r);
     ctx.closePath();
   };
 
@@ -3057,10 +3053,8 @@ const ToolsPage = () => {
 
       // Apply feather edge (soft edge effect) - works with both rectangles and circles
       if (featherEdge > 0) {
-        // Calculate feather size as percentage of smallest dimension (0-100% slider)
-        // At 100%, use 50% of smallest dimension for strong feather effect
-        const minDimension = Math.min(canvas.width, canvas.height);
-        const featherSize = (featherEdge / 100) * (minDimension * 0.5); // 0-100% slider maps to 0-50% of image
+        const featherX = (featherEdge / 100) * (canvas.width * 0.5);
+        const featherY = (featherEdge / 100) * (canvas.height * 0.5);
         
         // Create a mask canvas for feather effect
         const maskCanvas = document.createElement('canvas');
@@ -3098,7 +3092,7 @@ const ToolsPage = () => {
           // For circular images, use radial gradient to create soft edge
           const centerX = canvas.width / 2;
           const centerY = canvas.height / 2;
-          const innerRadius = Math.max(0, maxCornerRadius - featherSize);
+          const innerRadius = Math.max(0, maxCornerRadius - ((featherEdge / 100) * maxCornerRadius));
           const outerRadius = maxCornerRadius;
           
           const radialGradient = maskCtx.createRadialGradient(
@@ -3114,80 +3108,55 @@ const ToolsPage = () => {
           maskCtx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
           maskCtx.fill();
         } else {
-          // For rectangular images (with or without rounded corners), use distance-based mask
-          // This approach calculates distance from each pixel to the nearest edge/corner
-          // and creates a smooth gradient that works perfectly on corners
-          
-          // Get image data to manipulate pixels directly
+          // Fade each side by a share of that side's length so portrait and
+          // landscape screenshots soften top, bottom, left, and right equally.
           const imageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
           const data = imageData.data;
+          const fadeX = Math.max(1, featherX);
+          const fadeY = Math.max(1, featherY);
           
-          // Calculate distance from each pixel to the nearest edge
-          // For rounded rectangles, we need to account for corner radius
           for (let y = 0; y < maskCanvas.height; y++) {
             for (let x = 0; x < maskCanvas.width; x++) {
-              let minDist;
-              
+              let edgeFade = 1;
+              const distLeft = x;
+              const distRight = maskCanvas.width - 1 - x;
+              const distTop = y;
+              const distBottom = maskCanvas.height - 1 - y;
+              const dx = Math.min(distLeft, distRight);
+              const dy = Math.min(distTop, distBottom);
+
               if (effectiveCornerRadius > 0) {
-                // For rounded rectangles, calculate distance to the rounded shape
-                // Check if we're in a corner region
-                const distToLeft = x;
-                const distToRight = maskCanvas.width - x;
-                const distToTop = y;
-                const distToBottom = maskCanvas.height - y;
-                
-                // Check if we're in the corner region (within corner radius of both edges)
-                const inTopLeftCorner = distToLeft < effectiveCornerRadius && distToTop < effectiveCornerRadius;
-                const inTopRightCorner = distToRight < effectiveCornerRadius && distToTop < effectiveCornerRadius;
-                const inBottomLeftCorner = distToLeft < effectiveCornerRadius && distToBottom < effectiveCornerRadius;
-                const inBottomRightCorner = distToRight < effectiveCornerRadius && distToBottom < effectiveCornerRadius;
-                
-                if (inTopLeftCorner || inTopRightCorner || inBottomLeftCorner || inBottomRightCorner) {
-                  // In a corner - calculate distance to the arc
-                  let cornerCenterX, cornerCenterY;
-                  if (inTopLeftCorner) {
-                    cornerCenterX = effectiveCornerRadius;
-                    cornerCenterY = effectiveCornerRadius;
-                  } else if (inTopRightCorner) {
-                    cornerCenterX = maskCanvas.width - effectiveCornerRadius;
-                    cornerCenterY = effectiveCornerRadius;
-                  } else if (inBottomLeftCorner) {
-                    cornerCenterX = effectiveCornerRadius;
-                    cornerCenterY = maskCanvas.height - effectiveCornerRadius;
-                  } else {
-                    cornerCenterX = maskCanvas.width - effectiveCornerRadius;
-                    cornerCenterY = maskCanvas.height - effectiveCornerRadius;
-                  }
-                  
-                  const distToCornerCenter = Math.sqrt(
-                    Math.pow(x - cornerCenterX, 2) + Math.pow(y - cornerCenterY, 2)
-                  );
-                  minDist = Math.max(0, effectiveCornerRadius - distToCornerCenter);
+                const inTopLeft = distLeft < effectiveCornerRadius && distTop < effectiveCornerRadius;
+                const inTopRight = distRight < effectiveCornerRadius && distTop < effectiveCornerRadius;
+                const inBottomLeft = distLeft < effectiveCornerRadius && distBottom < effectiveCornerRadius;
+                const inBottomRight = distRight < effectiveCornerRadius && distBottom < effectiveCornerRadius;
+                if (inTopLeft || inTopRight || inBottomLeft || inBottomRight) {
+                  const cornerCenterX = inTopLeft || inBottomLeft
+                    ? effectiveCornerRadius
+                    : maskCanvas.width - effectiveCornerRadius;
+                  const cornerCenterY = inTopLeft || inTopRight
+                    ? effectiveCornerRadius
+                    : maskCanvas.height - effectiveCornerRadius;
+                  const distToCornerCenter = Math.hypot(x - cornerCenterX, y - cornerCenterY);
+                  const minDist = Math.max(0, effectiveCornerRadius - distToCornerCenter);
+                  const cornerFeather = Math.max(fadeX, fadeY);
+                  edgeFade = minDist < cornerFeather ? minDist / cornerFeather : 1;
                 } else {
-                  // Not in a corner - use standard edge distance
-                  minDist = Math.min(distToTop, distToBottom, distToLeft, distToRight);
+                  const fadeFromX = dx < fadeX ? dx / fadeX : 1;
+                  const fadeFromY = dy < fadeY ? dy / fadeY : 1;
+                  edgeFade = fadeFromX * fadeFromY;
                 }
               } else {
-                // No rounded corners - simple edge distance
-                minDist = Math.min(y, maskCanvas.height - y, x, maskCanvas.width - x);
+                const fadeFromX = dx < fadeX ? dx / fadeX : 1;
+                const fadeFromY = dy < fadeY ? dy / fadeY : 1;
+                edgeFade = fadeFromX * fadeFromY;
               }
-              
-              // Calculate alpha based on distance from edge
-              // Pixels at the edge (minDist = 0) should be fully transparent (alpha = 0)
-              // Pixels at featherSize or more from edge should be fully opaque (alpha = 255)
-              let alpha = 255;
-              if (minDist < featherSize) {
-                // Linear fade from edge to featherSize
-                alpha = Math.floor((minDist / featherSize) * 255);
-              }
-              
-              // Apply the alpha to the mask (index 3 is alpha channel)
+
               const index = (y * maskCanvas.width + x) * 4;
-              data[index + 3] = alpha;
+              data[index + 3] = Math.floor(Math.max(0, Math.min(1, edgeFade)) * 255);
             }
           }
           
-          // Put the modified image data back
           maskCtx.putImageData(imageData, 0, 0);
         }
         
@@ -3824,6 +3793,16 @@ const ToolsPage = () => {
                 const cartIndex = product.originalCartIndex;
                 const offset = productImageOffsets[cartIndex] || { x: 0, y: 0 };
                 const currentImage = editedImageUrl || imageUrl;
+                // Radius/feather are clipped in CSS on the visible print box.
+                // Prefer the unbaked screenshot so cover-fit does not hide those
+                // edges, and so baked + CSS do not double-soften the same sides.
+                const overlayNeedsBakedPixels = Boolean(
+                  (textEnabled && String(textContent || '').trim()) ||
+                  (printAreaFit !== 'none' && printAreaFit !== 'product')
+                );
+                const overlayScreenshot = overlayNeedsBakedPixels
+                  ? currentImage
+                  : (imageUrl || currentImage);
                 const showingFitOverride = Boolean(fitPreviewImageUrl);
                 const displayName = showingFitOverride ? selectedProductName : product.name;
                 
@@ -3943,9 +3922,9 @@ const ToolsPage = () => {
                           return (
                             <div style={{ position: 'relative' }}>
                               <ProductPreviewWithDrag
-                                key={`${cartIndex}|${shotFingerprint(placeholderImage)}|${shotFingerprint(currentImage)}`}
+                                key={`${cartIndex}|${shotFingerprint(placeholderImage)}|${shotFingerprint(overlayScreenshot)}`}
                                 productImage={placeholderImage}
-                                screenshot={currentImage}
+                                screenshot={overlayScreenshot}
                                 productName={productName}
                                 productSize={product.size}
                                 offsetX={offset.x}
@@ -3960,8 +3939,14 @@ const ToolsPage = () => {
                                 textOffsetX={textOffsetX}
                                 textOffsetY={textOffsetY}
                                 onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
-                                featherEdge={editedImageUrl ? 0 : featherEdge}
-                                cornerRadius={editedImageUrl ? 0 : cornerRadius}
+                                featherEdge={featherEdge}
+                                cornerRadius={cornerRadius}
+                                frameEnabled={frameEnabled}
+                                frameColor={frameColor}
+                                frameWidth={frameWidth}
+                                doubleFrame={doubleFrame}
+                                sourceWidth={currentImageDimensions.width}
+                                sourceHeight={currentImageDimensions.height}
                                 printAreaFit={printAreaFit}
                                 selectedProductName={selectedProductName}
                                 screenshotScale={screenshotScale}
@@ -4024,9 +4009,9 @@ const ToolsPage = () => {
                         if (currentImage) {
                           return (
                             <ProductPreviewWithDrag
-                              key={`${cartIndex}|${shotFingerprint(hatImage)}|${shotFingerprint(currentImage)}`}
+                              key={`${cartIndex}|${shotFingerprint(hatImage)}|${shotFingerprint(overlayScreenshot)}`}
                               productImage={hatImage}
-                              screenshot={currentImage}
+                              screenshot={overlayScreenshot}
                               productName={productName}
                               productSize={product.size}
                               offsetX={offset.x}
@@ -4041,8 +4026,14 @@ const ToolsPage = () => {
                               textOffsetX={textOffsetX}
                               textOffsetY={textOffsetY}
                               onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
-                              featherEdge={editedImageUrl ? 0 : featherEdge}
-                              cornerRadius={editedImageUrl ? 0 : cornerRadius}
+                              featherEdge={featherEdge}
+                              cornerRadius={cornerRadius}
+                              frameEnabled={frameEnabled}
+                              frameColor={frameColor}
+                              frameWidth={frameWidth}
+                              doubleFrame={doubleFrame}
+                              sourceWidth={currentImageDimensions.width}
+                              sourceHeight={currentImageDimensions.height}
                               printAreaFit={printAreaFit}
                               selectedProductName={selectedProductName}
                               screenshotScale={screenshotScale}
@@ -4085,9 +4076,9 @@ const ToolsPage = () => {
                         const productImg = fitPreviewImageUrl || product.productImage || getPlaceholderProductImage();
                         return (
                           <ProductPreviewWithDrag
-                            key={`${cartIndex}|${shotFingerprint(productImg)}|${shotFingerprint(currentImage)}`}
+                            key={`${cartIndex}|${shotFingerprint(productImg)}|${shotFingerprint(overlayScreenshot)}`}
                             productImage={productImg}
-                            screenshot={currentImage}
+                            screenshot={overlayScreenshot}
                             productName={productName}
                             productSize={product.size}
                             offsetX={offset.x}
@@ -4102,8 +4093,14 @@ const ToolsPage = () => {
                             textOffsetX={textOffsetX}
                             textOffsetY={textOffsetY}
                             onTextPositionChange={textEnabled ? (px, py) => { setTextOffsetX(px); setTextOffsetY(py); } : undefined}
-                            featherEdge={editedImageUrl ? 0 : featherEdge}
-                            cornerRadius={editedImageUrl ? 0 : cornerRadius}
+                            featherEdge={featherEdge}
+                            cornerRadius={cornerRadius}
+                            frameEnabled={frameEnabled}
+                            frameColor={frameColor}
+                            frameWidth={frameWidth}
+                            doubleFrame={doubleFrame}
+                            sourceWidth={currentImageDimensions.width}
+                            sourceHeight={currentImageDimensions.height}
                             printAreaFit={printAreaFit}
                             selectedProductName={selectedProductName}
                             screenshotScale={screenshotScale}
