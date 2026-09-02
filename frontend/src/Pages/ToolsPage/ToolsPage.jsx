@@ -153,6 +153,8 @@ const APPAREL_PRINT_OVERRIDES = {
     heightFrac: 0.49,
     top: 38.4,
     left: 49,
+    // Portrait: close the hairline white print-box gap on the right only.
+    rightGrow: 0.02,
   },
   "Kids Long Sleeve": {
     widthFrac: 0.502,
@@ -421,10 +423,12 @@ function sizeApparelPrintOverlay(printW, printH, mockupW, mockupH, productName, 
  * extend only the right edge (left stays put).
  */
 function overlaySizeForOrientation(width, height, orientation, productName) {
-  if (orientation !== 'landscape' || !(width > 0 && height > 0)) {
-    return { width, height, rightShift: 0 };
-  }
   const box = getApparelPrintOverride(productName);
+  if (orientation !== 'landscape' || !(width > 0 && height > 0)) {
+    if (!(width > 0 && height > 0)) return { width, height, rightShift: 0 };
+    const rightGrow = box?.rightGrow > 0 ? width * box.rightGrow : 0;
+    return { width: width + rightGrow, height, rightShift: rightGrow / 2 };
+  }
   const widthScale = box?.landscapeWidthScale > 0 ? box.landscapeWidthScale : 1;
   let w = width * widthScale;
   const h = Math.min(height, w / 1.5);
