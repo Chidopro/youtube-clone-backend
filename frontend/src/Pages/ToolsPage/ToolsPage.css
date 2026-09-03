@@ -140,6 +140,7 @@ body.tools-page-active .site-footer {
 }
 
 .tools-page-header {
+  display: none;
   text-align: center;
   margin-bottom: 2rem;
   margin-left: 500px;
@@ -168,7 +169,7 @@ body.tools-page-active .site-footer {
   display: grid;
   grid-template-columns: 100px 400px 1fr;
   gap: 2rem;
-  margin-top: 2rem;
+  margin-top: 0;
   align-items: start;
 }
 
@@ -263,7 +264,34 @@ body.tools-page-active .site-footer {
   text-align: center;
 }
 
+.tools-right-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tools-column-heading {
+  margin: 0 0 1rem;
+  padding: 0;
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #333;
+  line-height: 1.2;
+}
+
+.product-preview-color-note {
+  margin: 8px 0 0;
+  padding: 0 4px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 400;
+  color: #666;
+  line-height: 1.35;
+}
+
 .edit-tools-under-preview {
+  display: none;
   margin: 10px 0 0;
   padding: 0;
   text-align: center;
@@ -836,6 +864,7 @@ body.tools-page-active .site-footer {
   }
   
   .tools-page-header {
+    display: block;
     margin-left: 0 !important;
     margin-bottom: 1rem;
   }
@@ -875,9 +904,19 @@ body.tools-page-active .site-footer {
     white-space: nowrap;
   }
 
+  .tools-column-heading {
+    display: none;
+  }
+
   .edit-tools-under-preview {
+    display: block;
     font-size: 15px;
     margin-top: 8px;
+  }
+
+  .product-preview-color-note {
+    font-size: 11px;
+    margin-top: 6px;
   }
 
   .product-preview-inner-card {
@@ -1018,6 +1057,11 @@ body.tools-page-active .site-footer {
     overflow: hidden;
   }
 
+  body.tools-page-active #root > div > div:has(.main-content-area) {
+    min-height: 0;
+    overflow: hidden;
+  }
+
   body.tools-page-active .main-content-area,
   body.tools-page-active .main-content-inner {
     overflow: hidden;
@@ -1128,6 +1172,7 @@ body.tools-page-active .site-footer {
   }
 
   body.tools-page-active .edit-tools-under-preview {
+    display: block;
     font-size: 15px;
     margin-top: 8px;
   }
@@ -1206,6 +1251,15 @@ body.tools-page-active .site-footer {
     min-height: 0;
   }
 
+  /* Right column must shrink so the tools list can scroll under the preview. */
+  body.tools-page-active .tools-right-column {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
   body.tools-page-active .tools-controls-section {
     flex: 1 1 auto;
     min-height: 0;
@@ -1215,6 +1269,7 @@ body.tools-page-active .site-footer {
     overscroll-behavior: contain;
     touch-action: pan-y;
     margin-top: 0;
+    padding-bottom: 2.5rem;
     border-radius: 0 0 12px 12px;
   }
 }
@@ -1230,6 +1285,7 @@ body.tools-page-active .site-footer {
   }
   
   .tools-page-header {
+    display: block;
     margin-left: 0 !important;
     margin-bottom: 0.5rem;
     padding: 0 0.5rem;
@@ -1348,6 +1404,14 @@ body.tools-page-active .site-footer {
   }
 
   body.tools-page-active .tools-page-container {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.tools-page-active .tools-right-column {
+    flex: 1 1 auto;
+    min-height: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;

@@ -15,6 +15,7 @@ import logging
 import os
 import re
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -326,43 +327,71 @@ def catalog_product_id_for_product_name(name: str) -> Optional[int]:
     return PRINTFUL_CATALOG_PRODUCT_IDS_BY_NAME.get(str(name).strip())
 
 
-def _fetch_catalog_variants_nested(catalog_product_id: int) -> Dict[str, Dict[str, int]]:
-    api_key = os.getenv("PRINTFUL_API_KEY")
-    if not api_key:
-        raise RuntimeError("PRINTFUL_API_KEY not set")
+# Catalog-variants defaults to selling_region_name=worldwide, which 400s
+# ("Selling region not found") for some stores. Variant IDs are global; pull
+# the US catalog so storefront color/size rows can be mapped.
+CATALOG_VARIANT_REGION_TRIES: Tuple[str, ...] = (
+    "north_america",
+    "usa",
+    "europe",
+    "australia",
+)
 
-    headers = printful_request_headers(api_key)
+
+def _ingest_catalog_variant_rows(
+    data: List[Any],
+    out: Dict[str, Dict[str, int]],
+) -> None:
+    for v in data:
+        if not isinstance(v, dict):
+            continue
+        vid = v.get("id")
+        if vid is None:
+            vid = v.get("catalog_variant_id")
+        color = (v.get("color") or "").strip()
+        size = (v.get("size") or "").strip()
+        if not size or vid is None:
+            continue
+        color_key = color if color else NO_COLOR_BUCKET_KEY
+        out.setdefault(color_key, {})[size] = int(vid)
+
+
+def _fetch_catalog_variants_for_region(
+    catalog_product_id: int,
+    headers: Dict[str, str],
+    selling_region_name: str,
+) -> Tuple[Optional[Dict[str, Dict[str, int]]], int]:
+    """Return (map, status). map is None when this region should not be used."""
     out: Dict[str, Dict[str, int]] = {}
     offset = 0
     limit = 100
+    url = f"https://api.printful.com/v2/catalog-products/{catalog_product_id}/catalog-variants"
 
     while True:
-        url = f"https://api.printful.com/v2/catalog-products/{catalog_product_id}/catalog-variants"
-        r = requests.get(url, headers=headers, params={"limit": limit, "offset": offset}, timeout=60)
+        r = requests.get(
+            url,
+            headers=headers,
+            params={
+                "limit": limit,
+                "offset": offset,
+                "selling_region_name": selling_region_name,
+            },
+            timeout=60,
+        )
         if r.status_code != 200:
             logger.error(
-                "Printful catalog variants failed catalog_product_id=%s status=%s body=%s",
+                "Printful catalog variants failed catalog_product_id=%s region=%s status=%s body=%s",
                 catalog_product_id,
+                selling_region_name,
                 r.status_code,
                 (r.text or "")[:400],
             )
-            break
+            return None, r.status_code
         body = r.json()
         data = body.get("data") or []
         if not data:
             break
-        for v in data:
-            if not isinstance(v, dict):
-                continue
-            vid = v.get("id")
-            if vid is None:
-                vid = v.get("catalog_variant_id")
-            color = (v.get("color") or "").strip()
-            size = (v.get("size") or "").strip()
-            if not size or vid is None:
-                continue
-            color_key = color if color else NO_COLOR_BUCKET_KEY
-            out.setdefault(color_key, {})[size] = int(vid)
+        _ingest_catalog_variant_rows(data, out)
         offset += limit
         paging = body.get("paging") or {}
         total = paging.get("total")
@@ -371,7 +400,38 @@ def _fetch_catalog_variants_nested(catalog_product_id: int) -> Dict[str, Dict[st
         if len(data) < limit:
             break
 
-    return out
+    return out, 200
+
+
+def _fetch_catalog_variants_nested(catalog_product_id: int) -> Dict[str, Dict[str, int]]:
+    api_key = os.getenv("PRINTFUL_API_KEY")
+    if not api_key:
+        raise RuntimeError("PRINTFUL_API_KEY not set")
+
+    headers = printful_request_headers(api_key)
+    for region in CATALOG_VARIANT_REGION_TRIES:
+        nested, status = _fetch_catalog_variants_for_region(catalog_product_id, headers, region)
+        if nested:
+            logger.info(
+                "Printful catalog variants catalog_product_id=%s region=%s colors=%s",
+                catalog_product_id,
+                region,
+                len(nested),
+            )
+            return nested
+        if nested is not None:
+            logger.warning(
+                "Printful catalog variants empty catalog_product_id=%s region=%s",
+                catalog_product_id,
+                region,
+            )
+            continue
+        if status == 400:
+            continue
+        break
+
+    logger.error("Printful catalog variants unavailable catalog_product_id=%s", catalog_product_id)
+    return {}
 
 
 def get_nested_variant_map(catalog_product_id: int) -> Dict[str, Dict[str, int]]:
@@ -381,8 +441,11 @@ def get_nested_variant_map(catalog_product_id: int) -> Dict[str, Dict[str, int]]
         return cached
 
     nested = _fetch_catalog_variants_nested(catalog_product_id)
-    with _maps_lock:
-        _nested_maps[catalog_product_id] = nested
+    # Do not cache an empty map from a failed fetch; browse would otherwise
+    # keep serving fail-open regional matrices until process restart.
+    if nested:
+        with _maps_lock:
+            _nested_maps.setdefault(catalog_product_id, nested)
     return nested
 
 
@@ -484,6 +547,7 @@ def get_catalog_variant_v2_detail(catalog_variant_id: int, api_key: str) -> Opti
         r = requests.get(
             f"https://api.printful.com/v2/catalog-variants/{vid}",
             headers=printful_request_headers(api_key),
+            params={"selling_region_name": CATALOG_VARIANT_REGION_TRIES[0]},
             timeout=30,
         )
         if r.status_code != 200:
@@ -707,6 +771,92 @@ def try_v2_shipping_rates(
     return None
 
 
+def _storefront_size_color_base(product: Dict[str, Any]) -> Dict[str, List[str]]:
+    """US catalog matrix (size -> colors). Falls back to the full options grid."""
+    sca = product.get("size_color_availability")
+    if isinstance(sca, dict) and sca:
+        out: Dict[str, List[str]] = {}
+        for size, colors in sca.items():
+            if isinstance(colors, list) and colors:
+                out[str(size)] = [str(c) for c in colors]
+        if out:
+            return out
+    options = product.get("options") if isinstance(product.get("options"), dict) else {}
+    sizes = [str(s) for s in (options.get("size") or []) if s]
+    colors = [str(c) for c in (options.get("color") or []) if c]
+    if sizes and colors:
+        return {sz: list(colors) for sz in sizes}
+    return {}
+
+
+def build_regional_size_color_availability(
+    product: Dict[str, Any],
+    catalog_product_id: int,
+) -> Dict[str, Dict[str, List[str]]]:
+    """Filter the US size/color matrix by Printful stock for CA / GB / IE / AU / DE."""
+    from printful_regions import (
+        REGIONAL_FILTER_COUNTRIES,
+        get_variant_region_stock,
+        variant_available_for_country,
+    )
+
+    base = _storefront_size_color_base(product)
+    if not base:
+        return {}
+    try:
+        stock = get_variant_region_stock(int(catalog_product_id))
+    except Exception as e:
+        logger.warning("Region stock load failed catalog_product_id=%s: %s", catalog_product_id, e)
+        return {}
+    if not stock:
+        return {}
+
+    regional: Dict[str, Dict[str, List[str]]] = {}
+    for country in REGIONAL_FILTER_COUNTRIES:
+        filtered: Dict[str, List[str]] = {}
+        for size, colors in base.items():
+            kept: List[str] = []
+            for color in colors:
+                vid = lookup_catalog_variant_id(int(catalog_product_id), color, size)
+                if vid is None:
+                    kept.append(color)
+                    continue
+                regions = stock.get(int(vid))
+                if regions is None:
+                    continue
+                if variant_available_for_country(regions, country):
+                    kept.append(color)
+            if kept:
+                filtered[str(size)] = kept
+        regional[country] = filtered
+    return regional
+
+
+def combo_available_for_country(product_name: str, color: str, size: str, country: str) -> Optional[bool]:
+    """
+    True/False when Printful region stock is known; None when we cannot tell
+    (no catalog id, no stock map, or variant lookup miss).
+    """
+    from printful_regions import get_variant_region_stock, variant_available_for_country
+
+    pid = catalog_product_id_for_product_name(product_name)
+    if not pid:
+        return None
+    try:
+        stock = get_variant_region_stock(int(pid))
+    except Exception:
+        return None
+    if not stock:
+        return None
+    vid = lookup_catalog_variant_id(int(pid), color or "", size or "")
+    if vid is None:
+        return None
+    regions = stock.get(int(vid))
+    if regions is None:
+        return False
+    return variant_available_for_country(regions, country)
+
+
 def attach_printful_catalog_data(product: Dict[str, Any]) -> Dict[str, Any]:
     """Deep copy; set printful_catalog_product_id and printful_variant_map when possible."""
     out = copy.deepcopy(product)
@@ -728,8 +878,19 @@ def attach_printful_catalog_data(product: Dict[str, Any]) -> Dict[str, Any]:
                 if alias not in nested:
                     nested[alias] = dict(bucket)
         out["printful_variant_map"] = nested
+        regional = build_regional_size_color_availability(out, int(pid))
+        if regional:
+            out["regional_size_color_availability"] = regional
     except Exception as e:
         logger.warning("attach_printful_catalog_data(%s): %s", name, e)
+    try:
+        from printful_regions import build_regional_base_prices
+
+        prices = build_regional_base_prices(float(out.get("price") or 0), int(pid))
+        if prices:
+            out["regional_base_prices"] = prices
+    except Exception as e:
+        logger.warning("attach_printful_catalog_data prices (%s): %s", name, e)
     return out
 
 
@@ -748,9 +909,67 @@ def attach_printful_catalog_data_list(products: List[Dict[str, Any]]) -> List[Di
             seen.add(int(pid))
             unique_ids.append(int(pid))
     if os.getenv("PRINTFUL_API_KEY"):
-        for cid in unique_ids:
+        from printful_regions import prefetch_region_blank_costs, prefetch_variant_region_stock
+
+        def _warm(cid: int) -> None:
             try:
                 get_nested_variant_map(cid)
             except Exception as e:
                 logger.warning("Prefetch catalog %s: %s", cid, e)
+            prefetch_variant_region_stock(cid)
+            prefetch_region_blank_costs(cid)
+
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            list(pool.map(_warm, unique_ids))
     return [attach_printful_catalog_data(p) for p in products]
+
+
+def storefront_unit_price(product: Dict[str, Any], size: Optional[str], country: str) -> float:
+    """US catalog price (plus size extra) adjusted for Printful's ship-to blank cost."""
+    if not product:
+        return 0.0
+    p = product
+    if not p.get("regional_base_prices"):
+        try:
+            p = attach_printful_catalog_data(p)
+        except Exception:
+            p = product
+    from printful_regions import normalize_ship_to_country
+
+    code = normalize_ship_to_country(country)
+    regional = p.get("regional_base_prices") if isinstance(p.get("regional_base_prices"), dict) else {}
+    base = regional.get(code)
+    if base is None:
+        base = p.get("price") or 0
+    extra = 0.0
+    if size:
+        extra = (p.get("size_pricing") or {}).get(size) or 0
+    try:
+        return round(float(base) + float(extra or 0), 2)
+    except (TypeError, ValueError):
+        return round(float(p.get("price") or 0), 2)
+
+
+def resolve_cart_item_unit_price(
+    item: Dict[str, Any],
+    products: List[Dict[str, Any]],
+    country: str,
+) -> Optional[float]:
+    """Charge the regional storefront price for a checkout line, not a stale US cart snapshot."""
+    name = str((item or {}).get("product") or (item or {}).get("name") or "").strip()
+    variants = (item or {}).get("variants") if isinstance((item or {}).get("variants"), dict) else {}
+    size = str((item or {}).get("size") or variants.get("size") or "").strip()
+    product = next((p for p in (products or []) if (p or {}).get("name") == name), None)
+    if not product:
+        lower = name.lower()
+        product = next(
+            (p for p in (products or []) if str((p or {}).get("name") or "").lower() == lower),
+            None,
+        )
+    if product:
+        return storefront_unit_price(product, size, country)
+    try:
+        snap = float((item or {}).get("price") or 0)
+    except (TypeError, ValueError):
+        return None
+    return round(snap, 2) if snap > 0 else None

@@ -7,7 +7,7 @@ import { requestVideoOptimize } from '../../utils/videoOptimize';
 import './Feed.css';
 import './CreatorDirectory.css';
 import { RESERVE_SLOT_THEMES, TOTAL_CREATOR_SPOTS } from './reserveSlotThemes';
-import { DEMO_STOREFRONT_SUBDOMAIN } from '../../utils/demoStorefront';
+import { DEMO_STOREFRONT_SUBDOMAIN, TEST_STOREFRONT_SUBDOMAIN } from '../../utils/demoStorefront';
 import {
   fetchPublicFavoriteLists,
   publicStorageCardUrl,
@@ -24,10 +24,18 @@ function collectSlotShuffleUrls(lists) {
   ).slice(0, 16);
 }
 
-/** Maxfreedom always occupies seat 1; remaining storefronts fill 2, 3, … in API order. */
+/** Maxfreedom always occupies seat 1; remaining live storefronts fill 2, 3, … in API order. */
 function pinSoftLaunchSlots(rawSlots, total) {
-  const slots = Array.isArray(rawSlots) ? rawSlots.map((s) => ({ ...s })) : [];
   const demoKey = DEMO_STOREFRONT_SUBDOMAIN.toLowerCase();
+  const testKey = TEST_STOREFRONT_SUBDOMAIN.toLowerCase();
+  const slots = (Array.isArray(rawSlots) ? rawSlots : [])
+    .map((s) => ({ ...s }))
+    .filter((s) => {
+      const sub = (s.subdomain || '').trim().toLowerCase();
+      if (!sub) return false;
+      if (sub === testKey) return false;
+      return true;
+    });
   const demoIdx = slots.findIndex(
     (s) => (s.subdomain || '').trim().toLowerCase() === demoKey
   );
@@ -385,7 +393,6 @@ const CreatorDirectory = ({ introVideo = null, onIntroUpdated = null }) => {
           tabIndex={0}
         >
           <div style={{ position: 'relative' }}>
-            <span className="intro-directory-badge">How it works</span>
             {canEditIntro && (
               <button
                 type="button"

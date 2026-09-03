@@ -12,6 +12,15 @@ import { setToolsFocusCartIndex, setToolsPreviewNewest, writeCartItems, readPend
 import { isShopperSignedIn } from '../../utils/shopperAuth';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import { saveShopAddIntent, SHOP_CATEGORIES } from '../../utils/shopCategories';
+import { readShipToCountry, SHIP_TO_UPDATED_EVENT } from '../../utils/shipToCountry';
+import {
+  getAvailableColorsForCountry,
+  getAvailableSizesForCountry,
+  productShipsToCountry,
+  repriceCartItems,
+  shipToCountryName,
+  unitPriceForCountry,
+} from '../../utils/regionalAvailability';
 import './ProductPage.css';
 
 const IMG_BASE_FALLBACK = 'https://screenmerch.fly.dev/static/images';
@@ -55,6 +64,38 @@ const preloadImageUrls = (urls) => {
   });
 };
 
+const PRODUCT_IMAGE_RETRY_DELAYS_MS = [400, 1200, 2800];
+
+/** Fly static files can 502 on a cold start; retry before locking in the gray placeholder. */
+const handleProductImageError = (event, product) => {
+  const img = event.currentTarget;
+  if (!img) return;
+  const placeholder = `${getImgBase()}/placeholder.png`;
+  const attempt = Number(img.dataset.retryAttempt || 0);
+  const original = img.dataset.originalSrc || img.getAttribute('src') || '';
+  if (!img.dataset.originalSrc && original && !original.includes('placeholder.png')) {
+    img.dataset.originalSrc = original.split('?')[0];
+  }
+  const primary = img.dataset.originalSrc || '';
+  if (primary && !primary.includes('placeholder.png') && attempt < PRODUCT_IMAGE_RETRY_DELAYS_MS.length) {
+    img.dataset.retryAttempt = String(attempt + 1);
+    const delay = PRODUCT_IMAGE_RETRY_DELAYS_MS[attempt];
+    window.setTimeout(() => {
+      if (!img.isConnected) return;
+      img.src = `${primary}${primary.includes('?') ? '&' : '?'}retry=${attempt + 1}`;
+    }, delay);
+    return;
+  }
+  const fallback = getProductImageUrl(product, false);
+  if (fallback && fallback !== primary && img.src !== fallback && !fallback.includes('placeholder.png')) {
+    img.dataset.retryAttempt = '0';
+    img.dataset.originalSrc = fallback.split('?')[0];
+    img.src = fallback;
+    return;
+  }
+  if (img.src !== placeholder) img.src = placeholder;
+};
+
 const ProductPage = ({ sidebar }) => {
   const { productId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -70,6 +111,7 @@ const ProductPage = ({ sidebar }) => {
   const [selectedSizes, setSelectedSizes] = useState({});
   const [variantAvailability, setVariantAvailability] = useState({});
   const availabilityReqSeqByIndex = useRef({});
+  const [shipToCountry, setShipToCountry] = useState(readShipToCountry);
   const [cartItems, setCartItems] = useState(() => {
     try {
       return readCartItems();
@@ -122,6 +164,41 @@ const ProductPage = ({ sidebar }) => {
   const editingCartIndex = Number.parseInt(editCartParam, 10);
   const isEditingCart = Number.isInteger(editingCartIndex) && editingCartIndex >= 0 && editingCartIndex < cartItems.length;
   const editingCartItem = isEditingCart ? cartItems[editingCartIndex] : null;
+
+  useEffect(() => {
+    const sync = () => setShipToCountry(readShipToCountry());
+    window.addEventListener(SHIP_TO_UPDATED_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(SHIP_TO_UPDATED_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    setVariantAvailability({});
+  }, [shipToCountry]);
+
+  useEffect(() => {
+    if (!cartItems.length) return;
+    let source = cartItems;
+    if (productData?.products?.length) {
+      source = cartItems.map((it) => {
+        const prod = productData.products.find((p) => p.name === (it.name || it.product));
+        if (!prod?.regional_base_prices) return it;
+        return {
+          ...it,
+          regional_base_prices: prod.regional_base_prices,
+          size_pricing: it.size_pricing || prod.size_pricing,
+        };
+      });
+    }
+    const next = repriceCartItems(source, shipToCountry);
+    if (next.some((item, i) => item.price !== cartItems[i].price || item.regional_base_prices !== cartItems[i].regional_base_prices)) {
+      setCartItems(next);
+      writeCartItems(next);
+    }
+  }, [shipToCountry, productData]);
 
   useEffect(() => {
     if (window.__DEBUG__) {
@@ -473,45 +550,19 @@ const ProductPage = ({ sidebar }) => {
 
   // Get available sizes for a product and color based on availability data.
   // API product.options.size is the source of truth (never use stale products.js).
-  const getAvailableSizes = (product, color) => {
-    const apiSizes = product?.options?.size || [];
-    if (!product || !color) {
-      return apiSizes;
-    }
+  const getAvailableSizes = (product, color) => (
+    getAvailableSizesForCountry(product, color, shipToCountry)
+  );
 
-    // Prefer API size_color_availability (size -> colors[]) from catalog
-    const sca = product.size_color_availability;
-    if (sca && typeof sca === 'object' && Object.keys(sca).length > 0) {
-      const sizesFromApi = apiSizes.filter((size) => {
-        const colorsForSize = sca[size];
-        return Array.isArray(colorsForSize) && colorsForSize.includes(color);
-      });
-      if (sizesFromApi.length > 0) return sizesFromApi;
-    }
-    return apiSizes;
-  };
-
-  // Colors available for a selected size (size_color_availability from API).
-  const getAvailableColors = (product, size) => {
-    const apiColors = product?.options?.color || [];
-    if (!product || !size) return apiColors;
-    const sca = product.size_color_availability;
-    if (sca && typeof sca === 'object' && Array.isArray(sca[size]) && sca[size].length > 0) {
-      return apiColors.filter((c) => sca[size].includes(c));
-    }
-    return apiColors;
-  };
+  // Colors available for a selected size (size_color_availability from API, filtered by ship-to).
+  const getAvailableColors = (product, size) => (
+    getAvailableColorsForCountry(product, size, shipToCountry)
+  );
 
   // Calculate price based on selected size
   const calculatePrice = (product, productIndex) => {
-    const basePrice = product.price || 0;
     const selectedSize = selectedSizes[productIndex] || product?.options?.size?.[0];
-    
-    if (product.size_pricing && product.size_pricing[selectedSize] !== undefined) {
-      return basePrice + product.size_pricing[selectedSize];
-    }
-    
-    return basePrice;
+    return unitPriceForCountry(product, selectedSize, shipToCountry);
   };
 
   const persistCart = (items) => {
@@ -547,6 +598,7 @@ const ProductPage = ({ sidebar }) => {
           color: effectiveColor,
           size: effectiveSize,
           variant_id: variantId,
+          country_code: shipToCountry,
         }),
       });
       let data = {};
@@ -577,6 +629,17 @@ const ProductPage = ({ sidebar }) => {
   const handleAddToCart = async (product, index) => {
     const chosenColor = selectedColors[index] || (product?.options?.color?.[0] || 'Default');
     const chosenSize = selectedSizes[index] || (product?.options?.size?.[0] || 'One Size');
+    if (!productShipsToCountry(product, shipToCountry)) {
+      setVariantAvailability((prev) => ({
+        ...prev,
+        [index]: {
+          checking: false,
+          available: false,
+          message: `This item is not available to ship to ${shipToCountryName(shipToCountry)}.`,
+        },
+      }));
+      return;
+    }
     if (isShopCatalog) {
       saveShopAddIntent({
         category,
@@ -631,6 +694,8 @@ const ProductPage = ({ sidebar }) => {
       category: category || '', // womens, mens, kids = shirts (need portrait/landscape); others skip design modal
       printful_catalog_product_id: product?.printful_catalog_product_id ?? null,
       printful_variant_id: printful_variant_id != null ? printful_variant_id : undefined,
+      regional_base_prices: product?.regional_base_prices || undefined,
+      size_pricing: product?.size_pricing || undefined,
       // Include video metadata in cart item (screenshot_timestamp for email/Print Quality)
       ...filledVideoMetadata
     };
@@ -993,7 +1058,27 @@ const ProductPage = ({ sidebar }) => {
       
       return hasChanges ? newSelectedSizes : prevSizes;
     });
-  }, [productData, selectedColors]);
+  }, [productData, selectedColors, shipToCountry]);
+
+  useEffect(() => {
+    if (!productData?.products || productData.products.length === 0) return;
+    setSelectedColors((prevColors) => {
+      const nextColors = { ...prevColors };
+      let hasChanges = false;
+      productData.products.forEach((product, index) => {
+        if (!product?.options?.color?.length) return;
+        const selectedSize = selectedSizes[index] || product.options?.size?.[0];
+        const availableColors = getAvailableColors(product, selectedSize);
+        if (availableColors.length === 0) return;
+        const currentColor = prevColors[index] || product.options.color[0];
+        if (!currentColor || !availableColors.includes(currentColor)) {
+          nextColors[index] = availableColors[0];
+          hasChanges = true;
+        }
+      });
+      return hasChanges ? nextColors : prevColors;
+    });
+  }, [productData, selectedSizes, shipToCountry]);
 
   useEffect(() => {
     if (!isEditingCart || !editingCartItem) return;
@@ -1293,9 +1378,7 @@ const ProductPage = ({ sidebar }) => {
                             src={getProductImageUrl(product, true)}
                             alt={product.name}
                             className="info-product-image"
-                            onError={(e) => {
-                              e.currentTarget.src = `${getImgBase()}/placeholder.png`;
-                            }}
+                            onError={(e) => handleProductImageError(e, product)}
                           />
                         </div>
                         <div className="info-col-description">
@@ -1514,14 +1597,7 @@ const ProductPage = ({ sidebar }) => {
                             fetchPriority={index < 4 ? 'high' : 'auto'}
                             decoding="async"
                             referrerPolicy="no-referrer"
-                            onError={(e) => {
-                              const fallback = getProductImageUrl(product, false);
-                              if (fallback && e.currentTarget.src !== fallback) {
-                                e.currentTarget.src = fallback;
-                              } else {
-                                e.currentTarget.src = `${getImgBase()}/placeholder.png`;
-                              }
-                            }}
+                            onError={(e) => handleProductImageError(e, product)}
                           />
                         </div>
                       </div>
@@ -1656,11 +1732,17 @@ const ProductPage = ({ sidebar }) => {
                   {variantAvailability[index]?.message && !variantAvailability[index]?.available && (
                     <div className="variant-unavailable-note">{variantAvailability[index].message}</div>
                   )}
+                  {!productShipsToCountry(product, shipToCountry) && shipToCountry !== 'US' && (
+                    <div className="variant-unavailable-note">
+                      This item is not available to ship to {shipToCountryName(shipToCountry)}. Switch the flag in the header, or pick another product.
+                    </div>
+                  )}
                   <button 
                     className="add-to-cart-btn"
                     disabled={
                       variantAvailability[index]?.checking
                       || variantAvailability[index]?.available === false
+                      || !productShipsToCountry(product, shipToCountry)
                     }
                     onClick={() => handleAddToCart(product, index)}
                   >

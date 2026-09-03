@@ -1059,6 +1059,10 @@ nav .nav-right .subscribe-btn {
     gap: 4px;
 }
 
+.nav-right .ship-to-picker {
+    margin: 0 2px;
+}
+
 .nav-cart-btn {
     position: relative;
     display: inline-flex;

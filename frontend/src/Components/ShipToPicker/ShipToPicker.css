@@ -1,0 +1,97 @@
+.ship-to-picker {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 10002;
+}
+
+.ship-to-picker-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #fff;
+  color: #222;
+  cursor: pointer;
+}
+
+.ship-to-picker-btn:hover {
+  border-color: #065fd4;
+}
+
+.ship-to-flag-svg {
+  display: block;
+  width: 22px;
+  height: 15px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.ship-to-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
+}
+
+.ship-to-menu-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 200010;
+  pointer-events: none;
+}
+
+.ship-to-menu--portal {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.ship-to-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #111;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+}
+
+.ship-to-menu button:hover,
+.ship-to-menu button.is-selected {
+  background: #f3f4f6;
+}
+
+@media (max-width: 900px) {
+  .ship-to-picker-btn {
+    width: 32px;
+    height: 26px;
+    border-radius: 5px;
+  }
+
+  .ship-to-flag-svg {
+    width: 20px;
+    height: 14px;
+  }
+
+  .ship-to-menu {
+    min-width: 180px;
+    right: -4px;
+  }
+}

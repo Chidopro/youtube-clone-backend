@@ -1,3 +1,5 @@
+export { CHECKOUT_COUNTRY_OPTIONS } from '../../data/shippingRegions';
+
 /** US states + DC and CA provinces/territories for Printful-style `state_code` on shipping quotes. */
 
 export const US_STATE_OPTIONS = [

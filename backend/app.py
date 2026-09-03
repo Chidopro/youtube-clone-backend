@@ -36,6 +36,7 @@ import google.auth
 
 # NEW: Import Printful integration
 from printful_integration import ScreenMerchPrintfulIntegration
+from printful_catalog import attach_printful_catalog_data_list, resolve_cart_item_unit_price
 
 # NEW: Import video screenshot capture
 from video_screenshot import screenshot_capture
@@ -82,6 +83,7 @@ from utils.stripe_checkout import (
 )
 from utils.stripe_tax_checkout import (
     apply_automatic_tax_to_checkout_session,
+    fulfillment_tax_product_data,
     shipping_tax_product_data,
     stripe_product_tax_code_for_line_item,
     tax_line_item_price_data,
@@ -90,6 +92,10 @@ from utils.auth_sync import ensure_auth_user_for_public_user
 from utils.legal_acceptance import (
     customer_legal_acceptance_fields,
     has_customer_legal_acceptance,
+)
+from checkout_countries import (
+    SHIPPING_COUNTRY_ERROR,
+    is_allowed_checkout_country,
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -1118,6 +1124,10 @@ def get_browse_api():
         
         # Filter products by category
         filtered_products = filter_products_by_category(category)
+        try:
+            filtered_products = attach_printful_catalog_data_list(filtered_products)
+        except Exception as ex:
+            logger.warning("Printful catalog enrichment skipped: %s", ex)
         
         # Ensure all products have a description field and full image URLs for cross-origin display
         # Force HTTPS and always set image_base so images persist across category switches
@@ -1201,6 +1211,10 @@ def get_product_api(product_id):
         
         # Filter products by category
         filtered_products = filter_products_by_category(category)
+        try:
+            filtered_products = attach_printful_catalog_data_list(filtered_products)
+        except Exception as ex:
+            logger.warning("Printful catalog enrichment skipped: %s", ex)
         
         # Try to get product from database
         try:
@@ -3191,6 +3205,9 @@ def place_order():
         shipping_address = addr_result
         logger.info(f"✅ Shipping address validated: {shipping_address}")
 
+        if not is_allowed_checkout_country(shipping_address.get("country_code")):
+            return jsonify({"success": False, "error": SHIPPING_COUNTRY_ERROR}), 400
+
         # Generate order identifiers (shorter format for easier record keeping)
         full_uuid = str(uuid.uuid4())
         order_id = f"ORD-{full_uuid[:8].upper()}"  # Short format: ORD-XXXXXXXX
@@ -3667,6 +3684,9 @@ def create_checkout_session():
         
         shipping_address = addr_result
         logger.info(f"✅ Shipping address validated: {shipping_address}")
+
+        if not is_allowed_checkout_country(shipping_address.get("country_code")):
+            return jsonify({"error": SHIPPING_COUNTRY_ERROR}), 400
         
         # Ensure shipping_cost is a valid number
         shipping_cost_raw = data.get("shipping_cost", 0)
@@ -3690,6 +3710,12 @@ def create_checkout_session():
             logger.error(f"❌ Cart is not a list: {type(cart)}")
             return jsonify({"error": "Cart must be an array"}), 400
 
+        from printful_estimate import fulfillment_tax_label
+        from routes.orders import checkout_fulfillment_tax_usd
+        fulfillment_tax = checkout_fulfillment_tax_usd(
+            cart, shipping_address, data.get("fulfillment_tax")
+        )
+
         # Email notifications - SMS consent not required
         # sms_consent is kept for backward compatibility but not enforced
 
@@ -3698,8 +3724,13 @@ def create_checkout_session():
         full_uuid = str(uuid.uuid4())
         order_id = f"ORD-{full_uuid[:8].upper()}"  # Short format: ORD-XXXXXXXX
         
-        # Calculate total amount
-        total_amount = sum(item.get('price', 0) for item in cart) + shipping_cost
+        ship_country = shipping_address.get("country_code") or "US"
+        merch_total = 0.0
+        for item in cart:
+            priced = resolve_cart_item_unit_price(item, PRODUCTS, ship_country)
+            if priced:
+                merch_total += float(priced)
+        total_amount = merch_total + shipping_cost + fulfillment_tax
         
         # Get screenshot from cart items first - check ALL possible screenshot fields
         # This handles both cases: with frontend deployment (selected_screenshot) and without (screenshot/img/thumbnail)
@@ -3768,6 +3799,10 @@ def create_checkout_session():
             if not item_screenshot and checkout_screenshot and isinstance(checkout_screenshot, str) and checkout_screenshot.strip():
                 item_screenshot = checkout_screenshot
                 logger.info(f"✅ [CHECKOUT] Item {idx} using checkout_screenshot (from top-level payload): {str(checkout_screenshot)[:50]}...")
+
+            regional_price = resolve_cart_item_unit_price(item, PRODUCTS, ship_country)
+            if regional_price:
+                enriched_item["price"] = regional_price
             
             enriched_item.update({
                 "videoName": data.get("videoTitle", data.get("video_title", "Unknown Video")),
@@ -3928,33 +3963,25 @@ def create_checkout_session():
                 order_store[order_id]["selected_screenshot"] = checkout_screenshot
 
         line_items = []
+        ship_country = shipping_address.get("country_code") or "US"
         for item in cart:
             logger.info(f"🛒 Processing item: {item}")
             logger.info(f"🛒 Item product name: '{item.get('product')}'")
             logger.info(f"🛒 Item price: {item.get('price')}")
             logger.info(f"🛒 Available products: {[p['name'] for p in PRODUCTS]}")
-            
-            # Use price from cart item if available, otherwise look up in PRODUCTS
-            item_price = item.get('price')
+
+            item_price = resolve_cart_item_unit_price(item, PRODUCTS, ship_country)
             if item_price and item_price > 0:
-                logger.info(f"✅ Using price from cart item: ${item_price}")
-                unit_amount = int(item_price * 100)
+                logger.info(
+                    "✅ Using regional unit price: $%s country=%s product=%s",
+                    item_price,
+                    ship_country,
+                    item.get("product"),
+                )
+                unit_amount = int(round(float(item_price) * 100))
             else:
-                # Try exact match first
-                product_info = next((p for p in PRODUCTS if p["name"] == item.get("product")), None)
-                if not product_info:
-                    # Try case-insensitive match
-                    product_info = next((p for p in PRODUCTS if p["name"].lower() == item.get("product", "").lower()), None)
-                    if product_info:
-                        logger.info(f"✅ Found product info (case-insensitive): {product_info}")
-                    else:
-                        logger.error(f"❌ Could not find price for product: '{item.get('product')}'")
-                        logger.error(f"❌ Product names in PRODUCTS: {[p['name'] for p in PRODUCTS]}")
-                        continue
-                else:
-                    logger.info(f"✅ Found product info (exact match): {product_info}")
-                
-                unit_amount = int(product_info["price"] * 100)
+                logger.error(f"❌ Could not find price for product: '{item.get('product')}'")
+                continue
             
             line_items.append({
                 "price_data": tax_line_item_price_data(
@@ -3977,6 +4004,20 @@ def create_checkout_session():
                 "quantity": 1,
             })
             logger.info(f"🚚 Added shipping cost: ${shipping_cost}")
+
+        if fulfillment_tax and fulfillment_tax > 0:
+            line_items.append({
+                "price_data": tax_line_item_price_data(
+                    fulfillment_tax_product_data(fulfillment_tax_label(ship_country)),
+                    int(round(float(fulfillment_tax) * 100)),
+                ),
+                "quantity": 1,
+            })
+            logger.info(
+                "Added fulfillment tax line $%s country=%s",
+                fulfillment_tax,
+                ship_country,
+            )
 
         logger.info(f"🛒 Created line items: {line_items}")
         if not line_items:
@@ -4707,6 +4748,9 @@ def _creator_id_from_request_subdomain():
 # /api/videos: only the videos blueprint (routes/videos.py) must handle this. Do not add @app.route("/api/videos") here or CORS from screenmerch.com will fail.
 
 SOFT_LAUNCH_DEMO_SUBDOMAIN = "maxfreedom"
+# Live for testing only — not a public homepage reserve seat.
+SOFT_LAUNCH_TEST_SUBDOMAINS = frozenset({"filialsons"})
+SOFT_LAUNCH_TEST_EMAILS = frozenset({"filialsons@gmail.com"})
 
 
 def _demo_storefront_user_id():
@@ -4750,7 +4794,10 @@ def _is_staff_or_excluded_creator(row):
         return True
     email = (row.get("email") or "").strip().lower()
     username = (row.get("username") or "").strip().lower()
+    subdomain = (row.get("subdomain") or "").strip().lower()
     if email in ("alancraigdigital@gmail.com",) or username in ("alancraigdigital", "screenmerch"):
+        return True
+    if email in SOFT_LAUNCH_TEST_EMAILS or subdomain in SOFT_LAUNCH_TEST_SUBDOMAINS or username in SOFT_LAUNCH_TEST_SUBDOMAINS:
         return True
     return False
 
@@ -4819,7 +4866,10 @@ def soft_launch_spots():
             ),
             None,
         )
-        rest = [row for row in eligible if row is not demo_row]
+        rest = [
+            row for row in eligible
+            if row is not demo_row and (row.get("subdomain") or "").strip()
+        ]
         if demo_row is None:
             ordered = [{
                 "display_name": SOFT_LAUNCH_DEMO_SUBDOMAIN,
@@ -4831,6 +4881,8 @@ def soft_launch_spots():
             ordered = [demo_row] + rest
         taken_slots = []
         for row in ordered:
+            if not (row.get("subdomain") or "").strip():
+                continue
             spot = len(taken_slots) + 1
             if spot > TOTAL:
                 break

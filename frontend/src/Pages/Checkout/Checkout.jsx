@@ -7,12 +7,15 @@ import { isShopperSignedIn, rememberAuthReturnPath } from '../../utils/shopperAu
 import AuthModal from '../../Components/AuthModal/AuthModal';
 import { isDemoStorefront } from '../../utils/demoStorefront';
 import {
+  CHECKOUT_COUNTRY_OPTIONS,
   US_STATE_OPTIONS,
   CA_PROVINCE_OPTIONS,
   postalLooksComplete,
   needsStateForShipping,
   hasStateSelected,
 } from './shippingRegions';
+import { readShipToCountry, writeShipToCountry, SHIP_TO_UPDATED_EVENT } from '../../utils/shipToCountry';
+import { repriceCartItems } from '../../utils/regionalAvailability';
 import './Checkout.css';
 
 const Checkout = () => {
@@ -22,8 +25,8 @@ const Checkout = () => {
   const [showAuthModal, setShowAuthModal] = useState(() => !isDemoStorefront() && !isShopperSignedIn());
   const [items, setItems] = useState([]);
   const [subtotal, setSubtotal] = useState(0);
-  const [shipping, setShipping] = useState({ cost: 0, method: 'Standard Shipping', loading: false, error: '', calculated: false });
-  const [address, setAddress] = useState({ country_code: 'US', zip: '', state_code: '' });
+  const [shipping, setShipping] = useState({ cost: 0, tax: 0, taxLabel: '', method: 'Standard Shipping', loading: false, error: '', calculated: false });
+  const [address, setAddress] = useState({ country_code: readShipToCountry(), zip: '', state_code: '' });
   const shippingRef = useRef(shipping);
   // Design preferences modal – per-item orientation; tools live on /tools
   const [showDesignModal, setShowDesignModal] = useState(false);
@@ -70,8 +73,12 @@ const Checkout = () => {
     if (!signedIn) return;
     try {
       const parsed = readCartItems();
-      setItems(parsed);
-      setSubtotal(parsed.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
+      const next = repriceCartItems(parsed, address.country_code);
+      setItems(next);
+      setSubtotal(next.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
+      if (next.some((item, i) => item.price !== parsed[i].price)) {
+        writeCartItems(next);
+      }
     } catch (e) {
       setItems([]);
       setSubtotal(0);
@@ -100,9 +107,28 @@ const Checkout = () => {
   useEffect(() => {
     setShipping((s) => {
       if (!s.calculated) return s;
-      return { ...s, calculated: false, cost: 0, method: 'Standard Shipping', error: '' };
+      return { ...s, calculated: false, cost: 0, tax: 0, taxLabel: '', method: 'Standard Shipping', error: '' };
     });
   }, [address.zip, address.country_code, address.state_code]);
+
+  useEffect(() => {
+    const onShipTo = (event) => {
+      const code = event?.detail?.country || readShipToCountry();
+      setAddress((a) => (a.country_code === code ? a : { ...a, country_code: code, state_code: '' }));
+    };
+    window.addEventListener(SHIP_TO_UPDATED_EVENT, onShipTo);
+    return () => window.removeEventListener(SHIP_TO_UPDATED_EVENT, onShipTo);
+  }, []);
+
+  useEffect(() => {
+    if (!items.length) return;
+    const next = repriceCartItems(items, address.country_code);
+    if (next.some((item, i) => item.price !== items[i].price)) {
+      setItems(next);
+      writeCartItems(next);
+      setSubtotal(next.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
+    }
+  }, [address.country_code, items.length]);
 
   const fetchShipping = useCallback(async () => {
     if (items.length === 0) return;
@@ -221,8 +247,12 @@ const Checkout = () => {
         
         if (!isNaN(shippingCost) && shippingCost > 0) {
           console.log('✅ Shipping calculated successfully:', shippingCost);
+          let fulfillmentTax = parseFloat(data.fulfillment_tax);
+          if (isNaN(fulfillmentTax) || fulfillmentTax < 0) fulfillmentTax = 0;
           const newShippingState = { 
             cost: shippingCost, 
+            tax: fulfillmentTax,
+            taxLabel: data.fulfillment_tax_label || '',
             method: data.shipping_method || data.method || 'Standard Shipping', 
             loading: false, 
             error: '', 
@@ -241,7 +271,9 @@ const Checkout = () => {
           console.error('❌ Shipping cost invalid:', shippingCost);
           console.error('❌ Full response:', data);
           const errorState = { 
-            cost: 0, 
+            cost: 0,
+            tax: 0,
+            taxLabel: '',
             method: '', 
             loading: false, 
             error: errorMsg, 
@@ -257,7 +289,9 @@ const Checkout = () => {
         console.error('❌ Response data:', data);
         console.error('❌ Response success field:', data?.success);
         const errorState = { 
-          cost: 0, 
+          cost: 0,
+          tax: 0,
+          taxLabel: '',
           method: '', 
           loading: false, 
           error: errorMsg, 
@@ -281,7 +315,9 @@ const Checkout = () => {
         : `Network error: ${msg}. Please check your connection and try again.`;
       console.error('❌ Shipping calculation exception:', e);
       const errorState = { 
-        cost: 0, 
+        cost: 0,
+        tax: 0,
+        taxLabel: '',
         method: '', 
         loading: false, 
         error: errorMsg, 
@@ -337,6 +373,7 @@ const Checkout = () => {
     const stateUpper = stateTrim ? stateTrim.toUpperCase().slice(0, 32) : '';
     const currentShipping = shippingRef.current;
     const shippingCost = currentShipping.cost || 0;
+    const fulfillmentTax = currentShipping.tax || 0;
 
     let selectedScreenshot = null;
     for (const it of cartToUse) {
@@ -363,13 +400,24 @@ const Checkout = () => {
       const cleanItem = {
         product: it.product || it.name,
         variants: { color: it.color || 'Default', size: it.size || 'Default' },
+        color: it.color || '',
+        size: it.size || '',
         price: it.price || 0,
+        quantity: it.qty ?? it.quantity ?? 1,
         selected_screenshot: finalScreenshot,
         note: it.note || '',
         // Video frame position (seconds) for admin / fulfillment — same as order-level screenshot_timestamp when single item
         screenshot_timestamp: it.screenshot_timestamp ?? it.timestamp ?? screenshotTimestampFromStorage ?? null,
         timestamp: it.screenshot_timestamp ?? it.timestamp ?? screenshotTimestampFromStorage ?? null,
       };
+      const vid = it.printful_variant_id ?? it.printify_variant_id ?? it.variant_id;
+      if (vid != null && vid !== '') {
+        const n = Number(vid);
+        if (!Number.isNaN(n)) {
+          cleanItem.variant_id = n;
+          cleanItem.printful_variant_id = n;
+        }
+      }
       if (it.toolSettings && typeof it.toolSettings === 'object') {
         cleanItem.toolSettings = it.toolSettings;
       }
@@ -385,6 +433,7 @@ const Checkout = () => {
       product_id: cartToUse[0]?.product_id || cartToUse[0]?.id || null,
       sms_consent: false,
       shipping_cost: shippingCost,
+      fulfillment_tax: fulfillmentTax,
       videoUrl: cartToUse[0]?.video_url || null,
       videoTitle: cartToUse[0]?.video_title || null,
       creatorName: cartToUse[0]?.creator_name || null,
@@ -471,7 +520,7 @@ const Checkout = () => {
     setSubtotal(updated.reduce((sum, it) => sum + (it.price || 0) * (it.qty || 1), 0));
     setDesignPreferences((prev) => prev.filter((_, i) => i !== index));
     writeCartItems(updated);
-    setShipping((s) => ({ ...s, calculated: false, cost: 0, error: '' }));
+    setShipping((s) => ({ ...s, calculated: false, cost: 0, tax: 0, taxLabel: '', error: '' }));
     if (updated.length === 0) {
       setShowDesignModal(false);
     }
@@ -499,7 +548,7 @@ const Checkout = () => {
   };
 
   return (
-    <div className="checkout-container">
+    <div className={`checkout-container${signedIn && items.length === 0 ? ' checkout-container--empty' : ''}`}>
       {isDemoStorefront() ? (
         <div className="checkout-sample-stop" role="status">
           <button
@@ -561,6 +610,15 @@ const Checkout = () => {
         </div>
       ) : (
       <>
+      {items.length === 0 ? (
+        <div className="empty-cart">
+          <div className="empty-cart-icon" aria-hidden="true">🛒</div>
+          <h2>Your cart is empty</h2>
+          <p>Add some items to your cart to continue</p>
+          <button type="button" className="btn-primary" onClick={() => navigate('/merchandise')}>Continue Shopping</button>
+        </div>
+      ) : (
+        <>
       <div className="checkout-header">
         <h1>Checkout</h1>
         <div className="checkout-progress">
@@ -569,15 +627,7 @@ const Checkout = () => {
           <div className="progress-step">3. Complete</div>
         </div>
       </div>
-      
-      {items.length === 0 ? (
-        <div className="empty-cart">
-          <div className="empty-cart-icon">🛒</div>
-          <h2>Your cart is empty</h2>
-          <p>Add some items to your cart to continue</p>
-          <button className="btn-primary" onClick={() => navigate('/merchandise')}>Continue Shopping</button>
-        </div>
-      ) : (
+
         <div className="checkout-content">
           <div className="checkout-main">
             {/* Order Items */}
@@ -680,15 +730,17 @@ const Checkout = () => {
                     <label>Country</label>
                     <select 
                       value={address.country_code} 
-                      onChange={e => setAddress(a => ({ ...a, country_code: e.target.value, state_code: '' }))}
+                      onChange={e => {
+                        const next = e.target.value;
+                        writeShipToCountry(next);
+                        setAddress(a => ({ ...a, country_code: next, state_code: '' }));
+                      }}
                       className="form-select"
                       aria-label="Country"
                     >
-                      <option value="US">United States</option>
-                      <option value="CA">Canada</option>
-                      <option value="GB">United Kingdom</option>
-                      <option value="AU">Australia</option>
-                      <option value="DE">Germany</option>
+                      {CHECKOUT_COUNTRY_OPTIONS.map(({ code, name }) => (
+                        <option key={code} value={code}>{name}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -825,17 +877,18 @@ const Checkout = () => {
                   </div>
                 )}
                 {shipping.calculated && shipping.cost > 0 && (
-                  <div className="shipping-result" style={{
-                    background: '#d4edda',
-                    color: '#155724',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    marginTop: '10px',
-                    border: '1px solid #c3e6cb'
-                  }}>
-                    <div className="shipping-method">✓ {shipping.method}</div>
-                  <div className="shipping-cost">${shipping.cost.toFixed(2)}</div>
-                </div>
+                  <div className="shipping-result">
+                    <div className="shipping-result-row">
+                      <span className="shipping-method">✓ {shipping.method}</span>
+                      <span className="shipping-cost">${shipping.cost.toFixed(2)}</span>
+                    </div>
+                    {(shipping.tax || 0) > 0 && (
+                      <div className="shipping-result-row">
+                        <span className="shipping-result-label">{shipping.taxLabel || 'Fulfillment tax'}</span>
+                        <span className="shipping-cost">${shipping.tax.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
                 )}
                 {!shipping.calculated && !shipping.loading && !shipping.error && address.zip && address.zip.trim()
                   && needsStateForShipping(address.country_code) && !hasStateSelected(address.state_code) && (
@@ -874,9 +927,15 @@ const Checkout = () => {
               <span>Shipping</span>
               <span>${shipping.cost.toFixed(2)}</span>
             </div>
+            {(shipping.tax || 0) > 0 && (
+              <div className="summary-line">
+                <span>{shipping.taxLabel || 'Fulfillment tax'}</span>
+                <span>${shipping.tax.toFixed(2)}</span>
+              </div>
+            )}
             <div className="summary-line total">
               <span>Total</span>
-              <span>${(subtotal + (shipping.cost || 0)).toFixed(2)}</span>
+              <span>${(subtotal + (shipping.cost || 0) + (shipping.tax || 0)).toFixed(2)}</span>
             </div>
             
             <div className="checkout-actions">
@@ -950,7 +1009,6 @@ const Checkout = () => {
             </div>
           </div>
         </div>
-      )}
 
       {/* Design preferences – portaled to body so navbar cannot cover it */}
       {showDesignModal && items.length > 0 && createPortal(
@@ -1095,6 +1153,8 @@ const Checkout = () => {
         document.body
       )}
 
+      </>
+      )}
       </>
       )}
       </>

@@ -69,6 +69,17 @@ def shipping_tax_product_data(name: str = "Shipping") -> dict:
     }
 
 
+def fulfillment_tax_product_data(name: str = "Fulfillment tax") -> dict:
+    """
+    Pass-through of Printful's destination tax. Mark nontaxable so Stripe Tax
+    does not add a second VAT/GST on top of this reimbursement line.
+    """
+    return {
+        "name": name,
+        "tax_code": os.getenv("STRIPE_TAX_CODE_NONTAXABLE", "txcd_00000000"),
+    }
+
+
 def apply_automatic_tax_to_checkout_session(
     session_params: Dict[str, Any],
     shipping_address: Dict[str, Any],

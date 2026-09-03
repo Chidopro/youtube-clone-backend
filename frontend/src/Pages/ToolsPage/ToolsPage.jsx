@@ -41,6 +41,25 @@ function isApparelChestPrintProduct(productName) {
   );
 }
 
+function isShirtOrHoodieApparel(productName, category) {
+  const n = String(productName || '').toLowerCase();
+  if (
+    !(
+      n.includes('shirt') ||
+      n.includes('tee') ||
+      n.includes('hoodie') ||
+      n.includes('sweatshirt')
+    )
+  ) {
+    return false;
+  }
+  const cat = String(category || '').toLowerCase().trim();
+  if (cat === 'mugs' || cat === 'hats' || cat === 'bags' || cat === 'pets' || cat === 'misc') {
+    return false;
+  }
+  return cat === 'womens' || cat === 'mens' || cat === 'kids' || !cat;
+}
+
 /**
  * Per-product overlay size/placement. This is the Ribbed Neck / Micro-Rib /
  * Racerback logic: map the overlay to the mint→pink print rectangle painted
@@ -416,11 +435,12 @@ function sizeApparelPrintOverlay(printW, printH, mockupW, mockupH, productName, 
 }
 
 /**
- * Landscape uses the same product print-area width as portrait
- * (`widthFrac` × mockup × cover scale). Height is a shorter band so a
- * wide screenshot fills the print box left-to-right. A product can set
- * `landscapeWidthScale` to inset that band, and `landscapeRightGrow` to
- * extend only the right edge (left stays put).
+ * Landscape uses the measured print-area width (not the portrait cover
+ * scale). Portrait is grown ~5% to hide the mint box; that extra width
+ * makes a landscape band stick out past the mockup rectangle. Height is
+ * a shorter band so a wide screenshot fills left-to-right. A product can
+ * set `landscapeWidthScale` to inset that band, and `landscapeRightGrow`
+ * to extend only the right edge (left stays put).
  */
 function overlaySizeForOrientation(width, height, orientation, productName) {
   const box = getApparelPrintOverride(productName);
@@ -429,8 +449,10 @@ function overlaySizeForOrientation(width, height, orientation, productName) {
     const rightGrow = box?.rightGrow > 0 ? width * box.rightGrow : 0;
     return { width: width + rightGrow, height, rightShift: rightGrow / 2 };
   }
+  const coverScale = printBoxCoverScale(productName);
+  let w = coverScale > 1 ? width / coverScale : width;
   const widthScale = box?.landscapeWidthScale > 0 ? box.landscapeWidthScale : 1;
-  let w = width * widthScale;
+  w *= widthScale;
   const h = Math.min(height, w / 1.5);
   const rightGrow = box?.landscapeRightGrow > 0 ? w * box.landscapeRightGrow : 0;
   w += rightGrow;
@@ -3849,7 +3871,7 @@ const ToolsPage = () => {
                       </span>
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontWeight: 'bold', fontSize: '14px', wordBreak: 'break-word' }}>{displayName}</div>
-                        {!showingFitOverride && (
+                        {!showingFitOverride && !isShirtOrHoodieApparel(product.name, product.category) && (
                         <div style={{ fontSize: '12px', color: '#666' }}>
                           {product.color} • {product.size}
                         </div>
@@ -4119,6 +4141,9 @@ const ToolsPage = () => {
                     })()}
                       </div>
                     </div>
+                    <p className="product-preview-color-note">
+                      Color shown is for display only. You&apos;ll receive the color you selected.
+                    </p>
                     <p className="edit-tools-under-preview">Edit Tools</p>
                   </div>
                 );
@@ -4134,7 +4159,9 @@ const ToolsPage = () => {
         <div style={{ width: '400px', flexShrink: 0 }} className="tools-left-column-spacer"></div>
 
         {/* Right Column: Tools */}
-        <div className="tools-controls-section">
+        <div className="tools-right-column">
+          <h1 className="tools-column-heading">Edit Tools</h1>
+          <div className="tools-controls-section">
           {/* Product Selector - Small dropdown at top of tools */}
           {cartProducts.length > 1 && (
             <div 
@@ -4746,6 +4773,7 @@ const ToolsPage = () => {
             >
               Reset
             </button>
+          </div>
           </div>
         </div>
       </div>

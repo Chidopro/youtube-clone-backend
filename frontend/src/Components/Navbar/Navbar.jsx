@@ -20,6 +20,7 @@ import { CART_UPDATED_EVENT, getCartItemCount } from '../../utils/merchSession'
 import { isShopperSignedIn } from '../../utils/shopperAuth'
 import { endDemoPreviewSession, isDemoPreviewUser, isDemoStorefront, startDemoPreviewSession } from '../../utils/demoStorefront'
 import Sidebar from '../Sidebar/Sidebar'
+import ShipToPicker from '../ShipToPicker/ShipToPicker'
 
 const isUsableHexColor = (value) =>
     typeof value === 'string' && /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value.trim());
@@ -1108,6 +1109,8 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         </>
                     )}
                     {isStorefront ? (
+                    <>
+                    <ShipToPicker />
                     <button
                         type="button"
                         className="nav-cart-btn"
@@ -1130,6 +1133,7 @@ const Navbar = ({ sidebar, setSidebar, resetCategory, category, setCategory }) =
                         </svg>
                         {cartCount > 0 ? <span className="nav-cart-badge">{cartCount > 99 ? '99+' : cartCount}</span> : null}
                     </button>
+                    </>
                     ) : null}
                     </div>
                 </div>

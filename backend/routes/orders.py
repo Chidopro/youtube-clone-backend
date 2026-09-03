@@ -11,6 +11,7 @@ from utils.stripe_checkout import (
 )
 from utils.stripe_tax_checkout import (
     apply_automatic_tax_to_checkout_session,
+    fulfillment_tax_product_data,
     shipping_tax_product_data,
     stripe_product_tax_code_for_line_item,
     tax_line_item_price_data,
@@ -35,15 +36,34 @@ from services.order_email import (
     get_order_screenshot as get_screenshot_for_order,
     _compress_for_inline,
 )
+from checkout_countries import (
+    CHECKOUT_ALLOWED_COUNTRIES,
+    SHIPPING_COUNTRY_ERROR,
+    is_allowed_checkout_country,
+)
 from printful_catalog import (
     MUG_OZ_CATALOG_PRODUCT_IDS,
     PRINTFUL_PLACEHOLDER_ART_URL,
     catalog_product_id_for_product_name,
+    combo_available_for_country,
     lookup_catalog_variant_id,
     printful_request_headers,
+    resolve_cart_item_unit_price,
     try_v2_shipping_rates,
 )
+from printful_regions import (
+    au_state_code_from_postcode,
+    normalize_ship_to_country,
+    probe_recipient_for_country,
+)
 from printful_shipping_buckets import printful_table_shipping_floor_usd
+from printful_estimate import (
+    ESTIMATE_PLACEHOLDER_FILE_URL,
+    fulfillment_tax_applies,
+    fulfillment_tax_label,
+    quote_fulfillment_tax_usd,
+    resolve_checkout_fulfillment_tax,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -111,11 +131,15 @@ def _resolve_printful_variant_for_shipping_line(item: dict) -> int:
 
 def _recipient_for_printful_shipping(shipping_address: dict, country: str, postal_code: str, recipient_state: str) -> dict:
     """Recipient for Printful APIs; omit empty strings (some clients send city: '')."""
+    cc = str(country or "").strip().upper()
+    state = str(recipient_state or "").strip().upper()
+    if not state and cc == "AU":
+        state = au_state_code_from_postcode(postal_code)
     r: dict = {"country_code": country}
     if postal_code:
         r["zip"] = postal_code
-    if recipient_state:
-        r["state_code"] = recipient_state
+    if state:
+        r["state_code"] = state
     city = (shipping_address.get("city") or "").strip()
     if city:
         r["city"] = city
@@ -123,6 +147,70 @@ def _recipient_for_printful_shipping(shipping_address: dict, country: str, posta
     if a1:
         r["address1"] = a1
     return r
+
+
+def _cart_items_for_printful_estimate(cart: list) -> list:
+    """Catalog variant lines for /orders/estimate-costs (same IDs as shipping quotes)."""
+    items = []
+    for item in cart or []:
+        qty = item.get("quantity")
+        if qty is None:
+            qty = item.get("qty", 1)
+        try:
+            qty = max(1, int(qty))
+        except (TypeError, ValueError):
+            qty = 1
+        vid_int = _resolve_printful_variant_for_shipping_line(item)
+        row = {
+            "variant_id": vid_int,
+            "quantity": qty,
+            "files": [{"type": "default", "url": ESTIMATE_PLACEHOLDER_FILE_URL}],
+        }
+        items.append(row)
+    return items
+
+
+def _attach_fulfillment_tax(body: dict, cart: list, recipient: dict, api_key: str, country: str) -> dict:
+    out = dict(body or {})
+    out["fulfillment_tax_label"] = fulfillment_tax_label(country)
+    if not fulfillment_tax_applies(country):
+        out["fulfillment_tax"] = 0.0
+        return out
+    tax = 0.0
+    if api_key and recipient:
+        try:
+            quoted = quote_fulfillment_tax_usd(api_key, recipient, _cart_items_for_printful_estimate(cart))
+            if quoted is not None:
+                tax = quoted
+        except Exception as e:
+            logger.warning("Fulfillment tax quote failed: %s", e)
+            tax = 0.0
+    out["fulfillment_tax"] = float(tax)
+    return out
+
+
+def _json_shipping_ok(body: dict, cart: list, recipient: dict, api_key: str, country: str):
+    return jsonify(_attach_fulfillment_tax(body, cart, recipient, api_key, country))
+
+
+def checkout_fulfillment_tax_usd(cart: list, shipping_address: dict, client_tax=0) -> float:
+    """Live Printful destination tax for Stripe Checkout; falls back to the client quote."""
+    country = (shipping_address or {}).get("country_code") or "US"
+    if not fulfillment_tax_applies(country):
+        return 0.0
+    postal_code = _parse_zip(shipping_address or {})
+    state_raw = (shipping_address or {}).get("state_code") or (shipping_address or {}).get("state") or ""
+    recipient_state = str(state_raw).strip().upper()[:32] if state_raw else ""
+    recipient = _recipient_for_printful_shipping(
+        shipping_address or {}, country, postal_code, recipient_state
+    )
+    api_key = _get_config("PRINTFUL_API_KEY") or os.getenv("PRINTFUL_API_KEY") or ""
+    return resolve_checkout_fulfillment_tax(
+        api_key,
+        recipient,
+        _cart_items_for_printful_estimate(cart),
+        client_tax,
+    )
 
 
 def _variant_ids_from_printful_error(obj) -> set:
@@ -519,6 +607,10 @@ def place_order():
         
         shipping_address = addr_result
         
+        if not is_allowed_checkout_country(shipping_address.get("country_code")):
+            response = jsonify({"success": False, "error": SHIPPING_COUNTRY_ERROR})
+            return _allow_origin(response), 400
+        
         # Generate order ID
         full_uuid = str(uuid.uuid4())
         order_id = f"ORD-{full_uuid[:8].upper()}"
@@ -910,7 +1002,7 @@ def send_order():
                     success_url=f"{base_url}/order-success?order_id={order_id}",
                     cancel_url=f"{base_url}/checkout",
                     phone_number_collection={"enabled": True},
-                    shipping_address_collection={"allowed_countries": ["US", "CA", "GB", "AU", "DE"]},
+                    shipping_address_collection={"allowed_countries": list(CHECKOUT_ALLOWED_COUNTRIES)},
                     payment_intent_data={"statement_descriptor": "ScreenMerch"},
                     metadata={
                         "order_id": order_id,
@@ -966,6 +1058,10 @@ def create_checkout_session():
         
         shipping_address = addr_result
         
+        if not is_allowed_checkout_country(shipping_address.get("country_code")):
+            response = jsonify({"error": SHIPPING_COUNTRY_ERROR})
+            return _allow_origin(response), 400
+        
         # Ensure shipping_cost is valid
         shipping_cost_raw = data.get("shipping_cost", 0)
         try:
@@ -978,11 +1074,22 @@ def create_checkout_session():
         if not cart or not isinstance(cart, list):
             response = jsonify({"error": "Cart is empty or invalid"})
             return _allow_origin(response), 400
+
+        fulfillment_tax = checkout_fulfillment_tax_usd(
+            cart, shipping_address, data.get("fulfillment_tax")
+        )
         
         # Generate order ID
         full_uuid = str(uuid.uuid4())
         order_id = f"ORD-{full_uuid[:8].upper()}"
-        total_amount = sum(item.get('price', 0) for item in cart) + shipping_cost
+        products = _get_products_list()
+        ship_country = shipping_address.get("country_code") or "US"
+        merch_total = 0.0
+        for item in cart:
+            priced = resolve_cart_item_unit_price(item, products, ship_country)
+            if priced:
+                merch_total += float(priced)
+        total_amount = merch_total + shipping_cost + fulfillment_tax
         
         # Get screenshot from cart items
         checkout_screenshot = None
@@ -1002,6 +1109,9 @@ def create_checkout_session():
             enriched_item = item.copy()
             item_screenshot = (item.get("selected_screenshot") or item.get("screenshot") or 
                              item.get("img") or item.get("thumbnail") or checkout_screenshot)
+            regional_price = resolve_cart_item_unit_price(item, products, ship_country)
+            if regional_price:
+                enriched_item["price"] = regional_price
             enriched_item.update({
                 "videoName": data.get("videoTitle", data.get("video_title", "Unknown Video")),
                 "creatorName": data.get("creatorName", data.get("creator_name", "Unknown Creator")),
@@ -1096,17 +1206,12 @@ def create_checkout_session():
         # Build Stripe line items
         products = _get_products_list()
         line_items = []
+        ship_country = shipping_address.get("country_code") or "US"
         for item in cart:
-            item_price = item.get('price')
-            if item_price and item_price > 0:
-                unit_amount = int(item_price * 100)
-            else:
-                product_info = next((p for p in products if p.get("name") == item.get("product")), None)
-                if not product_info:
-                    product_info = next((p for p in products if p.get("name", "").lower() == item.get("product", "").lower()), None)
-                if not product_info:
-                    continue
-                unit_amount = int(product_info.get("price", 0) * 100)
+            item_price = resolve_cart_item_unit_price(item, products, ship_country)
+            if not item_price or item_price <= 0:
+                continue
+            unit_amount = int(round(float(item_price) * 100))
             
             line_items.append({
                 "price_data": tax_line_item_price_data(
@@ -1127,6 +1232,20 @@ def create_checkout_session():
                 ),
                 "quantity": 1,
             })
+
+        if fulfillment_tax and fulfillment_tax > 0:
+            line_items.append({
+                "price_data": tax_line_item_price_data(
+                    fulfillment_tax_product_data(fulfillment_tax_label(ship_country)),
+                    int(round(float(fulfillment_tax) * 100)),
+                ),
+                "quantity": 1,
+            })
+            logger.info(
+                "Added fulfillment tax line $%s country=%s",
+                fulfillment_tax,
+                ship_country,
+            )
         
         if not line_items:
             response = jsonify({"error": "No valid items in cart to check out."})
@@ -1725,6 +1844,11 @@ def calculate_shipping():
         data = request.get_json()
         shipping_address = data.get('shipping_address', {})
         country = shipping_address.get('country_code', 'US')
+        if not is_allowed_checkout_country(country):
+            return jsonify({
+                "success": False,
+                "error": SHIPPING_COUNTRY_ERROR
+            }), 400
         cart = data.get('cart', [])
         
         if not cart:
@@ -1751,11 +1875,12 @@ def calculate_shipping():
                 "success": False,
                 "error": "Live shipping is temporarily unavailable. Please try again shortly."
             }), 503
+        recipient_clean = None
         if printful_api_key:
+            recipient_clean = _recipient_for_printful_shipping(
+                shipping_address, country, postal_code, recipient_state
+            )
             try:
-                recipient_clean = _recipient_for_printful_shipping(
-                    shipping_address, country, postal_code, recipient_state
-                )
                 shipping_items = []
                 line_variant_qty = []
                 for item in cart:
@@ -1805,13 +1930,13 @@ def calculate_shipping():
                             rate = standard_rate or rates_list[0]
                             cost = rate.get('rate') or rate.get('cost') or rate.get('price')
                             if cost:
-                                return jsonify({
+                                return _json_shipping_ok({
                                     "success": True,
                                     "shipping_cost": float(cost),
                                     "currency": "USD",
                                     "delivery_days": str(rate.get('minDeliveryDays', '5-7')),
                                     "shipping_method": rate.get('name', 'Standard Shipping')
-                                })
+                                }, cart, recipient_clean, printful_api_key, country)
                     else:
                         logger.warning(
                             "Printful shipping/rates 200 but no result: %s",
@@ -1821,16 +1946,16 @@ def calculate_shipping():
                         printful_api_key, recipient_clean, line_variant_qty, "USD"
                     )
                     if v2_ok:
-                        return jsonify({
+                        return _json_shipping_ok({
                             "success": True,
                             "shipping_cost": float(v2_ok["shipping_cost"]),
                             "currency": "USD",
                             "delivery_days": str(v2_ok.get("delivery_days", "5-7")),
                             "shipping_method": v2_ok.get("shipping_method", "Standard Shipping"),
-                        })
+                        }, cart, recipient_clean, printful_api_key, country)
                     fb = _us_printful_table_fallback_if_enabled(cart, country)
                     if fb:
-                        return jsonify(fb)
+                        return _json_shipping_ok(fb, cart, recipient_clean, printful_api_key, country)
                 else:
                     logger.warning(
                         "Printful shipping/rates HTTP %s: %s",
@@ -1845,16 +1970,16 @@ def calculate_shipping():
                             "Using Printful v2/shipping-rates after legacy /shipping/rates HTTP %s",
                             response.status_code,
                         )
-                        return jsonify({
+                        return _json_shipping_ok({
                             "success": True,
                             "shipping_cost": float(v2_ok["shipping_cost"]),
                             "currency": "USD",
                             "delivery_days": str(v2_ok.get("delivery_days", "5-7")),
                             "shipping_method": v2_ok.get("shipping_method", "Standard Shipping"),
-                        })
+                        }, cart, recipient_clean, printful_api_key, country)
                     fb = _us_printful_table_fallback_if_enabled(cart, country)
                     if fb:
-                        return jsonify(fb)
+                        return _json_shipping_ok(fb, cart, recipient_clean, printful_api_key, country)
                     try:
                         body_text = (response.text or "").lower()
                         if response.status_code == 400 and "out of stock" in body_text:
@@ -1885,7 +2010,7 @@ def calculate_shipping():
                             )
                             fb = _us_printful_table_fallback_if_enabled(cart, country)
                             if fb:
-                                return jsonify(fb)
+                                return _json_shipping_ok(fb, cart, recipient_clean, printful_api_key, country)
                             return jsonify({
                                 "success": False,
                                 "code": "SHIPPING_QUOTE_REJECTED",
@@ -1901,7 +2026,7 @@ def calculate_shipping():
         
         fb = _us_printful_table_fallback_if_enabled(cart, country)
         if fb:
-            return jsonify(fb)
+            return _json_shipping_ok(fb, cart, recipient_clean, printful_api_key, country)
         logger.error(
             "calculate-shipping failed to fetch live rates; cart_lines=%s zip=%s country=%s state=%s",
             len(cart), postal_code, country, recipient_state,
@@ -1931,6 +2056,7 @@ def check_variant_availability():
         color = str(data.get("color") or "").strip()
         size = str(data.get("size") or "").strip()
         variant_id = data.get("variant_id")
+        country_code = normalize_ship_to_country(data.get("country_code") or data.get("country") or "US")
 
         if not product:
             return jsonify({"success": False, "error": "Product is required."}), 400
@@ -1947,6 +2073,24 @@ def check_variant_availability():
                 "code": "OUT_OF_STOCK",
                 "error": msg,
                 "action": "Please choose a different color, size, or product.",
+            }), 200
+
+        region_ok = combo_available_for_country(product, color, size, country_code)
+        if region_ok is False:
+            dest = {
+                "US": "the United States",
+                "CA": "Canada",
+                "GB": "the United Kingdom",
+                "IE": "Ireland",
+                "AU": "Australia",
+                "DE": "Germany",
+            }.get(country_code, country_code)
+            return jsonify({
+                "success": True,
+                "available": False,
+                "code": "OUT_OF_STOCK",
+                "error": f"{product} ({color} / {size}) is not available to ship to {dest}.",
+                "action": "Choose another color or size, or switch the ship-to country in the header.",
             }), 200
 
         resolved_vid = None
@@ -1978,12 +2122,7 @@ def check_variant_availability():
             }), 503
 
         shipping_payload = {
-            "recipient": {
-                "country_code": "US",
-                "zip": "10001",
-                "state_code": "NY",
-                "city": "New York",
-            },
+            "recipient": probe_recipient_for_country(country_code),
             "items": [{"variant_id": variant_id, "quantity": 1}],
             "currency": "USD",
         }

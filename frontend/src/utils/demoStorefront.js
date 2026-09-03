@@ -2,6 +2,8 @@ import { getSubdomain } from './subdomainService';
 
 export const DEMO_STOREFRONT_SUBDOMAIN = 'maxfreedom';
 export const DEMO_STOREFRONT_ORIGIN = `https://${DEMO_STOREFRONT_SUBDOMAIN}.screenmerch.com`;
+/** Platform test storefront — stays live at filialsons.screenmerch.com, not a public homepage seat. */
+export const TEST_STOREFRONT_SUBDOMAIN = 'filialsons';
 export const DEMO_DASHBOARD_PATH = '/demo/dashboard';
 export const DEMO_PREVIEW_SESSION_KEY = 'screenmerch_demo_preview_session';
 export const DEMO_PREVIEW_USER_ID = 'demo-preview';
