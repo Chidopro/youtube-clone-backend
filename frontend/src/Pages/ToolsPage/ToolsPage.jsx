@@ -545,52 +545,6 @@ function cartIdentity(products) {
     .join(';');
 }
 
-function defaultSessionProductName() {
-  try {
-    const cat = String(localStorage.getItem('last_selected_category') || 'mens').toLowerCase();
-    if (cat === 'womens') return "Women's Shirt";
-    if (cat === 'kids') return 'Kids Shirt';
-    return 'T-Shirt';
-  } catch {
-    return 'T-Shirt';
-  }
-}
-
-function pendingScreenshotUrl(data) {
-  if (!data || typeof data !== 'object') return '';
-  return (
-    data.selected_screenshot ||
-    data.edited_screenshot ||
-    data.thumbnail ||
-    (Array.isArray(data.screenshots) && data.screenshots[0]) ||
-    ''
-  );
-}
-
-/** Tools can run from the selected merch image without a shopping-cart item. */
-function sessionToolsProductFromPending() {
-  try {
-    const data = readPendingMerchData() || {};
-    const screenshot = pendingScreenshotUrl(data);
-    if (!screenshot) return null;
-    const rawName = data.selected_product_name || defaultSessionProductName();
-    const name = matchPrintAreaProductName(rawName) || rawName;
-    return {
-      originalCartIndex: 0,
-      name,
-      color: 'N/A',
-      size: 'N/A',
-      screenshot,
-      productImage: '',
-      toolSettings: null,
-      filteredIndex: 0,
-      sessionOnly: true,
-    };
-  } catch {
-    return null;
-  }
-}
-
 function getInitialCartPrintFit() {
   if (typeof window === 'undefined') return { name: '', fit: 'none' };
   try {
@@ -600,11 +554,7 @@ function getInitialCartPrintFit() {
     }
     const items = readCartItems();
     if (!Array.isArray(items) || items.length === 0) {
-      if (!isDemoStorefront()) return { name: '', fit: 'none' };
-      const sessionProduct = sessionToolsProductFromPending();
-      if (!sessionProduct) return { name: '', fit: 'none' };
-      const name = matchPrintAreaProductName(sessionProduct.name) || sessionProduct.name || '';
-      return { name, fit: name ? 'product' : 'none' };
+      return { name: '', fit: 'none' };
     }
 
     const withShots = items
@@ -2010,55 +1960,11 @@ const ToolsPage = () => {
             }
           }
         } else {
-          const sessionProduct = isDemoStorefront() ? sessionToolsProductFromPending() : null;
-          if (sessionProduct) {
-            if (sessionPreviewUrlRef.current) {
-              sessionProduct.productImage = sessionPreviewUrlRef.current;
-            }
-            cartCountRef.current = 1;
-            cartIdentityRef.current = cartIdentity([sessionProduct]);
-            setCartProducts((prev) => {
-              const existing = prev[0];
-              if (
-                existing?.sessionOnly &&
-                existing.screenshot === sessionProduct.screenshot &&
-                existing.name === sessionProduct.name &&
-                existing.productImage === sessionProduct.productImage
-              ) {
-                return prev;
-              }
-              if (existing?.sessionOnly && existing.screenshot === sessionProduct.screenshot && existing.productImage) {
-                return [{ ...sessionProduct, productImage: existing.productImage }];
-              }
-              return [sessionProduct];
-            });
-            setSelectedCartProductIndex((prev) => (prev === 0 ? prev : 0));
-            const matchedName = matchPrintAreaProductName(sessionProduct.name) || sessionProduct.name;
-            if (matchedName) {
-              setSelectedProductName((prev) => prev || matchedName);
-              setPrintAreaFit((prev) => (prev && prev !== 'none' ? prev : 'product'));
-            }
-            if (!sessionProduct.productImage && sessionProduct.name) {
-              fetch(apiJoin(`/api/product-preview-url?name=${encodeURIComponent(sessionProduct.name)}`))
-                .then((r) => (r.ok ? r.json() : null))
-                .then((data) => {
-                  if (!data?.url) return;
-                  sessionPreviewUrlRef.current = data.url;
-                  setCartProducts((prev) => {
-                    if (!prev[0]?.sessionOnly) return prev;
-                    if (prev[0].productImage === data.url) return prev;
-                    return [{ ...prev[0], productImage: data.url }];
-                  });
-                })
-                .catch(() => {});
-            }
-          } else {
-            cartCountRef.current = 0;
-            cartIdentityRef.current = '';
-            writeToolsSeenCartCount(0);
-            setCartProducts([]);
-            setSelectedCartProductIndex(null);
-          }
+          cartCountRef.current = 0;
+          cartIdentityRef.current = '';
+          writeToolsSeenCartCount(0);
+          setCartProducts([]);
+          setSelectedCartProductIndex(null);
         }
       } catch (e) {
         console.warn('Could not load cart items:', e);
@@ -3765,6 +3671,19 @@ const ToolsPage = () => {
     navigate('/merchandise');
   };
 
+  const leaveEmptyToolsToBrowse = () => {
+    resetToolsEditorSession();
+    applyEditorReset();
+    let category = 'mens';
+    try { category = localStorage.getItem('last_selected_category') || 'mens'; } catch (_) {}
+    navigate(`/product/browse?category=${encodeURIComponent(category)}`, { replace: true });
+  };
+
+  const showEmptyCartWindow =
+    !searchParams.get('order_id') &&
+    !isFromOrderEmail &&
+    readCartItems().length === 0;
+
   return (
     <div className="tools-page-container" ref={containerRef}>
       <button
@@ -3780,6 +3699,17 @@ const ToolsPage = () => {
         <h1>Edit Tools</h1>
         <p className="tools-subtitle">Edit your screenshot with professional tools</p>
       </div>
+
+      {showEmptyCartWindow && (
+        <div className="tools-empty-cart-modal" onClick={leaveEmptyToolsToBrowse}>
+          <div className="tools-empty-cart-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="tools-empty-cart-message">
+              <div className="tools-empty-cart-icon">🛒</div>
+              <p>Your cart is empty</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {searchParams.get('order_id') && (orderScreenshotsLoading || orderScreenshotsError) && (
         <div style={{

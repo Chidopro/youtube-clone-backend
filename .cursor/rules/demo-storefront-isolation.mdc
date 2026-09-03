@@ -15,6 +15,6 @@ Sample-only:
 - Checkout “These items are not for sale” and no real charges
 - Browse/cart without shopper sign-in
 - Apply Edits returns to browse with cart open, not checkout
-- Tools can run from a pending screenshot with no cart item
+- Product Preview / Tools require a cart item; an empty cart opens the empty-cart window instead of a default product
 
 Real storefronts keep a persistent cart, real checkout, and the same Tools “newest cart item” preview reset after Add to Cart. Editing a cart item from checkout still focuses that item.

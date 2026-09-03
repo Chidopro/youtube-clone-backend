@@ -1451,3 +1451,47 @@ body.tools-page-active .site-footer {
   }
 }
 
+.tools-empty-cart-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding-top: 80px;
+}
+
+.tools-empty-cart-modal-content {
+  background: rgba(255, 255, 255, 0.95);
+  width: min(360px, 92vw);
+  max-height: calc(80vh - 80px);
+  overflow: auto;
+  border-radius: 0;
+  padding: 32px 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tools-empty-cart-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px 8px;
+  width: 100%;
+}
+
+.tools-empty-cart-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.tools-empty-cart-message p {
+  font-size: 18px;
+  color: #666;
+  margin: 0;
+}
+

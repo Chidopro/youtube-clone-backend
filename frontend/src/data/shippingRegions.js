@@ -30,9 +30,9 @@ export const CA_PROVINCE_OPTIONS = [
 /** Country dropdown + Stripe ``allowed_countries`` (keep codes in sync with backend/checkout_countries.py). */
 export const CHECKOUT_COUNTRY_OPTIONS = [
   { code: 'US', name: 'United States' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'IE', name: 'Ireland' },
   { code: 'AU', name: 'Australia' },
+  { code: 'CA', name: 'Canada' },
   { code: 'DE', name: 'Germany' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'GB', name: 'United Kingdom' },
 ];

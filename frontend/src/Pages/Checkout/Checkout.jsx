@@ -1135,7 +1135,7 @@ const Checkout = () => {
               return (
                 <>
                   <button type="button" className="design-modal-tools-btn" onClick={handleGoToTools}>
-                    Tools page
+                    Go to Product Preview
                   </button>
                   <div className="design-modal-actions">
                     <button type="button" className="btn-outline" onClick={() => setShowDesignModal(false)}>

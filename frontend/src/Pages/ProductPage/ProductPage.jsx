@@ -54,6 +54,34 @@ const getProductImageUrl = (product, preferPreview = true) => {
 // Cart screenshots still need a unique query when the same URL is reused.
 const getCacheBuster = () => `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 const categoryBrowseCache = new Map();
+const BROWSE_CACHE_KEY = (category) => `sm_browse_${String(category || '').trim().toLowerCase()}`;
+
+function readBrowseCache(category) {
+  const mem = categoryBrowseCache.get(category);
+  if (mem?.products?.length) return mem;
+  try {
+    const raw = sessionStorage.getItem(BROWSE_CACHE_KEY(category));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.products?.length) {
+      categoryBrowseCache.set(category, parsed);
+      return parsed;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function writeBrowseCache(category, data) {
+  if (!data?.products?.length) return;
+  categoryBrowseCache.set(category, data);
+  try {
+    sessionStorage.setItem(BROWSE_CACHE_KEY(category), JSON.stringify(data));
+  } catch {
+    /* ignore */
+  }
+}
 
 const preloadImageUrls = (urls) => {
   (urls || []).forEach((url) => {
@@ -127,6 +155,7 @@ const ProductPage = ({ sidebar }) => {
   const [savingFavorite, setSavingFavorite] = useState(false);
   const [selectedScreenshotForFavorite, setSelectedScreenshotForFavorite] = useState(null);
   const [highlightedProductIndex, setHighlightedProductIndex] = useState(null);
+  const [browseReload, setBrowseReload] = useState(0);
   const productCardRefs = useRef([]);
   const editPrefillKeyRef = useRef('');
   const lastTouchedCartIndexRef = useRef(null);
@@ -224,60 +253,17 @@ const ProductPage = ({ sidebar }) => {
     }
   }, [qsCategory, category, openCart, searchParams]);
 
-  const categories = SHOP_CATEGORIES;
-
-  const handleCategoryClick = (newCategory) => {
-    if (window.__DEBUG__) {
-    console.log('🔄 Category clicked:', newCategory);
-    console.log('🔄 Current category:', category);
-    console.log('🔄 Product ID:', productId);
-    console.log('🔄 Authenticated:', authenticated);
-    console.log('🔄 Email:', email);
-    }
-
-    const needsBrowse =
-      !productId ||
-      productId === 'browse' ||
-      productId === 'undefined' ||
-      productId === 'null';
-
-    const base = needsBrowse ? '/product/browse' : `/product/${productId}`;
-
-    const newUrl =
-      `${base}?category=${encodeURIComponent(newCategory)}` +
-      `&authenticated=${authenticated}` +
-      `&email=${encodeURIComponent(email || '')}` +
-      (isShopCatalog ? '&from=shop' : '') +
-      (isEditingCart ? `&editCart=${editingCartIndex}` : '');
-
-    // Persist for mobile reloads
-    try { localStorage.setItem('last_selected_category', newCategory); } catch {}
-    try {
-      const staticProducts = getStaticProductsForCategory(newCategory);
-      preloadImageUrls(staticProducts.map((p) => p.preview_image || p.main_image));
-    } catch {}
-
-    // Navigate (iOS-safe fallback)
-    try {
-      navigate(newUrl);
-      if (window.__DEBUG__) console.log('✅ Navigate called successfully to', newUrl);
-    } catch (error) {
-      console.error('❌ Navigate failed, falling back:', error);
-      window.location.assign(newUrl);
-    }
-  };
-
   const getStaticProductsForCategory = (category) => {
     // Use same category_mappings logic as backend
     const category_mappings = {
       'mens': [
-        "Hoodie",
-        "Men's Tank Top", 
-        "Mens Fitted T-Shirt",
-        "Men's Fitted Long Sleeve",
         "T-Shirt",
-        "Oversized T-Shirt",
         "Men's Long Sleeve Shirt",
+        "Mens Fitted T-Shirt",
+        "Men's Tank Top",
+        "Oversized T-Shirt",
+        "Men's Fitted Long Sleeve",
+        "Hoodie",
         "Champion Hoodie"
       ],
       'womens': [
@@ -394,7 +380,7 @@ const ProductPage = ({ sidebar }) => {
       "Jigsaw Puzzle with Tin": { filename: "jigsawpuzzle.png", preview: "jigsawpuzzlepreview.png", price: 25.40 }
     };
 
-    // Return products with actual image paths from backend
+    // Same cheapest → most expensive order as the browse API.
     return category_products.map(productName => {
       const productData = productImageMap[productName] || { filename: "placeholder.png", preview: "placeholder.png", price: 25.00 };
       return {
@@ -404,7 +390,7 @@ const ProductPage = ({ sidebar }) => {
         preview_image: `${getImgBase()}/${productData.preview}`,
         options: { color: ["Black", "White", "Hazy Pink", "Pale Pink", "Orchid", "Ecru", "White", "Bubblegum", "Bone", "Mineral", "Natural"], size: ["XS", "S", "M", "L", "XL"] }
       };
-    });
+    }).sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0) || String(a.name).localeCompare(String(b.name)));
   };
 
   const getVisibleScreenshots = () => {
@@ -728,6 +714,11 @@ const ProductPage = ({ sidebar }) => {
   };
 
   const goToToolsPage = async () => {
+    const cartNow = readCartItems();
+    if (!Array.isArray(cartNow) || cartNow.length === 0) {
+      setIsCartOpen(true);
+      return;
+    }
     // Prefer the item being edited or last updated, then the most recently added cart item.
     try {
       if (isEditingCart) {
@@ -845,6 +836,7 @@ const ProductPage = ({ sidebar }) => {
   useEffect(() => {
     const wantedCategory = category;
     const controller = new AbortController();
+    let cancelled = false;
 
     if (window.__DEBUG__) {
     console.log('🔄 useEffect triggered with:', { productId, category, authenticated, email });
@@ -874,153 +866,110 @@ const ProductPage = ({ sidebar }) => {
       preloadImageUrls((next.products || []).map((p) => p._displayImageUrl));
     };
 
-    const cached = categoryBrowseCache.get(wantedCategory);
+    const cached = readBrowseCache(wantedCategory);
     if (cached) {
       paintProducts(cached);
       setLoading(false);
       setError(null);
-    } else {
-      const staticProducts = getStaticProductsForCategory(wantedCategory);
-      if (staticProducts.length) {
-        setProductData((prev) => withDisplayUrls({
-          success: true,
-          products: staticProducts,
-          category: wantedCategory,
-          product: isShopCatalog ? { thumbnail_url: '', screenshots: [] } : (prev?.product || { thumbnail_url: '', screenshots: [] })
-        }));
-        preloadImageUrls(staticProducts.map((p) => p.preview_image || p.main_image));
-        setLoading(false);
-      } else if (!productData) {
-        setLoading(true);
-      }
+    } else if (!productData) {
+      setLoading(true);
     }
 
-    const fetchProductData = async () => {
-      try {
-        setError(null); // Clear any previous errors
-
-        // Handle browse mode - use 'browse' when productId is undefined or 'dynamic'
-        const actualProductId = productId || 'browse';
-        const isBrowseMode = !productId || productId === 'browse' || productId === 'dynamic';
-
-        const apiBase = getBackendUrl().replace(/\/$/, '');
-        const url = isBrowseMode
-          ? `${apiBase}/api/product/browse?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}`
-          : `${apiBase}/api/product/${actualProductId}?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}`;
-
-        // Enable debug for mobile
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        if (window.__DEBUG__ || isMobile) {
-        console.log('🌐 Fetching product data from:', url);
-        console.log('📱 User Agent:', navigator.userAgent);
-          console.log('📱 Is Mobile:', isMobile);
-          console.log('🔧 Debug mode enabled for mobile');
-          console.log('🔧 ProductId:', productId);
-          console.log('🔧 Category:', category);
-          console.log('🔧 IsBrowseMode:', isBrowseMode);
-          
-          // Mobile debugging (console only, no alerts)
-          if (isMobile) {
-            console.log(`Mobile Debug:\nProductId: ${productId}\nCategory: ${category}\nIsBrowseMode: ${isBrowseMode}\nURL: ${url}`);
-          }
-        }
-
-        // Fetch product data from backend API with mobile-friendly settings
-        let response;
-        let timeoutId;
-        try {
-          if (window.__DEBUG__ || isMobile) {
-            console.log('🚀 Starting fetch request...');
-            console.log('📱 Mobile detection:', isMobile);
-            console.log('📱 URL:', url);
-          }
-          timeoutId = setTimeout(() => controller.abort(), 30000);
-          response = await fetch(url, {
-          method: 'GET',
-            cache: 'default',
-            signal: controller.signal
-        });
-          clearTimeout(timeoutId);
-        } catch (e) {
-          if (timeoutId) clearTimeout(timeoutId);
-          throw e;
-        }
-
-          if (window.__DEBUG__ || isMobile) {
-            console.log('✅ Fetch completed, status:', response.status);
-            console.log('✅ Response headers:', Object.fromEntries(response.headers.entries()));
-          }
-
-        if (window.__DEBUG__) {
-        console.log('📡 Response status:', response.status);
-        console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
-        }
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('❌ API Error Response:', errorText);
-          if (response.status === 429) {
-            throw new Error('Too many requests. Please wait a moment and try again.');
-          }
-          throw new Error(`Failed to fetch product data: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-
-        if (window.__DEBUG__) {
-        console.log('📦 Product Data Received:', data);
-        console.log('📸 Thumbnail URL:', data.product?.thumbnail_url);
-        console.log('📸 Screenshots:', data.product?.screenshots);
-        console.log('📸 Screenshots Length:', data.product?.screenshots?.length || 0);
-        console.log('📦 Products Count:', data.products?.length || 0);
-        console.log('📦 Category:', data.category);
-        console.log('📦 Success:', data.success);
-        }
-
-        // Debug the data structure
-        if (window.__DEBUG__ || isMobile) {
-          console.log('📦 Raw API Response:', data);
-          console.log('📦 Products array:', data.products);
-          console.log('📦 Products length:', data.products?.length);
-          console.log('📦 Success flag:', data.success);
-        }
-        
-        // Cache the products data for offline use
-        try {
-          localStorage.setItem('cached_products', JSON.stringify(data.products));
-          if (window.__DEBUG__) console.log('💾 Cached products data for offline use');
-        } catch (e) {
-          console.warn('Could not cache products data');
-        }
-        
-        // Use real backend data when API call succeeds
-        if (window.__DEBUG__ || isMobile) {
-          console.log('✅ Using real backend data - API call succeeded');
-          console.log('✅ Products from backend:', data.products?.length || 0);
-          console.log('✅ First product image:', data.products?.[0]?.main_image);
-          console.log('✅ First product preview:', data.products?.[0]?.preview_image);
-          console.log('✅ Mobile fallback should NOT be used - API succeeded');
-        }
-
-        // Ignore stale response if user already switched category
-        if (data.category !== wantedCategory) {
-          setLoading(false);
-          return;
-        }
-        categoryBrowseCache.set(wantedCategory, data);
-        paintProducts(data);
-      } catch (err) {
-        if (err?.name === 'AbortError') return;
-        console.error('Error fetching product data:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+    const paintFallbackCatalog = () => {
+      const cachedFallback = readBrowseCache(wantedCategory);
+      if (cachedFallback?.products?.length) {
+        paintProducts(cachedFallback);
+        return true;
       }
+      const staticProducts = getStaticProductsForCategory(wantedCategory);
+      if (!staticProducts.length) return false;
+      paintProducts({
+        success: true,
+        products: staticProducts,
+        category: wantedCategory,
+        product: isShopCatalog ? { thumbnail_url: '', screenshots: [] } : (productData?.product || { thumbnail_url: '', screenshots: [] }),
+      });
+      return true;
     };
 
-    fetchProductData();
-    return () => controller.abort();
-  }, [productId, category, authenticated, email, isShopCatalog]);
+    const fetchProductData = async () => {
+      setError(null);
+
+      const actualProductId = productId || 'browse';
+      const isBrowseMode = !productId || productId === 'browse' || productId === 'dynamic';
+      const apiBase = getBackendUrl().replace(/\/$/, '');
+      const url = isBrowseMode
+        ? `${apiBase}/api/product/browse?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}`
+        : `${apiBase}/api/product/${actualProductId}?category=${encodeURIComponent(category)}&authenticated=${authenticated}&email=${encodeURIComponent(email || '')}`;
+
+      const retryDelaysMs = [0, 1200, 2800];
+      let lastError = null;
+
+      for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
+        if (cancelled || controller.signal.aborted) return;
+        if (retryDelaysMs[attempt]) {
+          await new Promise((resolve) => setTimeout(resolve, retryDelaysMs[attempt]));
+          if (cancelled || controller.signal.aborted) return;
+        }
+
+        const attemptController = new AbortController();
+        const abortAttempt = () => attemptController.abort();
+        controller.signal.addEventListener('abort', abortAttempt);
+        const timeoutId = window.setTimeout(abortAttempt, 25000);
+        try {
+          const response = await fetch(url, {
+            method: 'GET',
+            cache: 'default',
+            signal: attemptController.signal,
+          });
+          if (response.status === 502 || response.status === 503 || response.status === 504) {
+            lastError = new Error(`Failed to fetch product data: ${response.status}`);
+            continue;
+          }
+          if (!response.ok) {
+            const errorText = await response.text();
+            if (response.status === 429) {
+              throw new Error('Too many requests. Please wait a moment and try again.');
+            }
+            throw new Error(`Failed to fetch product data: ${response.status} - ${errorText}`);
+          }
+          const data = await response.json();
+          try {
+            localStorage.setItem('cached_products', JSON.stringify(data.products));
+          } catch {
+            /* ignore */
+          }
+          if (data.category && data.category !== wantedCategory) return;
+          writeBrowseCache(wantedCategory, data);
+          paintProducts(data);
+          return;
+        } catch (err) {
+          if (cancelled || controller.signal.aborted) return;
+          if (err?.name === 'AbortError') {
+            lastError = err;
+            continue;
+          }
+          lastError = err;
+          if (String(err?.message || '').includes('429')) break;
+        } finally {
+          window.clearTimeout(timeoutId);
+          controller.signal.removeEventListener('abort', abortAttempt);
+        }
+      }
+
+      if (cancelled || controller.signal.aborted) return;
+      if (paintFallbackCatalog()) return;
+      setError(lastError?.message || 'Failed to load products. Please try again.');
+    };
+
+    fetchProductData().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [productId, category, authenticated, email, isShopCatalog, browseReload]);
 
   // Validate and reset sizes when products or colors change
   useEffect(() => {
@@ -1139,63 +1088,23 @@ const ProductPage = ({ sidebar }) => {
     );
   }
 
-  if (error) {
+  if (error && !(productData?.products?.length)) {
     return (
       <div className={`container product-page ${sidebar ? "" : " large-container"}`}>
-        <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>
-          <h2>Error Loading Product</h2>
-          <p>{error}</p>
-          <button onClick={() => {
-            setError(null);
-            setLoading(true);
-            // Retry the fetch
-            const fetchProductData = async () => {
-              try {
-                // Handle browse mode - use 'browse' when productId is undefined
-                const actualProductId = productId || 'browse';
-                const apiBase = getBackendUrl().replace(/\/$/, '');
-                const url =
-                  `${apiBase}/api/product/${actualProductId}` +
-                  `?category=${encodeURIComponent(category)}` +
-                  `&authenticated=${authenticated}` +
-                  `&email=${encodeURIComponent(email || '')}`;
-
-                const response = await fetch(url, {
-                  method: 'GET',
-                  signal: AbortSignal.timeout(30000)
-                });
-                
-                if (!response.ok) {
-                  throw new Error(`Failed to fetch product data: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                setProductData(data);
-              } catch (err) {
-                console.error('Retry failed:', err);
-                setError(err.message);
-              } finally {
-                setLoading(false);
-              }
-            };
-            fetchProductData();
-          }}>Retry</button>
-          <div style={{ marginTop: '1rem' }}>
-            <p>If the error persists, you can still browse products by category:</p>
-            <div className="categories-grid" style={{ marginTop: '1rem' }}>
-              {categories.map((cat, index) => (
-                <div
-                  key={index}
-                  className={`category-box ${cat.category === category ? 'active' : ''}`}
-                  onClick={() => handleCategoryClick(cat.category)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="category-emoji">{cat.emoji}</div>
-                  <div className="category-name">{cat.name}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div style={{ padding: '2rem', textAlign: 'center' }}>
+          <h2>Could not load products</h2>
+          <p>Please try again.</p>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              setBrowseReload((n) => n + 1);
+            }}
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -1322,7 +1231,7 @@ const ProductPage = ({ sidebar }) => {
             // Map product names to categories
             const productCategoryMap = {
               'womens': ["Women's Shirt", "Heavyweight T-Shirt", "Women's Ribbed Neck", "Micro-Rib Tank Top", "Racerback Tank", "Women's Crop Top", "Pullover Hoodie", "Cropped Hoodie"],
-              'mens': ["Hoodie", "Men's Tank Top", "Mens Fitted T-Shirt", "Men's Fitted Long Sleeve", "T-Shirt", "Oversized T-Shirt", "Men's Long Sleeve Shirt", "Champion Hoodie"],
+              'mens': ["T-Shirt", "Men's Long Sleeve Shirt", "Mens Fitted T-Shirt", "Men's Tank Top", "Oversized T-Shirt", "Men's Fitted Long Sleeve", "Hoodie", "Champion Hoodie"],
               'kids': ["Youth Heavy Blend Hoodie", "Kids Shirt", "Kids Long Sleeve", "Toddler Jersey T-Shirt", "Kids Sweatshirt", "Baby Staple Tee", "Baby Jersey T-Shirt", "Baby Body Suit"],
               'mugs': ["White Glossy Mug", "Travel Mug", "Enamel Mug", "Colored Mug"],
               'hats': ["Distressed Dad Hat", "Closed Back Cap", "Five Panel Trucker Hat", "Five Panel Baseball Cap"],
@@ -1818,7 +1727,7 @@ const ProductPage = ({ sidebar }) => {
                 <div className="cart-actions">
                   <button className="view-cart-btn" onClick={() => setIsCartOpen(false)}>Continue Shopping</button>
                   <button className="checkout-btn" onClick={() => navigate('/checkout')}>Checkout</button>
-                  <button className="edit-tools-btn" onClick={goToToolsPage}>Edit Tools</button>
+                  <button className="edit-tools-btn" onClick={goToToolsPage}>Go to Product Preview</button>
                 </div>
               </div>
             )}
